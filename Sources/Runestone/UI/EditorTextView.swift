@@ -6,9 +6,17 @@
 //
 
 import UIKit
-import RunestoneTextStorage
 
 open class EditorTextView: UITextView {
+    public var language: Language? {
+        get {
+            return highlightTextStorage.language
+        }
+        set {
+            highlightTextStorage.language = newValue
+        }
+    }
+
     private let highlightTextStorage = HighlightTextStorage()
 
     public init(frame: CGRect) {

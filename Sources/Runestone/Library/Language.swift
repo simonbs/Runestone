@@ -22,95 +22,9 @@ public enum LanguageError: LocalizedError {
 }
 
 public final class Language: Codable {
-    public let scopeName: String
-    public let patterns: [Rule]
-    public let repository: [String: Rule]
-}
-
-public extension Language {
-    enum Rule: Codable {
-        public final class IncludeParameters: Codable {
-            private enum Key {
-                static let include = "include"
-            }
-
-            public let reference: String
-
-            public init(from decoder: Decoder) throws {
-                let values = try decoder.singleValueContainer()
-                let dict = try values.decode([String: String].self)
-                guard dict.keys.contains(Key.include) else {
-                    let description = "\"\(Key.include)\" key not found in dictionary."
-                    let errorContext = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: description)
-                    throw DecodingError.valueNotFound(String.self, errorContext)
-                }
-                guard let reference = dict[Key.include] else {
-                    let description = "Dictionary does not contain value for \"\(Key.include)\" key."
-                    let errorContext = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: description)
-                    throw DecodingError.valueNotFound(String.self, errorContext)
-                }
-                self.reference = reference
-            }
-
-            public func encode(to encoder: Encoder) throws {
-                let dict = [Key.include: reference]
-                try dict.encode(to: encoder)
-            }
-        }
-
-        public final class BeginEndParameters: Codable {
-            public let name: String
-            public let begin: String
-            public let end: String
-        }
-
-        public final class PatternsParameters: Codable {
-            public let patterns: [Rule]
-        }
-
-        public final class MatchParameters: Codable {
-            public let name: String
-            public let match: String
-        }
-
-        case include(IncludeParameters)
-        case beginEnd(BeginEndParameters)
-        case patterns(PatternsParameters)
-        case match(MatchParameters)
-
-        private var parameters: Codable {
-            switch self {
-            case .include(let parameters):
-                return parameters
-            case .beginEnd(let parameters):
-                return parameters
-            case .patterns(let parameters):
-                return parameters
-            case .match(let parameters):
-                return parameters
-            }
-        }
-
-        public init(from decoder: Decoder) throws {
-            if let parameters = try? IncludeParameters(from: decoder) {
-                self = .include(parameters)
-            } else if let parameters = try? BeginEndParameters(from: decoder) {
-                self = .beginEnd(parameters)
-            } else if let parameters = try? PatternsParameters(from: decoder) {
-                self = .patterns(parameters)
-            } else if let parameters = try? MatchParameters(from: decoder) {
-                self = .match(parameters)
-            } else {
-                let description = "Unsupported type of rule or the rule doesn't have the expected parameters."
-                let errorContext = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: description)
-                throw DecodingError.dataCorrupted(errorContext)
-            }
-        }
-
-        public func encode(to encoder: Encoder) throws {
-            try parameters.encode(to: encoder)
-        }
-    }
+    let scopeName: String
+    let patterns: [Rule]
+    let repository: [String: Rule]
 }
 
 public extension Language {

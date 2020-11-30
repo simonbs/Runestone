@@ -8,15 +8,23 @@
 import UIKit
 
 final class HighlightTextStorage: NSTextStorage {
+    var language: Language? {
+        didSet {
+            if language !== oldValue {
+                if let language = language {
+                    tokenizer = Tokenizer(language: language)
+                } else {
+                    tokenizer = nil
+                }
+            }
+        }
+    }
     override var string: String {
         return internalString.string
     }
 
     private let internalString = NSMutableAttributedString()
-    private var regularExpression: NSRegularExpression = {
-        let pattern = "i[\\p{Alphabetic}&&\\p{Uppercase}][\\p{Alphabetic}]+"
-        return try! NSRegularExpression(pattern: pattern, options: [])
-    }()
+    private var tokenizer: Tokenizer?
 
     override func replaceCharacters(in range: NSRange, with str: String) {
         beginEditing()
@@ -39,12 +47,17 @@ final class HighlightTextStorage: NSTextStorage {
     override func processEditing() {
         super.processEditing()
         let editedRange = string.convert(self.editedRange)
-        let paragraphRange = string.paragraphRange(for: editedRange)
-        let paragraphNSRange = string.convert(paragraphRange)
-        removeAttribute(.foregroundColor, range: paragraphNSRange)
-        regularExpression.enumerateMatches(in: string, options: [], range: paragraphNSRange) { result, _, _ in
-            if let result = result {
-                addAttribute(.foregroundColor, value: UIColor.red, range: result.range)
+        var lineStart: String.Index = editedRange.lowerBound
+        var lineEnd: String.Index = editedRange.upperBound
+        var contentsEnd: String.Index = editedRange.upperBound
+        string.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd, for: editedRange)
+        let lineRange = lineStart ..< lineEnd
+        let lineNSRange = string.convert(lineRange)
+        internalString.removeAttribute(.foregroundColor, range: lineNSRange)
+        if let tokenizer = tokenizer {
+            let tokens = tokenizer.tokenize(String(string[lineRange]))
+            for token in tokens {
+                internalString.addAttributes([.foregroundColor: UIColor.red], range: token.range)
             }
         }
     }
