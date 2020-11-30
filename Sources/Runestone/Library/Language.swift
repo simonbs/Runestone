@@ -22,9 +22,29 @@ public enum LanguageError: LocalizedError {
 }
 
 public final class Language: Codable {
-    let scopeName: String
+    private enum CodingKeys: CodingKey {
+        case patterns
+        case repository
+    }
+
     let patterns: [Rule]
     let repository: [String: Rule]
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let codablePatterns = try values.decode([CodableRule].self, forKey: .patterns)
+        let codableRepository = try values.decode([String: CodableRule].self, forKey: .repository)
+        patterns = codablePatterns.map(\.rule)
+        repository = Dictionary(uniqueKeysWithValues: codableRepository.map { ($0, $1.rule) })
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        let codablePatterns = patterns.map(CodableRule.init)
+        let codableRepository = Dictionary(uniqueKeysWithValues: repository.map { ($0, CodableRule($1)) })
+        try values.encode(codablePatterns, forKey: .patterns)
+        try values.encode(codableRepository, forKey: .repository)
+    }
 }
 
 public extension Language {
