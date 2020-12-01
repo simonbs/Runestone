@@ -32,18 +32,14 @@ public final class Language: Codable {
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
-        let codablePatterns = try values.decode([CodableRule].self, forKey: .patterns)
-        let codableRepository = try values.decode([String: CodableRule].self, forKey: .repository)
-        patterns = codablePatterns.map(\.rule)
-        repository = Dictionary(uniqueKeysWithValues: codableRepository.map { ($0, $1.rule) })
+        patterns = try values.decodeWrappedValues([CodableRule].self, forKey: .patterns)
+        repository = try values.decodeWrappedValues([String: CodableRule].self, forKey: .repository)
     }
 
     public func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
-        let codablePatterns = patterns.map(CodableRule.init)
-        let codableRepository = Dictionary(uniqueKeysWithValues: repository.map { ($0, CodableRule($1)) })
-        try values.encode(codablePatterns, forKey: .patterns)
-        try values.encode(codableRepository, forKey: .repository)
+        try values.encodeWrappedValues(patterns, to: [CodableRule].self, forKey: .patterns)
+        try values.encodeWrappedValues(repository, to: [String: CodableRule].self, forKey: .repository)
     }
 }
 

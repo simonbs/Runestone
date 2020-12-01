@@ -15,7 +15,7 @@ struct CodableRule: Codable {
     }
 
     init(from decoder: Decoder) throws {
-        let ruleTypes: [Rule.Type] = [MatchRule.self]
+        let ruleTypes: [Rule.Type] = [IncludeRule.self, MatchRule.self, BeginEndRule.self]
         var decodedRule: Rule?
         for ruleType in ruleTypes {
             if let rule = try? ruleType.init(from: decoder) {
@@ -37,3 +37,8 @@ struct CodableRule: Codable {
     }
 }
 
+extension CodableRule: CodableWrapper {
+    var wrappedValue: Rule {
+        return rule
+    }
+}

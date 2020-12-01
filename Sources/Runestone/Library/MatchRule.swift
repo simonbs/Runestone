@@ -13,9 +13,9 @@ final class MatchRule {
         case match
     }
 
-    let name: String
-    let match: String
-    let regexp: OnigRegexp
+    private let name: String
+    private let match: String
+    private let regexp: OnigRegexp
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
