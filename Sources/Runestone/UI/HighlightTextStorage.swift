@@ -57,7 +57,9 @@ final class HighlightTextStorage: NSTextStorage {
         if let tokenizer = tokenizer {
             let tokens = tokenizer.tokenize(String(string[lineRange]))
             for token in tokens {
-                internalString.addAttributes([.foregroundColor: UIColor.red], range: token.range)
+                let rangeInLine = token.range
+                let rangeInText = NSMakeRange(lineNSRange.location + rangeInLine.location, rangeInLine.length)
+                internalString.addAttributes([.foregroundColor: UIColor.red], range: rangeInText)
             }
         }
     }
