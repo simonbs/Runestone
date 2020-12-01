@@ -47,11 +47,7 @@ final class HighlightTextStorage: NSTextStorage {
     override func processEditing() {
         super.processEditing()
         let editedRange = string.convert(self.editedRange)
-        var lineStart: String.Index = editedRange.lowerBound
-        var lineEnd: String.Index = editedRange.upperBound
-        var contentsEnd: String.Index = editedRange.upperBound
-        string.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd, for: editedRange)
-        let lineRange = lineStart ..< lineEnd
+        let lineRange = self.lineRange(from: editedRange)
         let lineNSRange = string.convert(lineRange)
         internalString.removeAttribute(.foregroundColor, range: lineNSRange)
         if let tokenizer = tokenizer {
@@ -62,6 +58,16 @@ final class HighlightTextStorage: NSTextStorage {
                 internalString.addAttributes([.foregroundColor: UIColor.red], range: rangeInText)
             }
         }
+    }
+}
+
+private extension HighlightTextStorage {
+    private func lineRange(from range: Range<String.Index>) -> Range<String.Index> {
+        var lineStart: String.Index = range.lowerBound
+        var lineEnd: String.Index = range.upperBound
+        var contentsEnd: String.Index = range.upperBound
+        string.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd, for: range)
+        return lineStart ..< lineEnd
     }
 }
 
