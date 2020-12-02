@@ -7,7 +7,7 @@
 
 import OnigurumaBindings
 
-final class BeginEndRule {
+final class BeginEndRule: Codable {
     private enum CodingKeys: CodingKey {
         case name
         case begin
@@ -15,37 +15,52 @@ final class BeginEndRule {
         case patterns
     }
 
+    private final class BeginEndExpressions: Codable {
+        private enum CodingKeys: CodingKey {
+            case begin
+            case end
+        }
+
+        let begin: String
+        let end: String
+        let beginRegexp: OnigRegexp
+        let endRegexp: OnigRegexp
+
+        public init(from decoder: Decoder) throws {
+            let values = try decoder.container(keyedBy: CodingKeys.self)
+            begin = try values.decode(String.self, forKey: .begin)
+            end = try values.decode(String.self, forKey: .end)
+            beginRegexp = try OnigRegexp.compile(begin)
+            endRegexp = try OnigRegexp.compile(end)
+        }
+    }
+
     private let name: String?
-    private let begin: String?
-    private let end: String?
+    private let beginEndExpressions: BeginEndExpressions?
     private let patterns: [Rule]?
-    private let beginRegexp: OnigRegexp?
-    private let endRegexp: OnigRegexp?
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         name = try values.decodeIfPresent(String.self, forKey: .name)
-        begin = try values.decodeIfPresent(String.self, forKey: .begin)
-        end = try values.decodeIfPresent(String.self, forKey: .end)
-        patterns = try values.decodeWrappedValuesIfPresent([CodableRule].self, forKey: .patterns)
-        if let begin = begin {
-            beginRegexp = try OnigRegexp.compile(begin)
+        patterns = try values.decodeWrappedValues([CodableRule].self, forKey: .patterns)
+        if values.contains(.begin) && values.contains(.end) {
+            beginEndExpressions = try BeginEndExpressions(from: decoder)
+        } else if values.contains(.begin) {
+            let message = "Begin/end rule contains a \(CodingKeys.begin.stringValue) key but contains no \(CodingKeys.end.stringValue) key."
+            throw DecodingError.dataCorruptedError(forKey: .end, in: values, debugDescription: message)
+        } else if values.contains(.end) {
+            let message = "Begin/end rule contains a \(CodingKeys.end.stringValue) key but contains no \(CodingKeys.begin.stringValue) key."
+            throw DecodingError.dataCorruptedError(forKey: .end, in: values, debugDescription: message)
         } else {
-            beginRegexp = nil
-        }
-        if let end = end {
-            endRegexp = try OnigRegexp.compile(end)
-        } else {
-            endRegexp = nil
+            beginEndExpressions = nil
         }
     }
 
     func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(name, forKey: .name)
-        try values.encode(begin, forKey: .begin)
-        try values.encode(end, forKey: .end)
         try values.encodeWrappedValues(patterns, to: [CodableRule].self, forKey: .patterns)
+        try beginEndExpressions?.encode(to: encoder)
     }
 }
 

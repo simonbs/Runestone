@@ -7,7 +7,7 @@
 
 import OnigurumaBindings
 
-final class MatchRule {
+final class MatchRule: Codable {
     private enum CodingKeys: CodingKey {
         case name
         case match

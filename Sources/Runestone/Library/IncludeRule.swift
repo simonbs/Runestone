@@ -7,7 +7,7 @@
 
 import OnigurumaBindings
 
-final class IncludeRule {
+final class IncludeRule: Codable {
     private enum CodingKeys: CodingKey {
         case include
     }

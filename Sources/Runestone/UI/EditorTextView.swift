@@ -36,7 +36,7 @@ open class EditorTextView: UITextView {
 
 private extension EditorTextView {
     private static func createTextContainer(textStorage: NSTextStorage) -> NSTextContainer {
-        let layoutManager = NSLayoutManager()
+        let layoutManager = LineNumberLayoutManager()
         textStorage.addLayoutManager(layoutManager)
         let textContainer = NSTextContainer()
         layoutManager.addTextContainer(textContainer)
