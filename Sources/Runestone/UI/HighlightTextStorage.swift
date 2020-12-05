@@ -6,25 +6,24 @@
 //
 
 import UIKit
+import TreeSitterBindings
+import TreeSitterJSON
 
 final class HighlightTextStorage: NSTextStorage {
-    var language: Language? {
-        didSet {
-            if language !== oldValue {
-                if let language = language {
-                    tokenizer = Tokenizer(language: language)
-                } else {
-                    tokenizer = nil
-                }
-            }
-        }
-    }
     override var string: String {
         return internalString.string
     }
 
     private let internalString = NSMutableAttributedString()
-    private var tokenizer: Tokenizer?
+
+    override init() {
+        super.init()
+        tree_sitter_json()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
 
     override func replaceCharacters(in range: NSRange, with str: String) {
         beginEditing()
@@ -46,18 +45,18 @@ final class HighlightTextStorage: NSTextStorage {
 
     override func processEditing() {
         super.processEditing()
-        let editedRange = string.convert(self.editedRange)
-        let lineRange = self.lineRange(from: editedRange)
-        let lineNSRange = string.convert(lineRange)
-        internalString.removeAttribute(.foregroundColor, range: lineNSRange)
-        if let tokenizer = tokenizer {
-            let tokens = tokenizer.tokenize(String(string[lineRange]))
-            for token in tokens {
-                let rangeInLine = token.range
-                let rangeInText = NSMakeRange(lineNSRange.location + rangeInLine.location, rangeInLine.length)
-                internalString.addAttributes([.foregroundColor: UIColor.red], range: rangeInText)
-            }
-        }
+//        let editedRange = string.convert(self.editedRange)
+//        let lineRange = self.lineRange(from: editedRange)
+//        let lineNSRange = string.convert(lineRange)
+//        internalString.removeAttribute(.foregroundColor, range: lineNSRange)
+//        if let tokenizer = tokenizer {
+//            let tokens = tokenizer.tokenize(String(string[lineRange]))
+//            for token in tokens {
+//                let rangeInLine = token.range
+//                let rangeInText = NSMakeRange(lineNSRange.location + rangeInLine.location, rangeInLine.length)
+//                internalString.addAttributes([.foregroundColor: UIColor.red], range: rangeInText)
+//            }
+//        }
     }
 }
 
