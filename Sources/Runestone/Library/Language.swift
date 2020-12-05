@@ -28,18 +28,19 @@ public final class Language: Codable {
     }
 
     let patterns: [Rule]
-    let repository: [String: Rule]
+    let repository: RuleRepository
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         patterns = try values.decodeWrappedValues([CodableRule].self, forKey: .patterns)
-        repository = try values.decodeWrappedValues([String: CodableRule].self, forKey: .repository)
+        repository = try values.decode(RuleRepository.self, forKey: .repository)
+        prepare()
     }
 
     public func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encodeWrappedValues(patterns, to: [CodableRule].self, forKey: .patterns)
-        try values.encodeWrappedValues(repository, to: [String: CodableRule].self, forKey: .repository)
+        try repository.encode(to: encoder)
     }
 }
 
@@ -62,6 +63,15 @@ public extension Language {
             return .failure(.decodingError(error))
         } catch {
             return .failure(.unknownError(error))
+        }
+    }
+}
+
+private extension Language {
+    private func prepare() {
+        repository.prepare()
+        for pattern in patterns {
+            pattern.prepare(repository: repository)
         }
     }
 }

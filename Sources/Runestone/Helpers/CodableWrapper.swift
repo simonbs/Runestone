@@ -71,3 +71,50 @@ extension KeyedEncodingContainer {
         }
     }
 }
+
+extension SingleValueDecodingContainer {
+    func decodeWrappedValue<T: CodableWrapper>(_ type: T.Type) throws -> T.WrappedValue {
+        return try decode(T.self).wrappedValue
+    }
+
+    func decodeWrappedValues<T: CodableWrapper>(_ type: [T].Type) throws -> [T.WrappedValue] {
+        return try decode([T].self).map(\.wrappedValue)
+    }
+
+    func decodeWrappedValues<U: Hashable & Decodable, T: CodableWrapper>(_ type: [U: T].Type) throws -> [U: T.WrappedValue] {
+        let unwrappedPairs = try decode([U: T].self).map { ($0, $1.wrappedValue) }
+        return Dictionary(uniqueKeysWithValues: unwrappedPairs)
+    }
+
+    func decodeWrappedValues<U: Hashable & Decodable, T: CodableWrapper>(_ type: [U: T].Type) throws -> [U: T.WrappedValue]? {
+        let unwrappedPairs = try decode([U: T].self).map { ($0, $1.wrappedValue) }
+        return Dictionary(uniqueKeysWithValues: unwrappedPairs)
+    }
+}
+
+extension SingleValueEncodingContainer {
+    mutating func encodeWrappedValue<T: CodableWrapper>(_ value: T.WrappedValue?, to type: T.Type) throws {
+        if let value = value {
+            try encode(T.init(value))
+        } else {
+            try encodeNil()
+        }
+    }
+
+    mutating func encodeWrappedValues<T: CodableWrapper>(_ values: [T.WrappedValue]?, to type: [T].Type) throws {
+        if let values = values {
+            try encode(values.map(T.init))
+        } else {
+            try encodeNil()
+        }
+    }
+
+    mutating func encodeWrappedValues<U: Encodable & Hashable, T: CodableWrapper>(_ values: [U: T.WrappedValue]?, to type: [U: T].Type) throws {
+        if let values = values {
+            let wrappedValues = Dictionary(uniqueKeysWithValues: values.map { ($0, T.init($1)) })
+            try encode(wrappedValues)
+        } else {
+            try encodeNil()
+        }
+    }
+}

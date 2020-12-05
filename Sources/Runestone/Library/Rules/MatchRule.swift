@@ -13,6 +13,8 @@ final class MatchRule: Codable {
         case match
     }
 
+    private(set) var isPrepared = false
+
     private let name: String
     private let match: String
     private let regexp: OnigRegexp
@@ -32,7 +34,23 @@ final class MatchRule: Codable {
 }
 
 extension MatchRule: Rule {
-    func tokenize(_ string: String) -> [Token] {
-        return findAllTokens(matching: regexp, in: string)
+    func prepare(repository: RuleRepository) {
+        isPrepared = true
+    }
+
+    func tokenize(_ string: String, context: TokenizationContext) -> TokenizationResult {
+        var tokens: [Token] = []
+        var start: Int32 = 0
+        while let result = regexp.search(string, start: start) {
+            for i in 0 ..< result.count() {
+                let location = result.location(at: i)
+                let length = result.length(at: i)
+                let contents = result.string(at: i)
+                let token = Token(name: name, start: location, end: location + length, contents: contents)
+                tokens.append(token)
+            }
+            start = Int32(result.location(at: 0) + result.length(at: 0))
+        }
+        return TokenizationResult(tokens: tokens, scopeChange: .none)
     }
 }
