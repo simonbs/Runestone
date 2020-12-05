@@ -15,10 +15,11 @@ final class HighlightTextStorage: NSTextStorage {
     }
 
     private let internalString = NSMutableAttributedString()
+    private let parser = Parser()
 
     override init() {
         super.init()
-        tree_sitter_json()
+        parser.language = Language(tree_sitter_json())
     }
 
     required init?(coder: NSCoder) {
@@ -45,6 +46,7 @@ final class HighlightTextStorage: NSTextStorage {
 
     override func processEditing() {
         super.processEditing()
+        parser.parse(string)
 //        let editedRange = string.convert(self.editedRange)
 //        let lineRange = self.lineRange(from: editedRange)
 //        let lineNSRange = string.convert(lineRange)
