@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import RunestoneTextStorage
 
 open class EditorTextView: UITextView {
     private let highlightTextStorage = HighlightTextStorage()

@@ -8,19 +8,25 @@
 import TreeSitter
 
 final class Node {
+    let rawValue: TSNode
     var expressionString: String? {
-        if let cstr = ts_node_string(node) {
-            let result = String(cString: cstr)
-            cstr.deallocate()
+        if let str = ts_node_string(rawValue) {
+            let result = String(cString: str)
+            str.deallocate()
             return result
         } else {
             return nil
         }
     }
-
-    private let node: TSNode
+    var type: String? {
+        if let str = ts_node_type(rawValue) {
+            return String(cString: str)
+        } else {
+            return nil
+        }
+    }
 
     init(node: TSNode) {
-        self.node = node
+        self.rawValue = node
     }
 }

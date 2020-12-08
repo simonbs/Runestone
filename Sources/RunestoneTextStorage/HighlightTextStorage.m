@@ -1,22 +1,38 @@
 //
-//  DemoTextStorage.m
+//  HighlightTextStorage.m
 //  
 //
 //  Created by Simon Støvring on 29/11/2020.
 //
 
-#import "DemoTextStorage.h"
+#import "HighlightTextStorage.h"
+@import RunestoneDocumentLineTree;
+@import TreeSitterBindings;
+@import TreeSitterJSON;
 
-@implementation DemoTextStorage {
+@interface HighlightTextStorage () <LineManagerDelegate>
+@end
+
+@implementation HighlightTextStorage {
     NSMutableAttributedString *_internalString;
+    LineManager *_lineManager;
+    Parser *_parser;
 }
+
+// MARK: - Lifecycle
 
 - (instancetype)init {
     if (self = [super init]) {
         _internalString = [NSMutableAttributedString new];
+        _lineManager = [LineManager new];
+        _lineManager.delegate = self;
+        _parser = [Parser new];
+        _parser.language = [[Language alloc] initWithLanguage:tree_sitter_json()];
     }
     return self;
 }
+
+// MARK: - NSTextStorage
 
 - (NSString *)string {
     return _internalString.string;
@@ -26,6 +42,8 @@
     [self beginEditing];
     [_internalString replaceCharactersInRange:range withString:str];
     NSInteger length = (NSInteger)str.length - (NSInteger)range.length;
+    [_lineManager removeCharactersInRange:range];
+    [_lineManager insertString:str inRange:range];
     [self edited:NSTextStorageEditedCharacters range:range changeInLength:length];
     [self endEditing];
 }
@@ -43,17 +61,13 @@
 
 - (void)processEditing {
     [super processEditing];
-    static NSRegularExpression *iExpression;
-    NSString *pattern = @"i[\\p{Alphabetic}&&\\p{Uppercase}][\\p{Alphabetic}]+";
-    iExpression = iExpression ?: [NSRegularExpression regularExpressionWithPattern:pattern options:0 error:NULL];
-    NSRange paragraphRange = [self.string paragraphRangeForRange:self.editedRange];
-    [self removeAttribute:NSForegroundColorAttributeName range:paragraphRange];
-    NSLog(@"%@", NSStringFromRange(paragraphRange));
-    [iExpression enumerateMatchesInString:self.string options:0 range:paragraphRange usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
-        [self addAttribute:NSForegroundColorAttributeName value:[UIColor redColor] range:result.range];
-    }];
+//    [_parser parse:self.string];
+}
+
+// MARK: - HighlightTextStorage
+
+- (NSString * _Nonnull)lineManager:(LineManager * _Nonnull)lineManager characterAtLocation:(NSInteger)location {
+    return [self.string substringWithRange:NSMakeRange(location, 1)];
 }
 
 @end
-
-

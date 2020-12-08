@@ -16,7 +16,12 @@ let package = Package(
     targets: [
         .target(
             name: "Runestone",
-            dependencies: ["TreeSitterBindings", "TreeSitterJSON"]),
+            dependencies: ["RunestoneTextStorage"]),
+        .target(
+            name: "RunestoneTextStorage",
+            dependencies: ["RunestoneDocumentLineTree", "TreeSitterBindings", "TreeSitterJSON"]),
+        .target(name: "RunestoneDocumentLineTree"),
+        .target(name: "TreeSitterJSON"),
         .target(
             name: "TreeSitterBindings",
             dependencies: ["TreeSitter"]),
@@ -28,7 +33,6 @@ let package = Package(
                 "unicode/LICENSE",
                 "unicode/README.md"
             ]),
-        .target(name: "TreeSitterJSON"),
         .testTarget(
             name: "RunestoneTests",
             dependencies: ["Runestone"]),
