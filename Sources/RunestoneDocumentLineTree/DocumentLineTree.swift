@@ -65,5 +65,6 @@ final class DocumentLineTree {
                 updateAfterChildrenChange(to: parent)
             }
         }
+        print(root.nodeTotalLength)
     }
 }

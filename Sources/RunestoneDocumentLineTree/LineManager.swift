@@ -42,7 +42,8 @@ import Foundation
             assert(charactersRemovedInStartLine > 0)
             let endLine = tree.getByLocation(range.location + range.length)
             if endLine === startLine {
-                setLength(of: startLine, to: startLine.location + range.length)
+                // Removing characters in the last line.
+                setLength(of: startLine, to: startLine.totalLength + range.length)
             } else {
                 let charactersLeftInEndLine = endLine.location + endLine.totalLength - (range.location + range.length)
                 // Remove all lines between startLine and endLine, excluding startLine but including endLine.
@@ -109,14 +110,13 @@ private extension LineManager {
         if newTotalLength == 0 {
             line.delimiterLength = 0
         } else {
-            let lineLocation = line.location
-            let lastChar = getCharacter(at: lineLocation + newTotalLength - 1)
+            let lastChar = getCharacter(at: line.location + newTotalLength - 1)
             if lastChar == NewLineSymbol.nsCarriageReturn {
                 line.delimiterLength = 1
             } else if lastChar == NewLineSymbol.nsLineFeed {
-                if newTotalLength >= 2 && getCharacter(at: lineLocation + newTotalLength - 2) == NewLineSymbol.nsCarriageReturn {
+                if newTotalLength >= 2 && getCharacter(at: line.location + newTotalLength - 2) == NewLineSymbol.nsCarriageReturn {
                     line.delimiterLength = 2
-                } else if (newTotalLength == 1 && lineLocation > 0 && getCharacter(at: lineLocation - 1) == NewLineSymbol.nsCarriageReturn) {
+                } else if (newTotalLength == 1 && line.location > 0 && getCharacter(at: line.location - 1) == NewLineSymbol.nsCarriageReturn) {
                     // We need to join this line with the previous line.
                     let previousLine = line.previous
                     remove(line)

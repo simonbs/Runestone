@@ -43,7 +43,9 @@
     [_internalString replaceCharactersInRange:range withString:str];
     NSInteger length = (NSInteger)str.length - (NSInteger)range.length;
     [_lineManager removeCharactersInRange:range];
-    [_lineManager insertString:str inRange:range];
+//    if (length > 0) {
+        [_lineManager insertString:str inRange:range];
+//    }
     [self edited:NSTextStorageEditedCharacters range:range changeInLength:length];
     [self endEditing];
 }
