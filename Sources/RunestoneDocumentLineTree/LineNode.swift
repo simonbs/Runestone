@@ -34,13 +34,12 @@ extension LineNode {
         if let left = left {
             return left.rightMost
         } else {
-            var node = self
             var oldNode = self
-            repeat {
+            var node = parent ?? self
+            while let parent = node.parent, node.left === oldNode {
                 oldNode = node
-                node = node.parent!
-                // We are on the way up from the left part, don't output node again.
-            } while node.parent != nil && node.left === oldNode
+                node = parent
+            }
             return node
         }
     }
@@ -48,13 +47,12 @@ extension LineNode {
         if let right = right {
             return right.leftMost
         } else {
-            var node = self
             var oldNode = self
-            repeat {
+            var node = parent ?? self
+            while let parent = node.parent, node.right === oldNode {
                 oldNode = node
-                node = node.parent!
-                // We are on the way up from the right part, don't output node again.
-            } while node.parent != nil && node.right === oldNode
+                node = parent
+            }
             return node
         }
     }
