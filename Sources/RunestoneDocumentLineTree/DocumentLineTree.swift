@@ -89,7 +89,7 @@ final class DocumentLineTree {
             let leftMost = removedNodeRight.leftMost
             // Remove leftMost node from its current location
             remove(leftMost)
-            // ...and overwrite remocedNode with it.
+            // ...and overwrite removedNode with it.
             replace(removedNode, with: leftMost)
             leftMost.left = removedNodeLeft
             if leftMost.left != nil {
@@ -208,7 +208,7 @@ private extension DocumentLineTree {
                     // Nodes might have changed after rotation.
                     parentNode = node.parent!
                     grandparentNode = parentNode.parent!
-                    // Recolor notes.
+                    // Recolor nodes.
                     parentNode.color = .black
                     grandparentNode.color = .red
                     // Rotate again.
