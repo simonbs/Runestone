@@ -180,7 +180,7 @@ private extension DocumentLineTree {
         assert(node.color == .red)
         assert(node.left == nil || node.left?.color == .black)
         assert(node.right == nil || node.right?.color == .black)
-        if var parentNode = node.parent, parentNode.color == .black {
+        if var parentNode = node.parent {
             switch parentNode.color {
             case .black:
                 // The parent is black so our red node, as ensured by the assert, is placed correctly,
