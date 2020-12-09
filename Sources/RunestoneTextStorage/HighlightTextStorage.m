@@ -40,12 +40,10 @@
 
 - (void)replaceCharactersInRange:(NSRange)range withString:(NSString *)str {
     [self beginEditing];
-    [_internalString replaceCharactersInRange:range withString:str];
     NSInteger length = (NSInteger)str.length - (NSInteger)range.length;
+    [_internalString replaceCharactersInRange:range withString:str];
     [_lineManager removeCharactersInRange:range];
-//    if (length > 0) {
-        [_lineManager insertString:str inRange:range];
-//    }
+    [_lineManager insertString:str inRange:range];
     [self edited:NSTextStorageEditedCharacters range:range changeInLength:length];
     [self endEditing];
 }

@@ -43,7 +43,7 @@ import Foundation
             let endLine = tree.getByLocation(range.location + range.length)
             if endLine === startLine {
                 // Removing characters in the last line.
-                setLength(of: startLine, to: startLine.totalLength + range.length)
+                setLength(of: startLine, to: startLine.totalLength - range.length)
             } else {
                 let charactersLeftInEndLine = endLine.location + endLine.totalLength - (range.location + range.length)
                 // Remove all lines between startLine and endLine, excluding startLine but including endLine.
