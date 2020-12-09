@@ -8,7 +8,7 @@
 import Foundation
 
 protocol LineNode: class {
-    var nodeTotalLength: Int { get set }
+    var nodeTotalLength: Int { get }
     var nodeTotalCount: Int { get }
     var parent: Self? { get }
     var left: Self? { get }

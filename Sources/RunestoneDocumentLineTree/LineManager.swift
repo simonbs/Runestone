@@ -27,7 +27,7 @@ import Foundation
         guard range.length > 0 else {
             return
         }
-        let startLine = tree.getByLocation(range.location)
+        let startLine = tree.line(at: range.location)
         if range.location > startLine.location + startLine.length {
             // Deleting starting in the middle of a delimiter.
             setLength(of: startLine, to: startLine.totalLength - 1)
@@ -40,7 +40,7 @@ import Foundation
             // possibly removing lines in between if multiple delimeters were deleted.
             let charactersRemovedInStartLine = startLine.location + startLine.totalLength - range.location
             assert(charactersRemovedInStartLine > 0)
-            let endLine = tree.getByLocation(range.location + range.length)
+            let endLine = tree.line(at: range.location + range.length)
             if endLine === startLine {
                 // Removing characters in the last line.
                 setLength(of: startLine, to: startLine.totalLength - range.length)
@@ -59,7 +59,7 @@ import Foundation
     }
 
     @objc(insertString:inRange:) public func insert(_ string: NSString, in range: NSRange) {
-        var line = tree.getByLocation(range.location)
+        var line = tree.line(at: range.location)
         var lineLocation = line.location
         assert(range.location <= lineLocation + line.totalLength)
         if range.location > lineLocation + line.length {
@@ -69,14 +69,14 @@ import Foundation
             line = insertLine(ofLength: 1, after: line)
             line = setLength(of: line, to: 1)
         }
-        if let rangeOfFirstNewLine = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: range.location) {
+        if let rangeOfFirstNewLine = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: 0) {
             var lastDelimiterEnd = 0
             var rangeOfNewLine = rangeOfFirstNewLine
             var keepInserting = true
             while keepInserting {
                 let lineBreakLocation = range.location + rangeOfNewLine.location + rangeOfNewLine.length
                 lineLocation = line.location
-                let lengthAfterInsertionPos = lineLocation + line.totalLength - (range.location - lastDelimiterEnd)
+                let lengthAfterInsertionPos = lineLocation + line.totalLength  - (range.location + lastDelimiterEnd)
                 line = setLength(of: line, to: lineBreakLocation - lineLocation)
                 var newLine = insertLine(ofLength: lengthAfterInsertionPos, after: line)
                 newLine = setLength(of: newLine, to: lengthAfterInsertionPos)
@@ -90,7 +90,9 @@ import Foundation
                 }
             }
             // Insert rest of last delimiter.
-            setLength(of: line, to: line.totalLength + string.length - lastDelimiterEnd)
+            if lastDelimiterEnd != string.length {
+                setLength(of: line, to: line.totalLength + string.length - lastDelimiterEnd)
+            }
         } else {
             // No newline is being inserted. All the text is in a single line.
             setLength(of: line, to: line.totalLength + string.length)
@@ -104,7 +106,7 @@ private extension LineManager {
         let delta = newTotalLength - line.totalLength
         if delta != 0 {
             line.totalLength = newTotalLength
-            tree.updateAfterChildrenChange(to: line)
+            tree.updateAfterChangingChildren(of: line)
         }
         // Determine new delimiter length.
         if newTotalLength == 0 {

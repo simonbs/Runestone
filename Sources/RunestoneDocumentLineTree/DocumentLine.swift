@@ -8,10 +8,21 @@
 import Foundation
 
 final class DocumentLine: LineNode {
-    var nodeTotalLength: Int = 0
-    var nodeTotalCount: Int = 1
-    private(set) var location = 0
-    var totalLength = 0
+    enum Color {
+        case black
+        case red
+    }
+
+    var nodeTotalLength: Int
+    var nodeTotalCount: Int
+    var location: Int {
+        if isDeleted {
+            fatalError("Cannot get the location of a deleted line.")
+        } else {
+            return tree.location(of: self)
+        }
+    }
+    var totalLength: Int
     var delimiterLength = 0 {
         didSet {
             assert(delimiterLength >= 0 && delimiterLength <= 2)
@@ -20,9 +31,10 @@ final class DocumentLine: LineNode {
     var length: Int {
         return totalLength - delimiterLength
     }
-    private(set) var left: DocumentLine?
-    private(set) var right: DocumentLine?
-    private(set) var parent: DocumentLine?
+    var left: DocumentLine?
+    var right: DocumentLine?
+    var parent: DocumentLine?
+    var color: Color = .black
 
     private weak var _tree: DocumentLineTree?
     private var tree: DocumentLineTree {
@@ -32,8 +44,12 @@ final class DocumentLine: LineNode {
             fatalError("Accessing tree after it has been deallocated.")
         }
     }
-
-    init(tree: DocumentLineTree) {
+    private var isDeleted = false
+    
+    init(tree: DocumentLineTree, totalLength: Int) {
         self._tree = tree
+        self.nodeTotalCount = 1
+        self.nodeTotalLength = totalLength
+        self.totalLength = totalLength
     }
 }

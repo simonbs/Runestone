@@ -9,23 +9,24 @@ import Foundation
 
 enum NewLineFinder {
     static func rangeOfNextNewLine(in text: NSString, startingAt location: Int) -> NSRange? {
-        let rangeOfCarriageReturn = text.range(of: NewLineSymbol.carriageReturn)
+        let substring = text.substring(with: NSRange(location: location, length: text.length - location)) as NSString
+        let rangeOfCarriageReturn = substring.range(of: NewLineSymbol.carriageReturn)
         if rangeOfCarriageReturn.location != NSNotFound {
-            if rangeOfCarriageReturn.location < text.length - 1 {
+            if rangeOfCarriageReturn.location < substring.length - 1 {
                 let nextCharacterRange = NSMakeRange(rangeOfCarriageReturn.location + 1, 1)
-                if text.substring(with: nextCharacterRange) == NewLineSymbol.lineFeed {
+                if substring.substring(with: nextCharacterRange) == NewLineSymbol.lineFeed {
                     let totalLength = rangeOfCarriageReturn.length + nextCharacterRange.length
-                    return NSRange(location: rangeOfCarriageReturn.location, length: totalLength)
+                    return NSRange(location: location + rangeOfCarriageReturn.location, length: totalLength)
                 } else {
-                    return rangeOfCarriageReturn
+                    return NSRange(location: location + rangeOfCarriageReturn.location, length: rangeOfCarriageReturn.length)
                 }
             } else {
-                return rangeOfCarriageReturn
+                return NSRange(location: location + rangeOfCarriageReturn.location, length: rangeOfCarriageReturn.length)
             }
         } else {
-            let rangeOfLineFeed = text.range(of: NewLineSymbol.lineFeed)
+            let rangeOfLineFeed = substring.range(of: NewLineSymbol.lineFeed)
             if rangeOfLineFeed.location != NSNotFound {
-                return rangeOfLineFeed
+                return NSRange(location: location + rangeOfLineFeed.location, length: rangeOfLineFeed.length)
             } else {
                 return nil
             }
