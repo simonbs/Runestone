@@ -148,16 +148,25 @@ final class DocumentLineTree {
 }
 
 private extension DocumentLineTree {
-    private func insert(_ newLine: DocumentLine, after parentLine: DocumentLine) {
-        if parentLine.right == nil {
-            parentLine.right = newLine
+    private func insert(_ newLine: DocumentLine, after node: DocumentLine) {
+        if node.right == nil {
+            // Insert as right.
+            let parentNode = node
+            parentNode.right = newLine
+            newLine.parent = parentNode
+            newLine.color = .red
+            updateAfterChangingChildren(of: parentNode)
+            fixTree(afterInserting: newLine)
         } else {
-            parentLine.left = newLine
+            // Insert as left.
+            let parentNode = node.right!.leftMost
+            assert(parentNode.left == nil)
+            parentNode.left = newLine
+            newLine.parent = parentNode
+            newLine.color = .red
+            updateAfterChangingChildren(of: parentNode)
+            fixTree(afterInserting: newLine)
         }
-        newLine.parent = parentLine
-        newLine.color = .red
-        updateAfterChangingChildren(of: parentLine)
-        fixTree(afterInserting: newLine)
     }
 
     private func replace(_ replacedNode: DocumentLine, with newNode: DocumentLine?) {
