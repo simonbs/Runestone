@@ -50,7 +50,7 @@ final class DocumentLineTree {
         var workingNode = node
         while let parentNode = workingNode.parent {
             if workingNode === workingNode.parent?.right {
-                if let leftNode = node.parent?.left {
+                if let leftNode = workingNode.parent?.left {
                     location += leftNode.nodeTotalLength
                 }
                 location += parentNode.totalLength
