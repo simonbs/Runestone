@@ -59,4 +59,18 @@ final class DocumentLine: LineNode {
         self.nodeTotalLength = totalLength
         self.totalLength = totalLength
     }
+
+    func asString() -> String {
+        if isDeleted {
+            return "[DocumentLine deleted]"
+        } else {
+            return "[DocumentLine lineNumber=\(lineNumber ?? -1) location=\(location) length=\(length)]"
+        }
+    }
+}
+
+extension DocumentLine: CustomDebugStringConvertible {
+    var debugDescription: String {
+        return asString()
+    }
 }

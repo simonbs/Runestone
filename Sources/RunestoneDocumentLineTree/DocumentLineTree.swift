@@ -141,6 +141,10 @@ final class DocumentLineTree {
             }
         }
     }
+
+    func asString() -> String {
+        return append(root, to: "", indent: 0)
+    }
 }
 
 private extension DocumentLineTree {
@@ -348,5 +352,34 @@ private extension DocumentLineTree {
 
     private func getColor(of node: DocumentLine?) -> DocumentLine.Color {
         return node?.color ?? .black
+    }
+
+    private func append(_ node: DocumentLine, to string: String, indent: Int) -> String {
+        var result = string
+        switch node.color {
+        case .red:
+            result += "🔴  "
+        case .black:
+            result += "⚫️ "
+        }
+        result += node.asString()
+        result += "\n"
+        if let leftNode = node.left {
+            result += String(repeating: " ", count: indent)
+            result += "L: "
+            result = append(leftNode, to: result, indent: indent + 2)
+        }
+        if let rightNode = node.right {
+            result += String(repeating: " ", count: indent)
+            result += "R: "
+            result = append(rightNode, to: result, indent: indent + 2)
+        }
+        return result
+    }
+}
+
+extension DocumentLineTree: CustomDebugStringConvertible {
+    var debugDescription: String {
+        return asString()
     }
 }
