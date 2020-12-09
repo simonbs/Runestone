@@ -31,10 +31,18 @@ final class DocumentLine: LineNode {
     var length: Int {
         return totalLength - delimiterLength
     }
+    var lineNumber: Int? {
+        if isDeleted {
+            return nil
+        } else {
+            return tree.index(of: self) + 1
+        }
+    }
     var left: DocumentLine?
     var right: DocumentLine?
     var parent: DocumentLine?
     var color: Color = .black
+    var isDeleted = false
 
     private weak var _tree: DocumentLineTree?
     private var tree: DocumentLineTree {
@@ -44,8 +52,7 @@ final class DocumentLine: LineNode {
             fatalError("Accessing tree after it has been deallocated.")
         }
     }
-    private var isDeleted = false
-    
+
     init(tree: DocumentLineTree, totalLength: Int) {
         self._tree = tree
         self.nodeTotalCount = 1

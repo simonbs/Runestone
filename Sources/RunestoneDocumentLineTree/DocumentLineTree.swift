@@ -60,6 +60,22 @@ final class DocumentLineTree {
         return location
     }
 
+    func index(of node: DocumentLine) -> Int {
+        var index = node.left?.nodeTotalCount ?? 0
+        var workingNode = node
+        while let parentNode = workingNode.parent {
+            if workingNode === parentNode.right {
+                if let leftNode = parentNode.left {
+                    index += leftNode.nodeTotalCount
+                }
+                index += 1
+
+            }
+            workingNode = parentNode
+        }
+        return index
+    }
+
     @discardableResult
     func insertLine(ofLength length: Int, after existingLine: DocumentLine) -> DocumentLine {
         let newLine = DocumentLine(tree: self, totalLength: length)
@@ -67,8 +83,43 @@ final class DocumentLineTree {
         return newLine
     }
 
-    func remove(_ line: DocumentLine) {
-        fatalError("Not implemented")
+    func remove(_ removedNode: DocumentLine) {
+        removedNode.isDeleted = true
+        if let removedNodeLeft = removedNode.left, let removedNodeRight = removedNode.right {
+            let leftMost = removedNodeRight.leftMost
+            // Remove leftMost node from its current location
+            remove(leftMost)
+            // ...and overwrite remocedNode with it.
+            replace(removedNode, with: leftMost)
+            leftMost.left = removedNodeLeft
+            if leftMost.left != nil {
+                leftMost.left?.parent = leftMost
+            }
+            leftMost.right = removedNode.right
+            if leftMost.right != nil {
+                leftMost.right?.parent = leftMost
+            }
+            leftMost.color = removedNode.color
+            updateAfterChangingChildren(of: leftMost)
+            if let leftMostParent = leftMost.parent {
+                updateAfterChangingChildren(of: leftMostParent)
+            }
+        } else {
+            // Either removedNode.left or removedNode.right is null.
+            let parentNode = removedNode.parent
+            let childNode = removedNode.left ?? removedNode.right
+            replace(removedNode, with: childNode)
+            if let parentNode = parentNode {
+                updateAfterChangingChildren(of: parentNode)
+            }
+            if removedNode.color == .black {
+                if childNode != nil && childNode?.color == .red {
+                    childNode?.color = .black
+                } else if let parentNode = parentNode {
+                    fixTree(afterDeleting: childNode, parentNode: parentNode)
+                }
+            }
+        }
     }
 
     func updateAfterChangingChildren(of node: DocumentLine) {
@@ -94,13 +145,13 @@ final class DocumentLineTree {
 
 private extension DocumentLineTree {
     private func insert(_ newLine: DocumentLine, after parentLine: DocumentLine) {
-        newLine.parent = parentLine
-        newLine.color = .red
         if parentLine.right == nil {
             parentLine.right = newLine
         } else {
             parentLine.left = newLine
         }
+        newLine.parent = parentLine
+        newLine.color = .red
         updateAfterChangingChildren(of: parentLine)
         fixTree(afterInserting: newLine)
     }
@@ -172,6 +223,74 @@ private extension DocumentLineTree {
         }
     }
 
+    private func fixTree(afterDeleting node: DocumentLine?, parentNode: DocumentLine) {
+        assert(node == nil || node?.parent === parentNode)
+        var sibling = self.sibling(to: node, parentNode: parentNode)
+        if sibling?.color == .red {
+            parentNode.color = .red
+            sibling?.color = .black
+            if node === parentNode.left {
+                rotateLeft(parentNode)
+            } else {
+                rotateRight(parentNode)
+            }
+            // Update sibling after rotation.
+            sibling = self.sibling(to: node, parentNode: parentNode)
+        }
+        if parentNode.color == .black
+            && sibling?.color == .black
+            && getColor(of: sibling?.left) == .black
+            && getColor(of: sibling?.right) == .black {
+            sibling?.color = .red
+            if let parentNodesParentNode = parentNode.parent {
+                fixTree(afterDeleting: parentNode, parentNode: parentNodesParentNode)
+            }
+        } else if parentNode.color == .red
+                    && sibling?.color == .black
+                    && getColor(of: sibling?.left) == .black
+                    && getColor(of: sibling?.right) == .black {
+            sibling?.color = .red
+            parentNode.color = .black
+        } else {
+            if node === parentNode.left
+                && sibling?.color == .black
+                && getColor(of: sibling?.left) == .red
+                && getColor(of: sibling?.right) == .black {
+                sibling?.color = .red
+                sibling?.left?.color = .black
+                if let sibling = sibling {
+                    rotateRight(sibling)
+                }
+            } else if node === parentNode.right
+                        && sibling?.color == .black
+                        && getColor(of: sibling?.right) == .red
+                        && getColor(of: sibling?.left) == .black {
+                sibling?.color = .red
+                sibling?.right?.color = .black
+                if let sibling = sibling {
+                    rotateLeft(sibling)
+                }
+            }
+            // Update sibling after rotation.
+            sibling = self.sibling(to: node, parentNode: parentNode)
+            sibling?.color = parentNode.color
+            parentNode.color = .black
+            if node === parentNode.left {
+                if let rightSibling = sibling?.right {
+                    assert(rightSibling.color == .red)
+                    rightSibling.color = .black
+                }
+                rotateLeft(parentNode)
+            } else {
+                if let leftSibling = sibling?.left {
+                    assert(leftSibling.color == .red)
+                    leftSibling.color = .black
+                }
+                rotateRight(parentNode)
+            }
+        }
+    }
+
     private func rotateLeft(_ p: DocumentLine) {
         // Let q be p's right child.
         guard let q = p.right else {
@@ -185,6 +304,7 @@ private extension DocumentLineTree {
         if p.right != nil {
             p.right?.parent = p
         }
+        // Set q's left child to be p.
         q.left = p
         p.parent = q
         updateAfterChangingChildren(of: p)
@@ -204,14 +324,29 @@ private extension DocumentLineTree {
             p.left?.parent = p
         }
         // Set q's right child to be p.
+        q.right = p
+        p.parent = q
         updateAfterChangingChildren(of: p)
     }
 
-    private func sibling(to line: DocumentLine) -> DocumentLine? {
-        if line === line.parent?.left {
-            return line.parent?.right
+    private func sibling(to node: DocumentLine) -> DocumentLine? {
+        if node === node.parent?.left {
+            return node.parent?.right
         } else {
-            return line.parent?.left
+            return node.parent?.left
         }
+    }
+
+    private func sibling(to node: DocumentLine?, parentNode: DocumentLine) -> DocumentLine? {
+        assert(node == nil || node?.parent === parentNode)
+        if node === parentNode.left {
+            return parentNode.right
+        } else {
+            return parentNode.left
+        }
+    }
+
+    private func getColor(of node: DocumentLine?) -> DocumentLine.Color {
+        return node?.color ?? .black
     }
 }

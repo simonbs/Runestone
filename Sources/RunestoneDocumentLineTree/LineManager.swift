@@ -52,6 +52,7 @@ import Foundation
                 repeat {
                     lineToRemove = tmp
                     tmp = tmp.next
+                    remove(lineToRemove)
                 } while lineToRemove !== endLine
                 setLength(of: startLine, to: startLine.totalLength - charactersRemovedInStartLine + charactersLeftInEndLine)
             }
@@ -95,6 +96,7 @@ import Foundation
             }
         } else {
             // No newline is being inserted. All the text is in a single line.
+            print("Typing on line \(line.lineNumber ?? -1)")
             setLength(of: line, to: line.totalLength + string.length)
         }
     }
@@ -118,7 +120,7 @@ private extension LineManager {
             } else if lastChar == NewLineSymbol.nsLineFeed {
                 if newTotalLength >= 2 && getCharacter(at: line.location + newTotalLength - 2) == NewLineSymbol.nsCarriageReturn {
                     line.delimiterLength = 2
-                } else if (newTotalLength == 1 && line.location > 0 && getCharacter(at: line.location - 1) == NewLineSymbol.nsCarriageReturn) {
+                } else if newTotalLength == 1 && line.location > 0 && getCharacter(at: line.location - 1) == NewLineSymbol.nsCarriageReturn {
                     // We need to join this line with the previous line.
                     let previousLine = line.previous
                     remove(line)

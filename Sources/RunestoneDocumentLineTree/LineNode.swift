@@ -34,28 +34,28 @@ extension LineNode {
         if let left = left {
             return left.rightMost
         } else {
-            var node: Self? = self
-            var oldNode: Self? = self
+            var node = self
+            var oldNode = self
             repeat {
                 oldNode = node
-                node = node?.parent
+                node = node.parent!
                 // We are on the way up from the left part, don't output node again.
-            } while node != nil && node?.left === oldNode
-            return node!
+            } while node.parent != nil && node.left === oldNode
+            return node
         }
     }
     var next: Self {
         if let right = right {
             return right.leftMost
         } else {
-            var node: Self? = self
-            var oldNode: Self? = self
+            var node = self
+            var oldNode = self
             repeat {
                 oldNode = node
-                node = node?.parent
+                node = node.parent!
                 // We are on the way up from the right part, don't output node again.
-            } while node != nil && node?.right === oldNode
-            return node!
+            } while node.parent != nil && node.right === oldNode
+            return node
         }
     }
 }
