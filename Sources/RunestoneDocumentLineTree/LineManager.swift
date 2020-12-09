@@ -23,7 +23,8 @@ import Foundation
         }
     }
 
-    @objc(removeCharactersInRange:) public func removeCharacters(in range: NSRange) {
+    @objc(removeCharactersInRange:)
+    public func removeCharacters(in range: NSRange) {
         guard range.length > 0 else {
             return
         }
@@ -59,7 +60,8 @@ import Foundation
         }
     }
 
-    @objc(insertString:inRange:) public func insert(_ string: NSString, in range: NSRange) {
+    @objc(insertString:inRange:)
+    public func insert(_ string: NSString, in range: NSRange) {
         var line = tree.line(at: range.location)
         var lineLocation = line.location
         assert(range.location <= lineLocation + line.totalLength)
@@ -96,9 +98,23 @@ import Foundation
             }
         } else {
             // No newline is being inserted. All the text is in a single line.
-            print("Typing on line \(line.lineNumber ?? -1)")
             setLength(of: line, to: line.totalLength + string.length)
         }
+    }
+
+    public func linePosition(at location: Int) -> LinePosition? {
+        let line = tree.line(at: location)
+        if let lineNumber = line.lineNumber {
+            let column = location - line.location + 1 // +1 to avoid zero based columns
+            return LinePosition(line: lineNumber, column: column)
+        } else {
+            return nil
+        }
+    }
+
+    @objc(linePositionAtLocation:)
+    public func linePosition(at location: NSNumber) -> LinePosition? {
+        return linePosition(at: location.intValue)
     }
 }
 

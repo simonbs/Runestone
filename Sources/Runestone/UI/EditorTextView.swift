@@ -24,6 +24,14 @@ open class EditorTextView: UITextView {
     required public init?(coder: NSCoder) {
         super.init(coder: coder)
     }
+
+    public func linePosition(at location: Int) -> LinePosition? {
+        if let linePosition = highlightTextStorage.linePosition(at: location) {
+            return LinePosition(line: linePosition.line, column: linePosition.column)
+        } else {
+            return nil
+        }
+    }
 }
 
 private extension EditorTextView {

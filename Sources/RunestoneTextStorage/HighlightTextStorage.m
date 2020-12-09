@@ -20,20 +20,18 @@
 }
 
 // MARK: - Lifecycle
-
 - (instancetype)init {
     if (self = [super init]) {
         _internalString = [NSMutableAttributedString new];
-        _lineManager = [LineManager new];
-        _lineManager.delegate = self;
         _parser = [Parser new];
         _parser.language = [[Language alloc] initWithLanguage:tree_sitter_json()];
+        _lineManager = [LineManager new];
+        _lineManager.delegate = self;
     }
     return self;
 }
 
 // MARK: - NSTextStorage
-
 - (NSString *)string {
     return _internalString.string;
 }
@@ -64,10 +62,19 @@
 //    [_parser parse:self.string];
 }
 
-// MARK: - HighlightTextStorage
-
+// MARK: - LineManagerDelegate
 - (NSString * _Nonnull)lineManager:(LineManager * _Nonnull)lineManager characterAtLocation:(NSInteger)location {
     return [self.string substringWithRange:NSMakeRange(location, 1)];
+}
+
+// MARK: - Public
+- (ObjCLinePosition * _Nullable)linePositionAtLocation:(NSInteger)location {
+    LinePosition *linePosition = [_lineManager linePositionAtLocation:@(location)];
+    if (linePosition != nil) {
+        return [[ObjCLinePosition alloc] initWithLine:linePosition.line column:linePosition.column];
+    } else {
+        return nil;
+    }
 }
 
 @end
