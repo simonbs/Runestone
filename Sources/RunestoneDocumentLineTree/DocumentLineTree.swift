@@ -83,13 +83,13 @@ final class DocumentLineTree {
     }
 
     func remove(_ removedNode: DocumentLine) {
-        if let removedNodeLeft = removedNode.left, let removedNodeRight = removedNode.right {
+        if let removedNodeRight = removedNode.right, removedNode.left != nil {
             let leftMost = removedNodeRight.leftMost
             // Remove leftMost node from its current location
             remove(leftMost)
             // ...and overwrite removedNode with it.
             replace(removedNode, with: leftMost)
-            leftMost.left = removedNodeLeft
+            leftMost.left = removedNode.left
             leftMost.left?.parent = leftMost
             leftMost.right = removedNode.right
             leftMost.right?.parent = leftMost
