@@ -84,7 +84,6 @@ final class DocumentLineTree {
     }
 
     func remove(_ removedNode: DocumentLine) {
-        removedNode.isDeleted = true
         if let removedNodeLeft = removedNode.left, let removedNodeRight = removedNode.right {
             let leftMost = removedNodeRight.leftMost
             // Remove leftMost node from its current location

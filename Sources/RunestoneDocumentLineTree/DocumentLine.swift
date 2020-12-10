@@ -16,11 +16,7 @@ final class DocumentLine: LineNode {
     var nodeTotalLength: Int
     var nodeTotalCount: Int
     var location: Int {
-        if isDeleted {
-            fatalError("Cannot get the location of a deleted line.")
-        } else {
-            return tree.location(of: self)
-        }
+        return tree.location(of: self)
     }
     var totalLength: Int
     var delimiterLength = 0 {
@@ -32,17 +28,12 @@ final class DocumentLine: LineNode {
         return totalLength - delimiterLength
     }
     var lineNumber: Int? {
-        if isDeleted {
-            return nil
-        } else {
-            return tree.index(of: self) + 1
-        }
+        return tree.index(of: self) + 1
     }
     var left: DocumentLine?
     var right: DocumentLine?
     var parent: DocumentLine?
     var color: Color = .black
-    var isDeleted = false
 
     private weak var _tree: DocumentLineTree?
     private var tree: DocumentLineTree {
@@ -61,11 +52,7 @@ final class DocumentLine: LineNode {
     }
 
     func asString() -> String {
-        if isDeleted {
-            return "[DocumentLine deleted]"
-        } else {
-            return "[DocumentLine lineNumber=\(lineNumber ?? -1) location=\(location) length=\(length)]"
-        }
+        return "[DocumentLine lineNumber=\(lineNumber ?? -1) location=\(location) length=\(length)]"
     }
 }
 
