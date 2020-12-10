@@ -50,14 +50,10 @@ final class DocumentLine: LineNode {
         self.nodeTotalLength = totalLength
         self.totalLength = totalLength
     }
-
-    func asString() -> String {
-        return "[DocumentLine lineNumber=\(lineNumber ?? -1) location=\(location) length=\(length)]"
-    }
 }
 
 extension DocumentLine: CustomDebugStringConvertible {
     var debugDescription: String {
-        return asString()
+        return "[DocumentLine lineNumber=\(lineNumber ?? -1) location=\(location) length=\(length)]"
     }
 }

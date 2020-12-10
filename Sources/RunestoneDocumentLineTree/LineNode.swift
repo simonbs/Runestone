@@ -17,18 +17,18 @@ protocol LineNode: class {
 
 extension LineNode {
     var leftMost: Self {
-        var result = self
-        while let newResult = result.left {
-            result = newResult
+        var node = self
+        while let newNode = node.left {
+            node = newNode
         }
-        return result
+        return node
     }
     var rightMost: Self {
-        var result = self
-        while let newResult = result.right {
-            result = newResult
+        var node = self
+        while let newNode = node.right {
+            node = newNode
         }
-        return result
+        return node
     }
     var previous: Self {
         if let left = left {

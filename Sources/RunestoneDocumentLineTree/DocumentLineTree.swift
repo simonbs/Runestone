@@ -69,7 +69,6 @@ final class DocumentLineTree {
                     index += leftNode.nodeTotalCount
                 }
                 index += 1
-
             }
             workingNode = parentNode
         }
@@ -91,13 +90,9 @@ final class DocumentLineTree {
             // ...and overwrite removedNode with it.
             replace(removedNode, with: leftMost)
             leftMost.left = removedNodeLeft
-            if leftMost.left != nil {
-                leftMost.left?.parent = leftMost
-            }
+            leftMost.left?.parent = leftMost
             leftMost.right = removedNode.right
-            if leftMost.right != nil {
-                leftMost.right?.parent = leftMost
-            }
+            leftMost.right?.parent = leftMost
             leftMost.color = removedNode.color
             updateAfterChangingChildren(of: leftMost)
             if let leftMostParent = leftMost.parent {
@@ -140,32 +135,33 @@ final class DocumentLineTree {
             }
         }
     }
-
-    func asString() -> String {
-        return append(root, to: "", indent: 0)
-    }
 }
 
 private extension DocumentLineTree {
     private func insert(_ newLine: DocumentLine, after node: DocumentLine) {
         if node.right == nil {
-            // Insert as right.
-            let parentNode = node
-            parentNode.right = newLine
-            newLine.parent = parentNode
-            newLine.color = .red
-            updateAfterChangingChildren(of: parentNode)
-            fixTree(afterInserting: newLine)
+            insert(newLine, asRightChildOf: node)
         } else {
-            // Insert as left.
-            let parentNode = node.right!.leftMost
-            assert(parentNode.left == nil)
-            parentNode.left = newLine
-            newLine.parent = parentNode
-            newLine.color = .red
-            updateAfterChangingChildren(of: parentNode)
-            fixTree(afterInserting: newLine)
+            insert(newLine, asLeftChildOf: node.right!.leftMost)
         }
+    }
+
+    private func insert(_ newNode: DocumentLine, asLeftChildOf parentNode: DocumentLine) {
+        assert(parentNode.left == nil)
+        parentNode.left = newNode
+        newNode.parent = parentNode
+        newNode.color = .red
+        updateAfterChangingChildren(of: parentNode)
+        fixTree(afterInserting: newNode)
+    }
+
+    private func insert(_ newNode: DocumentLine, asRightChildOf parentNode: DocumentLine) {
+        assert(parentNode.right == nil)
+        parentNode.right = newNode
+        newNode.parent = parentNode
+        newNode.color = .red
+        updateAfterChangingChildren(of: parentNode)
+        fixTree(afterInserting: newNode)
     }
 
     private func replace(_ replacedNode: DocumentLine, with newNode: DocumentLine?) {
@@ -177,9 +173,7 @@ private extension DocumentLineTree {
         } else {
             replacedNode.parent?.right = newNode
         }
-        if newNode != nil {
-            newNode?.parent = replacedNode.parent
-        }
+        newNode?.parent = replacedNode.parent
         replacedNode.parent = nil
     }
 
@@ -237,7 +231,7 @@ private extension DocumentLineTree {
 
     private func fixTree(afterDeleting node: DocumentLine?, parentNode: DocumentLine) {
         assert(node == nil || node?.parent === parentNode)
-        var sibling = self.sibling(to: node, parentNode: parentNode)
+        var sibling = self.sibling(to: node, through: parentNode)
         if sibling?.color == .red {
             parentNode.color = .red
             sibling?.color = .black
@@ -247,7 +241,7 @@ private extension DocumentLineTree {
                 rotateRight(parentNode)
             }
             // Update sibling after rotation.
-            sibling = self.sibling(to: node, parentNode: parentNode)
+            sibling = self.sibling(to: node, through: parentNode)
         }
         if parentNode.color == .black
             && sibling?.color == .black
@@ -284,7 +278,7 @@ private extension DocumentLineTree {
                 }
             }
             // Update sibling after rotation.
-            sibling = self.sibling(to: node, parentNode: parentNode)
+            sibling = self.sibling(to: node, through: parentNode)
             sibling?.color = parentNode.color
             parentNode.color = .black
             if node === parentNode.left {
@@ -313,9 +307,7 @@ private extension DocumentLineTree {
         replace(p, with: q)
         // Set p's right child to be q's left child.
         p.right = q.left
-        if p.right != nil {
-            p.right?.parent = p
-        }
+        p.right?.parent = p
         // Set q's left child to be p.
         q.left = p
         p.parent = q
@@ -332,9 +324,7 @@ private extension DocumentLineTree {
         replace(p, with: q)
         // Set p's left child to be q's right child.
         p.left = q.right
-        if p.left != nil {
-            p.left?.parent = p
-        }
+        p.left?.parent = p
         // Set q's right child to be p.
         q.right = p
         p.parent = q
@@ -349,7 +339,7 @@ private extension DocumentLineTree {
         }
     }
 
-    private func sibling(to node: DocumentLine?, parentNode: DocumentLine) -> DocumentLine? {
+    private func sibling(to node: DocumentLine?, through parentNode: DocumentLine) -> DocumentLine? {
         assert(node == nil || node?.parent === parentNode)
         if node === parentNode.left {
             return parentNode.right
@@ -361,6 +351,12 @@ private extension DocumentLineTree {
     private func getColor(of node: DocumentLine?) -> DocumentLine.Color {
         return node?.color ?? .black
     }
+}
+
+extension DocumentLineTree: CustomDebugStringConvertible {
+    var debugDescription: String {
+        return append(root, to: "", indent: 0)
+    }
 
     private func append(_ node: DocumentLine, to string: String, indent: Int) -> String {
         var result = string
@@ -370,7 +366,7 @@ private extension DocumentLineTree {
         case .black:
             result += "⚫️ "
         }
-        result += node.asString()
+        result += node.debugDescription
         result += "\n"
         if let leftNode = node.left {
             result += String(repeating: " ", count: indent)
@@ -383,11 +379,5 @@ private extension DocumentLineTree {
             result = append(rightNode, to: result, indent: indent + 2)
         }
         return result
-    }
-}
-
-extension DocumentLineTree: CustomDebugStringConvertible {
-    var debugDescription: String {
-        return asString()
     }
 }
