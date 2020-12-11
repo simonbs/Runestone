@@ -9,6 +9,15 @@ import UIKit
 import RunestoneTextStorage
 
 open class EditorTextView: UITextView {
+    public var showInvisibles = false {
+        didSet {
+            if showInvisibles != oldValue {
+                lineNumberLayoutManager.showInvisibles = showInvisibles
+                let glyphRange = layoutManager.glyphRange(for: textContainer)
+                lineNumberLayoutManager.invalidateDisplay(forGlyphRange: glyphRange)
+            }
+        }
+    }
     open override var font: UIFont? {
         didSet {
             if font != oldValue {
@@ -73,6 +82,9 @@ extension EditorTextView: NSLayoutManagerDelegate {
         _ layoutManager: NSLayoutManager,
         shouldUse action: NSLayoutManager.ControlCharacterAction,
         forControlCharacterAt charIndex: Int) -> NSLayoutManager.ControlCharacterAction {
+        guard showInvisibles else {
+            return action
+        }
         let str = textStorage.string
         let character = str[str.index(str.startIndex, offsetBy: charIndex)]
         if character == Character(Symbol.tab) {
@@ -89,6 +101,9 @@ extension EditorTextView: NSLayoutManagerDelegate {
         proposedLineFragment proposedRect: CGRect,
         glyphPosition: CGPoint,
         characterIndex charIndex: Int) -> CGRect {
+        guard showInvisibles else {
+            return proposedRect
+        }
         let str = textStorage.string
         let character = str[str.index(str.startIndex, offsetBy: charIndex)]
         if character == Character(Symbol.tab) {
