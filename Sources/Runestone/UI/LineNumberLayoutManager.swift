@@ -8,6 +8,20 @@
 import UIKit
 
 final class LineNumberLayoutManager: NSLayoutManager {
+    private enum BackgroundSymbol {
+        static let newLine = "\u{00ac}"
+        static let tab = "\u{25b8}"
+        static let space = "\u{00b7}"
+    }
+
+    private enum HorizontalSymbolPosition {
+        case minX
+        case maxX
+    }
+
+    var textContainerInset: UIEdgeInsets = .zero
+    var font: UIFont? = .systemFont(ofSize: 14)
+
     override func processEditing(
         for textStorage: NSTextStorage,
         edited editMask: NSTextStorage.EditActions,
@@ -19,28 +33,46 @@ final class LineNumberLayoutManager: NSLayoutManager {
 
     override func drawBackground(forGlyphRange glyphsToShow: NSRange, at origin: CGPoint) {
         super.drawBackground(forGlyphRange: glyphsToShow, at: origin)
-        let context = UIGraphicsGetCurrentContext()
         if let textStorage = textStorage {
             let nsString = textStorage.string as NSString
-            enumerateLineFragments(forGlyphRange: glyphsToShow) { rect, usedRect, textContainer, glyphRange, stop in
+            enumerateLineFragments(forGlyphRange: glyphsToShow) { [weak self] rect, usedRect, textContainer, glyphRange, stop in
+                guard let self = self else {
+                    return
+                }
                 for i in 0 ..< glyphRange.length {
-                    let singleGlyphRange = self.characterRange(forGlyphRange: NSMakeRange(glyphRange.location + i, 1), actualGlyphRange: nil)
-                    let characterNSRange = self.characterRange(forGlyphRange: singleGlyphRange, actualGlyphRange: nil)
+                    var actualGlyphRange = NSRange(location: 0, length: 0)
+                    self.characterRange(forGlyphRange: NSMakeRange(glyphRange.location + i, 1), actualGlyphRange: &actualGlyphRange)
+                    let characterNSRange = self.characterRange(forGlyphRange: actualGlyphRange, actualGlyphRange: nil)
                     let character = nsString.substring(with: characterNSRange)
-                    if character == "\n" {
-                        let previousSingleGlyphRange = self.characterRange(forGlyphRange: NSMakeRange(singleGlyphRange.location - 1, 1), actualGlyphRange: nil)
-                        let bounds = self.boundingRect(forGlyphRange: previousSingleGlyphRange, in: textContainer)
-                        let rect = CGRect(x: bounds.maxX + 5, y: bounds.midY, width: 10, height: bounds.height)
-                        let sym = "↵"
-                        (sym as NSString).draw(in: rect, withAttributes: [.foregroundColor: UIColor.secondaryLabel])
-                    } else if character == "\t" {
-                        let bounds = self.boundingRect(forGlyphRange: singleGlyphRange, in: textContainer)
-                        let rect = CGRect(x: bounds.minX, y: bounds.midY, width: 10, height: bounds.height)
-                        let sym = "⇥"
-                        (sym as NSString).draw(in: rect, withAttributes: [.foregroundColor: UIColor.secondaryLabel])
+                    if character == Symbol.space {
+                        self.draw(BackgroundSymbol.space, at: .minX, inGlyphRange: actualGlyphRange, of: textContainer)
+                    } else if character == Symbol.tab {
+                        self.draw(BackgroundSymbol.tab, at: .minX, inGlyphRange: actualGlyphRange, of: textContainer)
+                    } else if character == Symbol.lineFeed {
+                        let previousCharacterRange = NSRange(location: actualGlyphRange.location - 1, length: 1)
+                        self.draw(BackgroundSymbol.newLine, at: .maxX, inGlyphRange: previousCharacterRange, of: textContainer)
                     }
                 }
             }
         }
+    }
+}
+
+private extension LineNumberLayoutManager {
+    private func draw(_ symbol: String, at position: HorizontalSymbolPosition, inGlyphRange glyphRange: NSRange, of textContainer: NSTextContainer) {
+        let bounds = boundingRect(forGlyphRange: glyphRange, in: textContainer).offsetBy(dx: textContainerInset.left, dy: textContainerInset.top)
+        draw(symbol, at: position, in: bounds)
+    }
+
+    private func draw(_ symbol: String, at position: HorizontalSymbolPosition, in bounds: CGRect) {
+        let xPosition: CGFloat
+        switch position {
+        case .minX: xPosition = bounds.minX
+        case .maxX: xPosition = bounds.maxX
+        }
+        let attrs: [NSAttributedString.Key: Any] = [.foregroundColor: UIColor.secondaryLabel, .font: font as Any]
+        let size = symbol.size(withAttributes: attrs)
+        let rect = CGRect(x: xPosition, y: bounds.midY - size.height / 2, width: size.width, height: size.height)
+        symbol.draw(in: rect, withAttributes: attrs)
     }
 }
