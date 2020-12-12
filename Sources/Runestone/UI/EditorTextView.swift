@@ -12,38 +12,38 @@ open class EditorTextView: UITextView {
     public var showInvisibles = false {
         didSet {
             if showInvisibles != oldValue {
-                lineNumberLayoutManager.showInvisibles = showInvisibles
+                editorLayoutManager.showInvisibles = showInvisibles
                 let glyphRange = layoutManager.glyphRange(for: textContainer)
-                lineNumberLayoutManager.invalidateDisplay(forGlyphRange: glyphRange)
+                editorLayoutManager.invalidateDisplay(forGlyphRange: glyphRange)
             }
         }
     }
     open override var font: UIFont? {
         didSet {
             if font != oldValue {
-                lineNumberLayoutManager.font = font
+                editorLayoutManager.font = font
             }
         }
     }
     open override var textContainerInset: UIEdgeInsets {
         didSet {
             if textContainerInset != oldValue {
-                lineNumberLayoutManager.textContainerInset = textContainerInset
+                editorLayoutManager.textContainerInset = textContainerInset
             }
         }
     }
 
     private let highlightTextStorage = HighlightTextStorage()
-    private let lineNumberLayoutManager = LineNumberLayoutManager()
+    private let editorLayoutManager = EditorLayoutManager()
 
     public init(frame: CGRect) {
-        let textContainer = Self.createTextContainer(layoutManager: lineNumberLayoutManager, textStorage: highlightTextStorage)
+        let textContainer = Self.createTextContainer(layoutManager: editorLayoutManager, textStorage: highlightTextStorage)
         super.init(frame: frame, textContainer: textContainer)
         initialize()
     }
 
     public init() {
-        let textContainer = Self.createTextContainer(layoutManager: lineNumberLayoutManager, textStorage: highlightTextStorage)
+        let textContainer = Self.createTextContainer(layoutManager: editorLayoutManager, textStorage: highlightTextStorage)
         super.init(frame: .zero, textContainer: textContainer)
         initialize()
     }
@@ -54,9 +54,9 @@ open class EditorTextView: UITextView {
     }
 
     private func initialize() {
-        lineNumberLayoutManager.delegate = self
-        lineNumberLayoutManager.font = font
-        lineNumberLayoutManager.textContainerInset = textContainerInset
+        editorLayoutManager.delegate = self
+        editorLayoutManager.font = font
+        editorLayoutManager.textContainerInset = textContainerInset
     }
 
     public func linePosition(at location: Int) -> LinePosition? {
@@ -69,7 +69,7 @@ open class EditorTextView: UITextView {
 }
 
 private extension EditorTextView {
-    private static func createTextContainer(layoutManager: LineNumberLayoutManager, textStorage: NSTextStorage) -> NSTextContainer {
+    private static func createTextContainer(layoutManager: EditorLayoutManager, textStorage: NSTextStorage) -> NSTextContainer {
         textStorage.addLayoutManager(layoutManager)
         let textContainer = NSTextContainer()
         layoutManager.addTextContainer(textContainer)

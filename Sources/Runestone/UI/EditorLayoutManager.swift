@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  EditorLayoutManager.swift
 //  
 //
 //  Created by Simon Støvring on 01/12/2020.
@@ -7,7 +7,11 @@
 
 import UIKit
 
-final class LineNumberLayoutManager: NSLayoutManager {
+protocol EditorLayoutManagerDelegate: AnyObject {
+    func editorLayoutManager(_ layoutManager: EditorLayoutManager, lineNumberInGlyphRange glyphRange: NSRange) -> Int
+}
+
+final class EditorLayoutManager: NSLayoutManager {
     private enum BackgroundSymbol {
         static let newLine = "\u{00ac}"
         static let tab = "\u{25b8}"
@@ -49,11 +53,12 @@ final class LineNumberLayoutManager: NSLayoutManager {
                 let glyphLocation = glyphRange.location + i
                 self.drawInvisibleCharacter(forGlyphAt: glyphLocation, in: nsString, usedRect: usedRect, textContainer: textContainer)
             }
+            print(glyphRange.location)
         }
     }
 }
 
-private extension LineNumberLayoutManager {
+private extension EditorLayoutManager {
     private func drawInvisibleCharacter(forGlyphAt glyphLocation: Int, in string: NSString, usedRect: CGRect, textContainer: NSTextContainer) {
         var actualGlyphRange = NSRange(location: 0, length: 0)
         self.characterRange(forGlyphRange: NSMakeRange(glyphLocation, 1), actualGlyphRange: &actualGlyphRange)
