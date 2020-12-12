@@ -47,25 +47,27 @@ final class LineNumberLayoutManager: NSLayoutManager {
             }
             for i in 0 ..< glyphRange.length {
                 let glyphLocation = glyphRange.location + i
-                self.drawInvisibleCharacter(forGlyphAt: glyphLocation, in: nsString, textContainer: textContainer)
+                self.drawInvisibleCharacter(forGlyphAt: glyphLocation, in: nsString, usedRect: usedRect, textContainer: textContainer)
             }
         }
     }
 }
 
 private extension LineNumberLayoutManager {
-    private func drawInvisibleCharacter(forGlyphAt glyphLocation: Int, in string: NSString, textContainer: NSTextContainer) {
+    private func drawInvisibleCharacter(forGlyphAt glyphLocation: Int, in string: NSString, usedRect: CGRect, textContainer: NSTextContainer) {
         var actualGlyphRange = NSRange(location: 0, length: 0)
         self.characterRange(forGlyphRange: NSMakeRange(glyphLocation, 1), actualGlyphRange: &actualGlyphRange)
-        let characterNSRange = self.characterRange(forGlyphRange: actualGlyphRange, actualGlyphRange: nil)
-        let character = string.substring(with: characterNSRange)
+        let characterRange = self.characterRange(forGlyphRange: actualGlyphRange, actualGlyphRange: nil)
+        let character = string.substring(with: characterRange)
         if character == Symbol.space {
             draw(BackgroundSymbol.space, at: .minX, inGlyphRange: actualGlyphRange, of: textContainer)
         } else if character == Symbol.tab {
             draw(BackgroundSymbol.tab, at: .minX, inGlyphRange: actualGlyphRange, of: textContainer)
         } else if character == Symbol.lineFeed {
-            let previousCharacterRange = NSRange(location: actualGlyphRange.location - 1, length: 1)
-            draw(BackgroundSymbol.newLine, at: .maxX, inGlyphRange: previousCharacterRange, of: textContainer)
+            var bounds = usedRect
+            bounds.origin.x = usedRect.minX + textContainer.lineFragmentPadding + textContainerInset.left
+            bounds.origin.y = usedRect.minY + textContainerInset.top
+            draw(BackgroundSymbol.newLine, at: .maxX, in: bounds)
         }
     }
 
@@ -75,13 +77,13 @@ private extension LineNumberLayoutManager {
     }
 
     private func draw(_ symbol: String, at position: HorizontalSymbolPosition, in bounds: CGRect) {
+        let attrs: [NSAttributedString.Key: Any] = [.foregroundColor: UIColor.secondaryLabel, .font: font as Any]
+        let size = symbol.size(withAttributes: attrs)
         let xPosition: CGFloat
         switch position {
         case .minX: xPosition = bounds.minX
-        case .maxX: xPosition = bounds.maxX
+        case .maxX: xPosition = bounds.maxX - size.width
         }
-        let attrs: [NSAttributedString.Key: Any] = [.foregroundColor: UIColor.secondaryLabel, .font: font as Any]
-        let size = symbol.size(withAttributes: attrs)
         let rect = CGRect(x: xPosition, y: bounds.midY - size.height / 2, width: size.width, height: size.height)
         symbol.draw(in: rect, withAttributes: attrs)
     }
