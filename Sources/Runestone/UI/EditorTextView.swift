@@ -33,17 +33,17 @@ open class EditorTextView: UITextView {
         }
     }
 
-    private let highlightTextStorage = HighlightTextStorage()
+    private let editorTextStorage = EditorTextStorage()
     private let editorLayoutManager = EditorLayoutManager()
 
     public init(frame: CGRect) {
-        let textContainer = Self.createTextContainer(layoutManager: editorLayoutManager, textStorage: highlightTextStorage)
+        let textContainer = Self.createTextContainer(layoutManager: editorLayoutManager, textStorage: editorTextStorage)
         super.init(frame: frame, textContainer: textContainer)
         initialize()
     }
 
     public init() {
-        let textContainer = Self.createTextContainer(layoutManager: editorLayoutManager, textStorage: highlightTextStorage)
+        let textContainer = Self.createTextContainer(layoutManager: editorLayoutManager, textStorage: editorTextStorage)
         super.init(frame: .zero, textContainer: textContainer)
         initialize()
     }
@@ -60,7 +60,7 @@ open class EditorTextView: UITextView {
     }
 
     public func linePosition(at location: Int) -> LinePosition? {
-        if let linePosition = highlightTextStorage.linePosition(at: location) {
+        if let linePosition = editorTextStorage.linePosition(at: location) {
             return LinePosition(line: linePosition.line, column: linePosition.column)
         } else {
             return nil

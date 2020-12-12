@@ -1,19 +1,19 @@
 //
-//  HighlightTextStorage.m
+//  EditorTextStorage.m
 //  
 //
 //  Created by Simon Støvring on 29/11/2020.
 //
 
-#import "HighlightTextStorage.h"
+#import "EditorTextStorage.h"
 @import RunestoneDocumentLineTree;
 @import TreeSitterBindings;
 @import TreeSitterJSON;
 
-@interface HighlightTextStorage () <LineManagerDelegate>
+@interface EditorTextStorage () <LineManagerDelegate>
 @end
 
-@implementation HighlightTextStorage {
+@implementation EditorTextStorage {
     NSMutableAttributedString *_internalString;
     LineManager *_lineManager;
     Parser *_parser;
