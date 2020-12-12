@@ -101,7 +101,8 @@ extension EditorTextView: NSLayoutManagerDelegate {
         let str = textStorage.string
         let character = str[str.index(str.startIndex, offsetBy: charIndex)]
         if character == Character(Symbol.tab) {
-            return CGRect(x: proposedRect.minX, y: proposedRect.minY, width: 15, height: proposedRect.height)
+            let scaledWidth = UIFontMetrics.default.scaledValue(for: 18)
+            return CGRect(x: proposedRect.minX, y: proposedRect.minY, width: scaledWidth, height: proposedRect.height)
         } else {
             return proposedRect
         }
