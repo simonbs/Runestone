@@ -215,17 +215,8 @@ extension EditorTextView: EditorLayoutManagerDelegate {
         return showTabs || showSpaces || showLineBreaks || showLineNumbers
     }
 
-    func editorLayoutManagerWillEnumerateLineFragments(_ layoutManager: EditorLayoutManager) {
-//        gutterController.prepare(textContainer: textContainer)
-    }
-
     func editorLayoutManager(_ layoutManager: EditorLayoutManager, didEnumerate lineFragment: EditorLineFragment) {
         invisibleCharactersController.drawInvisibleCharacters(in: lineFragment)
-//        gutterController.drawLineNumbers(in: lineFragment)
-    }
-
-    func editorLayoutManager(_ layoutManager: EditorLayoutManager, didFinishEnumeratingLinesIn glyphRange: NSRange, outOf numberOfGlyphs: Int) {
-//        gutterController.didEnumerateLineFragments(inGlyphRange: glyphRange, outOf: numberOfGlyphs)
     }
 }
 
