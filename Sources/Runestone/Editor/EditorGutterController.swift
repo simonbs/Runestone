@@ -41,28 +41,40 @@ final class EditorGutterController {
     }
 
     func drawGutter(in rect: CGRect, isFirstResponder: Bool, selectedRange: NSRange) {
-        if showLineNumbers, let delegate = delegate, let textContainer = textContainer {
+        let shouldDraw = showLineNumbers || highlightSelectedLine
+        guard shouldDraw, let delegate = delegate, let textContainer = textContainer else {
+            removeGutter()
+            return
+        }
+        let highlightedRange = isFirstResponder ? getRangeOfSelectedLineNumbers(selectedRange: selectedRange) : nil
+        if showLineNumbers {
             numberOfLines = delegate.numberOfLines(in: self)
             let oldGutterWidth = gutterWidth
             gutterWidth = widthOfGutter(in: textContainer)
             if gutterWidth != oldGutterWidth {
                 updateExlusionPath(in: textContainer)
             }
-            let highlightedRange = isFirstResponder ? getRangeOfSelectedLineNumbers(selectedRange: selectedRange) : nil
             drawGutterBackground(in: rect)
-            drawLineNumbers(in: rect, highlightedRange: highlightedRange)
         } else {
-            numberOfLines = 0
-            gutterWidth = 0
-            previousMaximumCharacterCount = 0
-            let exclusionPaths = textContainer?.exclusionPaths ?? []
-            textContainer?.exclusionPaths = exclusionPaths.filter { $0 !== previousExlusionPath }
-            previousExlusionPath = nil
+            removeGutter()
         }
+        // To maximum performance the drawLines can can draw two things:
+        // 1. Line numbers.
+        // 2. The selected line.
+        drawLines(in: rect, highlightedRange: highlightedRange)
     }
 }
 
 private extension EditorGutterController {
+    private func removeGutter() {
+        numberOfLines = 0
+        gutterWidth = 0
+        previousMaximumCharacterCount = 0
+        let exclusionPaths = textContainer?.exclusionPaths ?? []
+        textContainer?.exclusionPaths = exclusionPaths.filter { $0 !== previousExlusionPath }
+        previousExlusionPath = nil
+    }
+
     private func widthOfGutter(in textContainer: NSTextContainer) -> CGFloat {
         let stringRepresentation = String(describing: numberOfLines)
         let maximumCharacterCount = max(stringRepresentation.count, Int(accommodateMinimumCharacterCountInLineNumbers))
@@ -101,7 +113,7 @@ private extension EditorGutterController {
         context?.restoreGState()
     }
 
-    private func drawLineNumbers(in rect: CGRect, highlightedRange: NSRange?) {
+    private func drawLines(in rect: CGRect, highlightedRange: NSRange?) {
         guard let delegate = delegate, let layoutManager = layoutManager, let textStorage = textStorage, let textContainer = textContainer else {
             return
         }
@@ -136,9 +148,13 @@ private extension EditorGutterController {
                 if isHighlightedLine {
                     let entireLineRect = CGRect(x: gutterWidth, y: lineNumberRect.minY, width: rect.width - gutterWidth, height: lineNumberRect.height)
                     drawHighlightedLineBackground(in: entireLineRect)
-                    drawHighlightedLineNumberBackground(in: lineNumberRect)
+                    if showLineNumbers {
+                        drawHighlightedLineNumberBackground(in: lineNumberRect)
+                    }
                 }
-                drawLineNumber(lineNumber, in: lineNumberRect, isHighlighted: isHighlightedLine)
+                if showLineNumbers {
+                    drawLineNumber(lineNumber, in: lineNumberRect, isHighlighted: isHighlightedLine)
+                }
             }
         }
     }
