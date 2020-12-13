@@ -9,40 +9,84 @@ import UIKit
 import RunestoneTextStorage
 
 open class EditorTextView: UITextView {
-    public var showTabs = false {
+    public var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
-            if showTabs != oldValue {
-                invisibleCharactersController.showTabs = showTabs
+            gutterController.theme = theme
+        }
+    }
+    public var showTabs: Bool {
+        get {
+            return invisibleCharactersController.showTabs
+        }
+        set {
+            if newValue != invisibleCharactersController.showTabs {
+                invisibleCharactersController.showTabs = newValue
                 invalidateLayoutManager()
             }
         }
     }
-    public var showSpaces = false {
-        didSet {
-            if showSpaces != oldValue {
-                invisibleCharactersController.showSpaces = showSpaces
+    public var showSpaces: Bool {
+        get {
+            return invisibleCharactersController.showSpaces
+        }
+        set {
+            if newValue != invisibleCharactersController.showSpaces {
+                invisibleCharactersController.showSpaces = newValue
                 invalidateLayoutManager()
             }
         }
     }
-    public var showLineBreaks = false {
-        didSet {
-            if showLineBreaks != oldValue {
-                invisibleCharactersController.showLineBreaks = showLineBreaks
+    public var showLineBreaks: Bool {
+        get {
+            return invisibleCharactersController.showLineBreaks
+        }
+        set {
+            if newValue != invisibleCharactersController.showLineBreaks {
+                invisibleCharactersController.showLineBreaks = newValue
                 invalidateLayoutManager()
             }
         }
     }
-    public var lineNumbersFont: UIFont = .systemFont(ofSize: 14) {
-        didSet {
-            if lineNumbersFont != oldValue {
-                gutterController.lineNumbersFont = lineNumbersFont
+    public var showLineNumbers: Bool {
+        get {
+            return gutterController.showLineNumbers
+        }
+        set {
+            if newValue != gutterController.showLineNumbers {
+                gutterController.showLineNumbers = newValue
+                invalidateLayoutManager()
             }
         }
     }
-    public var showLineNumbers = false {
-        didSet {
-            if showLineNumbers != oldValue {
+    public var lineNumberLeadingMargin: CGFloat {
+        get {
+            return gutterController.lineNumberLeadingMargin
+        }
+        set {
+            if newValue != gutterController.lineNumberLeadingMargin {
+                gutterController.lineNumberLeadingMargin = newValue
+                invalidateLayoutManager()
+            }
+        }
+    }
+    public var lineNumberTrailingMargin: CGFloat {
+        get {
+            return gutterController.lineNumberTrailingMargin
+        }
+        set {
+            if newValue != gutterController.lineNumberTrailingMargin {
+                gutterController.lineNumberTrailingMargin = newValue
+                invalidateLayoutManager()
+            }
+        }
+    }
+    public var accommodateMinimumCharacterCountInLineNumbers: Int {
+        get {
+            return gutterController.accommodateMinimumCharacterCountInLineNumbers
+        }
+        set {
+            if newValue != gutterController.accommodateMinimumCharacterCountInLineNumbers {
+                gutterController.accommodateMinimumCharacterCountInLineNumbers = newValue
                 invalidateLayoutManager()
             }
         }
@@ -58,45 +102,60 @@ open class EditorTextView: UITextView {
         didSet {
             if textContainerInset != oldValue {
                 invisibleCharactersController.textContainerInset = textContainerInset
+                gutterController.textContainerInset = textContainerInset
             }
         }
     }
 
     private let editorTextStorage = EditorTextStorage()
     private let invisibleCharactersController = EditorInvisibleCharactersController()
-    private let gutterController = EditorGutterController()
+    private let gutterController: EditorGutterController
     private let editorLayoutManager = EditorLayoutManager()
 
     public init(frame: CGRect = .zero) {
         let textContainer = Self.createTextContainer(layoutManager: editorLayoutManager, textStorage: editorTextStorage)
+        textContainer.widthTracksTextView = true
+        gutterController = EditorGutterController(
+            layoutManager: editorLayoutManager,
+            textStorage: editorTextStorage,
+            textContainer: textContainer,
+            theme: theme)
         super.init(frame: frame, textContainer: textContainer)
+        contentMode = .redraw
         editorTextStorage.editorDelegate = self
         editorLayoutManager.delegate = self
         editorLayoutManager.editorDelegate = self
+        editorLayoutManager.allowsNonContiguousLayout = true
         invisibleCharactersController.delegate = self
         invisibleCharactersController.layoutManager = editorLayoutManager
         invisibleCharactersController.font = font
         invisibleCharactersController.textContainerInset = textContainerInset
-        gutterController.lineNumbersFont = lineNumbersFont
+        gutterController.delegate = self
+        gutterController.textContainerInset = textContainerInset
     }
 
     required public init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
-    public func linePosition(at location: Int) -> LinePosition? {
-        if let linePosition = editorTextStorage.linePosition(at: location) {
-            return LinePosition(line: linePosition.line, column: linePosition.column)
+    public func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
+        if let linePosition = editorTextStorage.positionOfLine(containingCharacterAt: location) {
+            return LinePosition(lineNumber: linePosition.lineNumber, column: linePosition.column)
         } else {
             return nil
         }
+    }
+
+    public override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        gutterController.drawGutter(in: rect)
     }
 }
 
 private extension EditorTextView {
     private static func createTextContainer(layoutManager: EditorLayoutManager, textStorage: NSTextStorage) -> NSTextContainer {
         textStorage.addLayoutManager(layoutManager)
-        let textContainer = NSTextContainer()
+        let textContainer = NSTextContainer(size: CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
         layoutManager.addTextContainer(textContainer)
         return textContainer
     }
@@ -140,8 +199,14 @@ extension EditorTextView: NSLayoutManagerDelegate {
 }
 
 extension EditorTextView: EditorTextStorageDelegate {
-    public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
-        
+    public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {}
+
+    public func editorTextStorageDidInsertLine(_ editorTextStorage: EditorTextStorage) {
+        setNeedsDisplay()
+    }
+
+    public func editorTextStorageDidRemoveLine(_ editorTextStorage: EditorTextStorage) {
+        setNeedsDisplay()
     }
 }
 
@@ -150,13 +215,32 @@ extension EditorTextView: EditorLayoutManagerDelegate {
         return showTabs || showSpaces || showLineBreaks || showLineNumbers
     }
 
+    func editorLayoutManagerWillEnumerateLineFragments(_ layoutManager: EditorLayoutManager) {
+//        gutterController.prepare(textContainer: textContainer)
+    }
+
     func editorLayoutManager(_ layoutManager: EditorLayoutManager, didEnumerate lineFragment: EditorLineFragment) {
         invisibleCharactersController.drawInvisibleCharacters(in: lineFragment)
+//        gutterController.drawLineNumbers(in: lineFragment)
+    }
+
+    func editorLayoutManager(_ layoutManager: EditorLayoutManager, didFinishEnumeratingLinesIn glyphRange: NSRange, outOf numberOfGlyphs: Int) {
+//        gutterController.didEnumerateLineFragments(inGlyphRange: glyphRange, outOf: numberOfGlyphs)
     }
 }
 
 extension EditorTextView: EditorInvisibleCharactersControllerDelegate {
-    func editorInvisibleCharactersController(_ controller: EditorInvisibleCharactersController, substringIn range: NSRange) -> String {
+    func editorInvisibleCharactersController(_ controller: EditorInvisibleCharactersController, substringIn range: NSRange) -> String? {
+        return editorTextStorage.substring(with: range)
+    }
+}
+
+extension EditorTextView: EditorGutterControllerDelegate {
+    func numberOfLines(in controller: EditorGutterController) -> Int {
+        return editorTextStorage.lineCount
+    }
+
+    func editorGutterController(_ controller: EditorGutterController, substringIn range: NSRange) -> String? {
         return editorTextStorage.substring(with: range)
     }
 }

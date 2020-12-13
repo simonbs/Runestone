@@ -70,22 +70,42 @@
     return [self.string substringWithRange:NSMakeRange(location, 1)];
 }
 
+- (void)lineManagerDidInsertLine:(LineManager * _Nonnull)lineManager {
+    if ([self.editorDelegate respondsToSelector:@selector(editorTextStorageDidInsertLine:)]) {
+        [self.editorDelegate editorTextStorageDidInsertLine:self];
+    }
+}
+
+- (void)lineManagerDidRemoveLine:(LineManager * _Nonnull)lineManager {
+    if ([self.editorDelegate respondsToSelector:@selector(editorTextStorageDidRemoveLine:)]) {
+        [self.editorDelegate editorTextStorageDidRemoveLine:self];
+    }
+}
+
 // MARK: - Public
 - (NSInteger)lineCount {
     return _lineManager.lineCount;
 }
 
-- (ObjCLinePosition * _Nullable)linePositionAtLocation:(NSInteger)location {
-    LinePosition *linePosition = [_lineManager linePositionAtLocation:@(location)];
+- (ObjCLinePosition * _Nullable)positionOfLineContainingCharacterAtLocation:(NSInteger)location {
+    LinePosition *linePosition = [_lineManager positionOfLineContainingCharacterAtLocation:@(location)];
     if (linePosition != nil) {
-        return [[ObjCLinePosition alloc] initWithLine:linePosition.line column:linePosition.column];
+        return [[ObjCLinePosition alloc] initWithLineNumber:linePosition.lineNumber column:linePosition.column length:linePosition.length];
     } else {
         return nil;
     }
 }
 
+- (NSInteger)locationOfLineWithLineNumber:(NSInteger)lineNumber {
+    return [_lineManager locationOfLineWithLineNumber:@(lineNumber)];
+}
+
 - (NSString *)substringWithRange:(NSRange)range {
-    return [_internalString attributedSubstringFromRange:range].string;
+    if (range.location + range.length <= _internalString.length) {
+        return [_internalString attributedSubstringFromRange:range].string;
+    } else {
+        return nil;
+    }
 }
 
 @end

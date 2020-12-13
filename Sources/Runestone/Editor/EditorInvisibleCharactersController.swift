@@ -8,7 +8,7 @@
 import UIKit
 
 protocol EditorInvisibleCharactersControllerDelegate: AnyObject {
-    func editorInvisibleCharactersController(_ controller: EditorInvisibleCharactersController, substringIn range: NSRange) -> String
+    func editorInvisibleCharactersController(_ controller: EditorInvisibleCharactersController, substringIn range: NSRange) -> String?
 }
 
 final class EditorInvisibleCharactersController {
@@ -34,20 +34,6 @@ final class EditorInvisibleCharactersController {
     private var drawInvisibleCharacters: Bool {
         return showTabs || showSpaces || showLineBreaks
     }
-    private var currentLayoutManager: NSLayoutManager {
-        if let layoutManager = layoutManager {
-            return layoutManager
-        } else {
-            fatalError("Layout manager unavailable.")
-        }
-    }
-    private var currentDelegate: EditorInvisibleCharactersControllerDelegate {
-        if let delegate = delegate {
-            return delegate
-        } else {
-            fatalError("Delegaete unvailable")
-        }
-    }
 
     func drawInvisibleCharacters(in lineFragment: EditorLineFragment) {
         if drawInvisibleCharacters {
@@ -61,10 +47,16 @@ final class EditorInvisibleCharactersController {
 
 private extension EditorInvisibleCharactersController {
     private func drawInvisibleCharacter(forGlyphAt glyphLocation: Int, in lineFragment: EditorLineFragment) {
+        guard let delegate = delegate else {
+            return
+        }
+        guard let layoutManager = layoutManager else {
+            return
+        }
         var actualGlyphRange = NSRange(location: 0, length: 0)
-        currentLayoutManager.characterRange(forGlyphRange: NSMakeRange(glyphLocation, 1), actualGlyphRange: &actualGlyphRange)
-        let characterRange = currentLayoutManager.characterRange(forGlyphRange: actualGlyphRange, actualGlyphRange: nil)
-        let character = currentDelegate.editorInvisibleCharactersController(self, substringIn: characterRange)
+        layoutManager.characterRange(forGlyphRange: NSMakeRange(glyphLocation, 1), actualGlyphRange: &actualGlyphRange)
+        let characterRange = layoutManager.characterRange(forGlyphRange: actualGlyphRange, actualGlyphRange: nil)
+        let character = delegate.editorInvisibleCharactersController(self, substringIn: characterRange)
         if showTabs && character == Symbol.tab {
             draw(BackgroundSymbol.tab, at: .minX, inGlyphRange: actualGlyphRange, of: lineFragment.textContainer)
         } else if showSpaces && character == Symbol.space {
@@ -78,10 +70,12 @@ private extension EditorInvisibleCharactersController {
     }
 
     private func draw(_ symbol: String, at position: HorizontalSymbolPosition, inGlyphRange glyphRange: NSRange, of textContainer: NSTextContainer) {
-        let bounds = currentLayoutManager
-            .boundingRect(forGlyphRange: glyphRange, in: textContainer)
-            .offsetBy(dx: textContainerInset.left, dy: textContainerInset.top)
-        draw(symbol, at: position, in: bounds)
+        if let layoutManager = layoutManager {
+            let bounds = layoutManager
+                .boundingRect(forGlyphRange: glyphRange, in: textContainer)
+                .offsetBy(dx: textContainerInset.left, dy: textContainerInset.top)
+            draw(symbol, at: position, in: bounds)
+        }
     }
 
     private func draw(_ symbol: String, at position: HorizontalSymbolPosition, in bounds: CGRect) {

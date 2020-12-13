@@ -8,6 +8,6 @@
 import Foundation
 
 public struct LinePosition {
-    public let line: Int
+    public let lineNumber: Int
     public let column: Int
 }

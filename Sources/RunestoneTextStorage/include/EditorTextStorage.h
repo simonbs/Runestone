@@ -12,11 +12,16 @@
 
 @protocol EditorTextStorageDelegate <NSObject>
 - (void)editorTextStorageDidProcessEditing:(EditorTextStorage* _Nonnull)editorTextStorage;
+- (void)editorTextStorageDidInsertLine:(EditorTextStorage* _Nonnull)editorTextStorage;
+- (void)editorTextStorageDidRemoveLine:(EditorTextStorage* _Nonnull)editorTextStorage;
 @end
 
 @interface EditorTextStorage: NSTextStorage
 @property (nonatomic, weak) id<EditorTextStorageDelegate> _Nullable editorDelegate;
 @property (nonatomic, readonly) NSInteger lineCount;
-- (ObjCLinePosition * _Nullable)linePositionAtLocation:(NSInteger)location __attribute__((swift_name("linePosition(at:)")));
-- (NSString * _Nonnull)substringWithRange:(NSRange)range;
+- (ObjCLinePosition * _Nullable)positionOfLineContainingCharacterAtLocation:(NSInteger)location
+__attribute__((swift_name("positionOfLine(containingCharacterAt:)")));
+- (NSInteger)locationOfLineWithLineNumber:(NSInteger)location
+__attribute__((swift_name("locationOfLine(withLineNumber:)")));
+- (NSString * _Nullable)substringWithRange:(NSRange)range;
 @end

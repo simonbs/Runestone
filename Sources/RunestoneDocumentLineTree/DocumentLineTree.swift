@@ -23,7 +23,7 @@ final class DocumentLineTree {
         root.color = .black
     }
 
-    func line(at location: Int) -> DocumentLine {
+    func line(containingCharacterAt location: Int) -> DocumentLine {
         assert(location >= 0)
         assert(location <= root.nodeTotalLength)
         if location == root.nodeTotalLength {
@@ -45,6 +45,29 @@ final class DocumentLineTree {
                         node = node.right!
                     }
                 }
+            }
+        }
+    }
+
+    @objc(locationOfLineWithLineNumber:)
+    func locationOfLine(withLineNumber lineNumber: Int) -> Int {
+        let index = lineNumber - 1
+        assert(index >= 0)
+        assert(index < root.nodeTotalCount)
+        var remainingIndex = index
+        var node = root
+        while true {
+            if let leftNode = node.left, remainingIndex < leftNode.nodeTotalCount {
+                node = leftNode
+            } else {
+                if let leftNode = node.left {
+                    remainingIndex -= leftNode.nodeTotalCount
+                }
+                if remainingIndex == 0 {
+                    return node.location
+                }
+                remainingIndex -= 1
+                node = node.right!
             }
         }
     }
@@ -142,6 +165,27 @@ final class DocumentLineTree {
 }
 
 private extension DocumentLineTree {
+    private func line(atIndex index: Int) -> DocumentLine {
+        assert(index >= 0)
+        assert(index < root.nodeTotalCount)
+        var remainingIndex = index
+        var node = root
+        while true {
+            if let leftNode = node.left, index < leftNode.nodeTotalCount {
+                node = leftNode
+            } else {
+                if let leftNode = node.left {
+                    remainingIndex -= leftNode.nodeTotalCount
+                }
+                if remainingIndex == 0 {
+                    return node
+                }
+                remainingIndex -= 1
+                node = node.right!
+            }
+        }
+    }
+
     private func insert(_ newLine: DocumentLine, after node: DocumentLine) {
         if node.right == nil {
             insert(newLine, asRightChildOf: node)

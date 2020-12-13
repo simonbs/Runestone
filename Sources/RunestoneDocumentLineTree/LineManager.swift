@@ -9,6 +9,8 @@ import Foundation
 
 @objc public protocol LineManagerDelegate: class {
     func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> NSString
+    func lineManagerDidInsertLine(_ lineManager: LineManager)
+    func lineManagerDidRemoveLine(_ lineManager: LineManager)
 }
 
 @objc public final class LineManager: NSObject {
@@ -32,7 +34,7 @@ import Foundation
         guard range.length > 0 else {
             return
         }
-        let startLine = tree.line(at: range.location)
+        let startLine = tree.line(containingCharacterAt: range.location)
         if range.location > startLine.location + startLine.length {
             // Deleting starting in the middle of a delimiter.
             setLength(of: startLine, to: startLine.totalLength - 1)
@@ -45,7 +47,7 @@ import Foundation
             // possibly removing lines in between if multiple delimeters were deleted.
             let charactersRemovedInStartLine = startLine.location + startLine.totalLength - range.location
             assert(charactersRemovedInStartLine > 0)
-            let endLine = tree.line(at: range.location + range.length)
+            let endLine = tree.line(containingCharacterAt: range.location + range.length)
             if endLine === startLine {
                 // Removing characters in the last line.
                 setLength(of: startLine, to: startLine.totalLength - range.length)
@@ -66,7 +68,7 @@ import Foundation
 
     @objc(insertString:inRange:)
     public func insert(_ string: NSString, in range: NSRange) {
-        var line = tree.line(at: range.location)
+        var line = tree.line(containingCharacterAt: range.location)
         var lineLocation = line.location
         assert(range.location <= lineLocation + line.totalLength)
         if range.location > lineLocation + line.length {
@@ -106,19 +108,28 @@ import Foundation
         }
     }
 
-    public func linePosition(at location: Int) -> LinePosition? {
-        let line = tree.line(at: location)
+    public func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
+        let line = tree.line(containingCharacterAt: location)
         if let lineNumber = line.lineNumber {
             let column = location - line.location + 1 // +1 to avoid zero based columns
-            return LinePosition(line: lineNumber, column: column)
+            return LinePosition(lineNumber: lineNumber, column: column, length: line.length)
         } else {
             return nil
         }
     }
 
-    @objc(linePositionAtLocation:)
-    public func linePosition(at location: NSNumber) -> LinePosition? {
-        return linePosition(at: location.intValue)
+    @objc(positionOfLineContainingCharacterAtLocation:)
+    public func positionOfLine(containingCharacterAt location: NSNumber) -> LinePosition? {
+        return positionOfLine(containingCharacterAt: location.intValue)
+    }
+
+    public func locationOfLine(withLineNumber lineNumber: Int) -> Int {
+        return tree.locationOfLine(withLineNumber: lineNumber)
+    }
+
+    @objc(locationOfLineWithLineNumber:)
+    public func locationOfLine(withLineNumber lineNumber: NSNumber) -> Int {
+        return tree.locationOfLine(withLineNumber: lineNumber.intValue)
     }
 }
 
@@ -157,11 +168,14 @@ private extension LineManager {
 
     @discardableResult
     private func insertLine(ofLength length: Int, after otherLine: DocumentLine) -> DocumentLine {
-        return tree.insertLine(ofLength: length, after: otherLine)
+        let insertedLine = tree.insertLine(ofLength: length, after: otherLine)
+        delegate?.lineManagerDidInsertLine(self)
+        return insertedLine
     }
 
     private func remove(_ line: DocumentLine) {
         tree.remove(line)
+        delegate?.lineManagerDidRemoveLine(self)
     }
 
     private func getCharacter(at location: Int) -> NSString {
