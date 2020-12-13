@@ -13,6 +13,10 @@ final class DocumentLineTree {
         case right
     }
 
+    var lineCount: Int {
+        return root.nodeTotalCount
+    }
+
     private lazy var root = DocumentLine(tree: self, totalLength: 0)
 
     init() {

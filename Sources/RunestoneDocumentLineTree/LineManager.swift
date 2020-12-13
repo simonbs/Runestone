@@ -14,6 +14,10 @@ import Foundation
 @objc public final class LineManager: NSObject {
     @objc public weak var delegate: LineManagerDelegate?
 
+    @objc public var lineCount: Int {
+        return tree.lineCount
+    }
+
     private let tree = DocumentLineTree()
     private var currentDelegate: LineManagerDelegate {
         if let delegate = delegate {

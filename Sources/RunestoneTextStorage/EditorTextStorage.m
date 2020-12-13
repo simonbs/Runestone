@@ -60,6 +60,9 @@
 - (void)processEditing {
     [super processEditing];
 //    [_parser parse:self.string];
+    if ([self.editorDelegate respondsToSelector:@selector(editorTextStorageDidProcessEditing:)]) {
+        [self.editorDelegate editorTextStorageDidProcessEditing:self];
+    }
 }
 
 // MARK: - LineManagerDelegate
@@ -68,6 +71,10 @@
 }
 
 // MARK: - Public
+- (NSInteger)lineCount {
+    return _lineManager.lineCount;
+}
+
 - (ObjCLinePosition * _Nullable)linePositionAtLocation:(NSInteger)location {
     LinePosition *linePosition = [_lineManager linePositionAtLocation:@(location)];
     if (linePosition != nil) {
@@ -75,6 +82,10 @@
     } else {
         return nil;
     }
+}
+
+- (NSString *)substringWithRange:(NSRange)range {
+    return [_internalString attributedSubstringFromRange:range].string;
 }
 
 @end
