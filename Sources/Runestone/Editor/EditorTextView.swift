@@ -8,7 +8,10 @@
 import UIKit
 import RunestoneTextStorage
 
+public protocol EditorTextViewDelegate: UITextViewDelegate {}
+
 open class EditorTextView: UITextView {
+    public weak var editorDelegate: EditorTextViewDelegate?
     public var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
             gutterController.theme = theme
@@ -91,10 +94,29 @@ open class EditorTextView: UITextView {
             }
         }
     }
+    public var highlightSelectedLine: Bool {
+        get {
+            return gutterController.highlightSelectedLine
+        }
+        set {
+            if newValue != gutterController.highlightSelectedLine {
+                gutterController.highlightSelectedLine = newValue
+                setNeedsDisplay()
+            }
+        }
+    }
+    open override var delegate: UITextViewDelegate? {
+        didSet {
+            if isDelegateLockEnabled {
+                fatalError("\(type(of: self)) must be the delegate of the UITextView. Please use editorDelegate instead")
+            }
+        }
+    }
     open override var font: UIFont? {
         didSet {
             if font != oldValue {
                 invisibleCharactersController.font = font
+                gutterController.font = font
             }
         }
     }
@@ -107,6 +129,7 @@ open class EditorTextView: UITextView {
         }
     }
 
+    private var isDelegateLockEnabled = false
     private let editorTextStorage = EditorTextStorage()
     private let invisibleCharactersController = EditorInvisibleCharactersController()
     private let gutterController: EditorGutterController
@@ -121,6 +144,8 @@ open class EditorTextView: UITextView {
             textContainer: textContainer,
             theme: theme)
         super.init(frame: frame, textContainer: textContainer)
+        delegate = self
+        isDelegateLockEnabled = true
         contentMode = .redraw
         editorTextStorage.editorDelegate = self
         editorLayoutManager.delegate = self
@@ -131,6 +156,7 @@ open class EditorTextView: UITextView {
         invisibleCharactersController.font = font
         invisibleCharactersController.textContainerInset = textContainerInset
         gutterController.delegate = self
+        gutterController.font = font
         gutterController.textContainerInset = textContainerInset
     }
 
@@ -148,7 +174,23 @@ open class EditorTextView: UITextView {
 
     public override func draw(_ rect: CGRect) {
         super.draw(rect)
-        gutterController.drawGutter(in: rect)
+        gutterController.drawGutter(in: rect, isFirstResponder: isFirstResponder, selectedRange: selectedRange)
+    }
+
+    public override func responds(to aSelector: Selector!) -> Bool {
+        if let editorDelegate = editorDelegate, editorDelegate.responds(to: aSelector) {
+            return true
+        } else {
+            return super.responds(to: aSelector)
+        }
+    }
+
+    public override func forwardingTarget(for aSelector: Selector!) -> Any? {
+        if let editorDelegate = editorDelegate, editorDelegate.responds(to: aSelector) {
+            return editorDelegate
+        } else {
+            return super.forwardingTarget(for: aSelector)
+        }
     }
 }
 
@@ -233,5 +275,32 @@ extension EditorTextView: EditorGutterControllerDelegate {
 
     func editorGutterController(_ controller: EditorGutterController, substringIn range: NSRange) -> String? {
         return editorTextStorage.substring(with: range)
+    }
+
+    func editorGutterController(_ controller: EditorGutterController, positionOfLineContainingCharacterAt location: Int) -> ObjCLinePosition? {
+        return editorTextStorage.positionOfLine(containingCharacterAt: location)
+    }
+}
+
+extension EditorTextView: UITextViewDelegate {
+    public func textViewDidBeginEditing(_ textView: UITextView) {
+        if highlightSelectedLine {
+            setNeedsDisplay()
+        }
+        editorDelegate?.textViewDidBeginEditing?(self)
+    }
+
+    public func textViewDidEndEditing(_ textView: UITextView) {
+        if highlightSelectedLine {
+            setNeedsDisplay()
+        }
+        editorDelegate?.textViewDidEndEditing?(self)
+    }
+
+    public func textViewDidChangeSelection(_ textView: UITextView) {
+        if highlightSelectedLine {
+            setNeedsDisplay()
+        }
+        editorDelegate?.textViewDidChangeSelection?(self)
     }
 }

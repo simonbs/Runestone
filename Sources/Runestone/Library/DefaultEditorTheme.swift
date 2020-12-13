@@ -10,6 +10,10 @@ import UIKit
 final class DefaultEditorTheme: EditorTheme {
     let gutterBackgroundColor: UIColor = .secondarySystemBackground
     let gutterHairlineColor: UIColor = .opaqueSeparator
-    var lineNumberColor: UIColor = .secondaryLabel
-    let lineNumberFont: UIFont = .systemFont(ofSize: 14)
+
+    let lineNumberColor: UIColor = .secondaryLabel
+    let lineNumberFont: UIFont = UIFont(name: "Menlo-Regular", size: 14)!
+
+    let lineNumberColorOnSelectedLine: UIColor = .label
+    let gutterBackgroundColorOnSelectedLine: UIColor = UIColor.opaqueSeparator.withAlphaComponent(0.4)
 }
