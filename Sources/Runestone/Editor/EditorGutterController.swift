@@ -54,6 +54,7 @@ final class EditorGutterController {
         } else {
             numberOfLines = 0
             gutterWidth = 0
+            previousMaximumCharacterCount = 0
             let exclusionPaths = textContainer?.exclusionPaths ?? []
             textContainer?.exclusionPaths = exclusionPaths.filter { $0 !== previousExlusionPath }
             previousExlusionPath = nil

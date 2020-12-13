@@ -57,7 +57,7 @@ open class EditorTextView: UITextView {
         set {
             if newValue != gutterController.showLineNumbers {
                 gutterController.showLineNumbers = newValue
-                invalidateLayoutManager()
+                setNeedsDisplay()
             }
         }
     }
