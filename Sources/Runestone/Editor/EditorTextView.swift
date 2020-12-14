@@ -240,8 +240,7 @@ extension EditorTextView: NSLayoutManagerDelegate {
         }
         let substring = editorTextStorage.substring(with: NSRange(location: charIndex, length: 1))
         if substring == Symbol.tab {
-            let scaledWidth = UIFontMetrics.default.scaledValue(for: tabWidth)
-            return CGRect(x: proposedRect.minX, y: proposedRect.minY, width: scaledWidth, height: proposedRect.height)
+            return CGRect(x: proposedRect.minX, y: proposedRect.minY, width: tabWidth, height: proposedRect.height)
         } else {
             return proposedRect
         }
