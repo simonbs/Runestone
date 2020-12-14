@@ -174,7 +174,7 @@ open class EditorTextView: UITextView {
     
     public func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
         if let linePosition = editorTextStorage.positionOfLine(containingCharacterAt: location) {
-            return LinePosition(lineNumber: linePosition.lineNumber, column: linePosition.column)
+            return LinePosition(lineNumber: linePosition.lineNumber, column: linePosition.column, length: linePosition.length)
         } else {
             return nil
         }

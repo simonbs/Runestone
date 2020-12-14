@@ -16,6 +16,12 @@ protocol EditorGutterControllerDelegate: AnyObject {
 }
 
 final class EditorGutterController {
+    private enum LineHeightComputationApproach {
+        case extraLine
+        case lineBreak
+        case `default`
+    }
+
     weak var delegate: EditorGutterControllerDelegate?
     var theme: EditorTheme
     var font: UIFont?
@@ -123,41 +129,62 @@ private extension EditorGutterController {
         let endLinePosition = textStorage.positionOfLine(containingCharacterAt: entireGlyphRange.location + entireGlyphRange.length)
         if let startLinePosition = startLinePosition, let endLinePosition = endLinePosition {
             for lineNumber in startLinePosition.lineNumber ... endLinePosition.lineNumber {
+                let lineLocation = textStorage.locationOfLine(withLineNumber: lineNumber)
+                let approach = lineHeightComputationApproach(forLineAt: lineLocation)
                 let isHighlightedLine = shouldHighlightLineNumber(lineNumber, inRangeOfSelectedLines: highlightedRange)
-                let glyphRect = rectangleOfLine(atLineNumber: lineNumber, textStorage: textStorage, textContainer: textContainer, layoutManager: layoutManager)
-                let lineNumberRect = CGRect(x: 0, y: glyphRect.minY + textContainerInset.top, width: gutterWidth, height: glyphRect.height)
-                if isHighlightedLine {
-                    let entireLineRect = CGRect(x: gutterWidth, y: lineNumberRect.minY, width: rect.width - gutterWidth, height: lineNumberRect.height)
-                    drawHighlightedLineBackground(in: entireLineRect)
+                if isHighlightedLine, let lineRect = frameOfLine(atLocation: lineLocation, in: rect, using: approach) {
+                    drawHighlightedLineBackground(in: lineRect)
                     if showLineNumbers {
+                        let lineNumberRect = CGRect(x: 0, y: lineRect.minY, width: gutterWidth, height: lineRect.height)
                         drawHighlightedLineNumberBackground(in: lineNumberRect)
                     }
                 }
-                if showLineNumbers {
+                if showLineNumbers, let lineNumberRect = frameOfLineNumberInLine(atLocation: lineLocation, in: rect, using: approach) {
                     drawLineNumber(lineNumber, in: lineNumberRect, isHighlighted: isHighlightedLine)
                 }
             }
         }
     }
 
-    private func rectangleOfLine(
-        atLineNumber lineNumber: Int,
-        textStorage: EditorTextStorage,
-        textContainer: NSTextContainer,
-        layoutManager: NSLayoutManager) -> CGRect {
-        let lineLocation = textStorage.locationOfLine(withLineNumber: lineNumber)
-        let firstGlyphRange = NSRange(location: lineLocation, length: 1)
-        let preferredGlyphRect = layoutManager.boundingRect(forGlyphRange: firstGlyphRange, in: textContainer)
-        if preferredGlyphRect == .zero {
-            // It's the extra blank line at the end of the document.
-            return layoutManager.extraLineFragmentRect
-        } else if delegate?.editorGutterController(self, substringIn: firstGlyphRange) == Symbol.lineFeed {
-            // The first character is a line break. This happens on lines that aren't the least line but contains only a line break.
+    private func frameOfLineNumberInLine(atLocation lineLocation: Int, in rect: CGRect, using approach: LineHeightComputationApproach) -> CGRect? {
+        guard let layoutManager = layoutManager else {
+            return nil
+        }
+        let bounds: CGRect
+        switch approach {
+        case .extraLine:
+            bounds = layoutManager.extraLineFragmentRect
+        case .lineBreak:
             let lineHeight = font?.lineHeight ?? 0
-            return CGRect(x: preferredGlyphRect.minX, y: preferredGlyphRect.minY, width: preferredGlyphRect.width, height: lineHeight)
-        } else {
-            // Handle any other line.
-            return preferredGlyphRect
+            let preferredGlyphRect = layoutManager.lineFragmentRect(forGlyphAt: lineLocation, effectiveRange: nil)
+            bounds = CGRect(x: preferredGlyphRect.minX, y: preferredGlyphRect.minY, width: preferredGlyphRect.width, height: lineHeight)
+        case .default:
+            bounds = layoutManager.lineFragmentRect(forGlyphAt: lineLocation, effectiveRange: nil)
+        }
+        return CGRect(x: 0, y: bounds.minY + textContainerInset.top, width: gutterWidth, height: bounds.height)
+    }
+
+    private func frameOfLine(atLocation lineLocation: Int, in rect: CGRect, using approach: LineHeightComputationApproach) -> CGRect? {
+        guard let textStorage = textStorage, let textContainer = textContainer, let layoutManager = layoutManager else {
+            return nil
+        }
+        switch approach {
+        case .extraLine:
+            let bounds = layoutManager.extraLineFragmentRect
+            return CGRect(x: gutterWidth, y: bounds.minY + textContainerInset.top, width: rect.width - gutterWidth, height: bounds.height)
+        case .lineBreak:
+            let lineHeight = font?.lineHeight ?? 0
+            let preferredGlyphRect = layoutManager.lineFragmentRect(forGlyphAt: lineLocation, effectiveRange: nil)
+            let bounds = CGRect(x: preferredGlyphRect.minX, y: preferredGlyphRect.minY, width: preferredGlyphRect.width, height: lineHeight)
+            return CGRect(x: gutterWidth, y: bounds.minY, width: rect.width - gutterWidth, height: bounds.height)
+        case .default:
+            if let linePosition = textStorage.positionOfLine(containingCharacterAt: lineLocation) {
+                let entireGlyphRange = NSRange(location: lineLocation, length: linePosition.length)
+                let bounds = layoutManager.boundingRect(forGlyphRange: entireGlyphRange, in: textContainer)
+                return CGRect(x: gutterWidth, y: bounds.minY + textContainerInset.top, width: rect.width - gutterWidth, height: bounds.height)
+            } else {
+                return nil
+            }
         }
     }
 
@@ -222,5 +249,23 @@ private extension EditorGutterController {
     private func isEmptyLine(at range: NSRange) -> Bool {
         let str = delegate?.editorGutterController(self, substringIn: range)
         return str == nil || str == Symbol.lineFeed
+    }
+
+    private func lineHeightComputationApproach(forLineAt lineLocation: Int) -> LineHeightComputationApproach {
+        guard let layoutManager = layoutManager else {
+            return .default
+        }
+        let firstGlyphRange = NSRange(location: lineLocation, length: 1)
+        let preferredGlyphRect = layoutManager.lineFragmentRect(forGlyphAt: lineLocation, effectiveRange: nil)
+        if preferredGlyphRect == .zero {
+            // It's the extra blank line at the end of the document.
+            return .extraLine
+        } else if delegate?.editorGutterController(self, substringIn: firstGlyphRange) == Symbol.lineFeed {
+            // The first character is a line break. This happens on lines that aren't the least line but contains only a line break.
+            return .lineBreak
+        } else {
+            // Handle any other line.
+            return .default
+        }
     }
 }

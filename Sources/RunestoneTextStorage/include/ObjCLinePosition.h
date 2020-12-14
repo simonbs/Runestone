@@ -10,5 +10,6 @@
 @interface ObjCLinePosition: NSObject
 @property (nonatomic, readonly) NSInteger lineNumber;
 @property (nonatomic, readonly) NSInteger column;
-- (nonnull instancetype)initWithLineNumber:(NSInteger)lineNumber column:(NSInteger)column;
+@property (nonatomic, readonly) NSInteger length;
+- (nonnull instancetype)initWithLineNumber:(NSInteger)lineNumber column:(NSInteger)column length:(NSInteger)length;
 @end

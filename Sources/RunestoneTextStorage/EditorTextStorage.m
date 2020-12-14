@@ -87,7 +87,7 @@
 - (ObjCLinePosition * _Nullable)positionOfCharacterAt:(NSInteger)location {
     LinePosition *linePosition = [_lineManager positionOfCharacterAt:@(location)];
     if (linePosition != nil) {
-        return [[ObjCLinePosition alloc] initWithLineNumber:linePosition.lineNumber column:linePosition.column];
+        return [[ObjCLinePosition alloc] initWithLineNumber:linePosition.lineNumber column:linePosition.column length:linePosition.length];
     } else {
         return nil;
     }

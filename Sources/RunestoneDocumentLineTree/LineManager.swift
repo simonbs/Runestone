@@ -112,7 +112,7 @@ import Foundation
         let line = tree.line(containingCharacterAt: location)
         if let lineNumber = line.lineNumber {
             let column = location - line.location + 1 // +1 to avoid zero based columns
-            return LinePosition(lineNumber: lineNumber, column: column)
+            return LinePosition(lineNumber: lineNumber, column: column, length: line.length)
         } else {
             return nil
         }

@@ -10,4 +10,5 @@ import Foundation
 public struct LinePosition {
     public let lineNumber: Int
     public let column: Int
+    public let length: Int
 }
