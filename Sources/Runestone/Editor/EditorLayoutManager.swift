@@ -13,6 +13,7 @@ protocol EditorLayoutManagerDelegate: AnyObject {
 }
 
 final class EditorLayoutManager: NSLayoutManager {
+    var font: UIFont?
     weak var editorDelegate: EditorLayoutManagerDelegate?
 
     override func drawBackground(forGlyphRange glyphsToShow: NSRange, at origin: CGPoint) {
@@ -25,6 +26,29 @@ final class EditorLayoutManager: NSLayoutManager {
                 let lineFragment = EditorLineFragment(rect: rect, usedRect: usedRect, textContainer: textContainer, glyphRange: glyphRange)
                 self.editorDelegate?.editorLayoutManager(self, didEnumerate: lineFragment)
             }
+        }
+    }
+
+    override func setExtraLineFragmentRect(_ fragmentRect: CGRect, usedRect: CGRect, textContainer container: NSTextContainer) {
+        if let font = font {
+            var modifiedFragmentRect = fragmentRect
+            modifiedFragmentRect.size.height = font.lineHeight
+            super.setExtraLineFragmentRect(modifiedFragmentRect, usedRect: usedRect, textContainer: container)
+        } else {
+            super.setExtraLineFragmentRect(fragmentRect, usedRect: usedRect, textContainer: container)
+        }
+    }
+
+    override func setLineFragmentRect(_ fragmentRect: CGRect, forGlyphRange glyphRange: NSRange, usedRect: CGRect) {
+        let substring = textStorage?.attributedSubstring(from: glyphRange).string
+        if let font = font, substring == Symbol.lineFeed {
+            var modifiedFragmentRect = fragmentRect
+            modifiedFragmentRect.size.height = font.lineHeight
+            var modifiedUsedRect = usedRect
+            modifiedUsedRect.size.height = font.lineHeight
+            super.setLineFragmentRect(modifiedFragmentRect, forGlyphRange: glyphRange, usedRect: modifiedUsedRect)
+        } else {
+            super.setLineFragmentRect(fragmentRect, forGlyphRange: glyphRange, usedRect: usedRect)
         }
     }
 }

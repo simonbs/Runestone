@@ -124,6 +124,7 @@ open class EditorTextView: UITextView {
             if font != oldValue {
                 invisibleCharactersController.font = font
                 gutterController.font = font
+                editorLayoutManager.font = font
             }
         }
     }

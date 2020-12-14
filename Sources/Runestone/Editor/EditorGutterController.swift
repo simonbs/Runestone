@@ -145,33 +145,18 @@ private extension EditorGutterController {
         textStorage: EditorTextStorage,
         textContainer: NSTextContainer,
         layoutManager: NSLayoutManager) -> CGRect {
-        guard lineNumber != 1 else {
-            // Find rect of first line.
-//            print("\(lineNumber): A")
-            let lineHeight = font?.lineHeight ?? 0
-            return CGRect(x: 0, y: 0, width: 0, height: lineHeight)
-        }
         let lineLocation = textStorage.locationOfLine(withLineNumber: lineNumber)
         let firstGlyphRange = NSRange(location: lineLocation, length: 1)
         let preferredGlyphRect = layoutManager.boundingRect(forGlyphRange: firstGlyphRange, in: textContainer)
         if preferredGlyphRect == .zero {
-            // Rect of glyph is zero. This happens on the last line when it's empty.
-            let previousGlyphRange = NSRange(location: firstGlyphRange.location - 1, length: 1)
-            let previousGlyphRect = layoutManager.boundingRect(forGlyphRange: previousGlyphRange, in: textContainer)
-            let lineHeight = previousGlyphRect.height / 2
-//            print("\(lineNumber): B")
-            return CGRect(x: previousGlyphRect.minX, y: previousGlyphRect.minY + lineHeight, width: previousGlyphRect.width, height: lineHeight)
+            // It's the extra blank line at the end of the document.
+            return layoutManager.extraLineFragmentRect
         } else if delegate?.editorGutterController(self, substringIn: firstGlyphRange) == Symbol.lineFeed {
             // The first character is a line break. This happens on lines that aren't the least line but contains only a line break.
-            let previousLineLocation = delegate!.editorGutterController(self, locationOfLineWithLineNumber: lineNumber - 1)
-            let previousLineFirstGlyphRange = NSRange(location: previousLineLocation, length: 1)
-            let previousLineRect = layoutManager.boundingRect(forGlyphRange: previousLineFirstGlyphRange, in: textContainer)
-//            print("\(lineNumber): C => \(previousLineLocation)")
-            let lineHeight = previousLineRect.height
-            return CGRect(x: previousLineRect.minX, y: previousLineRect.maxY, width: preferredGlyphRect.width, height: lineHeight)
+            let lineHeight = font?.lineHeight ?? 0
+            return CGRect(x: preferredGlyphRect.minX, y: preferredGlyphRect.minY, width: preferredGlyphRect.width, height: lineHeight)
         } else {
             // Handle any other line.
-//            print("\(lineNumber): D")
             return preferredGlyphRect
         }
     }
