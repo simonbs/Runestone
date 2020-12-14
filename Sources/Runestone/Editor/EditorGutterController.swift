@@ -10,8 +10,9 @@ import RunestoneTextStorage
 
 protocol EditorGutterControllerDelegate: AnyObject {
     func numberOfLines(in controller: EditorGutterController) -> Int
+    func editorGutterController(_ controller: EditorGutterController, positionOfCharacterAt location: Int) -> ObjCLinePosition?
+    func editorGutterController(_ controller: EditorGutterController, locationOfLineWithLineNumber lineNumber: Int) -> Int
     func editorGutterController(_ controller: EditorGutterController, substringIn range: NSRange) -> String?
-    func editorGutterController(_ controller: EditorGutterController, positionOfLineContainingCharacterAt location: Int) -> ObjCLinePosition?
 }
 
 final class EditorGutterController {
@@ -114,7 +115,7 @@ private extension EditorGutterController {
     }
 
     private func drawLines(in rect: CGRect, highlightedRange: NSRange?) {
-        guard let delegate = delegate, let layoutManager = layoutManager, let textStorage = textStorage, let textContainer = textContainer else {
+        guard let layoutManager = layoutManager, let textStorage = textStorage, let textContainer = textContainer else {
             return
         }
         let entireGlyphRange = layoutManager.glyphRange(forBoundingRect: rect, in: textContainer)
@@ -122,29 +123,8 @@ private extension EditorGutterController {
         let endLinePosition = textStorage.positionOfLine(containingCharacterAt: entireGlyphRange.location + entireGlyphRange.length)
         if let startLinePosition = startLinePosition, let endLinePosition = endLinePosition {
             for lineNumber in startLinePosition.lineNumber ... endLinePosition.lineNumber {
-                let lineLocation = textStorage.locationOfLine(withLineNumber: lineNumber)
                 let isHighlightedLine = shouldHighlightLineNumber(lineNumber, inRangeOfSelectedLines: highlightedRange)
-                let glyphRange = NSRange(location: lineLocation, length: 1)
-                let glyphRect: CGRect
-                let lastCharacter = delegate.editorGutterController(self, substringIn: glyphRange)
-                if lastCharacter == nil {
-                    // We're on the last line in editor and the line is empty. We're handling two cases here:
-                    // 1. The last line is also the first line, in which case we don't know the height of the line
-                    //    but we cant use the line height of the font instead.
-                    // 2. The previous line ended with a line break, and we're currently on an empty line.
-                    //    In this case we can take half of the line's bounding rect as the line height.
-                    if lineNumber == 1 {
-                        let lineHeight = font?.lineHeight ?? 0
-                        glyphRect = CGRect(x: 0, y: 0, width: 0, height: lineHeight)
-                    } else {
-                        let previousGlyphRange = NSRange(location: glyphRange.location - 1, length: 1)
-                        let boundingRect = layoutManager.boundingRect(forGlyphRange: previousGlyphRange, in: textContainer)
-                        let lineHeight = boundingRect.height / 2
-                        glyphRect = CGRect(x: boundingRect.minX, y: boundingRect.minY + lineHeight, width: boundingRect.width, height: lineHeight)
-                    }
-                } else {
-                    glyphRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
-                }
+                let glyphRect = rectangleOfLine(atLineNumber: lineNumber, textStorage: textStorage, textContainer: textContainer, layoutManager: layoutManager)
                 let lineNumberRect = CGRect(x: 0, y: glyphRect.minY + textContainerInset.top, width: gutterWidth, height: glyphRect.height)
                 if isHighlightedLine {
                     let entireLineRect = CGRect(x: gutterWidth, y: lineNumberRect.minY, width: rect.width - gutterWidth, height: lineNumberRect.height)
@@ -157,6 +137,42 @@ private extension EditorGutterController {
                     drawLineNumber(lineNumber, in: lineNumberRect, isHighlighted: isHighlightedLine)
                 }
             }
+        }
+    }
+
+    private func rectangleOfLine(
+        atLineNumber lineNumber: Int,
+        textStorage: EditorTextStorage,
+        textContainer: NSTextContainer,
+        layoutManager: NSLayoutManager) -> CGRect {
+        guard lineNumber != 1 else {
+            // Find rect of first line.
+//            print("\(lineNumber): A")
+            let lineHeight = font?.lineHeight ?? 0
+            return CGRect(x: 0, y: 0, width: 0, height: lineHeight)
+        }
+        let lineLocation = textStorage.locationOfLine(withLineNumber: lineNumber)
+        let firstGlyphRange = NSRange(location: lineLocation, length: 1)
+        let preferredGlyphRect = layoutManager.boundingRect(forGlyphRange: firstGlyphRange, in: textContainer)
+        if preferredGlyphRect == .zero {
+            // Rect of glyph is zero. This happens on the last line when it's empty.
+            let previousGlyphRange = NSRange(location: firstGlyphRange.location - 1, length: 1)
+            let previousGlyphRect = layoutManager.boundingRect(forGlyphRange: previousGlyphRange, in: textContainer)
+            let lineHeight = previousGlyphRect.height / 2
+//            print("\(lineNumber): B")
+            return CGRect(x: previousGlyphRect.minX, y: previousGlyphRect.minY + lineHeight, width: previousGlyphRect.width, height: lineHeight)
+        } else if delegate?.editorGutterController(self, substringIn: firstGlyphRange) == Symbol.lineFeed {
+            // The first character is a line break. This happens on lines that aren't the least line but contains only a line break.
+            let previousLineLocation = delegate!.editorGutterController(self, locationOfLineWithLineNumber: lineNumber - 1)
+            let previousLineFirstGlyphRange = NSRange(location: previousLineLocation, length: 1)
+            let previousLineRect = layoutManager.boundingRect(forGlyphRange: previousLineFirstGlyphRange, in: textContainer)
+//            print("\(lineNumber): C => \(previousLineLocation)")
+            let lineHeight = previousLineRect.height
+            return CGRect(x: previousLineRect.minX, y: previousLineRect.maxY, width: preferredGlyphRect.width, height: lineHeight)
+        } else {
+            // Handle any other line.
+//            print("\(lineNumber): D")
+            return preferredGlyphRect
         }
     }
 
@@ -200,11 +216,11 @@ private extension EditorGutterController {
         guard highlightSelectedLine else {
             return nil
         }
-        guard let startLinePosition = delegate?.editorGutterController(self, positionOfLineContainingCharacterAt: selectedRange.location) else {
+        guard let startLinePosition = delegate?.editorGutterController(self, positionOfCharacterAt: selectedRange.location) else {
             return nil
         }
         let endLocation = selectedRange.location + selectedRange.length
-        if selectedRange.length > 0, let endLinePosition = delegate?.editorGutterController(self, positionOfLineContainingCharacterAt: endLocation) {
+        if selectedRange.length > 0, let endLinePosition = delegate?.editorGutterController(self, positionOfCharacterAt: endLocation) {
             let lineNumberLength = endLinePosition.lineNumber - startLinePosition.lineNumber
             return NSRange(location: startLinePosition.lineNumber, length: lineNumberLength)
         } else {
@@ -216,5 +232,10 @@ private extension EditorGutterController {
         let attributes: [NSAttributedString.Key: Any] = [.font: theme.lineNumberFont]
         let textSize = text.size(withAttributes: attributes)
         return textSize.height
+    }
+
+    private func isEmptyLine(at range: NSRange) -> Bool {
+        let str = delegate?.editorGutterController(self, substringIn: range)
+        return str == nil || str == Symbol.lineFeed
     }
 }

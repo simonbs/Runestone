@@ -249,8 +249,6 @@ extension EditorTextView: NSLayoutManagerDelegate {
 }
 
 extension EditorTextView: EditorTextStorageDelegate {
-    public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {}
-
     public func editorTextStorageDidInsertLine(_ editorTextStorage: EditorTextStorage) {
         setNeedsDisplay()
     }
@@ -285,8 +283,12 @@ extension EditorTextView: EditorGutterControllerDelegate {
         return editorTextStorage.substring(with: range)
     }
 
-    func editorGutterController(_ controller: EditorGutterController, positionOfLineContainingCharacterAt location: Int) -> ObjCLinePosition? {
+    func editorGutterController(_ controller: EditorGutterController, positionOfCharacterAt location: Int) -> ObjCLinePosition? {
         return editorTextStorage.positionOfLine(containingCharacterAt: location)
+    }
+
+    func editorGutterController(_ controller: EditorGutterController, locationOfLineWithLineNumber lineNumber: Int) -> Int {
+        return editorTextStorage.locationOfLine(withLineNumber: lineNumber)
     }
 }
 

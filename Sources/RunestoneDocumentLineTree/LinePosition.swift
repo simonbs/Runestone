@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  LinePosition.swift
 //  
 //
 //  Created by Simon Støvring on 09/12/2020.

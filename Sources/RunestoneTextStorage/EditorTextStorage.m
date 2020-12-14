@@ -60,9 +60,6 @@
 - (void)processEditing {
     [super processEditing];
 //    [_parser parse:self.string];
-    if ([self.editorDelegate respondsToSelector:@selector(editorTextStorageDidProcessEditing:)]) {
-        [self.editorDelegate editorTextStorageDidProcessEditing:self];
-    }
 }
 
 // MARK: - LineManagerDelegate
@@ -87,8 +84,8 @@
     return _lineManager.lineCount;
 }
 
-- (ObjCLinePosition * _Nullable)positionOfLineContainingCharacterAtLocation:(NSInteger)location {
-    LinePosition *linePosition = [_lineManager positionOfLineContainingCharacterAtLocation:@(location)];
+- (ObjCLinePosition * _Nullable)positionOfCharacterAt:(NSInteger)location {
+    LinePosition *linePosition = [_lineManager positionOfCharacterAt:@(location)];
     if (linePosition != nil) {
         return [[ObjCLinePosition alloc] initWithLineNumber:linePosition.lineNumber column:linePosition.column];
     } else {
