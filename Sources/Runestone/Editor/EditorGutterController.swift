@@ -182,7 +182,7 @@ private extension EditorGutterController {
         let textSize = text.size(withAttributes: attributes)
         let gutterRect = CGRect(x: 0, y: rect.minY, width: gutterWidth, height: rect.height)
         let textXPosition = gutterRect.width - textSize.width - lineNumberTrailingMargin
-        let textYPosition = rect.minY + (font.lineHeight - textSize.height) / 2
+        let textYPosition = rect.minY + (rect.height - textSize.height) / 2
         let textRect = CGRect(x: textXPosition, y: textYPosition, width: textSize.width, height: textSize.height)
         text.draw(in: textRect, withAttributes: attributes)
     }
