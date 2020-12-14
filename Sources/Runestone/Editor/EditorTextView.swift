@@ -105,6 +105,13 @@ open class EditorTextView: UITextView {
             }
         }
     }
+    public var tabWidth: CGFloat? {
+        didSet {
+            if tabWidth != oldValue {
+                invalidateLayoutManager()
+            }
+        }
+    }
     open override var delegate: UITextViewDelegate? {
         didSet {
             if isDelegateLockEnabled {
@@ -213,9 +220,9 @@ extension EditorTextView: NSLayoutManagerDelegate {
         _ layoutManager: NSLayoutManager,
         shouldUse action: NSLayoutManager.ControlCharacterAction,
         forControlCharacterAt charIndex: Int) -> NSLayoutManager.ControlCharacterAction {
-        let substring = editorTextStorage.substring(with: NSRange(location: charIndex, length: 1))
-        if substring == Symbol.tab {
-            return .whitespace
+        if let tabWidth = tabWidth, tabWidth > 0 {
+            let substring = editorTextStorage.substring(with: NSRange(location: charIndex, length: 1))
+            return substring == Symbol.tab ? .whitespace : action
         } else {
             return action
         }
@@ -228,10 +235,12 @@ extension EditorTextView: NSLayoutManagerDelegate {
         proposedLineFragment proposedRect: CGRect,
         glyphPosition: CGPoint,
         characterIndex charIndex: Int) -> CGRect {
-        let str = textStorage.string
-        let character = str[str.index(str.startIndex, offsetBy: charIndex)]
-        if character == Character(Symbol.tab) {
-            let scaledWidth = UIFontMetrics.default.scaledValue(for: 18)
+        guard let tabWidth = tabWidth else {
+            return proposedRect
+        }
+        let substring = editorTextStorage.substring(with: NSRange(location: charIndex, length: 1))
+        if substring == Symbol.tab {
+            let scaledWidth = UIFontMetrics.default.scaledValue(for: tabWidth)
             return CGRect(x: proposedRect.minX, y: proposedRect.minY, width: scaledWidth, height: proposedRect.height)
         } else {
             return proposedRect
