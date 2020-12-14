@@ -17,7 +17,7 @@ protocol EditorGutterControllerDelegate: AnyObject {
 final class EditorGutterController {
     weak var delegate: EditorGutterControllerDelegate?
     var theme: EditorTheme
-    var font: UIFont!
+    var font: UIFont?
     var lineNumberLeadingMargin: CGFloat = 7
     var lineNumberTrailingMargin: CGFloat = 7
     var showLineNumbers = false
@@ -134,7 +134,8 @@ private extension EditorGutterController {
                     // 2. The previous line ended with a line break, and we're currently on an empty line.
                     //    In this case we can take half of the line's bounding rect as the line height.
                     if lineNumber == 1 {
-                        glyphRect = CGRect(x: 0, y: 0, width: 0, height: font.lineHeight)
+                        let lineHeight = font?.lineHeight ?? 0
+                        glyphRect = CGRect(x: 0, y: 0, width: 0, height: lineHeight)
                     } else {
                         let previousGlyphRange = NSRange(location: glyphRange.location - 1, length: 1)
                         let boundingRect = layoutManager.boundingRect(forGlyphRange: previousGlyphRange, in: textContainer)
