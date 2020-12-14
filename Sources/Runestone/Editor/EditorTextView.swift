@@ -213,9 +213,8 @@ extension EditorTextView: NSLayoutManagerDelegate {
         _ layoutManager: NSLayoutManager,
         shouldUse action: NSLayoutManager.ControlCharacterAction,
         forControlCharacterAt charIndex: Int) -> NSLayoutManager.ControlCharacterAction {
-        let str = textStorage.string
-        let character = str[str.index(str.startIndex, offsetBy: charIndex)]
-        if character == Character(Symbol.tab) {
+        let substring = editorTextStorage.substring(with: NSRange(location: charIndex, length: 1))
+        if substring == Symbol.tab {
             return .whitespace
         } else {
             return action
