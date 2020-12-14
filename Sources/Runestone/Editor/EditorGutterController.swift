@@ -58,9 +58,9 @@ final class EditorGutterController {
         } else {
             removeGutter()
         }
-        // To maximum performance the drawLines can can draw two things:
-        // 1. Line numbers.
-        // 2. The selected line.
+        // To mazimize performance the drawLines function can draw two things:
+        // 1. Line numbers in the gutter. Highlights them for the selected line.
+        // 2. Background color on the selected lines.
         drawLines(in: rect, highlightedRange: highlightedRange)
     }
 }
