@@ -176,7 +176,7 @@ private extension EditorGutterController {
             let lineHeight = font?.lineHeight ?? 0
             let preferredGlyphRect = layoutManager.lineFragmentRect(forGlyphAt: lineLocation, effectiveRange: nil)
             let bounds = CGRect(x: preferredGlyphRect.minX, y: preferredGlyphRect.minY, width: preferredGlyphRect.width, height: lineHeight)
-            return CGRect(x: gutterWidth, y: bounds.minY, width: rect.width - gutterWidth, height: bounds.height)
+            return CGRect(x: gutterWidth, y: bounds.minY + textContainerInset.top, width: rect.width - gutterWidth, height: bounds.height)
         case .default:
             if let linePosition = textStorage.positionOfLine(containingCharacterAt: lineLocation) {
                 let entireGlyphRange = NSRange(location: lineLocation, length: linePosition.length)
