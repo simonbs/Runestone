@@ -60,6 +60,9 @@
 - (void)processEditing {
     [super processEditing];
 //    [_parser parse:self.string];
+    if ([self.editorDelegate respondsToSelector:@selector(editorTextStorageDidProcessEditing:)]) {
+        [self.editorDelegate editorTextStorageDidProcessEditing:self];
+    }
 }
 
 // MARK: - LineManagerDelegate

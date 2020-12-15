@@ -36,7 +36,7 @@ final class EditorGutterController {
     private weak var textStorage: EditorTextStorage?
     private weak var textContainer: NSTextContainer?
     private var previousMaximumCharacterCount = 0
-    private var numberOfLines = 0
+    private var numberOfLines: Int?
     private var gutterWidth: CGFloat = 0
     private var previousExlusionPath: UIBezierPath?
 
@@ -47,66 +47,17 @@ final class EditorGutterController {
         self.theme = theme
     }
 
-    func drawGutter(in rect: CGRect, isFirstResponder: Bool, selectedRange: NSRange) {
-        let shouldDraw = showLineNumbers || highlightSelectedLine
-        guard shouldDraw, let delegate = delegate, let textContainer = textContainer else {
-            removeGutter()
+    func reset() {
+        if let delegate = delegate {
+            numberOfLines = delegate.numberOfLines(in: self)
+        }
+        prepareGutter()
+    }
+
+    func drawGutterBackground(in rect: CGRect) {
+        guard showLineNumbers else {
             return
         }
-        let highlightedRange = isFirstResponder ? getRangeOfSelectedLineNumbers(selectedRange: selectedRange) : nil
-        if showLineNumbers {
-            numberOfLines = delegate.numberOfLines(in: self)
-            let oldGutterWidth = gutterWidth
-            gutterWidth = widthOfGutter(in: textContainer)
-            if gutterWidth != oldGutterWidth {
-                updateExlusionPath(in: textContainer)
-            }
-            drawGutterBackground(in: rect)
-        } else {
-            removeGutter()
-        }
-        // To mazimize performance the drawLines function can draw two things:
-        // 1. Line numbers in the gutter. Highlights them for the selected line.
-        // 2. Background color on the selected lines.
-        drawLines(in: rect, highlightedRange: highlightedRange)
-    }
-}
-
-private extension EditorGutterController {
-    private func removeGutter() {
-        numberOfLines = 0
-        gutterWidth = 0
-        previousMaximumCharacterCount = 0
-        let exclusionPaths = textContainer?.exclusionPaths ?? []
-        textContainer?.exclusionPaths = exclusionPaths.filter { $0 !== previousExlusionPath }
-        previousExlusionPath = nil
-    }
-
-    private func widthOfGutter(in textContainer: NSTextContainer) -> CGFloat {
-        let stringRepresentation = String(describing: numberOfLines)
-        let maximumCharacterCount = max(stringRepresentation.count, Int(accommodateMinimumCharacterCountInLineNumbers))
-        if maximumCharacterCount != previousMaximumCharacterCount {
-            let wideLineNumberString = String(repeating: "8", count: maximumCharacterCount)
-            let wideLineNumberNSString = wideLineNumberString as NSString
-            let size = wideLineNumberNSString.size(withAttributes: [.font: theme.lineNumberFont])
-            let gutterWidth = ceil(size.width) + lineNumberLeadingMargin + lineNumberTrailingMargin
-            previousMaximumCharacterCount = maximumCharacterCount
-            return gutterWidth
-        } else {
-            return gutterWidth
-        }
-    }
-
-    private func updateExlusionPath(in textContainer: NSTextContainer) {
-        let exclusionRect = CGRect(x: 0, y: 0, width: gutterWidth, height: .greatestFiniteMagnitude)
-        var exlusionPaths = textContainer.exclusionPaths.filter { $0 !== previousExlusionPath }
-        let exlusionPath = UIBezierPath(rect: exclusionRect)
-        exlusionPaths.append(exlusionPath)
-        textContainer.exclusionPaths = exlusionPaths
-        previousExlusionPath = exlusionPath
-    }
-
-    private func drawGutterBackground(in rect: CGRect) {
         let gutterRect = CGRect(x: 0, y: rect.minY, width: gutterWidth, height: rect.height)
         let context = UIGraphicsGetCurrentContext()
         context?.saveGState()
@@ -120,89 +71,164 @@ private extension EditorGutterController {
         context?.restoreGState()
     }
 
-    private func drawLines(in rect: CGRect, highlightedRange: NSRange?) {
-        guard let layoutManager = layoutManager, let textStorage = textStorage, let textContainer = textContainer else {
+    func draw(_ lineFragment: EditorLineFragment) {
+        guard let delegate = delegate, let layoutManager = layoutManager else {
             return
         }
-        let entireGlyphRange = layoutManager.glyphRange(forBoundingRect: rect, in: textContainer)
-        let startLinePosition = textStorage.positionOfLine(containingCharacterAt: entireGlyphRange.location)
-        let endLinePosition = textStorage.positionOfLine(containingCharacterAt: entireGlyphRange.location + entireGlyphRange.length)
-        if let startLinePosition = startLinePosition, let endLinePosition = endLinePosition {
-            for lineNumber in startLinePosition.lineNumber ... endLinePosition.lineNumber {
-                let lineLocation = textStorage.locationOfLine(withLineNumber: lineNumber)
-                let approach = lineHeightComputationApproach(forLineAt: lineLocation)
-                let isHighlightedLine = shouldHighlightLineNumber(lineNumber, inRangeOfSelectedLines: highlightedRange)
-                if isHighlightedLine, let lineRect = frameOfLine(atLocation: lineLocation, in: rect, using: approach) {
-                    drawHighlightedLineBackground(in: lineRect)
-                    if showLineNumbers {
-                        let lineNumberRect = CGRect(x: 0, y: lineRect.minY, width: gutterWidth, height: lineRect.height)
-                        drawHighlightedLineNumberBackground(in: lineNumberRect)
-                    }
-                }
-                if showLineNumbers, let lineNumberRect = frameOfLineNumberInLine(atLocation: lineLocation, in: rect, using: approach) {
-                    drawLineNumber(lineNumber, in: lineNumberRect, isHighlighted: isHighlightedLine)
-                }
+        if let linePosition = delegate.editorGutterController(self, positionOfCharacterAt: lineFragment.glyphRange.location) {
+            let lineLocation = delegate.editorGutterController(self, locationOfLineWithLineNumber: linePosition.lineNumber)
+            if lineFragment.glyphRange.location == lineLocation {
+                let lineFragmentRect = layoutManager.lineFragmentRect(forGlyphAt: lineFragment.glyphRange.location, effectiveRange: nil)
+                let lineNumberRect = CGRect(x: 0, y: lineFragmentRect.minY + textContainerInset.top, width: gutterWidth, height: lineFragmentRect.height)
+                drawLineNumber(linePosition.lineNumber, in: lineNumberRect, isHighlighted: false)
             }
         }
     }
 
-    private func frameOfLineNumberInLine(atLocation lineLocation: Int, in rect: CGRect, using approach: LineHeightComputationApproach) -> CGRect? {
-        guard let layoutManager = layoutManager else {
-            return nil
-        }
-        let bounds: CGRect
-        switch approach {
-        case .extraLine:
-            bounds = layoutManager.extraLineFragmentRect
-        case .lineBreak:
-            let lineHeight = font?.lineHeight ?? 0
-            let preferredGlyphRect = layoutManager.lineFragmentRect(forGlyphAt: lineLocation, effectiveRange: nil)
-            bounds = CGRect(x: preferredGlyphRect.minX, y: preferredGlyphRect.minY, width: preferredGlyphRect.width, height: lineHeight)
-        case .default:
-            bounds = layoutManager.lineFragmentRect(forGlyphAt: lineLocation, effectiveRange: nil)
-        }
-        return CGRect(x: 0, y: bounds.minY + textContainerInset.top, width: gutterWidth, height: bounds.height)
-    }
-
-    private func frameOfLine(atLocation lineLocation: Int, in rect: CGRect, using approach: LineHeightComputationApproach) -> CGRect? {
-        guard let textStorage = textStorage, let textContainer = textContainer, let layoutManager = layoutManager else {
-            return nil
-        }
-        switch approach {
-        case .extraLine:
-            let bounds = layoutManager.extraLineFragmentRect
-            return CGRect(x: gutterWidth, y: bounds.minY + textContainerInset.top, width: rect.width - gutterWidth, height: bounds.height)
-        case .lineBreak:
-            let lineHeight = font?.lineHeight ?? 0
-            let preferredGlyphRect = layoutManager.lineFragmentRect(forGlyphAt: lineLocation, effectiveRange: nil)
-            let bounds = CGRect(x: preferredGlyphRect.minX, y: preferredGlyphRect.minY, width: preferredGlyphRect.width, height: lineHeight)
-            return CGRect(x: gutterWidth, y: bounds.minY + textContainerInset.top, width: rect.width - gutterWidth, height: bounds.height)
-        case .default:
-            if let linePosition = textStorage.positionOfLine(containingCharacterAt: lineLocation) {
-                let entireGlyphRange = NSRange(location: lineLocation, length: linePosition.length)
-                let bounds = layoutManager.boundingRect(forGlyphRange: entireGlyphRange, in: textContainer)
-                return CGRect(x: gutterWidth, y: bounds.minY + textContainerInset.top, width: rect.width - gutterWidth, height: bounds.height)
-            } else {
-                return nil
+    func drawExtraLineIfNecessary() {
+        if let layoutManager = layoutManager, let numberOfLines = numberOfLines {
+            let extraLineFragmentUsedRect = layoutManager.extraLineFragmentUsedRect
+            if extraLineFragmentUsedRect.size != .zero {
+                let yPosition = extraLineFragmentUsedRect.minY + textContainerInset.top
+                let lineHeight = font?.lineHeight ?? extraLineFragmentUsedRect.height
+                let lineRect = CGRect(x: 0, y: yPosition, width: gutterWidth, height: lineHeight)
+                drawLineNumber(numberOfLines, in: lineRect, isHighlighted: false)
             }
         }
     }
+}
 
-    private func drawHighlightedLineBackground(in rect: CGRect) {
-        let context = UIGraphicsGetCurrentContext()
-        context?.saveGState()
-        context?.setFillColor(theme.gutterBackgroundColorOnSelectedLine.cgColor)
-        context?.fill(rect)
-        context?.restoreGState()
+private extension EditorGutterController {
+    private func prepareGutter() {
+        if showLineNumbers, let textContainer = textContainer {
+            let oldGutterWidth = gutterWidth
+            gutterWidth = widthOfGutter(in: textContainer)
+            if gutterWidth != oldGutterWidth {
+                updateExlusionPath(in: textContainer)
+            }
+        } else {
+            removeGutter()
+        }
     }
 
-    private func drawHighlightedLineNumberBackground(in rect: CGRect) {
-        let context = UIGraphicsGetCurrentContext()
-        context?.saveGState()
-        context?.setFillColor(theme.gutterBackgroundColorOnSelectedLine.cgColor)
-        context?.fill(rect)
-        context?.restoreGState()
+    private func removeGutter() {
+        numberOfLines = nil
+        gutterWidth = 0
+        previousMaximumCharacterCount = 0
+        let exclusionPaths = textContainer?.exclusionPaths ?? []
+        textContainer?.exclusionPaths = exclusionPaths.filter { $0 !== previousExlusionPath }
+        previousExlusionPath = nil
     }
+
+    private func widthOfGutter(in textContainer: NSTextContainer) -> CGFloat {
+        guard let numberOfLines = numberOfLines else {
+            return gutterWidth
+        }
+        let stringRepresentation = String(describing: numberOfLines)
+        let maximumCharacterCount = max(stringRepresentation.count, Int(accommodateMinimumCharacterCountInLineNumbers))
+        guard maximumCharacterCount != previousMaximumCharacterCount else {
+            return gutterWidth
+        }
+        let wideLineNumberString = String(repeating: "8", count: maximumCharacterCount)
+        let wideLineNumberNSString = wideLineNumberString as NSString
+        let size = wideLineNumberNSString.size(withAttributes: [.font: theme.lineNumberFont])
+        let gutterWidth = ceil(size.width) + lineNumberLeadingMargin + lineNumberTrailingMargin
+        previousMaximumCharacterCount = maximumCharacterCount
+        return gutterWidth
+    }
+
+    private func updateExlusionPath(in textContainer: NSTextContainer) {
+        let exclusionRect = CGRect(x: 0, y: 0, width: gutterWidth, height: .greatestFiniteMagnitude)
+        var exlusionPaths = textContainer.exclusionPaths.filter { $0 !== previousExlusionPath }
+        let exlusionPath = UIBezierPath(rect: exclusionRect)
+        exlusionPaths.append(exlusionPath)
+        textContainer.exclusionPaths = exlusionPaths
+        previousExlusionPath = exlusionPath
+    }
+
+//    private func drawLines(in rect: CGRect, highlightedRange: NSRange?) {
+//        guard let layoutManager = layoutManager, let textStorage = textStorage, let textContainer = textContainer else {
+//            return
+//        }
+//        let entireGlyphRange = layoutManager.glyphRange(forBoundingRect: rect, in: textContainer)
+//        let startLinePosition = textStorage.positionOfLine(containingCharacterAt: entireGlyphRange.location)
+//        let endLinePosition = textStorage.positionOfLine(containingCharacterAt: entireGlyphRange.location + entireGlyphRange.length)
+//        if let startLinePosition = startLinePosition, let endLinePosition = endLinePosition {
+//            for lineNumber in startLinePosition.lineNumber ... endLinePosition.lineNumber {
+//                let lineLocation = textStorage.locationOfLine(withLineNumber: lineNumber)
+//                let approach = lineHeightComputationApproach(forLineAt: lineLocation)
+//                let isHighlightedLine = shouldHighlightLineNumber(lineNumber, inRangeOfSelectedLines: highlightedRange)
+//                if isHighlightedLine, let lineRect = frameOfLine(atLocation: lineLocation, in: rect, using: approach) {
+//                    drawHighlightedLineBackground(in: lineRect)
+//                    if showLineNumbers {
+//                        let lineNumberRect = CGRect(x: 0, y: lineRect.minY, width: gutterWidth, height: lineRect.height)
+//                        drawHighlightedLineNumberBackground(in: lineNumberRect)
+//                    }
+//                }
+//                if showLineNumbers, let lineNumberRect = frameOfLineNumberInLine(atLocation: lineLocation, in: rect, using: approach) {
+//                    drawLineNumber(lineNumber, in: lineNumberRect, isHighlighted: isHighlightedLine)
+//                }
+//            }
+//        }
+//    }
+//
+//    private func frameOfLineNumberInLine(atLocation lineLocation: Int, in rect: CGRect, using approach: LineHeightComputationApproach) -> CGRect? {
+//        guard let layoutManager = layoutManager else {
+//            return nil
+//        }
+//        let bounds: CGRect
+//        switch approach {
+//        case .extraLine:
+//            bounds = layoutManager.extraLineFragmentRect
+//        case .lineBreak:
+//            let lineHeight = font?.lineHeight ?? 0
+//            let preferredGlyphRect = layoutManager.lineFragmentRect(forGlyphAt: lineLocation, effectiveRange: nil)
+//            bounds = CGRect(x: preferredGlyphRect.minX, y: preferredGlyphRect.minY, width: preferredGlyphRect.width, height: lineHeight)
+//        case .default:
+//            bounds = layoutManager.lineFragmentRect(forGlyphAt: lineLocation, effectiveRange: nil)
+//        }
+//        return CGRect(x: 0, y: bounds.minY + textContainerInset.top, width: gutterWidth, height: bounds.height)
+//    }
+//
+//    private func frameOfLine(atLocation lineLocation: Int, in rect: CGRect, using approach: LineHeightComputationApproach) -> CGRect? {
+//        guard let textStorage = textStorage, let textContainer = textContainer, let layoutManager = layoutManager else {
+//            return nil
+//        }
+//        switch approach {
+//        case .extraLine:
+//            let bounds = layoutManager.extraLineFragmentRect
+//            return CGRect(x: gutterWidth, y: bounds.minY + textContainerInset.top, width: rect.width - gutterWidth, height: bounds.height)
+//        case .lineBreak:
+//            let lineHeight = font?.lineHeight ?? 0
+//            let preferredGlyphRect = layoutManager.lineFragmentRect(forGlyphAt: lineLocation, effectiveRange: nil)
+//            let bounds = CGRect(x: preferredGlyphRect.minX, y: preferredGlyphRect.minY, width: preferredGlyphRect.width, height: lineHeight)
+//            return CGRect(x: gutterWidth, y: bounds.minY + textContainerInset.top, width: rect.width - gutterWidth, height: bounds.height)
+//        case .default:
+//            if let linePosition = textStorage.positionOfLine(containingCharacterAt: lineLocation) {
+//                let entireGlyphRange = NSRange(location: lineLocation, length: linePosition.length)
+//                let bounds = layoutManager.boundingRect(forGlyphRange: entireGlyphRange, in: textContainer)
+//                return CGRect(x: gutterWidth, y: bounds.minY + textContainerInset.top, width: rect.width - gutterWidth, height: bounds.height)
+//            } else {
+//                return nil
+//            }
+//        }
+//    }
+//
+//    private func drawHighlightedLineBackground(in rect: CGRect) {
+//        let context = UIGraphicsGetCurrentContext()
+//        context?.saveGState()
+//        context?.setFillColor(theme.gutterBackgroundColorOnSelectedLine.cgColor)
+//        context?.fill(rect)
+//        context?.restoreGState()
+//    }
+//
+//    private func drawHighlightedLineNumberBackground(in rect: CGRect) {
+//        let context = UIGraphicsGetCurrentContext()
+//        context?.saveGState()
+//        context?.setFillColor(theme.gutterBackgroundColorOnSelectedLine.cgColor)
+//        context?.fill(rect)
+//        context?.restoreGState()
+//    }
 
     private func drawLineNumber(_ lineNumber: Int, in rect: CGRect, isHighlighted: Bool) {
         let textColor = isHighlighted ? theme.lineNumberColorOnSelectedLine : theme.lineNumberColor
@@ -216,56 +242,56 @@ private extension EditorGutterController {
         text.draw(in: textRect, withAttributes: attributes)
     }
 
-    private func shouldHighlightLineNumber(_ lineNumber: Int, inRangeOfSelectedLines selectedLineRange: NSRange?) -> Bool {
-        if let selectedLineRange = selectedLineRange {
-            return lineNumber >= selectedLineRange.location && lineNumber <= selectedLineRange.location + selectedLineRange.length
-        } else {
-            return false
-        }
-    }
-
-    private func getRangeOfSelectedLineNumbers(selectedRange: NSRange) -> NSRange? {
-        guard highlightSelectedLine else {
-            return nil
-        }
-        guard let startLinePosition = delegate?.editorGutterController(self, positionOfCharacterAt: selectedRange.location) else {
-            return nil
-        }
-        let endLocation = selectedRange.location + selectedRange.length
-        if selectedRange.length > 0, let endLinePosition = delegate?.editorGutterController(self, positionOfCharacterAt: endLocation) {
-            let lineNumberLength = endLinePosition.lineNumber - startLinePosition.lineNumber
-            return NSRange(location: startLinePosition.lineNumber, length: lineNumberLength)
-        } else {
-            return NSRange(location: startLinePosition.lineNumber, length: 0)
-        }
-    }
-
-    private func height(of text: NSString) -> CGFloat {
-        let attributes: [NSAttributedString.Key: Any] = [.font: theme.lineNumberFont]
-        let textSize = text.size(withAttributes: attributes)
-        return textSize.height
-    }
-
-    private func isEmptyLine(at range: NSRange) -> Bool {
-        let str = delegate?.editorGutterController(self, substringIn: range)
-        return str == nil || str == Symbol.lineFeed
-    }
-
-    private func lineHeightComputationApproach(forLineAt lineLocation: Int) -> LineHeightComputationApproach {
-        guard let layoutManager = layoutManager else {
-            return .default
-        }
-        let firstGlyphRange = NSRange(location: lineLocation, length: 1)
-        let preferredGlyphRect = layoutManager.lineFragmentRect(forGlyphAt: lineLocation, effectiveRange: nil)
-        if preferredGlyphRect == .zero {
-            // It's the extra blank line at the end of the document.
-            return .extraLine
-        } else if delegate?.editorGutterController(self, substringIn: firstGlyphRange) == Symbol.lineFeed {
-            // The first character is a line break. This happens on lines that aren't the least line but contains only a line break.
-            return .lineBreak
-        } else {
-            // Handle any other line.
-            return .default
-        }
-    }
+//    private func shouldHighlightLineNumber(_ lineNumber: Int, inRangeOfSelectedLines selectedLineRange: NSRange?) -> Bool {
+//        if let selectedLineRange = selectedLineRange {
+//            return lineNumber >= selectedLineRange.location && lineNumber <= selectedLineRange.location + selectedLineRange.length
+//        } else {
+//            return false
+//        }
+//    }
+//
+//    private func getRangeOfSelectedLineNumbers(selectedRange: NSRange) -> NSRange? {
+//        guard highlightSelectedLine else {
+//            return nil
+//        }
+//        guard let startLinePosition = delegate?.editorGutterController(self, positionOfCharacterAt: selectedRange.location) else {
+//            return nil
+//        }
+//        let endLocation = selectedRange.location + selectedRange.length
+//        if selectedRange.length > 0, let endLinePosition = delegate?.editorGutterController(self, positionOfCharacterAt: endLocation) {
+//            let lineNumberLength = endLinePosition.lineNumber - startLinePosition.lineNumber
+//            return NSRange(location: startLinePosition.lineNumber, length: lineNumberLength)
+//        } else {
+//            return NSRange(location: startLinePosition.lineNumber, length: 0)
+//        }
+//    }
+//
+//    private func height(of text: NSString) -> CGFloat {
+//        let attributes: [NSAttributedString.Key: Any] = [.font: theme.lineNumberFont]
+//        let textSize = text.size(withAttributes: attributes)
+//        return textSize.height
+//    }
+//
+//    private func isEmptyLine(at range: NSRange) -> Bool {
+//        let str = delegate?.editorGutterController(self, substringIn: range)
+//        return str == nil || str == Symbol.lineFeed
+//    }
+//
+//    private func lineHeightComputationApproach(forLineAt lineLocation: Int) -> LineHeightComputationApproach {
+//        guard let layoutManager = layoutManager else {
+//            return .default
+//        }
+//        let firstGlyphRange = NSRange(location: lineLocation, length: 1)
+//        let preferredGlyphRect = layoutManager.lineFragmentRect(forGlyphAt: lineLocation, effectiveRange: nil)
+//        if preferredGlyphRect == .zero {
+//            // It's the extra blank line at the end of the document.
+//            return .extraLine
+//        } else if delegate?.editorGutterController(self, substringIn: firstGlyphRange) == Symbol.lineFeed {
+//            // The first character is a line break. This happens on lines that aren't the least line but contains only a line break.
+//            return .lineBreak
+//        } else {
+//            // Handle any other line.
+//            return .default
+//        }
+//    }
 }

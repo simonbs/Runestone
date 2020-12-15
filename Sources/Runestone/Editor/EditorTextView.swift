@@ -57,6 +57,7 @@ open class EditorTextView: UITextView {
         set {
             if newValue != gutterController.showLineNumbers {
                 gutterController.showLineNumbers = newValue
+                gutterController.reset()
                 setNeedsDisplay()
             }
         }
@@ -68,7 +69,7 @@ open class EditorTextView: UITextView {
         set {
             if newValue != gutterController.lineNumberLeadingMargin {
                 gutterController.lineNumberLeadingMargin = newValue
-                invalidateLayoutManager()
+                gutterController.reset()
             }
         }
     }
@@ -79,7 +80,18 @@ open class EditorTextView: UITextView {
         set {
             if newValue != gutterController.lineNumberTrailingMargin {
                 gutterController.lineNumberTrailingMargin = newValue
-                invalidateLayoutManager()
+                gutterController.reset()
+            }
+        }
+    }
+    public var lineNumberFont: UIFont? {
+        get {
+            return gutterController.font
+        }
+        set {
+            if newValue != gutterController.font {
+                gutterController.font = newValue
+                gutterController.reset()
             }
         }
     }
@@ -101,7 +113,7 @@ open class EditorTextView: UITextView {
         set {
             if newValue != gutterController.highlightSelectedLine {
                 gutterController.highlightSelectedLine = newValue
-                setNeedsDisplay()
+//                setNeedsDisplay()
             }
         }
     }
@@ -123,7 +135,6 @@ open class EditorTextView: UITextView {
         didSet {
             if font != oldValue {
                 invisibleCharactersController.font = font
-                gutterController.font = font
                 editorLayoutManager.font = font
             }
         }
@@ -142,10 +153,10 @@ open class EditorTextView: UITextView {
     private let invisibleCharactersController = EditorInvisibleCharactersController()
     private let gutterController: EditorGutterController
     private let editorLayoutManager = EditorLayoutManager()
+    private var shouldDrawDummyExtraLineNumber = false
 
     public init(frame: CGRect = .zero) {
         let textContainer = Self.createTextContainer(layoutManager: editorLayoutManager, textStorage: editorTextStorage)
-        textContainer.widthTracksTextView = true
         gutterController = EditorGutterController(
             layoutManager: editorLayoutManager,
             textStorage: editorTextStorage,
@@ -154,7 +165,6 @@ open class EditorTextView: UITextView {
         super.init(frame: frame, textContainer: textContainer)
         delegate = self
         isDelegateLockEnabled = true
-        contentMode = .redraw
         editorTextStorage.editorDelegate = self
         editorLayoutManager.delegate = self
         editorLayoutManager.editorDelegate = self
@@ -164,8 +174,9 @@ open class EditorTextView: UITextView {
         invisibleCharactersController.font = font
         invisibleCharactersController.textContainerInset = textContainerInset
         gutterController.delegate = self
-        gutterController.font = font
+        gutterController.font = lineNumberFont
         gutterController.textContainerInset = textContainerInset
+        updateShouldDrawDummyExtraLineNumber()
     }
 
     required public init?(coder: NSCoder) {
@@ -178,11 +189,6 @@ open class EditorTextView: UITextView {
         } else {
             return nil
         }
-    }
-
-    public override func draw(_ rect: CGRect) {
-        super.draw(rect)
-        gutterController.drawGutter(in: rect, isFirstResponder: isFirstResponder, selectedRange: selectedRange)
     }
 
     public override func responds(to aSelector: Selector!) -> Bool {
@@ -200,12 +206,20 @@ open class EditorTextView: UITextView {
             return super.forwardingTarget(for: aSelector)
         }
     }
+
+    open override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        gutterController.drawGutterBackground(in: rect)
+        if shouldDrawDummyExtraLineNumber {
+            gutterController.drawExtraLineIfNecessary()
+        }
+    }
 }
 
 private extension EditorTextView {
     private static func createTextContainer(layoutManager: EditorLayoutManager, textStorage: NSTextStorage) -> NSTextContainer {
         textStorage.addLayoutManager(layoutManager)
-        let textContainer = NSTextContainer(size: CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
+        let textContainer = NSTextContainer()
         layoutManager.addTextContainer(textContainer)
         return textContainer
     }
@@ -213,6 +227,18 @@ private extension EditorTextView {
     private func invalidateLayoutManager() {
         let glyphRange = layoutManager.glyphRange(for: textContainer)
         editorLayoutManager.invalidateDisplay(forGlyphRange: glyphRange)
+    }
+
+    private func updateShouldDrawDummyExtraLineNumber() {
+        // The layoutManager doesn't get a chance to draw backgrounds when the textStorage is empty.
+        // That means we won't be showing the first line number. To work around that we draw the first
+        // line number in the text view as long as the textStorage is empty.
+        // It's probably a bit more expensive but we're not showing any text so it's not that bad.
+        let oldValue = shouldDrawDummyExtraLineNumber
+        shouldDrawDummyExtraLineNumber = textStorage.length == 0
+        if shouldDrawDummyExtraLineNumber != oldValue {
+            setNeedsDisplay()
+        }
     }
 }
 
@@ -249,12 +275,16 @@ extension EditorTextView: NSLayoutManagerDelegate {
 }
 
 extension EditorTextView: EditorTextStorageDelegate {
+    public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
+        updateShouldDrawDummyExtraLineNumber()
+    }
+
     public func editorTextStorageDidInsertLine(_ editorTextStorage: EditorTextStorage) {
-        setNeedsDisplay()
+//        setNeedsDisplay()
     }
 
     public func editorTextStorageDidRemoveLine(_ editorTextStorage: EditorTextStorage) {
-        setNeedsDisplay()
+//        setNeedsDisplay()
     }
 }
 
@@ -263,7 +293,16 @@ extension EditorTextView: EditorLayoutManagerDelegate {
         return showTabs || showSpaces || showLineBreaks || showLineNumbers
     }
 
+    func editorLayoutManagerWillEnumerateLineFragments(_ layoutManager: EditorLayoutManager) {
+        gutterController.reset()
+    }
+
+    func editorLayoutManagerDidEnumerateLineFragments(_ layoutManager: EditorLayoutManager) {
+        gutterController.drawExtraLineIfNecessary()
+    }
+
     func editorLayoutManager(_ layoutManager: EditorLayoutManager, didEnumerate lineFragment: EditorLineFragment) {
+        gutterController.draw(lineFragment)
         invisibleCharactersController.drawInvisibleCharacters(in: lineFragment)
     }
 }
@@ -295,21 +334,21 @@ extension EditorTextView: EditorGutterControllerDelegate {
 extension EditorTextView: UITextViewDelegate {
     public func textViewDidBeginEditing(_ textView: UITextView) {
         if highlightSelectedLine {
-            setNeedsDisplay()
+//            setNeedsDisplay()
         }
         editorDelegate?.textViewDidBeginEditing?(self)
     }
 
     public func textViewDidEndEditing(_ textView: UITextView) {
         if highlightSelectedLine {
-            setNeedsDisplay()
+//            setNeedsDisplay()
         }
         editorDelegate?.textViewDidEndEditing?(self)
     }
 
     public func textViewDidChangeSelection(_ textView: UITextView) {
         if highlightSelectedLine {
-            setNeedsDisplay()
+//            setNeedsDisplay()
         }
         editorDelegate?.textViewDidChangeSelection?(self)
     }
