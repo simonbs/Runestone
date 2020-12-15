@@ -107,7 +107,7 @@ private extension EditorGutterController {
     }
 
     private func drawGutterBackground(in rect: CGRect) {
-        let gutterRect = CGRect(x: 0, y: 0, width: gutterWidth, height: rect.height)
+        let gutterRect = CGRect(x: 0, y: rect.minY, width: gutterWidth, height: rect.height)
         let context = UIGraphicsGetCurrentContext()
         context?.saveGState()
         context?.setFillColor(theme.gutterBackgroundColor.cgColor)
