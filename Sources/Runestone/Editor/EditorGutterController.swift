@@ -94,17 +94,26 @@ final class EditorGutterController {
 
     func draw(_ lineFragment: EditorLineFragment) {
         let shouldDraw = showLineNumbers || highlightSelectedLine
-        guard shouldDraw, let delegate = delegate, let layoutManager = layoutManager else {
+        guard shouldDraw, let delegate = delegate, let layoutManager = layoutManager, let textContainer = textContainer else {
             return
         }
         if let linePosition = delegate.editorGutterController(self, positionOfCharacterAt: lineFragment.glyphRange.location) {
             let lineLocation = delegate.editorGutterController(self, locationOfLineWithLineNumber: linePosition.lineNumber)
             if lineFragment.glyphRange.location == lineLocation {
                 let lineFragmentRect = layoutManager.lineFragmentRect(forGlyphAt: lineFragment.glyphRange.location, effectiveRange: nil)
-                let lineYPosition = lineFragmentRect.minY + textContainerInset.top
-                let lineRect = CGRect(x: 0, y: lineYPosition, width: textViewWidth, height: lineFragmentRect.height)
                 let lineRange = NSRange(location: lineLocation, length: linePosition.length)
-                drawLine(withLineNumber: linePosition.lineNumber, in: lineRect, spanning: lineRange)
+                let selectedRange = delegate.selectedRangeInTextView(self)
+                let isLineSelected = shouldHighlineLine(spanning: lineRange, forSelectedRange: selectedRange)
+                if isLineSelected {
+                    let entireLineRange = NSRange(location: lineLocation, length: linePosition.length)
+                    let lineBoundingRect = layoutManager.boundingRect(forGlyphRange: entireLineRange, in: textContainer)
+                    let lineBackgroundYPosition = lineBoundingRect.minY + textContainerInset.top
+                    let lineBackgroundRect = CGRect(x: gutterWidth, y: lineBackgroundYPosition, width: textViewWidth, height: lineBoundingRect.height)
+                    drawLineBackgrounds(in: lineBackgroundRect)
+                }
+                let gutterRect = CGRect(x: 0, y: lineFragmentRect.minY + textContainerInset.top, width: gutterWidth, height: lineFragmentRect.height)
+                let textColor = isLineSelected ? theme.selectedLinesLineNumberColor : theme.lineNumberColor
+                drawLineNumber(linePosition.lineNumber, in: gutterRect, textColor: textColor)
             }
         }
     }
@@ -118,31 +127,32 @@ final class EditorGutterController {
                 let lineHeight = lineNumberFont?.lineHeight ?? extraLineFragmentUsedRect.height
                 let lineRect = CGRect(x: 0, y: lineYPosition, width: gutterWidth, height: lineHeight)
                 let lineRange = NSRange(location: textStorage.length, length: 1)
-                drawLine(withLineNumber: numberOfLines, in: lineRect, spanning: lineRange)
+                let selectedRange = delegate?.selectedRangeInTextView(self)
+                let isLineSelected = shouldHighlineLine(spanning: lineRange, forSelectedRange: selectedRange)
+                if isLineSelected {
+                    drawLineBackgrounds(in: lineRect)
+                }
+                let gutterRect = CGRect(x: 0, y: lineRect.minY, width: gutterWidth, height: lineRect.height)
+                let textColor = isLineSelected ? theme.selectedLinesLineNumberColor : theme.lineNumberColor
+                drawLineNumber(numberOfLines, in: gutterRect, textColor: textColor)
             }
         }
     }
 }
 
 private extension EditorGutterController {
-    private func drawLine(withLineNumber lineNumber: Int, in lineRect: CGRect, spanning lineRange: NSRange) {
-        let selectedRange = delegate?.selectedRangeInTextView(self)
-        let isLineSelected = shouldHighlineLine(spanning: lineRange, forSelectedRange: selectedRange)
+    private func drawLineBackgrounds(in rect: CGRect) {
         // We only draw line backgrounds when the selected range is zero, meaning no characters are selected.
         // Highlighting the current lines when characters is selected looks strange and makes it difficult to see
         // what is the selected characters and what is the current lines.
-        if isLineSelected && selectedRange?.length == 0 {
-            let lineContentWidth = textViewWidth - gutterWidth
-            let lineContentRect = CGRect(x: gutterWidth, y: lineRect.minY, width: lineContentWidth, height: lineRect.height)
+        let selectedRange = delegate?.selectedRangeInTextView(self)
+        if selectedRange?.length == 0 {
+            let lineContentRect = CGRect(x: gutterWidth, y: rect.minY, width: textViewWidth - gutterWidth, height: rect.height)
             drawSelectedLineBackground(in: lineContentRect)
         }
         if showLineNumbers {
-            let gutterRect = CGRect(x: 0, y: lineRect.minY, width: gutterWidth, height: lineRect.height)
-            if isLineSelected {
-                drawSelectedGutterBackground(in: gutterRect)
-            }
-            let textColor = isLineSelected ? theme.selectedLinesLineNumberColor : theme.lineNumberColor
-            drawLineNumber(lineNumber, in: gutterRect, textColor: textColor)
+            let gutterLineBoundingRect = CGRect(x: 0, y: rect.minY, width: gutterWidth, height: rect.height)
+            drawSelectedGutterBackground(in: gutterLineBoundingRect)
         }
     }
 
