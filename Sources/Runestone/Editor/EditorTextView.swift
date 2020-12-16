@@ -363,7 +363,12 @@ extension EditorTextView: UITextViewDelegate {
 
     public func textViewDidChangeSelection(_ textView: UITextView) {
         if highlightSelectedLine {
-            invalidateLayoutManager()
+            // Redrawing when the selection changes works around an issue where fragment backgrounds
+            // would sometimes "glitch" during drawing when the textContainer had an exlusionPath.
+            // This could be reproduced by enabling highlighting of the selected line and line numbers,
+            // and then adding two lines to the text view and navigating up and down those two,
+            // thereby changing the selected line. The selected line would sometimes be drawn incorrectly.
+            setNeedsDisplay()
         }
         editorDelegate?.textViewDidChangeSelection?(self)
     }
