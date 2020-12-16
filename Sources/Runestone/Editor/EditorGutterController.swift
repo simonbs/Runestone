@@ -33,7 +33,6 @@ final class EditorGutterController {
     private weak var textContainer: NSTextContainer?
     private var previousMaximumCharacterCount = 0
     private var gutterWidth: CGFloat = 0
-    private var previousExlusionPath: UIBezierPath?
     private var numberOfLines: Int {
         return delegate?.numberOfLines(in: self) ?? 0
     }
@@ -115,9 +114,7 @@ private extension EditorGutterController {
     private func removeGutter() {
         gutterWidth = 0
         previousMaximumCharacterCount = 0
-        let exclusionPaths = textContainer?.exclusionPaths ?? []
-        textContainer?.exclusionPaths = exclusionPaths.filter { $0 !== previousExlusionPath }
-        previousExlusionPath = nil
+        textContainer?.exclusionPaths = []
     }
 
     private func widthOfGutter(in textContainer: NSTextContainer) -> CGFloat {
@@ -136,11 +133,8 @@ private extension EditorGutterController {
 
     private func updateExlusionPath(in textContainer: NSTextContainer) {
         let exclusionRect = CGRect(x: 0, y: 0, width: gutterWidth, height: .greatestFiniteMagnitude)
-        var exlusionPaths = textContainer.exclusionPaths.filter { $0 !== previousExlusionPath }
         let exlusionPath = UIBezierPath(rect: exclusionRect)
-        exlusionPaths.append(exlusionPath)
-        textContainer.exclusionPaths = exlusionPaths
-        previousExlusionPath = exlusionPath
+        textContainer.exclusionPaths = [exlusionPath]
     }
 
     private func shouldHighlineLine(spanning lineRange: NSRange) -> Bool {
