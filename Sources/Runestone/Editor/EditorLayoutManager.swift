@@ -26,9 +26,9 @@ final class EditorLayoutManager: NSLayoutManager {
            bounds.intersects(extraLineFragmentRect),
            let numberOfLines = editorDelegate?.numberOfLinesIn(self),
            numberOfLines > 1 {
-            // Setting the range to the last character in the textStorage when dealing with the
-            // extra line ensures that the layout manager has the correct size when drawing its
-            // background. Thanks for sharing this snippet Alexsander Akers (http://twitter.com/a2)
+            // Setting the range to the last character in the textStorage when dealing with the extra
+            // line ensures that the layout manager has the correct size when drawing its background.
+            // Thanks for sharing this snippet Alexsander Akers (http://twitter.com/a2)
             range = NSRange(location: textStorage.length - 1, length: 1)
         }
         return range

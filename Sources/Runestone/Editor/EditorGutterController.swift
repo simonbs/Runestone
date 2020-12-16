@@ -48,27 +48,24 @@ final class EditorGutterController {
     }
 
     func reset() {
-        if let delegate = delegate {
-            numberOfLines = delegate.numberOfLines(in: self)
-        }
+        numberOfLines = delegate?.numberOfLines(in: self)
         prepareGutter()
     }
 
     func drawGutterBackground(in rect: CGRect) {
-        guard showLineNumbers else {
-            return
+        if showLineNumbers {
+            let gutterRect = CGRect(x: 0, y: rect.minY, width: gutterWidth, height: rect.height)
+            let context = UIGraphicsGetCurrentContext()
+            context?.saveGState()
+            context?.setFillColor(theme.gutterBackgroundColor.cgColor)
+            context?.fill(gutterRect)
+            if theme.gutterHairlineWidth > 0 {
+                let hairlineRect = CGRect(x: gutterWidth - theme.gutterHairlineWidth, y: 0, width: theme.gutterHairlineWidth, height: rect.height)
+                context?.setFillColor(theme.gutterHairlineColor.cgColor)
+                context?.fill(hairlineRect)
+            }
+            context?.restoreGState()
         }
-        let gutterRect = CGRect(x: 0, y: rect.minY, width: gutterWidth, height: rect.height)
-        let context = UIGraphicsGetCurrentContext()
-        context?.saveGState()
-        context?.setFillColor(theme.gutterBackgroundColor.cgColor)
-        context?.fill(gutterRect)
-        if theme.gutterHairlineWidth > 0 {
-            let hairlineRect = CGRect(x: gutterWidth - theme.gutterHairlineWidth, y: 0, width: theme.gutterHairlineWidth, height: rect.height)
-            context?.setFillColor(theme.gutterHairlineColor.cgColor)
-            context?.fill(hairlineRect)
-        }
-        context?.restoreGState()
     }
 
     func draw(_ lineFragment: EditorLineFragment) {
