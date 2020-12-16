@@ -10,7 +10,6 @@ import UIKit
 protocol EditorLayoutManagerDelegate: AnyObject {
     func numberOfLinesIn(_ layoutManager: EditorLayoutManager) -> Int
     func editorLayoutManagerShouldEnumerateLineFragments(_ layoutManager: EditorLayoutManager) -> Bool
-    func editorLayoutManagerWillEnumerateLineFragments(_ layoutManager: EditorLayoutManager)
     func editorLayoutManagerDidEnumerateLineFragments(_ layoutManager: EditorLayoutManager)
     func editorLayoutManager(_ layoutManager: EditorLayoutManager, didEnumerate lineFragment: EditorLineFragment)
 }
@@ -39,7 +38,6 @@ final class EditorLayoutManager: NSLayoutManager {
         guard let editorDelegate = editorDelegate, editorDelegate.editorLayoutManagerShouldEnumerateLineFragments(self) else {
             return
         }
-        editorDelegate.editorLayoutManagerWillEnumerateLineFragments(self)
         enumerateLineFragments(forGlyphRange: glyphsToShow) { [weak self] rect, usedRect, textContainer, glyphRange, stop in
             if let self = self {
                 let lineFragment = EditorLineFragment(rect: rect, usedRect: usedRect, textContainer: textContainer, glyphRange: glyphRange)

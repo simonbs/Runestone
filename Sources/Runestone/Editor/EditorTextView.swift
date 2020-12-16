@@ -57,8 +57,10 @@ open class EditorTextView: UITextView {
         set {
             if newValue != gutterController.showLineNumbers {
                 gutterController.showLineNumbers = newValue
-                gutterController.reset()
+                gutterController.updateGutterWidth()
+                gutterController.updateExclusionPath()
                 setNeedsDisplay()
+                invalidateLayoutManager()
             }
         }
     }
@@ -69,7 +71,6 @@ open class EditorTextView: UITextView {
         set {
             if newValue != gutterController.lineNumberLeadingMargin {
                 gutterController.lineNumberLeadingMargin = newValue
-                gutterController.reset()
             }
         }
     }
@@ -80,7 +81,6 @@ open class EditorTextView: UITextView {
         set {
             if newValue != gutterController.lineNumberTrailingMargin {
                 gutterController.lineNumberTrailingMargin = newValue
-                gutterController.reset()
             }
         }
     }
@@ -91,7 +91,6 @@ open class EditorTextView: UITextView {
         set {
             if newValue != gutterController.lineNumberFont {
                 gutterController.lineNumberFont = newValue
-                gutterController.reset()
             }
         }
     }
@@ -103,6 +102,7 @@ open class EditorTextView: UITextView {
             if newValue != gutterController.accommodateMinimumCharacterCountInLineNumbers {
                 gutterController.accommodateMinimumCharacterCountInLineNumbers = newValue
                 invalidateLayoutManager()
+                setNeedsDisplay()
             }
         }
     }
@@ -113,7 +113,7 @@ open class EditorTextView: UITextView {
         set {
             if newValue != gutterController.highlightSelectedLine {
                 gutterController.highlightSelectedLine = newValue
-//                setNeedsDisplay()
+                invalidateLayoutManager()
             }
         }
     }
@@ -165,7 +165,6 @@ open class EditorTextView: UITextView {
         super.init(frame: frame, textContainer: textContainer)
         delegate = self
         isDelegateLockEnabled = true
-        editorTextStorage.editorDelegate = self
         editorLayoutManager.delegate = self
         editorLayoutManager.editorDelegate = self
         editorLayoutManager.allowsNonContiguousLayout = true
@@ -176,6 +175,8 @@ open class EditorTextView: UITextView {
         gutterController.delegate = self
         gutterController.lineNumberFont = lineNumberFont
         gutterController.textContainerInset = textContainerInset
+        gutterController.updateGutterWidth()
+        gutterController.updateExclusionPath()
         updateShouldDrawDummyExtraLineNumber()
     }
 
@@ -272,11 +273,15 @@ extension EditorTextView: NSLayoutManagerDelegate {
             return proposedRect
         }
     }
-}
 
-extension EditorTextView: EditorTextStorageDelegate {
-    public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
+    public func layoutManager(_ layoutManager: NSLayoutManager, didCompleteLayoutFor textContainer: NSTextContainer?, atEnd layoutFinishedFlag: Bool) {
         updateShouldDrawDummyExtraLineNumber()
+        if gutterController.shouldUpdateGutterWidth {
+            gutterController.updateGutterWidth()
+            gutterController.updateExclusionPath()
+            setNeedsDisplay()
+            invalidateLayoutManager()
+        }
     }
 }
 
@@ -287,10 +292,6 @@ extension EditorTextView: EditorLayoutManagerDelegate {
 
     func editorLayoutManagerShouldEnumerateLineFragments(_ layoutManager: EditorLayoutManager) -> Bool {
         return showTabs || showSpaces || showLineBreaks || showLineNumbers
-    }
-
-    func editorLayoutManagerWillEnumerateLineFragments(_ layoutManager: EditorLayoutManager) {
-        gutterController.reset()
     }
 
     func editorLayoutManagerDidEnumerateLineFragments(_ layoutManager: EditorLayoutManager) {
@@ -338,7 +339,10 @@ extension EditorTextView: EditorGutterControllerDelegate {
 extension EditorTextView: UITextViewDelegate {
     public func textViewDidBeginEditing(_ textView: UITextView) {
         if highlightSelectedLine {
-//            setNeedsDisplay()
+            if shouldDrawDummyExtraLineNumber {
+                // Need to redraw to show the selected line behind the "dummy" extra line number.
+                setNeedsDisplay()
+            }
             invalidateLayoutManager()
         }
         editorDelegate?.textViewDidBeginEditing?(self)
@@ -346,7 +350,10 @@ extension EditorTextView: UITextViewDelegate {
 
     public func textViewDidEndEditing(_ textView: UITextView) {
         if highlightSelectedLine {
-//            setNeedsDisplay()
+            if shouldDrawDummyExtraLineNumber {
+                // Need to redraw to remove the selected line behind the "dummy" extra line number.
+                setNeedsDisplay()
+            }
             invalidateLayoutManager()
         }
         editorDelegate?.textViewDidEndEditing?(self)
@@ -354,7 +361,6 @@ extension EditorTextView: UITextViewDelegate {
 
     public func textViewDidChangeSelection(_ textView: UITextView) {
         if highlightSelectedLine {
-//            setNeedsDisplay()
             invalidateLayoutManager()
         }
         editorDelegate?.textViewDidChangeSelection?(self)

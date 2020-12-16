@@ -27,14 +27,21 @@ final class EditorGutterController {
     var highlightSelectedLine = false
     var accommodateMinimumCharacterCountInLineNumbers = 0
     var textContainerInset: UIEdgeInsets = .zero
+    var shouldUpdateGutterWidth: Bool {
+        return maximumLineNumberCharacterCount != previousMaximumLineNumberCharacterCount
+    }
 
     private weak var layoutManager: NSLayoutManager?
     private weak var textStorage: EditorTextStorage?
     private weak var textContainer: NSTextContainer?
-    private var previousMaximumCharacterCount = 0
+    private var previousMaximumLineNumberCharacterCount = 0
     private var gutterWidth: CGFloat = 0
     private var numberOfLines: Int {
         return delegate?.numberOfLines(in: self) ?? 0
+    }
+    private var maximumLineNumberCharacterCount: Int {
+        let stringRepresentation = String(describing: numberOfLines)
+        return max(stringRepresentation.count, Int(accommodateMinimumCharacterCountInLineNumbers))
     }
     private var textViewWidth: CGFloat {
         return delegate?.widthOfTextView(self) ?? 0
@@ -50,15 +57,22 @@ final class EditorGutterController {
         self.theme = theme
     }
 
-    func reset() {
+    func updateGutterWidth() {
         if showLineNumbers, let textContainer = textContainer {
-            let oldGutterWidth = gutterWidth
             gutterWidth = widthOfGutter(in: textContainer)
-            if gutterWidth != oldGutterWidth {
-                updateExlusionPath(in: textContainer)
-            }
         } else {
-            removeGutter()
+            gutterWidth = 0
+            previousMaximumLineNumberCharacterCount = 0
+        }
+    }
+
+    func updateExclusionPath() {
+        if gutterWidth > 0 {
+            let exclusionRect = CGRect(x: 0, y: 0, width: gutterWidth, height: .greatestFiniteMagnitude)
+            let exlusionPath = UIBezierPath(rect: exclusionRect)
+            textContainer?.exclusionPaths = [exlusionPath]
+        } else {
+            textContainer?.exclusionPaths = []
         }
     }
 
@@ -111,30 +125,17 @@ final class EditorGutterController {
 }
 
 private extension EditorGutterController {
-    private func removeGutter() {
-        gutterWidth = 0
-        previousMaximumCharacterCount = 0
-        textContainer?.exclusionPaths = []
-    }
-
     private func widthOfGutter(in textContainer: NSTextContainer) -> CGFloat {
-        let stringRepresentation = String(describing: numberOfLines)
-        let maximumCharacterCount = max(stringRepresentation.count, Int(accommodateMinimumCharacterCountInLineNumbers))
-        guard maximumCharacterCount != previousMaximumCharacterCount else {
+        let maximumCharacterCount = maximumLineNumberCharacterCount
+        guard maximumCharacterCount != previousMaximumLineNumberCharacterCount else {
             return gutterWidth
         }
         let wideLineNumberString = String(repeating: "8", count: maximumCharacterCount)
         let wideLineNumberNSString = wideLineNumberString as NSString
         let size = wideLineNumberNSString.size(withAttributes: [.font: theme.lineNumberFont])
         let gutterWidth = ceil(size.width) + lineNumberLeadingMargin + lineNumberTrailingMargin
-        previousMaximumCharacterCount = maximumCharacterCount
+        previousMaximumLineNumberCharacterCount = maximumCharacterCount
         return gutterWidth
-    }
-
-    private func updateExlusionPath(in textContainer: NSTextContainer) {
-        let exclusionRect = CGRect(x: 0, y: 0, width: gutterWidth, height: .greatestFiniteMagnitude)
-        let exlusionPath = UIBezierPath(rect: exclusionRect)
-        textContainer.exclusionPaths = [exlusionPath]
     }
 
     private func shouldHighlineLine(spanning lineRange: NSRange) -> Bool {

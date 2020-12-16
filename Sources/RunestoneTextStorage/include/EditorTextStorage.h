@@ -11,7 +11,12 @@
 @class EditorTextStorage;
 
 @protocol EditorTextStorageDelegate <NSObject>
+@optional
 - (void)editorTextStorageDidProcessEditing:(EditorTextStorage* _Nonnull)editorTextStorage;
+@optional
+- (void)editorTextStorageDidInsertLine:(EditorTextStorage* _Nonnull)editorTextStorage;
+@optional
+- (void)editorTextStorageDidRemoveLine:(EditorTextStorage* _Nonnull)editorTextStorage;
 @end
 
 @interface EditorTextStorage: NSTextStorage

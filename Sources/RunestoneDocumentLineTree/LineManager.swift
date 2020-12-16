@@ -9,6 +9,8 @@ import Foundation
 
 @objc public protocol LineManagerDelegate: class {
     func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> NSString
+    func lineManagerDidInsertLine(_ lineManager: LineManager)
+    func lineManagerDidRemoveLine(_ lineManager: LineManager)
 }
 
 @objc public final class LineManager: NSObject {
@@ -166,11 +168,14 @@ private extension LineManager {
 
     @discardableResult
     private func insertLine(ofLength length: Int, after otherLine: DocumentLine) -> DocumentLine {
-        return tree.insertLine(ofLength: length, after: otherLine)
+        let insertedLine = tree.insertLine(ofLength: length, after: otherLine)
+        delegate?.lineManagerDidInsertLine(self)
+        return insertedLine
     }
 
     private func remove(_ line: DocumentLine) {
         tree.remove(line)
+        delegate?.lineManagerDidRemoveLine(self)
     }
 
     private func getCharacter(at location: Int) -> NSString {
