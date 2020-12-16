@@ -169,12 +169,12 @@ private extension EditorGutterController {
             if isLineSelected {
                 drawSelectedGutterBackground(in: gutterRect)
             }
-            drawLineNumber(lineNumber, in: gutterRect, isHighlighted: isLineSelected)
+            let textColor = isLineSelected ? theme.selectedLinesLineNumberColor : theme.lineNumberColor
+            drawLineNumber(lineNumber, in: gutterRect, textColor: textColor)
         }
     }
 
-    private func drawLineNumber(_ lineNumber: Int, in rect: CGRect, isHighlighted: Bool) {
-        let textColor = isHighlighted ? theme.selectedLinesLineNumberColor : theme.lineNumberColor
+    private func drawLineNumber(_ lineNumber: Int, in rect: CGRect, textColor: UIColor) {
         let text = String(describing: lineNumber) as NSString
         let attributes: [NSAttributedString.Key: Any] = [.font: theme.lineNumberFont, .foregroundColor: textColor]
         let textSize = text.size(withAttributes: attributes)
