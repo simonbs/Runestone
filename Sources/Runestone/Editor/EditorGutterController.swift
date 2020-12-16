@@ -125,36 +125,13 @@ final class EditorGutterController {
 }
 
 private extension EditorGutterController {
-    private func widthOfGutter(in textContainer: NSTextContainer) -> CGFloat {
-        let maximumCharacterCount = maximumLineNumberCharacterCount
-        guard maximumCharacterCount != previousMaximumLineNumberCharacterCount else {
-            return gutterWidth
-        }
-        let wideLineNumberString = String(repeating: "8", count: maximumCharacterCount)
-        let wideLineNumberNSString = wideLineNumberString as NSString
-        let size = wideLineNumberNSString.size(withAttributes: [.font: theme.lineNumberFont])
-        let gutterWidth = ceil(size.width) + lineNumberLeadingMargin + lineNumberTrailingMargin
-        previousMaximumLineNumberCharacterCount = maximumCharacterCount
-        return gutterWidth
-    }
-
-    private func shouldHighlineLine(spanning lineRange: NSRange) -> Bool {
-        if highlightSelectedLine, isTextViewFirstResponder, let selectedRange = delegate?.selectedRangeInTextView(self) {
-            let selectedStartLocation = selectedRange.location
-            let selectedEndLocation = selectedRange.location + selectedRange.length
-            let lineStartLocation = lineRange.location
-            let lineEndLocation = lineRange.location + lineRange.length
-            return (selectedStartLocation >= lineStartLocation && selectedStartLocation <= lineEndLocation)
-                || (selectedEndLocation >= lineStartLocation && selectedEndLocation <= lineEndLocation)
-                || (selectedStartLocation <= lineStartLocation && selectedEndLocation >= lineEndLocation)
-        } else {
-            return false
-        }
-    }
-
     private func drawLine(withLineNumber lineNumber: Int, in lineRect: CGRect, spanning lineRange: NSRange) {
-        let isLineSelected = shouldHighlineLine(spanning: lineRange)
-        if isLineSelected {
+        let selectedRange = delegate?.selectedRangeInTextView(self)
+        let isLineSelected = shouldHighlineLine(spanning: lineRange, forSelectedRange: selectedRange)
+        // We only draw line backgrounds when the selected range is zero, meaning no characters are selected.
+        // Highlighting the current lines when characters is selected looks strange and makes it difficult to see
+        // what is the selected characters and what is the current lines.
+        if isLineSelected && selectedRange?.length == 0 {
             let lineContentWidth = textViewWidth - gutterWidth
             let lineContentRect = CGRect(x: gutterWidth, y: lineRect.minY, width: lineContentWidth, height: lineRect.height)
             drawSelectedLineBackground(in: lineContentRect)
@@ -194,5 +171,38 @@ private extension EditorGutterController {
         context?.setFillColor(theme.selectedLinesBackgroundColor.cgColor)
         context?.fill(rect)
         context?.restoreGState()
+    }
+    private func widthOfGutter(in textContainer: NSTextContainer) -> CGFloat {
+        let maximumCharacterCount = maximumLineNumberCharacterCount
+        guard maximumCharacterCount != previousMaximumLineNumberCharacterCount else {
+            return gutterWidth
+        }
+        let wideLineNumberString = String(repeating: "8", count: maximumCharacterCount)
+        let wideLineNumberNSString = wideLineNumberString as NSString
+        let size = wideLineNumberNSString.size(withAttributes: [.font: theme.lineNumberFont])
+        let gutterWidth = ceil(size.width) + lineNumberLeadingMargin + lineNumberTrailingMargin
+        previousMaximumLineNumberCharacterCount = maximumCharacterCount
+        return gutterWidth
+    }
+
+    private func shouldHighlineLine(spanning lineRange: NSRange, forSelectedRange selectedRange: NSRange?) -> Bool {
+        guard highlightSelectedLine, isTextViewFirstResponder, let textStorage = textStorage, let selectedRange = selectedRange else {
+            return false
+        }
+        let selectedStartLocation = selectedRange.location
+        var selectedEndLocation = selectedRange.location + selectedRange.length
+        // Ensure we don't show the next line as selected when selecting the \n at the end of a line.
+        if selectedRange.length > 0 && selectedEndLocation > 0 && selectedEndLocation <= textStorage.length {
+            let selectionEndsWithLineBreak = textStorage.substring(with: NSRange(location: selectedEndLocation - 1, length: 1)) == Symbol.lineFeed
+            if selectionEndsWithLineBreak {
+                // The selection ends with a \n, so we make the selection a character shorter when checking if the line is selected.
+                selectedEndLocation -= 1
+            }
+        }
+        let lineStartLocation = lineRange.location
+        let lineEndLocation = lineRange.location + lineRange.length
+        return (selectedStartLocation >= lineStartLocation && selectedStartLocation <= lineEndLocation)
+            || (selectedEndLocation >= lineStartLocation && selectedEndLocation <= lineEndLocation)
+            || (selectedStartLocation <= lineStartLocation && selectedEndLocation >= lineEndLocation)
     }
 }
