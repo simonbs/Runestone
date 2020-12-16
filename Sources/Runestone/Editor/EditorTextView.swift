@@ -289,6 +289,10 @@ extension EditorTextView: EditorTextStorageDelegate {
 }
 
 extension EditorTextView: EditorLayoutManagerDelegate {
+    func numberOfLinesIn(_ layoutManager: EditorLayoutManager) -> Int {
+        return editorTextStorage.lineCount
+    }
+    
     func editorLayoutManagerShouldEnumerateLineFragments(_ layoutManager: EditorLayoutManager) -> Bool {
         return showTabs || showSpaces || showLineBreaks || showLineNumbers
     }

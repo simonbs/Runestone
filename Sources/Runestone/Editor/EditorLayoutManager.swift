@@ -8,6 +8,7 @@
 import UIKit
 
 protocol EditorLayoutManagerDelegate: AnyObject {
+    func numberOfLinesIn(_ layoutManager: EditorLayoutManager) -> Int
     func editorLayoutManagerShouldEnumerateLineFragments(_ layoutManager: EditorLayoutManager) -> Bool
     func editorLayoutManagerWillEnumerateLineFragments(_ layoutManager: EditorLayoutManager)
     func editorLayoutManagerDidEnumerateLineFragments(_ layoutManager: EditorLayoutManager)
@@ -20,7 +21,11 @@ final class EditorLayoutManager: NSLayoutManager {
 
     override func glyphRange(forBoundingRect bounds: CGRect, in container: NSTextContainer) -> NSRange {
         var range = super.glyphRange(forBoundingRect: bounds, in: container)
-        if let textStorage = textStorage, range.length == 0, bounds.intersects(extraLineFragmentRect), textStorage.length > 0 {
+        if let textStorage = textStorage,
+           range.length == 0,
+           bounds.intersects(extraLineFragmentRect),
+           let numberOfLines = editorDelegate?.numberOfLinesIn(self),
+           numberOfLines > 1 {
             // Setting the range to the last character in the textStorage when dealing with the
             // extra line ensures that the layout manager has the correct size when drawing its
             // background. Thanks for sharing this snippet Alexsander Akers (http://twitter.com/a2)
