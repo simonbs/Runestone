@@ -279,7 +279,9 @@ extension EditorTextView: NSLayoutManagerDelegate {
         if gutterController.shouldUpdateGutterWidth {
             gutterController.updateGutterWidth()
             gutterController.updateExclusionPath()
+            // Redraw the gutter to match the new width.
             setNeedsDisplay()
+            // Do another layout pass to adjust the placement of the invisible characters.
             invalidateLayoutManager()
         }
     }
