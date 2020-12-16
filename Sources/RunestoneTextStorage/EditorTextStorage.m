@@ -70,18 +70,6 @@
     return [self.string substringWithRange:NSMakeRange(location, 1)];
 }
 
-- (void)lineManagerDidInsertLine:(LineManager * _Nonnull)lineManager {
-    if ([self.editorDelegate respondsToSelector:@selector(editorTextStorageDidInsertLine:)]) {
-        [self.editorDelegate editorTextStorageDidInsertLine:self];
-    }
-}
-
-- (void)lineManagerDidRemoveLine:(LineManager * _Nonnull)lineManager {
-    if ([self.editorDelegate respondsToSelector:@selector(editorTextStorageDidRemoveLine:)]) {
-        [self.editorDelegate editorTextStorageDidRemoveLine:self];
-    }
-}
-
 // MARK: - Public
 - (NSInteger)lineCount {
     return _lineManager.lineCount;

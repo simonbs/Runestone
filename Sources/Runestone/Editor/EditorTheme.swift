@@ -13,8 +13,9 @@ public protocol EditorTheme {
     var gutterHairlineWidth: CGFloat { get }
     var lineNumberColor: UIColor { get }
     var lineNumberFont: UIFont { get }
-    var lineNumberColorOnSelectedLine: UIColor { get }
-    var gutterBackgroundColorOnSelectedLine: UIColor { get }
+    var selectedLinesBackgroundColor: UIColor { get }
+    var selectedLinesLineNumberColor: UIColor { get }
+    var selectedLinesGutterBackgroundColor: UIColor { get }
 }
 
 extension EditorTheme {

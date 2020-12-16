@@ -86,11 +86,11 @@ open class EditorTextView: UITextView {
     }
     public var lineNumberFont: UIFont? {
         get {
-            return gutterController.font
+            return gutterController.lineNumberFont
         }
         set {
-            if newValue != gutterController.font {
-                gutterController.font = newValue
+            if newValue != gutterController.lineNumberFont {
+                gutterController.lineNumberFont = newValue
                 gutterController.reset()
             }
         }
@@ -174,7 +174,7 @@ open class EditorTextView: UITextView {
         invisibleCharactersController.font = font
         invisibleCharactersController.textContainerInset = textContainerInset
         gutterController.delegate = self
-        gutterController.font = lineNumberFont
+        gutterController.lineNumberFont = lineNumberFont
         gutterController.textContainerInset = textContainerInset
         updateShouldDrawDummyExtraLineNumber()
     }
@@ -278,21 +278,13 @@ extension EditorTextView: EditorTextStorageDelegate {
     public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
         updateShouldDrawDummyExtraLineNumber()
     }
-
-    public func editorTextStorageDidInsertLine(_ editorTextStorage: EditorTextStorage) {
-//        setNeedsDisplay()
-    }
-
-    public func editorTextStorageDidRemoveLine(_ editorTextStorage: EditorTextStorage) {
-//        setNeedsDisplay()
-    }
 }
 
 extension EditorTextView: EditorLayoutManagerDelegate {
     func numberOfLinesIn(_ layoutManager: EditorLayoutManager) -> Int {
         return editorTextStorage.lineCount
     }
-    
+
     func editorLayoutManagerShouldEnumerateLineFragments(_ layoutManager: EditorLayoutManager) -> Bool {
         return showTabs || showSpaces || showLineBreaks || showLineNumbers
     }
@@ -318,12 +310,20 @@ extension EditorTextView: EditorInvisibleCharactersControllerDelegate {
 }
 
 extension EditorTextView: EditorGutterControllerDelegate {
-    func numberOfLines(in controller: EditorGutterController) -> Int {
-        return editorTextStorage.lineCount
+    func isTextViewFirstResponder(_ controller: EditorGutterController) -> Bool {
+        return isFirstResponder
     }
 
-    func editorGutterController(_ controller: EditorGutterController, substringIn range: NSRange) -> String? {
-        return editorTextStorage.substring(with: range)
+    func widthOfTextView(_ controller: EditorGutterController) -> CGFloat {
+        return bounds.width
+    }
+
+    func selectedRangeInTextView(_ controller: EditorGutterController) -> NSRange {
+        return selectedRange
+    }
+
+    func numberOfLines(in controller: EditorGutterController) -> Int {
+        return editorTextStorage.lineCount
     }
 
     func editorGutterController(_ controller: EditorGutterController, positionOfCharacterAt location: Int) -> ObjCLinePosition? {
@@ -339,6 +339,7 @@ extension EditorTextView: UITextViewDelegate {
     public func textViewDidBeginEditing(_ textView: UITextView) {
         if highlightSelectedLine {
 //            setNeedsDisplay()
+            invalidateLayoutManager()
         }
         editorDelegate?.textViewDidBeginEditing?(self)
     }
@@ -346,6 +347,7 @@ extension EditorTextView: UITextViewDelegate {
     public func textViewDidEndEditing(_ textView: UITextView) {
         if highlightSelectedLine {
 //            setNeedsDisplay()
+            invalidateLayoutManager()
         }
         editorDelegate?.textViewDidEndEditing?(self)
     }
@@ -353,6 +355,7 @@ extension EditorTextView: UITextViewDelegate {
     public func textViewDidChangeSelection(_ textView: UITextView) {
         if highlightSelectedLine {
 //            setNeedsDisplay()
+            invalidateLayoutManager()
         }
         editorDelegate?.textViewDidChangeSelection?(self)
     }
