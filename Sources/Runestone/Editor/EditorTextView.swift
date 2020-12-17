@@ -15,6 +15,7 @@ open class EditorTextView: UITextView {
     public var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
             gutterController.theme = theme
+            invisibleCharactersController.theme = theme
         }
     }
     public var showTabs: Bool {
@@ -48,6 +49,30 @@ open class EditorTextView: UITextView {
                 invisibleCharactersController.showLineBreaks = newValue
                 invalidateLayoutManager()
             }
+        }
+    }
+    public var tabSymbol: String {
+        get {
+            return invisibleCharactersController.tabSymbol
+        }
+        set {
+            invisibleCharactersController.tabSymbol = newValue
+        }
+    }
+    public var spaceSymbol: String {
+        get {
+            return invisibleCharactersController.spaceSymbol
+        }
+        set {
+            invisibleCharactersController.spaceSymbol = newValue
+        }
+    }
+    public var lineBreakSymbol: String {
+        get {
+            return invisibleCharactersController.lineBreakSymbol
+        }
+        set {
+            invisibleCharactersController.lineBreakSymbol = newValue
         }
     }
     public var showLineNumbers: Bool {
@@ -162,14 +187,16 @@ open class EditorTextView: UITextView {
             textStorage: editorTextStorage,
             textContainer: textContainer,
             theme: theme)
-        invisibleCharactersController = EditorInvisibleCharactersController()
+        invisibleCharactersController = EditorInvisibleCharactersController(
+            layoutManager: editorLayoutManager,
+            textStorage: editorTextStorage,
+            theme: theme)
         super.init(frame: frame, textContainer: textContainer)
         delegate = self
         isDelegateLockEnabled = true
         editorLayoutManager.delegate = self
         editorLayoutManager.editorDelegate = self
         editorLayoutManager.allowsNonContiguousLayout = true
-        invisibleCharactersController.layoutManager = editorLayoutManager
         invisibleCharactersController.font = font
         invisibleCharactersController.textContainerInset = textContainerInset
         gutterController.delegate = self

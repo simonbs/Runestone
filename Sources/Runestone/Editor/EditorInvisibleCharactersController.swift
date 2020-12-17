@@ -9,27 +9,31 @@ import UIKit
 import RunestoneTextStorage
 
 final class EditorInvisibleCharactersController {
-    private enum BackgroundSymbol {
-        static let newLine = "\u{00ac}"
-        static let tab = "\u{25b8}"
-        static let space = "\u{00b7}"
-    }
-
     private enum HorizontalSymbolPosition {
         case minX
         case maxX
     }
 
-    weak var layoutManager: NSLayoutManager?
     var showTabs = false
     var showSpaces = false
     var showLineBreaks = false
+    var tabSymbol = "\u{25b8}"
+    var spaceSymbol = "\u{00b7}"
+    var lineBreakSymbol = "\u{00ac}"
     var textContainerInset: UIEdgeInsets = .zero
     var font: UIFont?
+    var theme: EditorTheme
 
+    private weak var layoutManager: NSLayoutManager?
     private weak var textStorage: EditorTextStorage?
     private var drawInvisibleCharacters: Bool {
         return showTabs || showSpaces || showLineBreaks
+    }
+
+    init(layoutManager: NSLayoutManager, textStorage: EditorTextStorage,  theme: EditorTheme) {
+        self.layoutManager = layoutManager
+        self.textStorage = textStorage
+        self.theme = theme
     }
 
     func drawInvisibleCharacters(in lineFragment: EditorLineFragment) {
@@ -54,14 +58,14 @@ private extension EditorInvisibleCharactersController {
             return
         }
         if showTabs && substring == Symbol.tab {
-            draw(BackgroundSymbol.tab, at: .minX, inGlyphRange: actualGlyphRange, of: lineFragment.textContainer)
+            draw(tabSymbol, at: .minX, inGlyphRange: actualGlyphRange, of: lineFragment.textContainer)
         } else if showSpaces && substring == Symbol.space {
-            draw(BackgroundSymbol.space, at: .minX, inGlyphRange: actualGlyphRange, of: lineFragment.textContainer)
+            draw(spaceSymbol, at: .minX, inGlyphRange: actualGlyphRange, of: lineFragment.textContainer)
         } else if showLineBreaks && substring == Symbol.lineFeed {
             var bounds = lineFragment.usedRect
             bounds.origin.x = lineFragment.usedRect.minX + lineFragment.textContainer.lineFragmentPadding + textContainerInset.left
             bounds.origin.y = lineFragment.usedRect.minY + textContainerInset.top
-            draw(BackgroundSymbol.newLine, at: .maxX, in: bounds)
+            draw(lineBreakSymbol, at: .maxX, in: bounds)
         }
     }
 
@@ -75,7 +79,7 @@ private extension EditorInvisibleCharactersController {
     }
 
     private func draw(_ symbol: String, at position: HorizontalSymbolPosition, in bounds: CGRect) {
-        let attrs: [NSAttributedString.Key: Any] = [.foregroundColor: UIColor.secondaryLabel, .font: font as Any]
+        let attrs: [NSAttributedString.Key: Any] = [.foregroundColor: theme.invisibleCharactersColor, .font: font as Any]
         let size = symbol.size(withAttributes: attrs)
         let xPosition: CGFloat
         switch position {

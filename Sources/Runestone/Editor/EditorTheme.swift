@@ -16,6 +16,7 @@ public protocol EditorTheme {
     var selectedLinesBackgroundColor: UIColor { get }
     var selectedLinesLineNumberColor: UIColor { get }
     var selectedLinesGutterBackgroundColor: UIColor { get }
+    var invisibleCharactersColor: UIColor { get }
 }
 
 extension EditorTheme {

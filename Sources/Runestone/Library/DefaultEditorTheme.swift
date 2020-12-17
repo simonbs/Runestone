@@ -17,4 +17,6 @@ final class DefaultEditorTheme: EditorTheme {
     var selectedLinesBackgroundColor = UIColor.opaqueSeparator.withAlphaComponent(0.4)
     let selectedLinesLineNumberColor: UIColor = .label
     let selectedLinesGutterBackgroundColor = UIColor.opaqueSeparator.withAlphaComponent(0.4)
+
+    let invisibleCharactersColor: UIColor = .secondaryLabel
 }
