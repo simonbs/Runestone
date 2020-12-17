@@ -64,10 +64,7 @@
 
 - (void)processEditing {
     [super processEditing];
-
-//    [_parser apply:]
     [_parser parse];
-
     if ([self.editorDelegate respondsToSelector:@selector(editorTextStorageDidProcessEditing:)]) {
         [self.editorDelegate editorTextStorageDidProcessEditing:self];
     }
