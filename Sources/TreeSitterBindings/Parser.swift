@@ -8,8 +8,13 @@
 import Foundation
 import TreeSitter
 
+@objc public protocol ParserDelegate: AnyObject {
+    func parser(_ parser: Parser, substringAtByteIndex byteIndex: uint, point: SourcePoint) -> String?
+}
+
 @objc public final class Parser: NSObject {
-   @objc public var language: Language? {
+    @objc public weak var delegate: ParserDelegate?
+    @objc public var language: Language? {
         didSet {
             if language !== oldValue {
                 if let language = language {
@@ -21,11 +26,13 @@ import TreeSitter
         }
     }
 
+    private let encoding: SourceEncoding
     private var parser: OpaquePointer
     private var oldTree: Tree?
 
-    public override init() {
-        parser = ts_parser_new()
+    @objc public init(encoding: SourceEncoding) {
+        self.encoding = encoding
+        self.parser = ts_parser_new()
         super.init()
     }
 
@@ -34,22 +41,37 @@ import TreeSitter
     }
 
     @objc public func parse(_ string: String) {
-        let newTreePointer = ts_parser_parse_string(parser, nil, string, CUnsignedInt(string.utf8.count))
-//        let sourceInput = SourceInput()
-//        let newTreePointer = ts_parser_parse(parser, oldTree?.pointer, TSInputEncodingUTF8)
-
-//        let inputEdit = TSInputEdit(
-//            start_byte: 0,
-//            old_end_byte: 0,
-//            new_end_byte: 0,
-//            start_point: TSPoint(row: 0, column: 0),
-//            old_end_point: TSPoint(row: 0, column: 0),
-//            new_end_point: TSPoint(row: 0, column: 0))
+        let newTreePointer = string.withCString { stringPointer in
+            return ts_parser_parse_string(parser, oldTree?.pointer, stringPointer, UInt32(string.count))
+        }
         if let newTreePointer = newTreePointer {
             let newTree = Tree(newTreePointer)
             oldTree = newTree
-            walk(newTree.rootNode, in: newTree)
         }
+    }
+
+    @objc public func parse() {
+        let input = SourceInput(encoding: encoding) { [weak self] byteIndex, point in
+            if let self = self {
+                let str = self.delegate?.parser(self, substringAtByteIndex: byteIndex, point: point)
+                let asd: [Int8]? = str?.cString(using: self.encoding.swiftEncoding)?.dropLast()
+                return asd ?? []
+            } else {
+                return nil
+            }
+        }
+        let newTreePointer = ts_parser_parse(parser, oldTree?.pointer, input.rawInput)
+        input.deallocate()
+        if let newTreePointer = newTreePointer {
+            let newTree = Tree(newTreePointer)
+            print(newTree.rootNode.expressionString)
+            oldTree = newTree
+        }
+    }
+
+    @objc(applyEdit:)
+    public func apply(_ inputEdit: InputEdit) {
+        oldTree?.apply(inputEdit)
     }
 }
 

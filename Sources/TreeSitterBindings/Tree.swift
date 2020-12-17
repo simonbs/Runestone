@@ -7,7 +7,7 @@
 
 import TreeSitter
 
-final class Tree {
+public final class Tree {
     let pointer: OpaquePointer
     var rootNode: Node {
         return Node(node: ts_tree_root_node(pointer))
@@ -19,6 +19,12 @@ final class Tree {
 
     deinit {
         ts_tree_delete(pointer)
+    }
+
+    func apply(_ inputEdit: InputEdit) {
+        withUnsafePointer(to: inputEdit.asRawInputEdit()) { inputEditPointer in
+            ts_tree_edit(pointer, inputEditPointer)
+        }
     }
 
     func rangesChanged(comparingTo otherTree: Tree) -> [SourceRange] {

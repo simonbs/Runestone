@@ -118,7 +118,7 @@ import Foundation
         }
     }
 
-    @objc(positionOfCharacterAt:)
+    @objc(positionOfCharacterAtLocation:)
     public func positionOfLine(containingCharacterAt location: NSNumber) -> LinePosition? {
         return positionOfLine(containingCharacterAt: location.intValue)
     }
