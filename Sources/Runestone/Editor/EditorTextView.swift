@@ -241,6 +241,18 @@ private extension EditorTextView {
             setNeedsDisplay()
         }
     }
+
+    private func setNeedsDisplayOnSelectionChangeIfNecessary() {
+        // Need to redraw for one of two reasons:
+        // 1. To remove the selected line behind the "dummy" extra line number.
+        // 2. To work around an issue where drawing a background in the NSLayoutManager would sometimes "glitch"
+        //     when the textContainer have an exlusionPath. This could be reproduced by enabling highlighting of the
+        //     selected line and line numbers, and then adding two lines to the text view and navigating up and
+        //     down those two, thereby changing the selected line. The selected line would sometimes be drawn incorrectly.
+        if highlightSelectedLine || shouldDrawDummyExtraLineNumber {
+            setNeedsDisplay()
+        }
+    }
 }
 
 extension EditorTextView: NSLayoutManagerDelegate {
@@ -340,36 +352,23 @@ extension EditorTextView: EditorGutterControllerDelegate {
 
 extension EditorTextView: UITextViewDelegate {
     public func textViewDidBeginEditing(_ textView: UITextView) {
+        setNeedsDisplayOnSelectionChangeIfNecessary()
         if highlightSelectedLine {
-            if shouldDrawDummyExtraLineNumber {
-                // Need to redraw to show the selected line behind the "dummy" extra line number.
-                setNeedsDisplay()
-            }
             invalidateLayoutManager()
         }
         editorDelegate?.textViewDidBeginEditing?(self)
     }
 
     public func textViewDidEndEditing(_ textView: UITextView) {
+        setNeedsDisplayOnSelectionChangeIfNecessary()
         if highlightSelectedLine {
-            if shouldDrawDummyExtraLineNumber {
-                // Need to redraw to remove the selected line behind the "dummy" extra line number.
-                setNeedsDisplay()
-            }
             invalidateLayoutManager()
         }
         editorDelegate?.textViewDidEndEditing?(self)
     }
 
     public func textViewDidChangeSelection(_ textView: UITextView) {
-        if highlightSelectedLine {
-            // Redrawing when the selection changes works around an issue where fragment backgrounds
-            // would sometimes "glitch" during drawing when the textContainer had an exlusionPath.
-            // This could be reproduced by enabling highlighting of the selected line and line numbers,
-            // and then adding two lines to the text view and navigating up and down those two,
-            // thereby changing the selected line. The selected line would sometimes be drawn incorrectly.
-            setNeedsDisplay()
-        }
+        setNeedsDisplayOnSelectionChangeIfNecessary()
         editorDelegate?.textViewDidChangeSelection?(self)
     }
 }
