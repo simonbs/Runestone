@@ -19,9 +19,9 @@ let package = Package(
             dependencies: ["RunestoneTextStorage"]),
         .target(
             name: "RunestoneTextStorage",
-            dependencies: ["RunestoneDocumentLineTree", "TreeSitterBindings", "TreeSitterJSON"]),
+            dependencies: ["RunestoneDocumentLineTree", "TreeSitterBindings", "TreeSitterLanguages"]),
         .target(name: "RunestoneDocumentLineTree"),
-        .target(name: "TreeSitterJSON"),
+        .target(name: "TreeSitterLanguages"),
         .target(
             name: "TreeSitterBindings",
             dependencies: ["TreeSitter"]),

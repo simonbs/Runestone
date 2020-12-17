@@ -8,7 +8,7 @@
 #import "EditorTextStorage.h"
 @import RunestoneDocumentLineTree;
 @import TreeSitterBindings;
-@import TreeSitterJSON;
+@import TreeSitterLanguages;
 
 @interface EditorTextStorage () <LineManagerDelegate, ParserDelegate>
 @end
@@ -24,7 +24,7 @@
     if (self = [super init]) {
         _internalString = [NSMutableAttributedString new];
         _parser = [[Parser alloc] initWithEncoding:SourceEncodingUtf8];
-        _parser.language = [[Language alloc] initWithLanguage:tree_sitter_json()];
+        _parser.language = [[Language alloc] initWithLanguage:tree_sitter_javascript()];
         _parser.delegate = self;
         _lineManager = [LineManager new];
         _lineManager.delegate = self;
