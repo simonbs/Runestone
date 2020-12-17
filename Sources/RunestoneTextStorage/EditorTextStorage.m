@@ -100,7 +100,7 @@
     return [_lineManager locationOfLineWithLineNumber:@(lineNumber)];
 }
 
-- (NSString *)substringWithRange:(NSRange)range {
+- (NSString *)substringInRange:(NSRange)range {
     if (range.location + range.length <= _internalString.length) {
         return [_internalString attributedSubstringFromRange:range].string;
     } else {

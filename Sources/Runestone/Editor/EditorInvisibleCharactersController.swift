@@ -6,10 +6,7 @@
 //
 
 import UIKit
-
-protocol EditorInvisibleCharactersControllerDelegate: AnyObject {
-    func editorInvisibleCharactersController(_ controller: EditorInvisibleCharactersController, substringIn range: NSRange) -> String?
-}
+import RunestoneTextStorage
 
 final class EditorInvisibleCharactersController {
     private enum BackgroundSymbol {
@@ -23,7 +20,6 @@ final class EditorInvisibleCharactersController {
         case maxX
     }
 
-    weak var delegate: EditorInvisibleCharactersControllerDelegate?
     weak var layoutManager: NSLayoutManager?
     var showTabs = false
     var showSpaces = false
@@ -31,6 +27,7 @@ final class EditorInvisibleCharactersController {
     var textContainerInset: UIEdgeInsets = .zero
     var font: UIFont?
 
+    private weak var textStorage: EditorTextStorage?
     private var drawInvisibleCharacters: Bool {
         return showTabs || showSpaces || showLineBreaks
     }
@@ -47,21 +44,20 @@ final class EditorInvisibleCharactersController {
 
 private extension EditorInvisibleCharactersController {
     private func drawInvisibleCharacter(forGlyphAt glyphLocation: Int, in lineFragment: EditorLineFragment) {
-        guard let delegate = delegate else {
-            return
-        }
         guard let layoutManager = layoutManager else {
             return
         }
         var actualGlyphRange = NSRange(location: 0, length: 0)
         layoutManager.characterRange(forGlyphRange: NSMakeRange(glyphLocation, 1), actualGlyphRange: &actualGlyphRange)
         let characterRange = layoutManager.characterRange(forGlyphRange: actualGlyphRange, actualGlyphRange: nil)
-        let character = delegate.editorInvisibleCharactersController(self, substringIn: characterRange)
-        if showTabs && character == Symbol.tab {
+        guard let substring = textStorage?.substring(in: characterRange) else {
+            return
+        }
+        if showTabs && substring == Symbol.tab {
             draw(BackgroundSymbol.tab, at: .minX, inGlyphRange: actualGlyphRange, of: lineFragment.textContainer)
-        } else if showSpaces && character == Symbol.space {
+        } else if showSpaces && substring == Symbol.space {
             draw(BackgroundSymbol.space, at: .minX, inGlyphRange: actualGlyphRange, of: lineFragment.textContainer)
-        } else if showLineBreaks && character == Symbol.lineFeed {
+        } else if showLineBreaks && substring == Symbol.lineFeed {
             var bounds = lineFragment.usedRect
             bounds.origin.x = lineFragment.usedRect.minX + lineFragment.textContainer.lineFragmentPadding + textContainerInset.left
             bounds.origin.y = lineFragment.usedRect.minY + textContainerInset.top

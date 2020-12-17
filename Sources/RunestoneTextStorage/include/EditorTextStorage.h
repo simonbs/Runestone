@@ -26,5 +26,5 @@
 __attribute__((swift_name("positionOfLine(containingCharacterAt:)")));
 - (NSInteger)locationOfLineWithLineNumber:(NSInteger)location
 __attribute__((swift_name("locationOfLine(withLineNumber:)")));
-- (NSString * _Nullable)substringWithRange:(NSRange)range;
+- (NSString * _Nullable)substringInRange:(NSRange)range;
 @end

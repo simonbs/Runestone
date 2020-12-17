@@ -150,7 +150,7 @@ open class EditorTextView: UITextView {
 
     private var isDelegateLockEnabled = false
     private let editorTextStorage = EditorTextStorage()
-    private let invisibleCharactersController = EditorInvisibleCharactersController()
+    private let invisibleCharactersController: EditorInvisibleCharactersController
     private let gutterController: EditorGutterController
     private let editorLayoutManager = EditorLayoutManager()
     private var shouldDrawDummyExtraLineNumber = false
@@ -162,13 +162,13 @@ open class EditorTextView: UITextView {
             textStorage: editorTextStorage,
             textContainer: textContainer,
             theme: theme)
+        invisibleCharactersController = EditorInvisibleCharactersController()
         super.init(frame: frame, textContainer: textContainer)
         delegate = self
         isDelegateLockEnabled = true
         editorLayoutManager.delegate = self
         editorLayoutManager.editorDelegate = self
         editorLayoutManager.allowsNonContiguousLayout = true
-        invisibleCharactersController.delegate = self
         invisibleCharactersController.layoutManager = editorLayoutManager
         invisibleCharactersController.font = font
         invisibleCharactersController.textContainerInset = textContainerInset
@@ -261,7 +261,7 @@ extension EditorTextView: NSLayoutManagerDelegate {
         shouldUse action: NSLayoutManager.ControlCharacterAction,
         forControlCharacterAt charIndex: Int) -> NSLayoutManager.ControlCharacterAction {
         if let tabWidth = tabWidth, tabWidth > 0 {
-            let substring = editorTextStorage.substring(with: NSRange(location: charIndex, length: 1))
+            let substring = editorTextStorage.substring(in: NSRange(location: charIndex, length: 1))
             return substring == Symbol.tab ? .whitespace : action
         } else {
             return action
@@ -278,7 +278,7 @@ extension EditorTextView: NSLayoutManagerDelegate {
         guard let tabWidth = tabWidth else {
             return proposedRect
         }
-        let substring = editorTextStorage.substring(with: NSRange(location: charIndex, length: 1))
+        let substring = editorTextStorage.substring(in: NSRange(location: charIndex, length: 1))
         if substring == Symbol.tab {
             return CGRect(x: proposedRect.minX, y: proposedRect.minY, width: tabWidth, height: proposedRect.height)
         } else {
@@ -318,12 +318,6 @@ extension EditorTextView: EditorLayoutManagerDelegate {
     }
 }
 
-extension EditorTextView: EditorInvisibleCharactersControllerDelegate {
-    func editorInvisibleCharactersController(_ controller: EditorInvisibleCharactersController, substringIn range: NSRange) -> String? {
-        return editorTextStorage.substring(with: range)
-    }
-}
-
 extension EditorTextView: EditorGutterControllerDelegate {
     func isTextViewFirstResponder(_ controller: EditorGutterController) -> Bool {
         return isFirstResponder
@@ -335,18 +329,6 @@ extension EditorTextView: EditorGutterControllerDelegate {
 
     func selectedRangeInTextView(_ controller: EditorGutterController) -> NSRange {
         return selectedRange
-    }
-
-    func numberOfLines(in controller: EditorGutterController) -> Int {
-        return editorTextStorage.lineCount
-    }
-
-    func editorGutterController(_ controller: EditorGutterController, positionOfCharacterAt location: Int) -> ObjCLinePosition? {
-        return editorTextStorage.positionOfLine(containingCharacterAt: location)
-    }
-
-    func editorGutterController(_ controller: EditorGutterController, locationOfLineWithLineNumber lineNumber: Int) -> Int {
-        return editorTextStorage.locationOfLine(withLineNumber: lineNumber)
     }
 }
 

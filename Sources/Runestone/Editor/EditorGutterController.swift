@@ -12,9 +12,6 @@ protocol EditorGutterControllerDelegate: AnyObject {
     func isTextViewFirstResponder(_ controller: EditorGutterController) -> Bool
     func widthOfTextView(_ controller: EditorGutterController) -> CGFloat
     func selectedRangeInTextView(_ controller: EditorGutterController) -> NSRange
-    func numberOfLines(in controller: EditorGutterController) -> Int
-    func editorGutterController(_ controller: EditorGutterController, positionOfCharacterAt location: Int) -> ObjCLinePosition?
-    func editorGutterController(_ controller: EditorGutterController, locationOfLineWithLineNumber lineNumber: Int) -> Int
 }
 
 final class EditorGutterController {
@@ -36,10 +33,8 @@ final class EditorGutterController {
     private weak var textContainer: NSTextContainer?
     private var previousMaximumLineNumberCharacterCount = 0
     private var gutterWidth: CGFloat = 0
-    private var numberOfLines: Int {
-        return delegate?.numberOfLines(in: self) ?? 0
-    }
     private var maximumLineNumberCharacterCount: Int {
+        let numberOfLines = textStorage?.lineCount ?? 0
         let stringRepresentation = String(describing: numberOfLines)
         return max(stringRepresentation.count, Int(accommodateMinimumCharacterCountInLineNumbers))
     }
@@ -97,25 +92,29 @@ final class EditorGutterController {
         guard shouldDraw, let delegate = delegate, let layoutManager = layoutManager, let textContainer = textContainer else {
             return
         }
-        if let linePosition = delegate.editorGutterController(self, positionOfCharacterAt: lineFragment.glyphRange.location) {
-            let lineLocation = delegate.editorGutterController(self, locationOfLineWithLineNumber: linePosition.lineNumber)
-            if lineFragment.glyphRange.location == lineLocation {
-                let lineFragmentRect = layoutManager.lineFragmentRect(forGlyphAt: lineFragment.glyphRange.location, effectiveRange: nil)
-                let lineRange = NSRange(location: lineLocation, length: linePosition.length)
-                let selectedRange = delegate.selectedRangeInTextView(self)
-                let isLineSelected = shouldHighlineLine(spanning: lineRange, forSelectedRange: selectedRange)
-                if isLineSelected {
-                    let entireLineRange = NSRange(location: lineLocation, length: linePosition.length)
-                    let lineBoundingRect = layoutManager.boundingRect(forGlyphRange: entireLineRange, in: textContainer)
-                    let lineBackgroundYPosition = lineBoundingRect.minY + textContainerInset.top
-                    let lineBackgroundRect = CGRect(x: gutterWidth, y: lineBackgroundYPosition, width: textViewWidth, height: lineBoundingRect.height)
-                    drawLineBackgrounds(in: lineBackgroundRect)
-                }
-                let gutterRect = CGRect(x: 0, y: lineFragmentRect.minY + textContainerInset.top, width: gutterWidth, height: lineFragmentRect.height)
-                let textColor = isLineSelected ? theme.selectedLinesLineNumberColor : theme.lineNumberColor
-                drawLineNumber(linePosition.lineNumber, in: gutterRect, textColor: textColor)
-            }
+        guard let linePosition = textStorage?.positionOfLine(containingCharacterAt: lineFragment.glyphRange.location) else {
+            return
         }
+        guard let lineLocation = textStorage?.locationOfLine(withLineNumber: linePosition.lineNumber) else {
+            return
+        }
+        guard lineFragment.glyphRange.location == lineLocation else {
+            return
+        }
+        let lineFragmentRect = layoutManager.lineFragmentRect(forGlyphAt: lineFragment.glyphRange.location, effectiveRange: nil)
+        let lineRange = NSRange(location: lineLocation, length: linePosition.length)
+        let selectedRange = delegate.selectedRangeInTextView(self)
+        let isLineSelected = shouldHighlineLine(spanning: lineRange, forSelectedRange: selectedRange)
+        if isLineSelected {
+            let entireLineRange = NSRange(location: lineLocation, length: linePosition.length)
+            let lineBoundingRect = layoutManager.boundingRect(forGlyphRange: entireLineRange, in: textContainer)
+            let lineBackgroundYPosition = lineBoundingRect.minY + textContainerInset.top
+            let lineBackgroundRect = CGRect(x: gutterWidth, y: lineBackgroundYPosition, width: textViewWidth, height: lineBoundingRect.height)
+            drawLineBackgrounds(in: lineBackgroundRect)
+        }
+        let gutterRect = CGRect(x: 0, y: lineFragmentRect.minY + textContainerInset.top, width: gutterWidth, height: lineFragmentRect.height)
+        let textColor = isLineSelected ? theme.selectedLinesLineNumberColor : theme.lineNumberColor
+        drawLineNumber(linePosition.lineNumber, in: gutterRect, textColor: textColor)
     }
 
     func drawExtraLineIfNecessary() {
@@ -134,7 +133,7 @@ final class EditorGutterController {
                 }
                 let gutterRect = CGRect(x: 0, y: lineRect.minY, width: gutterWidth, height: lineRect.height)
                 let textColor = isLineSelected ? theme.selectedLinesLineNumberColor : theme.lineNumberColor
-                drawLineNumber(numberOfLines, in: gutterRect, textColor: textColor)
+                drawLineNumber(textStorage.lineCount, in: gutterRect, textColor: textColor)
             }
         }
     }
@@ -203,7 +202,8 @@ private extension EditorGutterController {
         var selectedEndLocation = selectedRange.location + selectedRange.length
         // Ensure we don't show the next line as selected when selecting the \n at the end of a line.
         if selectedRange.length > 0 && selectedEndLocation > 0 && selectedEndLocation <= textStorage.length {
-            let selectionEndsWithLineBreak = textStorage.substring(with: NSRange(location: selectedEndLocation - 1, length: 1)) == Symbol.lineFeed
+            let substring = textStorage.substring(in: NSRange(location: selectedEndLocation - 1, length: 1))
+            let selectionEndsWithLineBreak = substring == Symbol.lineFeed
             if selectionEndsWithLineBreak {
                 // The selection ends with a \n, so we make the selection a character shorter when checking if the line is selected.
                 selectedEndLocation -= 1
