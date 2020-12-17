@@ -64,7 +64,7 @@ import TreeSitter
         input.deallocate()
         if let newTreePointer = newTreePointer {
             let newTree = Tree(newTreePointer)
-            print(newTree.rootNode.expressionString)
+            print(newTree.rootNode.expressionString!)
             oldTree = newTree
         }
     }
