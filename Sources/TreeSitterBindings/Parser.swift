@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  Parser.swift
 //  
 //
 //  Created by Simon Støvring on 05/12/2020.
@@ -29,6 +29,7 @@ import TreeSitter
     private let encoding: SourceEncoding
     private var parser: OpaquePointer
     private var oldTree: Tree?
+    private var query: Query?
 
     @objc public init(encoding: SourceEncoding) {
         self.encoding = encoding
@@ -64,7 +65,6 @@ import TreeSitter
         input.deallocate()
         if let newTreePointer = newTreePointer {
             let newTree = Tree(newTreePointer)
-            print(newTree.rootNode.expressionString!)
             oldTree = newTree
         }
     }
@@ -73,18 +73,24 @@ import TreeSitter
     public func apply(_ inputEdit: InputEdit) {
         oldTree?.apply(inputEdit)
     }
-}
 
-private extension Parser {
-    private func walk(_ node: Node, in tree: Tree) {
-//        let cursor = TreeCursor(tree: tree, node: node)
-//        print(cursor.currentNode.type)
-//        cursor.gotoFirstChild()
-//        walk(cursor.currentNode, in: tree)
-//        print(cursor.currentNode.type)
-//        while cursor.gotoNextSibling() {
-//            print(cursor.currentNode.type)
-//            walk(cursor.currentNode, in: tree)
-//        }
+    @objc(runQueryFromLocation:toLocation:)
+    public func runQuery(from start: UInt32, to end: UInt32) {
+        let highlightsFileURL = Bundle.module.url(forResource: "highlights", withExtension: "scm", subdirectory: "queries/javascript")!
+        let source = try! String(contentsOf: highlightsFileURL)
+        let queryResult = Query.create(fromSource: source, in: language!)
+        switch queryResult {
+        case .success(let query):
+            if let tree = oldTree {
+                let iter = QueryCaptureIterator(query: query, node: tree.rootNode)
+                iter.execute()
+                iter.setQueryRange(from: start, to: end)
+                while let capture = iter.next() {
+                    print(capture.name)
+                }
+            }
+        case .failure(let error):
+            print(error)
+        }
     }
 }

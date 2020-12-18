@@ -65,6 +65,7 @@
 - (void)processEditing {
     [super processEditing];
     [_parser parse];
+    [_parser runQueryFromLocation:0 toLocation:(uint32_t)self.length];
     if ([self.editorDelegate respondsToSelector:@selector(editorTextStorageDidProcessEditing:)]) {
         [self.editorDelegate editorTextStorageDidProcessEditing:self];
     }

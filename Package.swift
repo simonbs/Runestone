@@ -24,7 +24,10 @@ let package = Package(
         .target(name: "TreeSitterLanguages"),
         .target(
             name: "TreeSitterBindings",
-            dependencies: ["TreeSitter"]),
+            dependencies: ["TreeSitter"],
+            resources: [
+                .copy("queries")
+            ]),
         .target(
             name: "TreeSitter",
             exclude: [

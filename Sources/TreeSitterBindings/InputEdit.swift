@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  InputEdit.swift
 //  
 //
 //  Created by Simon Støvring on 17/12/2020.
