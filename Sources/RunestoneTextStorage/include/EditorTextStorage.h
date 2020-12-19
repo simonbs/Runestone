@@ -17,10 +17,12 @@
 - (void)editorTextStorageDidInsertLine:(EditorTextStorage* _Nonnull)editorTextStorage;
 @optional
 - (void)editorTextStorageDidRemoveLine:(EditorTextStorage* _Nonnull)editorTextStorage;
+- (UIColor* _Nonnull)editorTextStorage:(EditorTextStorage* _Nonnull)editorTextStorage colorForCaptureName:(NSString* _Nonnull)captureName;
 @end
 
 @interface EditorTextStorage: NSTextStorage
 @property (nonatomic, weak) id<EditorTextStorageDelegate> _Nullable editorDelegate;
+@property (nonatomic, strong) UIColor* _Nullable textColor;
 @property (nonatomic, readonly) NSInteger lineCount;
 - (ObjCLinePosition * _Nullable)positionOfCharacterAt:(NSInteger)location
 __attribute__((swift_name("positionOfLine(containingCharacterAt:)")));

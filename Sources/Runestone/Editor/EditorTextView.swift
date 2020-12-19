@@ -156,6 +156,13 @@ open class EditorTextView: UITextView {
             }
         }
     }
+    open override var textColor: UIColor? {
+        didSet {
+            if textColor != oldValue {
+                editorTextStorage.textColor = textColor
+            }
+        }
+    }
     open override var font: UIFont? {
         didSet {
             if font != oldValue {
@@ -194,6 +201,8 @@ open class EditorTextView: UITextView {
         super.init(frame: frame, textContainer: textContainer)
         delegate = self
         isDelegateLockEnabled = true
+        editorTextStorage.editorDelegate = self
+        editorTextStorage.textColor = textColor
         editorLayoutManager.delegate = self
         editorLayoutManager.editorDelegate = self
         editorLayoutManager.allowsNonContiguousLayout = true
@@ -323,6 +332,12 @@ extension EditorTextView: NSLayoutManagerDelegate {
             // Do another layout pass to adjust the placement of the invisible characters.
             invalidateLayoutManager()
         }
+    }
+}
+
+extension EditorTextView: EditorTextStorageDelegate {
+    public func editorTextStorage(_ editorTextStorage: EditorTextStorage, colorForCaptureName captureName: String) -> UIColor {
+        return theme.syntaxHighlightingColor(forCaptureNamed: captureName) ?? .label
     }
 }
 

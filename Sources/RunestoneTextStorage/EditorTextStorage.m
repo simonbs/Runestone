@@ -13,7 +13,7 @@
 @end
 
 @implementation EditorTextStorage {
-    NSMutableAttributedString *_internalString;
+    NSTextStorage *_internalString;
     LineManager *_lineManager;
     Highlighter *_highlighter;
 }
@@ -21,7 +21,7 @@
 // MARK: - Lifecycle
 - (instancetype)init {
     if (self = [super init]) {
-        _internalString = [NSMutableAttributedString new];
+        _internalString = [NSTextStorage new];
         _highlighter = [[Highlighter alloc] initWithEncoding:HighlighterEncodingUtf8];
 //        _parser.language = [[Language alloc] initWithLanguage:tree_sitter_javascript()];
         _highlighter.delegate = self;
@@ -60,7 +60,14 @@
 
 - (void)processEditing {
     [super processEditing];
-    [_highlighter processEditing];
+    NSError *error;
+    HighlighterEditProcessingResult *processingResult = [_highlighter processEditingAndReturnError:&error];
+    if (processingResult != nil) {
+        NSRange range = NSMakeRange(0, self.length);
+        [self highlightSyntaxInRange:range usingTokens:processingResult.tokens];
+    } else {
+        NSLog(@"%@", error);
+    }
     if ([self.editorDelegate respondsToSelector:@selector(editorTextStorageDidProcessEditing:)]) {
         [self.editorDelegate editorTextStorageDidProcessEditing:self];
     }
@@ -89,6 +96,24 @@
         return [_internalString attributedSubstringFromRange:range].string;
     } else {
         return nil;
+    }
+}
+
+// MARK: - Private
+- (void)highlightSyntaxInRange:(NSRange)range usingTokens:(NSArray<HighlightToken*>* _Nonnull)tokens {
+    [self removeAttribute:NSForegroundColorAttributeName range:range];
+    if (self.textColor != nil) {
+        NSDictionary<NSAttributedStringKey, id> *defaultAttrs = @{NSForegroundColorAttributeName: self.textColor};
+        [self addAttributes:defaultAttrs range:range];
+    }
+    BOOL canHighlightColor = [self.editorDelegate respondsToSelector:@selector(editorTextStorage:colorForCaptureName:)];
+    for (HighlightToken *token in tokens) {
+        if (canHighlightColor) {
+            UIColor *color = [self.editorDelegate editorTextStorage:self colorForCaptureName:token.name];
+            NSDictionary<NSAttributedStringKey, id> *attrs = @{NSForegroundColorAttributeName: color};
+//            NSLog(@"%@", token.name);
+            [self addAttributes:attrs range:token.range];
+        }
     }
 }
 

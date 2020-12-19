@@ -17,9 +17,10 @@ public protocol EditorTheme {
     var selectedLinesLineNumberColor: UIColor { get }
     var selectedLinesGutterBackgroundColor: UIColor { get }
     var invisibleCharactersColor: UIColor { get }
+    func syntaxHighlightingColor(forCaptureNamed captureName: String) -> UIColor?
 }
 
-extension EditorTheme {
+public extension EditorTheme {
     var gutterHairlineWidth: CGFloat {
         return 1 / UIScreen.main.scale
     }

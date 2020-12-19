@@ -9,6 +9,11 @@ import Foundation
 import TreeSitterBindings
 import TreeSitterLanguages
 
+public enum HighlighterError: Error {
+    case treeUnavailable
+    case queryError(QueryError)
+}
+
 @objc public protocol HighlighterDelegate: AnyObject {
     func highlighter(_ highlighter: Highlighter, linePositionAtLocation location: Int) -> HighlighterLinePosition
     func highlighter(_ highlighter: Highlighter, substringAtLocation location: Int) -> String?
@@ -64,28 +69,30 @@ import TreeSitterLanguages
         return parser.apply(inputEdit)
     }
 
-    @objc public func processEditing() {
+    @objc public func processEditing() throws -> HighlighterEditProcessingResult {
         parser.parse()
-        iterateCaptures()
+        let capturesResult = getCaptures()
+        switch capturesResult {
+        case .success(let captures):
+            let tokens = captures.map(HighlightToken.init)
+            return HighlighterEditProcessingResult(tokens: tokens)
+        case .failure(let error):
+            throw error
+        }
     }
 }
 
 private extension Highlighter {
-    private func iterateCaptures() {
+    private func getCaptures() -> Result<[Capture], HighlighterError> {
         guard let tree = parser.latestTree else {
-            return
+            return .failure(.treeUnavailable)
         }
-        let queryResult = Query.create(fromSource: highlightsSource, in: language)
-        switch queryResult {
-        case .success(let query):
+        return Query.create(fromSource: highlightsSource, in: language).mapError { error in
+            return .queryError(error)
+        }.map { query in
             let captureQuery = CaptureQuery(query: query, node: tree.rootNode)
             captureQuery.execute()
-            let captures = captureQuery.allCaptures()
-            for capture in captures {
-                print("[\(capture.startByte) - \(capture.endByte)] \(capture.name)")
-            }
-        case .failure(let error):
-            print(error)
+            return captureQuery.allCaptures()
         }
     }
 }
@@ -93,5 +100,14 @@ private extension Highlighter {
 extension Highlighter: ParserDelegate {
     public func parser(_ parser: Parser, substringAtByteIndex byteIndex: uint, point: SourcePoint) -> String? {
         return delegate?.highlighter(self, substringAtLocation: Int(byteIndex))
+    }
+}
+
+private extension HighlightToken {
+    convenience init(capture: Capture) {
+        let location = Int(capture.startByte)
+        let length = Int(capture.endByte - capture.startByte)
+        let range = NSRange(location: location, length: length)
+        self.init(range: range, name: capture.name)
     }
 }
