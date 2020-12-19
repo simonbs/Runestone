@@ -8,7 +8,7 @@
 import Foundation
 import TreeSitter
 
-@objc public final class InputEdit: NSObject {
+public final class InputEdit {
     public let startByte: uint
     public let oldEndByte: uint
     public let newEndByte: uint
@@ -16,7 +16,7 @@ import TreeSitter
     public let oldEndPoint: SourcePoint
     public let newEndPoint: SourcePoint
 
-    @objc public init(
+    public init(
         startByte: uint,
         oldEndByte: uint,
         newEndByte: uint,

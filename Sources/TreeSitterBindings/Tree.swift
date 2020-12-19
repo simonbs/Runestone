@@ -9,7 +9,7 @@ import TreeSitter
 
 public final class Tree {
     let pointer: OpaquePointer
-    var rootNode: Node {
+    public var rootNode: Node {
         return Node(node: ts_tree_root_node(pointer))
     }
 

@@ -7,7 +7,7 @@
 
 import TreeSitter
 
-enum QueryError: Error {
+public enum QueryError: Error {
     case syntax(offset: UInt32)
     case nodeType(offset: UInt32)
     case field(offset: UInt32)
@@ -16,7 +16,7 @@ enum QueryError: Error {
     case unknown
 }
 
-final class Query {
+public final class Query {
     let pointer: OpaquePointer
     
     private let language: Language
@@ -30,7 +30,7 @@ final class Query {
         ts_query_delete(pointer)
     }
 
-    static func create(fromSource source: String, in language: Language) -> Result<Query, QueryError> {
+    public static func create(fromSource source: String, in language: Language) -> Result<Query, QueryError> {
         let errorOffset = UnsafeMutablePointer<UInt32>.allocate(capacity: 1)
         let errorType = UnsafeMutablePointer<TSQueryError>.allocate(capacity: 1)
         let pointer = source.withCString { (cstr) -> OpaquePointer? in

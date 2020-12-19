@@ -5,12 +5,11 @@
 //  Created by Simon Støvring on 17/12/2020.
 //
 
-import Foundation
 import TreeSitter
 
-@objc public enum SourceEncoding: Int {
-    case utf8 = 0
-    case utf16 = 1
+public enum SourceEncoding {
+    case utf8
+    case utf16
 }
 
 extension SourceEncoding {

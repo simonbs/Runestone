@@ -5,10 +5,9 @@
 //  Created by Simon Støvring on 05/12/2020.
 //
 
-import Foundation
 import TreeSitter
 
-@objc public final class SourcePoint: NSObject {
+public final class SourcePoint {
     public var row: CUnsignedInt {
         return rawValue.row
     }
@@ -20,17 +19,15 @@ import TreeSitter
 
     init(point: TSPoint) {
         self.rawValue = point
-        super.init()
     }
 
-    @objc public init(row: CUnsignedInt, column: CUnsignedInt) {
+    public init(row: CUnsignedInt, column: CUnsignedInt) {
         self.rawValue = TSPoint(row: row, column: column)
-        super.init()
     }
 }
 
-extension SourcePoint {
-    public override var debugDescription: String {
+extension SourcePoint: CustomDebugStringConvertible {
+    public var debugDescription: String {
         return "(row = \(row), column = \(column)"
     }
 }

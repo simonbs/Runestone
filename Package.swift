@@ -19,15 +19,18 @@ let package = Package(
             dependencies: ["RunestoneTextStorage"]),
         .target(
             name: "RunestoneTextStorage",
-            dependencies: ["RunestoneDocumentLineTree", "TreeSitterBindings", "TreeSitterLanguages"]),
+            dependencies: ["RunestoneDocumentLineTree", "RunestoneHighlighter"]),
         .target(name: "RunestoneDocumentLineTree"),
-        .target(name: "TreeSitterLanguages"),
         .target(
-            name: "TreeSitterBindings",
-            dependencies: ["TreeSitter"],
+            name: "RunestoneHighlighter",
+            dependencies: ["TreeSitterBindings", "TreeSitterLanguages"],
             resources: [
                 .copy("queries")
             ]),
+        .target(name: "TreeSitterLanguages"),
+        .target(
+            name: "TreeSitterBindings",
+            dependencies: ["TreeSitter"]),
         .target(
             name: "TreeSitter",
             exclude: [

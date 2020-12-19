@@ -8,11 +8,10 @@
 import Foundation
 import TreeSitter
 
-@objc public final class Language: NSObject {
+public final class Language {
     let pointer: UnsafePointer<TSLanguage>
 
-    @objc(initWithLanguage:) public init(_ language: UnsafePointer<TSLanguage>) {
+    public init(_ language: UnsafePointer<TSLanguage>) {
         self.pointer = language
-        super.init()
     }
 }
