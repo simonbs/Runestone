@@ -368,6 +368,10 @@ extension EditorTextView: EditorTextStorageDelegate {
     public func editorTextStorage(_ editorTextStorage: EditorTextStorage, colorForCaptureName captureName: String) -> UIColor {
         return theme.syntaxHighlightingColor(forCaptureNamed: captureName) ?? .label
     }
+
+    public func rangeVisible(in editorTextStorage: EditorTextStorage) -> NSRange {
+        return layoutManager.glyphRange(for: textContainer)
+    }
 }
 
 extension EditorTextView: EditorLayoutManagerDelegate {

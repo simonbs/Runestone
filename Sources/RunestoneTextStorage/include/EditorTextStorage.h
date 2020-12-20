@@ -18,6 +18,7 @@
 @optional
 - (void)editorTextStorageDidRemoveLine:(EditorTextStorage* _Nonnull)editorTextStorage;
 - (UIColor* _Nonnull)editorTextStorage:(EditorTextStorage* _Nonnull)editorTextStorage colorForCaptureName:(NSString* _Nonnull)captureName;
+- (NSRange)rangeVisibleInEditorTextStorage:(EditorTextStorage* _Nonnull)editorTextStorage;
 @end
 
 @interface EditorTextStorage: NSTextStorage

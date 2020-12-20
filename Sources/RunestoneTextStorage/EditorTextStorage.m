@@ -63,7 +63,7 @@
     NSError *error;
     HighlighterEditProcessingResult *processingResult = [_highlighter processEditingAndReturnError:&error];
     if (processingResult != nil) {
-        NSRange range = NSMakeRange(0, self.length);
+        NSRange range = [self.editorDelegate rangeVisibleInEditorTextStorage:self];
         [self highlightSyntaxInRange:range usingTokens:processingResult.tokens];
     } else {
         NSLog(@"%@", error);
