@@ -8,7 +8,15 @@
 import UIKit
 import RunestoneTextStorage
 
-public protocol EditorTextViewDelegate: UITextViewDelegate {}
+public protocol EditorTextViewDelegate: UITextViewDelegate {
+    func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: EditorCharacterPair, in range: NSRange) -> Bool
+}
+
+public extension EditorTextViewDelegate {
+    func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: EditorCharacterPair, in range: NSRange) -> Bool {
+        return true
+    }
+}
 
 open class EditorTextView: UITextView {
     public weak var editorDelegate: EditorTextViewDelegate?
@@ -149,6 +157,7 @@ open class EditorTextView: UITextView {
             }
         }
     }
+    public var characterPairs: [EditorCharacterPair] = []
     open override var delegate: UITextViewDelegate? {
         didSet {
             if isDelegateLockEnabled {
@@ -289,6 +298,26 @@ private extension EditorTextView {
             setNeedsDisplay()
         }
     }
+
+    private func insert(_ characterPair: EditorCharacterPair, in range: NSRange) {
+        guard let selectedTextRange = selectedTextRange else {
+            return
+        }
+        if selectedTextRange.isEmpty {
+            insertText(characterPair.leading + characterPair.trailing)
+            selectedRange = NSRange(location: range.location + characterPair.leading.count, length: 0)
+        } else if let textRange = textRange(from: selectedTextRange.start, to: selectedTextRange.end), let text = text(in: textRange) {
+            let modifiedText = characterPair.leading + text + characterPair.trailing
+            replace(textRange, withText: modifiedText)
+            if let newStartPosition = position(from: textRange.start, offset: characterPair.leading.count) {
+                if let newEndPosition = position(from: textRange.end, offset: characterPair.trailing.count) {
+                    if let newSelectedTextRange = self.textRange(from: newStartPosition, to: newEndPosition) {
+                        self.selectedTextRange = newSelectedTextRange
+                    }
+                }
+            }
+        }
+    }
 }
 
 extension EditorTextView: NSLayoutManagerDelegate {
@@ -394,5 +423,19 @@ extension EditorTextView: UITextViewDelegate {
     public func textViewDidChangeSelection(_ textView: UITextView) {
         setNeedsDisplayOnSelectionChangeIfNecessary()
         editorDelegate?.textViewDidChangeSelection?(self)
+    }
+
+    public func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+        if let characterPair = characterPairs.first(where: { $0.leading == text }) {
+            let shouldInsertCharacterPair = editorDelegate?.editorTextView(self, shouldInsert: characterPair, in: range) ?? true
+            if shouldInsertCharacterPair {
+                insert(characterPair, in: range)
+                return false
+            } else {
+                return editorDelegate?.textView?(textView, shouldChangeTextIn: range, replacementText: text) ?? true
+            }
+        } else {
+            return editorDelegate?.textView?(textView, shouldChangeTextIn: range, replacementText: text) ?? true
+        }
     }
 }
