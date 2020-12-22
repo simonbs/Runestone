@@ -406,8 +406,10 @@ extension EditorTextView: EditorTextStorageDelegate {
             let endLineNumber = min(linePosition.lineNumber + surroundingLineCount, lineManager.lineCount)
             let startLocation = lineManager.locationOfLine(withLineNumber: startLineNumber)
             let endLocation = lineManager.locationOfLine(withLineNumber: endLineNumber)
-            let range = NSRange(location: startLocation, length: endLocation - startLocation)
-            syntaxHighlightController.processEditing(range)
+            if let endLinePosition = lineManager.positionOfLine(containingCharacterAt: endLocation) {
+                let range = NSRange(location: startLocation, length: endLocation + endLinePosition.length)
+                syntaxHighlightController.processEditing(range)
+            }
         }
     }
 }
