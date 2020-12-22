@@ -79,7 +79,6 @@ final class SyntaxHighlightController {
 
 private extension SyntaxHighlightController {
     private func highlight(_ captures: [Capture], in range: NSRange) {
-        print(range)
         textStorage?.removeAttribute(.font, range: range)
         textStorage?.removeAttribute(.foregroundColor, range: range)
         var defaulAttributes: [NSAttributedString.Key: Any] = [:]
