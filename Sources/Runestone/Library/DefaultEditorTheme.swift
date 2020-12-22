@@ -32,7 +32,7 @@ final class DefaultEditorTheme: EditorTheme {
 
     let invisibleCharactersColor: UIColor = .tertiaryLabel
 
-    func syntaxHighlightingColor(forCaptureNamed captureName: String) -> UIColor? {
+    func textColorForCapture(named captureName: String) -> UIColor? {
         switch captureName {
         case CaptureName.punctuationBracket, CaptureName.punctuationDelimiter:
             return .secondaryLabel
@@ -53,5 +53,9 @@ final class DefaultEditorTheme: EditorTheme {
         default:
             return .label
         }
+    }
+
+    func fontForCapture(named captureName: String) -> UIFont? {
+        return nil
     }
 }

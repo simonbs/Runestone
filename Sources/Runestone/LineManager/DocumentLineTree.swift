@@ -49,7 +49,6 @@ final class DocumentLineTree {
         }
     }
 
-    @objc(locationOfLineWithLineNumber:)
     func locationOfLine(withLineNumber lineNumber: Int) -> Int {
         let index = lineNumber - 1
         assert(index >= 0)

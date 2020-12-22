@@ -18,3 +18,9 @@ public final class Capture {
         self.name = name
     }
 }
+
+extension Capture: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        return "[\(startByte) - \(endByte)] \(name)"
+    }
+}

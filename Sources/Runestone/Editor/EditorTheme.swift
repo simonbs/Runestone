@@ -17,11 +17,16 @@ public protocol EditorTheme {
     var selectedLinesLineNumberColor: UIColor { get }
     var selectedLinesGutterBackgroundColor: UIColor { get }
     var invisibleCharactersColor: UIColor { get }
-    func syntaxHighlightingColor(forCaptureNamed captureName: String) -> UIColor?
+    func textColorForCapture(named captureName: String) -> UIColor?
+    func fontForCapture(named captureName: String) -> UIFont?
 }
 
 public extension EditorTheme {
     var gutterHairlineWidth: CGFloat {
         return 1 / UIScreen.main.scale
+    }
+
+    func fontForCapture(named captureName: String) -> UIFont? {
+        return nil
     }
 }

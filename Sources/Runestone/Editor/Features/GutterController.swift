@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  GutterController.swift
 //  
 //
 //  Created by Simon Støvring on 12/12/2020.
@@ -8,14 +8,8 @@
 import UIKit
 import RunestoneTextStorage
 
-protocol EditorGutterControllerDelegate: AnyObject {
-    func isTextViewFirstResponder(_ controller: EditorGutterController) -> Bool
-    func widthOfTextView(_ controller: EditorGutterController) -> CGFloat
-    func selectedRangeInTextView(_ controller: EditorGutterController) -> NSRange
-}
-
-final class EditorGutterController {
-    weak var delegate: EditorGutterControllerDelegate?
+final class GutterController {
+    weak var textView: UITextView?
     var theme: EditorTheme
     var lineNumberFont: UIFont?
     var lineNumberLeadingMargin: CGFloat = 7
@@ -28,27 +22,23 @@ final class EditorGutterController {
         return maximumLineNumberCharacterCount != previousMaximumLineNumberCharacterCount
     }
 
+    private weak var lineManager: LineManager?
     private weak var layoutManager: NSLayoutManager?
-    private weak var textStorage: EditorTextStorage?
     private weak var textContainer: NSTextContainer?
+    private weak var textStorage: EditorTextStorage?
     private var previousMaximumLineNumberCharacterCount = 0
     private var gutterWidth: CGFloat = 0
     private var maximumLineNumberCharacterCount: Int {
-        let numberOfLines = textStorage?.lineCount ?? 0
+        let numberOfLines = lineManager?.lineCount ?? 0
         let stringRepresentation = String(describing: numberOfLines)
         return max(stringRepresentation.count, Int(accommodateMinimumCharacterCountInLineNumbers))
     }
-    private var textViewWidth: CGFloat {
-        return delegate?.widthOfTextView(self) ?? 0
-    }
-    private var isTextViewFirstResponder: Bool {
-        return delegate?.isTextViewFirstResponder(self) ?? false
-    }
 
-    init(layoutManager: NSLayoutManager, textStorage: EditorTextStorage, textContainer: NSTextContainer, theme: EditorTheme) {
+    init(lineManager: LineManager, layoutManager: NSLayoutManager, textContainer: NSTextContainer, textStorage: EditorTextStorage, theme: EditorTheme) {
+        self.lineManager = lineManager
         self.layoutManager = layoutManager
-        self.textStorage = textStorage
         self.textContainer = textContainer
+        self.textStorage = textStorage
         self.theme = theme
     }
 
@@ -89,13 +79,13 @@ final class EditorGutterController {
 
     func draw(_ lineFragment: EditorLineFragment) {
         let shouldDraw = showLineNumbers || highlightSelectedLine
-        guard shouldDraw, let delegate = delegate, let layoutManager = layoutManager, let textContainer = textContainer else {
+        guard shouldDraw, let textView = textView, let layoutManager = layoutManager, let textContainer = textContainer else {
             return
         }
-        guard let linePosition = textStorage?.positionOfLine(containingCharacterAt: lineFragment.glyphRange.location) else {
+        guard let linePosition = lineManager?.positionOfLine(containingCharacterAt: lineFragment.glyphRange.location) else {
             return
         }
-        guard let lineLocation = textStorage?.locationOfLine(withLineNumber: linePosition.lineNumber) else {
+        guard let lineLocation = lineManager?.locationOfLine(withLineNumber: linePosition.lineNumber) else {
             return
         }
         guard lineFragment.glyphRange.location == lineLocation else {
@@ -103,13 +93,12 @@ final class EditorGutterController {
         }
         let lineFragmentRect = layoutManager.lineFragmentRect(forGlyphAt: lineFragment.glyphRange.location, effectiveRange: nil)
         let lineRange = NSRange(location: lineLocation, length: linePosition.length)
-        let selectedRange = delegate.selectedRangeInTextView(self)
-        let isLineSelected = shouldHighlineLine(spanning: lineRange, forSelectedRange: selectedRange)
+        let isLineSelected = shouldHighlineLine(spanning: lineRange, forSelectedRange: textView.selectedRange)
         if isLineSelected {
             let entireLineRange = NSRange(location: lineLocation, length: linePosition.length)
             let lineBoundingRect = layoutManager.boundingRect(forGlyphRange: entireLineRange, in: textContainer)
             let lineBackgroundYPosition = lineBoundingRect.minY + textContainerInset.top
-            let lineBackgroundRect = CGRect(x: gutterWidth, y: lineBackgroundYPosition, width: textViewWidth, height: lineBoundingRect.height)
+            let lineBackgroundRect = CGRect(x: gutterWidth, y: lineBackgroundYPosition, width: textView.bounds.width, height: lineBoundingRect.height)
             drawLineBackgrounds(in: lineBackgroundRect)
         }
         let gutterRect = CGRect(x: 0, y: lineFragmentRect.minY + textContainerInset.top, width: gutterWidth, height: lineFragmentRect.height)
@@ -119,34 +108,35 @@ final class EditorGutterController {
 
     func drawExtraLineIfNecessary() {
         let shouldDraw = showLineNumbers || highlightSelectedLine
-        if shouldDraw, let layoutManager = layoutManager, let textStorage = textStorage {
+        if shouldDraw, let lineManager = lineManager, let layoutManager = layoutManager, let textStorage = textStorage {
             let extraLineFragmentUsedRect = layoutManager.extraLineFragmentUsedRect
             if extraLineFragmentUsedRect.size != .zero {
                 let lineYPosition = extraLineFragmentUsedRect.minY + textContainerInset.top
                 let lineHeight = lineNumberFont?.lineHeight ?? extraLineFragmentUsedRect.height
                 let lineRect = CGRect(x: 0, y: lineYPosition, width: gutterWidth, height: lineHeight)
                 let lineRange = NSRange(location: textStorage.length, length: 1)
-                let selectedRange = delegate?.selectedRangeInTextView(self)
-                let isLineSelected = shouldHighlineLine(spanning: lineRange, forSelectedRange: selectedRange)
+                let isLineSelected = shouldHighlineLine(spanning: lineRange, forSelectedRange: textView?.selectedRange)
                 if isLineSelected {
                     drawLineBackgrounds(in: lineRect)
                 }
                 let gutterRect = CGRect(x: 0, y: lineRect.minY, width: gutterWidth, height: lineRect.height)
                 let textColor = isLineSelected ? theme.selectedLinesLineNumberColor : theme.lineNumberColor
-                drawLineNumber(textStorage.lineCount, in: gutterRect, textColor: textColor)
+                drawLineNumber(lineManager.lineCount, in: gutterRect, textColor: textColor)
             }
         }
     }
 }
 
-private extension EditorGutterController {
+private extension GutterController {
     private func drawLineBackgrounds(in rect: CGRect) {
+        guard let textView = textView else {
+            return
+        }
         // We only draw line backgrounds when the selected range is zero, meaning no characters are selected.
         // Highlighting the current lines when characters is selected looks strange and makes it difficult to see
         // what is the selected characters and what is the current lines.
-        let selectedRange = delegate?.selectedRangeInTextView(self)
-        if selectedRange?.length == 0 {
-            let lineContentRect = CGRect(x: gutterWidth, y: rect.minY, width: textViewWidth - gutterWidth, height: rect.height)
+        if textView.selectedRange.length == 0 {
+            let lineContentRect = CGRect(x: gutterWidth, y: rect.minY, width: textView.bounds.width - gutterWidth, height: rect.height)
             drawSelectedLineBackground(in: lineContentRect)
         }
         if showLineNumbers {
@@ -181,6 +171,7 @@ private extension EditorGutterController {
         context?.fill(rect)
         context?.restoreGState()
     }
+
     private func widthOfGutter(in textContainer: NSTextContainer) -> CGFloat {
         let maximumCharacterCount = maximumLineNumberCharacterCount
         guard maximumCharacterCount != previousMaximumLineNumberCharacterCount else {
@@ -195,7 +186,7 @@ private extension EditorGutterController {
     }
 
     private func shouldHighlineLine(spanning lineRange: NSRange, forSelectedRange selectedRange: NSRange?) -> Bool {
-        guard highlightSelectedLine, isTextViewFirstResponder, let textStorage = textStorage, let selectedRange = selectedRange else {
+        guard highlightSelectedLine, let textStorage = textStorage, let selectedRange = selectedRange, let textView = textView, textView.isFirstResponder else {
             return false
         }
         let selectedStartLocation = selectedRange.location

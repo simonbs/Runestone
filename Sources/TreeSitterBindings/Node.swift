@@ -31,9 +31,37 @@ public final class Node {
     public var endByte: uint {
         return ts_node_end_byte(rawValue)
     }
+    public var isNull: Bool {
+        return ts_node_is_null(rawValue)
+    }
+    public var isNamed: Bool {
+        return ts_node_is_named(rawValue)
+    }
+    public var isExtra: Bool {
+        return ts_node_is_extra(rawValue)
+    }
+    public var isMissing: Bool {
+        return ts_node_is_missing(rawValue)
+    }
+    public var hasError: Bool {
+        return ts_node_has_error(rawValue)
+    }
+    public var childCount: uint {
+        return ts_node_child_count(rawValue)
+    }
 
     init(node: TSNode) {
         self.rawValue = node
+    }
+
+    public func namedDescendantInRange(from startOffset: uint, to endOffset: uint) -> Node {
+        let descendantRawValue = ts_node_named_descendant_for_byte_range(rawValue, startOffset, endOffset)
+        return Node(node: descendantRawValue)
+    }
+
+    public func namedDescendantInRange(from startPoint: SourcePoint, to endPoint: SourcePoint) -> Node {
+        let descendantRawValue = ts_node_named_descendant_for_point_range(rawValue, startPoint.rawValue, endPoint.rawValue)
+        return Node(node: descendantRawValue)
     }
 }
 

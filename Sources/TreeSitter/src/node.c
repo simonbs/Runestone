@@ -46,7 +46,7 @@ static inline uint32_t ts_node__alias(const TSNode *self) {
 }
 
 static inline Subtree ts_node__subtree(TSNode self) {
-  return *(const Subtree *)self.id;
+    return *(const Subtree *)self.id;
 }
 
 // NodeChildIterator

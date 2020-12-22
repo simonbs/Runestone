@@ -7,6 +7,8 @@
 
 import UIKit
 import RunestoneTextStorage
+import TreeSitterBindings
+import TreeSitterLanguages
 
 public protocol EditorTextViewDelegate: UITextViewDelegate {
     func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: EditorCharacterPair, in range: NSRange) -> Bool
@@ -24,6 +26,7 @@ open class EditorTextView: UITextView {
         didSet {
             gutterController.theme = theme
             invisibleCharactersController.theme = theme
+            syntaxHighlightController.theme = theme
         }
     }
     public var showTabs: Bool {
@@ -168,7 +171,7 @@ open class EditorTextView: UITextView {
     open override var textColor: UIColor? {
         didSet {
             if textColor != oldValue {
-                editorTextStorage.textColor = textColor
+                syntaxHighlightController.textColor = textColor
             }
         }
     }
@@ -177,6 +180,7 @@ open class EditorTextView: UITextView {
             if font != oldValue {
                 invisibleCharactersController.font = font
                 editorLayoutManager.font = font
+                syntaxHighlightController.font = font
             }
         }
     }
@@ -190,38 +194,48 @@ open class EditorTextView: UITextView {
     }
 
     private var isDelegateLockEnabled = false
+    private let lineManager = LineManager()
+    private let parser: Parser
+    private let syntaxHighlightController: SyntaxHighlightController
     private let editorTextStorage = EditorTextStorage()
-    private let invisibleCharactersController: EditorInvisibleCharactersController
-    private let gutterController: EditorGutterController
+    private let invisibleCharactersController: InvisibleCharactersController
+    private let gutterController: GutterController
     private let editorLayoutManager = EditorLayoutManager()
     private var shouldDrawDummyExtraLineNumber = false
 
     public init(frame: CGRect = .zero) {
+        parser = Parser(encoding: .utf8)
+        parser.language = Language(tree_sitter_javascript())
+        syntaxHighlightController = SyntaxHighlightController(parser: parser, lineManager: lineManager, textStorage: editorTextStorage, theme: theme)
         let textContainer = Self.createTextContainer(layoutManager: editorLayoutManager, textStorage: editorTextStorage)
-        gutterController = EditorGutterController(
+        gutterController = GutterController(
+            lineManager: lineManager,
             layoutManager: editorLayoutManager,
-            textStorage: editorTextStorage,
             textContainer: textContainer,
+            textStorage: editorTextStorage,
             theme: theme)
-        invisibleCharactersController = EditorInvisibleCharactersController(
+        invisibleCharactersController = InvisibleCharactersController(
             layoutManager: editorLayoutManager,
             textStorage: editorTextStorage,
             theme: theme)
         super.init(frame: frame, textContainer: textContainer)
         delegate = self
         isDelegateLockEnabled = true
+        lineManager.delegate = self
+        parser.delegate = self
         editorTextStorage.editorDelegate = self
-        editorTextStorage.textColor = textColor
         editorLayoutManager.delegate = self
         editorLayoutManager.editorDelegate = self
         editorLayoutManager.allowsNonContiguousLayout = true
         invisibleCharactersController.font = font
         invisibleCharactersController.textContainerInset = textContainerInset
-        gutterController.delegate = self
+        gutterController.textView = self
         gutterController.lineNumberFont = lineNumberFont
         gutterController.textContainerInset = textContainerInset
         gutterController.updateGutterWidth()
         gutterController.updateExclusionPath()
+        syntaxHighlightController.textColor = textColor
+        syntaxHighlightController.font = font
         updateShouldDrawDummyExtraLineNumber()
     }
 
@@ -230,13 +244,9 @@ open class EditorTextView: UITextView {
     }
     
     public func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
-        if let linePosition = editorTextStorage.positionOfLine(containingCharacterAt: location) {
-            return LinePosition(lineNumber: linePosition.lineNumber, column: linePosition.column, length: linePosition.length)
-        } else {
-            return nil
-        }
+        return lineManager.positionOfLine(containingCharacterAt: location)
     }
-
+    
     public override func responds(to aSelector: Selector!) -> Bool {
         if let editorDelegate = editorDelegate, editorDelegate.responds(to: aSelector) {
             return true
@@ -320,6 +330,20 @@ private extension EditorTextView {
     }
 }
 
+extension EditorTextView: LineManagerDelegate {
+    func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> Character {
+        let str = textStorage.string
+        let index = str.index(str.startIndex, offsetBy: location)
+        return str[index]
+    }
+}
+
+extension EditorTextView: ParserDelegate {
+    public func parser(_ parser: Parser, substringAtByteIndex byteIndex: uint, point: SourcePoint) -> String? {
+        return editorTextStorage.substring(in: NSRange(location: Int(byteIndex), length: 1))
+    }
+}
+
 extension EditorTextView: NSLayoutManagerDelegate {
     public func layoutManager(
         _ layoutManager: NSLayoutManager,
@@ -365,18 +389,32 @@ extension EditorTextView: NSLayoutManagerDelegate {
 }
 
 extension EditorTextView: EditorTextStorageDelegate {
-    public func editorTextStorage(_ editorTextStorage: EditorTextStorage, colorForCaptureName captureName: String) -> UIColor {
-        return theme.syntaxHighlightingColor(forCaptureNamed: captureName) ?? .label
+    public func editorTextStorage(_ editorTextStorage: EditorTextStorage, didReplaceCharactersIn range: NSRange, with string: String) {
+        syntaxHighlightController.markRangeEdited(range)
+        lineManager.removeCharacters(in: range)
+        lineManager.insert(string as NSString, in: range)
     }
 
-    public func rangeVisible(in editorTextStorage: EditorTextStorage) -> NSRange {
-        return layoutManager.glyphRange(for: textContainer)
+    public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
+        parser.parse()
+        // Highlight the surrounding lines. Ideally we should get the range of visible glyphs
+        // but I haven't found an API that can give the visible glyphs at this point in time.
+        let editedStartLocation = editorTextStorage.editedRange.location
+        if let linePosition = lineManager.positionOfLine(containingCharacterAt: editedStartLocation) {
+            let surroundingLineCount = 20
+            let startLineNumber = max(linePosition.lineNumber - surroundingLineCount, 1)
+            let endLineNumber = min(linePosition.lineNumber + surroundingLineCount, lineManager.lineCount)
+            let startLocation = lineManager.locationOfLine(withLineNumber: startLineNumber)
+            let endLocation = lineManager.locationOfLine(withLineNumber: endLineNumber)
+            let range = NSRange(location: startLocation, length: endLocation - startLocation)
+            syntaxHighlightController.processEditing(range)
+        }
     }
 }
 
 extension EditorTextView: EditorLayoutManagerDelegate {
     func numberOfLinesIn(_ layoutManager: EditorLayoutManager) -> Int {
-        return editorTextStorage.lineCount
+        return lineManager.lineCount
     }
 
     func editorLayoutManagerShouldEnumerateLineFragments(_ layoutManager: EditorLayoutManager) -> Bool {
@@ -390,20 +428,6 @@ extension EditorTextView: EditorLayoutManagerDelegate {
     func editorLayoutManager(_ layoutManager: EditorLayoutManager, didEnumerate lineFragment: EditorLineFragment) {
         gutterController.draw(lineFragment)
         invisibleCharactersController.drawInvisibleCharacters(in: lineFragment)
-    }
-}
-
-extension EditorTextView: EditorGutterControllerDelegate {
-    func isTextViewFirstResponder(_ controller: EditorGutterController) -> Bool {
-        return isFirstResponder
-    }
-
-    func widthOfTextView(_ controller: EditorGutterController) -> CGFloat {
-        return bounds.width
-    }
-
-    func selectedRangeInTextView(_ controller: EditorGutterController) -> NSRange {
-        return selectedRange
     }
 }
 

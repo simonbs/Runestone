@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  InvisibleCharactersController.swift
 //  
 //
 //  Created by Simon Støvring on 13/12/2020.
@@ -8,7 +8,7 @@
 import UIKit
 import RunestoneTextStorage
 
-final class EditorInvisibleCharactersController {
+final class InvisibleCharactersController {
     private enum HorizontalSymbolPosition {
         case minX
         case maxX
@@ -46,7 +46,7 @@ final class EditorInvisibleCharactersController {
     }
 }
 
-private extension EditorInvisibleCharactersController {
+private extension InvisibleCharactersController {
     private func drawInvisibleCharacter(forGlyphAt glyphLocation: Int, in lineFragment: EditorLineFragment) {
         guard let layoutManager = layoutManager else {
             return

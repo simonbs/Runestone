@@ -6,27 +6,15 @@
 //
 
 #import "EditorTextStorage.h"
-@import RunestoneDocumentLineTree;
-@import RunestoneHighlighter;
-
-@interface EditorTextStorage () <LineManagerDelegate, HighlighterDelegate>
-@end
 
 @implementation EditorTextStorage {
     NSTextStorage *_internalString;
-    LineManager *_lineManager;
-    Highlighter *_highlighter;
 }
 
 // MARK: - Lifecycle
 - (instancetype)init {
     if (self = [super init]) {
         _internalString = [NSTextStorage new];
-        _highlighter = [[Highlighter alloc] initWithEncoding:HighlighterEncodingUtf8];
-//        _parser.language = [[Language alloc] initWithLanguage:tree_sitter_javascript()];
-        _highlighter.delegate = self;
-        _lineManager = [LineManager new];
-        _lineManager.delegate = self;
     }
     return self;
 }
@@ -38,11 +26,11 @@
 
 - (void)replaceCharactersInRange:(NSRange)range withString:(NSString *)str {
     [self beginEditing];
-    [_highlighter markRangeEdited:range];
     NSInteger length = (NSInteger)str.length - (NSInteger)range.length;
     [_internalString replaceCharactersInRange:range withString:str];
-    [_lineManager removeCharactersInRange:range];
-    [_lineManager insertString:str inRange:range];
+    if ([self.editorDelegate respondsToSelector:@selector(editorTextStorage:didReplaceCharactersInRange:withString:)]) {
+        [self.editorDelegate editorTextStorage:self didReplaceCharactersInRange:range withString:str];
+    }
     [self edited:NSTextStorageEditedCharacters range:range changeInLength:length];
     [self endEditing];
 }
@@ -60,88 +48,18 @@
 
 - (void)processEditing {
     [super processEditing];
-    NSError *error;
-    HighlighterEditProcessingResult *processingResult = [_highlighter processEditingAndReturnError:&error];
-    if (processingResult != nil) {
-        NSRange range = [self.editorDelegate rangeVisibleInEditorTextStorage:self];
-        [self highlightSyntaxInRange:range usingTokens:processingResult.tokens];
-    } else {
-        NSLog(@"%@", error);
-    }
     if ([self.editorDelegate respondsToSelector:@selector(editorTextStorageDidProcessEditing:)]) {
         [self.editorDelegate editorTextStorageDidProcessEditing:self];
     }
 }
 
 // MARK: - Public
-- (NSInteger)lineCount {
-    return _lineManager.lineCount;
-}
-
-- (ObjCLinePosition * _Nullable)positionOfCharacterAt:(NSInteger)location {
-    LinePosition *linePosition = [_lineManager positionOfCharacterAtLocation:@(location)];
-    if (linePosition != nil) {
-        return [[ObjCLinePosition alloc] initWithLineNumber:linePosition.lineNumber column:linePosition.column length:linePosition.length];
-    } else {
-        return nil;
-    }
-}
-
-- (NSInteger)locationOfLineWithLineNumber:(NSInteger)lineNumber {
-    return [_lineManager locationOfLineWithLineNumber:@(lineNumber)];
-}
-
 - (NSString *)substringInRange:(NSRange)range {
     if (range.location + range.length <= _internalString.length) {
         return [_internalString attributedSubstringFromRange:range].string;
     } else {
         return nil;
     }
-}
-
-// MARK: - Private
-- (void)highlightSyntaxInRange:(NSRange)range usingTokens:(NSArray<HighlightToken*>* _Nonnull)tokens {
-    [self removeAttribute:NSForegroundColorAttributeName range:range];
-    if (self.textColor != nil) {
-        NSDictionary<NSAttributedStringKey, id> *defaultAttrs = @{NSForegroundColorAttributeName: self.textColor};
-        [self addAttributes:defaultAttrs range:range];
-    }
-    BOOL canHighlightColor = [self.editorDelegate respondsToSelector:@selector(editorTextStorage:colorForCaptureName:)];
-    for (HighlightToken *token in tokens) {
-        if (canHighlightColor) {
-            UIColor *color = [self.editorDelegate editorTextStorage:self colorForCaptureName:token.name];
-            NSDictionary<NSAttributedStringKey, id> *attrs = @{NSForegroundColorAttributeName: color};
-//            NSLog(@"%@", token.name);
-            [self addAttributes:attrs range:token.range];
-        }
-    }
-}
-
-// MARK: - LineManagerDelegate
-- (NSString * _Nonnull)lineManager:(LineManager * _Nonnull)lineManager characterAtLocation:(NSInteger)location {
-    return [self.string substringWithRange:NSMakeRange(location, 1)];
-}
-
-- (void)lineManagerDidInsertLine:(LineManager * _Nonnull)lineManager {
-    if ([self.editorDelegate respondsToSelector:@selector(editorTextStorageDidInsertLine:)]) {
-        [self.editorDelegate editorTextStorageDidInsertLine:self];
-    }
-}
-
-- (void)lineManagerDidRemoveLine:(LineManager * _Nonnull)lineManager {
-    if ([self.editorDelegate respondsToSelector:@selector(editorTextStorageDidRemoveLine:)]) {
-        [self.editorDelegate editorTextStorageDidRemoveLine:self];
-    }
-}
-
-// MARK: - HighlighterDelegate
-- (HighlighterLinePosition * _Nonnull)highlighter:(Highlighter * _Nonnull)highlighter linePositionAtLocation:(NSInteger)location {
-    LinePosition *linePosition = [_lineManager positionOfCharacterAtLocation:@(location)];
-    return [[HighlighterLinePosition alloc] initWithLineNumber:linePosition.lineNumber column:linePosition.column];
-}
-
-- (NSString * _Nullable)highlighter:(Highlighter * _Nonnull)highlighter substringAtLocation:(NSInteger)location { 
-    return [self substringInRange:NSMakeRange(location, 1)];
 }
 
 @end

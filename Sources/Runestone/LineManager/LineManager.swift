@@ -7,16 +7,20 @@
 
 import Foundation
 
-@objc public protocol LineManagerDelegate: class {
-    func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> NSString
+protocol LineManagerDelegate: class {
+    func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> Character
     func lineManagerDidInsertLine(_ lineManager: LineManager)
     func lineManagerDidRemoveLine(_ lineManager: LineManager)
 }
 
-@objc public final class LineManager: NSObject {
-    @objc public weak var delegate: LineManagerDelegate?
+extension LineManagerDelegate {
+    func lineManagerDidInsertLine(_ lineManager: LineManager) {}
+    func lineManagerDidRemoveLine(_ lineManager: LineManager) {}
+}
 
-    @objc public var lineCount: Int {
+final class LineManager {
+    weak var delegate: LineManagerDelegate?
+    var lineCount: Int {
         return tree.lineCount
     }
 
@@ -29,8 +33,9 @@ import Foundation
         }
     }
 
-    @objc(removeCharactersInRange:)
-    public func removeCharacters(in range: NSRange) {
+    init() {}
+
+    func removeCharacters(in range: NSRange) {
         guard range.length > 0 else {
             return
         }
@@ -66,8 +71,7 @@ import Foundation
         }
     }
 
-    @objc(insertString:inRange:)
-    public func insert(_ string: NSString, in range: NSRange) {
+    func insert(_ string: NSString, in range: NSRange) {
         var line = tree.line(containingCharacterAt: range.location)
         var lineLocation = line.location
         assert(range.location <= lineLocation + line.totalLength)
@@ -108,7 +112,7 @@ import Foundation
         }
     }
 
-    public func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
+    func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
         let line = tree.line(containingCharacterAt: location)
         if let lineNumber = line.lineNumber {
             let column = location - line.location + 1 // +1 to avoid zero based columns
@@ -118,18 +122,8 @@ import Foundation
         }
     }
 
-    @objc(positionOfCharacterAtLocation:)
-    public func positionOfLine(containingCharacterAt location: NSNumber) -> LinePosition? {
-        return positionOfLine(containingCharacterAt: location.intValue)
-    }
-
-    public func locationOfLine(withLineNumber lineNumber: Int) -> Int {
+    func locationOfLine(withLineNumber lineNumber: Int) -> Int {
         return tree.locationOfLine(withLineNumber: lineNumber)
-    }
-
-    @objc(locationOfLineWithLineNumber:)
-    public func locationOfLine(withLineNumber lineNumber: NSNumber) -> Int {
-        return tree.locationOfLine(withLineNumber: lineNumber.intValue)
     }
 }
 
@@ -146,12 +140,12 @@ private extension LineManager {
             line.delimiterLength = 0
         } else {
             let lastChar = getCharacter(at: line.location + newTotalLength - 1)
-            if lastChar == NewLineSymbol.nsCarriageReturn {
+            if lastChar == Symbol.Character.carriageReturn {
                 line.delimiterLength = 1
-            } else if lastChar == NewLineSymbol.nsLineFeed {
-                if newTotalLength >= 2 && getCharacter(at: line.location + newTotalLength - 2) == NewLineSymbol.nsCarriageReturn {
+            } else if lastChar == Symbol.Character.lineFeed {
+                if newTotalLength >= 2 && getCharacter(at: line.location + newTotalLength - 2) == Symbol.Character.carriageReturn {
                     line.delimiterLength = 2
-                } else if newTotalLength == 1 && line.location > 0 && getCharacter(at: line.location - 1) == NewLineSymbol.nsCarriageReturn {
+                } else if newTotalLength == 1 && line.location > 0 && getCharacter(at: line.location - 1) == Symbol.Character.carriageReturn {
                     // We need to join this line with the previous line.
                     let previousLine = line.previous
                     remove(line)
@@ -178,7 +172,7 @@ private extension LineManager {
         delegate?.lineManagerDidRemoveLine(self)
     }
 
-    private func getCharacter(at location: Int) -> NSString {
+    private func getCharacter(at location: Int) -> Character {
         return currentDelegate.lineManager(self, characterAtLocation: location)
     }
 }

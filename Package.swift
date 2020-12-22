@@ -16,17 +16,11 @@ let package = Package(
     targets: [
         .target(
             name: "Runestone",
-            dependencies: ["RunestoneTextStorage"]),
-        .target(
-            name: "RunestoneTextStorage",
-            dependencies: ["RunestoneDocumentLineTree", "RunestoneHighlighter"]),
-        .target(name: "RunestoneDocumentLineTree"),
-        .target(
-            name: "RunestoneHighlighter",
-            dependencies: ["TreeSitterBindings", "TreeSitterLanguages"],
+            dependencies: ["RunestoneTextStorage", "TreeSitterBindings", "TreeSitterLanguages"],
             resources: [
-                .copy("queries")
+                .copy("Resources/queries")
             ]),
+        .target(name: "RunestoneTextStorage"),
         .target(name: "TreeSitterLanguages"),
         .target(
             name: "TreeSitterBindings",
