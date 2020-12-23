@@ -33,7 +33,7 @@ public final class Query {
     public static func create(fromSource source: String, in language: Language) -> Result<Query, QueryError> {
         let errorOffset = UnsafeMutablePointer<UInt32>.allocate(capacity: 1)
         let errorType = UnsafeMutablePointer<TSQueryError>.allocate(capacity: 1)
-        let pointer = source.withCString { (cstr) -> OpaquePointer? in
+        let pointer = source.withCString { cstr in
             ts_query_new(language.pointer, cstr, UInt32(source.count), errorOffset, errorType)
         }
         defer {
