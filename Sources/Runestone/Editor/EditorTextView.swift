@@ -20,7 +20,7 @@ public extension EditorTextViewDelegate {
     }
 }
 
-open class EditorTextView: UITextView {
+public final class EditorTextView: UITextView {
     public weak var editorDelegate: EditorTextViewDelegate?
     public var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
@@ -161,21 +161,21 @@ open class EditorTextView: UITextView {
         }
     }
     public var characterPairs: [EditorCharacterPair] = []
-    open override var delegate: UITextViewDelegate? {
+    public override var delegate: UITextViewDelegate? {
         didSet {
             if isDelegateLockEnabled {
                 fatalError("\(type(of: self)) must be the delegate of the UITextView. Please use editorDelegate instead")
             }
         }
     }
-    open override var textColor: UIColor? {
+    public override var textColor: UIColor? {
         didSet {
             if textColor != oldValue {
                 syntaxHighlightController.textColor = textColor
             }
         }
     }
-    open override var font: UIFont? {
+    public override var font: UIFont? {
         didSet {
             if font != oldValue {
                 invisibleCharactersController.font = font
@@ -184,7 +184,7 @@ open class EditorTextView: UITextView {
             }
         }
     }
-    open override var textContainerInset: UIEdgeInsets {
+    public override var textContainerInset: UIEdgeInsets {
         didSet {
             if textContainerInset != oldValue {
                 invisibleCharactersController.textContainerInset = textContainerInset
@@ -247,7 +247,7 @@ open class EditorTextView: UITextView {
         return lineManager.positionOfLine(containingCharacterAt: location)
     }
 
-    open override func draw(_ rect: CGRect) {
+    public override func draw(_ rect: CGRect) {
         super.draw(rect)
         gutterController.drawGutterBackground(in: rect)
         if shouldDrawDummyExtraLineNumber {
