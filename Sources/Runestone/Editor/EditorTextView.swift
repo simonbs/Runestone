@@ -246,7 +246,17 @@ open class EditorTextView: UITextView {
     public func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
         return lineManager.positionOfLine(containingCharacterAt: location)
     }
-    
+
+    open override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        gutterController.drawGutterBackground(in: rect)
+        if shouldDrawDummyExtraLineNumber {
+            gutterController.drawExtraLineIfNecessary()
+        }
+    }
+}
+
+extension EditorTextView {
     public override func responds(to aSelector: Selector!) -> Bool {
         if let editorDelegate = editorDelegate, editorDelegate.responds(to: aSelector) {
             return true
@@ -260,14 +270,6 @@ open class EditorTextView: UITextView {
             return editorDelegate
         } else {
             return super.forwardingTarget(for: aSelector)
-        }
-    }
-
-    open override func draw(_ rect: CGRect) {
-        super.draw(rect)
-        gutterController.drawGutterBackground(in: rect)
-        if shouldDrawDummyExtraLineNumber {
-            gutterController.drawExtraLineIfNecessary()
         }
     }
 }
