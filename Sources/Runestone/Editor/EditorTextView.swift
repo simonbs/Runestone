@@ -242,10 +242,6 @@ public final class EditorTextView: UITextView {
     required public init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
-    public func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
-        return lineManager.positionOfLine(containingCharacterAt: location)
-    }
 
     public override func draw(_ rect: CGRect) {
         super.draw(rect)
@@ -253,6 +249,10 @@ public final class EditorTextView: UITextView {
         if shouldDrawDummyExtraLineNumber {
             gutterController.drawExtraLineIfNecessary()
         }
+    }
+    
+    public func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
+        return lineManager.positionOfLine(containingCharacterAt: location)
     }
 }
 
