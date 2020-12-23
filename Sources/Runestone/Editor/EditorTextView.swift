@@ -336,19 +336,19 @@ private extension EditorTextView {
     }
 
     private func glyphRangeByExtending(from location: Int, byLineCount extendingLineCount: Int) -> NSRange? {
-        if let linePosition = lineManager.positionOfLine(containingCharacterAt: location) {
-            let startLineNumber = max(linePosition.lineNumber - extendingLineCount, 1)
-            let endLineNumber = min(linePosition.lineNumber + extendingLineCount, lineManager.lineCount)
-            let startLocation = lineManager.locationOfLine(withLineNumber: startLineNumber)
-            let endLocation = lineManager.locationOfLine(withLineNumber: endLineNumber)
-            if let endLinePosition = lineManager.positionOfLine(containingCharacterAt: endLocation) {
-                return NSRange(location: startLocation, length: endLocation + endLinePosition.length)
-            } else {
-                return nil
-            }
-        } else {
+        guard let linePosition = lineManager.positionOfLine(containingCharacterAt: location) else {
             return nil
         }
+        let startLineNumber = max(linePosition.lineNumber - extendingLineCount, 1)
+        let endLineNumber = min(linePosition.lineNumber + extendingLineCount, lineManager.lineCount)
+        let startLineLocation = lineManager.locationOfLine(withLineNumber: startLineNumber)
+        let endLineLocation = lineManager.locationOfLine(withLineNumber: endLineNumber)
+        guard let endLinePosition = lineManager.positionOfLine(containingCharacterAt: endLineLocation) else {
+            return nil
+        }
+        let endCharacterLocation = endLineLocation + endLinePosition.length
+        let length = endCharacterLocation - startLineLocation
+        return NSRange(location: startLineLocation, length: length)
     }
 }
 
