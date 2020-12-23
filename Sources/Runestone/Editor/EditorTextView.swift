@@ -26,6 +26,7 @@ public final class EditorTextView: UITextView {
             gutterController.theme = theme
             invisibleCharactersController.theme = theme
             syntaxHighlightController.theme = theme
+            syntaxHighlightEntireGlyphRange()
         }
     }
     public var showTabs: Bool {
@@ -334,20 +335,35 @@ private extension EditorTextView {
         }
     }
 
+    private func syntaxHighlightEntireGlyphRange() {
+        textStorage.beginEditing()
+        let entireRange = NSRange(location: 0, length: textStorage.length)
+        textStorage.edited(.editedAttributes, range: entireRange, changeInLength: 0)
+        textStorage.endEditing()
+    }
+
     private func syntaxHighlightVisibleLines() {
         // Highlight the surrounding lines. Ideally we should get the range of visible glyphs
         // but I haven't found an API that can give the visible glyphs at this point in time.
         let editedStartLocation = editorTextStorage.editedRange.location
-        if let linePosition = lineManager.positionOfLine(containingCharacterAt: editedStartLocation) {
-            let surroundingLineCount = 20
-            let startLineNumber = max(linePosition.lineNumber - surroundingLineCount, 1)
-            let endLineNumber = min(linePosition.lineNumber + surroundingLineCount, lineManager.lineCount)
+        if let range = glyphRangeByExtending(from: editedStartLocation, byLineCount: 20) {
+            syntaxHighlightController.processEditing(range)
+        }
+    }
+
+    private func glyphRangeByExtending(from location: Int, byLineCount extendingLineCount: Int) -> NSRange? {
+        if let linePosition = lineManager.positionOfLine(containingCharacterAt: location) {
+            let startLineNumber = max(linePosition.lineNumber - extendingLineCount, 1)
+            let endLineNumber = min(linePosition.lineNumber + extendingLineCount, lineManager.lineCount)
             let startLocation = lineManager.locationOfLine(withLineNumber: startLineNumber)
             let endLocation = lineManager.locationOfLine(withLineNumber: endLineNumber)
             if let endLinePosition = lineManager.positionOfLine(containingCharacterAt: endLocation) {
-                let range = NSRange(location: startLocation, length: endLocation + endLinePosition.length)
-                syntaxHighlightController.processEditing(range)
+                return NSRange(location: startLocation, length: endLocation + endLinePosition.length)
+            } else {
+                return nil
             }
+        } else {
+            return nil
         }
     }
 }
