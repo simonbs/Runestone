@@ -359,10 +359,10 @@ private extension EditorTextView {
 }
 
 extension EditorTextView: LineManagerDelegate {
-    func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> Character {
-        let str = textStorage.string
+    func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> String {
+        let str = textStorage.string.utf16
         let index = str.index(str.startIndex, offsetBy: location)
-        return str[index]
+        return String(str[index])
     }
 }
 

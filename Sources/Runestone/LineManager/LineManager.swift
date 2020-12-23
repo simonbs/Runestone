@@ -8,7 +8,7 @@
 import Foundation
 
 protocol LineManagerDelegate: class {
-    func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> Character
+    func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> String
     func lineManagerDidInsertLine(_ lineManager: LineManager)
     func lineManagerDidRemoveLine(_ lineManager: LineManager)
 }
@@ -140,12 +140,12 @@ private extension LineManager {
             line.delimiterLength = 0
         } else {
             let lastChar = getCharacter(at: line.location + newTotalLength - 1)
-            if lastChar == Symbol.Character.carriageReturn {
+            if lastChar == Symbol.carriageReturn {
                 line.delimiterLength = 1
-            } else if lastChar == Symbol.Character.lineFeed {
-                if newTotalLength >= 2 && getCharacter(at: line.location + newTotalLength - 2) == Symbol.Character.carriageReturn {
+            } else if lastChar == Symbol.lineFeed {
+                if newTotalLength >= 2 && getCharacter(at: line.location + newTotalLength - 2) == Symbol.carriageReturn {
                     line.delimiterLength = 2
-                } else if newTotalLength == 1 && line.location > 0 && getCharacter(at: line.location - 1) == Symbol.Character.carriageReturn {
+                } else if newTotalLength == 1 && line.location > 0 && getCharacter(at: line.location - 1) == Symbol.carriageReturn {
                     // We need to join this line with the previous line.
                     let previousLine = line.previous
                     remove(line)
@@ -172,7 +172,7 @@ private extension LineManager {
         delegate?.lineManagerDidRemoveLine(self)
     }
 
-    private func getCharacter(at location: Int) -> Character {
+    private func getCharacter(at location: Int) -> String {
         return currentDelegate.lineManager(self, characterAtLocation: location)
     }
 }
