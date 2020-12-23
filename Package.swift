@@ -16,19 +16,20 @@ let package = Package(
     targets: [
         .target(
             name: "Runestone",
-            dependencies: ["OnigurumaBindings"]),
-//        .target(
-//            name: "Runestone",
-//            dependencies: ["RunestoneTextStorage"]),
-//        .target(
-//            name: "RunestoneTextStorage",
-//            dependencies: []),
+            dependencies: ["RunestoneTextStorage", "TreeSitterLanguages", "TreeSitter"],
+            resources: [
+                .copy("Resources/queries")
+            ]),
+        .target(name: "RunestoneTextStorage"),
+        .target(name: "TreeSitterLanguages"),
         .target(
-            name: "OnigurumaBindings",
-            dependencies: ["Oniguruma"]),
-        .target(
-            name: "Oniguruma",
-            exclude: ["COPYING"]),
+            name: "TreeSitter",
+            exclude: [
+                "src",
+                "unicode/ICU_SHA",
+                "unicode/LICENSE",
+                "unicode/README.md"
+            ]),
         .testTarget(
             name: "RunestoneTests",
             dependencies: ["Runestone"]),
