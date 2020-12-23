@@ -219,6 +219,7 @@ public final class EditorTextView: UITextView {
             textStorage: editorTextStorage,
             theme: theme)
         super.init(frame: frame, textContainer: textContainer)
+        contentMode = .redraw
         delegate = self
         isDelegateLockEnabled = true
         lineManager.delegate = self
