@@ -5,18 +5,17 @@
 //  Created by Simon Støvring on 17/12/2020.
 //
 
-import Foundation
 import TreeSitter
 
-public final class InputEdit {
-    public let startByte: uint
-    public let oldEndByte: uint
-    public let newEndByte: uint
-    public let startPoint: SourcePoint
-    public let oldEndPoint: SourcePoint
-    public let newEndPoint: SourcePoint
+final class InputEdit {
+    let startByte: uint
+    let oldEndByte: uint
+    let newEndByte: uint
+    let startPoint: SourcePoint
+    let oldEndPoint: SourcePoint
+    let newEndPoint: SourcePoint
 
-    public init(
+    init(
         startByte: uint,
         oldEndByte: uint,
         newEndByte: uint,

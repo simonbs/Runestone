@@ -7,7 +7,7 @@
 
 import TreeSitter
 
-public enum SourceEncoding {
+enum SourceEncoding {
     case utf8
     case utf16
 }

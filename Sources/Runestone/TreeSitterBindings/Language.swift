@@ -8,10 +8,10 @@
 import Foundation
 import TreeSitter
 
-public final class Language {
+final class Language {
     let pointer: UnsafePointer<TSLanguage>
 
-    public init(_ language: UnsafePointer<TSLanguage>) {
+    init(_ language: UnsafePointer<TSLanguage>) {
         self.pointer = language
     }
 }

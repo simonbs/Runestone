@@ -54,12 +54,12 @@ public final class Node {
         self.rawValue = node
     }
 
-    public func namedDescendantInRange(from startOffset: uint, to endOffset: uint) -> Node {
+    func namedDescendantInRange(from startOffset: uint, to endOffset: uint) -> Node {
         let descendantRawValue = ts_node_named_descendant_for_byte_range(rawValue, startOffset, endOffset)
         return Node(node: descendantRawValue)
     }
 
-    public func namedDescendantInRange(from startPoint: SourcePoint, to endPoint: SourcePoint) -> Node {
+    func namedDescendantInRange(from startPoint: SourcePoint, to endPoint: SourcePoint) -> Node {
         let descendantRawValue = ts_node_named_descendant_for_point_range(rawValue, startPoint.rawValue, endPoint.rawValue)
         return Node(node: descendantRawValue)
     }

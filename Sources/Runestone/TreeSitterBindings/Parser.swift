@@ -7,13 +7,13 @@
 
 import TreeSitter
 
-public protocol ParserDelegate: AnyObject {
+protocol ParserDelegate: AnyObject {
     func parser(_ parser: Parser, substringAtByteIndex byteIndex: uint, point: SourcePoint) -> String?
 }
 
-public final class Parser {
-    public weak var delegate: ParserDelegate?
-    public var language: Language? {
+final class Parser {
+    weak var delegate: ParserDelegate?
+    var language: Language? {
         didSet {
             if language !== oldValue {
                 if let language = language {
@@ -24,12 +24,12 @@ public final class Parser {
             }
         }
     }
-    public private(set) var latestTree: Tree?
+    private(set) var latestTree: Tree?
 
     private let encoding: SourceEncoding
     private var parser: OpaquePointer
 
-    public init(encoding: SourceEncoding) {
+    init(encoding: SourceEncoding) {
         self.encoding = encoding
         self.parser = ts_parser_new()
     }
@@ -38,7 +38,7 @@ public final class Parser {
         ts_parser_delete(parser)
     }
 
-    public func parse(_ string: String) {
+    func parse(_ string: String) {
         let newTreePointer = string.withCString { stringPointer in
             return ts_parser_parse_string(parser, latestTree?.pointer, stringPointer, UInt32(string.count))
         }
@@ -47,7 +47,7 @@ public final class Parser {
         }
     }
 
-    public func parse() {
+    func parse() {
         let input = SourceInput(encoding: encoding) { [weak self] byteIndex, point in
             if let self = self {
                 let str = self.delegate?.parser(self, substringAtByteIndex: byteIndex, point: point)
@@ -64,7 +64,7 @@ public final class Parser {
     }
 
     @discardableResult
-    public func apply(_ inputEdit: InputEdit) -> Bool {
+    func apply(_ inputEdit: InputEdit) -> Bool {
         if let latestTree = latestTree {
             latestTree.apply(inputEdit)
             return true

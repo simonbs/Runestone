@@ -7,7 +7,6 @@
 
 import UIKit
 import RunestoneTextStorage
-import TreeSitterBindings
 import TreeSitterLanguages
 
 public protocol EditorTextViewDelegate: UITextViewDelegate {
@@ -254,6 +253,10 @@ public final class EditorTextView: UITextView {
     public func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
         return lineManager.positionOfLine(containingCharacterAt: location)
     }
+
+    public func node(at location: Int) -> Node? {
+        return parser.latestTree?.rootNode.namedDescendantInRange(from: UInt32(location), to: UInt32(location))
+    }
 }
 
 extension EditorTextView {
@@ -358,7 +361,7 @@ extension EditorTextView: LineManagerDelegate {
 }
 
 extension EditorTextView: ParserDelegate {
-    public func parser(_ parser: Parser, substringAtByteIndex byteIndex: uint, point: SourcePoint) -> String? {
+    func parser(_ parser: Parser, substringAtByteIndex byteIndex: uint, point: SourcePoint) -> String? {
         return editorTextStorage.substring(in: NSRange(location: Int(byteIndex), length: 1))
     }
 }
@@ -409,7 +412,7 @@ extension EditorTextView: NSLayoutManagerDelegate {
 
 extension EditorTextView: EditorTextStorageDelegate {
     public func editorTextStorage(_ editorTextStorage: EditorTextStorage, didReplaceCharactersIn range: NSRange, with string: String) {
-        syntaxHighlightController.markRangeEdited(range)
+        syntaxHighlightController.edit(range, replacingWithCount: string.utf16.count)
         lineManager.removeCharacters(in: range)
         lineManager.insert(string as NSString, in: range)
     }

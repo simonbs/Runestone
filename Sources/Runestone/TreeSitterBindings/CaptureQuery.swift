@@ -7,13 +7,13 @@
 
 import TreeSitter
 
-public final class CaptureQuery {
+final class CaptureQuery {
     private let cursorPointer: OpaquePointer
     private let query: Query
     private let node: Node
     private var haveExecuted = false
 
-    public convenience init(query: Query, node: Node) {
+    convenience init(query: Query, node: Node) {
         self.init(cursorPointer: ts_query_cursor_new(), query: query, node: node)
     }
 
@@ -27,22 +27,22 @@ public final class CaptureQuery {
         ts_query_cursor_delete(cursorPointer)
     }
 
-    public func setQueryRange(from start: UInt32, to end: UInt32) {
+    func setQueryRange(from start: UInt32, to end: UInt32) {
         ts_query_cursor_set_byte_range(cursorPointer, start, end)
     }
 
-    public func setQueryRange(from startPoint: SourcePoint, to endPoint: SourcePoint) {
+    func setQueryRange(from startPoint: SourcePoint, to endPoint: SourcePoint) {
         ts_query_cursor_set_point_range(cursorPointer, startPoint.rawValue, endPoint.rawValue)
     }
 
-    public func execute() {
+    func execute() {
         if !haveExecuted {
             haveExecuted = true
             ts_query_cursor_exec(cursorPointer, query.pointer, node.rawValue)
         }
     }
 
-    public func allCaptures() -> [Capture] {
+    func allCaptures() -> [Capture] {
         guard haveExecuted else {
             fatalError("Cannot get captures of a query that has not been executed.")
         }

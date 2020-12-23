@@ -6,7 +6,6 @@
 //
 
 import UIKit
-import TreeSitterBindings
 import TreeSitterLanguages
 
 enum SyntaxHighlightControllerError: Error {

@@ -16,15 +16,12 @@ let package = Package(
     targets: [
         .target(
             name: "Runestone",
-            dependencies: ["RunestoneTextStorage", "TreeSitterBindings", "TreeSitterLanguages"],
+            dependencies: ["RunestoneTextStorage", "TreeSitterLanguages", "TreeSitter"],
             resources: [
                 .copy("Resources/queries")
             ]),
         .target(name: "RunestoneTextStorage"),
         .target(name: "TreeSitterLanguages"),
-        .target(
-            name: "TreeSitterBindings",
-            dependencies: ["TreeSitter"]),
         .target(
             name: "TreeSitter",
             exclude: [

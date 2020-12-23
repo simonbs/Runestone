@@ -7,7 +7,7 @@
 
 import TreeSitter
 
-public typealias SourceProviderCallback = (_ byteIndex: uint, _ position: SourcePoint) -> [Int8]?
+typealias SourceProviderCallback = (_ byteIndex: uint, _ position: SourcePoint) -> [Int8]?
 private typealias SourceInputRead = @convention(c) (UnsafeMutableRawPointer?, UInt32, TSPoint, UnsafeMutablePointer<UInt32>?) -> UnsafePointer<Int8>?
 
 final class SourceInput {

@@ -7,12 +7,12 @@
 
 import Foundation
 
-public final class Capture {
-    public let startByte: uint
-    public let endByte: uint
-    public let name: String
+final class Capture {
+    let startByte: uint
+    let endByte: uint
+    let name: String
 
-    public init(startByte: uint, endByte: uint, name: String) {
+    init(startByte: uint, endByte: uint, name: String) {
         self.startByte = startByte
         self.endByte = endByte
         self.name = name
@@ -20,7 +20,7 @@ public final class Capture {
 }
 
 extension Capture: CustomDebugStringConvertible {
-    public var debugDescription: String {
+    var debugDescription: String {
         return "[\(startByte) - \(endByte)] \(name)"
     }
 }

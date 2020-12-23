@@ -7,11 +7,11 @@
 
 import TreeSitter
 
-public final class SourcePoint {
+final class SourcePoint {
     public var row: CUnsignedInt {
         return rawValue.row
     }
-    public var column: CUnsignedInt {
+    var column: CUnsignedInt {
         return rawValue.row
     }
 
@@ -21,13 +21,13 @@ public final class SourcePoint {
         self.rawValue = point
     }
 
-    public init(row: CUnsignedInt, column: CUnsignedInt) {
+    init(row: CUnsignedInt, column: CUnsignedInt) {
         self.rawValue = TSPoint(row: row, column: column)
     }
 }
 
 extension SourcePoint: CustomDebugStringConvertible {
-    public var debugDescription: String {
+    var debugDescription: String {
         return "(row = \(row), column = \(column)"
     }
 }
