@@ -93,7 +93,7 @@ final class GutterController {
         }
         let lineFragmentRect = layoutManager.lineFragmentRect(forGlyphAt: lineFragment.glyphRange.location, effectiveRange: nil)
         let lineRange = NSRange(location: lineLocation, length: linePosition.length)
-        let isLineSelected = shouldHighlineLine(spanning: lineRange, forSelectedRange: textView.selectedRange)
+        let isLineSelected = shouldHighlightLine(spanning: lineRange, forSelectedRange: textView.selectedRange)
         if isLineSelected {
             let entireLineRange = NSRange(location: lineLocation, length: linePosition.length)
             let lineBoundingRect = layoutManager.boundingRect(forGlyphRange: entireLineRange, in: textContainer)
@@ -115,7 +115,7 @@ final class GutterController {
                 let lineHeight = lineNumberFont?.lineHeight ?? extraLineFragmentUsedRect.height
                 let lineRect = CGRect(x: 0, y: lineYPosition, width: gutterWidth, height: lineHeight)
                 let lineRange = NSRange(location: textStorage.length, length: 1)
-                let isLineSelected = shouldHighlineLine(spanning: lineRange, forSelectedRange: textView?.selectedRange)
+                let isLineSelected = shouldHighlightLine(spanning: lineRange, forSelectedRange: textView?.selectedRange)
                 if isLineSelected {
                     drawLineBackgrounds(in: lineRect)
                 }
@@ -185,7 +185,7 @@ private extension GutterController {
         return gutterWidth
     }
 
-    private func shouldHighlineLine(spanning lineRange: NSRange, forSelectedRange selectedRange: NSRange?) -> Bool {
+    private func shouldHighlightLine(spanning lineRange: NSRange, forSelectedRange selectedRange: NSRange?) -> Bool {
         guard highlightSelectedLine, let textStorage = textStorage, let selectedRange = selectedRange, let textView = textView, textView.isFirstResponder else {
             return false
         }
