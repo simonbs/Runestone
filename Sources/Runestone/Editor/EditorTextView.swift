@@ -372,6 +372,21 @@ extension EditorTextView: ParserDelegate {
     }
 }
 
+extension EditorTextView: EditorTextStorageDelegate {
+    public func editorTextStorage(_ editorTextStorage: EditorTextStorage, didReplaceCharactersIn range: NSRange, with string: String) {
+        syntaxHighlightController.edit(range, replacingWithCount: string.utf16.count)
+        lineManager.removeCharacters(in: range)
+        lineManager.insert(string as NSString, in: range)
+    }
+
+    public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
+        parser.parse()
+        if !syntaxHighlightVisibleLines() {
+            syntaxHighlightEntireGlyphRange()
+        }
+    }
+}
+
 extension EditorTextView: NSLayoutManagerDelegate {
     public func layoutManager(
         _ layoutManager: NSLayoutManager,
@@ -410,21 +425,6 @@ extension EditorTextView: NSLayoutManagerDelegate {
             gutterController.updateExclusionPath()
             // Redraw the gutter to match the new width.
             setNeedsDisplay()
-        }
-    }
-}
-
-extension EditorTextView: EditorTextStorageDelegate {
-    public func editorTextStorage(_ editorTextStorage: EditorTextStorage, didReplaceCharactersIn range: NSRange, with string: String) {
-        syntaxHighlightController.edit(range, replacingWithCount: string.utf16.count)
-        lineManager.removeCharacters(in: range)
-        lineManager.insert(string as NSString, in: range)
-    }
-
-    public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
-        parser.parse()
-        if !syntaxHighlightVisibleLines() {
-            syntaxHighlightEntireGlyphRange()
         }
     }
 }
