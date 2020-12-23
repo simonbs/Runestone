@@ -35,14 +35,14 @@ final class SyntaxHighlightController {
     }
 
     @discardableResult
-    func markRangeEdited(_ range: NSRange) -> Bool {
+    func edit(_ range: NSRange, replacingWithCount newCharacterCount: Int) -> Bool {
+        let characterCountChange = newCharacterCount - range.length
         let startByte = range.location
         var oldEndByte = range.location
-        var newEndByte = range.location
-        if range.length < 0 {
-            oldEndByte += abs(range.length)
-        } else {
-            newEndByte += range.length
+        let newEndByte = range.location
+        if characterCountChange < 0 {
+            // A number of characters were deleted.
+            oldEndByte += abs(characterCountChange)
         }
         guard let startLinePosition = lineManager?.positionOfLine(containingCharacterAt: startByte) else {
             return false
@@ -53,13 +53,13 @@ final class SyntaxHighlightController {
         guard let newEndLinePosition = lineManager?.positionOfLine(containingCharacterAt: newEndByte) else {
             return false
         }
-        let startPoint = SourcePoint(row: CUnsignedInt(startLinePosition.lineNumber), column: CUnsignedInt(startLinePosition.column))
-        let oldEndPoint = SourcePoint(row: CUnsignedInt(oldEndLinePosition.lineNumber), column: CUnsignedInt(oldEndLinePosition.column))
-        let newEndPoint = SourcePoint(row: CUnsignedInt(newEndLinePosition.lineNumber), column: CUnsignedInt(newEndLinePosition.column))
+        let startPoint = SourcePoint(row: UInt32(startLinePosition.lineNumber), column: UInt32(startLinePosition.column))
+        let oldEndPoint = SourcePoint(row: UInt32(oldEndLinePosition.lineNumber), column: UInt32(oldEndLinePosition.column))
+        let newEndPoint = SourcePoint(row: UInt32(newEndLinePosition.lineNumber), column: UInt32(newEndLinePosition.column))
         let inputEdit = InputEdit(
-            startByte: CUnsignedInt(startByte),
-            oldEndByte: CUnsignedInt(oldEndByte),
-            newEndByte: CUnsignedInt(newEndByte),
+            startByte: UInt32(startByte),
+            oldEndByte: UInt32(oldEndByte),
+            newEndByte: UInt32(newEndByte),
             startPoint: startPoint,
             oldEndPoint: oldEndPoint,
             newEndPoint: newEndPoint)
