@@ -36,7 +36,6 @@ public final class EditorTextView: UITextView {
         set {
             if newValue != invisibleCharactersController.showTabs {
                 invisibleCharactersController.showTabs = newValue
-                invalidateLayoutManager()
             }
         }
     }
@@ -47,7 +46,6 @@ public final class EditorTextView: UITextView {
         set {
             if newValue != invisibleCharactersController.showSpaces {
                 invisibleCharactersController.showSpaces = newValue
-                invalidateLayoutManager()
             }
         }
     }
@@ -58,7 +56,6 @@ public final class EditorTextView: UITextView {
         set {
             if newValue != invisibleCharactersController.showLineBreaks {
                 invisibleCharactersController.showLineBreaks = newValue
-                invalidateLayoutManager()
             }
         }
     }
@@ -96,7 +93,6 @@ public final class EditorTextView: UITextView {
                 gutterController.updateGutterWidth()
                 gutterController.updateExclusionPath()
                 setNeedsDisplay()
-                invalidateLayoutManager()
             }
         }
     }
@@ -137,7 +133,6 @@ public final class EditorTextView: UITextView {
         set {
             if newValue != gutterController.accommodateMinimumCharacterCountInLineNumbers {
                 gutterController.accommodateMinimumCharacterCountInLineNumbers = newValue
-                invalidateLayoutManager()
                 setNeedsDisplay()
             }
         }
@@ -149,17 +144,10 @@ public final class EditorTextView: UITextView {
         set {
             if newValue != gutterController.highlightSelectedLine {
                 gutterController.highlightSelectedLine = newValue
-                invalidateLayoutManager()
             }
         }
     }
-    public var tabWidth: CGFloat? {
-        didSet {
-            if tabWidth != oldValue {
-                invalidateLayoutManager()
-            }
-        }
-    }
+    public var tabWidth: CGFloat?
     public var characterPairs: [EditorCharacterPair] = []
     public override var delegate: UITextViewDelegate? {
         didSet {
@@ -285,11 +273,6 @@ private extension EditorTextView {
         let textContainer = NSTextContainer()
         layoutManager.addTextContainer(textContainer)
         return textContainer
-    }
-
-    private func invalidateLayoutManager() {
-        let glyphRange = layoutManager.glyphRange(for: textContainer)
-        editorLayoutManager.invalidateDisplay(forGlyphRange: glyphRange)
     }
 
     private func updateShouldDrawDummyExtraLineNumber() {
@@ -421,8 +404,6 @@ extension EditorTextView: NSLayoutManagerDelegate {
             gutterController.updateExclusionPath()
             // Redraw the gutter to match the new width.
             setNeedsDisplay()
-            // Do another layout pass to adjust the placement of the invisible characters.
-            invalidateLayoutManager()
         }
     }
 }
@@ -462,17 +443,11 @@ extension EditorTextView: EditorLayoutManagerDelegate {
 extension EditorTextView: UITextViewDelegate {
     public func textViewDidBeginEditing(_ textView: UITextView) {
         setNeedsDisplayOnSelectionChangeIfNecessary()
-        if highlightSelectedLine {
-            invalidateLayoutManager()
-        }
         editorDelegate?.textViewDidBeginEditing?(self)
     }
 
     public func textViewDidEndEditing(_ textView: UITextView) {
         setNeedsDisplayOnSelectionChangeIfNecessary()
-        if highlightSelectedLine {
-            invalidateLayoutManager()
-        }
         editorDelegate?.textViewDidEndEditing?(self)
     }
 
