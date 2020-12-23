@@ -28,7 +28,6 @@ public final class Parser {
 
     private let encoding: SourceEncoding
     private var parser: OpaquePointer
-    private var query: Query?
 
     public init(encoding: SourceEncoding) {
         self.encoding = encoding
