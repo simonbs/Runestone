@@ -152,7 +152,9 @@ public final class EditorTextView: UITextView {
     public override var delegate: UITextViewDelegate? {
         didSet {
             if isDelegateLockEnabled {
-                fatalError("\(type(of: self)) must be the delegate of the UITextView. Please use editorDelegate instead")
+                if delegate != nil {
+                    fatalError("\(type(of: self)) must be the delegate of the UITextView. Please use editorDelegate instead")
+                }
             }
         }
     }
@@ -326,29 +328,33 @@ private extension EditorTextView {
         textStorage.endEditing()
     }
 
-    private func syntaxHighlightVisibleLines() {
+    @discardableResult
+    private func syntaxHighlightVisibleLines() -> Bool {
         // Highlight the surrounding lines. Ideally we should get the range of visible glyphs
         // but I haven't found an API that can give the visible glyphs at this point in time.
-        let editedStartLocation = editorTextStorage.editedRange.location
-        if let range = glyphRangeByExtending(from: editedStartLocation, byLineCount: 20) {
-            syntaxHighlightController.processEditing(range)
+        let editedRange = editorTextStorage.editedRange
+        guard let startLocation = extendLocation(editedRange.location, byLineCount: -20) else {
+            return false
         }
+        guard let endLocation = extendLocation(editedRange.location + editedRange.length, byLineCount: 20) else {
+            return false
+        }
+        let range = NSRange(location: startLocation, length: endLocation - startLocation)
+        syntaxHighlightController.processEditing(range)
+        return true
     }
 
-    private func glyphRangeByExtending(from location: Int, byLineCount extendingLineCount: Int) -> NSRange? {
+    private func extendLocation(_ location: Int, byLineCount extendingLineCount: Int) -> Int? {
         guard let linePosition = lineManager.positionOfLine(containingCharacterAt: location) else {
             return nil
         }
-        let startLineNumber = max(linePosition.lineNumber - extendingLineCount, 1)
-        let endLineNumber = min(linePosition.lineNumber + extendingLineCount, lineManager.lineCount)
-        let startLineLocation = lineManager.locationOfLine(withLineNumber: startLineNumber)
-        let endLineLocation = lineManager.locationOfLine(withLineNumber: endLineNumber)
-        guard let endLinePosition = lineManager.positionOfLine(containingCharacterAt: endLineLocation) else {
-            return nil
+        let extendedLineNumber = min(max(linePosition.lineNumber + extendingLineCount, 1), lineManager.lineCount)
+        let extendedLineLocation = lineManager.locationOfLine(withLineNumber: extendedLineNumber)
+        if extendedLineLocation < 0, let extendedLinePosition = lineManager.positionOfLine(containingCharacterAt: extendedLineLocation) {
+            return extendedLineLocation + extendedLinePosition.length
+        } else {
+            return extendedLineLocation
         }
-        let endCharacterLocation = endLineLocation + endLinePosition.length
-        let length = endCharacterLocation - startLineLocation
-        return NSRange(location: startLineLocation, length: length)
     }
 }
 
@@ -417,7 +423,9 @@ extension EditorTextView: EditorTextStorageDelegate {
 
     public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
         parser.parse()
-        syntaxHighlightVisibleLines()
+        if !syntaxHighlightVisibleLines() {
+            syntaxHighlightEntireGlyphRange()
+        }
     }
 }
 
