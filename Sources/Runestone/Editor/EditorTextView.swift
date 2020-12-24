@@ -360,9 +360,7 @@ private extension EditorTextView {
 
 extension EditorTextView: LineManagerDelegate {
     func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> String {
-        let str = textStorage.string.utf16
-        let index = str.index(str.startIndex, offsetBy: location)
-        return String(str[index])
+        return textStorage.attributedSubstring(from: NSRange(location: location, length: 1)).string
     }
 }
 
