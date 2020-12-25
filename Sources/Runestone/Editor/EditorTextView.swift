@@ -451,6 +451,11 @@ extension EditorTextView: EditorLayoutManagerDelegate {
 }
 
 extension EditorTextView: UITextViewDelegate {
+    public func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        // For some reason this particular delegate call isn't automatically forwarded. Will need to investigate.
+        editorDelegate?.scrollViewDidScroll?(scrollView)
+    }
+
     public func textViewDidBeginEditing(_ textView: UITextView) {
         setNeedsDisplayOnSelectionChangeIfNecessary()
         editorDelegate?.textViewDidBeginEditing?(self)
