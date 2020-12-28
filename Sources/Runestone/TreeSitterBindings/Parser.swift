@@ -51,7 +51,7 @@ final class Parser {
         let input = SourceInput(encoding: encoding) { [weak self] byteIndex, point in
             if let self = self {
                 let str = self.delegate?.parser(self, substringAtByteIndex: byteIndex, point: point)
-                return str?.cString(using: self.encoding.swiftEncoding)?.dropLast() ?? []
+                return str?.cString(using: self.encoding.swiftEncoding)
             } else {
                 return nil
             }
