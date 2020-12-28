@@ -12,6 +12,11 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 - Insertion of character pairs, e.g. inserting the trailing quotation mark when inserting the leading.
 - Customization of colors and fonts using the [EditorTheme protocol](https://github.com/simonbs/Runestone/blob/main/Sources/Runestone/Editor/EditorTheme.swift).
 
+### Wishlist
+
+- [ ] Indentation when adding new lines
+- [ ] Setting to adjust line spacing
+
 ## Acknowledgments
 
 - [Tree-sitter](https://tree-sitter.github.io/tree-sitter) is used to parse code.
