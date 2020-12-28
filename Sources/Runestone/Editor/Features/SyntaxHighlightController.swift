@@ -57,15 +57,30 @@ final class SyntaxHighlightController {
         let capturesResult = getCaptures(in: ranges)
         switch capturesResult {
         case .success(let captures):
-            highlight(captures)
+            setDefaultAttributes(in: ranges)
+            addAttributes(to: captures)
         case .failure(let error):
+            setDefaultAttributes(in: ranges)
             print(error)
         }
     }
 }
 
 private extension SyntaxHighlightController {
-    private func highlight(_ captures: [Capture]) {
+    private func setDefaultAttributes(in ranges: [NSRange]) {
+        var attrs: [NSAttributedString.Key: Any] = [:]
+        if let textColor = textColor {
+            attrs[.foregroundColor] = textColor
+        }
+        if let font = font {
+            attrs[.font] = font
+        }
+        for range in ranges {
+            textStorage?.setAttributes(attrs, range: range)
+        }
+    }
+
+    private func addAttributes(to captures: [Capture]) {
         for capture in captures {
             let location = Int(capture.startByte)
             let length = Int(capture.endByte - capture.startByte)
