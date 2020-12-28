@@ -247,6 +247,12 @@ public final class EditorTextView: UITextView {
             gutterController.drawExtraLineIfNecessary()
         }
     }
+
+    public override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        gutterController.updateGutterWidth()
+        gutterController.updateExclusionPath()
+    }
     
     public func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
         return lineManager.positionOfLine(containingCharacterAt: location)

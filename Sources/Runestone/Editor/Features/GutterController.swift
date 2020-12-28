@@ -27,6 +27,7 @@ final class GutterController {
     private weak var textContainer: NSTextContainer?
     private weak var textStorage: EditorTextStorage?
     private var previousMaximumLineNumberCharacterCount = 0
+    private var previousSafeAreaInset: CGFloat?
     private var gutterWidth: CGFloat = 0
     private var maximumLineNumberCharacterCount: Int {
         let numberOfLines = lineManager?.lineCount ?? 0
@@ -174,14 +175,16 @@ private extension GutterController {
 
     private func widthOfGutter(in textContainer: NSTextContainer) -> CGFloat {
         let maximumCharacterCount = maximumLineNumberCharacterCount
-        guard maximumCharacterCount != previousMaximumLineNumberCharacterCount else {
+        let safeAreaInset = textView?.safeAreaInsets.left ?? .zero
+        guard maximumCharacterCount != previousMaximumLineNumberCharacterCount || safeAreaInset != previousSafeAreaInset else {
             return gutterWidth
         }
         let wideLineNumberString = String(repeating: "8", count: maximumCharacterCount)
         let wideLineNumberNSString = wideLineNumberString as NSString
         let size = wideLineNumberNSString.size(withAttributes: [.font: theme.lineNumberFont])
-        let gutterWidth = ceil(size.width) + lineNumberLeadingMargin + lineNumberTrailingMargin
+        let gutterWidth = safeAreaInset + ceil(size.width) + lineNumberLeadingMargin + lineNumberTrailingMargin
         previousMaximumLineNumberCharacterCount = maximumCharacterCount
+        previousSafeAreaInset = safeAreaInset
         return gutterWidth
     }
 
