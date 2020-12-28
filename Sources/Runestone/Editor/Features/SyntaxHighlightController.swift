@@ -29,13 +29,11 @@ final class SyntaxHighlightController {
     var font: UIFont?
 
     private let parser: Parser
-    private weak var lineManager: LineManager?
     private weak var textStorage: NSTextStorage?
     private let highlightsSource: String
 
-    init(parser: Parser, lineManager: LineManager, textStorage: NSTextStorage, theme: EditorTheme) {
+    init(parser: Parser, textStorage: NSTextStorage, theme: EditorTheme) {
         self.parser = parser
-        self.lineManager = lineManager
         self.textStorage = textStorage
         self.theme = theme
         let fileURL = Bundle.module.url(forResource: "highlights", withExtension: "scm", subdirectory: "queries/javascript")!

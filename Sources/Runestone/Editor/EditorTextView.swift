@@ -200,7 +200,7 @@ public final class EditorTextView: UITextView {
     public init(frame: CGRect = .zero) {
         parser = Parser(encoding: .utf8)
         parser.language = Language(tree_sitter_javascript())
-        syntaxHighlightController = SyntaxHighlightController(parser: parser, lineManager: lineManager, textStorage: editorTextStorage, theme: theme)
+        syntaxHighlightController = SyntaxHighlightController(parser: parser, textStorage: editorTextStorage, theme: theme)
         let textContainer = Self.createTextContainer(layoutManager: editorLayoutManager, textStorage: editorTextStorage)
         gutterController = GutterController(
             lineManager: lineManager,
