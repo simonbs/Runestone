@@ -195,12 +195,13 @@ public final class EditorTextView: UITextView {
     private let editorTextStorage = EditorTextStorage()
     private let invisibleCharactersController: InvisibleCharactersController
     private let gutterController: GutterController
-    private let editorLayoutManager = EditorLayoutManager()
+    private let editorLayoutManager: EditorLayoutManager
     private var shouldDrawDummyExtraLineNumber = false
 
     public init(frame: CGRect = .zero) {
         parser = Parser(encoding: .utf8)
         parser.language = Language(tree_sitter_javascript())
+        editorLayoutManager = EditorLayoutManager(textStorage: editorTextStorage)
         syntaxHighlightController = SyntaxHighlightController(parser: parser, textStorage: editorTextStorage, theme: theme)
         let textContainer = Self.createTextContainer(layoutManager: editorLayoutManager, textStorage: editorTextStorage)
         gutterController = GutterController(

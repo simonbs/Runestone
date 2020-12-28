@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import RunestoneTextStorage
 
 protocol EditorLayoutManagerDelegate: AnyObject {
     func numberOfLinesIn(_ layoutManager: EditorLayoutManager) -> Int
@@ -17,6 +18,17 @@ protocol EditorLayoutManagerDelegate: AnyObject {
 final class EditorLayoutManager: NSLayoutManager {
     var font: UIFont?
     weak var editorDelegate: EditorLayoutManagerDelegate?
+
+    private weak var editorTextStorage: EditorTextStorage?
+
+    init(textStorage: EditorTextStorage) {
+        self.editorTextStorage = textStorage
+        super.init()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     override func glyphRange(forBoundingRect bounds: CGRect, in container: NSTextContainer) -> NSRange {
         var range = super.glyphRange(forBoundingRect: bounds, in: container)
@@ -58,7 +70,7 @@ final class EditorLayoutManager: NSLayoutManager {
     }
 
     override func setLineFragmentRect(_ fragmentRect: CGRect, forGlyphRange glyphRange: NSRange, usedRect: CGRect) {
-        let substring = textStorage?.attributedSubstring(from: glyphRange).string
+        let substring = editorTextStorage?.substring(in: glyphRange)
         if let font = font, substring == Symbol.lineFeed {
             var modifiedFragmentRect = fragmentRect
             modifiedFragmentRect.size.height = font.lineHeight
