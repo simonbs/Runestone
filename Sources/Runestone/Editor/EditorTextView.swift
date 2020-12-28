@@ -364,7 +364,7 @@ private extension EditorTextView {
 
 extension EditorTextView: LineManagerDelegate {
     func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> String {
-        return textStorage.attributedSubstring(from: NSRange(location: location, length: 1)).string
+        return editorTextStorage.substring(in: NSRange(location: location, length: 1))!
     }
 }
 
