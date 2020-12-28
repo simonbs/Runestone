@@ -8,54 +8,67 @@
 import UIKit
 
 final class DefaultEditorTheme: EditorTheme {
-    private enum CaptureName {
-        static let `operator` = "operator"
-        static let keyword = "keyword"
-        static let variable = "variable"
-        static let string = "string"
-        static let comment = "comment"
-        static let number = "number"
-        static let constantBuiltin = "constant.builtin"
-        static let punctuationBracket = "punctuation.bracket"
-        static let punctuationDelimiter = "punctuation.delimieter"
+    private enum CaptureName: String {
+        case `operator` = "operator"
+        case keyword = "keyword"
+        case variable = "variable"
+        case string = "string"
+        case comment = "comment"
+        case number = "number"
+        case constant = "constant"
+        case constantBuiltin = "constant.builtin"
+        case property = "property"
+        case punctuationBracket = "punctuation.bracket"
+        case punctuationDelimiter = "punctuation.delimiter"
     }
 
     let gutterBackgroundColor: UIColor = .secondarySystemBackground
     let gutterHairlineColor: UIColor = .opaqueSeparator
 
     let lineNumberColor: UIColor = .secondaryLabel
-    let lineNumberFont: UIFont = UIFont(name: "Menlo-Regular", size: 14)!
+    let lineNumberFont = UIFont(name: "Menlo-Regular", size: 14)!
 
-    var selectedLinesBackgroundColor = UIColor.opaqueSeparator.withAlphaComponent(0.4)
+    var selectedLinesBackgroundColor: UIColor = .secondarySystemBackground
     let selectedLinesLineNumberColor: UIColor = .label
     let selectedLinesGutterBackgroundColor = UIColor.opaqueSeparator.withAlphaComponent(0.4)
 
     let invisibleCharactersColor: UIColor = .tertiaryLabel
 
-    func textColorForCapture(named captureName: String) -> UIColor? {
+    func textColorForCapture(named rawCaptureName: String) -> UIColor? {
+        guard let captureName = CaptureName(rawValue: rawCaptureName) else {
+            return nil
+        }
         switch captureName {
-        case CaptureName.punctuationBracket, CaptureName.punctuationDelimiter:
+        case .punctuationBracket, .punctuationDelimiter, .operator:
             return .secondaryLabel
-        case CaptureName.operator:
-            return .label
-        case CaptureName.keyword:
-            return .systemOrange
-        case CaptureName.variable:
-            return .label
-        case CaptureName.string:
-            return .systemGreen
-        case CaptureName.comment:
+        case .comment:
             return .secondaryLabel
-        case CaptureName.number:
-            return .systemBlue
-        case CaptureName.constantBuiltin:
+        case .variable:
+            return .label
+        case .keyword:
             return .systemPurple
-        default:
-            return .label
+        case .string:
+            return .systemGreen
+        case .number:
+            return .systemOrange
+        case .property:
+            return .systemBlue
+        case .constant:
+            return .systemOrange
+        case .constantBuiltin:
+            return .systemRed
         }
     }
 
     func fontForCapture(named captureName: String) -> UIFont? {
-        return nil
+        guard let captureName = CaptureName(rawValue: captureName) else {
+            return nil
+        }
+        switch captureName {
+        case .keyword:
+            return UIFont(name: "Menlo-Bold", size: 14)!
+        default:
+            return nil
+        }
     }
 }
