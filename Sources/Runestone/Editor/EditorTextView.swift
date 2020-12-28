@@ -94,7 +94,7 @@ public final class EditorTextView: UITextView {
                 isScrollEnabled = false
                 gutterController.showLineNumbers = newValue
                 gutterController.updateGutterWidth()
-                gutterController.updateExclusionPath()
+                gutterController.updateTextContainerInset()
                 isScrollEnabled = true
                 setNeedsDisplay()
             }
@@ -183,8 +183,15 @@ public final class EditorTextView: UITextView {
         didSet {
             if textContainerInset != oldValue {
                 invisibleCharactersController.textContainerInset = textContainerInset
-                gutterController.textContainerInset = textContainerInset
             }
+        }
+    }
+    public var additionalTextContainerInset: UIEdgeInsets {
+        get {
+            return gutterController.additionalTextContainerInset
+        }
+        set {
+            gutterController.additionalTextContainerInset = newValue
         }
     }
 
@@ -217,6 +224,7 @@ public final class EditorTextView: UITextView {
         super.init(frame: frame, textContainer: textContainer)
         contentMode = .redraw
         delegate = self
+        additionalTextContainerInset = textContainerInset
         isDelegateLockEnabled = true
         lineManager.delegate = self
         parser.delegate = self
@@ -225,12 +233,10 @@ public final class EditorTextView: UITextView {
         editorLayoutManager.editorDelegate = self
         editorLayoutManager.allowsNonContiguousLayout = true
         invisibleCharactersController.font = font
-        invisibleCharactersController.textContainerInset = textContainerInset
         gutterController.textView = self
         gutterController.lineNumberFont = lineNumberFont
-        gutterController.textContainerInset = textContainerInset
         gutterController.updateGutterWidth()
-        gutterController.updateExclusionPath()
+        gutterController.updateTextContainerInset()
         syntaxHighlightController.textColor = textColor
         syntaxHighlightController.font = font
         updateShouldDrawDummyExtraLineNumber()
@@ -251,7 +257,7 @@ public final class EditorTextView: UITextView {
     public override func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
         gutterController.updateGutterWidth()
-        gutterController.updateExclusionPath()
+        gutterController.updateTextContainerInset()
     }
     
     public func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
@@ -443,7 +449,7 @@ extension EditorTextView: NSLayoutManagerDelegate {
         updateShouldDrawDummyExtraLineNumber()
         if gutterController.shouldUpdateGutterWidth {
             gutterController.updateGutterWidth()
-            gutterController.updateExclusionPath()
+            gutterController.updateTextContainerInset()
             // Redraw the gutter to match the new width.
             setNeedsDisplay()
         }

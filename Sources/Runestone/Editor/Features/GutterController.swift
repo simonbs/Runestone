@@ -17,9 +17,10 @@ final class GutterController {
     var showLineNumbers = false
     var highlightSelectedLine = false
     var accommodateMinimumCharacterCountInLineNumbers = 0
-    var textContainerInset: UIEdgeInsets = .zero
+    var additionalTextContainerInset: UIEdgeInsets = .zero
     var shouldUpdateGutterWidth: Bool {
         return maximumLineNumberCharacterCount != previousMaximumLineNumberCharacterCount
+            || textView?.safeAreaInsets.left != previousSafeAreaInset
     }
 
     private weak var lineManager: LineManager?
@@ -52,13 +53,15 @@ final class GutterController {
         }
     }
 
-    func updateExclusionPath() {
+    func updateTextContainerInset() {
         if gutterWidth > 0 {
-            let exclusionRect = CGRect(x: 0, y: 0, width: gutterWidth, height: .greatestFiniteMagnitude)
-            let exlusionPath = UIBezierPath(rect: exclusionRect)
-            textContainer?.exclusionPaths = [exlusionPath]
+            textView?.textContainerInset = UIEdgeInsets(
+                top: additionalTextContainerInset.top,
+                left: gutterWidth,
+                bottom: additionalTextContainerInset.bottom,
+                right: additionalTextContainerInset.right)
         } else {
-            textContainer?.exclusionPaths = []
+            textView?.textContainerInset = additionalTextContainerInset
         }
     }
 
@@ -98,11 +101,11 @@ final class GutterController {
         if isLineSelected {
             let entireLineRange = NSRange(location: lineLocation, length: linePosition.length)
             let lineBoundingRect = layoutManager.boundingRect(forGlyphRange: entireLineRange, in: textContainer)
-            let lineBackgroundYPosition = lineBoundingRect.minY + textContainerInset.top
+            let lineBackgroundYPosition = lineBoundingRect.minY + additionalTextContainerInset.top
             let lineBackgroundRect = CGRect(x: gutterWidth, y: lineBackgroundYPosition, width: textView.bounds.width, height: lineBoundingRect.height)
             drawLineBackgrounds(in: lineBackgroundRect)
         }
-        let gutterRect = CGRect(x: 0, y: lineFragmentRect.minY + textContainerInset.top, width: gutterWidth, height: lineFragmentRect.height)
+        let gutterRect = CGRect(x: 0, y: lineFragmentRect.minY + additionalTextContainerInset.top, width: gutterWidth, height: lineFragmentRect.height)
         let textColor = isLineSelected ? theme.selectedLinesLineNumberColor : theme.lineNumberColor
         drawLineNumber(linePosition.lineNumber, in: gutterRect, textColor: textColor)
     }
@@ -112,7 +115,7 @@ final class GutterController {
         if shouldDraw, let lineManager = lineManager, let layoutManager = layoutManager, let textStorage = textStorage {
             let extraLineFragmentUsedRect = layoutManager.extraLineFragmentUsedRect
             if extraLineFragmentUsedRect.size != .zero {
-                let lineYPosition = extraLineFragmentUsedRect.minY + textContainerInset.top
+                let lineYPosition = extraLineFragmentUsedRect.minY + additionalTextContainerInset.top
                 let lineHeight = lineNumberFont?.lineHeight ?? extraLineFragmentUsedRect.height
                 let lineRect = CGRect(x: 0, y: lineYPosition, width: gutterWidth, height: lineHeight)
                 let lineRange = NSRange(location: textStorage.length, length: 1)
