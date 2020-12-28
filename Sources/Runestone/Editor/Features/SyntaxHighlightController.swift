@@ -15,6 +15,15 @@ enum SyntaxHighlightControllerError: Error {
 }
 
 final class SyntaxHighlightController {
+    struct Edit {
+        let location: Int
+        let bytesRemoved: Int
+        let bytesAdded: Int
+        let startLinePosition: LinePosition
+        let oldEndLinePosition: LinePosition
+        let newEndLinePosition: LinePosition
+    }
+
     var theme: EditorTheme
     var textColor: UIColor?
     var font: UIFont?
@@ -34,34 +43,14 @@ final class SyntaxHighlightController {
     }
 
     @discardableResult
-    func edit(_ range: NSRange, replacingWithCount newCharacterCount: Int) -> Bool {
-        let characterCountChange = newCharacterCount - range.length
-        let startByte = range.location
-        var oldEndByte = range.location
-        let newEndByte = range.location
-        if characterCountChange < 0 {
-            // A number of characters were deleted.
-            oldEndByte += abs(characterCountChange)
-        }
-        guard let startLinePosition = lineManager?.positionOfLine(containingCharacterAt: startByte) else {
-            return false
-        }
-        guard let oldEndLinePosition = lineManager?.positionOfLine(containingCharacterAt: oldEndByte) else {
-            return false
-        }
-        guard let newEndLinePosition = lineManager?.positionOfLine(containingCharacterAt: newEndByte) else {
-            return false
-        }
-        let startPoint = SourcePoint(row: UInt32(startLinePosition.lineNumber), column: UInt32(startLinePosition.column))
-        let oldEndPoint = SourcePoint(row: UInt32(oldEndLinePosition.lineNumber), column: UInt32(oldEndLinePosition.column))
-        let newEndPoint = SourcePoint(row: UInt32(newEndLinePosition.lineNumber), column: UInt32(newEndLinePosition.column))
+    func apply(_ edit: Edit) -> Bool {
         let inputEdit = InputEdit(
-            startByte: UInt32(startByte),
-            oldEndByte: UInt32(oldEndByte),
-            newEndByte: UInt32(newEndByte),
-            startPoint: startPoint,
-            oldEndPoint: oldEndPoint,
-            newEndPoint: newEndPoint)
+            startByte: UInt32(edit.location),
+            oldEndByte: UInt32(edit.location + edit.bytesRemoved),
+            newEndByte: UInt32(edit.location + edit.bytesAdded),
+            startPoint: SourcePoint(edit.startLinePosition),
+            oldEndPoint: SourcePoint(edit.oldEndLinePosition),
+            newEndPoint: SourcePoint(edit.newEndLinePosition))
         return parser.apply(inputEdit)
     }
 
@@ -128,5 +117,11 @@ private extension SyntaxHighlightController {
             captureQuery.execute()
             return captureQuery.allCaptures()
         }
+    }
+}
+
+private extension SourcePoint {
+    convenience init(_ linePosition: LinePosition) {
+        self.init(row: UInt32(linePosition.lineNumber), column: UInt32(linePosition.column))
     }
 }

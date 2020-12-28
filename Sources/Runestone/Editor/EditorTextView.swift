@@ -376,9 +376,26 @@ extension EditorTextView: ParserDelegate {
 
 extension EditorTextView: EditorTextStorageDelegate {
     public func editorTextStorage(_ editorTextStorage: EditorTextStorage, didReplaceCharactersIn range: NSRange, with string: String) {
-        syntaxHighlightController.edit(range, replacingWithCount: string.utf16.count)
+        let nsString = string as NSString
+        let bytesRemoved = range.length
+        let bytesAdded = nsString.length
+        let oldEndLinePosition = lineManager.positionOfLine(containingCharacterAt: range.location + bytesRemoved)
         lineManager.removeCharacters(in: range)
-        lineManager.insert(string as NSString, in: range)
+        lineManager.insert(nsString, in: range)
+        let startLinePosition = lineManager.positionOfLine(containingCharacterAt: range.location)
+        let newEndLinePosition = lineManager.positionOfLine(containingCharacterAt: range.location + bytesAdded)
+        if let oldEndLinePosition = oldEndLinePosition, let startLinePosition = startLinePosition, let newEndLinePosition = newEndLinePosition {
+            let edit = SyntaxHighlightController.Edit(
+                location: range.location,
+                bytesRemoved: bytesRemoved,
+                bytesAdded: bytesAdded,
+                startLinePosition: startLinePosition,
+                oldEndLinePosition: oldEndLinePosition,
+                newEndLinePosition: newEndLinePosition)
+            syntaxHighlightController.apply(edit)
+        } else {
+            fatalError("Cannot edit syntax tree because one or more line positions are not available")
+        }
     }
 
     public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
