@@ -31,6 +31,7 @@ final class SyntaxHighlightController {
     private let parser: Parser
     private weak var textStorage: NSTextStorage?
     private let highlightsSource: String
+    private var query: Query?
 
     init(parser: Parser, textStorage: NSTextStorage, theme: EditorTheme) {
         self.parser = parser
@@ -52,11 +53,11 @@ final class SyntaxHighlightController {
         return parser.apply(inputEdit)
     }
 
-    func processEditing(_ range: NSRange) {
-        let capturesResult = getCaptures(in: range)
+    func highlight(_ ranges: [NSRange]) {
+        let capturesResult = getCaptures(in: ranges)
         switch capturesResult {
         case .success(let captures):
-            highlight(captures, in: range)
+            highlight(captures)
         case .failure(let error):
             print(error)
         }
@@ -64,19 +65,7 @@ final class SyntaxHighlightController {
 }
 
 private extension SyntaxHighlightController {
-    private func highlight(_ captures: [Capture], in range: NSRange) {
-        textStorage?.removeAttribute(.font, range: range)
-        textStorage?.removeAttribute(.foregroundColor, range: range)
-        var defaulAttributes: [NSAttributedString.Key: Any] = [:]
-        if let textColor = textColor {
-            defaulAttributes[.foregroundColor] = textColor
-        }
-        if let font = font {
-            defaulAttributes[.font] = font
-        }
-        if !defaulAttributes.isEmpty {
-            textStorage?.addAttributes(defaulAttributes, range: range)
-        }
+    private func highlight(_ captures: [Capture]) {
         for capture in captures {
             let location = Int(capture.startByte)
             let length = Int(capture.endByte - capture.startByte)
@@ -93,27 +82,42 @@ private extension SyntaxHighlightController {
                 attrs[.font] = font
             }
             if !attrs.isEmpty {
-                textStorage?.addAttributes(attrs, range: captureRange)
+                textStorage?.setAttributes(attrs, range: captureRange)
             }
         }
     }
 
-    private func getCaptures(in range: NSRange) -> Result<[Capture], SyntaxHighlightControllerError> {
+    private func getCaptures(in ranges: [NSRange]) -> Result<[Capture], SyntaxHighlightControllerError> {
         guard let tree = parser.latestTree else {
             return .failure(.treeUnavailable)
         }
-        guard let language = parser.language else {
-            return .failure(.languageUnavailable)
+        return getQuery().map { query in
+            var allCaptures: [Capture] = []
+            for range in ranges {
+                let captureQuery = CaptureQuery(query: query, node: tree.rootNode)
+                let startLocation = UInt32(range.location)
+                let endLocation = UInt32(range.location + range.length)
+                captureQuery.setQueryRange(from: startLocation, to: endLocation)
+                captureQuery.execute()
+                let captures = captureQuery.allCaptures()
+                allCaptures.append(contentsOf: captures)
+            }
+            return allCaptures
         }
-        return Query.create(fromSource: highlightsSource, in: language).mapError { error in
-            return .queryError(error)
-        }.map { query in
-            let captureQuery = CaptureQuery(query: query, node: tree.rootNode)
-            let startLocation = UInt32(range.location)
-            let endLocation = UInt32(range.location + range.length)
-            captureQuery.setQueryRange(from: startLocation, to: endLocation)
-            captureQuery.execute()
-            return captureQuery.allCaptures()
+    }
+
+    private func getQuery() -> Result<Query, SyntaxHighlightControllerError> {
+        if let query = query {
+            return .success(query)
+        } else if let language = parser.language {
+            return Query.create(fromSource: highlightsSource, in: language).mapError { error in
+                return .queryError(error)
+            }.map { query in
+                self.query = query
+                return query
+            }
+        } else {
+            return .failure(.languageUnavailable)
         }
     }
 }

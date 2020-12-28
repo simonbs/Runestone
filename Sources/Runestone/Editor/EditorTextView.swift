@@ -333,22 +333,6 @@ private extension EditorTextView {
         textStorage.endEditing()
     }
 
-    @discardableResult
-    private func syntaxHighlightVisibleLines() -> Bool {
-        // Highlight the surrounding lines. Ideally we should get the range of visible glyphs
-        // but I haven't found an API that can give the visible glyphs at this point in time.
-        let editedRange = editorTextStorage.editedRange
-        guard let startLocation = extendLocation(editedRange.location, byLineCount: -20) else {
-            return false
-        }
-        guard let endLocation = extendLocation(editedRange.location + editedRange.length, byLineCount: 20) else {
-            return false
-        }
-        let range = NSRange(location: startLocation, length: endLocation - startLocation)
-        syntaxHighlightController.processEditing(range)
-        return true
-    }
-
     private func extendLocation(_ location: Int, byLineCount extendingLineCount: Int) -> Int? {
         guard let linePosition = lineManager.positionOfLine(containingCharacterAt: location) else {
             return nil
@@ -400,9 +384,19 @@ extension EditorTextView: EditorTextStorageDelegate {
     }
 
     public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
+        let oldTree = parser.latestTree
         parser.parse()
-        if !syntaxHighlightVisibleLines() {
-            syntaxHighlightEntireGlyphRange()
+        if let newTree = parser.latestTree, let oldTree = oldTree {
+            let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
+            let ranges: [NSRange] = changedRanges.map { changedRange in
+                let location = Int(changedRange.startByte)
+                let length = Int(changedRange.endByte - changedRange.startByte)
+                return NSRange(location: location, length: length)
+            }
+            syntaxHighlightController.highlight(ranges)
+        } else {
+            let range = NSRange(location: 0, length: textStorage.length)
+            syntaxHighlightController.highlight([range])
         }
     }
 }

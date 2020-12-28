@@ -49,11 +49,17 @@ final class Parser {
 
     func parse() {
         let input = SourceInput(encoding: encoding) { [weak self] byteIndex, point in
-            if let self = self {
-                let str = self.delegate?.parser(self, substringAtByteIndex: byteIndex, point: point)
-                return str?.cString(using: self.encoding.swiftEncoding)
+            guard let self = self, let str = self.delegate?.parser(self, substringAtByteIndex: byteIndex, point: point) else {
+                return []
+            }
+            guard let cStr = str.cString(using: self.encoding.swiftEncoding) else {
+                return []
+            }
+            // Remove null determinator when there's more than a single character.
+            if cStr.count > 1 && cStr.last == 0 {
+                return cStr.dropLast()
             } else {
-                return nil
+                return cStr
             }
         }
         let newTreePointer = ts_parser_parse(parser, latestTree?.pointer, input.rawInput)
