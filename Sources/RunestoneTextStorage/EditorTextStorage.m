@@ -56,7 +56,7 @@
 // MARK: - Public
 - (NSString *)substringInRange:(NSRange)range {
     if (range.location + range.length <= _internalString.length) {
-        return [_internalString attributedSubstringFromRange:range].string;
+        return [_internalString.string substringWithRange:range];
     } else {
         return nil;
     }
