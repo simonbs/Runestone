@@ -26,7 +26,7 @@ public final class EditorTextView: UITextView {
             gutterController.theme = theme
             invisibleCharactersController.theme = theme
             syntaxHighlightController.theme = theme
-            syntaxHighlightEntireGlyphRange()
+            markAttributesChangedInEntireRange()
         }
     }
     public var showTabs: Bool {
@@ -326,7 +326,7 @@ private extension EditorTextView {
         }
     }
 
-    private func syntaxHighlightEntireGlyphRange() {
+    private func markAttributesChangedInEntireRange() {
         textStorage.beginEditing()
         let entireRange = NSRange(location: 0, length: textStorage.length)
         textStorage.edited(.editedAttributes, range: entireRange, changeInLength: 0)
