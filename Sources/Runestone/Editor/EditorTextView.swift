@@ -163,10 +163,11 @@ public final class EditorTextView: UITextView {
         }
     }
     public override var textColor: UIColor? {
-        didSet {
-            if textColor != oldValue {
-                syntaxHighlightController.textColor = textColor
-            }
+        set {
+            syntaxHighlightController.textColor = newValue
+        }
+        get {
+            return syntaxHighlightController.textColor
         }
     }
     public override var font: UIFont? {
