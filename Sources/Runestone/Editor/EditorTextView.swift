@@ -319,6 +319,28 @@ private extension EditorTextView {
         }
     }
 
+    private func updateGutterWidth() {
+        gutterController.updateGutterWidth()
+        gutterController.updateTextContainerInset()
+        // Redraw the gutter to match the new width.
+        setNeedsDisplay()
+    }
+
+    private func highlightChanges(from oldTree: Tree?) {
+        if let newTree = parser.latestTree, let oldTree = oldTree {
+            let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
+            let ranges: [NSRange] = changedRanges.map { changedRange in
+                let location = Int(changedRange.startByte)
+                let length = Int(changedRange.endByte - changedRange.startByte)
+                return NSRange(location: location, length: length)
+            }
+            syntaxHighlightController.highlight(ranges)
+        } else {
+            let range = NSRange(location: 0, length: textStorage.length)
+            syntaxHighlightController.highlight([range])
+        }
+    }
+
     private func insert(_ characterPair: EditorCharacterPair, in range: NSRange) {
         guard let selectedTextRange = selectedTextRange else {
             return
@@ -399,17 +421,13 @@ extension EditorTextView: EditorTextStorageDelegate {
     public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
         let oldTree = parser.latestTree
         parser.parse()
-        if let newTree = parser.latestTree, let oldTree = oldTree {
-            let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
-            let ranges: [NSRange] = changedRanges.map { changedRange in
-                let location = Int(changedRange.startByte)
-                let length = Int(changedRange.endByte - changedRange.startByte)
-                return NSRange(location: location, length: length)
+        highlightChanges(from: oldTree)
+        updateShouldDrawDummyExtraLineNumber()
+        if gutterController.shouldUpdateGutterWidth {
+            // Dispatch to the next run loop so we're not modifying the text container while still processing text changes.
+            DispatchQueue.main.async {
+                self.updateGutterWidth()
             }
-            syntaxHighlightController.highlight(ranges)
-        } else {
-            let range = NSRange(location: 0, length: textStorage.length)
-            syntaxHighlightController.highlight([range])
         }
     }
 }
@@ -442,16 +460,6 @@ extension EditorTextView: NSLayoutManagerDelegate {
             return CGRect(x: proposedRect.minX, y: proposedRect.minY, width: tabWidth, height: proposedRect.height)
         } else {
             return proposedRect
-        }
-    }
-
-    public func layoutManager(_ layoutManager: NSLayoutManager, didCompleteLayoutFor textContainer: NSTextContainer?, atEnd layoutFinishedFlag: Bool) {
-        updateShouldDrawDummyExtraLineNumber()
-        if gutterController.shouldUpdateGutterWidth {
-            gutterController.updateGutterWidth()
-            gutterController.updateTextContainerInset()
-            // Redraw the gutter to match the new width.
-            setNeedsDisplay()
         }
     }
 }
