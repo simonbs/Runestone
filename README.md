@@ -17,6 +17,7 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 - [ ] Indentation when adding new lines
 - [ ] Setting to adjust line spacing
 - [ ] Settikg to indert spaces instead of a tab
+- [ ] Search and replace
 
 ## Acknowledgments
 
