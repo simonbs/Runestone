@@ -26,7 +26,9 @@ public final class EditorTextView: UITextView {
             gutterController.theme = theme
             invisibleCharactersController.theme = theme
             syntaxHighlightController.theme = theme
-            markAttributesChangedInEntireRange()
+            if syntaxHighlightController.canHighlight {
+                highlightChanges(from: nil)
+            }
         }
     }
     public var showTabs: Bool {
@@ -359,13 +361,6 @@ private extension EditorTextView {
                 }
             }
         }
-    }
-
-    private func markAttributesChangedInEntireRange() {
-        textStorage.beginEditing()
-        let entireRange = NSRange(location: 0, length: textStorage.length)
-        textStorage.edited(.editedAttributes, range: entireRange, changeInLength: 0)
-        textStorage.endEditing()
     }
 
     private func extendLocation(_ location: Int, byLineCount extendingLineCount: Int) -> Int? {
