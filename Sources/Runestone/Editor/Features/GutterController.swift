@@ -171,7 +171,7 @@ private extension GutterController {
     private func drawSelectedLineBackground(in rect: CGRect) {
         let context = UIGraphicsGetCurrentContext()
         context?.saveGState()
-        context?.setFillColor(theme.selectedLinesBackgroundColor.cgColor)
+        context?.setFillColor(theme.selectedLineBackgroundColor.cgColor)
         context?.fill(rect)
         context?.restoreGState()
     }

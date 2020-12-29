@@ -28,7 +28,7 @@ final class DefaultEditorTheme: EditorTheme {
     let lineNumberColor: UIColor = .secondaryLabel
     let lineNumberFont = UIFont(name: "Menlo-Regular", size: 14)!
 
-    var selectedLinesBackgroundColor: UIColor = .secondarySystemBackground
+    var selectedLineBackgroundColor: UIColor = .secondarySystemBackground
     let selectedLinesLineNumberColor: UIColor = .label
     let selectedLinesGutterBackgroundColor = UIColor.opaqueSeparator.withAlphaComponent(0.4)
 

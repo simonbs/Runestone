@@ -13,7 +13,7 @@ public protocol EditorTheme {
     var gutterHairlineWidth: CGFloat { get }
     var lineNumberColor: UIColor { get }
     var lineNumberFont: UIFont { get }
-    var selectedLinesBackgroundColor: UIColor { get }
+    var selectedLineBackgroundColor: UIColor { get }
     var selectedLinesLineNumberColor: UIColor { get }
     var selectedLinesGutterBackgroundColor: UIColor { get }
     var invisibleCharactersColor: UIColor { get }

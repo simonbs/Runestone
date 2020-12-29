@@ -27,6 +27,9 @@ final class SyntaxHighlightController {
     var theme: EditorTheme
     var textColor: UIColor?
     var font: UIFont?
+    var canHighlight: Bool {
+        return parser.latestTree != nil
+    }
 
     private let parser: Parser
     private weak var textStorage: NSTextStorage?
