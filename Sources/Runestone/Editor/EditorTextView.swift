@@ -7,7 +7,6 @@
 
 import UIKit
 import RunestoneTextStorage
-import TreeSitterLanguages
 
 public protocol EditorTextViewDelegate: UITextViewDelegate {
     func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: EditorCharacterPair, in range: NSRange) -> Bool
@@ -21,14 +20,28 @@ public extension EditorTextViewDelegate {
 
 public final class EditorTextView: UITextView {
     public weak var editorDelegate: EditorTextViewDelegate?
+    public var language: Language? {
+        get {
+            return parser.language
+        }
+        set {
+            syntaxHighlightController.reset()
+            parser.language = newValue
+            parser.reset()
+            if parser.canParse {
+                parser.parse()
+                highlightChanges(from: nil)
+            } else {
+                syntaxHighlightController.removeHighlighting()
+            }
+        }
+    }
     public var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
             gutterController.theme = theme
             invisibleCharactersController.theme = theme
             syntaxHighlightController.theme = theme
-            if syntaxHighlightController.canHighlight {
-                highlightChanges(from: nil)
-            }
+            highlightChanges(from: nil)
         }
     }
     public var showTabs: Bool {
@@ -209,7 +222,6 @@ public final class EditorTextView: UITextView {
 
     public init(frame: CGRect = .zero) {
         parser = Parser(encoding: .utf8)
-        parser.language = Language(tree_sitter_javascript())
         editorLayoutManager = EditorLayoutManager(textStorage: editorTextStorage)
         syntaxHighlightController = SyntaxHighlightController(parser: parser, textStorage: editorTextStorage, theme: theme)
         let textContainer = Self.createTextContainer(layoutManager: editorLayoutManager, textStorage: editorTextStorage)
@@ -329,6 +341,10 @@ private extension EditorTextView {
     }
 
     private func highlightChanges(from oldTree: Tree?) {
+        guard syntaxHighlightController.canHighlight else {
+            syntaxHighlightController.removeHighlighting()
+            return
+        }
         if let newTree = parser.latestTree, let oldTree = oldTree {
             let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
             let ranges: [NSRange] = changedRanges.map { changedRange in
@@ -415,8 +431,12 @@ extension EditorTextView: EditorTextStorageDelegate {
 
     public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
         let oldTree = parser.latestTree
-        parser.parse()
-        highlightChanges(from: oldTree)
+        if parser.canParse {
+            parser.parse()
+            highlightChanges(from: oldTree)
+        } else {
+            syntaxHighlightController.removeHighlighting()
+        }
         updateShouldDrawDummyExtraLineNumber()
         if gutterController.shouldUpdateGutterWidth {
             // Dispatch to the next run loop so we're not modifying the text container while still processing text changes.
