@@ -20,6 +20,12 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 - [ ] Search and replace
 - [ ] Disable text wrapping
 
+## Performance
+
+Runestone was built to be fast. Its good performance is by far mostly thanks to [Tree-sitter's incremental parsing](https://tree-sitter.github.io/tree-sitter/), [AvalonEdit's approach for managing lines in a document](https://github.com/icsharpcode/AvalonEdit/blob/master/ICSharpCode.AvalonEdit/Document/DocumentLineTree.cs) and the fact that the NSTextStorage subclass is written in Objective-C ([SR-6197](https://bugs.swift.org/plugins/servlet/mobile#issue/SR-6197)).
+
+When judging the performance of Runestone, it is key to build the app in the release configuration. The optimazations applied by the compiler when using the release configuration becomes very apparent when opening large documents.
+
 ## Acknowledgments
 
 - [Tree-sitter](https://tree-sitter.github.io/tree-sitter) is used to parse code incrementally.
