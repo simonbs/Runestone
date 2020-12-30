@@ -430,6 +430,9 @@ extension EditorTextView: EditorTextStorageDelegate {
     }
 
     public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
+        guard editorTextStorage.editedMask.contains(.editedCharacters) else {
+            return
+        }
         let oldTree = parser.latestTree
         if parser.canParse {
             parser.parse()
