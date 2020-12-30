@@ -25,15 +25,10 @@ public final class EditorTextView: UITextView {
             return parser.language
         }
         set {
-            syntaxHighlightController.reset()
             parser.language = newValue
             parser.reset()
-            if parser.canParse {
-                parser.parse()
-                highlightChanges(from: nil)
-            } else {
-                syntaxHighlightController.removeHighlighting()
-            }
+            syntaxHighlightController.reset()
+            parseAndHighlight()
         }
     }
     public var theme: EditorTheme = DefaultEditorTheme() {
@@ -342,6 +337,16 @@ private extension EditorTextView {
         }
     }
 
+    private func parseAndHighlight() {
+        let oldTree = parser.latestTree
+        if parser.canParse {
+            parser.parse()
+            highlightChanges(from: oldTree)
+        } else {
+            syntaxHighlightController.removeHighlighting()
+        }
+    }
+
     private func highlightChanges(from oldTree: Tree?) {
         guard syntaxHighlightController.canHighlight else {
             syntaxHighlightController.removeHighlighting()
@@ -435,13 +440,7 @@ extension EditorTextView: EditorTextStorageDelegate {
         guard editorTextStorage.editedMask.contains(.editedCharacters) else {
             return
         }
-        let oldTree = parser.latestTree
-        if parser.canParse {
-            parser.parse()
-            highlightChanges(from: oldTree)
-        } else {
-            syntaxHighlightController.removeHighlighting()
-        }
+        parseAndHighlight()
         updateShouldDrawDummyExtraLineNumber()
         updateGutterWidth()
     }
