@@ -334,10 +334,12 @@ private extension EditorTextView {
     }
 
     private func updateGutterWidth() {
-        gutterController.updateGutterWidth()
-        gutterController.updateTextContainerInset()
-        // Redraw the gutter to match the new width.
-        setNeedsDisplay()
+        if gutterController.shouldUpdateGutterWidth {
+            gutterController.updateGutterWidth()
+            gutterController.updateTextContainerInset()
+            // Redraw the gutter to match the new width.
+            setNeedsDisplay()
+        }
     }
 
     private func highlightChanges(from oldTree: Tree?) {
@@ -441,12 +443,7 @@ extension EditorTextView: EditorTextStorageDelegate {
             syntaxHighlightController.removeHighlighting()
         }
         updateShouldDrawDummyExtraLineNumber()
-        if gutterController.shouldUpdateGutterWidth {
-            // Dispatch to the next run loop so we're not modifying the text container while still processing text changes.
-            DispatchQueue.main.async {
-                self.updateGutterWidth()
-            }
-        }
+        updateGutterWidth()
     }
 }
 
