@@ -8,10 +8,36 @@
 import Foundation
 import TreeSitter
 
-final class Language {
-    let pointer: UnsafePointer<TSLanguage>
+public final class Language {
+    public final class Query {
+        let fileURL: URL?
+        private(set) var string: String?
+        private var isPrepared = false
 
-    init(_ language: UnsafePointer<TSLanguage>) {
-        self.pointer = language
+        public init(fileURL: URL) {
+            self.fileURL = fileURL
+        }
+
+        public init(string: String) {
+            self.fileURL = nil
+            self.string = string
+        }
+
+        public func prepare() {
+            if !isPrepared {
+                isPrepared = true
+                if string == nil, let fileURL = fileURL {
+                    string = try? String(contentsOf: fileURL)
+                }
+            }
+        }
+    }
+
+    let pointer: UnsafePointer<TSLanguage>
+    let highlightsQuery: Query
+
+    public init(_ treeSitterLanguage: UnsafePointer<TSLanguage>, highlightsQuery: Query) {
+        self.pointer = treeSitterLanguage
+        self.highlightsQuery = highlightsQuery
     }
 }

@@ -24,6 +24,9 @@ final class Parser {
             }
         }
     }
+    var canParse: Bool {
+        return language != nil
+    }
     private(set) var latestTree: Tree?
 
     private let encoding: SourceEncoding
@@ -36,6 +39,10 @@ final class Parser {
 
     deinit {
         ts_parser_delete(parser)
+    }
+
+    func reset() {
+        latestTree = nil
     }
 
     func parse(_ string: String) {

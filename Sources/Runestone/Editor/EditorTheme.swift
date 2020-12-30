@@ -17,8 +17,8 @@ public protocol EditorTheme {
     var selectedLinesLineNumberColor: UIColor { get }
     var selectedLinesGutterBackgroundColor: UIColor { get }
     var invisibleCharactersColor: UIColor { get }
-    func textColorForCapture(named captureName: String) -> UIColor?
-    func fontForCapture(named captureName: String) -> UIFont?
+    func textColorForCaptureSequence(_ captureSequence: String) -> UIColor?
+    func fontForCaptureSequence(_ captureSequence: String) -> UIFont?
 }
 
 public extension EditorTheme {

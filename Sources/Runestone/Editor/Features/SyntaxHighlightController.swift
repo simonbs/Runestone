@@ -6,11 +6,11 @@
 //
 
 import UIKit
-import TreeSitterLanguages
 
 enum SyntaxHighlightControllerError: Error {
     case treeUnavailable
     case languageUnavailable
+    case highlightsQueryUnavailable
     case queryError(QueryError)
 }
 
@@ -28,20 +28,17 @@ final class SyntaxHighlightController {
     var textColor: UIColor?
     var font: UIFont?
     var canHighlight: Bool {
-        return parser.latestTree != nil
+        return parser.language != nil && parser.latestTree != nil
     }
 
     private let parser: Parser
     private weak var textStorage: NSTextStorage?
-    private let highlightsSource: String
     private var query: Query?
 
     init(parser: Parser, textStorage: NSTextStorage, theme: EditorTheme) {
         self.parser = parser
         self.textStorage = textStorage
         self.theme = theme
-        let fileURL = Bundle.module.url(forResource: "highlights", withExtension: "scm", subdirectory: "queries/javascript")!
-        self.highlightsSource = try! String(contentsOf: fileURL)
     }
 
     @discardableResult
@@ -56,6 +53,10 @@ final class SyntaxHighlightController {
         return parser.apply(inputEdit)
     }
 
+    func reset() {
+        query = nil
+    }
+
     func highlight(_ ranges: [NSRange]) {
         let capturesResult = getCaptures(in: ranges)
         switch capturesResult {
@@ -65,6 +66,13 @@ final class SyntaxHighlightController {
         case .failure(let error):
             setDefaultAttributes(in: ranges)
             print(error)
+        }
+    }
+
+    func removeHighlighting() {
+        if let length = textStorage?.length {
+            let range = NSRange(location: 0, length: length)
+            setDefaultAttributes(in: [range])
         }
     }
 }
@@ -89,7 +97,7 @@ private extension SyntaxHighlightController {
             let length = Int(capture.endByte - capture.startByte)
             let captureRange = NSRange(location: location, length: length)
             var attrs: [NSAttributedString.Key: Any] = [:]
-            if let textColor = theme.textColorForCapture(named: capture.name) {
+            if let textColor = theme.textColorForCaptureSequence(capture.name) {
                 attrs[.foregroundColor] = textColor
             } else if let textColor = textColor {
                 attrs[.foregroundColor] = textColor
@@ -128,11 +136,16 @@ private extension SyntaxHighlightController {
         if let query = query {
             return .success(query)
         } else if let language = parser.language {
-            return Query.create(fromSource: highlightsSource, in: language).mapError { error in
-                return .queryError(error)
-            }.map { query in
-                self.query = query
-                return query
+            language.highlightsQuery.prepare()
+            if let highlightsSource = language.highlightsQuery.string {
+                return Query.create(fromSource: highlightsSource, in: language).mapError { error in
+                    return .queryError(error)
+                }.map { query in
+                    self.query = query
+                    return query
+                }
+            } else {
+                return .failure(.highlightsQueryUnavailable)
             }
         } else {
             return .failure(.languageUnavailable)
