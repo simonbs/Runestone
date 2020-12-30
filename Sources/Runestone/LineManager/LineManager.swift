@@ -113,6 +113,9 @@ final class LineManager {
     }
 
     func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
+        guard location >= 0 && location <= tree.totalCharacterCount else {
+            return nil
+        }
         let line = tree.line(containingCharacterAt: location)
         if let lineNumber = line.lineNumber {
             let column = location - line.location + 1 // +1 to avoid zero based columns
