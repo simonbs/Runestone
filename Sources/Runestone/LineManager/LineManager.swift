@@ -85,8 +85,8 @@ final class LineManager {
         if let rangeOfFirstNewLine = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: 0) {
             var lastDelimiterEnd = 0
             var rangeOfNewLine = rangeOfFirstNewLine
-            var keepInserting = true
-            while keepInserting {
+            var hasReachedEnd = false
+            while !hasReachedEnd {
                 let lineBreakLocation = range.location + rangeOfNewLine.location + rangeOfNewLine.length
                 lineLocation = line.location
                 let lengthAfterInsertionPos = lineLocation + line.totalLength  - (range.location + lastDelimiterEnd)
@@ -97,9 +97,9 @@ final class LineManager {
                 lastDelimiterEnd = rangeOfNewLine.location + rangeOfNewLine.length
                 if let rangeOfNextNewLine = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: lastDelimiterEnd) {
                     rangeOfNewLine = rangeOfNextNewLine
-                    keepInserting = true
+                    hasReachedEnd = rangeOfNewLine.location + rangeOfNewLine.length >= string.length
                 } else {
-                    keepInserting = false
+                    hasReachedEnd = true
                 }
             }
             // Insert rest of last delimiter.
