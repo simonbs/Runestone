@@ -437,12 +437,11 @@ extension EditorTextView: EditorTextStorageDelegate {
     }
 
     public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
-        guard editorTextStorage.editedMask.contains(.editedCharacters) else {
-            return
+        if editorTextStorage.editedMask.contains(.editedCharacters) {
+            parseAndHighlight()
+            updateShouldDrawDummyExtraLineNumber()
+            updateGutterWidth()
         }
-        parseAndHighlight()
-        updateShouldDrawDummyExtraLineNumber()
-        updateGutterWidth()
     }
 }
 
