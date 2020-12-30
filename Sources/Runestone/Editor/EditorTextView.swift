@@ -100,7 +100,7 @@ public final class EditorTextView: UITextView {
         set {
             if newValue != gutterController.showLineNumbers {
                 // Temporarily disable scrolling while we adjust the exclusion path to work around an issue
-                // where the UITextVie wwould adjust its content offset when setting the exclusion path.
+                // where the UITextView would adjust its content offset when setting the exclusion path.
                 isScrollEnabled = false
                 gutterController.showLineNumbers = newValue
                 gutterController.updateGutterWidth()
