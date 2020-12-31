@@ -99,14 +99,12 @@ public final class EditorTextView: UITextView {
         }
         set {
             if newValue != gutterController.showLineNumbers {
-                // Temporarily disable scrolling while we adjust the exclusion path to work around an issue
-                // where the UITextView would adjust its content offset when setting the exclusion path.
-                isScrollEnabled = false
-                gutterController.showLineNumbers = newValue
-                gutterController.updateGutterWidth()
-                gutterController.updateTextContainerInset()
-                isScrollEnabled = true
-                setNeedsDisplay()
+                performAndResetContentOffset {
+                    gutterController.showLineNumbers = newValue
+                    gutterController.updateGutterWidth()
+                    gutterController.updateTextContainerInset()
+                    setNeedsDisplay()
+                }
             }
         }
     }
@@ -265,8 +263,10 @@ public final class EditorTextView: UITextView {
 
     public override func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
-        gutterController.updateGutterWidth()
-        gutterController.updateTextContainerInset()
+        performAndResetContentOffset {
+            gutterController.updateGutterWidth()
+            gutterController.updateTextContainerInset()
+        }
     }
     
     public func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
@@ -396,6 +396,19 @@ private extension EditorTextView {
             return extendedLineLocation + extendedLinePosition.length
         } else {
             return extendedLineLocation
+        }
+    }
+
+    private func performAndResetContentOffset(_ block: () -> Void) {
+        if bounds != .zero {
+            // Attempts to reset the content offset to show the same range of glyphs that were displayed before running the block.
+            let initialRange = editorLayoutManager.glyphRange(forBoundingRect: bounds, in: textContainer)
+            block()
+            let newBounds = editorLayoutManager.boundingRect(forGlyphRange: initialRange, in: textContainer)
+            let yOffset = max(-adjustedContentInset.top, newBounds.minY - adjustedContentInset.top)
+            contentOffset = CGPoint(x: contentOffset.x, y: yOffset)
+        } else {
+            block()
         }
     }
 }
