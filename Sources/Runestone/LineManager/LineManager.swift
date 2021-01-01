@@ -71,11 +71,11 @@ final class LineManager {
         }
     }
 
-    func insert(_ string: NSString, in range: NSRange) {
-        var line = tree.line(containingCharacterAt: range.location)
+    func insert(_ string: NSString, at location: Int) {
+        var line = tree.line(containingCharacterAt: location)
         var lineLocation = line.location
-        assert(range.location <= lineLocation + line.totalLength)
-        if range.location > lineLocation + line.length {
+        assert(location <= lineLocation + line.totalLength)
+        if location > lineLocation + line.length {
             // Inserting in the middle of a delimiter.
             setLength(of: line, to: line.totalLength - 1)
             // Add new line.
@@ -87,9 +87,9 @@ final class LineManager {
             var rangeOfNewLine = rangeOfFirstNewLine
             var hasReachedEnd = false
             while !hasReachedEnd {
-                let lineBreakLocation = range.location + rangeOfNewLine.location + rangeOfNewLine.length
+                let lineBreakLocation = location + rangeOfNewLine.location + rangeOfNewLine.length
                 lineLocation = line.location
-                let lengthAfterInsertionPos = lineLocation + line.totalLength  - (range.location + lastDelimiterEnd)
+                let lengthAfterInsertionPos = lineLocation + line.totalLength - (location + lastDelimiterEnd)
                 line = setLength(of: line, to: lineBreakLocation - lineLocation)
                 var newLine = insertLine(ofLength: lengthAfterInsertionPos, after: line)
                 newLine = setLength(of: newLine, to: lengthAfterInsertionPos)
