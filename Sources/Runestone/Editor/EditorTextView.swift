@@ -6,7 +6,7 @@
 //
 
 import UIKit
-import RunestoneTextStorage
+import RunestoneObjC
 
 public protocol EditorTextViewDelegate: UITextViewDelegate {
     func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: EditorCharacterPair, in range: NSRange) -> Bool
@@ -26,9 +26,9 @@ public final class EditorTextView: UITextView {
         }
         set {
             parser.language = newValue
-            parser.reset()
-            syntaxHighlightController.reset()
-            parseAndHighlight()
+//            parser.reset()
+//            syntaxHighlightController.reset()
+//            parseAndHighlight()
         }
     }
     public var theme: EditorTheme = DefaultEditorTheme() {
@@ -36,7 +36,7 @@ public final class EditorTextView: UITextView {
             gutterController.theme = theme
             invisibleCharactersController.theme = theme
             syntaxHighlightController.theme = theme
-            highlightChanges(from: nil)
+//            highlightChanges(from: nil)
         }
     }
     public var showTabs: Bool {
@@ -212,6 +212,9 @@ public final class EditorTextView: UITextView {
     private let gutterController: GutterController
     private let editorLayoutManager: EditorLayoutManager
     private var shouldDrawDummyExtraLineNumber = false
+    private let queue = OperationQueue()
+    private var highlightedLines = IndexSet()
+    private var isProcessingNewText = false
 
     public init(frame: CGRect = .zero) {
         parser = Parser(encoding: .utf8)
@@ -229,6 +232,7 @@ public final class EditorTextView: UITextView {
             textStorage: editorTextStorage,
             theme: theme)
         super.init(frame: frame, textContainer: textContainer)
+        queue.qualityOfService = .userInitiated
         contentMode = .redraw
         delegate = self
         additionalTextContainerInset = textContainerInset
@@ -269,12 +273,44 @@ public final class EditorTextView: UITextView {
         }
     }
     
-    public func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
-        return lineManager.positionOfLine(containingCharacterAt: location)
+    public func linePosition(at location: Int) -> LinePosition? {
+        return lineManager.linePosition(at: location)
     }
 
     public func node(at location: Int) -> Node? {
         return parser.latestTree?.rootNode.namedDescendantInRange(from: UInt32(location), to: UInt32(location))
+    }
+
+    public func setText(_ newText: String, completion: ((Bool) -> Void)? = nil) {
+        isProcessingNewText = true
+        text = newText
+        parser.reset()
+        let operation = BlockOperation()
+        operation.addExecutionBlock { [weak self, weak operation] in
+            guard let self = self, let operation = operation else {
+                completion?(false)
+                return
+            }
+            guard !operation.isCancelled else {
+                completion?(false)
+                return
+            }
+            let nsNewText = newText as NSString
+            self.lineManager.reset()
+            self.lineManager.insert(nsNewText, at: 0)
+            self.parser.parse(newText)
+            self.isProcessingNewText = false
+            DispatchQueue.main.sync {
+                if !operation.isCancelled {
+                    let range = NSRange(location: 0, length: self.textStorage.length)
+                    self.editorTextStorage.beginEditing()
+                    self.editorTextStorage.edited(.editedAttributes, range: range, changeInLength: 0)
+                    self.editorTextStorage.endEditing()
+                }
+            }
+            completion?(!operation.isCancelled)
+        }
+        queue.addOperation(operation)
     }
 }
 
@@ -338,31 +374,31 @@ private extension EditorTextView {
     }
 
     private func parseAndHighlight() {
-        let oldTree = parser.latestTree
-        if parser.canParse {
-            parser.parse()
-            highlightChanges(from: oldTree)
-        } else {
-            syntaxHighlightController.removeHighlighting()
-        }
+//        let oldTree = parser.latestTree
+//        if parser.canParse {
+//            parser.parse()
+//            highlightChanges(from: oldTree)
+//        } else {
+//            syntaxHighlightController.removeHighlighting()
+//        }
     }
 
-    private func highlightChanges(from oldTree: Tree?) {
+    private func highlightLines(in glyphRange: NSRange) {
         guard syntaxHighlightController.canHighlight else {
-            syntaxHighlightController.removeHighlighting()
             return
         }
-        if let newTree = parser.latestTree, let oldTree = oldTree {
-            let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
-            let ranges: [NSRange] = changedRanges.map { changedRange in
-                let location = Int(changedRange.startByte)
-                let length = Int(changedRange.endByte - changedRange.startByte)
-                return NSRange(location: location, length: length)
+        let startLinePosition = lineManager.linePosition(at: glyphRange.location)
+        let endLinePosition = lineManager.linePosition(at: glyphRange.location + glyphRange.length)
+        if let startLinePosition = startLinePosition, let endLinePosition = endLinePosition {
+            let startLineNumber = startLinePosition.lineNumber
+            let endLineNumber = endLinePosition.lineNumber
+            let isRangeHiglighted = highlightedLines.contains(startLineNumber) && highlightedLines.contains(endLineNumber)
+            if !isRangeHiglighted {
+                let length = (endLinePosition.lineStartLocation + endLinePosition.length) - startLinePosition.lineStartLocation
+                let range = NSRange(location: startLinePosition.lineStartLocation, length: length)
+                syntaxHighlightController.highlight([range])
+                highlightedLines.insert(integersIn: startLineNumber ... endLineNumber)
             }
-            syntaxHighlightController.highlight(ranges)
-        } else {
-            let range = NSRange(location: 0, length: textStorage.length)
-            syntaxHighlightController.highlight([range])
         }
     }
 
@@ -383,19 +419,6 @@ private extension EditorTextView {
                     }
                 }
             }
-        }
-    }
-
-    private func extendLocation(_ location: Int, byLineCount extendingLineCount: Int) -> Int? {
-        guard let linePosition = lineManager.positionOfLine(containingCharacterAt: location) else {
-            return nil
-        }
-        let extendedLineNumber = min(max(linePosition.lineNumber + extendingLineCount, 1), lineManager.lineCount)
-        let extendedLineLocation = lineManager.locationOfLine(withLineNumber: extendedLineNumber)
-        if extendedLineLocation < 0, let extendedLinePosition = lineManager.positionOfLine(containingCharacterAt: extendedLineLocation) {
-            return extendedLineLocation + extendedLinePosition.length
-        } else {
-            return extendedLineLocation
         }
     }
 
@@ -427,23 +450,26 @@ extension EditorTextView: ParserDelegate {
 
 extension EditorTextView: EditorTextStorageDelegate {
     public func editorTextStorage(_ editorTextStorage: EditorTextStorage, didReplaceCharactersIn range: NSRange, with string: String) {
+        guard !isProcessingNewText else {
+            return
+        }
         let nsString = string as NSString
         let bytesRemoved = range.length
         let bytesAdded = nsString.length
-        let oldEndLinePosition = lineManager.positionOfLine(containingCharacterAt: range.location + bytesRemoved)
+        let oldEndLinePosition = lineManager.linePosition(at: range.location + bytesRemoved)
         lineManager.removeCharacters(in: range)
-        lineManager.insert(nsString, in: range)
-        let startLinePosition = lineManager.positionOfLine(containingCharacterAt: range.location)
-        let newEndLinePosition = lineManager.positionOfLine(containingCharacterAt: range.location + bytesAdded)
+        lineManager.insert(nsString, at: range.location)
+        let startLinePosition = lineManager.linePosition(at: range.location)
+        let newEndLinePosition = lineManager.linePosition(at: range.location + bytesAdded)
         if let oldEndLinePosition = oldEndLinePosition, let startLinePosition = startLinePosition, let newEndLinePosition = newEndLinePosition {
-            let edit = SyntaxHighlightController.Edit(
+            let edit = SimpleInputEdit(
                 location: range.location,
                 bytesRemoved: bytesRemoved,
                 bytesAdded: bytesAdded,
                 startLinePosition: startLinePosition,
                 oldEndLinePosition: oldEndLinePosition,
                 newEndLinePosition: newEndLinePosition)
-            syntaxHighlightController.apply(edit)
+            parser.apply(edit)
         } else {
             fatalError("Cannot edit syntax tree because one or more line positions are not available")
         }
@@ -451,9 +477,9 @@ extension EditorTextView: EditorTextStorageDelegate {
 
     public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
         if editorTextStorage.editedMask.contains(.editedCharacters) {
-            parseAndHighlight()
+//            parseAndHighlight()
             updateShouldDrawDummyExtraLineNumber()
-            updateGutterWidth()
+//            updateGutterWidth()
         }
     }
 }
@@ -506,6 +532,12 @@ extension EditorTextView: EditorLayoutManagerDelegate {
     func editorLayoutManager(_ layoutManager: EditorLayoutManager, didEnumerate lineFragment: EditorLineFragment) {
         gutterController.draw(lineFragment)
         invisibleCharactersController.drawInvisibleCharacters(in: lineFragment)
+    }
+
+    func editorLayoutManager(_ layoutManager: EditorLayoutManager, shouldEnsureLayoutForGlyphRange glyphRange: NSRange) {
+        if !isProcessingNewText {
+            highlightLines(in: glyphRange)
+        }
     }
 }
 

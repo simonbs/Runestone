@@ -6,7 +6,7 @@
 //
 
 import UIKit
-import RunestoneTextStorage
+import RunestoneObjC
 
 final class InvisibleCharactersController {
     private enum HorizontalSymbolPosition {

@@ -36,10 +36,7 @@
 }
 
 - (void)setAttributes:(NSDictionary<NSAttributedStringKey,id> *)attrs range:(NSRange)range {
-    [self beginEditing];
     [_internalString setAttributes:attrs range:range];
-    [self edited:NSTextStorageEditedAttributes range:range changeInLength:0];
-    [self endEditing];
 }
 
 - (NSDictionary<NSAttributedStringKey,id> *)attributesAtIndex:(NSUInteger)location effectiveRange:(NSRangePointer)range {

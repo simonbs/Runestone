@@ -28,7 +28,7 @@ final class DocumentLine: LineNode {
         return totalLength - delimiterLength
     }
     var lineNumber: Int? {
-        return tree.index(of: self) + 1
+        return tree.index(of: self)
     }
     var left: DocumentLine?
     var right: DocumentLine?
@@ -54,6 +54,7 @@ final class DocumentLine: LineNode {
 
 extension DocumentLine: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[DocumentLine lineNumber=\(lineNumber ?? -1) location=\(location) length=\(length)]"
+        let strLineNumber = lineNumber == nil ? "N/A" : "\(lineNumber! + 1)"
+        return "[DocumentLine lineNumber=\(strLineNumber) location=\(location) length=\(length)]"
     }
 }

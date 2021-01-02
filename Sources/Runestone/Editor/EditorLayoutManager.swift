@@ -6,13 +6,14 @@
 //
 
 import UIKit
-import RunestoneTextStorage
+import RunestoneObjC
 
 protocol EditorLayoutManagerDelegate: AnyObject {
     func numberOfLinesIn(_ layoutManager: EditorLayoutManager) -> Int
     func editorLayoutManagerShouldEnumerateLineFragments(_ layoutManager: EditorLayoutManager) -> Bool
     func editorLayoutManagerDidEnumerateLineFragments(_ layoutManager: EditorLayoutManager)
     func editorLayoutManager(_ layoutManager: EditorLayoutManager, didEnumerate lineFragment: EditorLineFragment)
+    func editorLayoutManager(_ layoutManager: EditorLayoutManager, shouldEnsureLayoutForGlyphRange glyphRange: NSRange)
 }
 
 final class EditorLayoutManager: NSLayoutManager {
@@ -80,5 +81,10 @@ final class EditorLayoutManager: NSLayoutManager {
         } else {
             super.setLineFragmentRect(fragmentRect, forGlyphRange: glyphRange, usedRect: usedRect)
         }
+    }
+
+    override func ensureLayout(forGlyphRange glyphRange: NSRange) {
+        editorDelegate?.editorLayoutManager(self, shouldEnsureLayoutForGlyphRange: glyphRange)
+        super.ensureLayout(forGlyphRange: glyphRange)
     }
 }

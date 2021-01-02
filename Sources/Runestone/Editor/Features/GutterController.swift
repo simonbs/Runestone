@@ -6,7 +6,7 @@
 //
 
 import UIKit
-import RunestoneTextStorage
+import RunestoneObjC
 
 final class GutterController {
     weak var textView: UITextView?
@@ -86,20 +86,17 @@ final class GutterController {
         guard shouldDraw, let textView = textView, let layoutManager = layoutManager, let textContainer = textContainer else {
             return
         }
-        guard let linePosition = lineManager?.positionOfLine(containingCharacterAt: lineFragment.glyphRange.location) else {
+        guard let linePosition = lineManager?.linePosition(at: lineFragment.glyphRange.location) else {
             return
         }
-        guard let lineLocation = lineManager?.locationOfLine(withLineNumber: linePosition.lineNumber) else {
-            return
-        }
-        guard lineFragment.glyphRange.location == lineLocation else {
+        guard lineFragment.glyphRange.location == linePosition.lineStartLocation else {
             return
         }
         let lineFragmentRect = layoutManager.lineFragmentRect(forGlyphAt: lineFragment.glyphRange.location, effectiveRange: nil)
-        let lineRange = NSRange(location: lineLocation, length: linePosition.length)
+        let lineRange = NSRange(location: linePosition.lineStartLocation, length: linePosition.length)
         let isLineSelected = shouldHighlightLine(spanning: lineRange, forSelectedRange: textView.selectedRange)
         if isLineSelected {
-            let entireLineRange = NSRange(location: lineLocation, length: linePosition.length)
+            let entireLineRange = NSRange(location: linePosition.lineStartLocation, length: linePosition.length)
             let lineBoundingRect = layoutManager.boundingRect(forGlyphRange: entireLineRange, in: textContainer)
             let lineBackgroundYPosition = lineBoundingRect.minY + additionalTextContainerInset.top
             let lineBackgroundRect = CGRect(x: gutterWidth, y: lineBackgroundYPosition, width: textView.bounds.width, height: lineBoundingRect.height)
@@ -107,7 +104,7 @@ final class GutterController {
         }
         let gutterRect = CGRect(x: 0, y: lineFragmentRect.minY + additionalTextContainerInset.top, width: gutterWidth, height: lineFragmentRect.height)
         let textColor = isLineSelected ? theme.selectedLinesLineNumberColor : theme.lineNumberColor
-        drawLineNumber(linePosition.lineNumber, in: gutterRect, textColor: textColor)
+        drawLineNumber(linePosition.lineNumber + 1, in: gutterRect, textColor: textColor)
     }
 
     func drawExtraLineIfNecessary() {
@@ -192,7 +189,8 @@ private extension GutterController {
     }
 
     private func shouldHighlightLine(spanning lineRange: NSRange, forSelectedRange selectedRange: NSRange?) -> Bool {
-        guard highlightSelectedLine, let textStorage = textStorage, let selectedRange = selectedRange, let textView = textView, textView.isFirstResponder else {
+        let isFirstResponder = textView?.isFirstResponder ?? false
+        guard highlightSelectedLine, let textStorage = textStorage, let selectedRange = selectedRange, isFirstResponder else {
             return false
         }
         let selectedStartLocation = selectedRange.location

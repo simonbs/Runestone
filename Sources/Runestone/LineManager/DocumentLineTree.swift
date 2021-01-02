@@ -26,6 +26,10 @@ final class DocumentLineTree {
         root.color = .black
     }
 
+    func reset() {
+        root = DocumentLine(tree: self, totalLength: 0)
+    }
+
     func line(containingCharacterAt location: Int) -> DocumentLine {
         assert(location >= 0)
         assert(location <= root.nodeTotalLength)
@@ -52,28 +56,51 @@ final class DocumentLineTree {
         }
     }
 
-    func locationOfLine(withLineNumber lineNumber: Int) -> Int {
-        let index = lineNumber - 1
-        assert(index >= 0)
-        assert(index < root.nodeTotalCount)
-        var remainingIndex = index
-        var node = root
-        while true {
-            if let leftNode = node.left, remainingIndex < leftNode.nodeTotalCount {
-                node = leftNode
-            } else {
-                if let leftNode = node.left {
-                    remainingIndex -= leftNode.nodeTotalCount
+    func linePosition(at location: Int) -> LinePosition? {
+        guard location >= 0 && location <= root.nodeTotalLength else {
+            return nil
+        }
+        if location == root.nodeTotalLength {
+            let node = root.rightMost
+            let lineStartLocation = root.nodeTotalLength - node.nodeTotalLength
+            let column = location - lineStartLocation
+            return LinePosition(
+                lineStartLocation: lineStartLocation,
+                lineNumber: node.lineNumber!,
+                column: column,
+                length: node.length,
+                delimiterLength: node.delimiterLength)
+        } else {
+            var lineStartLocation = 0
+            var remainingLocation = location
+            var node = root
+            while true {
+                if let leftNode = node.left, remainingLocation < leftNode.nodeTotalLength {
+                    node = leftNode
+                } else {
+                    if let leftNode = node.left {
+                        lineStartLocation += leftNode.nodeTotalLength
+                        remainingLocation -= leftNode.nodeTotalLength
+                    }
+                    lineStartLocation += node.totalLength
+                    remainingLocation -= node.totalLength
+                    if remainingLocation < 0 {
+                        lineStartLocation -= node.totalLength
+                        let column = location - lineStartLocation
+                        return LinePosition(
+                            lineStartLocation: lineStartLocation,
+                            lineNumber: node.lineNumber!,
+                            column: column,
+                            length: node.length,
+                            delimiterLength: node.delimiterLength)
+                    } else {
+                        node = node.right!
+                    }
                 }
-                if remainingIndex == 0 {
-                    return node.location
-                }
-                remainingIndex -= 1
-                node = node.right!
             }
         }
     }
-
+    
     func location(of node: DocumentLine) -> Int {
         var location = node.left?.nodeTotalLength ?? 0
         var workingNode = node

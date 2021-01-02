@@ -35,6 +35,10 @@ final class LineManager {
 
     init() {}
 
+    func reset() {
+        tree.reset()
+    }
+
     func removeCharacters(in range: NSRange) {
         guard range.length > 0 else {
             return
@@ -97,7 +101,6 @@ final class LineManager {
                 lastDelimiterEnd = rangeOfNewLine.location + rangeOfNewLine.length
                 if let rangeOfNextNewLine = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: lastDelimiterEnd) {
                     rangeOfNewLine = rangeOfNextNewLine
-                    hasReachedEnd = rangeOfNewLine.location + rangeOfNewLine.length >= string.length
                 } else {
                     hasReachedEnd = true
                 }
@@ -112,21 +115,8 @@ final class LineManager {
         }
     }
 
-    func positionOfLine(containingCharacterAt location: Int) -> LinePosition? {
-        guard location >= 0 && location <= tree.totalCharacterCount else {
-            return nil
-        }
-        let line = tree.line(containingCharacterAt: location)
-        if let lineNumber = line.lineNumber {
-            let column = location - line.location + 1 // +1 to avoid zero based columns
-            return LinePosition(lineNumber: lineNumber, column: column, length: line.length)
-        } else {
-            return nil
-        }
-    }
-
-    func locationOfLine(withLineNumber lineNumber: Int) -> Int {
-        return tree.locationOfLine(withLineNumber: lineNumber)
+    func linePosition(at location: Int) -> LinePosition? {
+        return tree.linePosition(at: location)
     }
 }
 

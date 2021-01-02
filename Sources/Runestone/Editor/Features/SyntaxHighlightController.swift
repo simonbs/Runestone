@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import RunestoneObjC
 
 enum SyntaxHighlightControllerError: Error {
     case treeUnavailable
@@ -15,15 +16,6 @@ enum SyntaxHighlightControllerError: Error {
 }
 
 final class SyntaxHighlightController {
-    struct Edit {
-        let location: Int
-        let bytesRemoved: Int
-        let bytesAdded: Int
-        let startLinePosition: LinePosition
-        let oldEndLinePosition: LinePosition
-        let newEndLinePosition: LinePosition
-    }
-
     var theme: EditorTheme
     var textColor: UIColor?
     var font: UIFont?
@@ -32,25 +24,13 @@ final class SyntaxHighlightController {
     }
 
     private let parser: Parser
-    private weak var textStorage: NSTextStorage?
+    private weak var textStorage: EditorTextStorage?
     private var query: Query?
 
-    init(parser: Parser, textStorage: NSTextStorage, theme: EditorTheme) {
+    init(parser: Parser, textStorage: EditorTextStorage, theme: EditorTheme) {
         self.parser = parser
         self.textStorage = textStorage
         self.theme = theme
-    }
-
-    @discardableResult
-    func apply(_ edit: Edit) -> Bool {
-        let inputEdit = InputEdit(
-            startByte: UInt32(edit.location),
-            oldEndByte: UInt32(edit.location + edit.bytesRemoved),
-            newEndByte: UInt32(edit.location + edit.bytesAdded),
-            startPoint: SourcePoint(edit.startLinePosition),
-            oldEndPoint: SourcePoint(edit.oldEndLinePosition),
-            newEndPoint: SourcePoint(edit.newEndLinePosition))
-        return parser.apply(inputEdit)
     }
 
     func reset() {
@@ -58,7 +38,7 @@ final class SyntaxHighlightController {
     }
 
     func highlight(_ ranges: [NSRange]) {
-        let capturesResult = getCaptures(in: ranges)
+        let capturesResult = captures(in: ranges)
         switch capturesResult {
         case .success(let captures):
             setDefaultAttributes(in: ranges)
@@ -96,24 +76,29 @@ private extension SyntaxHighlightController {
             let location = Int(capture.startByte)
             let length = Int(capture.endByte - capture.startByte)
             let captureRange = NSRange(location: location, length: length)
-            var attrs: [NSAttributedString.Key: Any] = [:]
-            if let textColor = theme.textColorForCaptureSequence(capture.name) {
-                attrs[.foregroundColor] = textColor
-            } else if let textColor = textColor {
-                attrs[.foregroundColor] = textColor
-            }
-            if let font = theme.fontForCapture(named: capture.name) {
-                attrs[.font] = font
-            } else if let font = font {
-                attrs[.font] = font
-            }
+            let attrs = attributes(for: capture)
             if !attrs.isEmpty {
                 textStorage?.setAttributes(attrs, range: captureRange)
             }
         }
     }
 
-    private func getCaptures(in ranges: [NSRange]) -> Result<[Capture], SyntaxHighlightControllerError> {
+    private func attributes(for capture: Capture) -> [NSAttributedString.Key: Any] {
+        var attrs: [NSAttributedString.Key: Any] = [:]
+        if let textColor = theme.textColorForCaptureSequence(capture.name) {
+            attrs[.foregroundColor] = textColor
+        } else if let textColor = textColor {
+            attrs[.foregroundColor] = textColor
+        }
+        if let font = theme.fontForCapture(named: capture.name) {
+            attrs[.font] = font
+        } else if let font = font {
+            attrs[.font] = font
+        }
+        return attrs
+    }
+
+    private func captures(in ranges: [NSRange]) -> Result<[Capture], SyntaxHighlightControllerError> {
         guard let tree = parser.latestTree else {
             return .failure(.treeUnavailable)
         }
@@ -150,11 +135,5 @@ private extension SyntaxHighlightController {
         } else {
             return .failure(.languageUnavailable)
         }
-    }
-}
-
-private extension SourcePoint {
-    convenience init(_ linePosition: LinePosition) {
-        self.init(row: UInt32(linePosition.lineNumber), column: UInt32(linePosition.column))
     }
 }

@@ -13,7 +13,7 @@ enum NewLineFinder {
         var end: Int = NSNotFound
         var contentsEnd: Int = NSNotFound
         text.getLineStart(nil, end: &end, contentsEnd: &contentsEnd, for: range)
-        if end != NSNotFound && contentsEnd != NSNotFound {
+        if end != NSNotFound && contentsEnd != NSNotFound && end != contentsEnd {
             return NSRange(location: contentsEnd, length: end - contentsEnd)
         } else {
             return nil
