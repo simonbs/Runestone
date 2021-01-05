@@ -10,6 +10,7 @@
 @class EditorTextStorage;
 
 @protocol EditorTextStorageDelegate <NSObject>
+- (void)editorTextStorage:(EditorTextStorage* _Nonnull)editorTextStorage willReplaceCharactersInRange:(NSRange)range withString:(NSString* _Nonnull)string;
 - (void)editorTextStorage:(EditorTextStorage* _Nonnull)editorTextStorage didReplaceCharactersInRange:(NSRange)range withString:(NSString* _Nonnull)string;
 - (void)editorTextStorageDidProcessEditing:(EditorTextStorage* _Nonnull)editorTextStorage;
 @end

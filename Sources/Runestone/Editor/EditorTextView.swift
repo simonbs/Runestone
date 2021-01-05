@@ -25,10 +25,11 @@ public final class EditorTextView: UITextView {
             return parser.language
         }
         set {
+            isProcessingNewText = false
+            queue.cancelAllOperations()
+            parser.reset()
+            syntaxHighlightController.removeHighlighting()
             parser.language = newValue
-//            parser.reset()
-//            syntaxHighlightController.reset()
-//            parseAndHighlight()
         }
     }
     public var theme: EditorTheme = DefaultEditorTheme() {
@@ -36,7 +37,6 @@ public final class EditorTextView: UITextView {
             gutterController.theme = theme
             invisibleCharactersController.theme = theme
             syntaxHighlightController.theme = theme
-//            highlightChanges(from: nil)
         }
     }
     public var showTabs: Bool {
@@ -170,6 +170,18 @@ public final class EditorTextView: UITextView {
             }
         }
     }
+//    public override var text: String! {
+//        get {
+//            return super.text
+//        }
+//        set {
+//            isProcessingNewText = false
+//            queue.cancelAllOperations()
+//            parser.reset()
+//            syntaxHighlightController.removeHighlighting()
+//            super.text = newValue
+//        }
+//    }
     public override var textColor: UIColor? {
         set {
             syntaxHighlightController.textColor = newValue
@@ -285,6 +297,7 @@ public final class EditorTextView: UITextView {
         isProcessingNewText = true
         text = newText
         parser.reset()
+        completion?(true)
         let operation = BlockOperation()
         operation.addExecutionBlock { [weak self, weak operation] in
             guard let self = self, let operation = operation else {
@@ -299,8 +312,9 @@ public final class EditorTextView: UITextView {
             self.lineManager.reset()
             self.lineManager.insert(nsNewText, at: 0)
             self.parser.parse(newText)
-            self.isProcessingNewText = false
             DispatchQueue.main.sync {
+                self.isProcessingNewText = false
+                print("Ready")
                 if !operation.isCancelled {
                     let range = NSRange(location: 0, length: self.textStorage.length)
                     self.editorTextStorage.beginEditing()
@@ -449,6 +463,14 @@ extension EditorTextView: ParserDelegate {
 }
 
 extension EditorTextView: EditorTextStorageDelegate {
+    public func editorTextStorage(_ editorTextStorage: EditorTextStorage, willReplaceCharactersIn range: NSRange, with string: String) {
+        if string.isEmpty && range.length > 0, let linePosition = lineManager.linePosition(at: range.location) {
+            let isDeletingLastCharacterInLine = range.location + range.length == linePosition.lineStartLocation + linePosition.length
+            let stringTokenizer = tokenizer as? UITextInputStringTokenizer
+            stringTokenizer?.sbs_rangeEnclosingPositionReturnsNull = isDeletingLastCharacterInLine
+        }
+    }
+
     public func editorTextStorage(_ editorTextStorage: EditorTextStorage, didReplaceCharactersIn range: NSRange, with string: String) {
         guard !isProcessingNewText else {
             return
@@ -480,6 +502,10 @@ extension EditorTextView: EditorTextStorageDelegate {
 //            parseAndHighlight()
             updateShouldDrawDummyExtraLineNumber()
 //            updateGutterWidth()
+            DispatchQueue.main.async {
+                let stringTokenizer = self.tokenizer as? UITextInputStringTokenizer
+                stringTokenizer?.sbs_rangeEnclosingPositionReturnsNull = false
+            }
         }
     }
 }

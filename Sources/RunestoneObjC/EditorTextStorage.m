@@ -25,6 +25,9 @@
 }
 
 - (void)replaceCharactersInRange:(NSRange)range withString:(NSString *)str {
+    if ([self.editorDelegate respondsToSelector:@selector(editorTextStorage:willReplaceCharactersInRange:withString:)]) {
+        [self.editorDelegate editorTextStorage:self willReplaceCharactersInRange:range withString:str];
+    }
     [self beginEditing];
     NSInteger length = (NSInteger)str.length - (NSInteger)range.length;
     [_internalString replaceCharactersInRange:range withString:str];
