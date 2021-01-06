@@ -54,7 +54,7 @@ final class DocumentLine: LineNode {
 
 extension DocumentLine: CustomDebugStringConvertible {
     var debugDescription: String {
-        let strLineNumber = lineNumber == nil ? "N/A" : "\(lineNumber! + 1)"
+        let strLineNumber = lineNumber == nil ? "N/A" : "\(lineNumber!)"
         return "[DocumentLine lineNumber=\(strLineNumber) location=\(location) length=\(length)]"
     }
 }
