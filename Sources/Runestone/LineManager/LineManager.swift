@@ -118,6 +118,10 @@ final class LineManager {
     func linePosition(at location: Int) -> LinePosition? {
         return tree.linePosition(at: location)
     }
+
+    func line(containingCharacterAt location: Int) -> DocumentLine? {
+        return tree.line(containingCharacterAt: location)
+    }
 }
 
 private extension LineManager {
