@@ -25,8 +25,19 @@ public final class EditorInputView: UIView, UITextInput {
             }
         }
     }
-    public private(set) var markedTextRange: UITextRange?
-    public var markedTextStyle: [NSAttributedString.Key: Any]?
+    public private(set) var markedTextRange: UITextRange? {
+        didSet {
+            print("Set marked")
+        }
+    }
+    public var markedTextStyle: [NSAttributedString.Key: Any]? {
+        get {
+            return nil
+        }
+        set {
+            print("Set attributes")
+        }
+    }
     public var beginningOfDocument: UITextPosition {
         return EditorIndexedPosition(index: 0)
     }
@@ -36,7 +47,7 @@ public final class EditorInputView: UIView, UITextInput {
     public var inputDelegate: UITextInputDelegate?
     public private(set) lazy var tokenizer: UITextInputTokenizer = UITextInputStringTokenizer(textInput: self)
     public var hasText: Bool {
-        return false
+        return textView.string.length > 0
     }
     public override var canBecomeFirstResponder: Bool {
         return true
@@ -57,9 +68,10 @@ public final class EditorInputView: UIView, UITextInput {
     public override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .white
+        textView.isUserInteractionEnabled = false
         editingTextInteraction.textInput = self
-        tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
-        addGestureRecognizer(tapGestureRecognizer)
+//        tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
+//        addGestureRecognizer(tapGestureRecognizer)
         addSubview(textView)
     }
 
@@ -76,7 +88,12 @@ public final class EditorInputView: UIView, UITextInput {
     public override func becomeFirstResponder() -> Bool {
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if didBecomeFirstResponder {
+            textView.markedTextRange = NSRange(location: NSNotFound, length: 0)
+            textView.selectedTextRange = NSRange(location: 0, length: 0)
+
+
             textView.isEditing = true
+            tapGestureRecognizer.isEnabled = false
             addInteraction(editingTextInteraction)
         }
         return didBecomeFirstResponder
@@ -89,6 +106,7 @@ public final class EditorInputView: UIView, UITextInput {
             textView.isEditing = false
             textView.selectedTextRange = nil
             textView.markedTextRange = nil
+            tapGestureRecognizer.isEnabled = true
             removeInteraction(editingTextInteraction)
         }
         return didResignFirstResponder
@@ -109,9 +127,6 @@ public extension EditorInputView {
 public extension EditorInputView {
     func insertText(_ text: String) {
         textView.insertText(text)
-        if let currentRange = textView.selectedTextRange {
-            textView.selectedTextRange = NSRange(location: currentRange.location + text.utf16.count, length: currentRange.length)
-        }
     }
 
     func deleteBackward() {
@@ -136,6 +151,10 @@ public extension EditorInputView {
 // MARK: - Selection
 public extension EditorInputView {
     func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
+        guard let indexedRange = range as? EditorIndexedRange else {
+            fatalError("Expected range to be of type \(EditorIndexedRange.self)")
+        }
+        print(indexedRange)
         return []
     }
 }
@@ -143,57 +162,18 @@ public extension EditorInputView {
 // MARK: - Marking
 public extension EditorInputView {
     func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
-        print("Mark")
+        print("Mark text")
     }
 
-    func unmarkText() {}
+    func unmarkText() {
+        print("Unmark text")
+    }
 }
 
 // MARK: - Ranges and Positions
 public extension EditorInputView {
     func position(within range: UITextRange, farthestIn direction: UITextLayoutDirection) -> UITextPosition? {
         return nil
-    }
-
-    func characterRange(byExtending position: UITextPosition, in direction: UITextLayoutDirection) -> UITextRange? {
-        return nil
-    }
-
-    func firstRect(for range: UITextRange) -> CGRect {
-        return .zero
-    }
-
-    func closestPosition(to point: CGPoint) -> UITextPosition? {
-        return nil
-    }
-
-    func closestPosition(to point: CGPoint, within range: UITextRange) -> UITextPosition? {
-        return nil
-    }
-
-    func characterRange(at point: CGPoint) -> UITextRange? {
-        return nil
-    }
-
-    func textRange(from fromPosition: UITextPosition, to toPosition: UITextPosition) -> UITextRange? {
-        guard let fromIndexedPosition = fromPosition as? EditorIndexedPosition, let toIndexedPosition = toPosition as? EditorIndexedPosition else {
-            return nil
-        }
-        let location = min(fromIndexedPosition.index, toIndexedPosition.index)
-        let length = abs(toIndexedPosition.index - fromIndexedPosition.index)
-        let range = NSRange(location: location, length: length)
-        return EditorIndexedRange(range: range)
-    }
-
-    func position(from position: UITextPosition, offset: Int) -> UITextPosition? {
-        guard let indexedPosition = position as? EditorIndexedPosition else {
-            return nil
-        }
-        let newPosition = indexedPosition.index + offset
-        guard newPosition >= 0 && newPosition < textView.string.length else {
-            return nil
-        }
-        return EditorIndexedPosition(index: newPosition)
     }
 
     func position(from position: UITextPosition, in direction: UITextLayoutDirection, offset: Int) -> UITextPosition? {
@@ -212,6 +192,54 @@ public extension EditorInputView {
             break
         }
         newPosition = min(max(newPosition, 0), textView.string.length)
+        return EditorIndexedPosition(index: newPosition)
+    }
+
+    func characterRange(byExtending position: UITextPosition, in direction: UITextLayoutDirection) -> UITextRange? {
+        return nil
+    }
+
+    func characterRange(at point: CGPoint) -> UITextRange? {
+        return nil
+    }
+
+    func firstRect(for range: UITextRange) -> CGRect {
+        guard let indexedRange = range as? EditorIndexedRange else {
+            fatalError("Expected range to be of type \(EditorIndexedRange.self)")
+        }
+        return textView.firstRect(for: indexedRange.range)
+    }
+
+    func closestPosition(to point: CGPoint) -> UITextPosition? {
+        if let index = textView.closestIndex(to: point) {
+            return EditorIndexedPosition(index: index)
+        } else {
+            return nil
+        }
+    }
+
+    func closestPosition(to point: CGPoint, within range: UITextRange) -> UITextPosition? {
+        return nil
+    }
+
+    func textRange(from fromPosition: UITextPosition, to toPosition: UITextPosition) -> UITextRange? {
+        guard let fromIndexedPosition = fromPosition as? EditorIndexedPosition, let toIndexedPosition = toPosition as? EditorIndexedPosition else {
+            return nil
+        }
+        let location = min(fromIndexedPosition.index, toIndexedPosition.index)
+        let length = abs(toIndexedPosition.index - fromIndexedPosition.index)
+        let range = NSRange(location: location, length: length)
+        return EditorIndexedRange(range: range)
+    }
+
+    func position(from position: UITextPosition, offset: Int) -> UITextPosition? {
+        guard let indexedPosition = position as? EditorIndexedPosition else {
+            return EditorIndexedPosition(index: 0)
+        }
+        let newPosition = indexedPosition.index + offset
+        guard newPosition >= 0 && newPosition < textView.string.length else {
+             return EditorIndexedPosition(index: 0)
+        }
         return EditorIndexedPosition(index: newPosition)
     }
 
@@ -240,7 +268,7 @@ public extension EditorInputView {
 // MARK: - Writing Direction
 public extension EditorInputView {
     func baseWritingDirection(for position: UITextPosition, in direction: UITextStorageDirection) -> NSWritingDirection {
-        return .leftToRight
+        return .natural
     }
 
     func setBaseWritingDirection(_ writingDirection: NSWritingDirection, for range: UITextRange) {}

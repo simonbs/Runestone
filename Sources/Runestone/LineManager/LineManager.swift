@@ -120,7 +120,11 @@ final class LineManager {
     }
 
     func line(containingCharacterAt location: Int) -> DocumentLine? {
-        return tree.line(containingCharacterAt: location)
+        if location >= 0 && location <= tree.totalCharacterCount {
+            return tree.line(containingCharacterAt: location)
+        } else {
+            return nil
+        }
     }
 }
 

@@ -48,16 +48,38 @@ final class EditorBackingView: UIView {
     }
 
     func insertText(_ text: String) {
-        let range = selectedTextRange ?? NSRange(location: string.length, length: 0)
-        replace(range, withText: text)
+        guard let selectedTextRange = selectedTextRange else {
+            return
+        }
+        if selectedTextRange.length > 0 {
+            // Replace selected text.
+            string.replaceCharacters(in: selectedTextRange, with: text)
+            lineManager.removeCharacters(in: selectedTextRange)
+            lineManager.insert(text as NSString, at: selectedTextRange.location)
+            self.selectedTextRange = NSRange(location: selectedTextRange.location + text.utf16.count, length: 0)
+        } else {
+            // Insert text at location.
+            string.insert(text, at: selectedTextRange.location)
+            lineManager.insert(text as NSString, at: selectedTextRange.location)
+            self.selectedTextRange = NSRange(location: selectedTextRange.location + text.utf16.count, length: 0)
+        }
     }
 
     func deleteBackward() {
-        if let selectedTextRange = selectedTextRange {
-            string.replaceCharacters(in: selectedTextRange, with: "")
-        } else if string.length > 0 {
-            let range = NSMakeRange(string.length - 1, 1)
-            replace(range, withText: "")
+        guard let selectedTextRange = selectedTextRange else {
+            return
+        }
+        if selectedTextRange.length > 0 {
+            // Delete selected text.
+            string.deleteCharacters(in: selectedTextRange)
+            lineManager.removeCharacters(in: selectedTextRange)
+            self.selectedTextRange = NSRange(location: selectedTextRange.location, length: 0)
+        } else if selectedTextRange.location > 0 {
+            // Delete a single character at the location.
+            let range = NSRange(location: selectedTextRange.location - 1, length: 1)
+            string.deleteCharacters(in: range)
+            lineManager.removeCharacters(in: range)
+            self.selectedTextRange = NSRange(location: range.location, length: 0)
         }
     }
 
@@ -66,6 +88,7 @@ final class EditorBackingView: UIView {
         string.replaceCharacters(in: range, with: text)
         lineManager.removeCharacters(in: range)
         lineManager.insert(nsText, at: range.location)
+        selectedTextRange = NSRange(location: range.location + text.utf16.count, length: 0)
     }
 
     func text(in range: NSRange) -> String? {
@@ -77,21 +100,35 @@ final class EditorBackingView: UIView {
     }
 
     func caretRect(atIndex index: Int) -> CGRect {
+        // TODO: Make the index passed to careRect(atIndex:) local to the line.
+        let cappedIndex = min(max(index, 0), string.length)
         if string.length == 0 {
             previousLineContainingCaret = nil
             previousLineNumberAtCaret = nil
             return CGRect(x: 0, y: -font.leading, width: 3, height: font.ascender + abs(font.descender))
-        } else if let line = previousLineContainingCaret, index >= line.location && index <= line.location + line.totalLength, let lineNumber = previousLineNumberAtCaret {
-            print("Reuse line: \(lineNumber)")
-            return CGRect(x: 0, y: 0, width: 3, height: font.ascender + abs(font.descender))
-        } else if let line = lineManager.line(containingCharacterAt: index) {
+//        } else if let line = previousLineContainingCaret, let lineNumber = previousLineNumberAtCaret,
+//                  cappedIndex >= line.location && cappedIndex <= line.location + line.totalLength {
+//            return textLayerA.caretRect(aIndex: cappedIndex)!
+        } else if let line = lineManager.line(containingCharacterAt: cappedIndex) {
             previousLineContainingCaret = line
             previousLineNumberAtCaret = line.lineNumber
-            print(line.lineNumber)
-            return CGRect(x: 0, y: 0, width: 3, height: font.ascender + abs(font.descender))
+            return textLayerA.caretRect(aIndex: cappedIndex)!
         } else {
             fatalError("Cannot find caret rect.")
         }
+    }
+
+    func firstRect(for range: NSRange) -> CGRect {
+        guard let line = lineManager.line(containingCharacterAt: range.location) else {
+            fatalError("Cannot find first rect.")
+        }
+        // TODO: Make the input range local to the line.
+        return textLayerA.firstRect(for: range)!
+    }
+
+    func closestIndex(to point: CGPoint) -> Int? {
+        // TODO: Offset the returned index by the line's start location.
+        return textLayerA.closestIndex(to: point)
     }
 }
 
