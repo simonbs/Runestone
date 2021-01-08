@@ -8,6 +8,7 @@
 import UIKit
 
 final class EditorTextLayer: CALayer {
+    var lineIndex: Int = 0
     var font: UIFont? {
         didSet {
             if font != oldValue {
@@ -42,15 +43,20 @@ final class EditorTextLayer: CALayer {
         }
     }
     private var textFrame: CTFrame? {
-        if let frame = _textFrame {
-            return frame
-        } else if let framesetter = framesetter {
-            let path = CGMutablePath()
-            path.addRect(bounds)
-            _textFrame = CTFramesetterCreateFrame(framesetter, CFRangeMake(0, 0), path, nil)
-            return _textFrame
-        } else {
-            return nil
+        set {
+            _textFrame = newValue
+        }
+        get {
+            if let frame = _textFrame {
+                return frame
+            } else if let framesetter = framesetter {
+                let path = CGMutablePath()
+                path.addRect(bounds)
+                _textFrame = CTFramesetterCreateFrame(framesetter, CFRangeMake(0, 0), path, nil)
+                return _textFrame
+            } else {
+                return nil
+            }
         }
     }
     private var _framesetter: CTFramesetter?
@@ -59,6 +65,20 @@ final class EditorTextLayer: CALayer {
     override init() {
         super.init()
         isGeometryFlipped = true
+    }
+
+    override init(layer: Any) {
+        super.init()
+        isGeometryFlipped = true
+        if let otherTextLayer = layer as? EditorTextLayer {
+            lineIndex = otherTextLayer.lineIndex
+            font = otherTextLayer.font
+            cachedPreferredSize = otherTextLayer.cachedPreferredSize
+            cachedConstrainingWidth = otherTextLayer.cachedConstrainingWidth
+            attributedString = otherTextLayer.attributedString
+            _framesetter = otherTextLayer._framesetter
+            _textFrame = otherTextLayer._textFrame
+        }
     }
 
     required init?(coder: NSCoder) {
@@ -78,9 +98,11 @@ final class EditorTextLayer: CALayer {
         } else if let framesetter = framesetter {
             let constrainingSize = CGSize(width: width, height: .greatestFiniteMagnitude)
             let preferedSize = CTFramesetterSuggestFrameSizeWithConstraints(framesetter, CFRangeMake(0, 0), nil, constrainingSize, nil)
-            cachedPreferredSize = preferedSize
             cachedConstrainingWidth = width
+            cachedPreferredSize = preferedSize
             return preferedSize
+        } else if let font = font {
+            return CGSize(width: width, height: font.ascender + font.descender)
         } else {
             return .zero
         }
@@ -90,6 +112,7 @@ final class EditorTextLayer: CALayer {
         cachedPreferredSize = nil
         cachedConstrainingWidth = nil
         framesetter = nil
+        textFrame = nil
         attributedString = CFAttributedStringCreateMutable(kCFAllocatorDefault, string.length)
         if let attributedString = attributedString {
             CFAttributedStringReplaceString(attributedString, CFRangeMake(0, 0), string)

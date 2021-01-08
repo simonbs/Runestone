@@ -9,13 +9,15 @@ import Foundation
 
 protocol LineManagerDelegate: class {
     func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> String
-    func lineManagerDidInsertLine(_ lineManager: LineManager)
-    func lineManagerDidRemoveLine(_ lineManager: LineManager)
+    func lineManager(_ lineManager: LineManager, didInsert line: DocumentLine)
+    func lineManager(_ lineManager: LineManager, didRemove line: DocumentLine)
+    func lineManager(_ lineManager: LineManager, didEdit line: DocumentLine)
 }
 
 extension LineManagerDelegate {
-    func lineManagerDidInsertLine(_ lineManager: LineManager) {}
-    func lineManagerDidRemoveLine(_ lineManager: LineManager) {}
+    func lineManager(_ lineManager: LineManager, didInsert line: DocumentLine) {}
+    func lineManager(_ lineManager: LineManager, didRemove line: DocumentLine) {}
+    func lineManager(_ lineManager: LineManager, didEdit line: DocumentLine) {}
 }
 
 final class LineManager {
@@ -126,11 +128,16 @@ final class LineManager {
             return nil
         }
     }
+
+    func line(atIndex index: Int) -> DocumentLine {
+        return tree.line(atIndex: index)
+    }
 }
 
 private extension LineManager {
     @discardableResult
     private func setLength(of line: DocumentLine, to newTotalLength: Int) -> DocumentLine {
+        var wasEdited = true
         let delta = newTotalLength - line.totalLength
         if delta != 0 {
             line.totalLength = newTotalLength
@@ -139,6 +146,7 @@ private extension LineManager {
         // Determine new delimiter length.
         if newTotalLength == 0 {
             line.delimiterLength = 0
+            wasEdited = true
         } else {
             let lastChar = getCharacter(at: line.location + newTotalLength - 1)
             if lastChar == Symbol.carriageReturn {
@@ -148,6 +156,7 @@ private extension LineManager {
                     line.delimiterLength = 2
                 } else if newTotalLength == 1 && line.location > 0 && getCharacter(at: line.location - 1) == Symbol.carriageReturn {
                     // We need to join this line with the previous line.
+                    wasEdited = false
                     let previousLine = line.previous
                     remove(line)
                     return setLength(of: previousLine, to: previousLine.totalLength + 1)
@@ -158,19 +167,22 @@ private extension LineManager {
                 line.delimiterLength = 0
             }
         }
+        if wasEdited {
+            delegate?.lineManager(self, didEdit: line)
+        }
         return line
     }
 
     @discardableResult
     private func insertLine(ofLength length: Int, after otherLine: DocumentLine) -> DocumentLine {
         let insertedLine = tree.insertLine(ofLength: length, after: otherLine)
-        delegate?.lineManagerDidInsertLine(self)
+        delegate?.lineManager(self, didInsert: insertedLine)
         return insertedLine
     }
 
     private func remove(_ line: DocumentLine) {
         tree.remove(line)
-        delegate?.lineManagerDidRemoveLine(self)
+        delegate?.lineManager(self, didRemove: line)
     }
 
     private func getCharacter(at location: Int) -> String {

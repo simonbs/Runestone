@@ -131,6 +131,27 @@ final class DocumentLineTree {
         return index
     }
 
+    func line(atIndex index: Int) -> DocumentLine {
+        assert(index >= 0)
+        assert(index < root.nodeTotalCount)
+        var remainingIndex = index
+        var node = root
+        while true {
+            if let leftNode = node.left, remainingIndex < leftNode.nodeTotalCount {
+                node = leftNode
+            } else {
+                if let leftNode = node.left {
+                    remainingIndex -= leftNode.nodeTotalCount
+                }
+                if remainingIndex == 0 {
+                    return node
+                }
+                remainingIndex -= 1
+                node = node.right!
+            }
+        }
+    }
+
     @discardableResult
     func insertLine(ofLength length: Int, after existingLine: DocumentLine) -> DocumentLine {
         let newLine = DocumentLine(tree: self, totalLength: length)
@@ -175,13 +196,13 @@ final class DocumentLineTree {
     func updateAfterChangingChildren(of node: DocumentLine) {
         var totalCount = 1
         var totalLength = node.totalLength
-        if let leftLine = node.left {
-            totalCount += leftLine.nodeTotalCount
-            totalLength += leftLine.nodeTotalLength
+        if let leftNode = node.left {
+            totalCount += leftNode.nodeTotalCount
+            totalLength += leftNode.nodeTotalLength
         }
-        if let rightLine = node.right {
-            totalCount += rightLine.nodeTotalCount
-            totalLength += rightLine.nodeTotalLength
+        if let rightNode = node.right {
+            totalCount += rightNode.nodeTotalCount
+            totalLength += rightNode.nodeTotalLength
         }
         if totalCount != node.nodeTotalCount || totalLength != node.nodeTotalLength {
             node.nodeTotalCount = totalCount
@@ -190,31 +211,11 @@ final class DocumentLineTree {
                 updateAfterChangingChildren(of: parent)
             }
         }
+        checkProperties()
     }
 }
 
 private extension DocumentLineTree {
-    private func line(atIndex index: Int) -> DocumentLine {
-        assert(index >= 0)
-        assert(index < root.nodeTotalCount)
-        var remainingIndex = index
-        var node = root
-        while true {
-            if let leftNode = node.left, index < leftNode.nodeTotalCount {
-                node = leftNode
-            } else {
-                if let leftNode = node.left {
-                    remainingIndex -= leftNode.nodeTotalCount
-                }
-                if remainingIndex == 0 {
-                    return node
-                }
-                remainingIndex -= 1
-                node = node.right!
-            }
-        }
-    }
-
     private func insert(_ newLine: DocumentLine, after node: DocumentLine) {
         if node.right == nil {
             insert(newLine, asRightChildOf: node)
@@ -456,5 +457,29 @@ extension DocumentLineTree: CustomDebugStringConvertible {
             result = append(rightNode, to: result, indent: indent + 2)
         }
         return result
+    }
+}
+
+private extension DocumentLineTree {
+    private func checkProperties() {
+        checkProperties(on: root)
+        var blackCount = -1
+    }
+
+    private func checkProperties(on node: DocumentLine) {
+        var totalCount = 1
+        var totalLength = node.totalLength
+        if let leftNode = node.left {
+            checkProperties(on: leftNode)
+            totalCount += leftNode.nodeTotalCount
+            totalLength += leftNode.nodeTotalLength
+        }
+        if let rightNode = node.right {
+            checkProperties(on: rightNode)
+            totalCount += rightNode.nodeTotalCount
+            totalLength += rightNode.nodeTotalLength
+        }
+        assert(node.nodeTotalCount == totalCount)
+        assert(node.nodeTotalLength == totalLength)
     }
 }

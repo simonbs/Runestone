@@ -8,7 +8,7 @@
 import UIKit
 import CoreText
 
-public final class EditorInputView: UIView, UITextInput {
+public final class EditorInputView: UIScrollView, UITextInput {
     public var selectedTextRange: UITextRange? {
         get {
             if let range = textView.selectedTextRange {
@@ -25,19 +25,8 @@ public final class EditorInputView: UIView, UITextInput {
             }
         }
     }
-    public private(set) var markedTextRange: UITextRange? {
-        didSet {
-            print("Set marked")
-        }
-    }
-    public var markedTextStyle: [NSAttributedString.Key: Any]? {
-        get {
-            return nil
-        }
-        set {
-            print("Set attributes")
-        }
-    }
+    public private(set) var markedTextRange: UITextRange?
+    public var markedTextStyle: [NSAttributedString.Key: Any]?
     public var beginningOfDocument: UITextPosition {
         return EditorIndexedPosition(index: 0)
     }
@@ -70,9 +59,10 @@ public final class EditorInputView: UIView, UITextInput {
         backgroundColor = .white
         textView.isUserInteractionEnabled = false
         editingTextInteraction.textInput = self
-//        tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
-//        addGestureRecognizer(tapGestureRecognizer)
+        tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
+        addGestureRecognizer(tapGestureRecognizer)
         addSubview(textView)
+        contentSize = CGSize(width: 375, height: 10000)
     }
 
     required init?(coder: NSCoder) {
@@ -81,18 +71,14 @@ public final class EditorInputView: UIView, UITextInput {
 
     public override func layoutSubviews() {
         super.layoutSubviews()
-        textView.frame = bounds
+        textView.frame = CGRect(x: 0, y: 0, width: frame.width, height: frame.height)
+        textView.layoutLines(in: bounds)
     }
 
     @discardableResult
     public override func becomeFirstResponder() -> Bool {
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if didBecomeFirstResponder {
-            textView.markedTextRange = NSRange(location: NSNotFound, length: 0)
-            textView.selectedTextRange = NSRange(location: 0, length: 0)
-
-
-            textView.isEditing = true
             tapGestureRecognizer.isEnabled = false
             addInteraction(editingTextInteraction)
         }
@@ -103,13 +89,21 @@ public final class EditorInputView: UIView, UITextInput {
     public override func resignFirstResponder() -> Bool {
         let didResignFirstResponder = super.resignFirstResponder()
         if didResignFirstResponder {
-            textView.isEditing = false
             textView.selectedTextRange = nil
             textView.markedTextRange = nil
             tapGestureRecognizer.isEnabled = true
             removeInteraction(editingTextInteraction)
         }
         return didResignFirstResponder
+    }
+}
+
+private extension EditorInputView {
+    private func layoutLines() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        textView.layoutLines(in: bounds)
+        CATransaction.commit()
     }
 }
 
@@ -127,15 +121,18 @@ public extension EditorInputView {
 public extension EditorInputView {
     func insertText(_ text: String) {
         textView.insertText(text)
+        layoutLines()
     }
 
     func deleteBackward() {
         textView.deleteBackward()
+        layoutLines()
     }
 
     func replace(_ range: UITextRange, withText text: String) {
         if let indexedRange = range as? EditorIndexedRange {
             textView.replace(indexedRange.range, withText: text)
+            layoutLines()
         }
     }
 
@@ -260,7 +257,7 @@ public extension EditorInputView {
         if let fromPosition = from as? EditorIndexedPosition, let toPosition = toPosition as? EditorIndexedPosition {
             return toPosition.index - fromPosition.index
         } else {
-            fatalError("Positions must be of type \(EditorIndexedPosition.self)")
+            return 0
         }
     }
 }

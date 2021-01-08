@@ -13,6 +13,7 @@ final class DocumentLine: LineNode {
         case red
     }
 
+    let id = UUID()
     var nodeTotalLength: Int
     var nodeTotalCount: Int
     var location: Int {
@@ -55,6 +56,6 @@ final class DocumentLine: LineNode {
 extension DocumentLine: CustomDebugStringConvertible {
     var debugDescription: String {
         let strLineNumber = lineNumber == nil ? "N/A" : "\(lineNumber!)"
-        return "[DocumentLine lineNumber=\(strLineNumber) location=\(location) length=\(length)]"
+        return "[DocumentLine lineNumber=\(strLineNumber) location=\(location) length=\(length) nodeTotalCount=\(nodeTotalCount)]"
     }
 }

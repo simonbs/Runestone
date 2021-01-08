@@ -8,31 +8,24 @@
 import UIKit
 
 final class EditorBackingView: UIView {
-    var isEditing = false
     let string = NSMutableString()
     var selectedTextRange: NSRange?
     var markedTextRange: NSRange?
     var font = UIFont(name: "Menlo-Regular", size: 14)!
 
-    private let textLayerA = EditorTextLayer()
-    private let textLayerB = EditorTextLayer()
     private let lineManager = LineManager()
-    private var previousLineContainingCaret: DocumentLine?
-    private var previousLineNumberAtCaret: Int?
+    private let frameStore = EditorTextLayerFrameStore()
+    private var textLayers: [UUID: EditorTextLayer] = [:]
+    private var visibleTextLayers: [EditorTextLayer] = []
+    private var layersPendingStringUpdate: Set<EditorTextLayer> = []
+
+//    private var previousLineContainingCaret: DocumentLine?
+//    private var previousLineNumberAtCaret: Int?
 
     init() {
         super.init(frame: .zero)
         lineManager.delegate = self
-        textLayerA.contentsScale = UIScreen.main.scale
-        textLayerB.contentsScale = UIScreen.main.scale
-        textLayerA.font = UIFont(name: "Menlo-Regular", size: 14)
-        textLayerB.font = UIFont(name: "Menlo-Regular", size: 14)
-        textLayerA.setString("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec facilisis commodo orci. Maecenas eget diam sapien. Nullam posuere bibendum convallis. Cras nisi felis, placerat ac venenatis eget, tristique et orci. Sed in mi mattis augue interdum tristique sit amet nec libero. Fusce nulla dui, ullamcorper et est ac, finibus feugiat quam. Donec erat justo, dignissim eget volutpat sit amet, suscipit vel felis. Ut rhoncus massa in hendrerit pulvinar. Nam vulputate porttitor orci eu scelerisque. Fusce eget diam ut nisi interdum lacinia feugiat id dui. In tempus, tortor eu accumsan dictum, lorem leo finibus dolor, hendrerit congue est metus sit amet neque. Suspendisse condimentum ac ligula quis scelerisque.")
-        textLayerB.setString("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec facilisis commodo orci. Maecenas eget diam sapien. Nullam posuere bibendum convallis. Cras nisi felis, placerat ac venenatis eget, tristique et orci. Sed in mi mattis augue interdum tristique sit amet nec libero. Fusce nulla dui, ullamcorper et est ac, finibus feugiat quam. Donec erat justo, dignissim eget volutpat sit amet, suscipit vel felis. Ut rhoncus massa in hendrerit pulvinar. Nam vulputate porttitor orci eu scelerisque. Fusce eget diam ut nisi interdum lacinia feugiat id dui. In tempus, tortor eu accumsan dictum, lorem leo finibus dolor, hendrerit congue est metus sit amet neque. Suspendisse condimentum ac ligula quis scelerisque.")
-        textLayerA.setNeedsDisplay()
-        textLayerB.setNeedsDisplay()
-        layer.addSublayer(textLayerA)
-        layer.addSublayer(textLayerB)
+        frameStore.delegate = self
     }
 
     required init?(coder: NSCoder) {
@@ -41,10 +34,7 @@ final class EditorBackingView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        let sizeA = textLayerA.preferredSize(constrainedToWidth: bounds.size.width)
-        let sizeB = textLayerB.preferredSize(constrainedToWidth: bounds.size.width)
-        textLayerA.frame = CGRect(x: 0, y: 0, width: sizeA.width, height: sizeA.height)
-        textLayerB.frame = CGRect(x: 0, y: textLayerA.frame.maxY, width: sizeB.width, height: sizeB.height)
+        frameStore.width = bounds.width
     }
 
     func insertText(_ text: String) {
@@ -101,39 +91,126 @@ final class EditorBackingView: UIView {
 
     func caretRect(atIndex index: Int) -> CGRect {
         // TODO: Make the index passed to careRect(atIndex:) local to the line.
-        let cappedIndex = min(max(index, 0), string.length)
-        if string.length == 0 {
-            previousLineContainingCaret = nil
-            previousLineNumberAtCaret = nil
-            return CGRect(x: 0, y: -font.leading, width: 3, height: font.ascender + abs(font.descender))
-//        } else if let line = previousLineContainingCaret, let lineNumber = previousLineNumberAtCaret,
-//                  cappedIndex >= line.location && cappedIndex <= line.location + line.totalLength {
+        return .zero
+//        let cappedIndex = min(max(index, 0), string.length)
+//        if string.length == 0 {
+//            previousLineContainingCaret = nil
+//            previousLineNumberAtCaret = nil
+//            return CGRect(x: 0, y: -font.leading, width: 3, height: font.ascender + abs(font.descender))
+////        } else if let line = previousLineContainingCaret, let lineNumber = previousLineNumberAtCaret,
+////                  cappedIndex >= line.location && cappedIndex <= line.location + line.totalLength {
+////            return textLayerA.caretRect(aIndex: cappedIndex)!
+//        } else if let line = lineManager.line(containingCharacterAt: cappedIndex) {
+//            previousLineContainingCaret = line
+//            previousLineNumberAtCaret = line.lineNumber
 //            return textLayerA.caretRect(aIndex: cappedIndex)!
-        } else if let line = lineManager.line(containingCharacterAt: cappedIndex) {
-            previousLineContainingCaret = line
-            previousLineNumberAtCaret = line.lineNumber
-            return textLayerA.caretRect(aIndex: cappedIndex)!
-        } else {
-            fatalError("Cannot find caret rect.")
-        }
+//        } else {
+//            fatalError("Cannot find caret rect.")
+//        }
     }
 
     func firstRect(for range: NSRange) -> CGRect {
-        guard let line = lineManager.line(containingCharacterAt: range.location) else {
-            fatalError("Cannot find first rect.")
-        }
+//        guard let line = lineManager.line(containingCharacterAt: range.location) else {
+//            fatalError("Cannot find first rect.")
+//        }
         // TODO: Make the input range local to the line.
-        return textLayerA.firstRect(for: range)!
+        return .zero
+//        return textLayerA.firstRect(for: range)!
     }
 
     func closestIndex(to point: CGPoint) -> Int? {
         // TODO: Offset the returned index by the line's start location.
-        return textLayerA.closestIndex(to: point)
+        return nil
+//        return textLayerA.closestIndex(to: point)
+    }
+
+    func layoutLines(in rect: CGRect) {
+        let lineIndices = visibleLineIndices(in: rect)
+        var newVisibleTextLayers: [EditorTextLayer] = []
+        for lineIndex in lineIndices {
+            let line = lineManager.line(atIndex: lineIndex)
+            let textLayer = getTextLayer(forLineId: line.id)
+//            if layersPendingStringUpdate.contains(textLayer) {
+                let range = NSRange(location: line.location, length: line.totalLength)
+                let lineString = string.substring(with: range) as NSString
+                textLayer.setString(lineString)
+                textLayer.setNeedsDisplay()
+                let size = textLayer.preferredSize(constrainedToWidth: bounds.width)
+                frameStore.setHeight(to: size.height, forLineAt: lineIndex)
+//                layersPendingStringUpdate.remove(textLayer)
+//            }
+            textLayer.lineIndex = lineIndex
+            newVisibleTextLayers.append(textLayer)
+        }
+        for textLayer in visibleTextLayers {
+            if !newVisibleTextLayers.contains(textLayer) {
+                textLayer.removeFromSuperlayer()
+            }
+        }
+        for textLayer in newVisibleTextLayers {
+            if textLayer.superlayer == nil {
+                layer.addSublayer(textLayer)
+            }
+            textLayer.frame = frameStore.frameForLine(at: textLayer.lineIndex)
+        }
+        visibleTextLayers = newVisibleTextLayers
+    }
+}
+
+private extension EditorBackingView {
+    private func lineNumber(at location: Int) -> Int? {
+        return lineManager.line(containingCharacterAt: location)?.lineNumber
+    }
+
+    private func visibleLineIndices(in rect: CGRect) -> IndexSet {
+        var indices = IndexSet()
+        for lineIndex in 0 ..< lineManager.lineCount {
+            let frame = frameStore.frameForLine(at: lineIndex)
+            if frame.intersects(rect) {
+                indices.insert(lineIndex)
+            } else if !indices.isEmpty {
+                // The item's frame is outside the rect and we've already found at least one item in the section
+                // and since items are ordered sequentially, we don't have to look any further.
+                break
+            }
+        }
+        return indices
+    }
+
+    private func getTextLayer(forLineId lineId: UUID) -> EditorTextLayer {
+        if let textLayer = textLayers[lineId] {
+            return textLayer
+        } else {
+            let textLayer = EditorTextLayer()
+            textLayer.contentsScale = UIScreen.main.scale
+            textLayer.font = UIFont(name: "Menlo-Regular", size: 14)!
+            textLayers[lineId] = textLayer
+            layersPendingStringUpdate.insert(textLayer)
+            return textLayer
+        }
     }
 }
 
 extension EditorBackingView: LineManagerDelegate {
     func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> String {
         return string.substring(with: NSMakeRange(location, 1))
+    }
+
+    func lineManager(_ lineManager: LineManager, didInsert line: DocumentLine) {}
+
+    func lineManager(_ lineManager: LineManager, didEdit line: DocumentLine) {}
+
+    func lineManager(_ lineManager: LineManager, didRemove line: DocumentLine) {
+        textLayers.removeValue(forKey: line.id)
+    }
+}
+
+extension EditorBackingView: EditorTextLayerFrameStoreDelegate {
+    func editorTextLayerFrameStore(_ frameStore: EditorTextLayerFrameStore, estimatedHeightForItemAt index: Int) -> CGFloat {
+        return font.ascender + font.descender
+    }
+
+    func numberOfLines(in frameStore: EditorTextLayerFrameStore) -> Int {
+        return lineManager.lineCount
     }
 }

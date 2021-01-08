@@ -314,7 +314,6 @@ public final class EditorTextView: UITextView {
             self.parser.parse(newText)
             DispatchQueue.main.sync {
                 self.isProcessingNewText = false
-                print("Ready")
                 if !operation.isCancelled {
                     let range = NSRange(location: 0, length: self.textStorage.length)
                     self.editorTextStorage.beginEditing()
