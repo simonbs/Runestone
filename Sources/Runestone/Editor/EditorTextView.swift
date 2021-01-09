@@ -297,7 +297,6 @@ public final class EditorTextView: UITextView {
         isProcessingNewText = true
         text = newText
         parser.reset()
-        completion?(true)
         let operation = BlockOperation()
         operation.addExecutionBlock { [weak self, weak operation] in
             guard let self = self, let operation = operation else {

@@ -19,27 +19,27 @@ final class EditorBackingView: UIView {
                 let oldEntireRange = NSRange(location: 0, length: oldValue.length)
                 lineManager.removeCharacters(in: oldEntireRange)
                 lineManager.insert(string, at: 0)
-                updateContentSize()
-                frameStore.reset()
+                isContentSizeInvalid = true
             }
         }
     }
     var selectedTextRange: NSRange?
     var markedTextRange: NSRange?
-    var font = UIFont(name: "Menlo-Regular", size: 14)! {
-        didSet {
-            if font != oldValue {
-                frameStore.estimatedLineHeight = font.ascender + font.descender
-            }
+    var font = UIFont(name: "Menlo-Regular", size: 14)!
+    var contentSize: CGSize {
+        if isContentSizeInvalid {
+            updateContentSize()
+            isContentSizeInvalid = false
         }
+        return _contentSize
     }
-    var contentSize: CGSize = .zero
 
     private let lineManager = LineManager()
-    private let frameStore = EditorTextLayerFrameStore()
     private var textLayers: [LineFrameNodeID: EditorTextLayer] = [:]
     private var visibleTextLayers: [EditorTextLayer] = []
     private var layersPendingStringUpdate: Set<EditorTextLayer> = []
+    private var isContentSizeInvalid = false
+    private var _contentSize: CGSize = .zero
 
 //    private var previousLineContainingCaret: DocumentLine?
 //    private var previousLineNumberAtCaret: Int?
@@ -47,17 +47,10 @@ final class EditorBackingView: UIView {
     init() {
         super.init(frame: .zero)
         lineManager.delegate = self
-        frameStore.delegate = self
-        frameStore.estimatedLineHeight = font.ascender + font.descender
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        frameStore.width = bounds.width
     }
 
     func insertText(_ text: String) {
@@ -181,7 +174,7 @@ final class EditorBackingView: UIView {
         }
         visibleTextLayers = newVisibleTextLayers
         if !isContentHeightValid {
-            updateContentSize()
+            isContentSizeInvalid = true
             delegate?.editorBackingViewDidInvalidateContentSize(self)
         }
     }
@@ -191,21 +184,6 @@ private extension EditorBackingView {
 //    private func lineNumber(at location: Int) -> Int? {
 //        return lineManager.line(containingCharacterAt: location)?.lineNumber
 //    }
-
-    private func visibleLineIndices(in rect: CGRect) -> IndexSet {
-        var indices = IndexSet()
-        for lineIndex in 0 ..< lineManager.lineCount {
-            let frame = frameStore.frameForLine(at: lineIndex)
-            if frame.intersects(rect) {
-                indices.insert(lineIndex)
-            } else if !indices.isEmpty {
-                // The item's frame is outside the rect and we've already found at least one item in the section
-                // and since items are ordered sequentially, we don't have to look any further.
-                break
-            }
-        }
-        return indices
-    }
 
     private func getTextLayer(forLineId lineId: LineFrameNodeID) -> EditorTextLayer {
         if let textLayer = textLayers[lineId] {
@@ -220,23 +198,13 @@ private extension EditorBackingView {
         }
     }
 
-    private func updateContentSize() {
-        contentSize = CGSize(width: bounds.width, height: lineManager.contentHeight)
+    func updateContentSize() {
+        _contentSize = CGSize(width: bounds.width, height: lineManager.contentHeight)
     }
 }
 
 extension EditorBackingView: LineManagerDelegate {
     func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> String {
         return string.substring(with: NSMakeRange(location, 1))
-    }
-}
-
-extension EditorBackingView: EditorTextLayerFrameStoreDelegate {
-    func editorTextLayerFrameStore(_ frameStore: EditorTextLayerFrameStore, estimatedHeightForItemAt index: Int) -> CGFloat {
-        return font.ascender + font.descender
-    }
-
-    func numberOfLines(in frameStore: EditorTextLayerFrameStore) -> Int {
-        return lineManager.lineCount
     }
 }
