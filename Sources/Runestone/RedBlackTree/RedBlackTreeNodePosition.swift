@@ -7,14 +7,14 @@
 
 import Foundation
 
-final class RedBlackTreeNodePosition<Context> {
-    let location: Int
+final class RedBlackTreeNodePosition<Value, Context> {
+    let location: Value
     let index: Int
-    let value: Int
-    let valueOffset: Int
+    let value: Value
+    let valueOffset: Value
     let context: Context
 
-    init(location: Int, index: Int, value: Int, valueOffset: Int, context: Context) {
+    init(location: Value, index: Int, value: Value, valueOffset: Value, context: Context) {
         self.location = location
         self.index = index
         self.value = value
@@ -24,8 +24,8 @@ final class RedBlackTreeNodePosition<Context> {
 }
 
 extension RedBlackTree {
-    func nodePosition(at value: Int) -> RedBlackTreeNodePosition<Context>? {
-        guard value >= 0 && value <= root.totalNodeValue else {
+    func nodePosition(at value: Value) -> RedBlackTreeNodePosition<Value, Context>? {
+        guard value >= root.value && value <= root.totalNodeValue else {
             return nil
         }
         if value == root.totalNodeValue {
@@ -39,7 +39,7 @@ extension RedBlackTree {
                 valueOffset: valueOffset,
                 context: node.context)
         } else {
-            var location = 0
+            var location = minimumValue
             var remainingValue = value
             var node = root!
             while true {
@@ -52,7 +52,7 @@ extension RedBlackTree {
                     }
                     location += node.value
                     remainingValue -= node.value
-                    if remainingValue < 0 {
+                    if remainingValue < minimumValue {
                         location -= node.value
                         let valueOffset = value - location
                         return RedBlackTreeNodePosition(

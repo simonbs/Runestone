@@ -16,7 +16,7 @@ final class DocumentLineNodeContext {
         return node!.value
     }
 
-    weak var node: RedBlackTreeNode<DocumentLineNodeContext>?
+    weak var node: DocumentLineNode?
 
     init() {
         self.delimiterLength = 0

@@ -7,27 +7,49 @@
 
 import Foundation
 
-final class RedBlackTree<Context> {
+protocol RedBlackTreeNodeID: Identifiable {
+    init()
+}
+
+typealias RedBlackTreeValue = AdditiveArithmetic & Comparable
+
+final class RangeSearchResult<NodeID: RedBlackTreeNodeID, Value: RedBlackTreeValue, Context> {
+    let location: Value
+    let value: Value
+    let node: RedBlackTreeNode<NodeID, Value, Context>
+
+    init(location: Value, value: Value, node: RedBlackTreeNode<NodeID, Value, Context>) {
+        self.location = location
+        self.value = value
+        self.node = node
+    }
+}
+
+final class RedBlackTree<NodeID: RedBlackTreeNodeID, Value: RedBlackTreeValue, Context> {
+    typealias Node = RedBlackTreeNode<NodeID, Value, Context>
+
+    let minimumValue: Value
     var totalNodeCount: Int {
         return root.totalNodeCount
     }
-    var totalValue: Int {
+    var totalValue: Value {
         return root.totalNodeValue
     }
 
-    private(set) var root: RedBlackTreeNode<Context>!
+    private(set) var root: Node!
 
-    init(rootContext: Context) {
-        root = RedBlackTreeNode(tree: self, value: 0, context: rootContext)
-        root.color = .black
+    init(minimumValue: Value, rootValue: Value, rootContext: Context) {
+        self.minimumValue = minimumValue
+        self.root = Node(tree: self, value: rootValue, context: rootContext)
+        self.root.color = .black
     }
 
-    func reset(rootContext: Context) {
-        root = RedBlackTreeNode<Context>(tree: self, value: 0, context: rootContext)
+    func reset(rootValue: Value, rootContext: Context) {
+        root = Node(tree: self, value: rootValue, context: rootContext)
     }
 
-    func node(containingValue value: Int) -> RedBlackTreeNode<Context> {
-        assert(value >= 0)
+    func node(containingValue value: Value) -> Node {
+        assert(value >= minimumValue)
         assert(value <= root.totalNodeValue)
         if value == root.totalNodeValue {
             return root.rightMost
@@ -42,7 +64,7 @@ final class RedBlackTree<Context> {
                         remainingValue -= leftNode.totalNodeValue
                     }
                     remainingValue -= node.value
-                    if remainingValue < 0 {
+                    if remainingValue < minimumValue {
                         return node
                     } else {
                         node = node.right!
@@ -52,8 +74,8 @@ final class RedBlackTree<Context> {
         }
     }
 
-    func location(of node: RedBlackTreeNode<Context>) -> Int {
-        var location = node.left?.totalNodeValue ?? 0
+    func location(of node: Node) -> Value {
+        var location = node.left?.totalNodeValue ?? minimumValue
         var workingNode = node
         while let parentNode = workingNode.parent {
             if workingNode === workingNode.parent?.right {
@@ -67,7 +89,7 @@ final class RedBlackTree<Context> {
         return location
     }
 
-    func index(of node: RedBlackTreeNode<Context>) -> Int {
+    func index(of node: Node) -> Int {
         var index = node.left?.totalNodeCount ?? 0
         var workingNode = node
         while let parentNode = workingNode.parent {
@@ -82,7 +104,7 @@ final class RedBlackTree<Context> {
         return index
     }
 
-    func node(atIndex index: Int) -> RedBlackTreeNode<Context> {
+    func node(atIndex index: Int) -> Node {
         assert(index >= 0)
         assert(index < root.totalNodeCount)
         var remainingIndex = index
@@ -104,13 +126,13 @@ final class RedBlackTree<Context> {
     }
 
     @discardableResult
-    func insertNode(withValue value: Int, context: Context, after existingNode: RedBlackTreeNode<Context>) -> RedBlackTreeNode<Context> {
-        let newLine = RedBlackTreeNode<Context>(tree: self, value: value, context: context)
+    func insertNode(withValue value: Value, context: Context, after existingNode: Node) -> Node {
+        let newLine = Node(tree: self, value: value, context: context)
         insert(newLine, after: existingNode)
         return newLine
     }
 
-    func remove(_ removedNode: RedBlackTreeNode<Context>) {
+    func remove(_ removedNode: Node) {
         if let removedNodeRight = removedNode.right, removedNode.left != nil {
             let leftMost = removedNodeRight.leftMost
             // Remove leftMost node from its current location
@@ -144,7 +166,7 @@ final class RedBlackTree<Context> {
         }
     }
 
-    func updateAfterChangingChildren(of node: RedBlackTreeNode<Context>) {
+    func updateAfterChangingChildren(of node: Node) {
         var totalCount = 1
         var totalValue = node.value
         if let leftNode = node.left {
@@ -163,10 +185,34 @@ final class RedBlackTree<Context> {
             }
         }
     }
+
+    func searchRange(_ range: ClosedRange<Value>) -> [RangeSearchResult<NodeID, Value, Context>] {
+        var results: [RangeSearchResult<NodeID, Value, Context>] = []
+        func search(from node: Node) {
+            let nodeLowerBound = node.location
+            let nodeUpperBound = nodeLowerBound + node.value
+            if nodeLowerBound > range.lowerBound {
+                if let leftNode = node.left {
+                    search(from: leftNode)
+                }
+            }
+            if nodeLowerBound <= range.upperBound && range.lowerBound <= nodeUpperBound {
+                let result = RangeSearchResult(location: nodeLowerBound, value: nodeUpperBound, node: node)
+                results.append(result)
+            }
+            if nodeUpperBound < range.upperBound {
+                if let rightNode = node.right {
+                    search(from: rightNode)
+                }
+            }
+        }
+        search(from: root)
+        return results
+    }
 }
 
 private extension RedBlackTree {
-    private func insert(_ newLine: RedBlackTreeNode<Context>, after node: RedBlackTreeNode<Context>) {
+    private func insert(_ newLine: Node, after node: Node) {
         if node.right == nil {
             insert(newLine, asRightChildOf: node)
         } else {
@@ -174,7 +220,7 @@ private extension RedBlackTree {
         }
     }
 
-    private func insert(_ newNode: RedBlackTreeNode<Context>, asLeftChildOf parentNode: RedBlackTreeNode<Context>) {
+    private func insert(_ newNode: Node, asLeftChildOf parentNode: Node) {
         assert(parentNode.left == nil)
         parentNode.left = newNode
         newNode.parent = parentNode
@@ -183,7 +229,7 @@ private extension RedBlackTree {
         fixTree(afterInserting: newNode)
     }
 
-    private func insert(_ newNode: RedBlackTreeNode<Context>, asRightChildOf parentNode: RedBlackTreeNode<Context>) {
+    private func insert(_ newNode: Node, asRightChildOf parentNode: Node) {
         assert(parentNode.right == nil)
         parentNode.right = newNode
         newNode.parent = parentNode
@@ -192,7 +238,7 @@ private extension RedBlackTree {
         fixTree(afterInserting: newNode)
     }
 
-    private func replace(_ replacedNode: RedBlackTreeNode<Context>, with newNode: RedBlackTreeNode<Context>?) {
+    private func replace(_ replacedNode: Node, with newNode: Node?) {
         if replacedNode.parent == nil {
             assert(replacedNode === root)
             root = newNode!
@@ -205,7 +251,7 @@ private extension RedBlackTree {
         replacedNode.parent = nil
     }
 
-    private func fixTree(afterInserting newLine: RedBlackTreeNode<Context>) {
+    private func fixTree(afterInserting newLine: Node) {
         var node = newLine
         assert(node.color == .red)
         assert(node.left == nil || node.left?.color == .black)
@@ -257,7 +303,7 @@ private extension RedBlackTree {
         }
     }
 
-    private func fixTree(afterDeleting node: RedBlackTreeNode<Context>?, parentNode: RedBlackTreeNode<Context>) {
+    private func fixTree(afterDeleting node: Node?, parentNode: Node) {
         assert(node == nil || node?.parent === parentNode)
         var sibling = self.sibling(to: node, through: parentNode)
         if sibling?.color == .red {
@@ -325,7 +371,7 @@ private extension RedBlackTree {
         }
     }
 
-    private func rotateLeft(_ p: RedBlackTreeNode<Context>) {
+    private func rotateLeft(_ p: Node) {
         // Let q be p's right child.
         guard let q = p.right else {
             fatalError("Can't rotate left when p's right-hand side child is nil.")
@@ -342,7 +388,7 @@ private extension RedBlackTree {
         updateAfterChangingChildren(of: p)
     }
 
-    private func rotateRight(_ p: RedBlackTreeNode<Context>) {
+    private func rotateRight(_ p: Node) {
         // Let q be p's left child.
         guard let q = p.left else {
             fatalError("Can't rotate right when p's left-hand side child is nil.")
@@ -359,7 +405,7 @@ private extension RedBlackTree {
         updateAfterChangingChildren(of: p)
     }
 
-    private func sibling(to node: RedBlackTreeNode<Context>) -> RedBlackTreeNode<Context>? {
+    private func sibling(to node: Node) -> Node? {
         if node === node.parent?.left {
             return node.parent?.right
         } else {
@@ -367,7 +413,7 @@ private extension RedBlackTree {
         }
     }
 
-    private func sibling(to node: RedBlackTreeNode<Context>?, through parentNode: RedBlackTreeNode<Context>) -> RedBlackTreeNode<Context>? {
+    private func sibling(to node: Node?, through parentNode: Node) -> Node? {
         assert(node == nil || node?.parent === parentNode)
         if node === parentNode.left {
             return parentNode.right
@@ -376,7 +422,7 @@ private extension RedBlackTree {
         }
     }
 
-    private func getColor(of node: RedBlackTreeNode<Context>?) -> RedBlackTreeNode<Context>.Color {
+    private func getColor(of node: Node?) -> Node.Color {
         return node?.color ?? .black
     }
 }
@@ -386,7 +432,7 @@ extension RedBlackTree: CustomDebugStringConvertible {
         return append(root, to: "", indent: 0)
     }
 
-    private func append(_ node: RedBlackTreeNode<Context>, to string: String, indent: Int) -> String {
+    private func append(_ node: Node, to string: String, indent: Int) -> String {
         var result = string
         switch node.color {
         case .red:

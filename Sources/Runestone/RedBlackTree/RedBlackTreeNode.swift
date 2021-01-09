@@ -7,15 +7,17 @@
 
 import Foundation
 
-final class RedBlackTreeNode<Context> {
+final class RedBlackTreeNode<ID: RedBlackTreeNodeID, Value: RedBlackTreeValue, Context> {
+    typealias Tree = RedBlackTree<ID, Value, Context>
+
     enum Color {
         case black
         case red
     }
 
-    let id = UUID()
-    var value: Int
-    var totalNodeValue: Int
+    let id = ID()
+    var value: Value
+    var totalNodeValue: Value
     var totalNodeCount: Int
     var left: RedBlackTreeNode?
     var right: RedBlackTreeNode?
@@ -25,12 +27,12 @@ final class RedBlackTreeNode<Context> {
     var index: Int {
         return tree.index(of: self)
     }
-    var location: Int {
+    var location: Value {
         return tree.location(of: self)
     }
 
-    private weak var _tree: RedBlackTree<Context>?
-    private var tree: RedBlackTree<Context> {
+    private weak var _tree: Tree?
+    private var tree: Tree {
         if let tree = _tree {
             return tree
         } else {
@@ -38,7 +40,7 @@ final class RedBlackTreeNode<Context> {
         }
     }
 
-    init(tree: RedBlackTree<Context>, value: Int, context: Context) {
+    init(tree: Tree, value: Value, context: Context) {
         self._tree = tree
         self.totalNodeCount = 1
         self.value = value
