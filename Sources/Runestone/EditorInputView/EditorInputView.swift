@@ -9,6 +9,24 @@ import UIKit
 import CoreText
 
 public final class EditorInputView: UIScrollView, UITextInput {
+    public var text: String {
+        get {
+            return textView.string as String
+        }
+        set {
+            textView.string = NSMutableString(string: newValue)
+            contentSize = textView.contentSize
+            layoutLines()
+        }
+    }
+    public override var inputAccessoryView: UIView? {
+        get {
+            return _inputAccessoryView
+        }
+        set {
+            _inputAccessoryView = newValue
+        }
+    }
     public var selectedTextRange: UITextRange? {
         get {
             if let range = textView.selectedTextRange {
@@ -53,16 +71,17 @@ public final class EditorInputView: UIScrollView, UITextInput {
     private let textView = EditorBackingView()
     private let tapGestureRecognizer = UITapGestureRecognizer()
     private let editingTextInteraction = UITextInteraction(for: .editable)
+    private var _inputAccessoryView: UIView?
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .white
+        textView.delegate = self
         textView.isUserInteractionEnabled = false
         editingTextInteraction.textInput = self
         tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
         addGestureRecognizer(tapGestureRecognizer)
         addSubview(textView)
-        contentSize = CGSize(width: 375, height: 10000)
     }
 
     required init?(coder: NSCoder) {
@@ -72,7 +91,7 @@ public final class EditorInputView: UIScrollView, UITextInput {
     public override func layoutSubviews() {
         super.layoutSubviews()
         textView.frame = CGRect(x: 0, y: 0, width: frame.width, height: frame.height)
-        textView.layoutLines(in: bounds)
+        layoutLines()
     }
 
     @discardableResult
@@ -95,15 +114,6 @@ public final class EditorInputView: UIScrollView, UITextInput {
             removeInteraction(editingTextInteraction)
         }
         return didResignFirstResponder
-    }
-}
-
-private extension EditorInputView {
-    private func layoutLines() {
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        textView.layoutLines(in: bounds)
-        CATransaction.commit()
     }
 }
 
@@ -148,10 +158,9 @@ public extension EditorInputView {
 // MARK: - Selection
 public extension EditorInputView {
     func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
-        guard let indexedRange = range as? EditorIndexedRange else {
-            fatalError("Expected range to be of type \(EditorIndexedRange.self)")
-        }
-        print(indexedRange)
+//        guard let indexedRange = range as? EditorIndexedRange else {
+//            fatalError("Expected range to be of type \(EditorIndexedRange.self)")
+//        }
         return []
     }
 }
@@ -271,6 +280,16 @@ public extension EditorInputView {
     func setBaseWritingDirection(_ writingDirection: NSWritingDirection, for range: UITextRange) {}
 }
 
+// MARK: - Layout
+private extension EditorInputView {
+    private func layoutLines() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        textView.layoutLines(in: bounds)
+        CATransaction.commit()
+    }
+}
+
 // MARK: - Interaction
 private extension EditorInputView {
     @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
@@ -278,6 +297,15 @@ private extension EditorInputView {
             textView.markedTextRange = NSRange(location: NSNotFound, length: 0)
             textView.selectedTextRange = NSRange(location: 0, length: 0)
             becomeFirstResponder()
+        }
+    }
+}
+
+// MARK: - EditorBackingViewDelegate
+extension EditorInputView: EditorBackingViewDelegate {
+    func editorBackingViewDidInvalidateContentSize(_ view: EditorBackingView) {
+        if contentSize != view.contentSize {
+            contentSize = view.contentSize
         }
     }
 }

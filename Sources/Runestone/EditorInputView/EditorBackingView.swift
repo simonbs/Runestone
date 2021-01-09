@@ -7,11 +7,34 @@
 
 import UIKit
 
+protocol EditorBackingViewDelegate: AnyObject {
+    func editorBackingViewDidInvalidateContentSize(_ view: EditorBackingView)
+}
+
 final class EditorBackingView: UIView {
-    let string = NSMutableString()
+    weak var delegate: EditorBackingViewDelegate?
+    var string = NSMutableString() {
+        didSet {
+            if string != oldValue {
+                let oldEntireRange = NSRange(location: 0, length: oldValue.length)
+                lineManager.removeCharacters(in: oldEntireRange)
+                lineManager.insert(string, at: 0)
+                frameStore.reset()
+            }
+        }
+    }
     var selectedTextRange: NSRange?
     var markedTextRange: NSRange?
-    var font = UIFont(name: "Menlo-Regular", size: 14)!
+    var font = UIFont(name: "Menlo-Regular", size: 14)! {
+        didSet {
+            if font != oldValue {
+                frameStore.estimatedLineHeight = font.ascender + font.descender
+            }
+        }
+    }
+    var contentSize: CGSize {
+        return frameStore.contentSize
+    }
 
     private let lineManager = LineManager()
     private let frameStore = EditorTextLayerFrameStore()
@@ -26,6 +49,7 @@ final class EditorBackingView: UIView {
         super.init(frame: .zero)
         lineManager.delegate = self
         frameStore.delegate = self
+        frameStore.estimatedLineHeight = font.ascender + font.descender
     }
 
     required init?(coder: NSCoder) {
@@ -125,42 +149,49 @@ final class EditorBackingView: UIView {
     }
 
     func layoutLines(in rect: CGRect) {
-        let lineIndices = visibleLineIndices(in: rect)
-        var newVisibleTextLayers: [EditorTextLayer] = []
-        for lineIndex in lineIndices {
-            let line = lineManager.line(atIndex: lineIndex)
-            let textLayer = getTextLayer(forLineId: line.id)
+//        let lineIndices = visibleLineIndices(in: rect)
+//        var newVisibleTextLayers: [EditorTextLayer] = []
+//        var isContentHeightValid = true
+//        for lineIndex in lineIndices {
+//            let line = lineManager.line(atIndex: lineIndex)
+//            let textLayer = getTextLayer(forLineId: line.id)
 //            if layersPendingStringUpdate.contains(textLayer) {
-                let range = NSRange(location: line.location, length: line.totalLength)
-                let lineString = string.substring(with: range) as NSString
-                textLayer.setString(lineString)
-                textLayer.setNeedsDisplay()
-                let size = textLayer.preferredSize(constrainedToWidth: bounds.width)
-                frameStore.setHeight(to: size.height, forLineAt: lineIndex)
+//                let range = NSRange(location: line.location, length: line.context.totalLength)
+//                let lineString = string.substring(with: range) as NSString
+//                textLayer.setString(lineString)
+//                textLayer.setNeedsDisplay()
+//                let size = textLayer.preferredSize(constrainedToWidth: bounds.width)
+//                let didUpdateHeight = frameStore.setHeight(to: size.height, forLineAt: lineIndex)
+//                if didUpdateHeight {
+//                    isContentHeightValid = false
+//                }
 //                layersPendingStringUpdate.remove(textLayer)
 //            }
-            textLayer.lineIndex = lineIndex
-            newVisibleTextLayers.append(textLayer)
-        }
-        for textLayer in visibleTextLayers {
-            if !newVisibleTextLayers.contains(textLayer) {
-                textLayer.removeFromSuperlayer()
-            }
-        }
-        for textLayer in newVisibleTextLayers {
-            if textLayer.superlayer == nil {
-                layer.addSublayer(textLayer)
-            }
-            textLayer.frame = frameStore.frameForLine(at: textLayer.lineIndex)
-        }
-        visibleTextLayers = newVisibleTextLayers
+//            textLayer.lineIndex = lineIndex
+//            newVisibleTextLayers.append(textLayer)
+//        }
+//        for textLayer in visibleTextLayers {
+//            if !newVisibleTextLayers.contains(textLayer) {
+//                textLayer.removeFromSuperlayer()
+//            }
+//        }
+//        for textLayer in newVisibleTextLayers {
+//            if textLayer.superlayer == nil {
+//                layer.addSublayer(textLayer)
+//            }
+//            textLayer.frame = frameStore.frameForLine(at: textLayer.lineIndex)
+//        }
+//        visibleTextLayers = newVisibleTextLayers
+//        if !isContentHeightValid {
+//            delegate?.editorBackingViewDidInvalidateContentSize(self)
+//        }
     }
 }
 
 private extension EditorBackingView {
-    private func lineNumber(at location: Int) -> Int? {
-        return lineManager.line(containingCharacterAt: location)?.lineNumber
-    }
+//    private func lineNumber(at location: Int) -> Int? {
+//        return lineManager.line(containingCharacterAt: location)?.lineNumber
+//    }
 
     private func visibleLineIndices(in rect: CGRect) -> IndexSet {
         var indices = IndexSet()
@@ -183,7 +214,7 @@ private extension EditorBackingView {
         } else {
             let textLayer = EditorTextLayer()
             textLayer.contentsScale = UIScreen.main.scale
-            textLayer.font = UIFont(name: "Menlo-Regular", size: 14)!
+            textLayer.font = font
             textLayers[lineId] = textLayer
             layersPendingStringUpdate.insert(textLayer)
             return textLayer
@@ -194,14 +225,6 @@ private extension EditorBackingView {
 extension EditorBackingView: LineManagerDelegate {
     func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> String {
         return string.substring(with: NSMakeRange(location, 1))
-    }
-
-    func lineManager(_ lineManager: LineManager, didInsert line: DocumentLine) {}
-
-    func lineManager(_ lineManager: LineManager, didEdit line: DocumentLine) {}
-
-    func lineManager(_ lineManager: LineManager, didRemove line: DocumentLine) {
-        textLayers.removeValue(forKey: line.id)
     }
 }
 
