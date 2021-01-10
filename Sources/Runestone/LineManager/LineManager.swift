@@ -63,24 +63,49 @@ final class LineManager {
     }
 
     init() {
-        reset()
+//        reset()
     }
 
-    func reset() {
-        // Rebuild the trees
+//    func reset() {
+//        // Rebuild the trees
+//        documentLineTree.reset(rootValue: 0, rootData: DocumentLineNodeData())
+//        lineFrameTree.reset(rootValue: 0, rootData: nil)
+//        documentLineTree.root.data.totalLength = documentLineTree.root.value
+//        // Remove old data from our maps
+//        documentLineNodeMap.removeAll()
+//        lineFrameNodeMap.removeAll()
+//        documentLineToLineFrameMap.removeAll()
+//        lineFrameToDocumentLineMap.removeAll()
+//        // Put the root values into our maps
+//        documentLineNodeMap[documentLineTree.root.id] = documentLineTree.root
+//        lineFrameNodeMap[lineFrameTree.root.id] = lineFrameTree.root
+//        documentLineToLineFrameMap[documentLineTree.root.id] = lineFrameTree.root.id
+//        lineFrameToDocumentLineMap[lineFrameTree.root.id] = documentLineTree.root.id
+//    }
+
+    func rebuild(from string: NSString) {
+        // Reset the tree so we only have a single line.
         documentLineTree.reset(rootValue: 0, rootData: DocumentLineNodeData())
-        lineFrameTree.reset(rootValue: 0, rootData: nil)
-        documentLineTree.root.data.totalLength = documentLineTree.root.value
-        // Remove old data from our maps
-        documentLineNodeMap.removeAll()
-        lineFrameNodeMap.removeAll()
-        documentLineToLineFrameMap.removeAll()
-        lineFrameToDocumentLineMap.removeAll()
-        // Put the root values into our maps
-        documentLineNodeMap[documentLineTree.root.id] = documentLineTree.root
-        lineFrameNodeMap[lineFrameTree.root.id] = lineFrameTree.root
-        documentLineToLineFrameMap[documentLineTree.root.id] = lineFrameTree.root.id
-        lineFrameToDocumentLineMap[lineFrameTree.root.id] = documentLineTree.root.id
+        // Iterate over lines in the string.
+        var line = documentLineTree.node(atIndex: 0)
+        var workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: 0)
+        var lines: [DocumentLineNode] = []
+        var lastDelimiterEnd = 0
+        while let newLineRange = workingNewLineRange {
+            let totalLength = (newLineRange.location + newLineRange.length) - lastDelimiterEnd
+            line.value = totalLength
+            line.data.totalLength = totalLength
+            line.data.delimiterLength = newLineRange.length
+            lastDelimiterEnd = newLineRange.location + newLineRange.length
+            lines.append(line)
+            line = DocumentLineNode(tree: documentLineTree, value: 0, data: DocumentLineNodeData())
+            workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: lastDelimiterEnd)
+        }
+        let totalLength = string.length - lastDelimiterEnd
+        line.value = totalLength
+        line.data.totalLength = totalLength
+        lines.append(line)
+        documentLineTree.rebuild(from: lines)
     }
 
     func removeCharacters(in range: NSRange) {
@@ -246,12 +271,12 @@ private extension LineManager {
         let insertedLine = documentLineTree.insertNode(value: length, data: DocumentLineNodeData(), after: otherLine)
         insertedLine.data.totalLength = length
         documentLineNodeMap[insertedLine.id] = insertedLine
-        if let afterLineFrameNodeId = documentLineToLineFrameMap[otherLine.id], let afterLineFrameNode = lineFrameNodeMap[afterLineFrameNodeId] {
-            let insertedFrame = lineFrameTree.insertNode(value: estimatedLineHeight, data: nil, after: afterLineFrameNode)
-            lineFrameNodeMap[insertedFrame.id] = insertedFrame
-            documentLineToLineFrameMap[insertedLine.id] = insertedFrame.id
-            lineFrameToDocumentLineMap[insertedFrame.id] = insertedLine.id
-        }
+//        if let afterLineFrameNodeId = documentLineToLineFrameMap[otherLine.id], let afterLineFrameNode = lineFrameNodeMap[afterLineFrameNodeId] {
+//            let insertedFrame = lineFrameTree.insertNode(value: estimatedLineHeight, data: nil, after: afterLineFrameNode)
+//            lineFrameNodeMap[insertedFrame.id] = insertedFrame
+//            documentLineToLineFrameMap[insertedLine.id] = insertedFrame.id
+//            lineFrameToDocumentLineMap[insertedFrame.id] = insertedLine.id
+//        }
         delegate?.lineManager(self, didInsert: insertedLine)
         return insertedLine
     }

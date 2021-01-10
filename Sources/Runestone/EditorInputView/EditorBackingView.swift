@@ -16,9 +16,7 @@ final class EditorBackingView: UIView {
     var string = NSMutableString() {
         didSet {
             if string != oldValue {
-                let oldEntireRange = NSRange(location: 0, length: oldValue.length)
-                lineManager.removeCharacters(in: oldEntireRange)
-                lineManager.insert(string, at: 0)
+                lineManager.rebuild(from: string)
                 isContentSizeInvalid = true
             }
         }

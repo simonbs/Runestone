@@ -30,6 +30,12 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNode
         root = Node(tree: self, value: rootValue, data: rootData)
     }
 
+    func rebuild(from nodes: [Node]) {
+        let height = getTreeHeight(nodeCount: nodes.count)
+        root = buildTree(from: nodes, start: 0, end: nodes.count, subtreeHeight: height)!
+        root.color = .black
+    }
+
     func node(containgLocation location: NodeValue) -> Node {
         assert(location >= minimumValue)
         assert(location <= root.nodeTotalValue)
@@ -449,6 +455,32 @@ private extension RedBlackTree {
 
     private func getColor(of node: Node?) -> RedBlackTreeNodeColor {
         return node?.color ?? .black
+    }
+
+    private func buildTree(from nodes: [Node], start: Int, end: Int, subtreeHeight: Int) -> Node? {
+        assert(start <= end)
+        if start == end {
+            return nil
+        }
+        let middle = (start + end) / 2
+        let node = nodes[middle]
+        node.left = buildTree(from: nodes, start: start, end: middle, subtreeHeight: subtreeHeight - 1)
+        node.right = buildTree(from: nodes, start: middle + 1, end: end, subtreeHeight: subtreeHeight - 1)
+        node.left?.parent = node
+        node.right?.parent = node
+        if subtreeHeight == 1 {
+            node.color = .red
+        }
+        updateAfterChangingChildren(of: node)
+        return node
+    }
+
+    private func getTreeHeight(nodeCount: Int) -> Int {
+        if nodeCount == 0 {
+            return 0
+        } else {
+            return getTreeHeight(nodeCount: nodeCount / 2) + 1
+        }
     }
 }
 
