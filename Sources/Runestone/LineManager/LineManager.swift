@@ -27,8 +27,10 @@ struct LineFrameNodeID: RedBlackTreeNodeID, Hashable {
     let id = UUID()
 }
 
-typealias DocumentLineNode = RedBlackTreeNode<DocumentLineNodeID, DocumentLineNodeData>
-typealias LineFrameNode = RedBlackTreeNode<LineFrameNodeID, LineFrameNodeData>
+typealias DocumentLineTree = RedBlackTree<DocumentLineNodeID, Int, DocumentLineNodeData>
+typealias LineFrameTree = RedBlackTree<LineFrameNodeID, CGFloat, Void?>
+typealias DocumentLineNode = RedBlackTreeNode<DocumentLineNodeID, Int, DocumentLineNodeData>
+typealias LineFrameNode = RedBlackTreeNode<LineFrameNodeID, CGFloat, Void?>
 
 struct VisibleLine {
     let documentLine: DocumentLineNode
@@ -47,8 +49,8 @@ final class LineManager {
     }
     var estimatedLineHeight: CGFloat = 12
 
-    private let documentLineTree = RedBlackTree<DocumentLineNodeID, DocumentLineNodeData>(rootData: DocumentLineNodeData())
-    private let lineFrameTree = RedBlackTree<LineFrameNodeID, LineFrameNodeData>(rootData: LineFrameNodeData())
+    private let documentLineTree = DocumentLineTree(minimumValue: 0, rootValue: 0, rootData: DocumentLineNodeData())
+    private let lineFrameTree = LineFrameTree(minimumValue: 0, rootValue: 0, rootData: nil)
     private var documentLineNodeMap: [DocumentLineNodeID: DocumentLineNode] = [:]
     private var lineFrameNodeMap: [LineFrameNodeID: LineFrameNode] = [:]
     private var documentLineToLineFrameMap: [DocumentLineNodeID: LineFrameNodeID] = [:]
@@ -66,16 +68,20 @@ final class LineManager {
     }
 
     func reset() {
-        documentLineTree.reset(rootData: DocumentLineNodeData())
+        // Rebuild the trees
+        documentLineTree.reset(rootValue: 0, rootData: DocumentLineNodeData())
+        lineFrameTree.reset(rootValue: 0, rootData: nil)
+        documentLineTree.root.data.totalLength = documentLineTree.root.value
+        // Remove old data from our maps
         documentLineNodeMap.removeAll()
         lineFrameNodeMap.removeAll()
         documentLineToLineFrameMap.removeAll()
         lineFrameToDocumentLineMap.removeAll()
+        // Put the root values into our maps
         documentLineNodeMap[documentLineTree.root.id] = documentLineTree.root
         lineFrameNodeMap[lineFrameTree.root.id] = lineFrameTree.root
         documentLineToLineFrameMap[documentLineTree.root.id] = lineFrameTree.root.id
         lineFrameToDocumentLineMap[lineFrameTree.root.id] = documentLineTree.root.id
-        documentLineTree.root.data.totalLength = documentLineTree.root.value
     }
 
     func removeCharacters(in range: NSRange) {

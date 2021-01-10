@@ -11,16 +11,18 @@ protocol RedBlackTreeNodeID: Identifiable {
     init()
 }
 
-final class RedBlackTreeNode<NodeID: RedBlackTreeNodeID, NodeData> {
-    typealias Tree = RedBlackTree<NodeID, NodeData>
+typealias RedBlackTreeNodeValue = Comparable & AdditiveArithmetic
+
+final class RedBlackTreeNode<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNodeValue, NodeData> {
+    typealias Tree = RedBlackTree<NodeID, NodeValue, NodeData>
 
     let id = NodeID()
-    var nodeTotalValue: Int
+    var nodeTotalValue: NodeValue
     var nodeTotalCount: Int
-    var location: Int {
+    var location: NodeValue {
         return tree.location(of: self)
     }
-    var value: Int
+    var value: NodeValue
     var index: Int {
         return tree.index(of: self)
     }
@@ -39,7 +41,7 @@ final class RedBlackTreeNode<NodeID: RedBlackTreeNodeID, NodeData> {
         }
     }
 
-    init(tree: Tree, value: Int, data: NodeData) {
+    init(tree: Tree, value: NodeValue, data: NodeData) {
         self._tree = tree
         self.nodeTotalCount = 1
         self.nodeTotalValue = value

@@ -7,29 +7,31 @@
 
 import Foundation
 
-final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeData> {
-    typealias Node = RedBlackTreeNode<NodeID, NodeData>
+final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNodeValue, NodeData> {
+    typealias Node = RedBlackTreeNode<NodeID, NodeValue, NodeData>
 
+    private(set) var root: Node!
     var nodeTotalCount: Int {
         return root.nodeTotalCount
     }
-    var nodeTotalValue: Int {
+    var nodeTotalValue: NodeValue {
         return root.nodeTotalValue
     }
 
-    private(set) var root: Node!
+    private let minimumValue: NodeValue
 
-    init(rootData: NodeData) {
-        root = Node(tree: self, value: 0, data: rootData)
-        root.color = .black
+    init(minimumValue: NodeValue, rootValue: NodeValue, rootData: NodeData) {
+        self.minimumValue = minimumValue
+        self.root = Node(tree: self, value: rootValue, data: rootData)
+        self.root.color = .black
     }
 
-    func reset(rootData: NodeData) {
-        root = Node(tree: self, value: 0, data: rootData)
+    func reset(rootValue: NodeValue, rootData: NodeData) {
+        root = Node(tree: self, value: rootValue, data: rootData)
     }
 
-    func node(containgLocation location: Int) -> Node {
-        assert(location >= 0)
+    func node(containgLocation location: NodeValue) -> Node {
+        assert(location >= minimumValue)
         assert(location <= root.nodeTotalValue)
         if location == root.nodeTotalValue {
             return root.rightMost
@@ -44,7 +46,7 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeData> {
                         remainingLocation -= leftNode.nodeTotalValue
                     }
                     remainingLocation -= node.value
-                    if remainingLocation < 0 {
+                    if remainingLocation < minimumValue {
                         return node
                     } else {
                         node = node.right!
@@ -54,8 +56,8 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeData> {
         }
     }
 
-    func nodePosition(at location: Int) -> RedBlackTreeNodePosition? {
-        guard location >= 0 && location <= root.nodeTotalValue else {
+    func nodePosition(at location: NodeValue) -> RedBlackTreeNodePosition<NodeValue>? {
+        guard location >= minimumValue && location <= root.nodeTotalValue else {
             return nil
         }
         if location == root.nodeTotalValue {
@@ -68,7 +70,7 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeData> {
                 offset: offset,
                 value: node.value)
         } else {
-            var nodeStartLocation = 0
+            var nodeStartLocation = minimumValue
             var remainingLocation = location
             var node = root!
             while true {
@@ -81,7 +83,7 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeData> {
                     }
                     nodeStartLocation += node.value
                     remainingLocation -= node.value
-                    if remainingLocation < 0 {
+                    if remainingLocation < minimumValue {
                         nodeStartLocation -= node.value
                         let offset = location - nodeStartLocation
                         return RedBlackTreeNodePosition(
@@ -97,8 +99,8 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeData> {
         }
     }
 
-    func location(of node: Node) -> Int {
-        var location = node.left?.nodeTotalValue ?? 0
+    func location(of node: Node) -> NodeValue {
+        var location = node.left?.nodeTotalValue ?? minimumValue
         var workingNode = node
         while let parentNode = workingNode.parent {
             if workingNode === workingNode.parent?.right {
@@ -149,7 +151,7 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeData> {
     }
 
     @discardableResult
-    func insertNode(value: Int, data: NodeData, after existingNode: Node) -> Node {
+    func insertNode(value: NodeValue, data: NodeData, after existingNode: Node) -> Node {
         let newNode = Node(tree: self, value: value, data: data)
         insert(newNode, after: existingNode)
         return newNode
