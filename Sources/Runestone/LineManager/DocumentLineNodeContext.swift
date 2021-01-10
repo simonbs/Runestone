@@ -13,7 +13,7 @@ final class DocumentLineNodeContext {
         return totalLength - delimiterLength
     }
     var totalLength: Int {
-        return node!.value
+        return node!.length
     }
 
     weak var node: DocumentLineNode?

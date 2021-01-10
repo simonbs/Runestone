@@ -2,37 +2,42 @@
 //  File.swift
 //  
 //
-//  Created by Simon Støvring on 09/01/2021.
+//  Created by Simon Støvring on 10/01/2021.
 //
 
 import Foundation
 
-final class RedBlackTreeNode<ID: RedBlackTreeNodeID, Value: RedBlackTreeValue, Context> {
-    typealias Tree = RedBlackTree<ID, Value, Context>
-
+final class RedBlackTreeNode {
     enum Color {
         case black
         case red
     }
 
-    let id = ID()
-    var value: Value
-    var totalNodeValue: Value
-    var totalNodeCount: Int
+    let id = UUID()
+    var nodeTotalLength: Int
+    var nodeTotalCount: Int
+    var location: Int {
+        return tree.location(of: self)
+    }
+    var totalLength: Int
+    var delimiterLength = 0 {
+        didSet {
+            assert(delimiterLength >= 0 && delimiterLength <= 2)
+        }
+    }
+    var length: Int {
+        return totalLength - delimiterLength
+    }
+    var index: Int {
+        return tree.index(of: self)
+    }
     var left: RedBlackTreeNode?
     var right: RedBlackTreeNode?
     var parent: RedBlackTreeNode?
     var color: Color = .black
-    let context: Context
-    var index: Int {
-        return tree.index(of: self)
-    }
-    var location: Value {
-        return tree.location(of: self)
-    }
 
-    private weak var _tree: Tree?
-    private var tree: Tree {
+    private weak var _tree: RedBlackTree?
+    private var tree: RedBlackTree {
         if let tree = _tree {
             return tree
         } else {
@@ -40,12 +45,11 @@ final class RedBlackTreeNode<ID: RedBlackTreeNodeID, Value: RedBlackTreeValue, C
         }
     }
 
-    init(tree: Tree, value: Value, context: Context) {
+    init(tree: RedBlackTree, totalLength: Int) {
         self._tree = tree
-        self.totalNodeCount = 1
-        self.value = value
-        self.totalNodeValue = value
-        self.context = context
+        self.nodeTotalCount = 1
+        self.nodeTotalLength = totalLength
+        self.totalLength = totalLength
     }
 }
 
@@ -94,10 +98,6 @@ extension RedBlackTreeNode {
 
 extension RedBlackTreeNode: CustomDebugStringConvertible {
     var debugDescription: String {
-        if let context = context as? CustomDebugStringConvertible {
-            return context.debugDescription
-        } else {
-            return "[Node totalValue=\(value) totalNodeCount=\(totalNodeCount)]"
-        }
+        return "[RedBlackTreeNode index=\(index) location=\(location) length=\(length) nodeTotalCount=\(nodeTotalCount)]"
     }
 }
