@@ -28,8 +28,8 @@ extension LineManagerDelegate {
 //}
 
 //typealias DocumentLineNode = RedBlackTreeNode
-typealias DocumentLineNode = RedBlackTreeNode
-typealias LineFrameNode = RedBlackTreeNode
+typealias DocumentLineNode = RedBlackTreeNode<DocumentLineNodeContext>
+typealias LineFrameNode = RedBlackTreeNode<LineFrameNodeContext>
 
 struct VisibleLine {
     let documentLine: DocumentLineNode
@@ -48,8 +48,8 @@ final class LineManager {
     }
     var estimatedLineHeight: CGFloat = 12
 
-    private let documentLineTree = RedBlackTree()
-    private let lineFrameTree = RedBlackTree()
+    private let documentLineTree = RedBlackTree<DocumentLineNodeContext>(rootData: DocumentLineNodeContext())
+    private let lineFrameTree = RedBlackTree<LineFrameNodeContext>(rootData: LineFrameNodeContext())
     private var documentLineNodeMap: [UUID: DocumentLineNode] = [:]
     private var lineFrameNodeMap: [UUID: LineFrameNode] = [:]
     private var documentLineToLineFrameMap: [UUID: UUID] = [:]
@@ -67,7 +67,7 @@ final class LineManager {
     }
 
     func reset() {
-        documentLineTree.reset()
+        documentLineTree.reset(rootData: DocumentLineNodeContext())
         documentLineNodeMap.removeAll()
         lineFrameNodeMap.removeAll()
         documentLineToLineFrameMap.removeAll()
@@ -237,7 +237,7 @@ private extension LineManager {
 
     @discardableResult
     private func insertLine(ofLength length: Int, after otherLine: DocumentLineNode) -> DocumentLineNode {
-        let insertedLine = documentLineTree.insertNode(ofLength: length, after: otherLine)
+        let insertedLine = documentLineTree.insertNode(ofLength: length, withData: DocumentLineNodeContext(), after: otherLine)
 //        documentLineNodeMap[insertedLine.id] = insertedLine
 //        if let afterLineFrameNodeId = documentLineToLineFrameMap[otherLine.id], let afterLineFrameNode = lineFrameNodeMap[afterLineFrameNodeId] {
 //            let insertedFrame = lineFrameTree.insertNode(withValue: estimatedLineHeight, after: afterLineFrameNode)
