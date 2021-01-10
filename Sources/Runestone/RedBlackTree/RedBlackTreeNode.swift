@@ -8,6 +8,8 @@
 import Foundation
 
 final class RedBlackTreeNode<NodeData> {
+    typealias Tree = RedBlackTree<NodeData>
+
     let id = UUID()
     var nodeTotalValue: Int
     var nodeTotalCount: Int
@@ -24,8 +26,8 @@ final class RedBlackTreeNode<NodeData> {
     var color: RedBlackTreeNodeColor = .black
     let data: NodeData
 
-    private weak var _tree: RedBlackTree<NodeData>?
-    private var tree: RedBlackTree<NodeData> {
+    private weak var _tree: Tree?
+    private var tree: Tree {
         if let tree = _tree {
             return tree
         } else {
@@ -33,7 +35,7 @@ final class RedBlackTreeNode<NodeData> {
         }
     }
 
-    init(tree: RedBlackTree<NodeData>, value: Int, data: NodeData) {
+    init(tree: Tree, value: Int, data: NodeData) {
         self._tree = tree
         self.nodeTotalCount = 1
         self.nodeTotalValue = value

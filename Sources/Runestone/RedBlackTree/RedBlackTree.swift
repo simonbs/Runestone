@@ -8,6 +8,8 @@
 import Foundation
 
 final class RedBlackTree<NodeData> {
+    typealias Node = RedBlackTreeNode<NodeData>
+
     var nodeTotalCount: Int {
         return root.nodeTotalCount
     }
@@ -15,18 +17,18 @@ final class RedBlackTree<NodeData> {
         return root.nodeTotalValue
     }
 
-    private(set) var root: RedBlackTreeNode<NodeData>!
+    private(set) var root: Node!
 
     init(rootData: NodeData) {
-        root = RedBlackTreeNode<NodeData>(tree: self, value: 0, data: rootData)
+        root = Node(tree: self, value: 0, data: rootData)
         root.color = .black
     }
 
     func reset(rootData: NodeData) {
-        root = RedBlackTreeNode<NodeData>(tree: self, value: 0, data: rootData)
+        root = Node(tree: self, value: 0, data: rootData)
     }
 
-    func node(containgLocation location: Int) -> RedBlackTreeNode<NodeData> {
+    func node(containgLocation location: Int) -> Node {
         assert(location >= 0)
         assert(location <= root.nodeTotalValue)
         if location == root.nodeTotalValue {
@@ -95,7 +97,7 @@ final class RedBlackTree<NodeData> {
         }
     }
 
-    func location(of node: RedBlackTreeNode<NodeData>) -> Int {
+    func location(of node: Node) -> Int {
         var location = node.left?.nodeTotalValue ?? 0
         var workingNode = node
         while let parentNode = workingNode.parent {
@@ -110,7 +112,7 @@ final class RedBlackTree<NodeData> {
         return location
     }
 
-    func index(of node: RedBlackTreeNode<NodeData>) -> Int {
+    func index(of node: Node) -> Int {
         var index = node.left?.nodeTotalCount ?? 0
         var workingNode = node
         while let parentNode = workingNode.parent {
@@ -125,7 +127,7 @@ final class RedBlackTree<NodeData> {
         return index
     }
 
-    func node(atIndex index: Int) -> RedBlackTreeNode<NodeData> {
+    func node(atIndex index: Int) -> Node {
         assert(index >= 0)
         assert(index < root.nodeTotalCount)
         var remainingIndex = index
@@ -147,13 +149,13 @@ final class RedBlackTree<NodeData> {
     }
 
     @discardableResult
-    func insertNode(value: Int, data: NodeData, after existingNode: RedBlackTreeNode<NodeData>) -> RedBlackTreeNode<NodeData> {
-        let newNode = RedBlackTreeNode<NodeData>(tree: self, value: value, data: data)
+    func insertNode(value: Int, data: NodeData, after existingNode: Node) -> Node {
+        let newNode = Node(tree: self, value: value, data: data)
         insert(newNode, after: existingNode)
         return newNode
     }
 
-    func remove(_ removedNode: RedBlackTreeNode<NodeData>) {
+    func remove(_ removedNode: Node) {
         if let removedNodeRight = removedNode.right, removedNode.left != nil {
             let leftMost = removedNodeRight.leftMost
             // Remove leftMost node from its current location
@@ -187,7 +189,7 @@ final class RedBlackTree<NodeData> {
         }
     }
 
-    func updateAfterChangingChildren(of node: RedBlackTreeNode<NodeData>) {
+    func updateAfterChangingChildren(of node: Node) {
         var totalCount = 1
         var totalValue = node.value
         if let leftNode = node.left {
@@ -209,7 +211,7 @@ final class RedBlackTree<NodeData> {
 }
 
 private extension RedBlackTree {
-    private func insert(_ newNode: RedBlackTreeNode<NodeData>, after node: RedBlackTreeNode<NodeData>) {
+    private func insert(_ newNode: Node, after node: Node) {
         if node.right == nil {
             insert(newNode, asRightChildOf: node)
         } else {
@@ -217,7 +219,7 @@ private extension RedBlackTree {
         }
     }
 
-    private func insert(_ newNode: RedBlackTreeNode<NodeData>, asLeftChildOf parentNode: RedBlackTreeNode<NodeData>) {
+    private func insert(_ newNode: Node, asLeftChildOf parentNode: Node) {
         assert(parentNode.left == nil)
         parentNode.left = newNode
         newNode.parent = parentNode
@@ -226,7 +228,7 @@ private extension RedBlackTree {
         fixTree(afterInserting: newNode)
     }
 
-    private func insert(_ newNode: RedBlackTreeNode<NodeData>, asRightChildOf parentNode: RedBlackTreeNode<NodeData>) {
+    private func insert(_ newNode: Node, asRightChildOf parentNode: Node) {
         assert(parentNode.right == nil)
         parentNode.right = newNode
         newNode.parent = parentNode
@@ -235,7 +237,7 @@ private extension RedBlackTree {
         fixTree(afterInserting: newNode)
     }
 
-    private func replace(_ replacedNode: RedBlackTreeNode<NodeData>, with newNode: RedBlackTreeNode<NodeData>?) {
+    private func replace(_ replacedNode: Node, with newNode: Node?) {
         if replacedNode.parent == nil {
             assert(replacedNode === root)
             root = newNode!
@@ -248,7 +250,7 @@ private extension RedBlackTree {
         replacedNode.parent = nil
     }
 
-    private func fixTree(afterInserting newNode: RedBlackTreeNode<NodeData>) {
+    private func fixTree(afterInserting newNode: Node) {
         var node = newNode
         assert(node.color == .red)
         assert(node.left == nil || node.left?.color == .black)
@@ -300,7 +302,7 @@ private extension RedBlackTree {
         }
     }
 
-    private func fixTree(afterDeleting node: RedBlackTreeNode<NodeData>?, parentNode: RedBlackTreeNode<NodeData>) {
+    private func fixTree(afterDeleting node: Node?, parentNode: Node) {
         assert(node == nil || node?.parent === parentNode)
         var sibling = self.sibling(to: node, through: parentNode)
         if sibling?.color == .red {
@@ -368,7 +370,7 @@ private extension RedBlackTree {
         }
     }
 
-    private func rotateLeft(_ p: RedBlackTreeNode<NodeData>) {
+    private func rotateLeft(_ p: Node) {
         // Let q be p's right child.
         guard let q = p.right else {
             fatalError("Can't rotate left when p's right-hand side child is nil.")
@@ -385,7 +387,7 @@ private extension RedBlackTree {
         updateAfterChangingChildren(of: p)
     }
 
-    private func rotateRight(_ p: RedBlackTreeNode<NodeData>) {
+    private func rotateRight(_ p: Node) {
         // Let q be p's left child.
         guard let q = p.left else {
             fatalError("Can't rotate right when p's left-hand side child is nil.")
@@ -402,7 +404,7 @@ private extension RedBlackTree {
         updateAfterChangingChildren(of: p)
     }
 
-    private func sibling(to node: RedBlackTreeNode<NodeData>) -> RedBlackTreeNode<NodeData>? {
+    private func sibling(to node: Node) -> Node? {
         if node === node.parent?.left {
             return node.parent?.right
         } else {
@@ -410,7 +412,7 @@ private extension RedBlackTree {
         }
     }
 
-    private func sibling(to node: RedBlackTreeNode<NodeData>?, through parentNode: RedBlackTreeNode<NodeData>) -> RedBlackTreeNode<NodeData>? {
+    private func sibling(to node: Node?, through parentNode: Node) -> Node? {
         assert(node == nil || node?.parent === parentNode)
         if node === parentNode.left {
             return parentNode.right
@@ -419,7 +421,7 @@ private extension RedBlackTree {
         }
     }
 
-    private func getColor(of node: RedBlackTreeNode<NodeData>?) -> RedBlackTreeNodeColor {
+    private func getColor(of node: Node?) -> RedBlackTreeNodeColor {
         return node?.color ?? .black
     }
 }
@@ -429,7 +431,7 @@ extension RedBlackTree: CustomDebugStringConvertible {
         return append(root, to: "", indent: 0)
     }
 
-    private func append(_ node: RedBlackTreeNode<NodeData>, to string: String, indent: Int) -> String {
+    private func append(_ node: Node, to string: String, indent: Int) -> String {
         var result = string
         switch node.color {
         case .red:
