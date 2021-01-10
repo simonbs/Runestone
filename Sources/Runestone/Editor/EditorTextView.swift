@@ -294,35 +294,35 @@ public final class EditorTextView: UITextView {
     }
 
     public func setText(_ newText: String, completion: ((Bool) -> Void)? = nil) {
-        isProcessingNewText = true
-        text = newText
-        parser.reset()
-        let operation = BlockOperation()
-        operation.addExecutionBlock { [weak self, weak operation] in
-            guard let self = self, let operation = operation else {
-                completion?(false)
-                return
-            }
-            guard !operation.isCancelled else {
-                completion?(false)
-                return
-            }
-            let nsNewText = newText as NSString
-            self.lineManager.reset()
-            self.lineManager.insert(nsNewText, at: 0)
-            self.parser.parse(newText)
-            DispatchQueue.main.sync {
-                self.isProcessingNewText = false
-                if !operation.isCancelled {
-                    let range = NSRange(location: 0, length: self.textStorage.length)
-                    self.editorTextStorage.beginEditing()
-                    self.editorTextStorage.edited(.editedAttributes, range: range, changeInLength: 0)
-                    self.editorTextStorage.endEditing()
-                }
-            }
-            completion?(!operation.isCancelled)
-        }
-        queue.addOperation(operation)
+//        isProcessingNewText = true
+//        text = newText
+//        parser.reset()
+//        let operation = BlockOperation()
+//        operation.addExecutionBlock { [weak self, weak operation] in
+//            guard let self = self, let operation = operation else {
+//                completion?(false)
+//                return
+//            }
+//            guard !operation.isCancelled else {
+//                completion?(false)
+//                return
+//            }
+//            let nsNewText = newText as NSString
+//            self.lineManager.reset()
+//            self.lineManager.insert(nsNewText, at: 0)
+//            self.parser.parse(newText)
+//            DispatchQueue.main.sync {
+//                self.isProcessingNewText = false
+//                if !operation.isCancelled {
+//                    let range = NSRange(location: 0, length: self.textStorage.length)
+//                    self.editorTextStorage.beginEditing()
+//                    self.editorTextStorage.edited(.editedAttributes, range: range, changeInLength: 0)
+//                    self.editorTextStorage.endEditing()
+//                }
+//            }
+//            completion?(!operation.isCancelled)
+//        }
+//        queue.addOperation(operation)
     }
 }
 
