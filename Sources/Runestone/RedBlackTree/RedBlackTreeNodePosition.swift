@@ -11,12 +11,12 @@ public final class RedBlackTreeNodePosition {
     public let nodeStartLocation: Int
     public let index: Int
     public let offset: Int
-    public let totalLength: Int
+    public let value: Int
 
-    init(nodeStartLocation: Int, index: Int, offset: Int, totalLength: Int) {
+    init(nodeStartLocation: Int, index: Int, offset: Int, value: Int) {
         self.nodeStartLocation = nodeStartLocation
         self.index = index
         self.offset = offset
-        self.totalLength = totalLength
+        self.value = value
     }
 }

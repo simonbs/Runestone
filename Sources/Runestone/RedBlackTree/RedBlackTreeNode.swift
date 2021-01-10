@@ -9,12 +9,12 @@ import Foundation
 
 final class RedBlackTreeNode<NodeData> {
     let id = UUID()
-    var nodeTotalLength: Int
+    var nodeTotalValue: Int
     var nodeTotalCount: Int
     var location: Int {
         return tree.location(of: self)
     }
-    var totalLength: Int
+    var value: Int
     var index: Int {
         return tree.index(of: self)
     }
@@ -33,11 +33,11 @@ final class RedBlackTreeNode<NodeData> {
         }
     }
 
-    init(tree: RedBlackTree<NodeData>, totalLength: Int, data: NodeData) {
+    init(tree: RedBlackTree<NodeData>, value: Int, data: NodeData) {
         self._tree = tree
         self.nodeTotalCount = 1
-        self.nodeTotalLength = totalLength
-        self.totalLength = totalLength
+        self.nodeTotalValue = value
+        self.value = value
         self.data = data
     }
 }

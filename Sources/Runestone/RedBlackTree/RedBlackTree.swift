@@ -11,37 +11,37 @@ final class RedBlackTree<NodeData> {
     var nodeTotalCount: Int {
         return root.nodeTotalCount
     }
-    var nodeTotalLength: Int {
-        return root.nodeTotalLength
+    var nodeTotalValue: Int {
+        return root.nodeTotalValue
     }
 
     private(set) var root: RedBlackTreeNode<NodeData>!
 
     init(rootData: NodeData) {
-        root = RedBlackTreeNode<NodeData>(tree: self, totalLength: 0, data: rootData)
+        root = RedBlackTreeNode<NodeData>(tree: self, value: 0, data: rootData)
         root.color = .black
     }
 
     func reset(rootData: NodeData) {
-        root = RedBlackTreeNode<NodeData>(tree: self, totalLength: 0, data: rootData)
+        root = RedBlackTreeNode<NodeData>(tree: self, value: 0, data: rootData)
     }
 
     func node(containgLocation location: Int) -> RedBlackTreeNode<NodeData> {
         assert(location >= 0)
-        assert(location <= root.nodeTotalLength)
-        if location == root.nodeTotalLength {
+        assert(location <= root.nodeTotalValue)
+        if location == root.nodeTotalValue {
             return root.rightMost
         } else {
             var remainingLocation = location
             var node = root!
             while true {
-                if let leftNode = node.left, remainingLocation < leftNode.nodeTotalLength {
+                if let leftNode = node.left, remainingLocation < leftNode.nodeTotalValue {
                     node = leftNode
                 } else {
                     if let leftNode = node.left {
-                        remainingLocation -= leftNode.nodeTotalLength
+                        remainingLocation -= leftNode.nodeTotalValue
                     }
-                    remainingLocation -= node.totalLength
+                    remainingLocation -= node.value
                     if remainingLocation < 0 {
                         return node
                     } else {
@@ -53,40 +53,40 @@ final class RedBlackTree<NodeData> {
     }
 
     func nodePosition(at location: Int) -> RedBlackTreeNodePosition? {
-        guard location >= 0 && location <= root.nodeTotalLength else {
+        guard location >= 0 && location <= root.nodeTotalValue else {
             return nil
         }
-        if location == root.nodeTotalLength {
+        if location == root.nodeTotalValue {
             let node = root.rightMost
-            let nodeStartLocation = root.nodeTotalLength - node.nodeTotalLength
+            let nodeStartLocation = root.nodeTotalValue - node.nodeTotalValue
             let offset = location - nodeStartLocation
             return RedBlackTreeNodePosition(
                 nodeStartLocation: nodeStartLocation,
                 index: node.index,
                 offset: offset,
-                totalLength: node.totalLength)
+                value: node.value)
         } else {
             var nodeStartLocation = 0
             var remainingLocation = location
             var node = root!
             while true {
-                if let leftNode = node.left, remainingLocation < leftNode.nodeTotalLength {
+                if let leftNode = node.left, remainingLocation < leftNode.nodeTotalValue {
                     node = leftNode
                 } else {
                     if let leftNode = node.left {
-                        nodeStartLocation += leftNode.nodeTotalLength
-                        remainingLocation -= leftNode.nodeTotalLength
+                        nodeStartLocation += leftNode.nodeTotalValue
+                        remainingLocation -= leftNode.nodeTotalValue
                     }
-                    nodeStartLocation += node.totalLength
-                    remainingLocation -= node.totalLength
+                    nodeStartLocation += node.value
+                    remainingLocation -= node.value
                     if remainingLocation < 0 {
-                        nodeStartLocation -= node.totalLength
+                        nodeStartLocation -= node.value
                         let offset = location - nodeStartLocation
                         return RedBlackTreeNodePosition(
                             nodeStartLocation: nodeStartLocation,
                             index: node.index,
                             offset: offset,
-                            totalLength: node.totalLength)
+                            value: node.value)
                     } else {
                         node = node.right!
                     }
@@ -96,14 +96,14 @@ final class RedBlackTree<NodeData> {
     }
 
     func location(of node: RedBlackTreeNode<NodeData>) -> Int {
-        var location = node.left?.nodeTotalLength ?? 0
+        var location = node.left?.nodeTotalValue ?? 0
         var workingNode = node
         while let parentNode = workingNode.parent {
             if workingNode === workingNode.parent?.right {
                 if let leftNode = workingNode.parent?.left {
-                    location += leftNode.nodeTotalLength
+                    location += leftNode.nodeTotalValue
                 }
-                location += parentNode.totalLength
+                location += parentNode.value
             }
             workingNode = parentNode
         }
@@ -147,8 +147,8 @@ final class RedBlackTree<NodeData> {
     }
 
     @discardableResult
-    func insertNode(ofLength length: Int, withData data: NodeData, after existingNode: RedBlackTreeNode<NodeData>) -> RedBlackTreeNode<NodeData> {
-        let newNode = RedBlackTreeNode<NodeData>(tree: self, totalLength: length, data: data)
+    func insertNode(value: Int, data: NodeData, after existingNode: RedBlackTreeNode<NodeData>) -> RedBlackTreeNode<NodeData> {
+        let newNode = RedBlackTreeNode<NodeData>(tree: self, value: value, data: data)
         insert(newNode, after: existingNode)
         return newNode
     }
@@ -189,18 +189,18 @@ final class RedBlackTree<NodeData> {
 
     func updateAfterChangingChildren(of node: RedBlackTreeNode<NodeData>) {
         var totalCount = 1
-        var totalLength = node.totalLength
+        var totalValue = node.value
         if let leftNode = node.left {
             totalCount += leftNode.nodeTotalCount
-            totalLength += leftNode.nodeTotalLength
+            totalValue += leftNode.nodeTotalValue
         }
         if let rightNode = node.right {
             totalCount += rightNode.nodeTotalCount
-            totalLength += rightNode.nodeTotalLength
+            totalValue += rightNode.nodeTotalValue
         }
-        if totalCount != node.nodeTotalCount || totalLength != node.nodeTotalLength {
+        if totalCount != node.nodeTotalCount || totalValue != node.nodeTotalValue {
             node.nodeTotalCount = totalCount
-            node.nodeTotalLength = totalLength
+            node.nodeTotalValue = totalValue
             if let parent = node.parent {
                 updateAfterChangingChildren(of: parent)
             }
