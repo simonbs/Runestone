@@ -7,7 +7,7 @@
 
 import UIKit
 
-final class EditorTextLayer: CALayer {
+final class EditorTextLayer {
     var lineIndex: Int = 0
     var font: UIFont? {
         didSet {
@@ -16,9 +16,9 @@ final class EditorTextLayer: CALayer {
             }
         }
     }
-    override var bounds: CGRect {
+    var frame: CGRect = .zero {
         didSet {
-            if bounds != oldValue {
+            if frame != oldValue {
                 _textFrame = nil
             }
         }
@@ -51,7 +51,7 @@ final class EditorTextLayer: CALayer {
                 return frame
             } else if let framesetter = framesetter {
                 let path = CGMutablePath()
-                path.addRect(bounds)
+                path.addRect(frame)
                 _textFrame = CTFramesetterCreateFrame(framesetter, CFRangeMake(0, 0), path, nil)
                 return _textFrame
             } else {
@@ -62,33 +62,9 @@ final class EditorTextLayer: CALayer {
     private var _framesetter: CTFramesetter?
     private var _textFrame: CTFrame?
 
-    override init() {
-        super.init()
-        isGeometryFlipped = true
-    }
-
-    override init(layer: Any) {
-        super.init()
-        isGeometryFlipped = true
-        if let otherTextLayer = layer as? EditorTextLayer {
-            lineIndex = otherTextLayer.lineIndex
-            font = otherTextLayer.font
-            cachedPreferredSize = otherTextLayer.cachedPreferredSize
-            cachedConstrainingWidth = otherTextLayer.cachedConstrainingWidth
-            attributedString = otherTextLayer.attributedString
-            _framesetter = otherTextLayer._framesetter
-            _textFrame = otherTextLayer._textFrame
-        }
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func draw(in ctx: CGContext) {
-        super.draw(in: ctx)
+    func draw(in context: CGContext) {
         if let textFrame = textFrame {
-            CTFrameDraw(textFrame, ctx)
+            CTFrameDraw(textFrame, context)
         }
     }
 
@@ -138,8 +114,8 @@ final class EditorTextLayer: CALayer {
                 let height = ascent + descent
                 let xPos = CTLineGetOffsetForStringIndex(line, index, nil)
                 let yPos = origin.y - descent
-                let flippedYPos = bounds.height - (yPos + height)
-                return CGRect(x: xPos, y: flippedYPos, width: 3, height: height)
+//                let flippedYPos = bounds.height - (yPos + height)
+                return CGRect(x: xPos, y: yPos, width: 3, height: height)
             }
         }
         return nil
@@ -166,8 +142,8 @@ final class EditorTextLayer: CALayer {
                 CTLineGetTypographicBounds(line, &ascent, &descent, nil)
                 let height = ascent + descent
                 let yPos = origin.y - descent
-                let flippedYPos = bounds.height - (yPos + height)
-                return CGRect(x: xStart, y: flippedYPos, width: xEnd - xStart, height: height)
+//                let flippedYPos = bounds.height - (yPos + height)
+                return CGRect(x: xStart, y: yPos, width: xEnd - xStart, height: height)
             }
         }
         return nil

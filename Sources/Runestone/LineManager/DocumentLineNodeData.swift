@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CoreGraphics
 
 final class DocumentLineNodeData {
     var delimiterLength = 0 {
@@ -16,5 +17,11 @@ final class DocumentLineNodeData {
     var totalLength: Int = 0
     var length: Int {
         return totalLength - delimiterLength
+    }
+    var frameHeight: CGFloat
+    var totalFrameHeight: CGFloat = 0
+
+    init(frameHeight: CGFloat) {
+        self.frameHeight = frameHeight
     }
 }

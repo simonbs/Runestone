@@ -23,7 +23,20 @@ final class EditorBackingView: UIView {
     }
     var selectedTextRange: NSRange?
     var markedTextRange: NSRange?
-    var font = UIFont(name: "Menlo-Regular", size: 14)!
+    var font = UIFont(name: "Menlo-Regular", size: 14)! {
+        didSet {
+            if font != oldValue {
+                lineManager.estimatedLineHeight = font.lineHeight
+            }
+        }
+    }
+    var viewport: CGRect = .zero {
+        didSet {
+            if viewport != oldValue {
+                setNeedsDisplay()
+            }
+        }
+    }
     var contentSize: CGSize {
         if isContentSizeInvalid {
             updateContentSize()
@@ -33,9 +46,8 @@ final class EditorBackingView: UIView {
     }
 
     private let lineManager = LineManager()
-    private var textLayers: [LineFrameNodeID: EditorTextLayer] = [:]
-    private var visibleTextLayers: [EditorTextLayer] = []
-    private var layersPendingStringUpdate: Set<EditorTextLayer> = []
+    private var textLayers: [DocumentLineNodeID: EditorTextLayer] = [:]
+    private var visibleTextLayerIDs: Set<DocumentLineNodeID> = []
     private var isContentSizeInvalid = false
     private var _contentSize: CGSize = .zero
 
@@ -45,10 +57,27 @@ final class EditorBackingView: UIView {
     init() {
         super.init(frame: .zero)
         lineManager.delegate = self
+        lineManager.estimatedLineHeight = font.lineHeight
+        NotificationCenter.default.addObserver(self, selector: #selector(didReceiveMemoryWarning(_:)), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        // Core Text has a flipped coordinate system so we flip our context before drawing the text.
+        let context = UIGraphicsGetCurrentContext()!
+        context.saveGState()
+        context.textMatrix = .identity
+        context.translateBy(x: 0, y: rect.height)
+        context.scaleBy(x: 1, y: -1)
+        drawLines(in: rect, of: context)
+        context.restoreGState()
+        if isContentSizeInvalid {
+            delegate?.editorBackingViewDidInvalidateContentSize(self)
+        }
     }
 
     func insertText(_ text: String) {
@@ -137,45 +166,6 @@ final class EditorBackingView: UIView {
         return nil
 //        return textLayerA.closestIndex(to: point)
     }
-
-    func layoutLines(in rect: CGRect) {
-        let visibleLines = lineManager.visibleLines(in: rect)
-        var isContentHeightValid = true
-        var newVisibleTextLayers: [EditorTextLayer] = []
-        for visibleLine in visibleLines {
-            let textLayer = getTextLayer(forLineId: visibleLine.lineFrame.id)
-            var height = CGFloat(visibleLine.lineFrame.value)
-            if layersPendingStringUpdate.contains(textLayer) {
-                let range = NSRange(location: visibleLine.documentLine.location, length: visibleLine.documentLine.value)
-                let lineString = string.substring(with: range) as NSString
-                textLayer.setString(lineString)
-                textLayer.setNeedsDisplay()
-                let size = textLayer.preferredSize(constrainedToWidth: bounds.width)
-                let didUpdateHeight = lineManager.setHeight(size.height, of: visibleLine.lineFrame)
-                height = size.height
-                if didUpdateHeight {
-                    isContentHeightValid = false
-                }
-                layersPendingStringUpdate.remove(textLayer)
-            }
-            textLayer.lineIndex = visibleLine.documentLine.index
-            if textLayer.superlayer == nil {
-                layer.addSublayer(textLayer)
-            }
-            textLayer.frame = CGRect(x: 0, y: visibleLine.lineFrame.location, width: bounds.width, height: height)
-            newVisibleTextLayers.append(textLayer)
-        }
-        for textLayer in visibleTextLayers {
-            if !newVisibleTextLayers.contains(textLayer) {
-                textLayer.removeFromSuperlayer()
-            }
-        }
-        visibleTextLayers = newVisibleTextLayers
-        if !isContentHeightValid {
-            isContentSizeInvalid = true
-            delegate?.editorBackingViewDidInvalidateContentSize(self)
-        }
-    }
 }
 
 private extension EditorBackingView {
@@ -183,21 +173,58 @@ private extension EditorBackingView {
 //        return lineManager.line(containingCharacterAt: location)?.lineNumber
 //    }
 
-    private func getTextLayer(forLineId lineId: LineFrameNodeID) -> EditorTextLayer {
+    private func drawLines(in rect: CGRect, of context: CGContext) {
+        visibleTextLayerIDs = []
+        let visibleLines = lineManager.visibleLines(in: viewport)
+        for visibleLine in visibleLines {
+            draw(visibleLine, in: rect, of: context)
+            visibleTextLayerIDs.insert(visibleLine.id)
+        }
+    }
+
+    private func draw(_ line: DocumentLineNode, in rect: CGRect, of context: CGContext) {
+        let textLayer = getTextLayer(forLineId: line.id)
+        var height = line.data.frameHeight
+        let range = NSRange(location: line.location, length: line.value)
+        let lineString = string.substring(with: range) as NSString
+        textLayer.setString(lineString)
+        let size = textLayer.preferredSize(constrainedToWidth: bounds.width)
+        let didUpdateHeight = lineManager.setHeight(size.height, of: line)
+        height = size.height
+        textLayer.lineIndex = line.index
+        // Adjust the y-position to the flipped coordinate system.
+        let yPosition = viewport.minY + rect.height - line.yPosition - height
+        textLayer.frame = CGRect(x: 0, y: yPosition, width: bounds.width, height: height)
+        textLayer.draw(in: context)
+        if didUpdateHeight {
+            isContentSizeInvalid = true
+        }
+        if textLayers[line.id] == nil {
+            textLayers[line.id] = textLayer
+        }
+    }
+
+    private func getTextLayer(forLineId lineId: DocumentLineNodeID) -> EditorTextLayer {
         if let textLayer = textLayers[lineId] {
             return textLayer
         } else {
             let textLayer = EditorTextLayer()
-            textLayer.contentsScale = UIScreen.main.scale
             textLayer.font = font
             textLayers[lineId] = textLayer
-            layersPendingStringUpdate.insert(textLayer)
             return textLayer
         }
     }
 
-    func updateContentSize() {
+    private func updateContentSize() {
         _contentSize = CGSize(width: bounds.width, height: lineManager.contentHeight)
+    }
+
+    @objc private func didReceiveMemoryWarning(_ notification: Notification) {
+        let allTextLayerIDs = Set(textLayers.keys)
+        let unusedTextLayerIDs = allTextLayerIDs.subtracting(visibleTextLayerIDs)
+        for unusedTextLayerID in unusedTextLayerIDs {
+            textLayers.removeValue(forKey: unusedTextLayerID)
+        }
     }
 }
 

@@ -7,7 +7,7 @@
 
 import Foundation
 
-protocol RedBlackTreeNodeID: Identifiable {
+protocol RedBlackTreeNodeID: Identifiable & Hashable {
     init()
 }
 
@@ -31,15 +31,15 @@ final class RedBlackTreeNode<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTree
     var parent: RedBlackTreeNode?
     var color: RedBlackTreeNodeColor = .black
     let data: NodeData
-
-    private weak var _tree: Tree?
-    private var tree: Tree {
+    var tree: Tree {
         if let tree = _tree {
             return tree
         } else {
             fatalError("Accessing tree after it has been deallocated.")
         }
     }
+    
+    private weak var _tree: Tree?
 
     init(tree: Tree, value: NodeValue, data: NodeData) {
         self._tree = tree

@@ -16,7 +16,7 @@ public final class EditorInputView: UIScrollView, UITextInput {
         set {
             textView.string = NSMutableString(string: newValue)
             contentSize = textView.contentSize
-            layoutLines()
+            setNeedsDisplay()
         }
     }
     public override var inputAccessoryView: UIView? {
@@ -67,6 +67,13 @@ public final class EditorInputView: UIScrollView, UITextInput {
             textView.backgroundColor = newValue
         }
     }
+    public override var bounds: CGRect {
+        didSet {
+            if bounds != oldValue {
+                textView.viewport = bounds
+            }
+        }
+    }
 
     private let textView = EditorBackingView()
     private let tapGestureRecognizer = UITapGestureRecognizer()
@@ -92,10 +99,7 @@ public final class EditorInputView: UIScrollView, UITextInput {
 
     public override func layoutSubviews() {
         super.layoutSubviews()
-        textView.frame = CGRect(x: 0, y: 0, width: frame.width, height: frame.height)
-        if !isProcessingNewText {
-            layoutLines()
-        }
+        textView.frame = CGRect(x: 0, y: bounds.minY, width: bounds.width, height: bounds.height)
     }
 
     @discardableResult
@@ -138,7 +142,7 @@ public final class EditorInputView: UIScrollView, UITextInput {
             DispatchQueue.main.sync {
                 self.isProcessingNewText = false
                 if !operation.isCancelled {
-                    self.layoutLines()
+                    self.setNeedsDisplay()
                 }
             }
             completion?(!operation.isCancelled)
@@ -161,18 +165,18 @@ public extension EditorInputView {
 public extension EditorInputView {
     func insertText(_ text: String) {
         textView.insertText(text)
-        layoutLines()
+        setNeedsDisplay()
     }
 
     func deleteBackward() {
         textView.deleteBackward()
-        layoutLines()
+        setNeedsDisplay()
     }
 
     func replace(_ range: UITextRange, withText text: String) {
         if let indexedRange = range as? EditorIndexedRange {
             textView.replace(indexedRange.range, withText: text)
-            layoutLines()
+            setNeedsDisplay()
         }
     }
 
@@ -308,16 +312,6 @@ public extension EditorInputView {
     }
 
     func setBaseWritingDirection(_ writingDirection: NSWritingDirection, for range: UITextRange) {}
-}
-
-// MARK: - Layout
-private extension EditorInputView {
-    private func layoutLines() {
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        textView.layoutLines(in: bounds)
-        CATransaction.commit()
-    }
 }
 
 // MARK: - Interaction

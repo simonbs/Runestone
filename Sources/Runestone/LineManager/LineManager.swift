@@ -23,19 +23,8 @@ struct DocumentLineNodeID: RedBlackTreeNodeID, Hashable {
     let id = UUID()
 }
 
-struct LineFrameNodeID: RedBlackTreeNodeID, Hashable {
-    let id = UUID()
-}
-
 typealias DocumentLineTree = RedBlackTree<DocumentLineNodeID, Int, DocumentLineNodeData>
-typealias LineFrameTree = RedBlackTree<LineFrameNodeID, CGFloat, Void?>
 typealias DocumentLineNode = RedBlackTreeNode<DocumentLineNodeID, Int, DocumentLineNodeData>
-typealias LineFrameNode = RedBlackTreeNode<LineFrameNodeID, CGFloat, Void?>
-
-struct VisibleLine {
-    let documentLine: DocumentLineNode
-    let lineFrame: LineFrameNode
-}
 
 final class LineManager {
     weak var delegate: LineManagerDelegate?
@@ -43,17 +32,12 @@ final class LineManager {
         return documentLineTree.nodeTotalCount
     }
     var contentHeight: CGFloat {
-        let rightMost = lineFrameTree.root.rightMost
-        return rightMost.location + rightMost.value
+        let rightMost = documentLineTree.root.rightMost
+        return rightMost.yPosition + rightMost.data.frameHeight
     }
     var estimatedLineHeight: CGFloat = 12
 
-    private let documentLineTree = DocumentLineTree(minimumValue: 0, rootValue: 0, rootData: DocumentLineNodeData())
-    private let lineFrameTree = LineFrameTree(minimumValue: 0, rootValue: 0, rootData: nil)
-    private var documentLineNodeMap: [DocumentLineNodeID: DocumentLineNode] = [:]
-    private var lineFrameNodeMap: [LineFrameNodeID: LineFrameNode] = [:]
-    private var documentLineToLineFrameMap: [DocumentLineNodeID: LineFrameNodeID] = [:]
-    private var lineFrameToDocumentLineMap: [LineFrameNodeID: DocumentLineNodeID] = [:]
+    private let documentLineTree: DocumentLineTree
     private var currentDelegate: LineManagerDelegate {
         if let delegate = delegate {
             return delegate
@@ -63,43 +47,34 @@ final class LineManager {
     }
 
     init() {
-//        reset()
+        let rootData = DocumentLineNodeData(frameHeight: estimatedLineHeight)
+        documentLineTree = DocumentLineTree(minimumValue: 0, rootValue: 0, rootData: rootData)
+        documentLineTree.childrenUpdater = DocumentLineChildrenUpdater()
     }
-
-//    func reset() {
-//        // Rebuild the trees
-//        documentLineTree.reset(rootValue: 0, rootData: DocumentLineNodeData())
-//        lineFrameTree.reset(rootValue: 0, rootData: nil)
-//        documentLineTree.root.data.totalLength = documentLineTree.root.value
-//        // Remove old data from our maps
-//        documentLineNodeMap.removeAll()
-//        lineFrameNodeMap.removeAll()
-//        documentLineToLineFrameMap.removeAll()
-//        lineFrameToDocumentLineMap.removeAll()
-//        // Put the root values into our maps
-//        documentLineNodeMap[documentLineTree.root.id] = documentLineTree.root
-//        lineFrameNodeMap[lineFrameTree.root.id] = lineFrameTree.root
-//        documentLineToLineFrameMap[documentLineTree.root.id] = lineFrameTree.root.id
-//        lineFrameToDocumentLineMap[lineFrameTree.root.id] = documentLineTree.root.id
-//    }
 
     func rebuild(from string: NSString) {
         // Reset the tree so we only have a single line.
-        documentLineTree.reset(rootValue: 0, rootData: DocumentLineNodeData())
+        let rootData = DocumentLineNodeData(frameHeight: estimatedLineHeight)
+        documentLineTree.reset(rootValue: 0, rootData: rootData)
         // Iterate over lines in the string.
         var line = documentLineTree.node(atIndex: 0)
         var workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: 0)
         var lines: [DocumentLineNode] = []
         var lastDelimiterEnd = 0
+        var totalFrameHeight: CGFloat = 0
         while let newLineRange = workingNewLineRange {
             let totalLength = (newLineRange.location + newLineRange.length) - lastDelimiterEnd
             line.value = totalLength
             line.data.totalLength = totalLength
             line.data.delimiterLength = newLineRange.length
+            line.data.frameHeight = estimatedLineHeight
+            line.data.totalFrameHeight = totalFrameHeight
             lastDelimiterEnd = newLineRange.location + newLineRange.length
             lines.append(line)
-            line = DocumentLineNode(tree: documentLineTree, value: 0, data: DocumentLineNodeData())
+            let data = DocumentLineNodeData(frameHeight: estimatedLineHeight)
+            line = DocumentLineNode(tree: documentLineTree, value: 0, data: data)
             workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: lastDelimiterEnd)
+            totalFrameHeight += estimatedLineHeight
         }
         let totalLength = string.length - lastDelimiterEnd
         line.value = totalLength
@@ -210,24 +185,20 @@ final class LineManager {
     }
 
     @discardableResult
-    func setHeight(_ newHeight: CGFloat, of lineFrame: LineFrameNode) -> Bool {
-        if newHeight != CGFloat(lineFrame.value) {
-            lineFrame.value = newHeight
-            lineFrameTree.updateAfterChangingChildren(of: lineFrame)
+    func setHeight(_ newHeight: CGFloat, of line: DocumentLineNode) -> Bool {
+        if newHeight != line.data.frameHeight {
+            line.data.frameHeight = newHeight
+            documentLineTree.updateAfterChangingChildren(of: line)
             return true
         } else {
             return false
         }
     }
 
-    func visibleLines(in rect: CGRect) -> [VisibleLine] {
-        let results = lineFrameTree.searchRange(CGFloat(rect.minY) ... CGFloat(rect.maxY))
-        return results.compactMap { result in
-            if let documentLineId = lineFrameToDocumentLineMap[result.node.id], let documentLine = documentLineNodeMap[documentLineId] {
-                return VisibleLine(documentLine: documentLine, lineFrame: result.node)
-            } else {
-                return nil
-            }
+    func visibleLines(in rect: CGRect) -> [DocumentLineNode] {
+        let query = DocumentLinesInBoundsSearchQuery(bounds: rect)
+        return documentLineTree.search(using: query).compactMap { match in
+            return match.node
         }
     }
 }
@@ -268,31 +239,42 @@ private extension LineManager {
 
     @discardableResult
     private func insertLine(ofLength length: Int, after otherLine: DocumentLineNode) -> DocumentLineNode {
-        let insertedLine = documentLineTree.insertNode(value: length, data: DocumentLineNodeData(), after: otherLine)
+        let data = DocumentLineNodeData(frameHeight: estimatedLineHeight)
+        let insertedLine = documentLineTree.insertNode(value: length, data: data, after: otherLine)
         insertedLine.data.totalLength = length
-        documentLineNodeMap[insertedLine.id] = insertedLine
-//        if let afterLineFrameNodeId = documentLineToLineFrameMap[otherLine.id], let afterLineFrameNode = lineFrameNodeMap[afterLineFrameNodeId] {
-//            let insertedFrame = lineFrameTree.insertNode(value: estimatedLineHeight, data: nil, after: afterLineFrameNode)
-//            lineFrameNodeMap[insertedFrame.id] = insertedFrame
-//            documentLineToLineFrameMap[insertedLine.id] = insertedFrame.id
-//            lineFrameToDocumentLineMap[insertedFrame.id] = insertedLine.id
-//        }
         delegate?.lineManager(self, didInsert: insertedLine)
         return insertedLine
     }
 
     private func remove(_ line: DocumentLineNode) {
         documentLineTree.remove(line)
-        documentLineNodeMap.removeValue(forKey: line.id)
-        if let lineFrameNodeId = documentLineToLineFrameMap[line.id] {
-            lineFrameNodeMap.removeValue(forKey: lineFrameNodeId)
-            lineFrameToDocumentLineMap.removeValue(forKey: lineFrameNodeId)
-        }
-        documentLineToLineFrameMap.removeValue(forKey: line.id)
         delegate?.lineManager(self, didRemove: line)
     }
 
     private func getCharacter(at location: Int) -> String {
         return currentDelegate.lineManager(self, characterAtLocation: location)
+    }
+}
+
+extension DocumentLineTree {
+    func yPosition(of node: DocumentLineNode) -> CGFloat {
+        var yPosition = node.left?.data.totalFrameHeight ?? 0
+        var workingNode = node
+        while let parentNode = workingNode.parent {
+            if workingNode === workingNode.parent?.right {
+                if let leftNode = workingNode.parent?.left {
+                    yPosition += leftNode.data.totalFrameHeight
+                }
+                yPosition += parentNode.data.frameHeight
+            }
+            workingNode = parentNode
+        }
+        return yPosition
+    }
+}
+
+extension DocumentLineNode {
+    var yPosition: CGFloat {
+        return tree.yPosition(of: self)
     }
 }

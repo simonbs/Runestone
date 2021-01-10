@@ -1,5 +1,5 @@
 //
-//  RangeSearchMatch.swift
+//  RedBlackTreeSearchMatch.swift
 //  
 //
 //  Created by Simon Støvring on 10/01/2021.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-final class RangeSearchMatch<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNodeValue, Data> {
+final class RedBlackTreeSearchMatch<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNodeValue, Data> {
     typealias Node = RedBlackTreeNode<NodeID, NodeValue, Data>
 
     let location: NodeValue

@@ -17,6 +17,7 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNode
     var nodeTotalValue: NodeValue {
         return root.nodeTotalValue
     }
+    var childrenUpdater: RedBlackTreeChildrenUpdater<NodeID, NodeValue, NodeData>?
 
     private let minimumValue: NodeValue
 
@@ -208,30 +209,37 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNode
             totalCount += rightNode.nodeTotalCount
             totalValue += rightNode.nodeTotalValue
         }
-        if totalCount != node.nodeTotalCount || totalValue != node.nodeTotalValue {
+        let hasNewTotalValues = totalCount != node.nodeTotalCount || totalValue != node.nodeTotalValue
+        if hasNewTotalValues {
             node.nodeTotalCount = totalCount
             node.nodeTotalValue = totalValue
-            if let parent = node.parent {
-                updateAfterChangingChildren(of: parent)
-            }
+        }
+        let didUpdateExternally = childrenUpdater?.updateAfterChangingChildren(of: node) ?? false
+        if (hasNewTotalValues || didUpdateExternally), let parent = node.parent {
+            updateAfterChangingChildren(of: parent)
         }
     }
 
-    func searchRange(_ range: ClosedRange<NodeValue>) -> [RangeSearchMatch<NodeID, NodeValue, NodeData>] {
-        var matches: [RangeSearchMatch<NodeID, NodeValue, NodeData>] = []
+    func searchRange(_ range: ClosedRange<NodeValue>) -> [RedBlackTreeSearchMatch<NodeID, NodeValue, NodeData>] {
+        let query = ClosedRangeValueSearchQuery<NodeID, NodeValue, NodeData>(range: range)
+        return search(using: query)
+    }
+
+    func search<T: RedBlackTreeSearchQuery>(using query: T) -> [RedBlackTreeSearchMatch<NodeID, NodeValue, NodeData>] where T.NodeID == NodeID, T.NodeValue == NodeValue, T.NodeData == NodeData {
+        var matches: [RedBlackTreeSearchMatch<NodeID, NodeValue, NodeData>] = []
         func search(from node: Node) {
             let nodeLowerBound = node.location
             let nodeUpperBound = nodeLowerBound + node.value
-            if nodeLowerBound > range.lowerBound {
+            if query.shouldTraverseLeftChildren(of: node) {
                 if let leftNode = node.left {
                     search(from: leftNode)
                 }
             }
-            if nodeLowerBound <= range.upperBound && range.lowerBound <= nodeUpperBound {
-                let match = RangeSearchMatch(location: nodeLowerBound, value: nodeUpperBound, node: node)
+            if query.shouldInclude(node) {
+                let match = RedBlackTreeSearchMatch(location: nodeLowerBound, value: nodeUpperBound, node: node)
                 matches.append(match)
             }
-            if nodeUpperBound < range.upperBound {
+            if query.shouldTraverseRightChildren(of: node) {
                 if let rightNode = node.right {
                     search(from: rightNode)
                 }
