@@ -7,10 +7,14 @@
 
 import Foundation
 
-final class RedBlackTreeNode<NodeData> {
-    typealias Tree = RedBlackTree<NodeData>
+protocol RedBlackTreeNodeID: Identifiable {
+    init()
+}
 
-    let id = UUID()
+final class RedBlackTreeNode<NodeID: RedBlackTreeNodeID, NodeData> {
+    typealias Tree = RedBlackTree<NodeID, NodeData>
+
+    let id = NodeID()
     var nodeTotalValue: Int
     var nodeTotalCount: Int
     var location: Int {

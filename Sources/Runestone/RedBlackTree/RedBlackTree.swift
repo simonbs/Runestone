@@ -7,8 +7,8 @@
 
 import Foundation
 
-final class RedBlackTree<NodeData> {
-    typealias Node = RedBlackTreeNode<NodeData>
+final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeData> {
+    typealias Node = RedBlackTreeNode<NodeID, NodeData>
 
     var nodeTotalCount: Int {
         return root.nodeTotalCount

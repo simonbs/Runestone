@@ -19,17 +19,16 @@ extension LineManagerDelegate {
     func lineManager(_ lineManager: LineManager, didRemove line: DocumentLineNode) {}
 }
 
-//struct DocumentLineNodeID: RedBlackTreeNodeID, Hashable {
-//    let id = UUID()
-//}
-//
-//struct LineFrameNodeID: RedBlackTreeNodeID, Hashable {
-//    let id = UUID()
-//}
+struct DocumentLineNodeID: RedBlackTreeNodeID, Hashable {
+    let id = UUID()
+}
 
-//typealias DocumentLineNode = RedBlackTreeNode
-typealias DocumentLineNode = RedBlackTreeNode<DocumentLineNodeData>
-typealias LineFrameNode = RedBlackTreeNode<LineFrameNodeData>
+struct LineFrameNodeID: RedBlackTreeNodeID, Hashable {
+    let id = UUID()
+}
+
+typealias DocumentLineNode = RedBlackTreeNode<DocumentLineNodeID, DocumentLineNodeData>
+typealias LineFrameNode = RedBlackTreeNode<LineFrameNodeID, LineFrameNodeData>
 
 struct VisibleLine {
     let documentLine: DocumentLineNode
@@ -48,12 +47,12 @@ final class LineManager {
     }
     var estimatedLineHeight: CGFloat = 12
 
-    private let documentLineTree = RedBlackTree<DocumentLineNodeData>(rootData: DocumentLineNodeData())
-    private let lineFrameTree = RedBlackTree<LineFrameNodeData>(rootData: LineFrameNodeData())
-    private var documentLineNodeMap: [UUID: DocumentLineNode] = [:]
-    private var lineFrameNodeMap: [UUID: LineFrameNode] = [:]
-    private var documentLineToLineFrameMap: [UUID: UUID] = [:]
-    private var lineFrameToDocumentLineMap: [UUID: UUID] = [:]
+    private let documentLineTree = RedBlackTree<DocumentLineNodeID, DocumentLineNodeData>(rootData: DocumentLineNodeData())
+    private let lineFrameTree = RedBlackTree<LineFrameNodeID, LineFrameNodeData>(rootData: LineFrameNodeData())
+    private var documentLineNodeMap: [DocumentLineNodeID: DocumentLineNode] = [:]
+    private var lineFrameNodeMap: [LineFrameNodeID: LineFrameNode] = [:]
+    private var documentLineToLineFrameMap: [DocumentLineNodeID: LineFrameNodeID] = [:]
+    private var lineFrameToDocumentLineMap: [LineFrameNodeID: DocumentLineNodeID] = [:]
     private var currentDelegate: LineManagerDelegate {
         if let delegate = delegate {
             return delegate
