@@ -82,29 +82,29 @@ final class GutterController {
     }
 
     func draw(_ lineFragment: EditorLineFragment) {
-        let shouldDraw = showLineNumbers || highlightSelectedLine
-        guard shouldDraw, let textView = textView, let layoutManager = layoutManager, let textContainer = textContainer else {
-            return
-        }
-        guard let linePosition = lineManager?.linePosition(at: lineFragment.glyphRange.location) else {
-            return
-        }
-        guard lineFragment.glyphRange.location == linePosition.lineStartLocation else {
-            return
-        }
-        let lineFragmentRect = layoutManager.lineFragmentRect(forGlyphAt: lineFragment.glyphRange.location, effectiveRange: nil)
-        let lineRange = NSRange(location: linePosition.lineStartLocation, length: linePosition.length)
-        let isLineSelected = shouldHighlightLine(spanning: lineRange, forSelectedRange: textView.selectedRange)
-        if isLineSelected {
-            let entireLineRange = NSRange(location: linePosition.lineStartLocation, length: linePosition.length)
-            let lineBoundingRect = layoutManager.boundingRect(forGlyphRange: entireLineRange, in: textContainer)
-            let lineBackgroundYPosition = lineBoundingRect.minY + additionalTextContainerInset.top
-            let lineBackgroundRect = CGRect(x: gutterWidth, y: lineBackgroundYPosition, width: textView.bounds.width, height: lineBoundingRect.height)
-            drawLineBackgrounds(in: lineBackgroundRect)
-        }
-        let gutterRect = CGRect(x: 0, y: lineFragmentRect.minY + additionalTextContainerInset.top, width: gutterWidth, height: lineFragmentRect.height)
-        let textColor = isLineSelected ? theme.selectedLinesLineNumberColor : theme.lineNumberColor
-        drawLineNumber(linePosition.lineNumber + 1, in: gutterRect, textColor: textColor)
+//        let shouldDraw = showLineNumbers || highlightSelectedLine
+//        guard shouldDraw, let textView = textView, let layoutManager = layoutManager, let textContainer = textContainer else {
+//            return
+//        }
+//        guard let linePosition = lineManager?.linePosition(at: lineFragment.glyphRange.location) else {
+//            return
+//        }
+//        guard lineFragment.glyphRange.location == linePosition.lineStartLocation else {
+//            return
+//        }
+//        let lineFragmentRect = layoutManager.lineFragmentRect(forGlyphAt: lineFragment.glyphRange.location, effectiveRange: nil)
+//        let lineRange = NSRange(location: linePosition.lineStartLocation, length: linePosition.length)
+//        let isLineSelected = shouldHighlightLine(spanning: lineRange, forSelectedRange: textView.selectedRange)
+//        if isLineSelected {
+//            let entireLineRange = NSRange(location: linePosition.lineStartLocation, length: linePosition.length)
+//            let lineBoundingRect = layoutManager.boundingRect(forGlyphRange: entireLineRange, in: textContainer)
+//            let lineBackgroundYPosition = lineBoundingRect.minY + additionalTextContainerInset.top
+//            let lineBackgroundRect = CGRect(x: gutterWidth, y: lineBackgroundYPosition, width: textView.bounds.width, height: lineBoundingRect.height)
+//            drawLineBackgrounds(in: lineBackgroundRect)
+//        }
+//        let gutterRect = CGRect(x: 0, y: lineFragmentRect.minY + additionalTextContainerInset.top, width: gutterWidth, height: lineFragmentRect.height)
+//        let textColor = isLineSelected ? theme.selectedLinesLineNumberColor : theme.lineNumberColor
+//        drawLineNumber(linePosition.lineNumber + 1, in: gutterRect, textColor: textColor)
     }
 
     func drawExtraLineIfNecessary() {

@@ -396,22 +396,22 @@ private extension EditorTextView {
     }
 
     private func highlightLines(in glyphRange: NSRange) {
-        guard syntaxHighlightController.canHighlight else {
-            return
-        }
-        let startLinePosition = lineManager.linePosition(at: glyphRange.location)
-        let endLinePosition = lineManager.linePosition(at: glyphRange.location + glyphRange.length)
-        if let startLinePosition = startLinePosition, let endLinePosition = endLinePosition {
-            let startLineNumber = startLinePosition.lineNumber
-            let endLineNumber = endLinePosition.lineNumber
-            let isRangeHiglighted = highlightedLines.contains(startLineNumber) && highlightedLines.contains(endLineNumber)
-            if !isRangeHiglighted {
-                let length = (endLinePosition.lineStartLocation + endLinePosition.length) - startLinePosition.lineStartLocation
-                let range = NSRange(location: startLinePosition.lineStartLocation, length: length)
-                syntaxHighlightController.highlight([range])
-                highlightedLines.insert(integersIn: startLineNumber ... endLineNumber)
-            }
-        }
+//        guard syntaxHighlightController.canHighlight else {
+//            return
+//        }
+//        let startLinePosition = lineManager.linePosition(at: glyphRange.location)
+//        let endLinePosition = lineManager.linePosition(at: glyphRange.location + glyphRange.length)
+//        if let startLinePosition = startLinePosition, let endLinePosition = endLinePosition {
+//            let startLineNumber = startLinePosition.lineNumber
+//            let endLineNumber = endLinePosition.lineNumber
+//            let isRangeHiglighted = highlightedLines.contains(startLineNumber) && highlightedLines.contains(endLineNumber)
+//            if !isRangeHiglighted {
+//                let length = (endLinePosition.lineStartLocation + endLinePosition.length) - startLinePosition.lineStartLocation
+//                let range = NSRange(location: startLinePosition.lineStartLocation, length: length)
+//                syntaxHighlightController.highlight([range])
+//                highlightedLines.insert(integersIn: startLineNumber ... endLineNumber)
+//            }
+//        }
     }
 
     private func insert(_ characterPair: EditorCharacterPair, in range: NSRange) {
@@ -462,11 +462,11 @@ extension EditorTextView: ParserDelegate {
 
 extension EditorTextView: EditorTextStorageDelegate {
     public func editorTextStorage(_ editorTextStorage: EditorTextStorage, willReplaceCharactersIn range: NSRange, with string: String) {
-        if string.isEmpty && range.length > 0, let linePosition = lineManager.linePosition(at: range.location) {
-            let isDeletingLastCharacterInLine = range.location + range.length == linePosition.lineStartLocation + linePosition.length
-            let stringTokenizer = tokenizer as? UITextInputStringTokenizer
-            stringTokenizer?.sbs_rangeEnclosingPositionReturnsNull = isDeletingLastCharacterInLine
-        }
+//        if string.isEmpty && range.length > 0, let linePosition = lineManager.linePosition(at: range.location) {
+//            let isDeletingLastCharacterInLine = range.location + range.length == linePosition.lineStartLocation + linePosition.length
+//            let stringTokenizer = tokenizer as? UITextInputStringTokenizer
+//            stringTokenizer?.sbs_rangeEnclosingPositionReturnsNull = isDeletingLastCharacterInLine
+//        }
     }
 
     public func editorTextStorage(_ editorTextStorage: EditorTextStorage, didReplaceCharactersIn range: NSRange, with string: String) {
