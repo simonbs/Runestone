@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  RedBlackTreeNode.swift
 //  
 //
 //  Created by Simon Støvring on 10/01/2021.
@@ -8,11 +8,6 @@
 import Foundation
 
 final class RedBlackTreeNode {
-    enum Color {
-        case black
-        case red
-    }
-
     let id = UUID()
     var nodeTotalLength: Int
     var nodeTotalCount: Int
@@ -34,7 +29,7 @@ final class RedBlackTreeNode {
     var left: RedBlackTreeNode?
     var right: RedBlackTreeNode?
     var parent: RedBlackTreeNode?
-    var color: Color = .black
+    var color: RedBlackTreeNodeColor = .black
 
     private weak var _tree: RedBlackTree?
     private var tree: RedBlackTree {

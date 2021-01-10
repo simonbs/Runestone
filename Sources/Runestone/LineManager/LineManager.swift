@@ -167,7 +167,11 @@ final class LineManager {
 
     func linePosition(at location: Int) -> LinePosition? {
         if let nodePosition = documentLineTree.nodePosition(at: location) {
-            return nodePosition
+            return LinePosition(
+                lineStartLocation: nodePosition.nodeStartLocation,
+                lineNumber: nodePosition.index,
+                column: nodePosition.offset,
+                totalLength: nodePosition.totalLength)
 //            let context = documentLineNodeContextMap[nodePosition.nodeId]!
 //            return LinePosition(
 //                lineStartLocation: Int(nodePosition.location),

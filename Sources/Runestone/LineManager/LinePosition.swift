@@ -2,7 +2,7 @@
 //  LinePosition.swift
 //  
 //
-//  Created by Simon Støvring on 09/12/2020.
+//  Created by Simon Støvring on 10/01/2021.
 //
 
 import Foundation
@@ -11,17 +11,12 @@ public final class LinePosition {
     public let lineStartLocation: Int
     public let lineNumber: Int
     public let column: Int
-    public let length: Int
-    public let delimiterLength: Int
-    public var totalLength: Int {
-        return length + delimiterLength
-    }
+    public let totalLength: Int
 
-    init(lineStartLocation: Int, lineNumber: Int, column: Int, length: Int, delimiterLength: Int) {
+    init(lineStartLocation: Int, lineNumber: Int, column: Int, totalLength: Int) {
         self.lineStartLocation = lineStartLocation
         self.lineNumber = lineNumber
         self.column = column
-        self.length = length
-        self.delimiterLength = delimiterLength
+        self.totalLength = totalLength
     }
 }

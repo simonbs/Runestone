@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  RedBlackTree.swift
 //  
 //
 //  Created by Simon Støvring on 10/01/2021.
@@ -8,11 +8,6 @@
 import Foundation
 
 final class RedBlackTree {
-    private enum Side {
-        case left
-        case right
-    }
-
     var nodeTotalCount: Int {
         return root.nodeTotalCount
     }
@@ -56,20 +51,19 @@ final class RedBlackTree {
         }
     }
 
-    func nodePosition(at location: Int) -> LinePosition? {
+    func nodePosition(at location: Int) -> RedBlackTreeNodePosition? {
         guard location >= 0 && location <= root.nodeTotalLength else {
             return nil
         }
         if location == root.nodeTotalLength {
             let node = root.rightMost
             let nodeStartLocation = root.nodeTotalLength - node.nodeTotalLength
-            let column = location - nodeStartLocation
-            return LinePosition(
-                lineStartLocation: nodeStartLocation,
-                lineNumber: node.index,
-                column: column,
-                length: node.length,
-                delimiterLength: node.delimiterLength)
+            let offset = location - nodeStartLocation
+            return RedBlackTreeNodePosition(
+                nodeStartLocation: nodeStartLocation,
+                index: node.index,
+                offset: offset,
+                totalLength: node.totalLength)
         } else {
             var nodeStartLocation = 0
             var remainingLocation = location
@@ -86,13 +80,12 @@ final class RedBlackTree {
                     remainingLocation -= node.totalLength
                     if remainingLocation < 0 {
                         nodeStartLocation -= node.totalLength
-                        let column = location - nodeStartLocation
-                        return LinePosition(
-                            lineStartLocation: nodeStartLocation,
-                            lineNumber: node.index,
-                            column: column,
-                            length: node.length,
-                            delimiterLength: node.delimiterLength)
+                        let offset = location - nodeStartLocation
+                        return RedBlackTreeNodePosition(
+                            nodeStartLocation: nodeStartLocation,
+                            index: node.index,
+                            offset: offset,
+                            totalLength: node.totalLength)
                     } else {
                         node = node.right!
                     }
@@ -425,7 +418,7 @@ private extension RedBlackTree {
         }
     }
 
-    private func getColor(of node: RedBlackTreeNode?) -> RedBlackTreeNode.Color {
+    private func getColor(of node: RedBlackTreeNode?) -> RedBlackTreeNodeColor {
         return node?.color ?? .black
     }
 }
