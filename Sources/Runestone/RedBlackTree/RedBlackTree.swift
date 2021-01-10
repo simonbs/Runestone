@@ -210,6 +210,30 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNode
             }
         }
     }
+
+    func searchRange(_ range: ClosedRange<NodeValue>) -> [RangeSearchMatch<NodeID, NodeValue, NodeData>] {
+        var matches: [RangeSearchMatch<NodeID, NodeValue, NodeData>] = []
+        func search(from node: Node) {
+            let nodeLowerBound = node.location
+            let nodeUpperBound = nodeLowerBound + node.value
+            if nodeLowerBound > range.lowerBound {
+                if let leftNode = node.left {
+                    search(from: leftNode)
+                }
+            }
+            if nodeLowerBound <= range.upperBound && range.lowerBound <= nodeUpperBound {
+                let match = RangeSearchMatch(location: nodeLowerBound, value: nodeUpperBound, node: node)
+                matches.append(match)
+            }
+            if nodeUpperBound < range.upperBound {
+                if let rightNode = node.right {
+                    search(from: rightNode)
+                }
+            }
+        }
+        search(from: root)
+        return matches
+    }
 }
 
 private extension RedBlackTree {

@@ -43,9 +43,8 @@ final class LineManager {
         return documentLineTree.nodeTotalCount
     }
     var contentHeight: CGFloat {
-        return 200
-//        let rightMost = lineFrameTree.root.rightMost
-//        return CGFloat(rightMost.location + rightMost.value)
+        let rightMost = lineFrameTree.root.rightMost
+        return rightMost.location + rightMost.value
     }
     var estimatedLineHeight: CGFloat = 12
 
@@ -185,27 +184,27 @@ final class LineManager {
         return documentLineTree.node(atIndex: index)
     }
 
-//    @discardableResult
-//    func setHeight(_ newHeight: CGFloat, of lineFrame: LineFrameNode) -> Bool {
-//        if newHeight != CGFloat(lineFrame.value) {
-//            lineFrame.value = newHeight
-//            lineFrameTree.updateAfterChangingChildren(of: lineFrame)
-//            return true
-//        } else {
-//            return false
-//        }
-//    }
+    @discardableResult
+    func setHeight(_ newHeight: CGFloat, of lineFrame: LineFrameNode) -> Bool {
+        if newHeight != CGFloat(lineFrame.value) {
+            lineFrame.value = newHeight
+            lineFrameTree.updateAfterChangingChildren(of: lineFrame)
+            return true
+        } else {
+            return false
+        }
+    }
 
-//    func visibleLines(in rect: CGRect) -> [VisibleLine] {
-//        let results = lineFrameTree.searchRange(Float(rect.minY) ... Float(rect.maxY))
-//        return results.compactMap { result in
-//            if let documentLineId = lineFrameToDocumentLineMap[result.node.id], let documentLine = documentLineNodeMap[documentLineId] {
-//                return VisibleLine(documentLine: documentLine, lineFrame: result.node)
-//            } else {
-//                return nil
-//            }
-//        }
-//    }
+    func visibleLines(in rect: CGRect) -> [VisibleLine] {
+        let results = lineFrameTree.searchRange(CGFloat(rect.minY) ... CGFloat(rect.maxY))
+        return results.compactMap { result in
+            if let documentLineId = lineFrameToDocumentLineMap[result.node.id], let documentLine = documentLineNodeMap[documentLineId] {
+                return VisibleLine(documentLine: documentLine, lineFrame: result.node)
+            } else {
+                return nil
+            }
+        }
+    }
 }
 
 private extension LineManager {
@@ -246,13 +245,13 @@ private extension LineManager {
     private func insertLine(ofLength length: Int, after otherLine: DocumentLineNode) -> DocumentLineNode {
         let insertedLine = documentLineTree.insertNode(value: length, data: DocumentLineNodeData(), after: otherLine)
         insertedLine.data.totalLength = length
-//        documentLineNodeMap[insertedLine.id] = insertedLine
-//        if let afterLineFrameNodeId = documentLineToLineFrameMap[otherLine.id], let afterLineFrameNode = lineFrameNodeMap[afterLineFrameNodeId] {
-//            let insertedFrame = lineFrameTree.insertNode(withValue: estimatedLineHeight, after: afterLineFrameNode)
-//            lineFrameNodeMap[insertedFrame.id] = insertedFrame
-//            documentLineToLineFrameMap[insertedLine.id] = insertedFrame.id
-//            lineFrameToDocumentLineMap[insertedFrame.id] = insertedLine.id
-//        }
+        documentLineNodeMap[insertedLine.id] = insertedLine
+        if let afterLineFrameNodeId = documentLineToLineFrameMap[otherLine.id], let afterLineFrameNode = lineFrameNodeMap[afterLineFrameNodeId] {
+            let insertedFrame = lineFrameTree.insertNode(value: estimatedLineHeight, data: nil, after: afterLineFrameNode)
+            lineFrameNodeMap[insertedFrame.id] = insertedFrame
+            documentLineToLineFrameMap[insertedLine.id] = insertedFrame.id
+            lineFrameToDocumentLineMap[insertedFrame.id] = insertedLine.id
+        }
         delegate?.lineManager(self, didInsert: insertedLine)
         return insertedLine
     }

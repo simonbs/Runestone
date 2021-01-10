@@ -35,7 +35,7 @@ final class EditorBackingView: UIView {
     }
 
     private let lineManager = LineManager()
-    private var textLayers: [UUID: EditorTextLayer] = [:]
+    private var textLayers: [LineFrameNodeID: EditorTextLayer] = [:]
     private var visibleTextLayers: [EditorTextLayer] = []
     private var layersPendingStringUpdate: Set<EditorTextLayer> = []
     private var isContentSizeInvalid = false
@@ -141,42 +141,42 @@ final class EditorBackingView: UIView {
     }
 
     func layoutLines(in rect: CGRect) {
-//        let visibleLines = lineManager.visibleLines(in: rect)
-//        var isContentHeightValid = true
-//        var newVisibleTextLayers: [EditorTextLayer] = []
-//        for visibleLine in visibleLines {
-//            let textLayer = getTextLayer(forLineId: visibleLine.lineFrame.id)
-//            var height = CGFloat(visibleLine.lineFrame.value)
-//            if layersPendingStringUpdate.contains(textLayer) {
-//                let range = NSRange(location: Int(visibleLine.documentLine.location), length: Int(visibleLine.documentLine.value))
-//                let lineString = string.substring(with: range) as NSString
-//                textLayer.setString(lineString)
-//                textLayer.setNeedsDisplay()
-//                let size = textLayer.preferredSize(constrainedToWidth: bounds.width)
-//                let didUpdateHeight = lineManager.setHeight(size.height, of: visibleLine.lineFrame)
-//                height = size.height
-//                if didUpdateHeight {
-//                    isContentHeightValid = false
-//                }
-//                layersPendingStringUpdate.remove(textLayer)
-//            }
-//            textLayer.lineIndex = visibleLine.documentLine.index
-//            if textLayer.superlayer == nil {
-//                layer.addSublayer(textLayer)
-//            }
-//            textLayer.frame = CGRect(x: 0, y: CGFloat(visibleLine.lineFrame.location), width: bounds.width, height: height)
-//            newVisibleTextLayers.append(textLayer)
-//        }
-//        for textLayer in visibleTextLayers {
-//            if !newVisibleTextLayers.contains(textLayer) {
-//                textLayer.removeFromSuperlayer()
-//            }
-//        }
-//        visibleTextLayers = newVisibleTextLayers
-//        if !isContentHeightValid {
-//            isContentSizeInvalid = true
-//            delegate?.editorBackingViewDidInvalidateContentSize(self)
-//        }
+        let visibleLines = lineManager.visibleLines(in: rect)
+        var isContentHeightValid = true
+        var newVisibleTextLayers: [EditorTextLayer] = []
+        for visibleLine in visibleLines {
+            let textLayer = getTextLayer(forLineId: visibleLine.lineFrame.id)
+            var height = CGFloat(visibleLine.lineFrame.value)
+            if layersPendingStringUpdate.contains(textLayer) {
+                let range = NSRange(location: visibleLine.documentLine.location, length: visibleLine.documentLine.value)
+                let lineString = string.substring(with: range) as NSString
+                textLayer.setString(lineString)
+                textLayer.setNeedsDisplay()
+                let size = textLayer.preferredSize(constrainedToWidth: bounds.width)
+                let didUpdateHeight = lineManager.setHeight(size.height, of: visibleLine.lineFrame)
+                height = size.height
+                if didUpdateHeight {
+                    isContentHeightValid = false
+                }
+                layersPendingStringUpdate.remove(textLayer)
+            }
+            textLayer.lineIndex = visibleLine.documentLine.index
+            if textLayer.superlayer == nil {
+                layer.addSublayer(textLayer)
+            }
+            textLayer.frame = CGRect(x: 0, y: visibleLine.lineFrame.location, width: bounds.width, height: height)
+            newVisibleTextLayers.append(textLayer)
+        }
+        for textLayer in visibleTextLayers {
+            if !newVisibleTextLayers.contains(textLayer) {
+                textLayer.removeFromSuperlayer()
+            }
+        }
+        visibleTextLayers = newVisibleTextLayers
+        if !isContentHeightValid {
+            isContentSizeInvalid = true
+            delegate?.editorBackingViewDidInvalidateContentSize(self)
+        }
     }
 }
 
@@ -185,7 +185,7 @@ private extension EditorBackingView {
 //        return lineManager.line(containingCharacterAt: location)?.lineNumber
 //    }
 
-    private func getTextLayer(forLineId lineId: UUID) -> EditorTextLayer {
+    private func getTextLayer(forLineId lineId: LineFrameNodeID) -> EditorTextLayer {
         if let textLayer = textLayers[lineId] {
             return textLayer
         } else {
