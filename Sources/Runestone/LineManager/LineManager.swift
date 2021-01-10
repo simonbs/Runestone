@@ -169,7 +169,7 @@ final class LineManager {
     }
 
     func line(containingCharacterAt location: Int) -> DocumentLineNode? {
-        if location >= 0 && location <= Int(documentLineTree.nodeTotalVlaue) {
+        if location >= 0 && location <= Int(documentLineTree.nodeTotalValue) {
             return documentLineTree.node(containgLocation: location)
         } else {
             return nil
