@@ -15,14 +15,6 @@ final class RedBlackTreeNode<NodeData> {
         return tree.location(of: self)
     }
     var totalLength: Int
-    var delimiterLength = 0 {
-        didSet {
-            assert(delimiterLength >= 0 && delimiterLength <= 2)
-        }
-    }
-    var length: Int {
-        return totalLength - delimiterLength
-    }
     var index: Int {
         return tree.index(of: self)
     }
@@ -95,6 +87,6 @@ extension RedBlackTreeNode {
 
 extension RedBlackTreeNode: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[RedBlackTreeNode index=\(index) location=\(location) length=\(length) nodeTotalCount=\(nodeTotalCount)]"
+        return "[RedBlackTreeNode index=\(index) location=\(location) nodeTotalCount=\(nodeTotalCount)]"
     }
 }

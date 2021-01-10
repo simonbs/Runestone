@@ -28,8 +28,8 @@ extension LineManagerDelegate {
 //}
 
 //typealias DocumentLineNode = RedBlackTreeNode
-typealias DocumentLineNode = RedBlackTreeNode<DocumentLineNodeContext>
-typealias LineFrameNode = RedBlackTreeNode<LineFrameNodeContext>
+typealias DocumentLineNode = RedBlackTreeNode<DocumentLineNodeData>
+typealias LineFrameNode = RedBlackTreeNode<LineFrameNodeData>
 
 struct VisibleLine {
     let documentLine: DocumentLineNode
@@ -48,8 +48,8 @@ final class LineManager {
     }
     var estimatedLineHeight: CGFloat = 12
 
-    private let documentLineTree = RedBlackTree<DocumentLineNodeContext>(rootData: DocumentLineNodeContext())
-    private let lineFrameTree = RedBlackTree<LineFrameNodeContext>(rootData: LineFrameNodeContext())
+    private let documentLineTree = RedBlackTree<DocumentLineNodeData>(rootData: DocumentLineNodeData())
+    private let lineFrameTree = RedBlackTree<LineFrameNodeData>(rootData: LineFrameNodeData())
     private var documentLineNodeMap: [UUID: DocumentLineNode] = [:]
     private var lineFrameNodeMap: [UUID: LineFrameNode] = [:]
     private var documentLineToLineFrameMap: [UUID: UUID] = [:]
@@ -67,7 +67,7 @@ final class LineManager {
     }
 
     func reset() {
-        documentLineTree.reset(rootData: DocumentLineNodeContext())
+        documentLineTree.reset(rootData: DocumentLineNodeData())
         documentLineNodeMap.removeAll()
         lineFrameNodeMap.removeAll()
         documentLineToLineFrameMap.removeAll()
@@ -76,6 +76,7 @@ final class LineManager {
         lineFrameNodeMap[lineFrameTree.root.id] = lineFrameTree.root
         documentLineToLineFrameMap[documentLineTree.root.id] = lineFrameTree.root.id
         lineFrameToDocumentLineMap[lineFrameTree.root.id] = documentLineTree.root.id
+        documentLineTree.root.data.totalLength = documentLineTree.root.totalLength
     }
 
     func removeCharacters(in range: NSRange) {
@@ -83,7 +84,7 @@ final class LineManager {
             return
         }
         let startLine = documentLineTree.node(containgLocation: range.location)
-        if range.location > Int(startLine.location) + startLine.length {
+        if range.location > Int(startLine.location) + startLine.data.length {
             // Deleting starting in the middle of a delimiter.
             setLength(of: startLine, to: startLine.totalLength - 1)
             removeCharacters(in: NSRange(location: range.location, length: range.length - 1))
@@ -119,7 +120,7 @@ final class LineManager {
         var line = documentLineTree.node(containgLocation: location)
         var lineLocation = Int(line.location)
         assert(location <= lineLocation + line.totalLength)
-        if location > lineLocation + line.length {
+        if location > lineLocation + line.data.length {
             // Inserting in the middle of a delimiter.
             setLength(of: line, to: line.totalLength - 1)
             // Add new line.
@@ -208,28 +209,29 @@ private extension LineManager {
         let delta = newTotalLength - line.totalLength
         if delta != 0 {
             line.totalLength = newTotalLength
+            line.data.totalLength = newTotalLength
             documentLineTree.updateAfterChangingChildren(of: line)
         }
         // Determine new delimiter length.
         if newTotalLength == 0 {
-            line.delimiterLength = 0
+            line.data.delimiterLength = 0
         } else {
             let lastChar = getCharacter(at: Int(line.location) + newTotalLength - 1)
             if lastChar == Symbol.carriageReturn {
-                line.delimiterLength = 1
+                line.data.delimiterLength = 1
             } else if lastChar == Symbol.lineFeed {
                 if newTotalLength >= 2 && getCharacter(at: Int(line.location) + newTotalLength - 2) == Symbol.carriageReturn {
-                    line.delimiterLength = 2
+                    line.data.delimiterLength = 2
                 } else if newTotalLength == 1 && line.location > 0 && getCharacter(at: Int(line.location) - 1) == Symbol.carriageReturn {
                     // We need to join this line with the previous line.
                     let previousLine = line.previous
                     remove(line)
                     return setLength(of: previousLine, to: previousLine.totalLength + 1)
                 } else {
-                    line.delimiterLength = 1
+                    line.data.delimiterLength = 1
                 }
             } else {
-                line.delimiterLength = 0
+                line.data.delimiterLength = 0
             }
         }
         return line
@@ -237,7 +239,8 @@ private extension LineManager {
 
     @discardableResult
     private func insertLine(ofLength length: Int, after otherLine: DocumentLineNode) -> DocumentLineNode {
-        let insertedLine = documentLineTree.insertNode(ofLength: length, withData: DocumentLineNodeContext(), after: otherLine)
+        let insertedLine = documentLineTree.insertNode(ofLength: length, withData: DocumentLineNodeData(), after: otherLine)
+        insertedLine.data.totalLength = length
 //        documentLineNodeMap[insertedLine.id] = insertedLine
 //        if let afterLineFrameNodeId = documentLineToLineFrameMap[otherLine.id], let afterLineFrameNode = lineFrameNodeMap[afterLineFrameNodeId] {
 //            let insertedFrame = lineFrameTree.insertNode(withValue: estimatedLineHeight, after: afterLineFrameNode)
