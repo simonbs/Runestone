@@ -8,7 +8,16 @@
 import UIKit
 import CoreText
 
+public protocol EditorInputViewDelegate: AnyObject {
+    func editorInputViewDidChange(_ textView: EditorInputView)
+}
+
+public extension EditorInputViewDelegate {
+    func editorInputViewDidChange(_ textView: EditorInputView) {}
+}
+
 public final class EditorInputView: UIScrollView, UITextInput {
+    public weak var editorDelegate: EditorInputViewDelegate?
     public var text: String {
         get {
             return textView.string as String
@@ -165,17 +174,20 @@ public extension EditorInputView {
 public extension EditorInputView {
     func insertText(_ text: String) {
         textView.insertText(text)
+        editorDelegate?.editorInputViewDidChange(self)
         setNeedsDisplay()
     }
 
     func deleteBackward() {
         textView.deleteBackward()
+        editorDelegate?.editorInputViewDidChange(self)
         setNeedsDisplay()
     }
 
     func replace(_ range: UITextRange, withText text: String) {
         if let indexedRange = range as? EditorIndexedRange {
             textView.replace(indexedRange.range, withText: text)
+            editorDelegate?.editorInputViewDidChange(self)
             setNeedsDisplay()
         }
     }
