@@ -145,10 +145,9 @@ final class EditorBackingView: UIView {
     }
 
     func caretRect(atIndex index: Int) -> CGRect {
-        let cappedIndex = min(max(index, 0), string.length)
         if string.length == 0 {
             return CGRect(x: 0, y: -font.leading, width: 3, height: font.ascender + abs(font.descender))
-        } else if let line = lineManager.line(containingCharacterAt: cappedIndex) {
+        } else if let line = lineManager.line(containingCharacterAt: index) {
             let textLayer = getTextLayer(for: line)
             let localIndex = index - line.location
             return textLayer.caretRect(aIndex: localIndex)
