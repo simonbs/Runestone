@@ -8,7 +8,6 @@
 import UIKit
 
 final class EditorTextLayer {
-    var lineIndex: Int = 0
     var font: UIFont? {
         didSet {
             if font != oldValue {
@@ -16,79 +15,75 @@ final class EditorTextLayer {
             }
         }
     }
-    var frame: CGRect = .zero {
+    var constrainingWidth: CGFloat = .greatestFiniteMagnitude {
         didSet {
-            if frame != oldValue {
+            if constrainingWidth != oldValue {
+                _preferredSize = nil
+            }
+        }
+    }
+    var preferredSize: CGSize {
+        if let preferredSize = _preferredSize {
+            return preferredSize
+        } else if isEmpty, let font = font {
+            let height = font.lineHeight
+            let preferredSize = CGSize(width: constrainingWidth, height: height)
+            _preferredSize = preferredSize
+            return preferredSize
+        } else if let framesetter = framesetter {
+            let constrainingSize = CGSize(width: constrainingWidth, height: .greatestFiniteMagnitude)
+            let preferredSize = CTFramesetterSuggestFrameSizeWithConstraints(framesetter, CFRangeMake(0, 0), nil, constrainingSize, nil)
+            _preferredSize = preferredSize
+            return preferredSize
+        } else if let font = font {
+            let preferredSize = CGSize(width: constrainingWidth, height: font.lineHeight)
+            _preferredSize = preferredSize
+            return preferredSize
+        } else {
+            return .zero
+        }
+    }
+    var origin: CGPoint = .zero {
+        didSet {
+            if origin != oldValue {
                 _textFrame = nil
             }
         }
     }
 
-    private var cachedPreferredSize: CGSize?
-    private var cachedConstrainingWidth: CGFloat?
     private var attributedString: CFMutableAttributedString?
     private var framesetter: CTFramesetter? {
-        set {
-            _framesetter = newValue
-        }
-        get {
-            if let framesetter = _framesetter {
-                return framesetter
-            } else if let attributedString = attributedString {
-                _framesetter = CTFramesetterCreateWithAttributedString(attributedString)
-                return _framesetter
-            } else {
-                return nil
-            }
+        if let framesetter = _framesetter {
+            return framesetter
+        } else if let attributedString = attributedString {
+            _framesetter = CTFramesetterCreateWithAttributedString(attributedString)
+            return _framesetter
+        } else {
+            return nil
         }
     }
     private var textFrame: CTFrame? {
-        set {
-            _textFrame = newValue
-        }
-        get {
-            if let frame = _textFrame {
-                return frame
-            } else if let framesetter = framesetter {
-                let path = CGMutablePath()
-                path.addRect(frame)
-                _textFrame = CTFramesetterCreateFrame(framesetter, CFRangeMake(0, 0), path, nil)
-                return _textFrame
-            } else {
-                return nil
-            }
+        if let frame = _textFrame {
+            return frame
+        } else if let framesetter = framesetter {
+            let path = CGMutablePath()
+            path.addRect(CGRect(x: origin.x, y: origin.y, width: preferredSize.width, height: preferredSize.height))
+            _textFrame = CTFramesetterCreateFrame(framesetter, CFRangeMake(0, 0), path, nil)
+            return _textFrame
+        } else {
+            return nil
         }
     }
     private var _framesetter: CTFramesetter?
     private var _textFrame: CTFrame?
-
-    func draw(in context: CGContext) {
-        if let textFrame = textFrame {
-            CTFrameDraw(textFrame, context)
-        }
-    }
-
-    func preferredSize(constrainedToWidth width: CGFloat) -> CGSize {
-        if width == cachedConstrainingWidth, let cachedPreferredSize = cachedPreferredSize {
-            return cachedPreferredSize
-        } else if let framesetter = framesetter {
-            let constrainingSize = CGSize(width: width, height: .greatestFiniteMagnitude)
-            let preferedSize = CTFramesetterSuggestFrameSizeWithConstraints(framesetter, CFRangeMake(0, 0), nil, constrainingSize, nil)
-            cachedConstrainingWidth = width
-            cachedPreferredSize = preferedSize
-            return preferedSize
-        } else if let font = font {
-            return CGSize(width: width, height: font.ascender + font.descender)
-        } else {
-            return .zero
-        }
-    }
+    private var _preferredSize: CGSize?
+    private var isEmpty = true
 
     func setString(_ string: NSString) {
-        cachedPreferredSize = nil
-        cachedConstrainingWidth = nil
-        framesetter = nil
-        textFrame = nil
+        _preferredSize = nil
+        _framesetter = nil
+        _textFrame = nil
+        isEmpty = string.length == 0
         attributedString = CFAttributedStringCreateMutable(kCFAllocatorDefault, string.length)
         if let attributedString = attributedString {
             CFAttributedStringReplaceString(attributedString, CFRangeMake(0, 0), string)
@@ -96,9 +91,16 @@ final class EditorTextLayer {
         }
     }
 
-    func caretRect(aIndex index: Int) -> CGRect? {
+    func draw(in context: CGContext) {
+        if let textFrame = textFrame {
+            CTFrameDraw(textFrame, context)
+        }
+    }
+
+    func caretRect(aIndex index: Int) -> CGRect {
+        let caretWidth: CGFloat = 3
         guard let textFrame = textFrame else {
-            return nil
+            return CGRect(x: origin.x, y: origin.y, width: caretWidth, height: font?.lineHeight ?? 0)
         }
         let lines = CTFrameGetLines(textFrame)
         let lineCount = CFArrayGetCount(lines)
@@ -106,19 +108,15 @@ final class EditorTextLayer {
             let line = unsafeBitCast(CFArrayGetValueAtIndex(lines, lineIndex)!, to: CTLine.self)
             let lineRange = CTLineGetStringRange(line)
             if index >= 0 && index <= lineRange.location + lineRange.length {
-                var origin: CGPoint = .zero
                 var ascent: CGFloat = 0
                 var descent: CGFloat = 0
                 CTLineGetTypographicBounds(line, &ascent, &descent, nil)
-                CTFrameGetLineOrigins(textFrame, CFRangeMake(lineIndex, 1), &origin)
                 let height = ascent + descent
                 let xPos = CTLineGetOffsetForStringIndex(line, index, nil)
-                let yPos = origin.y - descent
-//                let flippedYPos = bounds.height - (yPos + height)
-                return CGRect(x: xPos, y: yPos, width: 3, height: height)
+                return CGRect(x: xPos, y: origin.y, width: caretWidth, height: height)
             }
         }
-        return nil
+        return CGRect(x: origin.x, y: origin.y, width: caretWidth, height: font?.lineHeight ?? 0)
     }
 
     func firstRect(for range: NSRange) -> CGRect? {
@@ -142,7 +140,6 @@ final class EditorTextLayer {
                 CTLineGetTypographicBounds(line, &ascent, &descent, nil)
                 let height = ascent + descent
                 let yPos = origin.y - descent
-//                let flippedYPos = bounds.height - (yPos + height)
                 return CGRect(x: xStart, y: yPos, width: xEnd - xStart, height: height)
             }
         }

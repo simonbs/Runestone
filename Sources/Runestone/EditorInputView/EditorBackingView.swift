@@ -86,15 +86,21 @@ final class EditorBackingView: UIView {
         }
         if selectedTextRange.length > 0 {
             // Replace selected text.
+            var editedLines: Set<DocumentLineNode> = []
             string.replaceCharacters(in: selectedTextRange, with: text)
-            lineManager.removeCharacters(in: selectedTextRange)
-            lineManager.insert(text as NSString, at: selectedTextRange.location)
+            lineManager.removeCharacters(in: selectedTextRange, editedLines: &editedLines)
+            lineManager.insert(text as NSString, at: selectedTextRange.location, editedLines: &editedLines)
             self.selectedTextRange = NSRange(location: selectedTextRange.location + text.utf16.count, length: 0)
+            updateStrings(on: editedLines)
+            setNeedsDisplay()
         } else {
             // Insert text at location.
+            var editedLines: Set<DocumentLineNode> = []
             string.insert(text, at: selectedTextRange.location)
-            lineManager.insert(text as NSString, at: selectedTextRange.location)
+            lineManager.insert(text as NSString, at: selectedTextRange.location, editedLines: &editedLines)
             self.selectedTextRange = NSRange(location: selectedTextRange.location + text.utf16.count, length: 0)
+            updateStrings(on: editedLines)
+            setNeedsDisplay()
         }
     }
 
@@ -104,24 +110,33 @@ final class EditorBackingView: UIView {
         }
         if selectedTextRange.length > 0 {
             // Delete selected text.
+            var editedLines: Set<DocumentLineNode> = []
             string.deleteCharacters(in: selectedTextRange)
-            lineManager.removeCharacters(in: selectedTextRange)
+            lineManager.removeCharacters(in: selectedTextRange, editedLines: &editedLines)
             self.selectedTextRange = NSRange(location: selectedTextRange.location, length: 0)
+            updateStrings(on: editedLines)
+            setNeedsDisplay()
         } else if selectedTextRange.location > 0 {
             // Delete a single character at the location.
+            var editedLines: Set<DocumentLineNode> = []
             let range = NSRange(location: selectedTextRange.location - 1, length: 1)
             string.deleteCharacters(in: range)
-            lineManager.removeCharacters(in: range)
+            lineManager.removeCharacters(in: range, editedLines: &editedLines)
             self.selectedTextRange = NSRange(location: range.location, length: 0)
+            updateStrings(on: editedLines)
+            setNeedsDisplay()
         }
     }
 
     func replace(_ range: NSRange, withText text: String) {
+        var editedLines: Set<DocumentLineNode> = []
         let nsText = text as NSString
         string.replaceCharacters(in: range, with: text)
-        lineManager.removeCharacters(in: range)
-        lineManager.insert(nsText, at: range.location)
+        lineManager.removeCharacters(in: range, editedLines: &editedLines)
+        lineManager.insert(nsText, at: range.location, editedLines: &editedLines)
         selectedTextRange = NSRange(location: range.location + text.utf16.count, length: 0)
+        updateStrings(on: editedLines)
+        setNeedsDisplay()
     }
 
     func text(in range: NSRange) -> String? {
@@ -134,22 +149,23 @@ final class EditorBackingView: UIView {
 
     func caretRect(atIndex index: Int) -> CGRect {
         // TODO: Make the index passed to careRect(atIndex:) local to the line.
-        return .zero
-//        let cappedIndex = min(max(index, 0), string.length)
-//        if string.length == 0 {
+        let cappedIndex = min(max(index, 0), string.length)
+        if string.length == 0 {
 //            previousLineContainingCaret = nil
 //            previousLineNumberAtCaret = nil
-//            return CGRect(x: 0, y: -font.leading, width: 3, height: font.ascender + abs(font.descender))
-////        } else if let line = previousLineContainingCaret, let lineNumber = previousLineNumberAtCaret,
-////                  cappedIndex >= line.location && cappedIndex <= line.location + line.totalLength {
-////            return textLayerA.caretRect(aIndex: cappedIndex)!
-//        } else if let line = lineManager.line(containingCharacterAt: cappedIndex) {
+            return CGRect(x: 0, y: -font.leading, width: 3, height: font.ascender + abs(font.descender))
+//        } else if let line = previousLineContainingCaret, let lineNumber = previousLineNumberAtCaret,
+//                  cappedIndex >= line.location && cappedIndex <= line.location + line.totalLength {
+//            return textLayerA.caretRect(aIndex: cappedIndex)!
+        } else if let line = lineManager.line(containingCharacterAt: cappedIndex) {
 //            previousLineContainingCaret = line
 //            previousLineNumberAtCaret = line.lineNumber
-//            return textLayerA.caretRect(aIndex: cappedIndex)!
-//        } else {
-//            fatalError("Cannot find caret rect.")
-//        }
+            let textLayer = getTextLayer(for: line)
+            let localIndex = index - line.location
+            return textLayer.caretRect(aIndex: localIndex)
+        } else {
+            fatalError("Cannot find caret rect.")
+        }
     }
 
     func firstRect(for range: NSRange) -> CGRect {
@@ -183,19 +199,20 @@ private extension EditorBackingView {
     }
 
     private func draw(_ line: DocumentLineNode, in rect: CGRect, of context: CGContext) {
-        let textLayer = getTextLayer(forLineId: line.id)
-        var height = line.data.frameHeight
+        let textLayer = getTextLayer(for: line)
         let range = NSRange(location: line.location, length: line.value)
         let lineString = string.substring(with: range) as NSString
         textLayer.setString(lineString)
-        let size = textLayer.preferredSize(constrainedToWidth: bounds.width)
+        textLayer.constrainingWidth = bounds.width
+        let lineYPosition = line.yPosition
+        let size = textLayer.preferredSize
         let didUpdateHeight = lineManager.setHeight(size.height, of: line)
-        height = size.height
-        textLayer.lineIndex = line.index
-        // Adjust the y-position to the flipped coordinate system.
-        let yPosition = viewport.minY + rect.height - line.yPosition - height
-        textLayer.frame = CGRect(x: 0, y: yPosition, width: bounds.width, height: height)
+        textLayer.origin = CGPoint(x: 0, y: lineYPosition)
+        context.saveGState()
+        let contextYTranslation = viewport.minY + rect.height - lineYPosition * 2 - size.height
+        context.translateBy(x: 0, y: contextYTranslation)
         textLayer.draw(in: context)
+        context.restoreGState()
         if didUpdateHeight {
             isContentSizeInvalid = true
         }
@@ -204,15 +221,36 @@ private extension EditorBackingView {
         }
     }
 
-    private func getTextLayer(forLineId lineId: DocumentLineNodeID) -> EditorTextLayer {
-        if let textLayer = textLayers[lineId] {
+    private func updateStrings(on lines: Set<DocumentLineNode>) {
+        for line in lines {
+            if let textLayer = textLayers[line.id] {
+                let range = NSRange(location: line.location, length: line.value)
+                let substring = string.substring(with: range) as NSString
+                textLayer.setString(substring)
+                let size = textLayer.preferredSize
+                lineManager.setHeight(size.height, of: line)
+//                let oldFrame = textLayer.frame
+//                let newYPosition = oldFrame.minY + oldFrame.height - size.height
+//                textLayer.frame = CGRect(x: oldFrame.minX, y: newYPosition, width: size.width, height: size.height)
+            }
+        }
+    }
+
+    private func getTextLayer(for line: DocumentLineNode) -> EditorTextLayer {
+        if let textLayer = textLayers[line.id] {
             return textLayer
         } else {
-            let textLayer = EditorTextLayer()
-            textLayer.font = font
-            textLayers[lineId] = textLayer
-            return textLayer
+            return createTextLayer(for: line)
         }
+    }
+
+    @discardableResult
+    private func createTextLayer(for line: DocumentLineNode) -> EditorTextLayer {
+        let textLayer = EditorTextLayer()
+        textLayer.font = font
+        textLayer.origin = CGPoint(x: 0, y: line.yPosition)
+        textLayers[line.id] = textLayer
+        return textLayer
     }
 
     private func updateContentSize() {
@@ -231,5 +269,15 @@ private extension EditorBackingView {
 extension EditorBackingView: LineManagerDelegate {
     func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> String {
         return string.substring(with: NSMakeRange(location, 1))
+    }
+
+    func lineManager(_ lineManager: LineManager, didInsert line: DocumentLineNode) {
+        isContentSizeInvalid = true
+        createTextLayer(for: line)
+    }
+
+    func lineManager(_ lineManager: LineManager, didRemove line: DocumentLineNode) {
+        isContentSizeInvalid = true
+        textLayers.removeValue(forKey: line.id)
     }
 }

@@ -93,6 +93,16 @@ extension RedBlackTreeNode {
     }
 }
 
+extension RedBlackTreeNode: Hashable {
+    static func == (lhs: RedBlackTreeNode<NodeID, NodeValue, NodeData>, rhs: RedBlackTreeNode<NodeID, NodeValue, NodeData>) -> Bool {
+        return lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+}
+
 extension RedBlackTreeNode: CustomDebugStringConvertible {
     var debugDescription: String {
         return "[RedBlackTreeNode index=\(index) location=\(location) nodeTotalCount=\(nodeTotalCount)]"

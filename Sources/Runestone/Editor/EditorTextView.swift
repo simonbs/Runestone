@@ -470,29 +470,29 @@ extension EditorTextView: EditorTextStorageDelegate {
     }
 
     public func editorTextStorage(_ editorTextStorage: EditorTextStorage, didReplaceCharactersIn range: NSRange, with string: String) {
-        guard !isProcessingNewText else {
-            return
-        }
-        let nsString = string as NSString
-        let bytesRemoved = range.length
-        let bytesAdded = nsString.length
-        let oldEndLinePosition = lineManager.linePosition(at: range.location + bytesRemoved)
-        lineManager.removeCharacters(in: range)
-        lineManager.insert(nsString, at: range.location)
-        let startLinePosition = lineManager.linePosition(at: range.location)
-        let newEndLinePosition = lineManager.linePosition(at: range.location + bytesAdded)
-        if let oldEndLinePosition = oldEndLinePosition, let startLinePosition = startLinePosition, let newEndLinePosition = newEndLinePosition {
-            let edit = SimpleInputEdit(
-                location: range.location,
-                bytesRemoved: bytesRemoved,
-                bytesAdded: bytesAdded,
-                startLinePosition: startLinePosition,
-                oldEndLinePosition: oldEndLinePosition,
-                newEndLinePosition: newEndLinePosition)
-            parser.apply(edit)
-        } else {
+//        guard !isProcessingNewText else {
+//            return
+//        }
+//        let nsString = string as NSString
+//        let bytesRemoved = range.length
+//        let bytesAdded = nsString.length
+//        let oldEndLinePosition = lineManager.linePosition(at: range.location + bytesRemoved)
+//        lineManager.removeCharacters(in: range)
+//        lineManager.insert(nsString, at: range.location)
+//        let startLinePosition = lineManager.linePosition(at: range.location)
+//        let newEndLinePosition = lineManager.linePosition(at: range.location + bytesAdded)
+//        if let oldEndLinePosition = oldEndLinePosition, let startLinePosition = startLinePosition, let newEndLinePosition = newEndLinePosition {
+//            let edit = SimpleInputEdit(
+//                location: range.location,
+//                bytesRemoved: bytesRemoved,
+//                bytesAdded: bytesAdded,
+//                startLinePosition: startLinePosition,
+//                oldEndLinePosition: oldEndLinePosition,
+//                newEndLinePosition: newEndLinePosition)
+//            parser.apply(edit)
+//        } else {
             fatalError("Cannot edit syntax tree because one or more line positions are not available")
-        }
+//        }
     }
 
     public func editorTextStorageDidProcessEditing(_ editorTextStorage: EditorTextStorage) {
