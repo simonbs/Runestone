@@ -51,9 +51,6 @@ final class EditorBackingView: UIView {
     private var isContentSizeInvalid = false
     private var _contentSize: CGSize = .zero
 
-//    private var previousLineContainingCaret: DocumentLine?
-//    private var previousLineNumberAtCaret: Int?
-
     init() {
         super.init(frame: .zero)
         lineManager.delegate = self
@@ -148,18 +145,10 @@ final class EditorBackingView: UIView {
     }
 
     func caretRect(atIndex index: Int) -> CGRect {
-        // TODO: Make the index passed to careRect(atIndex:) local to the line.
         let cappedIndex = min(max(index, 0), string.length)
         if string.length == 0 {
-//            previousLineContainingCaret = nil
-//            previousLineNumberAtCaret = nil
             return CGRect(x: 0, y: -font.leading, width: 3, height: font.ascender + abs(font.descender))
-//        } else if let line = previousLineContainingCaret, let lineNumber = previousLineNumberAtCaret,
-//                  cappedIndex >= line.location && cappedIndex <= line.location + line.totalLength {
-//            return textLayerA.caretRect(aIndex: cappedIndex)!
         } else if let line = lineManager.line(containingCharacterAt: cappedIndex) {
-//            previousLineContainingCaret = line
-//            previousLineNumberAtCaret = line.lineNumber
             let textLayer = getTextLayer(for: line)
             let localIndex = index - line.location
             return textLayer.caretRect(aIndex: localIndex)
