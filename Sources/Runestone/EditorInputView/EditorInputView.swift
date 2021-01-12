@@ -115,6 +115,10 @@ public final class EditorInputView: UIScrollView, UITextInput {
     public override func becomeFirstResponder() -> Bool {
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if didBecomeFirstResponder {
+            textView.markedTextRange = NSRange(location: NSNotFound, length: 0)
+            if selectedTextRange == nil {
+                textView.selectedTextRange = NSRange(location: 0, length: 0)
+            }
             tapGestureRecognizer.isEnabled = false
             addInteraction(editingTextInteraction)
         }
@@ -204,10 +208,11 @@ public extension EditorInputView {
 // MARK: - Selection
 public extension EditorInputView {
     func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
-//        guard let indexedRange = range as? EditorIndexedRange else {
-//            fatalError("Expected range to be of type \(EditorIndexedRange.self)")
-//        }
-        return []
+        if let indexedRange = range as? EditorIndexedRange {
+            return textView.selectionRects(in: indexedRange.range)
+        } else {
+            return []
+        }
     }
 }
 
@@ -243,8 +248,11 @@ public extension EditorInputView {
         @unknown default:
             break
         }
-        newPosition = min(max(newPosition, 0), textView.string.length)
-        return EditorIndexedPosition(index: newPosition)
+        if newPosition >= 0 && newPosition <= textView.string.length {
+            return EditorIndexedPosition(index: newPosition)
+        } else {
+            return nil
+        }
     }
 
     func characterRange(byExtending position: UITextPosition, in direction: UITextLayoutDirection) -> UITextRange? {
@@ -278,19 +286,17 @@ public extension EditorInputView {
         guard let fromIndexedPosition = fromPosition as? EditorIndexedPosition, let toIndexedPosition = toPosition as? EditorIndexedPosition else {
             return nil
         }
-        let location = min(fromIndexedPosition.index, toIndexedPosition.index)
-        let length = abs(toIndexedPosition.index - fromIndexedPosition.index)
-        let range = NSRange(location: location, length: length)
+        let range = NSRange(location: fromIndexedPosition.index, length: toIndexedPosition.index - fromIndexedPosition.index)
         return EditorIndexedRange(range: range)
     }
 
     func position(from position: UITextPosition, offset: Int) -> UITextPosition? {
         guard let indexedPosition = position as? EditorIndexedPosition else {
-            return EditorIndexedPosition(index: 0)
+            return nil
         }
         let newPosition = indexedPosition.index + offset
-        guard newPosition >= 0 && newPosition < textView.string.length else {
-             return EditorIndexedPosition(index: 0)
+        guard newPosition >= 0 && newPosition <= textView.string.length else {
+            return nil
         }
         return EditorIndexedPosition(index: newPosition)
     }
@@ -330,8 +336,10 @@ public extension EditorInputView {
 private extension EditorInputView {
     @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
         if !isFirstResponder {
-            textView.markedTextRange = NSRange(location: NSNotFound, length: 0)
-            textView.selectedTextRange = NSRange(location: 0, length: 0)
+            let point = gestureRecognizer.location(in: self)
+            if let position = closestPosition(to: point) as? EditorIndexedPosition {
+                textView.selectedTextRange = NSRange(location: position.index, length: 0)
+            }
             becomeFirstResponder()
         }
     }

@@ -187,6 +187,14 @@ final class LineManager {
         }
     }
 
+    func line(containingYOffset yOffset: CGFloat) -> DocumentLineNode? {
+        return documentLineTree.node(
+            containgLocation: yOffset,
+            minimumValue: 0,
+            valueKeyPath: \.data.frameHeight,
+            totalValueKeyPath: \.data.totalFrameHeight)
+    }
+
     func line(atIndex index: Int) -> DocumentLineNode {
         return documentLineTree.node(atIndex: index)
     }

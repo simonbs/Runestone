@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  EditorBackingView.swift
 //  
 //
 //  Created by Simon Støvring on 05/01/2021.
@@ -53,6 +53,7 @@ final class EditorBackingView: UIView {
 
     init() {
         super.init(frame: .zero)
+        layer.isGeometryFlipped = true
         lineManager.delegate = self
         lineManager.estimatedLineHeight = font.lineHeight
         NotificationCenter.default.addObserver(self, selector: #selector(didReceiveMemoryWarning(_:)), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
@@ -66,17 +67,20 @@ final class EditorBackingView: UIView {
         super.draw(rect)
         // Core Text has a flipped coordinate system so we flip our context before drawing the text.
         let context = UIGraphicsGetCurrentContext()!
-        context.saveGState()
-        context.textMatrix = .identity
-        context.translateBy(x: 0, y: rect.height)
-        context.scaleBy(x: 1, y: -1)
+//        context.saveGState()
+//        context.textMatrix = .identity
+//        context.translateBy(x: 0, y: rect.height)
+//        context.scaleBy(x: 1, y: -1)
         drawLines(in: rect, of: context)
-        context.restoreGState()
+//        context.restoreGState()
         if isContentSizeInvalid {
             delegate?.editorBackingViewDidInvalidateContentSize(self)
         }
     }
+}
 
+// MARK: - Editing
+extension EditorBackingView {
     func insertText(_ text: String) {
         guard let selectedTextRange = selectedTextRange else {
             return
@@ -137,13 +141,16 @@ final class EditorBackingView: UIView {
     }
 
     func text(in range: NSRange) -> String? {
-        if range.location >= 0 && range.upperBound < string.length {
+        if range.location >= 0 && range.location + range.length <= string.length {
             return string.substring(with: range)
         } else {
             return nil
         }
     }
+}
 
+// MARK: - Text Rects
+extension EditorBackingView {
     func caretRect(atIndex index: Int) -> CGRect {
         if string.length == 0 {
             return CGRect(x: 0, y: -font.leading, width: 3, height: font.ascender + abs(font.descender))
@@ -157,26 +164,84 @@ final class EditorBackingView: UIView {
     }
 
     func firstRect(for range: NSRange) -> CGRect {
-//        guard let line = lineManager.line(containingCharacterAt: range.location) else {
-//            fatalError("Cannot find first rect.")
-//        }
-        // TODO: Make the input range local to the line.
-        return .zero
-//        return textLayerA.firstRect(for: range)!
-    }
-
-    func closestIndex(to point: CGPoint) -> Int? {
-        // TODO: Offset the returned index by the line's start location.
-        return nil
-//        return textLayerA.closestIndex(to: point)
+        if let line = lineManager.line(containingCharacterAt: range.location) {
+            let textLayer = getTextLayer(for: line)
+            let localRange = NSRange(location: range.location - line.location, length: range.length)
+            return textLayer.firstRect(for: localRange)
+        } else {
+            fatalError("Cannot find first rect.")
+        }
     }
 }
 
-private extension EditorBackingView {
-//    private func lineNumber(at location: Int) -> Int? {
-//        return lineManager.line(containingCharacterAt: location)?.lineNumber
-//    }
+// MARK: - Text Indices
+extension EditorBackingView {
+    func closestIndex(to point: CGPoint) -> Int? {
+        if let line = lineManager.line(containingYOffset: point.y) {
+            let textLayer = getTextLayer(for: line)
+            return closestIndex(to: point, in: textLayer, showing: line)
+        } else if point.y <= 0 {
+            let firstLine = lineManager.firstLine
+            let textLayer = getTextLayer(for: firstLine)
+            return closestIndex(to: point, in: textLayer, showing: firstLine)
+        } else {
+            let lastLine = lineManager.lastLine
+            if point.y >= lastLine.yPosition {
+                let textLayer = getTextLayer(for: lastLine)
+                return closestIndex(to: point, in: textLayer, showing: lastLine)
+            } else {
+                fatalError("Cannot find first rect.")
+            }
+        }
+    }
 
+    private func closestIndex(to point: CGPoint, in textLayer: EditorTextLayer, showing line: DocumentLineNode) -> Int? {
+        let point = CGPoint(x: point.x, y: frame.height - point.y)
+        if let index = textLayer.closestIndex(to: point) {
+            return line.location + index
+        } else {
+            return nil
+        }
+    }
+}
+
+// MARK: - Selection
+extension EditorBackingView {
+    func selectionRects(in range: NSRange) -> [EditorTextSelectionRect] {
+        guard let startLine = lineManager.line(containingCharacterAt: range.location) else {
+            return []
+        }
+        guard let endLine = lineManager.line(containingCharacterAt: range.location + range.length) else {
+            return []
+        }
+        var selectionRects: [EditorTextSelectionRect] = []
+        let lineIndexRange = startLine.index ..< endLine.index + 1
+        for lineIndex in lineIndexRange {
+            let line = lineManager.line(atIndex: lineIndex)
+            if let textLayer = textLayers[line.id] {
+                let lineLocation = line.location
+                let startLocation = max(range.location, lineLocation)
+                let endLocation = min(range.location + range.length, lineLocation + line.value)
+                let containsStart = range.location >= startLocation && range.location <= endLocation
+                let containsEnd = range.location + range.length >= startLocation && range.location + range.length <= endLocation
+                let startRect = textLayer.caretRect(aIndex: startLocation)
+//                let endRect = textLayer.caretRect(aIndex: endLocation)
+                // TODO: What do we do when the selection spans multiple lines?
+                let selectionRect = EditorTextSelectionRect(
+                    rect: startRect,
+                    writingDirection: .leftToRight,
+                    containsStart: containsStart,
+                    containsEnd: containsEnd,
+                    isVertical: false)
+                selectionRects.append(selectionRect)
+            }
+        }
+        return selectionRects
+    }
+}
+
+// MARK: - Drawing
+private extension EditorBackingView {
     private func drawLines(in rect: CGRect, of context: CGContext) {
         visibleTextLayerIDs = []
         let visibleLines = lineManager.visibleLines(in: viewport)
@@ -196,11 +261,11 @@ private extension EditorBackingView {
         let size = textLayer.preferredSize
         let didUpdateHeight = lineManager.setHeight(size.height, of: line)
         textLayer.origin = CGPoint(x: 0, y: lineYPosition)
-        context.saveGState()
-        let contextYTranslation = viewport.minY + rect.height - lineYPosition * 2 - size.height
-        context.translateBy(x: 0, y: contextYTranslation)
+//        context.saveGState()
+//        let contextYTranslation: CGFloat = frame.height - size.height
+//        context.translateBy(x: 0, y: contextYTranslation)
         textLayer.draw(in: context)
-        context.restoreGState()
+//        context.restoreGState()
         if didUpdateHeight {
             isContentSizeInvalid = true
         }
@@ -217,9 +282,6 @@ private extension EditorBackingView {
                 textLayer.setString(substring)
                 let size = textLayer.preferredSize
                 lineManager.setHeight(size.height, of: line)
-//                let oldFrame = textLayer.frame
-//                let newYPosition = oldFrame.minY + oldFrame.height - size.height
-//                textLayer.frame = CGRect(x: oldFrame.minX, y: newYPosition, width: size.width, height: size.height)
             }
         }
     }
@@ -244,7 +306,10 @@ private extension EditorBackingView {
     private func updateContentSize() {
         _contentSize = CGSize(width: bounds.width, height: lineManager.contentHeight)
     }
+}
 
+// MARK: - Memory Management
+private extension EditorBackingView {
     @objc private func didReceiveMemoryWarning(_ notification: Notification) {
         let allTextLayerIDs = Set(textLayers.keys)
         let unusedTextLayerIDs = allTextLayerIDs.subtracting(visibleTextLayerIDs)
@@ -254,6 +319,7 @@ private extension EditorBackingView {
     }
 }
 
+// MARK: - LineManagerDelegate
 extension EditorBackingView: LineManagerDelegate {
     func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> String {
         return string.substring(with: NSMakeRange(location, 1))

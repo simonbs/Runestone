@@ -107,21 +107,27 @@ final class EditorTextLayer {
         for lineIndex in 0 ..< lineCount {
             let line = unsafeBitCast(CFArrayGetValueAtIndex(lines, lineIndex)!, to: CTLine.self)
             let lineRange = CTLineGetStringRange(line)
-            if index >= 0 && index <= lineRange.location + lineRange.length {
+            let localIndex = index - lineRange.location
+            if localIndex >= 0 && localIndex <= lineRange.length {
                 var ascent: CGFloat = 0
                 var descent: CGFloat = 0
-                CTLineGetTypographicBounds(line, &ascent, &descent, nil)
-                let height = ascent + descent
+                var leading: CGFloat = 0
+                CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
+                var lineOrigin: CGPoint = .zero
+                CTFrameGetLineOrigins(textFrame, CFRangeMake(lineIndex, 0), &lineOrigin)
+                let height = ascent + descent + leading
+                let yPos = preferredSize.height - lineOrigin.y - descent
                 let xPos = CTLineGetOffsetForStringIndex(line, index, nil)
-                return CGRect(x: xPos, y: origin.y, width: caretWidth, height: height)
+                print("\(index) => \(CGRect(x: xPos, y: yPos, width: caretWidth, height: height))")
+                return CGRect(x: xPos, y: yPos, width: caretWidth, height: height)
             }
         }
         return CGRect(x: origin.x, y: origin.y, width: caretWidth, height: font?.lineHeight ?? 0)
     }
 
-    func firstRect(for range: NSRange) -> CGRect? {
+    func firstRect(for range: NSRange) -> CGRect {
         guard let textFrame = textFrame else {
-            return nil
+            return CGRect(x: origin.x, y: origin.y, width: preferredSize.width, height: preferredSize.height)
         }
         let lines = CTFrameGetLines(textFrame)
         let lineCount = CFArrayGetCount(lines)
@@ -133,17 +139,17 @@ final class EditorTextLayer {
                 let finalIndex = min(lineRange.location + lineRange.length, range.location + range.length)
                 let xStart = CTLineGetOffsetForStringIndex(line, index, nil)
                 let xEnd = CTLineGetOffsetForStringIndex(line, finalIndex, nil)
-                var origin: CGPoint = .zero
-                CTFrameGetLineOrigins(textFrame, CFRangeMake(lineIndex, 0), &origin)
+                var lineOrigin: CGPoint = .zero
+                CTFrameGetLineOrigins(textFrame, CFRangeMake(lineIndex, 0), &lineOrigin)
                 var ascent: CGFloat = 0
                 var descent: CGFloat = 0
                 CTLineGetTypographicBounds(line, &ascent, &descent, nil)
                 let height = ascent + descent
-                let yPos = origin.y - descent
+                let yPos = preferredSize.height - lineOrigin.y - descent
                 return CGRect(x: xStart, y: yPos, width: xEnd - xStart, height: height)
             }
         }
-        return nil
+        return CGRect(x: origin.x, y: origin.y, width: preferredSize.width, height: preferredSize.height)
     }
 
     func closestIndex(to point: CGPoint) -> Int? {
@@ -158,7 +164,10 @@ final class EditorTextLayer {
             if point.y > origins[lineIndex].y {
                 // This line is closest to the y-coordinate. Now we find the closest string index in the line.
                 let line = unsafeBitCast(CFArrayGetValueAtIndex(lines, lineIndex)!, to: CTLine.self)
-                return CTLineGetStringIndexForPosition(line, point)
+                let lineRange = CTLineGetStringRange(line)
+                let pos = CTLineGetStringIndexForPosition(line, point)
+//                print("\(lineIndex) => \(pos)")
+                return pos
             }
         }
         // Fallback to max index.
