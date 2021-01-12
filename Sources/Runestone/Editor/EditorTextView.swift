@@ -500,10 +500,10 @@ extension EditorTextView: EditorTextStorageDelegate {
 //            parseAndHighlight()
             updateShouldDrawDummyExtraLineNumber()
 //            updateGutterWidth()
-            DispatchQueue.main.async {
-                let stringTokenizer = self.tokenizer as? UITextInputStringTokenizer
-                stringTokenizer?.sbs_rangeEnclosingPositionReturnsNull = false
-            }
+//            DispatchQueue.main.async {
+//                let stringTokenizer = self.tokenizer as? UITextInputStringTokenizer
+//                stringTokenizer?.sbs_rangeEnclosingPositionReturnsNull = false
+//            }
         }
     }
 }

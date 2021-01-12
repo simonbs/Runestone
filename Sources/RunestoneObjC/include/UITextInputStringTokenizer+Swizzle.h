@@ -7,7 +7,7 @@
 
 @import UIKit;
 
-@interface UITextInputStringTokenizer (Swizzle)
-@property (nonatomic, assign) BOOL sbs_rangeEnclosingPositionReturnsNull;
-@end
-
+//@interface UITextInputStringTokenizer (Swizzle)
+//@property (nonatomic, assign) BOOL sbs_rangeEnclosingPositionReturnsNull;
+//@end
+//
