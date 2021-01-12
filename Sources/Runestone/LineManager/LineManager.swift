@@ -36,6 +36,12 @@ final class LineManager {
         return rightMost.yPosition + rightMost.data.frameHeight
     }
     var estimatedLineHeight: CGFloat = 12
+    var firstLine: DocumentLineNode {
+        return documentLineTree.root.leftMost
+    }
+    var lastLine: DocumentLineNode {
+        return documentLineTree.root.rightMost
+    }
 
     private let documentLineTree: DocumentLineTree
     private var currentDelegate: LineManagerDelegate {
