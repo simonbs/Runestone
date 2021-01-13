@@ -163,7 +163,7 @@ extension EditorBackingView {
     func firstRect(for range: NSRange) -> CGRect {
         if let line = lineManager.line(containingCharacterAt: range.location) {
             let textLayer = getTextLayer(for: line)
-            let localRange = NSRange(location: range.location - line.location, length: range.length)
+            let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
             let textLayerRect = textLayer.firstRect(for: localRange)
             let screenRect = EditorScreenRect(textLayerRect, in: line)
             return screenRect.rect
