@@ -143,8 +143,9 @@ final class EditorTextLayer {
                 CTFrameGetLineOrigins(textFrame, CFRangeMake(lineIndex, 0), &lineOrigin)
                 var ascent: CGFloat = 0
                 var descent: CGFloat = 0
-                CTLineGetTypographicBounds(line, &ascent, &descent, nil)
-                let height = ascent + descent
+                var leading: CGFloat = 0
+                CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
+                let height = ascent + descent + leading
                 let yPos = preferredSize.height - lineOrigin.y - descent
                 return CGRect(x: xStart, y: yPos, width: xEnd - xStart, height: height)
             }
