@@ -65,14 +65,9 @@ final class EditorBackingView: UIView {
 
     override func draw(_ rect: CGRect) {
         super.draw(rect)
-        // Core Text has a flipped coordinate system so we flip our context before drawing the text.
-        let context = UIGraphicsGetCurrentContext()!
-//        context.saveGState()
-//        context.textMatrix = .identity
-//        context.translateBy(x: 0, y: rect.height)
-//        context.scaleBy(x: 1, y: -1)
-        drawLines(in: rect, of: context)
-//        context.restoreGState()
+        if let context = UIGraphicsGetCurrentContext() {
+            drawLines(in: rect, of: context)
+        }
         if isContentSizeInvalid {
             delegate?.editorBackingViewDidInvalidateContentSize(self)
         }
@@ -157,7 +152,8 @@ extension EditorBackingView {
         } else if let line = lineManager.line(containingCharacterAt: index) {
             let textLayer = getTextLayer(for: line)
             let localIndex = index - line.location
-            return textLayer.caretRect(aIndex: localIndex)
+            let caretRect = textLayer.caretRect(atIndex: localIndex)
+            return CGRect(x: caretRect.minX, y: line.yPosition + caretRect.minY, width: caretRect.width, height: caretRect.height)
         } else {
             fatalError("Cannot find caret rect.")
         }
@@ -196,8 +192,9 @@ extension EditorBackingView {
     }
 
     private func closestIndex(to point: CGPoint, in textLayer: EditorTextLayer, showing line: DocumentLineNode) -> Int? {
-        let point = CGPoint(x: point.x, y: frame.height - point.y)
-        if let index = textLayer.closestIndex(to: point) {
+        let layerFlippedYPosition = viewport.minY + frame.height - textLayer.origin.y
+        let flippedPoint = CGPoint(x: point.x, y: textLayer.preferredSize.height - (layerFlippedYPosition - point.y))
+        if let index = textLayer.closestIndex(to: flippedPoint) {
             return line.location + index
         } else {
             return nil
@@ -224,7 +221,7 @@ extension EditorBackingView {
                 let endLocation = min(range.location + range.length, lineLocation + line.value)
                 let containsStart = range.location >= startLocation && range.location <= endLocation
                 let containsEnd = range.location + range.length >= startLocation && range.location + range.length <= endLocation
-                let startRect = textLayer.caretRect(aIndex: startLocation)
+                let startRect = textLayer.caretRect(atIndex: startLocation)
 //                let endRect = textLayer.caretRect(aIndex: endLocation)
                 // TODO: What do we do when the selection spans multiple lines?
                 let selectionRect = EditorTextSelectionRect(
@@ -257,15 +254,12 @@ private extension EditorBackingView {
         let lineString = string.substring(with: range) as NSString
         textLayer.setString(lineString)
         textLayer.constrainingWidth = bounds.width
-        let lineYPosition = line.yPosition
         let size = textLayer.preferredSize
+        let lineYPosition = viewport.minY + frame.height - line.yPosition - size.height
         let didUpdateHeight = lineManager.setHeight(size.height, of: line)
+//        print("\(line.index) = \(lineYPosition)")
         textLayer.origin = CGPoint(x: 0, y: lineYPosition)
-//        context.saveGState()
-//        let contextYTranslation: CGFloat = frame.height - size.height
-//        context.translateBy(x: 0, y: contextYTranslation)
         textLayer.draw(in: context)
-//        context.restoreGState()
         if didUpdateHeight {
             isContentSizeInvalid = true
         }
