@@ -61,7 +61,7 @@ public final class EditorInputView: UIScrollView, UITextInput {
         return EditorIndexedPosition(index: textView.string.length)
     }
     public var inputDelegate: UITextInputDelegate?
-    public private(set) lazy var tokenizer: UITextInputTokenizer = UITextInputStringTokenizer(textInput: self)
+    public private(set) lazy var tokenizer: UITextInputTokenizer = EditorTextInputStringTokenizer(textInput: self, lineManager: textView.lineManager)
     public var hasText: Bool {
         return textView.string.length > 0
     }

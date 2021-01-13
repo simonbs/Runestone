@@ -13,6 +13,7 @@ protocol EditorBackingViewDelegate: AnyObject {
 
 final class EditorBackingView: UIView {
     weak var delegate: EditorBackingViewDelegate?
+    let lineManager = LineManager()
     var string = NSMutableString() {
         didSet {
             if string != oldValue {
@@ -45,7 +46,6 @@ final class EditorBackingView: UIView {
         return _contentSize
     }
 
-    private let lineManager = LineManager()
     private var textLayers: [DocumentLineNodeID: EditorTextLayer] = [:]
     private var visibleTextLayerIDs: Set<DocumentLineNodeID> = []
     private var isContentSizeInvalid = false
@@ -153,7 +153,8 @@ extension EditorBackingView {
             let textLayer = getTextLayer(for: line)
             let localIndex = index - line.location
             let caretRect = textLayer.caretRect(atIndex: localIndex)
-            return CGRect(x: caretRect.minX, y: line.yPosition + caretRect.minY, width: caretRect.width, height: caretRect.height)
+            let yPosition = line.yPosition + caretRect.minY
+            return CGRect(x: caretRect.minX, y: yPosition, width: caretRect.width, height: caretRect.height)
         } else {
             fatalError("Cannot find caret rect.")
         }
@@ -195,7 +196,11 @@ extension EditorBackingView {
         let layerFlippedYPosition = viewport.minY + frame.height - textLayer.origin.y
         let flippedPoint = CGPoint(x: point.x, y: textLayer.preferredSize.height - (layerFlippedYPosition - point.y))
         if let index = textLayer.closestIndex(to: flippedPoint) {
-            return line.location + index
+            if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
+                return line.location + line.data.length
+            } else {
+                return line.location + index
+            }
         } else {
             return nil
         }
@@ -233,6 +238,7 @@ extension EditorBackingView {
                 selectionRects.append(selectionRect)
             }
         }
+        return []
         return selectionRects
     }
 }
@@ -257,7 +263,6 @@ private extension EditorBackingView {
         let size = textLayer.preferredSize
         let lineYPosition = viewport.minY + frame.height - line.yPosition - size.height
         let didUpdateHeight = lineManager.setHeight(size.height, of: line)
-//        print("\(line.index) = \(lineYPosition)")
         textLayer.origin = CGPoint(x: 0, y: lineYPosition)
         textLayer.draw(in: context)
         if didUpdateHeight {
