@@ -103,10 +103,11 @@ final class EditorTextLayer {
         }
     }
 
-    func caretRect(atIndex index: Int) -> CGRect {
+    func caretRect(atIndex index: Int) -> EditorTextLayerRect {
         let caretWidth: CGFloat = 3
         guard let textFrame = textFrame else {
-            return CGRect(x: 0, y: 0, width: caretWidth, height: font?.lineHeight ?? 0)
+            let rect = CGRect(x: 0, y: 0, width: caretWidth, height: font?.lineHeight ?? 0)
+            return EditorTextLayerRect(rect)
         }
         let lines = CTFrameGetLines(textFrame)
         let lineCount = CFArrayGetCount(lines)
@@ -124,16 +125,18 @@ final class EditorTextLayer {
                 let caretHeight = ascent + descent + leading
                 let xPos = CTLineGetOffsetForStringIndex(line, index, nil)
                 let yPos = preferredSize.height - lineOrigin.y - ascent - leading
-//                print("\(index) => \(yPos)")
-                return CGRect(x: xPos, y: yPos, width: caretWidth, height: caretHeight)
+                let rect = CGRect(x: xPos, y: yPos, width: caretWidth, height: caretHeight)
+                return EditorTextLayerRect(rect)
             }
         }
-        return CGRect(x: 0, y: 0, width: caretWidth, height: font?.lineHeight ?? 0)
+        let rect = CGRect(x: 0, y: 0, width: caretWidth, height: font?.lineHeight ?? 0)
+        return EditorTextLayerRect(rect)
     }
 
-    func firstRect(for range: NSRange) -> CGRect {
+    func firstRect(for range: NSRange) -> EditorTextLayerRect {
         guard let textFrame = textFrame else {
-            return CGRect(x: origin.x, y: origin.y, width: preferredSize.width, height: preferredSize.height)
+            let rect = CGRect(x: 0, y: 0, width: preferredSize.width, height: preferredSize.height)
+            return EditorTextLayerRect(rect)
         }
         let lines = CTFrameGetLines(textFrame)
         let lineCount = CFArrayGetCount(lines)
@@ -152,14 +155,16 @@ final class EditorTextLayer {
                 var leading: CGFloat = 0
                 CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
                 let height = ascent + descent + leading
-                let yPos = preferredSize.height - lineOrigin.y - descent
-                return CGRect(x: xStart, y: yPos, width: xEnd - xStart, height: height)
+                let yPos = preferredSize.height - lineOrigin.y - ascent - leading
+                let rect = CGRect(x: xStart, y: yPos, width: xEnd - xStart, height: height)
+                return EditorTextLayerRect(rect)
             }
         }
-        return CGRect(x: origin.x, y: origin.y, width: preferredSize.width, height: preferredSize.height)
+        let rect = CGRect(x: 0, y: 0, width: preferredSize.width, height: preferredSize.height)
+        return EditorTextLayerRect(rect)
     }
 
-    func closestIndex(to point: CGPoint) -> Int? {
+    func closestIndex(to point: EditorTextLayerPoint) -> Int? {
         guard let textFrame = textFrame else {
             return nil
         }
@@ -173,7 +178,7 @@ final class EditorTextLayer {
             if preferredSize.height - point.y > origins[lineIndex].y {
                 // This line is closest to the y-coordinate. Now we find the closest string index in the line.
                 let line = unsafeBitCast(CFArrayGetValueAtIndex(lines, lineIndex)!, to: CTLine.self)
-                return CTLineGetStringIndexForPosition(line, point)
+                return CTLineGetStringIndexForPosition(line, point.point)
             }
         }
         // Fallback to max index.

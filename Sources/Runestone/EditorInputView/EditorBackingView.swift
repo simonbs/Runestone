@@ -153,8 +153,8 @@ extension EditorBackingView {
             let textLayer = getTextLayer(for: line)
             let localIndex = index - line.location
             let caretRect = textLayer.caretRect(atIndex: localIndex)
-            let yPosition = line.yPosition + caretRect.minY
-            return CGRect(x: caretRect.minX, y: yPosition, width: caretRect.width, height: caretRect.height)
+            let screenRect = EditorScreenRect(caretRect, in: line)
+            return screenRect.rect
         } else {
             fatalError("Cannot find caret rect.")
         }
@@ -164,7 +164,9 @@ extension EditorBackingView {
         if let line = lineManager.line(containingCharacterAt: range.location) {
             let textLayer = getTextLayer(for: line)
             let localRange = NSRange(location: range.location - line.location, length: range.length)
-            return textLayer.firstRect(for: localRange)
+            let textLayerRect = textLayer.firstRect(for: localRange)
+            let screenRect = EditorScreenRect(textLayerRect, in: line)
+            return screenRect.rect
         } else {
             fatalError("Cannot find first rect.")
         }
@@ -193,9 +195,9 @@ extension EditorBackingView {
     }
 
     private func closestIndex(to point: CGPoint, in textLayer: EditorTextLayer, showing line: DocumentLineNode) -> Int? {
-        let layerFlippedYPosition = viewport.minY + frame.height - textLayer.origin.y
-        let flippedPoint = CGPoint(x: point.x, y: textLayer.preferredSize.height - (layerFlippedYPosition - point.y))
-        if let index = textLayer.closestIndex(to: flippedPoint) {
+        let screenPoint = EditorScreenPoint(point)
+        let layerPoint = EditorTextLayerPoint(screenPoint, viewport: viewport, destinationLayer: textLayer)
+        if let index = textLayer.closestIndex(to: layerPoint) {
             if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
                 return line.location + line.data.length
             } else {
@@ -229,13 +231,13 @@ extension EditorBackingView {
                 let startRect = textLayer.caretRect(atIndex: startLocation)
 //                let endRect = textLayer.caretRect(aIndex: endLocation)
                 // TODO: What do we do when the selection spans multiple lines?
-                let selectionRect = EditorTextSelectionRect(
-                    rect: startRect,
-                    writingDirection: .leftToRight,
-                    containsStart: containsStart,
-                    containsEnd: containsEnd,
-                    isVertical: false)
-                selectionRects.append(selectionRect)
+//                let selectionRect = EditorTextSelectionRect(
+//                    rect: startRect,
+//                    writingDirection: .leftToRight,
+//                    containsStart: containsStart,
+//                    containsEnd: containsEnd,
+//                    isVertical: false)
+//                selectionRects.append(selectionRect)
             }
         }
         return []
@@ -261,9 +263,10 @@ private extension EditorBackingView {
         textLayer.setString(lineString)
         textLayer.constrainingWidth = bounds.width
         let size = textLayer.preferredSize
-        let lineYPosition = viewport.minY + frame.height - line.yPosition - size.height
+        let screenRect = EditorScreenRect(x: 0, y: line.yPosition, width: bounds.width, height: size.height)
+        let drawableRect = EditorTextDrawableRect(screenRect, viewport: viewport)
         let didUpdateHeight = lineManager.setHeight(size.height, of: line)
-        textLayer.origin = CGPoint(x: 0, y: lineYPosition)
+        textLayer.origin = drawableRect.origin
         textLayer.draw(in: context)
         if didUpdateHeight {
             isContentSizeInvalid = true
