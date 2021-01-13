@@ -104,9 +104,8 @@ final class EditorTextLayer {
     }
 
     func caretRect(atIndex index: Int) -> EditorTextLayerRect {
-        let caretWidth: CGFloat = 3
         guard let textFrame = textFrame else {
-            let rect = CGRect(x: 0, y: 0, width: caretWidth, height: font?.lineHeight ?? 0)
+            let rect = CGRect(x: 0, y: 0, width: EditorCaret.width, height: EditorCaret.defaultHeight(for: font))
             return EditorTextLayerRect(rect)
         }
         let lines = CTFrameGetLines(textFrame)
@@ -125,11 +124,11 @@ final class EditorTextLayer {
                 let caretHeight = ascent + descent + leading
                 let xPos = CTLineGetOffsetForStringIndex(line, index, nil)
                 let yPos = preferredSize.height - lineOrigin.y - ascent - leading
-                let rect = CGRect(x: xPos, y: yPos, width: caretWidth, height: caretHeight)
+                let rect = CGRect(x: xPos, y: yPos, width: EditorCaret.width, height: caretHeight)
                 return EditorTextLayerRect(rect)
             }
         }
-        let rect = CGRect(x: 0, y: 0, width: caretWidth, height: font?.lineHeight ?? 0)
+        let rect = CGRect(x: 0, y: 0, width: EditorCaret.width, height: EditorCaret.defaultHeight(for: font))
         return EditorTextLayerRect(rect)
     }
 

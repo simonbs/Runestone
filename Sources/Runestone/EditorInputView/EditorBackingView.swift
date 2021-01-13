@@ -148,7 +148,7 @@ extension EditorBackingView {
 extension EditorBackingView {
     func caretRect(atIndex index: Int) -> CGRect {
         if string.length == 0 {
-            return CGRect(x: 0, y: -font.leading, width: 3, height: font.lineHeight)
+            return CGRect(x: 0, y: 0, width: EditorCaret.width, height: EditorCaret.defaultHeight(for: font))
         } else if let line = lineManager.line(containingCharacterAt: index) {
             let textLayer = getTextLayer(for: line)
             let localIndex = index - line.location
