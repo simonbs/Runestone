@@ -115,8 +115,9 @@ public final class EditorInputView: UIScrollView, UITextInput {
 
     @discardableResult
     public override func becomeFirstResponder() -> Bool {
+        let wasFirstResponder = isFirstResponder
         let didBecomeFirstResponder = super.becomeFirstResponder()
-        if didBecomeFirstResponder {
+        if !wasFirstResponder && isFirstResponder {
             textView.markedTextRange = NSRange(location: NSNotFound, length: 0)
             if selectedTextRange == nil {
                 textView.selectedTextRange = NSRange(location: 0, length: 0)
@@ -129,8 +130,9 @@ public final class EditorInputView: UIScrollView, UITextInput {
 
     @discardableResult
     public override func resignFirstResponder() -> Bool {
+        let wasFirstResponder = isFirstResponder
         let didResignFirstResponder = super.resignFirstResponder()
-        if didResignFirstResponder {
+        if wasFirstResponder && !isFirstResponder {
             textView.selectedTextRange = nil
             textView.markedTextRange = nil
             tapGestureRecognizer.isEnabled = true
