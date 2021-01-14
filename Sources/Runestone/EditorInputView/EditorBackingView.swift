@@ -223,25 +223,30 @@ extension EditorBackingView {
         for lineIndex in lineIndexRange {
             let line = lineManager.line(atIndex: lineIndex)
             if let textLayer = textLayers[line.id] {
-                let lineLocation = line.location
-                let startLocation = max(range.location, lineLocation)
-                let endLocation = min(range.location + range.length, lineLocation + line.value)
-                let containsStart = range.location >= startLocation && range.location <= endLocation
-                let containsEnd = range.location + range.length >= startLocation && range.location + range.length <= endLocation
-                let startRect = textLayer.caretRect(atIndex: startLocation)
-//                let endRect = textLayer.caretRect(aIndex: endLocation)
-                // TODO: What do we do when the selection spans multiple lines?
-//                let selectionRect = EditorTextSelectionRect(
-//                    rect: startRect,
-//                    writingDirection: .leftToRight,
-//                    containsStart: containsStart,
-//                    containsEnd: containsEnd,
-//                    isVertical: false)
-//                selectionRects.append(selectionRect)
+                let lineStartLocation = line.location
+                let lineEndLocation = lineStartLocation + line.data.totalLength
+                let localRangeLocation = max(range.location, lineStartLocation) - lineStartLocation
+                let localRangeLength = min(range.location + range.length, lineEndLocation) - lineStartLocation - localRangeLocation
+                let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
+                let layerSelectionRects = textLayer.selectionRects(in: localRange)
+                let textSelectionRects: [EditorTextSelectionRect] = layerSelectionRects.map { layerSelectionRect in
+                    var screenRect = EditorScreenRect(layerSelectionRect.rect, in: line)
+                    let startLocation = lineStartLocation + layerSelectionRect.range.location
+                    let endLocation = startLocation + layerSelectionRect.range.length
+                    let containsStart = range.location >= startLocation && range.location <= endLocation
+                    let containsEnd = range.location + range.length >= startLocation && range.location + range.length <= endLocation
+                    if endLocation < range.location + range.length {
+                        screenRect.size.width = viewport.size.width - screenRect.minX
+                    }
+                    return EditorTextSelectionRect(rect: screenRect.rect, writingDirection: .leftToRight, containsStart: containsStart, containsEnd: containsEnd)
+                }
+                selectionRects.append(contentsOf: textSelectionRects)
             }
         }
-        return []
-        return selectionRects
+        print(selectionRects.ensuringYAxisAlignemnt().map { rect in
+            return rect.rect
+        })
+        return selectionRects.ensuringYAxisAlignemnt()
     }
 }
 

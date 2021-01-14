@@ -8,34 +8,38 @@
 import CoreGraphics
 
 protocol RectProtocol {
-    var rect: CGRect { get }
+    var origin: CGPoint { get set }
+    var size: CGSize { get set }
     init(_ rect: CGRect)
 }
 
 extension RectProtocol {
     var origin: CGPoint {
-        return rect.origin
+        return origin
     }
     var size: CGSize {
-        return rect.size
+        return size
     }
     var minX: CGFloat {
-        return rect.minX
+        return origin.x
     }
     var minY: CGFloat {
-        return rect.minY
+        return origin.y
     }
     var maxX: CGFloat {
-        return rect.maxX
+        return origin.x + size.width
     }
     var maxY: CGFloat {
-        return rect.maxY
+        return origin.y + size.height
     }
     var width: CGFloat {
-        return rect.width
+        return size.width
     }
     var height: CGFloat {
-        return rect.height
+        return size.height
+    }
+    var rect: CGRect {
+        return CGRect(origin: origin, size: size)
     }
 
     init(x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat) {

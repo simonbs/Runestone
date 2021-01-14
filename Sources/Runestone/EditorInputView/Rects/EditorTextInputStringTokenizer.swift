@@ -21,7 +21,7 @@ final class EditorTextInputStringTokenizer: UITextInputStringTokenizer {
         }
         if granularity == .line, let line = lineManager.line(containingCharacterAt: indexedPosition.index) {
             let localIndex = indexedPosition.index - line.location
-            return localIndex == line.data.length
+            return localIndex == line.data.totalLength
         } else if granularity == .word {
             return true
         } else {

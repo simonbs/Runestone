@@ -7,6 +7,16 @@
 
 import UIKit
 
+struct EditorTextLayerSelectionRect {
+    let rect: EditorTextLayerRect
+    let range: NSRange
+
+    init(rect: EditorTextLayerRect, range: NSRange) {
+        self.rect = rect
+        self.range = range
+    }
+}
+
 final class EditorTextLayer {
     var font: UIFont? {
         didSet {
@@ -94,12 +104,12 @@ final class EditorTextLayer {
     func draw(in context: CGContext) {
         if let textFrame = textFrame {
             CTFrameDraw(textFrame, context)
-            context.saveGState()
+//            context.saveGState()
             let rect = CGRect(x: origin.x, y: origin.y, width: preferredSize.width, height: preferredSize.height)
-            context.setLineWidth(1)
-            context.setStrokeColor(UIColor.red.cgColor)
-            context.stroke(rect)
-            context.restoreGState()
+//            context.setLineWidth(1)
+//            context.setStrokeColor(UIColor.red.cgColor)
+//            context.stroke(rect)
+//            context.restoreGState()
         }
     }
 
@@ -181,6 +191,38 @@ final class EditorTextLayer {
         // Fallback to max index.
         let range = CTFrameGetStringRange(textFrame)
         return range.length
+    }
+
+    func selectionRects(in range: NSRange) -> [EditorTextLayerSelectionRect] {
+        guard let textFrame = textFrame else {
+            return []
+        }
+        var selectionRects: [EditorTextLayerSelectionRect] = []
+        let lines = CTFrameGetLines(textFrame)
+        let lineCount = CFArrayGetCount(lines)
+        for lineIndex in 0 ..< lineCount {
+            let line = unsafeBitCast(CFArrayGetValueAtIndex(lines, lineIndex)!, to: CTLine.self)
+            let _lineRange = CTLineGetStringRange(line)
+            let lineRange = NSRange(location: _lineRange.location, length: _lineRange.length)
+            let selectionIntersection = range.intersection(lineRange)
+            if let selectionIntersection = selectionIntersection {
+                let xStart = floor(CTLineGetOffsetForStringIndex(line, selectionIntersection.location, nil))
+                let xEnd = ceil(CTLineGetOffsetForStringIndex(line, selectionIntersection.location + selectionIntersection.length, nil))
+                var lineOrigin: CGPoint = .zero
+                CTFrameGetLineOrigins(textFrame, CFRangeMake(lineIndex, 0), &lineOrigin)
+                var ascent: CGFloat = 0
+                var descent: CGFloat = 0
+                var leading: CGFloat = 0
+                CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
+                let height = ceil(ascent + descent + leading)
+                let yPos = ceil(preferredSize.height - lineOrigin.y - ascent - leading)
+                let rect = CGRect(x: xStart, y: yPos, width: xEnd - xStart, height: height)
+                let textLayerRect = EditorTextLayerRect(rect)
+                let selectionRect = EditorTextLayerSelectionRect(rect: textLayerRect, range: selectionIntersection)
+                selectionRects.append(selectionRect)
+            }
+        }
+        return selectionRects
     }
 }
 

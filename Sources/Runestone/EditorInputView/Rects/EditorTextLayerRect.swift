@@ -10,9 +10,11 @@ import CoreGraphics
 // A rect in the an EditorTextLayer. The coordinate is relative to the text layer
 // and (0,0) is placed in the upper-left corner.
 struct EditorTextLayerRect: RectProtocol {
-    let rect: CGRect
+    var origin: CGPoint
+    var size: CGSize
 
     init(_ rect: CGRect) {
-        self.rect = rect
+        self.origin = rect.origin
+        self.size = rect.size
     }
 }

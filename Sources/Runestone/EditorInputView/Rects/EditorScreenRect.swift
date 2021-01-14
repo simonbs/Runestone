@@ -10,10 +10,12 @@ import CoreGraphics
 // A rect on the screen. Coordinates are relative to the screen
 // and (0, 0) is placed in the upper-left corner.
 struct EditorScreenRect: RectProtocol {
-    let rect: CGRect
+    var origin: CGPoint
+    var size: CGSize
 
     init(_ rect: CGRect) {
-        self.rect = rect
+        self.origin = rect.origin
+        self.size = rect.size
     }
 
     init(_ rect: EditorTextLayerRect, in line: DocumentLineNode) {
@@ -21,6 +23,7 @@ struct EditorScreenRect: RectProtocol {
     }
 
     init(_ rect: EditorTextLayerRect, inLineStartingAt lineYPosition: CGFloat) {
-        self.rect = CGRect(x: rect.minX, y: lineYPosition + rect.minY, width: rect.width, height: rect.height)
+        self.origin = CGPoint(x: rect.minX, y: lineYPosition + rect.minY)
+        self.size = CGSize(width: rect.width, height: rect.height)
     }
 }
