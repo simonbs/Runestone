@@ -45,10 +45,11 @@ public final class EditorInputView: UIScrollView, UITextInput {
             }
         }
         set {
-            if let indexedRange = newValue as? EditorIndexedRange {
-                textView.selectedTextRange = indexedRange.range
-            } else {
-                textView.selectedTextRange = nil
+            let newRange = (newValue as? EditorIndexedRange)?.range
+            if newRange != textView.selectedTextRange {
+                inputDelegate?.selectionWillChange(self)
+                textView.selectedTextRange = newRange
+                inputDelegate?.selectionDidChange(self)
             }
         }
     }
@@ -178,22 +179,28 @@ public extension EditorInputView {
 // MARK: - Editing
 public extension EditorInputView {
     func insertText(_ text: String) {
+        inputDelegate?.textWillChange(self)
         textView.insertText(text)
-        editorDelegate?.editorInputViewDidChange(self)
         setNeedsDisplay()
+        inputDelegate?.textDidChange(self)
+        editorDelegate?.editorInputViewDidChange(self)
     }
 
     func deleteBackward() {
+        inputDelegate?.textWillChange(self)
         textView.deleteBackward()
-        editorDelegate?.editorInputViewDidChange(self)
         setNeedsDisplay()
+        inputDelegate?.textDidChange(self)
+        editorDelegate?.editorInputViewDidChange(self)
     }
 
     func replace(_ range: UITextRange, withText text: String) {
         if let indexedRange = range as? EditorIndexedRange {
+            inputDelegate?.textWillChange(self)
             textView.replace(indexedRange.range, withText: text)
-            editorDelegate?.editorInputViewDidChange(self)
             setNeedsDisplay()
+            inputDelegate?.textDidChange(self)
+            editorDelegate?.editorInputViewDidChange(self)
         }
     }
 
