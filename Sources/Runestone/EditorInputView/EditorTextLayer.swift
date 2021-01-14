@@ -104,12 +104,6 @@ final class EditorTextLayer {
     func draw(in context: CGContext) {
         if let textFrame = textFrame {
             CTFrameDraw(textFrame, context)
-//            context.saveGState()
-            let rect = CGRect(x: origin.x, y: origin.y, width: preferredSize.width, height: preferredSize.height)
-//            context.setLineWidth(1)
-//            context.setStrokeColor(UIColor.red.cgColor)
-//            context.stroke(rect)
-//            context.restoreGState()
         }
     }
 
