@@ -76,10 +76,10 @@ public final class EditorInputView: UIScrollView, UITextInput {
             textView.backgroundColor = newValue
         }
     }
-    public override var bounds: CGRect {
+    public override var contentOffset: CGPoint {
         didSet {
-            if bounds != oldValue {
-                textView.viewport = bounds
+            if contentOffset != oldValue {
+                textView.viewport = CGRect(origin: contentOffset, size: frame.size)
             }
         }
     }
@@ -109,6 +109,7 @@ public final class EditorInputView: UIScrollView, UITextInput {
     public override func layoutSubviews() {
         super.layoutSubviews()
         textView.frame = CGRect(x: 0, y: bounds.minY, width: bounds.width, height: bounds.height)
+        textView.viewport = CGRect(origin: contentOffset, size: frame.size)
     }
 
     @discardableResult
