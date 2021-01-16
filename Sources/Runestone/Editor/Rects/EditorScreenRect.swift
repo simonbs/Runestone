@@ -18,11 +18,11 @@ struct EditorScreenRect: RectProtocol {
         self.size = rect.size
     }
 
-    init(_ rect: EditorTextLayerRect, in line: DocumentLineNode) {
+    init(_ rect: EditorTextRendererRect, in line: DocumentLineNode) {
         self.init(rect, inLineStartingAt: line.yPosition)
     }
 
-    init(_ rect: EditorTextLayerRect, inLineStartingAt lineYPosition: CGFloat) {
+    init(_ rect: EditorTextRendererRect, inLineStartingAt lineYPosition: CGFloat) {
         self.origin = CGPoint(x: rect.minX, y: lineYPosition + rect.minY)
         self.size = CGSize(width: rect.width, height: rect.height)
     }

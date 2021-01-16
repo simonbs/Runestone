@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  EditorTextRenderer.swift
 //  
 //
 //  Created by Simon Støvring on 06/01/2021.
@@ -7,17 +7,17 @@
 
 import UIKit
 
-struct EditorTextLayerSelectionRect {
-    let rect: EditorTextLayerRect
+struct EditorTextRendererSelectionRect {
+    let rect: EditorTextRendererRect
     let range: NSRange
 
-    init(rect: EditorTextLayerRect, range: NSRange) {
+    init(rect: EditorTextRendererRect, range: NSRange) {
         self.rect = rect
         self.range = range
     }
 }
 
-final class EditorTextLayer {
+final class EditorTextRenderer {
     var font: UIFont? {
         didSet {
             if font != oldValue {
@@ -107,10 +107,10 @@ final class EditorTextLayer {
         }
     }
 
-    func caretRect(atIndex index: Int) -> EditorTextLayerRect {
+    func caretRect(atIndex index: Int) -> EditorTextRendererRect {
         guard let textFrame = textFrame else {
             let rect = CGRect(x: 0, y: 0, width: EditorCaret.width, height: EditorCaret.defaultHeight(for: font))
-            return EditorTextLayerRect(rect)
+            return EditorTextRendererRect(rect)
         }
         let lines = CTFrameGetLines(textFrame)
         let lineCount = CFArrayGetCount(lines)
@@ -129,17 +129,17 @@ final class EditorTextLayer {
                 let xPos = CTLineGetOffsetForStringIndex(line, index, nil)
                 let yPos = preferredSize.height - lineOrigin.y - ascent - leading
                 let rect = CGRect(x: xPos, y: yPos, width: EditorCaret.width, height: caretHeight)
-                return EditorTextLayerRect(rect)
+                return EditorTextRendererRect(rect)
             }
         }
         let rect = CGRect(x: 0, y: 0, width: EditorCaret.width, height: EditorCaret.defaultHeight(for: font))
-        return EditorTextLayerRect(rect)
+        return EditorTextRendererRect(rect)
     }
 
-    func firstRect(for range: NSRange) -> EditorTextLayerRect {
+    func firstRect(for range: NSRange) -> EditorTextRendererRect {
         guard let textFrame = textFrame else {
             let rect = CGRect(x: 0, y: 0, width: preferredSize.width, height: preferredSize.height)
-            return EditorTextLayerRect(rect)
+            return EditorTextRendererRect(rect)
         }
         let lines = CTFrameGetLines(textFrame)
         let lineCount = CFArrayGetCount(lines)
@@ -160,14 +160,14 @@ final class EditorTextLayer {
                 let height = ascent + descent + leading
                 let yPos = preferredSize.height - lineOrigin.y - ascent - leading
                 let rect = CGRect(x: xStart, y: yPos, width: xEnd - xStart, height: height)
-                return EditorTextLayerRect(rect)
+                return EditorTextRendererRect(rect)
             }
         }
         let rect = CGRect(x: 0, y: 0, width: preferredSize.width, height: preferredSize.height)
-        return EditorTextLayerRect(rect)
+        return EditorTextRendererRect(rect)
     }
 
-    func closestIndex(to point: EditorTextLayerPoint) -> Int? {
+    func closestIndex(to point: EditorTextRendererPoint) -> Int? {
         guard let textFrame = textFrame else {
             return nil
         }
@@ -187,11 +187,11 @@ final class EditorTextLayer {
         return range.length
     }
 
-    func selectionRects(in range: NSRange) -> [EditorTextLayerSelectionRect] {
+    func selectionRects(in range: NSRange) -> [EditorTextRendererSelectionRect] {
         guard let textFrame = textFrame else {
             return []
         }
-        var selectionRects: [EditorTextLayerSelectionRect] = []
+        var selectionRects: [EditorTextRendererSelectionRect] = []
         let lines = CTFrameGetLines(textFrame)
         let lineCount = CFArrayGetCount(lines)
         for lineIndex in 0 ..< lineCount {
@@ -211,8 +211,8 @@ final class EditorTextLayer {
                 let height = ceil(ascent + descent + leading)
                 let yPos = ceil(preferredSize.height - lineOrigin.y - ascent - leading)
                 let rect = CGRect(x: xStart, y: yPos, width: xEnd - xStart, height: height)
-                let textLayerRect = EditorTextLayerRect(rect)
-                let selectionRect = EditorTextLayerSelectionRect(rect: textLayerRect, range: selectionIntersection)
+                let textRendererRect = EditorTextRendererRect(rect)
+                let selectionRect = EditorTextRendererSelectionRect(rect: textRendererRect, range: selectionIntersection)
                 selectionRects.append(selectionRect)
             }
         }
@@ -220,7 +220,7 @@ final class EditorTextLayer {
     }
 }
 
-private extension EditorTextLayer {
+private extension EditorTextRenderer {
     private func updateFont() {
         if let font = font, let attributedString = attributedString {
             let length = CFAttributedStringGetLength(attributedString)

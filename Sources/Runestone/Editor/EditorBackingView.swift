@@ -46,8 +46,8 @@ final class EditorBackingView: UIView {
         return _contentSize
     }
 
-    private var textLayers: [DocumentLineNodeID: EditorTextLayer] = [:]
-    private var visibleTextLayerIDs: Set<DocumentLineNodeID> = []
+    private var textRenderers: [DocumentLineNodeID: EditorTextRenderer] = [:]
+    private var visibleTextRendererIDs: Set<DocumentLineNodeID> = []
     private var isContentSizeInvalid = false
     private var _contentSize: CGSize = .zero
 
@@ -150,9 +150,9 @@ extension EditorBackingView {
         if string.length == 0 {
             return CGRect(x: 0, y: 0, width: EditorCaret.width, height: EditorCaret.defaultHeight(for: font))
         } else if let line = lineManager.line(containingCharacterAt: index) {
-            let textLayer = getTextLayer(for: line)
+            let textRenderer = getTextRenderer(for: line)
             let localIndex = index - line.location
-            let caretRect = textLayer.caretRect(atIndex: localIndex)
+            let caretRect = textRenderer.caretRect(atIndex: localIndex)
             let screenRect = EditorScreenRect(caretRect, in: line)
             return screenRect.rect
         } else {
@@ -162,10 +162,10 @@ extension EditorBackingView {
 
     func firstRect(for range: NSRange) -> CGRect {
         if let line = lineManager.line(containingCharacterAt: range.location) {
-            let textLayer = getTextLayer(for: line)
+            let textRenderer = getTextRenderer(for: line)
             let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
-            let textLayerRect = textLayer.firstRect(for: localRange)
-            let screenRect = EditorScreenRect(textLayerRect, in: line)
+            let textRendererRect = textRenderer.firstRect(for: localRange)
+            let screenRect = EditorScreenRect(textRendererRect, in: line)
             return screenRect.rect
         } else {
             fatalError("Cannot find first rect.")
@@ -177,27 +177,27 @@ extension EditorBackingView {
 extension EditorBackingView {
     func closestIndex(to point: CGPoint) -> Int? {
         if let line = lineManager.line(containingYOffset: point.y) {
-            let textLayer = getTextLayer(for: line)
-            return closestIndex(to: point, in: textLayer, showing: line)
+            let textRenderer = getTextRenderer(for: line)
+            return closestIndex(to: point, in: textRenderer, showing: line)
         } else if point.y <= 0 {
             let firstLine = lineManager.firstLine
-            let textLayer = getTextLayer(for: firstLine)
-            return closestIndex(to: point, in: textLayer, showing: firstLine)
+            let textRenderer = getTextRenderer(for: firstLine)
+            return closestIndex(to: point, in: textRenderer, showing: firstLine)
         } else {
             let lastLine = lineManager.lastLine
             if point.y >= lastLine.yPosition {
-                let textLayer = getTextLayer(for: lastLine)
-                return closestIndex(to: point, in: textLayer, showing: lastLine)
+                let textRenderer = getTextRenderer(for: lastLine)
+                return closestIndex(to: point, in: textRenderer, showing: lastLine)
             } else {
                 fatalError("Cannot find first rect.")
             }
         }
     }
 
-    private func closestIndex(to point: CGPoint, in textLayer: EditorTextLayer, showing line: DocumentLineNode) -> Int? {
+    private func closestIndex(to point: CGPoint, in textRenderer: EditorTextRenderer, showing line: DocumentLineNode) -> Int? {
         let screenPoint = EditorScreenPoint(point)
-        let layerPoint = EditorTextLayerPoint(screenPoint, viewport: viewport, destinationLayer: textLayer)
-        if let index = textLayer.closestIndex(to: layerPoint) {
+        let rendererPoint = EditorTextRendererPoint(screenPoint, viewport: viewport, destinationRenderer: textRenderer)
+        if let index = textRenderer.closestIndex(to: rendererPoint) {
             if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
                 return line.location + line.data.length
             } else {
@@ -222,17 +222,17 @@ extension EditorBackingView {
         let lineIndexRange = startLine.index ..< endLine.index + 1
         for lineIndex in lineIndexRange {
             let line = lineManager.line(atIndex: lineIndex)
-            if let textLayer = textLayers[line.id] {
+            if let textRenderer = textRenderers[line.id] {
                 let lineStartLocation = line.location
                 let lineEndLocation = lineStartLocation + line.data.totalLength
                 let localRangeLocation = max(range.location, lineStartLocation) - lineStartLocation
                 let localRangeLength = min(range.location + range.length, lineEndLocation) - lineStartLocation - localRangeLocation
                 let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
-                let layerSelectionRects = textLayer.selectionRects(in: localRange)
-                let textSelectionRects: [EditorTextSelectionRect] = layerSelectionRects.map { layerSelectionRect in
-                    var screenRect = EditorScreenRect(layerSelectionRect.rect, in: line)
-                    let startLocation = lineStartLocation + layerSelectionRect.range.location
-                    let endLocation = startLocation + layerSelectionRect.range.length
+                let rendererSelectionRects = textRenderer.selectionRects(in: localRange)
+                let textSelectionRects: [EditorTextSelectionRect] = rendererSelectionRects.map { rendererSelectionRect in
+                    var screenRect = EditorScreenRect(rendererSelectionRect.rect, in: line)
+                    let startLocation = lineStartLocation + rendererSelectionRect.range.location
+                    let endLocation = startLocation + rendererSelectionRect.range.length
                     let containsStart = range.location >= startLocation && range.location <= endLocation
                     let containsEnd = range.location + range.length >= startLocation && range.location + range.length <= endLocation
                     if endLocation < range.location + range.length {
@@ -250,61 +250,61 @@ extension EditorBackingView {
 // MARK: - Drawing
 private extension EditorBackingView {
     private func drawLines(in rect: CGRect, of context: CGContext) {
-        visibleTextLayerIDs = []
+        visibleTextRendererIDs = []
         let visibleLines = lineManager.visibleLines(in: viewport)
         for visibleLine in visibleLines {
             draw(visibleLine, in: rect, of: context)
-            visibleTextLayerIDs.insert(visibleLine.id)
+            visibleTextRendererIDs.insert(visibleLine.id)
         }
     }
 
     private func draw(_ line: DocumentLineNode, in rect: CGRect, of context: CGContext) {
-        let textLayer = getTextLayer(for: line)
+        let textRenderer = getTextRenderer(for: line)
         let range = NSRange(location: line.location, length: line.value)
         let lineString = string.substring(with: range) as NSString
-        textLayer.setString(lineString)
-        textLayer.constrainingWidth = bounds.width
-        let size = textLayer.preferredSize
+        textRenderer.setString(lineString)
+        textRenderer.constrainingWidth = bounds.width
+        let size = textRenderer.preferredSize
         let screenRect = EditorScreenRect(x: 0, y: line.yPosition, width: bounds.width, height: size.height)
         let drawableRect = EditorTextDrawableRect(screenRect, viewport: viewport)
         let didUpdateHeight = lineManager.setHeight(size.height, of: line)
-        textLayer.origin = drawableRect.origin
-        textLayer.draw(in: context)
+        textRenderer.origin = drawableRect.origin
+        textRenderer.draw(in: context)
         if didUpdateHeight {
             isContentSizeInvalid = true
         }
-        if textLayers[line.id] == nil {
-            textLayers[line.id] = textLayer
+        if textRenderers[line.id] == nil {
+            textRenderers[line.id] = textRenderer
         }
     }
 
     private func updateStrings(on lines: Set<DocumentLineNode>) {
         for line in lines {
-            if let textLayer = textLayers[line.id] {
+            if let textRenderer = textRenderers[line.id] {
                 let range = NSRange(location: line.location, length: line.value)
                 let substring = string.substring(with: range) as NSString
-                textLayer.setString(substring)
-                let size = textLayer.preferredSize
+                textRenderer.setString(substring)
+                let size = textRenderer.preferredSize
                 lineManager.setHeight(size.height, of: line)
             }
         }
     }
 
-    private func getTextLayer(for line: DocumentLineNode) -> EditorTextLayer {
-        if let textLayer = textLayers[line.id] {
-            return textLayer
+    private func getTextRenderer(for line: DocumentLineNode) -> EditorTextRenderer {
+        if let textRenderer = textRenderers[line.id] {
+            return textRenderer
         } else {
-            return createTextLayer(for: line)
+            return createTextRenderer(for: line)
         }
     }
 
     @discardableResult
-    private func createTextLayer(for line: DocumentLineNode) -> EditorTextLayer {
-        let textLayer = EditorTextLayer()
-        textLayer.font = font
-        textLayer.origin = CGPoint(x: 0, y: line.yPosition)
-        textLayers[line.id] = textLayer
-        return textLayer
+    private func createTextRenderer(for line: DocumentLineNode) -> EditorTextRenderer {
+        let textRenderer = EditorTextRenderer()
+        textRenderer.font = font
+        textRenderer.origin = CGPoint(x: 0, y: line.yPosition)
+        textRenderers[line.id] = textRenderer
+        return textRenderer
     }
 
     private func updateContentSize() {
@@ -315,10 +315,10 @@ private extension EditorBackingView {
 // MARK: - Memory Management
 private extension EditorBackingView {
     @objc private func didReceiveMemoryWarning(_ notification: Notification) {
-        let allTextLayerIDs = Set(textLayers.keys)
-        let unusedTextLayerIDs = allTextLayerIDs.subtracting(visibleTextLayerIDs)
-        for unusedTextLayerID in unusedTextLayerIDs {
-            textLayers.removeValue(forKey: unusedTextLayerID)
+        let allTextRendererIDs = Set(textRenderers.keys)
+        let unusedTextRendererIDs = allTextRendererIDs.subtracting(visibleTextRendererIDs)
+        for unusedTextRendererID in unusedTextRendererIDs {
+            textRenderers.removeValue(forKey: unusedTextRendererID)
         }
     }
 }
@@ -331,11 +331,11 @@ extension EditorBackingView: LineManagerDelegate {
 
     func lineManager(_ lineManager: LineManager, didInsert line: DocumentLineNode) {
         isContentSizeInvalid = true
-        createTextLayer(for: line)
+        createTextRenderer(for: line)
     }
 
     func lineManager(_ lineManager: LineManager, didRemove line: DocumentLineNode) {
         isContentSizeInvalid = true
-        textLayers.removeValue(forKey: line.id)
+        textRenderers.removeValue(forKey: line.id)
     }
 }
