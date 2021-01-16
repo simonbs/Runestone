@@ -149,6 +149,10 @@ public final class EditorTextView: UIScrollView, UITextInput {
         }
         return didResignFirstResponder
     }
+
+    public func setState(_ state: EditorState) {
+        textView.setState(state)
+    }
 }
 
 // MARK: - Layout

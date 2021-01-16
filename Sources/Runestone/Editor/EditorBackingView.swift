@@ -13,11 +13,14 @@ protocol EditorBackingViewDelegate: AnyObject {
 
 final class EditorBackingView: UIView {
     weak var delegate: EditorBackingViewDelegate?
-    let lineManager = LineManager()
-    var string = NSMutableString() {
-        didSet {
-            if string != oldValue {
-                lineManager.rebuild(from: string)
+    var string: NSMutableString {
+        get {
+            return _string
+        }
+        set {
+            if _string != newValue {
+                _string = newValue
+                lineManager.rebuild(from: newValue)
                 isContentSizeInvalid = true
             }
         }
@@ -45,6 +48,9 @@ final class EditorBackingView: UIView {
         }
         return _contentSize
     }
+    private(set) var lineManager = LineManager()
+    private(set) var parser: Parser?
+    private(set) var _string = NSMutableString()
 
     private var textRenderers: [DocumentLineNodeID: EditorTextRenderer] = [:]
     private var visibleTextRendererIDs: Set<DocumentLineNodeID> = []
@@ -71,6 +77,13 @@ final class EditorBackingView: UIView {
         if isContentSizeInvalid {
             delegate?.editorBackingViewDidInvalidateContentSize(self)
         }
+    }
+
+    func setState(_ state: EditorState) {
+        _string = NSMutableString(string: state.text)
+        lineManager = state.lineManager
+        parser = state.parser
+        isContentSizeInvalid = true
     }
 }
 
