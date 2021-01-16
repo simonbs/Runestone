@@ -91,6 +91,16 @@ public final class EditorInputView: UIScrollView, UITextInput {
     private var _inputAccessoryView: UIView?
     private let queue = OperationQueue()
     private var isProcessingNewText = false
+    private var textSelectionView: UIView? {
+        if let klass = NSClassFromString("UITextSelectionView") {
+            for subview in subviews {
+                if subview.isKind(of: klass) {
+                    return subview
+                }
+            }
+        }
+        return nil
+    }
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -111,6 +121,7 @@ public final class EditorInputView: UIScrollView, UITextInput {
         super.layoutSubviews()
         textView.frame = CGRect(x: 0, y: bounds.minY, width: bounds.width, height: bounds.height)
         textView.viewport = CGRect(origin: contentOffset, size: frame.size)
+        layoutTextSelectionView()
     }
 
     @discardableResult
@@ -168,6 +179,18 @@ public final class EditorInputView: UIScrollView, UITextInput {
     }
 }
 
+// MARK: - Layout
+private extension EditorInputView {
+    private func layoutTextSelectionView() {
+        if let textSelectionView = textSelectionView {
+            let currentFrame = textSelectionView.frame
+            let newYPosition = -adjustedContentInset.top
+            let newHeight = frame.height + contentOffset.y
+            textSelectionView.frame = CGRect(x: currentFrame.minX, y: newYPosition, width: currentFrame.width, height: newHeight)
+        }
+    }
+}
+
 // MARK: - Caret
 public extension EditorInputView {
     func caretRect(for position: UITextPosition) -> CGRect {
@@ -218,6 +241,7 @@ public extension EditorInputView {
 // MARK: - Selection
 public extension EditorInputView {
     func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
+        layoutTextSelectionView()
         if let indexedRange = range as? EditorIndexedRange {
             return textView.selectionRects(in: indexedRange.range)
         } else {
