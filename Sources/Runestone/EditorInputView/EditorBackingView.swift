@@ -243,9 +243,6 @@ extension EditorBackingView {
                 selectionRects.append(contentsOf: textSelectionRects)
             }
         }
-        print(selectionRects.ensuringYAxisAlignemnt().map { rect in
-            return rect.rect
-        })
         return selectionRects.ensuringYAxisAlignemnt()
     }
 }
