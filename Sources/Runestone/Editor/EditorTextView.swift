@@ -334,7 +334,7 @@ public extension EditorTextView {
         guard let currentLinePosition = textView.lineManager.linePosition(at: sourceIndex) else {
             return sourceIndex
         }
-        let targetLineNumber = min(max(currentLinePosition.lineNumber + lineOffset, 0), textView.lineManager.lineCount)
+        let targetLineNumber = min(max(currentLinePosition.lineNumber + lineOffset, 0), textView.lineManager.lineCount - 1)
         let targetLine = textView.lineManager.line(atIndex: targetLineNumber)
         let localLineIndex = min(currentLinePosition.column, targetLine.data.length)
         return targetLine.location + localLineIndex
