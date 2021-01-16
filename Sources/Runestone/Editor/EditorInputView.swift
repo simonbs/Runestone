@@ -1,5 +1,5 @@
 //
-//  EditorInputView.swift
+//  EditorTextView.swift
 //  
 //
 //  Created by Simon Støvring on 04/01/2021.
@@ -8,16 +8,16 @@
 import UIKit
 import CoreText
 
-public protocol EditorInputViewDelegate: AnyObject {
-    func editorInputViewDidChange(_ textView: EditorInputView)
+public protocol EditorTextViewDelegate: AnyObject {
+    func editorTextViewDidChange(_ textView: EditorTextView)
 }
 
-public extension EditorInputViewDelegate {
-    func editorInputViewDidChange(_ textView: EditorInputView) {}
+public extension EditorTextViewDelegate {
+    func editorTextViewDidChange(_ textView: EditorTextView) {}
 }
 
-public final class EditorInputView: UIScrollView, UITextInput {
-    public weak var editorDelegate: EditorInputViewDelegate?
+public final class EditorTextView: UIScrollView, UITextInput {
+    public weak var editorDelegate: EditorTextViewDelegate?
     public var text: String {
         get {
             return textView.string as String
@@ -85,11 +85,10 @@ public final class EditorInputView: UIScrollView, UITextInput {
         }
     }
 
+    private var _inputAccessoryView: UIView?
     private let textView = EditorBackingView()
     private let tapGestureRecognizer = UITapGestureRecognizer()
     private let editingTextInteraction = UITextInteraction(for: .editable)
-    private var _inputAccessoryView: UIView?
-    private var isProcessingNewText = false
     private var textSelectionView: UIView? {
         if let klass = NSClassFromString("UITextSelectionView") {
             for subview in subviews {
@@ -153,7 +152,7 @@ public final class EditorInputView: UIScrollView, UITextInput {
 }
 
 // MARK: - Layout
-private extension EditorInputView {
+private extension EditorTextView {
     private func layoutTextSelectionView() {
         if let textSelectionView = textSelectionView {
             let currentFrame = textSelectionView.frame
@@ -165,7 +164,7 @@ private extension EditorInputView {
 }
 
 // MARK: - Caret
-public extension EditorInputView {
+public extension EditorTextView {
     func caretRect(for position: UITextPosition) -> CGRect {
         guard let indexedPosition = position as? EditorIndexedPosition else {
             fatalError("Expected position to be of type \(EditorIndexedPosition.self)")
@@ -175,13 +174,13 @@ public extension EditorInputView {
 }
 
 // MARK: - Editing
-public extension EditorInputView {
+public extension EditorTextView {
     func insertText(_ text: String) {
         inputDelegate?.textWillChange(self)
         textView.insertText(text)
         setNeedsDisplay()
         inputDelegate?.textDidChange(self)
-        editorDelegate?.editorInputViewDidChange(self)
+        editorDelegate?.editorTextViewDidChange(self)
     }
 
     func deleteBackward() {
@@ -189,7 +188,7 @@ public extension EditorInputView {
         textView.deleteBackward()
         setNeedsDisplay()
         inputDelegate?.textDidChange(self)
-        editorDelegate?.editorInputViewDidChange(self)
+        editorDelegate?.editorTextViewDidChange(self)
     }
 
     func replace(_ range: UITextRange, withText text: String) {
@@ -198,7 +197,7 @@ public extension EditorInputView {
             textView.replace(indexedRange.range, withText: text)
             setNeedsDisplay()
             inputDelegate?.textDidChange(self)
-            editorDelegate?.editorInputViewDidChange(self)
+            editorDelegate?.editorTextViewDidChange(self)
         }
     }
 
@@ -212,7 +211,7 @@ public extension EditorInputView {
 }
 
 // MARK: - Selection
-public extension EditorInputView {
+public extension EditorTextView {
     func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
         layoutTextSelectionView()
         if let indexedRange = range as? EditorIndexedRange {
@@ -224,7 +223,7 @@ public extension EditorInputView {
 }
 
 // MARK: - Marking
-public extension EditorInputView {
+public extension EditorTextView {
     func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
         print("Mark text")
     }
@@ -235,7 +234,7 @@ public extension EditorInputView {
 }
 
 // MARK: - Ranges and Positions
-public extension EditorInputView {
+public extension EditorTextView {
     func position(within range: UITextRange, farthestIn direction: UITextLayoutDirection) -> UITextPosition? {
         return nil
     }
@@ -331,7 +330,7 @@ public extension EditorInputView {
 }
 
 // MARK: - Writing Direction
-public extension EditorInputView {
+public extension EditorTextView {
     func baseWritingDirection(for position: UITextPosition, in direction: UITextStorageDirection) -> NSWritingDirection {
         return .natural
     }
@@ -340,7 +339,7 @@ public extension EditorInputView {
 }
 
 // MARK: - Interaction
-private extension EditorInputView {
+private extension EditorTextView {
     @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
         if !isFirstResponder {
             let point = gestureRecognizer.location(in: self)
@@ -353,7 +352,7 @@ private extension EditorInputView {
 }
 
 // MARK: - EditorBackingViewDelegate
-extension EditorInputView: EditorBackingViewDelegate {
+extension EditorTextView: EditorBackingViewDelegate {
     func editorBackingViewDidInvalidateContentSize(_ view: EditorBackingView) {
         if contentSize != view.contentSize {
             contentSize = view.contentSize
