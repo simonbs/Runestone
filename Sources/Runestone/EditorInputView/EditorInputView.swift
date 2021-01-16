@@ -89,7 +89,6 @@ public final class EditorInputView: UIScrollView, UITextInput {
     private let tapGestureRecognizer = UITapGestureRecognizer()
     private let editingTextInteraction = UITextInteraction(for: .editable)
     private var _inputAccessoryView: UIView?
-    private let queue = OperationQueue()
     private var isProcessingNewText = false
     private var textSelectionView: UIView? {
         if let klass = NSClassFromString("UITextSelectionView") {
@@ -150,32 +149,6 @@ public final class EditorInputView: UIScrollView, UITextInput {
             removeInteraction(editingTextInteraction)
         }
         return didResignFirstResponder
-    }
-
-    public func setText(_ text: String, completion: ((Bool) -> Void)? = nil) {
-        assert(Thread.isMainThread, "\(#function) must be called on the main thread")
-        isProcessingNewText = true
-        textView.string = ""
-        let operation = BlockOperation()
-        operation.addExecutionBlock { [weak self, weak operation] in
-            guard let self = self, let operation = operation else {
-                completion?(false)
-                return
-            }
-            guard !operation.isCancelled else {
-                completion?(false)
-                return
-            }
-            self.textView.string = NSMutableString(string: text)
-            DispatchQueue.main.sync {
-                self.isProcessingNewText = false
-                if !operation.isCancelled {
-                    self.setNeedsDisplay()
-                }
-            }
-            completion?(!operation.isCancelled)
-        }
-        queue.addOperation(operation)
     }
 }
 
