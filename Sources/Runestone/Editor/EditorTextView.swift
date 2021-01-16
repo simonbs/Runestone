@@ -246,11 +246,17 @@ public extension EditorTextView {
         var newPosition = indexedPosition.index
         switch direction {
         case .right:
-            newPosition += 1
+            newPosition += offset
         case .left:
-            newPosition -= 1
-        case .up, .down:
-            break
+            newPosition -= offset
+        case .up:
+            if let position = targetPositionForMovingFromLine(containingCharacterAt: indexedPosition.index, lineOffset: offset * -1) {
+                newPosition = position
+            }
+        case .down:
+            if let position = targetPositionForMovingFromLine(containingCharacterAt: indexedPosition.index, lineOffset: offset) {
+                newPosition = position
+            }
         @unknown default:
             break
         }
@@ -326,6 +332,19 @@ public extension EditorTextView {
         } else {
             return 0
         }
+    }
+
+    private func targetPositionForMovingFromLine(containingCharacterAt sourceIndex: Int, lineOffset: Int) -> Int? {
+        guard let currentLinePosition = textView.lineManager.linePosition(at: sourceIndex) else {
+            return nil
+        }
+        let targetLineNumber = currentLinePosition.lineNumber + lineOffset
+        guard targetLineNumber >= 0 && targetLineNumber < textView.lineManager.lineCount else {
+            return nil
+        }
+        let targetLine = textView.lineManager.line(atIndex: targetLineNumber)
+        let localLineIndex = min(currentLinePosition.column, targetLine.data.length)
+        return targetLine.location + localLineIndex
     }
 }
 
