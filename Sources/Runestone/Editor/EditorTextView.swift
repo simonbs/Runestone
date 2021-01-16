@@ -224,13 +224,9 @@ public extension EditorTextView {
 
 // MARK: - Marking
 public extension EditorTextView {
-    func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
-        print("Mark text")
-    }
+    func setMarkedText(_ markedText: String?, selectedRange: NSRange) {}
 
-    func unmarkText() {
-        print("Unmark text")
-    }
+    func unmarkText() {}
 }
 
 // MARK: - Ranges and Positions
