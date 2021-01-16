@@ -18,13 +18,8 @@ struct EditorTextRendererSelectionRect {
 }
 
 final class EditorTextRenderer {
-    var font: UIFont? {
-        didSet {
-            if font != oldValue {
-                updateFont()
-            }
-        }
-    }
+    var font: UIFont?
+    var textColor: UIColor?
     var constrainingWidth: CGFloat = .greatestFiniteMagnitude {
         didSet {
             if constrainingWidth != oldValue {
@@ -88,8 +83,15 @@ final class EditorTextRenderer {
     private var _textFrame: CTFrame?
     private var _preferredSize: CGSize?
     private var isEmpty = true
+    private var string: NSString?
+    private var attributes: [EditorTextRendererAttributes] = []
 
-    func setString(_ string: NSString) {
+    func setString(_ string: NSString, attributes: [EditorTextRendererAttributes]) {
+        guard string != self.string || attributes != self.attributes else {
+            return
+        }
+        self.string = string
+        self.attributes = attributes
         _preferredSize = nil
         _framesetter = nil
         _textFrame = nil
@@ -97,7 +99,9 @@ final class EditorTextRenderer {
         attributedString = CFAttributedStringCreateMutable(kCFAllocatorDefault, string.length)
         if let attributedString = attributedString {
             CFAttributedStringReplaceString(attributedString, CFRangeMake(0, 0), string)
-            updateFont()
+            applyDefaultFont()
+            applyDefaultTextColor()
+            applyAttributes()
         }
     }
 
@@ -221,10 +225,59 @@ final class EditorTextRenderer {
 }
 
 private extension EditorTextRenderer {
-    private func updateFont() {
+    private func applyDefaultFont() {
         if let font = font, let attributedString = attributedString {
             let length = CFAttributedStringGetLength(attributedString)
-            CFAttributedStringSetAttribute(attributedString, CFRangeMake(0, length), kCTFontAttributeName, font)
+            let range = CFRangeMake(0, length)
+            apply(font, in: range)
+        }
+    }
+
+    private func applyDefaultTextColor() {
+        if let textColor = textColor, let attributedString = attributedString {
+            let length = CFAttributedStringGetLength(attributedString)
+            let range = CFRangeMake(0, length)
+            apply(textColor, in: range)
+        }
+    }
+
+    private func applyAttributes() {
+        if let attributedString = attributedString {
+            let length = CFAttributedStringGetLength(attributedString)
+            let entireRange = CFRangeMake(0, length)
+            CFAttributedStringRemoveAttribute(attributedString, entireRange, kCTFontAttributeName)
+            CFAttributedStringRemoveAttribute(attributedString, entireRange, kCTForegroundColorAttributeName)
+            if let font = font {
+                apply(font, in: entireRange)
+            }
+            if let textColor = textColor {
+                apply(textColor, in: entireRange)
+            }
+            for attribute in attributes {
+                apply(attribute)
+            }
+        }
+    }
+
+    private func apply(_ attributes: EditorTextRendererAttributes) {
+        let range = CFRangeMake(attributes.range.location, attributes.range.length)
+        if let textColor = attributes.textColor {
+            apply(textColor, in: range)
+        }
+        if let font = attributes.font {
+            apply(font, in: range)
+        }
+    }
+
+    private func apply(_ font: UIFont, in range: CFRange) {
+        if let attributedString = attributedString {
+            CFAttributedStringSetAttribute(attributedString, range, kCTFontAttributeName, font)
+        }
+    }
+
+    private func apply(_ textColor: UIColor, in range: CFRange) {
+        if let attributedString = attributedString {
+            CFAttributedStringSetAttribute(attributedString, range, kCTForegroundColorAttributeName, textColor)
         }
     }
 }

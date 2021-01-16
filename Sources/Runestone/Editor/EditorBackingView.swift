@@ -25,12 +25,20 @@ final class EditorBackingView: UIView {
             }
         }
     }
+    var textColor: UIColor = .black {
+        didSet {
+            if textColor != oldValue {
+                setNeedsDisplay()
+            }
+        }
+    }
     var selectedTextRange: NSRange?
     var markedTextRange: NSRange?
-    var font = UIFont(name: "Menlo-Regular", size: 14)! {
+    var font: UIFont? = .systemFont(ofSize: 16) {
         didSet {
             if font != oldValue {
-                lineManager.estimatedLineHeight = font.lineHeight
+                lineManager.estimatedLineHeight = font?.lineHeight ?? 16
+                setNeedsDisplay()
             }
         }
     }
@@ -48,20 +56,27 @@ final class EditorBackingView: UIView {
         }
         return _contentSize
     }
+    var theme: EditorTheme = DefaultEditorTheme() {
+        didSet {
+            syntaxHighlightController.theme = theme
+            setNeedsDisplay()
+        }
+    }
     private(set) var lineManager = LineManager()
-    private(set) var parser: Parser?
-    private(set) var _string = NSMutableString()
 
+    private var _string = NSMutableString()
     private var textRenderers: [DocumentLineNodeID: EditorTextRenderer] = [:]
     private var visibleTextRendererIDs: Set<DocumentLineNodeID> = []
     private var isContentSizeInvalid = false
     private var _contentSize: CGSize = .zero
+    private let syntaxHighlightController = SyntaxHighlightController()
 
     init() {
         super.init(frame: .zero)
         layer.isGeometryFlipped = true
         lineManager.delegate = self
-        lineManager.estimatedLineHeight = font.lineHeight
+        lineManager.estimatedLineHeight = font?.lineHeight ?? 16
+        syntaxHighlightController.theme = theme
         NotificationCenter.default.addObserver(self, selector: #selector(didReceiveMemoryWarning(_:)), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
     }
 
@@ -82,7 +97,9 @@ final class EditorBackingView: UIView {
     func setState(_ state: EditorState) {
         _string = NSMutableString(string: state.text)
         lineManager = state.lineManager
-        parser = state.parser
+        lineManager.delegate = self
+        syntaxHighlightController.parser = state.parser
+        syntaxHighlightController.parser?.delegate = self
         isContentSizeInvalid = true
     }
 }
@@ -90,62 +107,28 @@ final class EditorBackingView: UIView {
 // MARK: - Editing
 extension EditorBackingView {
     func insertText(_ text: String) {
-        guard let selectedTextRange = selectedTextRange else {
-            return
-        }
-        if selectedTextRange.length > 0 {
-            // Replace selected text.
-            var editedLines: Set<DocumentLineNode> = []
-            string.replaceCharacters(in: selectedTextRange, with: text)
-            lineManager.removeCharacters(in: selectedTextRange, editedLines: &editedLines)
-            lineManager.insert(text as NSString, at: selectedTextRange.location, editedLines: &editedLines)
-            self.selectedTextRange = NSRange(location: selectedTextRange.location + text.utf16.count, length: 0)
-            updateStrings(on: editedLines)
-            setNeedsDisplay()
-        } else {
-            // Insert text at location.
-            var editedLines: Set<DocumentLineNode> = []
-            string.insert(text, at: selectedTextRange.location)
-            lineManager.insert(text as NSString, at: selectedTextRange.location, editedLines: &editedLines)
-            self.selectedTextRange = NSRange(location: selectedTextRange.location + text.utf16.count, length: 0)
-            updateStrings(on: editedLines)
-            setNeedsDisplay()
+        if let range = selectedTextRange {
+            replaceCharacters(in: range, with: text)
+            selectedTextRange = NSRange(location: range.location + text.utf16.count, length: 0)
         }
     }
 
     func deleteBackward() {
-        guard let selectedTextRange = selectedTextRange else {
-            return
-        }
-        if selectedTextRange.length > 0 {
-            // Delete selected text.
-            var editedLines: Set<DocumentLineNode> = []
-            string.deleteCharacters(in: selectedTextRange)
-            lineManager.removeCharacters(in: selectedTextRange, editedLines: &editedLines)
-            self.selectedTextRange = NSRange(location: selectedTextRange.location, length: 0)
-            updateStrings(on: editedLines)
-            setNeedsDisplay()
-        } else if selectedTextRange.location > 0 {
-            // Delete a single character at the location.
-            var editedLines: Set<DocumentLineNode> = []
-            let range = NSRange(location: selectedTextRange.location - 1, length: 1)
-            string.deleteCharacters(in: range)
-            lineManager.removeCharacters(in: range, editedLines: &editedLines)
-            self.selectedTextRange = NSRange(location: range.location, length: 0)
-            updateStrings(on: editedLines)
-            setNeedsDisplay()
+        if let range = selectedTextRange {
+            if range.length > 0 {
+                replaceCharacters(in: range, with: "")
+                selectedTextRange = NSRange(location: range.location, length: 0)
+            } else {
+                let deleteRange = NSRange(location: range.location - 1, length: 1)
+                replaceCharacters(in: deleteRange, with: "")
+                selectedTextRange = NSRange(location: range.location, length: 0)
+            }
         }
     }
 
     func replace(_ range: NSRange, withText text: String) {
-        var editedLines: Set<DocumentLineNode> = []
-        let nsText = text as NSString
-        string.replaceCharacters(in: range, with: text)
-        lineManager.removeCharacters(in: range, editedLines: &editedLines)
-        lineManager.insert(nsText, at: range.location, editedLines: &editedLines)
+        replaceCharacters(in: range, with: text)
         selectedTextRange = NSRange(location: range.location + text.utf16.count, length: 0)
-        updateStrings(on: editedLines)
-        setNeedsDisplay()
     }
 
     func text(in range: NSRange) -> String? {
@@ -154,6 +137,34 @@ extension EditorBackingView {
         } else {
             return nil
         }
+    }
+
+    private func replaceCharacters(in range: NSRange, with newString: String) {
+        var editedLines: Set<DocumentLineNode> = []
+        let nsString = newString as NSString
+        let bytesRemoved = range.length
+        let bytesAdded = nsString.length
+        let oldEndLinePosition = lineManager.linePosition(at: range.location + bytesRemoved)
+        string.replaceCharacters(in: range, with: newString)
+        lineManager.removeCharacters(in: range, editedLines: &editedLines)
+        lineManager.insert(nsString, at: range.location, editedLines: &editedLines)
+        let startLinePosition = lineManager.linePosition(at: range.location)
+        let newEndLinePosition = lineManager.linePosition(at: range.location + bytesAdded)
+        if let oldEndLinePosition = oldEndLinePosition, let startLinePosition = startLinePosition, let newEndLinePosition = newEndLinePosition {
+            let edit = SimpleInputEdit(
+                location: range.location,
+                bytesRemoved: bytesRemoved,
+                bytesAdded: bytesAdded,
+                startLinePosition: startLinePosition,
+                oldEndLinePosition: oldEndLinePosition,
+                newEndLinePosition: newEndLinePosition)
+            syntaxHighlightController.parser?.apply(edit)
+            syntaxHighlightController.parser?.parse()
+        } else {
+            fatalError("Cannot edit syntax tree because one or more line positions are not available")
+        }
+        updateStrings(on: editedLines)
+        setNeedsDisplay()
     }
 }
 
@@ -272,10 +283,13 @@ private extension EditorBackingView {
     }
 
     private func draw(_ line: DocumentLineNode, in rect: CGRect, of context: CGContext) {
+        let lineLocation = line.location
         let textRenderer = getTextRenderer(for: line)
-        let range = NSRange(location: line.location, length: line.value)
+        let range = NSRange(location: lineLocation, length: line.value)
         let lineString = string.substring(with: range) as NSString
-        textRenderer.setString(lineString)
+        let attributes = syntaxHighlightController.attributes(in: range, lineStartLocation: lineLocation)
+        textRenderer.setString(lineString, attributes: attributes)
+        textRenderer.textColor = textColor
         textRenderer.constrainingWidth = bounds.width
         let size = textRenderer.preferredSize
         let screenRect = EditorScreenRect(x: 0, y: line.yPosition, width: bounds.width, height: size.height)
@@ -296,7 +310,7 @@ private extension EditorBackingView {
             if let textRenderer = textRenderers[line.id] {
                 let range = NSRange(location: line.location, length: line.value)
                 let substring = string.substring(with: range) as NSString
-                textRenderer.setString(substring)
+                textRenderer.setString(substring, attributes: [])
                 let size = textRenderer.preferredSize
                 lineManager.setHeight(size.height, of: line)
             }
@@ -350,5 +364,22 @@ extension EditorBackingView: LineManagerDelegate {
     func lineManager(_ lineManager: LineManager, didRemove line: DocumentLineNode) {
         isContentSizeInvalid = true
         textRenderers.removeValue(forKey: line.id)
+    }
+}
+
+// MARK: - ParserDelegate
+extension EditorBackingView: ParserDelegate {
+    func parser(_ parser: Parser, substringAtByteIndex byteIndex: uint, point: SourcePoint) -> String? {
+        if byteIndex < string.length {
+            return string.substring(with: NSRange(location: Int(byteIndex), length: 1))
+        } else {
+            return nil
+        }
+    }
+}
+
+private extension LinePosition {
+    func offsettingLineNumber(by offset: Int) -> LinePosition {
+        return LinePosition(lineStartLocation: lineStartLocation, lineNumber: lineNumber + offset, column: column, totalLength: totalLength)
     }
 }

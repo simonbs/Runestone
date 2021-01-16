@@ -20,3 +20,9 @@ public final class LinePosition {
         self.totalLength = totalLength
     }
 }
+
+extension LinePosition: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        return "[LinePosition lineStartLocation=\(lineStartLocation) lineNumber=\(lineNumber) column=\(column) totalLength=\(totalLength)]"
+    }
+}

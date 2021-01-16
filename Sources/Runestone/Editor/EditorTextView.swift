@@ -28,6 +28,22 @@ public final class EditorTextView: UIScrollView, UITextInput {
             setNeedsDisplay()
         }
     }
+    public var font: UIFont? {
+        get {
+            return textView.font
+        }
+        set {
+            textView.font = newValue
+        }
+    }
+    public var textColor: UIColor {
+        get {
+            return textView.textColor
+        }
+        set {
+            textView.textColor = newValue
+        }
+    }
     public override var inputAccessoryView: UIView? {
         get {
             return _inputAccessoryView
@@ -74,6 +90,7 @@ public final class EditorTextView: UIScrollView, UITextInput {
             return textView.backgroundColor
         }
         set {
+            super.backgroundColor = newValue
             textView.backgroundColor = newValue
         }
     }
@@ -84,6 +101,26 @@ public final class EditorTextView: UIScrollView, UITextInput {
             }
         }
     }
+    public var theme: EditorTheme {
+        get {
+            return textView.theme
+        }
+        set {
+            textView.theme = newValue
+        }
+    }
+    public var autocorrectionType: UITextAutocorrectionType = .default
+    public var autocapitalizationType: UITextAutocapitalizationType = .sentences
+    public var smartQuotesType: UITextSmartQuotesType = .default
+    public var smartDashesType: UITextSmartDashesType = .default
+    public var smartInsertDeleteType: UITextSmartInsertDeleteType = .default
+    public var spellCheckingType: UITextSpellCheckingType = .default
+    public var keyboardType: UIKeyboardType = .default
+    public var keyboardAppearance: UIKeyboardAppearance = .default
+    public var returnKeyType: UIReturnKeyType = .default
+    @objc public var insertionPointColor: UIColor = .black
+    @objc public var selectionBarColor: UIColor = .black
+    @objc public var selectionHighlightColor: UIColor = .black
 
     private var _inputAccessoryView: UIView?
     private let textView = EditorBackingView()
