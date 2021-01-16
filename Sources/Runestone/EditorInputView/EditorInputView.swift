@@ -129,7 +129,7 @@ public final class EditorInputView: UIScrollView, UITextInput {
         let wasFirstResponder = isFirstResponder
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if !wasFirstResponder && isFirstResponder {
-            textView.markedTextRange = NSRange(location: NSNotFound, length: 0)
+            textView.markedTextRange = nil
             if selectedTextRange == nil {
                 textView.selectedTextRange = NSRange(location: 0, length: 0)
             }
