@@ -217,6 +217,7 @@ extension EditorTextView: EditorTextInputViewDelegate {
     func editorTextInputViewDidInvalidateContentSize(_ view: EditorTextInputView) {
         if contentSize != view.contentSize {
             contentSize = view.contentSize
+            setNeedsLayout()
         }
     }
 }
