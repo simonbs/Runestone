@@ -559,9 +559,9 @@ extension EditorTextInputView {
             let range = NSRange(location: lineLocation, length: line.value)
             let lineString = string.substring(with: range) as NSString
             let attributes = syntaxHighlightController.attributes(in: range, lineStartLocation: lineLocation)
-            textRenderer.setString(lineString, attributes: attributes)
             textRenderer.font = font
             textRenderer.textColor = textColor
+            textRenderer.setString(lineString, attributes: attributes)
             textRenderer.isContentInvalid = false
         }
         textRenderer.constrainingWidth = frame.width
