@@ -32,14 +32,15 @@ final class SyntaxHighlightController {
         query = nil
     }
 
-    func attributes(in range: NSRange, lineStartLocation: Int) -> [EditorTextRendererAttributes] {
-        guard range.length > 0 else {
+    func attributes(in lineRange: NSRange, lineStartLocation: Int) -> [EditorTextRendererAttributes] {
+        guard lineRange.length > 0 else {
             return []
         }
-        let capturesResult = captures(in: range)
+        let capturesResult = captures(in: lineRange)
         switch capturesResult {
         case .success(let captures):
-            return attributes(for: captures, lineStartLocation: lineStartLocation).sorted(by: EditorTextRendererAttributes.locationSort(_:_:))
+            let attributes = self.attributes(for: captures, in: lineRange)
+            return attributes.sorted(by: EditorTextRendererAttributes.locationSort(_:_:))
         case .failure(let error):
             print(error)
             return []
@@ -55,15 +56,22 @@ final class SyntaxHighlightController {
 }
 
 private extension SyntaxHighlightController {
-    private func attributes(for captures: [Capture], lineStartLocation: Int) -> [EditorTextRendererAttributes] {
+    private func attributes(for captures: [Capture], in lineRange: NSRange) -> [EditorTextRendererAttributes] {
         var allAttributes: [EditorTextRendererAttributes] = []
         for capture in captures {
-            let location = Int(capture.startByte)
-            let length = Int(capture.endByte - capture.startByte)
-            let range = NSRange(location: location - lineStartLocation, length: length)
-            let attrs = attributes(for: capture, in: range)
-            if !attrs.isEmpty {
-                allAttributes.append(attrs)
+            // We highlight each line separately but a capture may extend beyond a line, e.g. an unterminated string,
+            // so we need to cap the start and end location to ensure it's within the line.
+            let captureStartLocation = Int(capture.startByte)
+            let captureEndLocation = Int(capture.endByte)
+            let cappedStartLocation = max(captureStartLocation, lineRange.location)
+            let cappedEndLocation = min(captureEndLocation, lineRange.location + lineRange.length)
+            let length = cappedEndLocation - cappedStartLocation
+            if length > 0 {
+                let range = NSRange(location: cappedStartLocation - lineRange.location, length: length)
+                let attrs = attributes(for: capture, in: range)
+                if !attrs.isEmpty {
+                    allAttributes.append(attrs)
+                }
             }
         }
         return allAttributes
