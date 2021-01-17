@@ -491,6 +491,7 @@ extension EditorTextView: EditorTextStorageDelegate {
                 startLinePosition: startLinePosition,
                 oldEndLinePosition: oldEndLinePosition,
                 newEndLinePosition: newEndLinePosition)
+            print(edit)
             parser.apply(edit)
         } else {
             fatalError("Cannot edit syntax tree because one or more line positions are not available")

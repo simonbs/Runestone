@@ -16,6 +16,15 @@ struct SimpleInputEdit {
     let newEndLinePosition: LinePosition
 }
 
+extension SimpleInputEdit: CustomDebugStringConvertible {
+    var debugDescription: String {
+        return "[SimpleInputEdit location=\(location) bytesRemoved=\(bytesRemoved) bytesAdded=\(bytesAdded)"
+            + " startLinePosition=\(startLinePosition.lineNumber).\(startLinePosition.column)"
+            + " oldEndLinePosition=\(oldEndLinePosition.lineNumber).\(oldEndLinePosition.column)"
+            + " newEndLinePosition=\(newEndLinePosition.lineNumber).\(newEndLinePosition.column)]"
+    }
+}
+
 extension Parser {
     @discardableResult
     func apply(_ inputEdit: SimpleInputEdit) -> Bool {
