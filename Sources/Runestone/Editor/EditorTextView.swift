@@ -244,6 +244,10 @@ extension EditorTextView: EditorTextInputViewDelegate {
             setNeedsLayout()
         }
     }
+
+    func editorTextInputViewDidChange(_ view: EditorTextInputView) {
+        editorDelegate?.editorTextViewDidChange(self)
+    }
 }
 
 // MARK: - UIGestureRecognizerDelegate

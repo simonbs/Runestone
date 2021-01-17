@@ -10,6 +10,7 @@ import UIKit
 protocol EditorTextInputViewDelegate: AnyObject {
     func editorTextInputViewDidBeginEditing(_ view: EditorTextInputView)
     func editorTextInputViewDidEndEditing(_ view: EditorTextInputView)
+    func editorTextInputViewDidChange(_ view: EditorTextInputView)
     func editorTextInputViewDidInvalidateContentSize(_ view: EditorTextInputView)
 }
 
@@ -282,13 +283,13 @@ extension EditorTextInputView {
     private func replaceCharacters(in range: NSRange, with newString: String) {
         inputDelegate?.textWillChange(self)
         var editedLines: Set<DocumentLineNode> = []
-        let nsString = newString as NSString
+        let nsNewString = newString as NSString
         let bytesRemoved = range.length
-        let bytesAdded = nsString.length
+        let bytesAdded = nsNewString.length
         let oldEndLinePosition = lineManager.linePosition(at: range.location + bytesRemoved)
         string.replaceCharacters(in: range, with: newString)
         lineManager.removeCharacters(in: range, editedLines: &editedLines)
-        lineManager.insert(nsString, at: range.location, editedLines: &editedLines)
+        lineManager.insert(nsNewString, at: range.location, editedLines: &editedLines)
         let startLinePosition = lineManager.linePosition(at: range.location)
         let newEndLinePosition = lineManager.linePosition(at: range.location + bytesAdded)
         if let oldEndLinePosition = oldEndLinePosition, let startLinePosition = startLinePosition, let newEndLinePosition = newEndLinePosition {
@@ -299,14 +300,34 @@ extension EditorTextInputView {
                 startLinePosition: startLinePosition,
                 oldEndLinePosition: oldEndLinePosition,
                 newEndLinePosition: newEndLinePosition)
-            syntaxHighlightController.parser?.apply(edit)
-            syntaxHighlightController.parser?.parse()
+            let parser = syntaxHighlightController.parser
+            let oldTree = parser?.latestTree
+            parser?.apply(edit)
+            parser?.parse()
+            // Find lines changed by Tree-sitter and make sure we rehighlight them
+            if let oldTree = oldTree, let newTree = parser?.latestTree {
+                let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
+                let changedLines = lines(in: changedRanges)
+                editedLines.formUnion(changedLines)
+            }
         } else {
             fatalError("Cannot edit syntax tree because one or more line positions are not available")
         }
-        updateStrings(on: editedLines)
+        updateStrings(in: editedLines)
         setNeedsDisplay()
         inputDelegate?.textDidChange(self)
+        delegate?.editorTextInputViewDidChange(self)
+    }
+
+    private func lines(in changedRanges: [SourceRange]) -> Set<DocumentLineNode> {
+        var lines: Set<DocumentLineNode> = []
+        for changedRange in changedRanges {
+            for row in changedRange.startPoint.row ... changedRange.endPoint.row {
+                let line = lineManager.line(atIndex: Int(row))
+                lines.insert(line)
+            }
+        }
+        return lines
     }
 }
 
@@ -524,6 +545,7 @@ extension EditorTextInputView {
     private func drawLines(in rect: CGRect, of context: CGContext) {
         visibleTextRendererIDs = []
         let visibleLines = lineManager.visibleLines(in: rect)
+        print(rect)
         for visibleLine in visibleLines {
             draw(visibleLine, in: context)
             visibleTextRendererIDs.insert(visibleLine.id)
@@ -533,11 +555,15 @@ extension EditorTextInputView {
     private func draw(_ line: DocumentLineNode, in context: CGContext) {
         let lineLocation = line.location
         let textRenderer = getTextRenderer(for: line)
-        let range = NSRange(location: lineLocation, length: line.value)
-        let lineString = string.substring(with: range) as NSString
-        let attributes = syntaxHighlightController.attributes(in: range, lineStartLocation: lineLocation)
-        textRenderer.setString(lineString, attributes: attributes)
-        textRenderer.textColor = textColor
+        if textRenderer.isContentInvalid {
+            let range = NSRange(location: lineLocation, length: line.value)
+            let lineString = string.substring(with: range) as NSString
+            let attributes = syntaxHighlightController.attributes(in: range, lineStartLocation: lineLocation)
+            textRenderer.setString(lineString, attributes: attributes)
+            textRenderer.font = font
+            textRenderer.textColor = textColor
+            textRenderer.isContentInvalid = false
+        }
         textRenderer.constrainingWidth = frame.width
         let size = textRenderer.preferredSize
         let didUpdateHeight = lineManager.setHeight(size.height, of: line)
@@ -553,14 +579,17 @@ extension EditorTextInputView {
         }
     }
 
-    private func updateStrings(on lines: Set<DocumentLineNode>) {
+    private func updateStrings(in lines: Set<DocumentLineNode>) {
         for line in lines {
             if let textRenderer = textRenderers[line.id] {
-                let range = NSRange(location: line.location, length: line.value)
+                let lineLocation = line.location
+                let range = NSRange(location: lineLocation, length: line.value)
                 let substring = string.substring(with: range) as NSString
-                textRenderer.setString(substring, attributes: [])
+                let attributes = syntaxHighlightController.attributes(in: range, lineStartLocation: lineLocation)
+                textRenderer.setString(substring, attributes: attributes)
                 let size = textRenderer.preferredSize
                 lineManager.setHeight(size.height, of: line)
+                textRenderer.isContentInvalid = false
             }
         }
     }

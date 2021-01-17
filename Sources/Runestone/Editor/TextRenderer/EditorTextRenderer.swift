@@ -18,6 +18,7 @@ struct EditorTextRendererSelectionRect {
 }
 
 final class EditorTextRenderer {
+    var isContentInvalid = true
     var font: UIFont?
     var textColor: UIColor?
     var constrainingWidth: CGFloat = .greatestFiniteMagnitude {
