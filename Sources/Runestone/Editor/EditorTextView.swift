@@ -17,6 +17,33 @@ public extension EditorTextViewDelegate {
 }
 
 public final class EditorTextView: UIScrollView {
+    public override var inputAccessoryView: UIView? {
+        get {
+            return _inputAccessoryView
+        }
+        set {
+            _inputAccessoryView = newValue
+        }
+    }
+    public override var canBecomeFirstResponder: Bool {
+        return true
+    }
+    public override var backgroundColor: UIColor? {
+        get {
+            return textInputView.backgroundColor
+        }
+        set {
+            super.backgroundColor = newValue
+            textInputView.backgroundColor = newValue
+        }
+    }
+    public override var contentOffset: CGPoint {
+        didSet {
+            if contentOffset != oldValue {
+                textInputView.viewport = CGRect(origin: contentOffset, size: frame.size)
+            }
+        }
+    }
     public weak var editorDelegate: EditorTextViewDelegate?
     public var text: String {
         get {
@@ -41,34 +68,6 @@ public final class EditorTextView: UIScrollView {
         }
         set {
             textInputView.textColor = newValue
-        }
-    }
-    public override var inputAccessoryView: UIView? {
-        get {
-            return _inputAccessoryView
-        }
-        set {
-            _inputAccessoryView = newValue
-        }
-    }
-
-    public override var canBecomeFirstResponder: Bool {
-        return true
-    }
-    public override var backgroundColor: UIColor? {
-        get {
-            return textInputView.backgroundColor
-        }
-        set {
-            super.backgroundColor = newValue
-            textInputView.backgroundColor = newValue
-        }
-    }
-    public override var contentOffset: CGPoint {
-        didSet {
-            if contentOffset != oldValue {
-                textInputView.viewport = CGRect(origin: contentOffset, size: frame.size)
-            }
         }
     }
     public var theme: EditorTheme {
@@ -179,6 +178,7 @@ public final class EditorTextView: UIScrollView {
     private let textInputView = EditorTextInputView()
     private let editingTextInteraction = UITextInteraction(for: .editable)
     private var _inputAccessoryView: UIView?
+    private let tapGestureRecognizer = UITapGestureRecognizer()
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -186,6 +186,9 @@ public final class EditorTextView: UIScrollView {
         textInputView.delegate = self
         editingTextInteraction.textInput = textInputView
         addSubview(textInputView)
+        tapGestureRecognizer.delegate = self
+        tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
+        addGestureRecognizer(tapGestureRecognizer)
     }
 
     required init?(coder: NSCoder) {
@@ -201,6 +204,27 @@ public final class EditorTextView: UIScrollView {
     public func setState(_ state: EditorState) {
         textInputView.setState(state)
         contentSize = textInputView.contentSize
+    }
+
+    @discardableResult
+    public override func becomeFirstResponder() -> Bool {
+        return textInputView.becomeFirstResponder()
+    }
+
+    @discardableResult
+    public override func resignFirstResponder() -> Bool {
+        return textInputView.resignFirstResponder()
+    }
+}
+
+// MARK: - Interaction
+private extension EditorTextView {
+    @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
+        if tapGestureRecognizer.state == .ended {
+            let point = gestureRecognizer.location(in: textInputView)
+            textInputView.moveCaret(to: point)
+            becomeFirstResponder()
+        }
     }
 }
 
@@ -218,6 +242,17 @@ extension EditorTextView: EditorTextInputViewDelegate {
         if contentSize != view.contentSize {
             contentSize = view.contentSize
             setNeedsLayout()
+        }
+    }
+}
+
+// MARK: - UIGestureRecognizerDelegate
+extension EditorTextView: UIGestureRecognizerDelegate {
+    public override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        if gestureRecognizer === tapGestureRecognizer {
+            return !isFirstResponder && !textInputView.isFirstResponder
+        } else {
+            return true
         }
     }
 }

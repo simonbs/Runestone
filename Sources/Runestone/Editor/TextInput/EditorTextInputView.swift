@@ -24,11 +24,14 @@ final class EditorTextInputView: UIView, UITextInput {
             }
         }
         set {
-            let newRange = (newValue as? EditorIndexedRange)?.range
-            if newRange != selectedRange {
-                inputDelegate?.selectionWillChange(self)
-                selectedRange = newRange
-                inputDelegate?.selectionDidChange(self)
+            if let newRange = (newValue as? EditorIndexedRange)?.range {
+                if newRange != selectedRange {
+                    inputDelegate?.selectionWillChange(self)
+                    selectedRange = newRange
+                    inputDelegate?.selectionDidChange(self)
+                }
+            } else {
+                selectedRange = nil
             }
         }
     }
@@ -133,7 +136,6 @@ final class EditorTextInputView: UIView, UITextInput {
     private var visibleTextRendererIDs: Set<DocumentLineNodeID> = []
     private var _contentSize: CGSize?
     private let syntaxHighlightController = SyntaxHighlightController()
-    private let tapGestureRecognizer = UITapGestureRecognizer()
 
     // MARK: - Lifecycle
     init() {
@@ -141,9 +143,6 @@ final class EditorTextInputView: UIView, UITextInput {
         lineManager.delegate = self
         lineManager.estimatedLineHeight = font?.lineHeight ?? 16
         syntaxHighlightController.theme = theme
-        tapGestureRecognizer.delegate = self
-        tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
-        addGestureRecognizer(tapGestureRecognizer)
         NotificationCenter.default.addObserver(self, selector: #selector(didReceiveMemoryWarning(_:)), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
     }
 
@@ -156,8 +155,8 @@ final class EditorTextInputView: UIView, UITextInput {
         let wasFirstResponder = isFirstResponder
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if !wasFirstResponder && isFirstResponder {
-            markedTextRange = nil
-            if selectedTextRange == nil {
+            markedRange = nil
+            if selectedRange == nil {
                 selectedRange = NSRange(location: 0, length: 0)
             }
             delegate?.editorTextInputViewDidBeginEditing(self)
@@ -170,9 +169,8 @@ final class EditorTextInputView: UIView, UITextInput {
         let wasFirstResponder = isFirstResponder
         let didResignFirstResponder = super.resignFirstResponder()
         if wasFirstResponder && !isFirstResponder {
-            selectedTextRange = nil
-            markedTextRange = nil
-            tapGestureRecognizer.isEnabled = true
+            selectedRange = nil
+            markedRange = nil
         }
         return didResignFirstResponder
     }
@@ -188,17 +186,10 @@ extension EditorTextInputView {
         syntaxHighlightController.parser?.delegate = self
         _contentSize = nil
     }
-}
 
-// MARK: - Interaction
-private extension EditorTextInputView {
-    @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
-        if tapGestureRecognizer.state == .ended {
-            let point = gestureRecognizer.location(in: self)
-            if let index = closestIndex(to: point) {
-                selectedRange = NSRange(location: index, length: 0)
-            }
-            becomeFirstResponder()
+    func moveCaret(to point: CGPoint) {
+        if let index = closestIndex(to: point) {
+            selectedRange = NSRange(location: index, length: 0)
         }
     }
 }
@@ -626,17 +617,6 @@ extension EditorTextInputView: ParserDelegate {
             return string.substring(with: NSRange(location: Int(byteIndex), length: 1))
         } else {
             return nil
-        }
-    }
-}
-
-// MARK: - UIGestureRecognizerDelegate
-extension EditorTextInputView: UIGestureRecognizerDelegate {
-    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        if gestureRecognizer === tapGestureRecognizer {
-            return !isFirstResponder
-        } else {
-            return true
         }
     }
 }
