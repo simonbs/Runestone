@@ -220,9 +220,9 @@ extension EditorTextInputView {
         if let line = lineManager.line(containingCharacterAt: range.location) {
             let textRenderer = getTextRenderer(for: line)
             let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
-            let textRendererRect = textRenderer.firstRect(for: localRange)
-            let screenRect = EditorScreenRect(textRendererRect, in: line)
-            return CGRect(x: screenRect.minX, y: line.yPosition + textRendererRect.minY, width: screenRect.width, height: screenRect.height)
+            var rect = textRenderer.firstRect(for: localRange)
+            rect.origin.y += line.yPosition
+            return rect
         } else {
             fatalError("Cannot find first rect.")
         }
@@ -339,7 +339,6 @@ extension EditorTextInputView {
                 let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
                 let rendererSelectionRects = textRenderer.selectionRects(in: localRange)
                 let textSelectionRects: [EditorTextSelectionRect] = rendererSelectionRects.map { rendererSelectionRect in
-//                    var screenRect = EditorScreenRect(rendererSelectionRect.rect, in: line)
                     let y = line.yPosition + rendererSelectionRect.rect.minY
                     var screenRect = CGRect(x: rendererSelectionRect.rect.minX, y: y, width: rendererSelectionRect.rect.width, height: rendererSelectionRect.rect.height)
                     let startLocation = lineStartLocation + rendererSelectionRect.range.location
@@ -475,9 +474,7 @@ extension EditorTextInputView {
     }
 
     private func closestIndex(to point: CGPoint, in textRenderer: EditorTextRenderer, showing line: DocumentLineNode) -> Int? {
-        let screenPoint = EditorScreenPoint(point)
-        let rendererPoint = EditorTextRendererPoint(screenPoint, viewport: viewport, destinationRenderer: textRenderer)
-        if let index = textRenderer.closestIndex(to: rendererPoint) {
+        if let index = textRenderer.closestIndex(to: point) {
             if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
                 return line.location + line.data.length
             } else {
@@ -513,7 +510,11 @@ extension EditorTextInputView {
     override func draw(_ rect: CGRect) {
         super.draw(rect)
         if let context = UIGraphicsGetCurrentContext() {
+            context.saveGState()
+            context.textMatrix = .identity
+            context.scaleBy(x: 1, y: -1)
             drawLines(in: viewport, of: context)
+            context.restoreGState()
         }
         if _contentSize == nil {
             delegate?.editorTextInputViewDidInvalidateContentSize(self)
@@ -539,11 +540,11 @@ extension EditorTextInputView {
         textRenderer.textColor = textColor
         textRenderer.constrainingWidth = frame.width
         let size = textRenderer.preferredSize
-//        let screenRect = EditorScreenRect(x: 0, y: line.yPosition, width: frame.width, height: size.height)
-//        let drawableRect = EditorTextDrawableRect(screenRect, viewport: viewport)
         let didUpdateHeight = lineManager.setHeight(size.height, of: line)
-        textRenderer.origin = CGPoint(x: 0, y: line.yPosition)
+        context.saveGState()
+        context.translateBy(x: 0, y: (size.height + line.yPosition) * -1)
         textRenderer.draw(in: context)
+        context.restoreGState()
         if didUpdateHeight {
             _contentSize = nil
         }
@@ -576,7 +577,6 @@ extension EditorTextInputView {
     private func createTextRenderer(for line: DocumentLineNode) -> EditorTextRenderer {
         let textRenderer = EditorTextRenderer()
         textRenderer.font = font
-        textRenderer.origin = CGPoint(x: 0, y: line.yPosition)
         textRenderers[line.id] = textRenderer
         return textRenderer
     }
