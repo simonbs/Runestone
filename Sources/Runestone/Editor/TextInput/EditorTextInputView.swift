@@ -82,7 +82,6 @@ final class EditorTextInputView: UIView, UITextInput {
     }
 
     // MARK: - Contents
-    weak var delegate: EditorTextInputViewDelegate?
     var string: NSMutableString {
         get {
             return _string
@@ -109,6 +108,16 @@ final class EditorTextInputView: UIView, UITextInput {
             let contentSize = CGSize(width: frame.width, height: lineManager.contentHeight)
             _contentSize = contentSize
             return contentSize
+        }
+    }
+
+    // MARK: - Misc
+    weak var delegate: EditorTextInputViewDelegate?
+    override var frame: CGRect {
+        didSet {
+            if frame.size != oldValue.size {
+                setNeedsDisplay()
+            }
         }
     }
     override var canBecomeFirstResponder: Bool {
