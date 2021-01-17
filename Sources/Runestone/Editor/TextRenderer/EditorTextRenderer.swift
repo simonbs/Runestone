@@ -167,7 +167,7 @@ final class EditorTextRenderer {
         var origins: [CGPoint] = Array(repeating: .zero, count: lineCount)
         CTFrameGetLineOrigins(textFrame, CFRangeMake(0, lineCount), &origins)
         for lineIndex in 0 ..< lineCount {
-            if preferredSize.height - point.y > origins[lineIndex].y {
+            if point.y > origins[lineIndex].y {
                 // This line is closest to the y-coordinate. Now we find the closest string index in the line.
                 let line = unsafeBitCast(CFArrayGetValueAtIndex(lines, lineIndex)!, to: CTLine.self)
                 return CTLineGetStringIndexForPosition(line, point)
