@@ -39,7 +39,8 @@ final class SyntaxHighlightController {
         let capturesResult = captures(in: range)
         switch capturesResult {
         case .success(let captures):
-            return attributes(for: captures, lineStartLocation: lineStartLocation).sorted(by: EditorTextRendererAttributes.locationSort(_:_:))
+            let attributes = self.attributes(for: captures, lineStartLocation: lineStartLocation)
+            return attributes.sorted(by: EditorTextRendererAttributes.locationSort(_:_:))
         case .failure(let error):
             print(error)
             return []
