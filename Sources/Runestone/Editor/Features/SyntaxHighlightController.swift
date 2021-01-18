@@ -32,7 +32,7 @@ final class SyntaxHighlightController {
         query = nil
     }
 
-    func attributes(in lineRange: NSRange, lineStartLocation: Int) -> [EditorTextRendererAttributes] {
+    func attributes(in lineRange: NSRange) -> [EditorTextRendererAttributes] {
         guard lineRange.length > 0 else {
             return []
         }
@@ -46,13 +46,6 @@ final class SyntaxHighlightController {
             return []
         }
     }
-
-//    func removeHighlighting() {
-//        if let length = textStorage?.length {
-//            let range = NSRange(location: 0, length: length)
-//            setDefaultAttributes(in: [range])
-//        }
-//    }
 }
 
 private extension SyntaxHighlightController {

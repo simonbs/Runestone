@@ -66,7 +66,7 @@ final class EditorTextInputView: UIView, UITextInput {
     var textColor: UIColor = .black {
         didSet {
             if textColor != oldValue {
-                setNeedsDisplay()
+//                setNeedsDisplay()
             }
         }
     }
@@ -74,14 +74,14 @@ final class EditorTextInputView: UIView, UITextInput {
         didSet {
             if font != oldValue {
                 lineManager.estimatedLineHeight = font?.lineHeight ?? 16
-                setNeedsDisplay()
+//                setNeedsDisplay()
             }
         }
     }
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
             syntaxHighlightController.theme = theme
-            setNeedsDisplay()
+//            setNeedsDisplay()
         }
     }
 
@@ -101,7 +101,7 @@ final class EditorTextInputView: UIView, UITextInput {
     var viewport: CGRect = .zero {
         didSet {
             if viewport != oldValue {
-                setNeedsDisplay()
+                layoutLines()
             }
         }
     }
@@ -120,7 +120,8 @@ final class EditorTextInputView: UIView, UITextInput {
     override var frame: CGRect {
         didSet {
             if frame.size != oldValue.size {
-                setNeedsDisplay()
+//                setNeedsDisplay()
+//                layoutLines()
             }
         }
     }
@@ -137,6 +138,9 @@ final class EditorTextInputView: UIView, UITextInput {
     private var visibleTextRendererIDs: Set<DocumentLineNodeID> = []
     private var _contentSize: CGSize?
     private let syntaxHighlightController = SyntaxHighlightController()
+    private var queuedLineViews: Set<EditorLineView> = []
+    private var currentLineViews: [DocumentLineNodeID: EditorLineView] = [:]
+    private var cachedAttributes: [DocumentLineNodeID: [EditorTextRendererAttributes]] = [:]
 
     // MARK: - Lifecycle
     init() {
@@ -308,13 +312,16 @@ extension EditorTextInputView {
             if let oldTree = oldTree, let newTree = parser?.latestTree {
                 let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
                 let changedLines = lines(in: changedRanges)
+                for changedLine in changedLines {
+                    cachedAttributes.removeValue(forKey: changedLine.id)
+                }
                 editedLines.formUnion(changedLines)
             }
         } else {
             fatalError("Cannot edit syntax tree because one or more line positions are not available")
         }
         updateStrings(in: editedLines)
-        setNeedsDisplay()
+//        setNeedsDisplay()
         inputDelegate?.textDidChange(self)
         delegate?.editorTextInputViewDidChange(self)
     }
@@ -528,54 +535,60 @@ extension EditorTextInputView {
 
 // MARK: - Drawing
 extension EditorTextInputView {
-    override func draw(_ rect: CGRect) {
-        super.draw(rect)
-        if let context = UIGraphicsGetCurrentContext() {
-            context.saveGState()
-            context.textMatrix = .identity
-            context.scaleBy(x: 1, y: -1)
-            drawLines(in: viewport, of: context)
-            context.restoreGState()
+    private func layoutLines() {
+        let currentVisibleLineIDs = Set(currentLineViews.keys)
+        let newVisibleLines = lineManager.visibleLines(in: viewport)
+        let newVisibleLineIDs = Set(newVisibleLines.map(\.id))
+        let lineIDsToEnqueue = currentVisibleLineIDs.subtracting(newVisibleLineIDs)
+        enqueueLineViews(withIDs: lineIDsToEnqueue)
+        for visibleLine in newVisibleLines {
+            let lineView = dequeueLineView(withID: visibleLine.id)
+            if lineView.superview == nil {
+                addSubview(lineView)
+            }
+            layout(lineView, for: visibleLine)
         }
         if _contentSize == nil {
             delegate?.editorTextInputViewDidInvalidateContentSize(self)
         }
     }
 
-    private func drawLines(in rect: CGRect, of context: CGContext) {
-        visibleTextRendererIDs = []
-        let visibleLines = lineManager.visibleLines(in: rect)
-        print(rect)
-        for visibleLine in visibleLines {
-            draw(visibleLine, in: context)
-            visibleTextRendererIDs.insert(visibleLine.id)
-        }
-    }
-
-    private func draw(_ line: DocumentLineNode, in context: CGContext) {
-        let lineLocation = line.location
-        let textRenderer = getTextRenderer(for: line)
-        if textRenderer.isContentInvalid {
-            let range = NSRange(location: lineLocation, length: line.value)
-            let lineString = string.substring(with: range) as NSString
-            let attributes = syntaxHighlightController.attributes(in: range, lineStartLocation: lineLocation)
-            textRenderer.font = font
-            textRenderer.textColor = textColor
-            textRenderer.setString(lineString, attributes: attributes)
-            textRenderer.isContentInvalid = false
-        }
-        textRenderer.constrainingWidth = frame.width
-        let size = textRenderer.preferredSize
-        let didUpdateHeight = lineManager.setHeight(size.height, of: line)
-        context.saveGState()
-        context.translateBy(x: 0, y: (size.height + line.yPosition) * -1)
-        textRenderer.draw(in: context)
-        context.restoreGState()
+    private func layout(_ lineView: EditorLineView, for line: DocumentLineNode) {
+        let range = NSRange(location: line.location, length: line.value)
+        let lineString = string.substring(with: range)
+        let attributes = attributesForLine(withID: line.id, in: range)
+        let attributedLineString = attributedString(lineString, with: attributes)
+        lineView.prepare(with: attributedLineString, lineWidth: frame.width)
+        let lineHeight = ceil(lineView.totalHeight)
+        let didUpdateHeight = lineManager.setHeight(lineHeight, of: line)
+        lineView.frame = CGRect(x: 0, y: line.yPosition, width: frame.width, height: lineHeight)
+        lineView.backgroundColor = backgroundColor
+        lineView.setNeedsDisplay()
         if didUpdateHeight {
             _contentSize = nil
         }
-        if textRenderers[line.id] == nil {
-            textRenderers[line.id] = textRenderer
+    }
+
+    private func enqueueLineViews(withIDs lineIDs: Set<DocumentLineNodeID>) {
+        for lineID in lineIDs {
+            if let lineView = currentLineViews.removeValue(forKey: lineID) {
+                lineView.removeFromSuperview()
+                queuedLineViews.insert(lineView)
+            }
+        }
+    }
+
+    private func dequeueLineView(withID lineID: DocumentLineNodeID) -> EditorLineView {
+        if let lineView = currentLineViews[lineID] {
+            return lineView
+        } else if !queuedLineViews.isEmpty {
+            let lineView = queuedLineViews.removeFirst()
+            currentLineViews[lineID] = lineView
+            return lineView
+        } else {
+            let lineView = EditorLineView()
+            currentLineViews[lineID] = lineView
+            return lineView
         }
     }
 
@@ -585,7 +598,7 @@ extension EditorTextInputView {
                 let lineLocation = line.location
                 let range = NSRange(location: lineLocation, length: line.value)
                 let substring = string.substring(with: range) as NSString
-                let attributes = syntaxHighlightController.attributes(in: range, lineStartLocation: lineLocation)
+                let attributes = syntaxHighlightController.attributes(in: range)
                 textRenderer.setString(substring, attributes: attributes)
                 let size = textRenderer.preferredSize
                 lineManager.setHeight(size.height, of: line)
@@ -602,6 +615,27 @@ extension EditorTextInputView {
         }
     }
 
+    private func attributesForLine(withID lineID: DocumentLineNodeID, in range: NSRange) -> [EditorTextRendererAttributes] {
+        if let cachedAttributes = cachedAttributes[lineID] {
+            return cachedAttributes
+        } else {
+            let attributes = syntaxHighlightController.attributes(in: range)
+            cachedAttributes[lineID] = attributes
+            return attributes
+        }
+    }
+
+    private func attributedString(_ string: String, with attributes: [EditorTextRendererAttributes]) -> NSAttributedString {
+        let attributedString = NSMutableAttributedString(string: string)
+        for attribute in attributes {
+            var rawAttributes: [NSAttributedString.Key: Any] = [:]
+            rawAttributes[.foregroundColor] = attribute.textColor ?? textColor
+            rawAttributes[.font] = attribute.font ?? font
+            attributedString.addAttributes(rawAttributes, range: attribute.range)
+        }
+        return attributedString
+    }
+
     @discardableResult
     private func createTextRenderer(for line: DocumentLineNode) -> EditorTextRenderer {
         let textRenderer = EditorTextRenderer()
@@ -614,11 +648,12 @@ extension EditorTextInputView {
 // MARK: - Memory Management
 private extension EditorTextInputView {
     @objc private func didReceiveMemoryWarning(_ notification: Notification) {
-        let allTextRendererIDs = Set(textRenderers.keys)
-        let unusedTextRendererIDs = allTextRendererIDs.subtracting(visibleTextRendererIDs)
-        for unusedTextRendererID in unusedTextRendererIDs {
-            textRenderers.removeValue(forKey: unusedTextRendererID)
-        }
+        cachedAttributes = [:]
+//        let allTextRendererIDs = Set(textRenderers.keys)
+//        let unusedTextRendererIDs = allTextRendererIDs.subtracting(visibleTextRendererIDs)
+//        for unusedTextRendererID in unusedTextRendererIDs {
+//            textRenderers.removeValue(forKey: unusedTextRendererID)
+//        }
     }
 }
 
@@ -636,6 +671,7 @@ extension EditorTextInputView: LineManagerDelegate {
     func lineManager(_ lineManager: LineManager, didRemove line: DocumentLineNode) {
         _contentSize = nil
         textRenderers.removeValue(forKey: line.id)
+        cachedAttributes.removeValue(forKey: line.id)
     }
 }
 
