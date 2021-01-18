@@ -10,9 +10,7 @@ import UIKit
 enum SyntaxHighlightControllerError: Error {
     case parserUnavailable
     case treeUnavailable
-    case languageUnavailable
     case highlightsQueryUnavailable
-    case queryError(QueryError)
 }
 
 final class SyntaxHighlightController {
@@ -32,24 +30,23 @@ final class SyntaxHighlightController {
         query = nil
     }
 
-    func attributes(in lineRange: NSRange) -> [EditorTextRendererAttributes] {
-        guard lineRange.length > 0 else {
-            return []
+    func prepare() {
+        guard query == nil else {
+            return
         }
-        let capturesResult = captures(in: lineRange)
-        switch capturesResult {
-        case .success(let captures):
-            let attributes = self.attributes(for: captures, in: lineRange)
-            return attributes.sorted(by: EditorTextRendererAttributes.locationSort(_:_:))
-        case .failure(let error):
-            print(error)
-            return []
+        guard let language = parser?.language else {
+            return
+        }
+        language.highlightsQuery.prepare()
+        guard let highlightsSource = language.highlightsQuery.string else {
+            return
+        }
+        if case let .success(query) = Query.create(fromSource: highlightsSource, in: language) {
+            self.query = query
         }
     }
-}
 
-private extension SyntaxHighlightController {
-    private func attributes(for captures: [Capture], in lineRange: NSRange) -> [EditorTextRendererAttributes] {
+    func attributes(for captures: [Capture], in lineRange: NSRange) -> [EditorTextRendererAttributes] {
         var allAttributes: [EditorTextRendererAttributes] = []
         for capture in captures {
             // We highlight each line separately but a capture may extend beyond a line, e.g. an unterminated string,
@@ -70,13 +67,7 @@ private extension SyntaxHighlightController {
         return allAttributes
     }
 
-    private func attributes(for capture: Capture, in range: NSRange) -> EditorTextRendererAttributes {
-        let textColor = theme.textColorForCaptureSequence(capture.name)
-        let font = theme.fontForCapture(named: capture.name)
-        return EditorTextRendererAttributes(range: range, textColor: textColor, font: font)
-    }
-
-    private func captures(in range: NSRange) -> Result<[Capture], SyntaxHighlightControllerError> {
+    func captures(in range: NSRange) -> Result<[Capture], SyntaxHighlightControllerError> {
         guard let parser = parser else {
             return .failure(.parserUnavailable)
         }
@@ -92,27 +83,20 @@ private extension SyntaxHighlightController {
             return captureQuery.allCaptures()
         }
     }
+}
+
+private extension SyntaxHighlightController {
+    private func attributes(for capture: Capture, in range: NSRange) -> EditorTextRendererAttributes {
+        let textColor = theme.textColorForCaptureSequence(capture.name)
+        let font = theme.fontForCapture(named: capture.name)
+        return EditorTextRendererAttributes(range: range, textColor: textColor, font: font)
+    }
 
     private func getQuery() -> Result<Query, SyntaxHighlightControllerError> {
         if let query = query {
             return .success(query)
         } else {
-            guard let parser = parser else {
-                return .failure(.parserUnavailable)
-            }
-            guard let language = parser.language else {
-                return .failure(.languageUnavailable)
-            }
-            language.highlightsQuery.prepare()
-            guard let highlightsSource = language.highlightsQuery.string else {
-                return .failure(.highlightsQueryUnavailable)
-            }
-            return Query.create(fromSource: highlightsSource, in: language).mapError { error in
-                return .queryError(error)
-            }.map { query in
-                self.query = query
-                return query
-            }
+            return .failure(.highlightsQueryUnavailable)
         }
     }
 }

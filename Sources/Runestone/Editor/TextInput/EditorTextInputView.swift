@@ -140,7 +140,6 @@ final class EditorTextInputView: UIView, UITextInput {
     private let syntaxHighlightController = SyntaxHighlightController()
     private var queuedLineViews: Set<EditorLineView> = []
     private var currentLineViews: [DocumentLineNodeID: EditorLineView] = [:]
-    private var cachedAttributes: [DocumentLineNodeID: [EditorTextRendererAttributes]] = [:]
 
     // MARK: - Lifecycle
     init() {
@@ -312,9 +311,6 @@ extension EditorTextInputView {
             if let oldTree = oldTree, let newTree = parser?.latestTree {
                 let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
                 let changedLines = lines(in: changedRanges)
-                for changedLine in changedLines {
-                    cachedAttributes.removeValue(forKey: changedLine.id)
-                }
                 editedLines.formUnion(changedLines)
             }
         } else {
@@ -554,16 +550,19 @@ extension EditorTextInputView {
     }
 
     private func layout(_ lineView: EditorLineView, for line: DocumentLineNode) {
+        syntaxHighlightController.prepare()
         let range = NSRange(location: line.location, length: line.value)
-        let lineString = string.substring(with: range)
-        let attributes = attributesForLine(withID: line.id, in: range)
-        let attributedLineString = attributedString(lineString, with: attributes)
-        lineView.prepare(with: attributedLineString, lineWidth: frame.width)
+        let lineString = string.substring(with: range) as NSString
+        lineView.lineWidth = frame.width
+        lineView.font = font
+        lineView.textColor = textColor
+        lineView.prepare(with: lineString)
         let lineHeight = ceil(lineView.totalHeight)
         let didUpdateHeight = lineManager.setHeight(lineHeight, of: line)
         lineView.frame = CGRect(x: 0, y: line.yPosition, width: frame.width, height: lineHeight)
         lineView.backgroundColor = backgroundColor
         lineView.setNeedsDisplay()
+        lineView.syntaxHighlight(documentRange: range)
         if didUpdateHeight {
             _contentSize = nil
         }
@@ -586,25 +585,25 @@ extension EditorTextInputView {
             currentLineViews[lineID] = lineView
             return lineView
         } else {
-            let lineView = EditorLineView()
+            let lineView = EditorLineView(syntaxHighlightController: syntaxHighlightController)
             currentLineViews[lineID] = lineView
             return lineView
         }
     }
 
     private func updateStrings(in lines: Set<DocumentLineNode>) {
-        for line in lines {
-            if let textRenderer = textRenderers[line.id] {
-                let lineLocation = line.location
-                let range = NSRange(location: lineLocation, length: line.value)
-                let substring = string.substring(with: range) as NSString
-                let attributes = syntaxHighlightController.attributes(in: range)
-                textRenderer.setString(substring, attributes: attributes)
-                let size = textRenderer.preferredSize
-                lineManager.setHeight(size.height, of: line)
-                textRenderer.isContentInvalid = false
-            }
-        }
+//        for line in lines {
+//            if let textRenderer = textRenderers[line.id] {
+//                let lineLocation = line.location
+//                let range = NSRange(location: lineLocation, length: line.value)
+//                let substring = string.substring(with: range) as NSString
+//                let attributes = syntaxHighlightController.attributes(in: range)
+//                textRenderer.setString(substring, attributes: attributes)
+//                let size = textRenderer.preferredSize
+//                lineManager.setHeight(size.height, of: line)
+//                textRenderer.isContentInvalid = false
+//            }
+//        }
     }
 
     private func getTextRenderer(for line: DocumentLineNode) -> EditorTextRenderer {
@@ -612,16 +611,6 @@ extension EditorTextInputView {
             return textRenderer
         } else {
             return createTextRenderer(for: line)
-        }
-    }
-
-    private func attributesForLine(withID lineID: DocumentLineNodeID, in range: NSRange) -> [EditorTextRendererAttributes] {
-        if let cachedAttributes = cachedAttributes[lineID] {
-            return cachedAttributes
-        } else {
-            let attributes = syntaxHighlightController.attributes(in: range)
-            cachedAttributes[lineID] = attributes
-            return attributes
         }
     }
 
@@ -648,7 +637,6 @@ extension EditorTextInputView {
 // MARK: - Memory Management
 private extension EditorTextInputView {
     @objc private func didReceiveMemoryWarning(_ notification: Notification) {
-        cachedAttributes = [:]
 //        let allTextRendererIDs = Set(textRenderers.keys)
 //        let unusedTextRendererIDs = allTextRendererIDs.subtracting(visibleTextRendererIDs)
 //        for unusedTextRendererID in unusedTextRendererIDs {
@@ -671,7 +659,6 @@ extension EditorTextInputView: LineManagerDelegate {
     func lineManager(_ lineManager: LineManager, didRemove line: DocumentLineNode) {
         _contentSize = nil
         textRenderers.removeValue(forKey: line.id)
-        cachedAttributes.removeValue(forKey: line.id)
     }
 }
 
