@@ -140,6 +140,7 @@ final class EditorTextInputView: UIView, UITextInput {
     private let syntaxHighlightController = SyntaxHighlightController()
     private var queuedLineViews: Set<EditorLineView> = []
     private var currentLineViews: [DocumentLineNodeID: EditorLineView] = [:]
+    private let syntaxHighlightQueue = OperationQueue()
 
     // MARK: - Lifecycle
     init() {
@@ -556,13 +557,13 @@ extension EditorTextInputView {
         lineView.lineWidth = frame.width
         lineView.font = font
         lineView.textColor = textColor
-        lineView.prepare(with: lineString)
+        lineView.show(lineString, fromLineWithID: line.id)
         let lineHeight = ceil(lineView.totalHeight)
         let didUpdateHeight = lineManager.setHeight(lineHeight, of: line)
         lineView.frame = CGRect(x: 0, y: line.yPosition, width: frame.width, height: lineHeight)
         lineView.backgroundColor = backgroundColor
         lineView.setNeedsDisplay()
-        lineView.syntaxHighlight(documentRange: range)
+        lineView.syntaxHighlight(range, inLineWithID: line.id)
         if didUpdateHeight {
             _contentSize = nil
         }
@@ -579,13 +580,15 @@ extension EditorTextInputView {
 
     private func dequeueLineView(withID lineID: DocumentLineNodeID) -> EditorLineView {
         if let lineView = currentLineViews[lineID] {
+            lineView.prepareForReuse()
             return lineView
         } else if !queuedLineViews.isEmpty {
             let lineView = queuedLineViews.removeFirst()
+            lineView.prepareForReuse()
             currentLineViews[lineID] = lineView
             return lineView
         } else {
-            let lineView = EditorLineView(syntaxHighlightController: syntaxHighlightController)
+            let lineView = EditorLineView(syntaxHighlightController: syntaxHighlightController, syntaxHighlightQueue: syntaxHighlightQueue)
             currentLineViews[lineID] = lineView
             return lineView
         }
@@ -637,6 +640,7 @@ extension EditorTextInputView {
 // MARK: - Memory Management
 private extension EditorTextInputView {
     @objc private func didReceiveMemoryWarning(_ notification: Notification) {
+        syntaxHighlightController.clearCache()
 //        let allTextRendererIDs = Set(textRenderers.keys)
 //        let unusedTextRendererIDs = allTextRendererIDs.subtracting(visibleTextRendererIDs)
 //        for unusedTextRendererID in unusedTextRendererIDs {

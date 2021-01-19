@@ -30,14 +30,15 @@ final class EditorLineView: UIView {
     private var typesetter: CTTypesetter?
     private var preparedLines: [PreparedLine] = []
     private let syntaxHighlightController: SyntaxHighlightController
-    private let queue = OperationQueue()
     private var attributedString: CFMutableAttributedString?
+    private var isHighlighted = false
+    private let syntaxHighlightQueue: OperationQueue
+    private var currentSyntaxHighlightOperation: Operation?
 
-    init(syntaxHighlightController: SyntaxHighlightController) {
+    init(syntaxHighlightController: SyntaxHighlightController, syntaxHighlightQueue: OperationQueue) {
         self.syntaxHighlightController = syntaxHighlightController
+        self.syntaxHighlightQueue = syntaxHighlightQueue
         super.init(frame: .zero)
-        queue.maxConcurrentOperationCount = 1
-        queue.qualityOfService = .userInitiated
     }
 
     required init?(coder: NSCoder) {
@@ -53,36 +54,44 @@ final class EditorLineView: UIView {
         drawPreparedLines(to: context)
     }
 
-    func prepare(with string: NSString) {
-        reset()
+    func prepareForReuse() {
+        currentSyntaxHighlightOperation?.cancel()
+        currentSyntaxHighlightOperation = nil
+        preparedLines = []
+        totalHeight = 0
+        typesetter = nil
+        isHighlighted = false
+    }
+
+    func show(_ string: NSString, fromLineWithID lineID: DocumentLineNodeID) {
         attributedString = CFAttributedStringCreateMutable(kCFAllocatorDefault, string.length)
         if let attributedString = attributedString {
             CFAttributedStringReplaceString(attributedString, CFRangeMake(0, 0), string)
             applyDefaultAttributes()
+            if let cachedAttributes = syntaxHighlightController.cachedAttributes(for: lineID) {
+                apply(cachedAttributes)
+                isHighlighted = true
+            }
+            recreateTypesetter()
         }
-        recreateTypesetter()
     }
 
-    func syntaxHighlight(documentRange: NSRange) {
-        queue.cancelAllOperations()
+    func syntaxHighlight(_ documentRange: NSRange, inLineWithID lineID: DocumentLineNodeID) {
+        guard !isHighlighted else {
+            return
+        }
         let operation = BlockOperation()
         operation.addExecutionBlock { [weak operation, weak self] in
             if let operation = operation, !operation.isCancelled {
-                self?.syntaxHighlight(documentRange: documentRange, using: operation)
+                self?.syntaxHighlight(documentRange: documentRange, inLineWithID: lineID, using: operation)
             }
         }
-        queue.addOperation(operation)
+        currentSyntaxHighlightOperation = operation
+        syntaxHighlightQueue.addOperation(operation)
     }
 }
 
 private extension EditorLineView {
-    private func reset() {
-        queue.cancelAllOperations()
-        preparedLines = []
-        totalHeight = 0
-        typesetter = nil
-    }
-
     private func recreateTypesetter() {
         if let attributedString = attributedString {
             typesetter = CTTypesetterCreateWithAttributedString(attributedString)
@@ -122,20 +131,26 @@ private extension EditorLineView {
         }
     }
 
-    private func syntaxHighlight(documentRange: NSRange, using operation: Operation) {
+    private func syntaxHighlight(documentRange: NSRange, inLineWithID lineID: DocumentLineNodeID, using operation: Operation) {
         if case let .success(captures) = syntaxHighlightController.captures(in: documentRange) {
             if !operation.isCancelled {
                 DispatchQueue.main.sync {
                     if !operation.isCancelled {
-                        let attributes = self.syntaxHighlightController.attributes(for: captures, in: documentRange)
-                        self.reset()
-                        self.apply(attributes)
-                        self.recreateTypesetter()
-                        self.setNeedsDisplay()
+                        self.syntaxHighlight(using: captures, in: documentRange, lineID: lineID)
                     }
                 }
             }
         }
+    }
+
+    private func syntaxHighlight(using captures: [Capture], in documentRange: NSRange, lineID: DocumentLineNodeID) {
+        let attributes = syntaxHighlightController.attributes(for: captures, in: documentRange)
+        syntaxHighlightController.cache(attributes, for: lineID)
+        prepareForReuse()
+        apply(attributes)
+        recreateTypesetter()
+        isHighlighted = true
+        setNeedsDisplay()
     }
 
     private func applyDefaultAttributes() {

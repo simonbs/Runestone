@@ -25,9 +25,11 @@ final class SyntaxHighlightController {
     }
 
     private var query: Query?
+    private var cache: [DocumentLineNodeID: [EditorTextRendererAttributes]] = [:]
 
     func reset() {
         query = nil
+        cache = [:]
     }
 
     func prepare() {
@@ -82,6 +84,18 @@ final class SyntaxHighlightController {
             captureQuery.execute()
             return captureQuery.allCaptures()
         }
+    }
+
+    func cache(_ attributes: [EditorTextRendererAttributes], for lineID: DocumentLineNodeID) {
+        cache[lineID] = attributes
+    }
+
+    func cachedAttributes(for lineID: DocumentLineNodeID) -> [EditorTextRendererAttributes]? {
+        return cache[lineID]
+    }
+
+    func clearCache() {
+        cache = [:]
     }
 }
 
