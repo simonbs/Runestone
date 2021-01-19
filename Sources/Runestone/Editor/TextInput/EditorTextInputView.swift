@@ -148,6 +148,7 @@ final class EditorTextInputView: UIView, UITextInput {
         lineManager.delegate = self
         lineManager.estimatedLineHeight = font?.lineHeight ?? 16
         syntaxHighlightController.theme = theme
+        syntaxHighlightQueue.qualityOfService = .userInitiated
         NotificationCenter.default.addObserver(self, selector: #selector(didReceiveMemoryWarning(_:)), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
     }
 
