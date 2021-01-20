@@ -8,7 +8,7 @@
 import TreeSitter
 
 protocol ParserDelegate: AnyObject {
-    func parser(_ parser: Parser, substringAtByteIndex byteIndex: uint, point: SourcePoint) -> String?
+    func parser(_ parser: Parser, substringAtByteIndex byteIndex: uint) -> String?
 }
 
 final class Parser {
@@ -55,8 +55,8 @@ final class Parser {
     }
 
     func parse() {
-        let input = SourceInput(encoding: encoding) { [weak self] byteIndex, point in
-            guard let self = self, let str = self.delegate?.parser(self, substringAtByteIndex: byteIndex, point: point) else {
+        let input = SourceInput(encoding: encoding) { [weak self] byteIndex, _ in
+            guard let self = self, let str = self.delegate?.parser(self, substringAtByteIndex: byteIndex) else {
                 return []
             }
             guard let cStr = str.cString(using: self.encoding.swiftEncoding) else {

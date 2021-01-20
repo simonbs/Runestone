@@ -134,8 +134,6 @@ final class EditorTextInputView: UIView, UITextInput {
     private var selectedRange: NSRange?
     private var markedRange: NSRange?
     private var lineManager = LineManager()
-    private var textRenderers: [DocumentLineNodeID: EditorTextRenderer] = [:]
-    private var visibleTextRendererIDs: Set<DocumentLineNodeID> = []
     private var _contentSize: CGSize?
     private let syntaxHighlightController = SyntaxHighlightController()
     private var queuedLineViews: Set<EditorLineView> = []
@@ -147,6 +145,7 @@ final class EditorTextInputView: UIView, UITextInput {
         super.init(frame: .zero)
         lineManager.delegate = self
         lineManager.estimatedLineHeight = font?.lineHeight ?? 16
+        syntaxHighlightController.delegate = self
         syntaxHighlightController.theme = theme
         syntaxHighlightQueue.qualityOfService = .userInitiated
         NotificationCenter.default.addObserver(self, selector: #selector(didReceiveMemoryWarning(_:)), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
@@ -209,9 +208,9 @@ extension EditorTextInputView {
         if string.length == 0 {
             return CGRect(x: 0, y: 0, width: EditorCaret.width, height: EditorCaret.defaultHeight(for: font))
         } else if let line = lineManager.line(containingCharacterAt: indexedPosition.index) {
-            let textRenderer = getTextRenderer(for: line)
+            let lineView = currentLineViews[line.id]
             let localIndex = indexedPosition.index - line.location
-            let caretRect = textRenderer.caretRect(atIndex: localIndex)
+            let caretRect = lineView!.caretRect(atIndex: localIndex)
             return CGRect(x: caretRect.minX, y: line.yPosition + caretRect.minY, width: caretRect.width, height: caretRect.height)
         } else {
             fatalError("Cannot find caret rect.")
@@ -223,15 +222,12 @@ extension EditorTextInputView {
             fatalError("Expected range to be of type \(EditorIndexedRange.self)")
         }
         let range = indexedRange.range
-        if let line = lineManager.line(containingCharacterAt: range.location) {
-            let textRenderer = getTextRenderer(for: line)
-            let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
-            var rect = textRenderer.firstRect(for: localRange)
-            rect.origin.y += line.yPosition
-            return rect
-        } else {
+        guard let line = lineManager.line(containingCharacterAt: range.location) else {
             fatalError("Cannot find first rect.")
         }
+        let lineView = currentLineViews[line.id]!
+        let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
+        return lineView.firstRect(for: localRange)
     }
 }
 
@@ -319,7 +315,7 @@ extension EditorTextInputView {
             fatalError("Cannot edit syntax tree because one or more line positions are not available")
         }
         updateStrings(in: editedLines)
-//        setNeedsDisplay()
+        layoutLines()
         inputDelegate?.textDidChange(self)
         delegate?.editorTextInputViewDidChange(self)
     }
@@ -357,13 +353,13 @@ extension EditorTextInputView {
         let lineIndexRange = startLine.index ..< endLine.index + 1
         for lineIndex in lineIndexRange {
             let line = lineManager.line(atIndex: lineIndex)
-            if let textRenderer = textRenderers[line.id] {
+            if let lineView = currentLineViews[line.id] {
                 let lineStartLocation = line.location
                 let lineEndLocation = lineStartLocation + line.data.totalLength
                 let localRangeLocation = max(range.location, lineStartLocation) - lineStartLocation
                 let localRangeLength = min(range.location + range.length, lineEndLocation) - lineStartLocation - localRangeLocation
                 let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
-                let rendererSelectionRects = textRenderer.selectionRects(in: localRange)
+                let rendererSelectionRects = lineView.selectionRects(in: localRange)
                 let textSelectionRects: [EditorTextSelectionRect] = rendererSelectionRects.map { rendererSelectionRect in
                     let y = line.yPosition + rendererSelectionRect.rect.minY
                     var screenRect = CGRect(x: rendererSelectionRect.rect.minX, y: y, width: rendererSelectionRect.rect.width, height: rendererSelectionRect.rect.height)
@@ -482,25 +478,25 @@ extension EditorTextInputView {
 
     private func closestIndex(to point: CGPoint) -> Int? {
         if let line = lineManager.line(containingYOffset: point.y) {
-            let textRenderer = getTextRenderer(for: line)
-            return closestIndex(to: point, in: textRenderer, showing: line)
+            let lineView = currentLineViews[line.id]!
+            return closestIndex(to: point, in: lineView, showing: line)
         } else if point.y <= 0 {
             let firstLine = lineManager.firstLine
-            let textRenderer = getTextRenderer(for: firstLine)
-            return closestIndex(to: point, in: textRenderer, showing: firstLine)
+            let lineView = currentLineViews[firstLine.id]!
+            return closestIndex(to: point, in: lineView, showing: firstLine)
         } else {
             let lastLine = lineManager.lastLine
             if point.y >= lastLine.yPosition {
-                let textRenderer = getTextRenderer(for: lastLine)
-                return closestIndex(to: point, in: textRenderer, showing: lastLine)
+                let lineView = currentLineViews[lastLine.id]!
+                return closestIndex(to: point, in: lineView, showing: lastLine)
             } else {
                 fatalError("Cannot find first rect.")
             }
         }
     }
 
-    private func closestIndex(to point: CGPoint, in textRenderer: EditorTextRenderer, showing line: DocumentLineNode) -> Int? {
-        if let index = textRenderer.closestIndex(to: point) {
+    private func closestIndex(to point: CGPoint, in lineView: EditorLineView, showing line: DocumentLineNode) -> Int? {
+        if let index = lineView.closestIndex(to: point) {
             if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
                 return line.location + line.data.length
             } else {
@@ -596,25 +592,16 @@ extension EditorTextInputView {
     }
 
     private func updateStrings(in lines: Set<DocumentLineNode>) {
-//        for line in lines {
-//            if let textRenderer = textRenderers[line.id] {
-//                let lineLocation = line.location
-//                let range = NSRange(location: lineLocation, length: line.value)
-//                let substring = string.substring(with: range) as NSString
-//                let attributes = syntaxHighlightController.attributes(in: range)
-//                textRenderer.setString(substring, attributes: attributes)
-//                let size = textRenderer.preferredSize
-//                lineManager.setHeight(size.height, of: line)
-//                textRenderer.isContentInvalid = false
-//            }
-//        }
-    }
-
-    private func getTextRenderer(for line: DocumentLineNode) -> EditorTextRenderer {
-        if let textRenderer = textRenderers[line.id] {
-            return textRenderer
-        } else {
-            return createTextRenderer(for: line)
+        for line in lines {
+            if let lineView = currentLineViews[line.id] {
+                syntaxHighlightController.removedCachedAttributes(for: line.id)
+                let lineLocation = line.location
+                let range = NSRange(location: lineLocation, length: line.value)
+                let substring = string.substring(with: range) as NSString
+                lineView.show(substring, fromLineWithID: line.id)
+                lineView.syntaxHighlight(range, inLineWithID: line.id)
+                lineManager.setHeight(lineView.totalHeight, of: line)
+            }
         }
     }
 
@@ -628,25 +615,12 @@ extension EditorTextInputView {
         }
         return attributedString
     }
-
-    @discardableResult
-    private func createTextRenderer(for line: DocumentLineNode) -> EditorTextRenderer {
-        let textRenderer = EditorTextRenderer()
-        textRenderer.font = font
-        textRenderers[line.id] = textRenderer
-        return textRenderer
-    }
 }
 
 // MARK: - Memory Management
 private extension EditorTextInputView {
     @objc private func didReceiveMemoryWarning(_ notification: Notification) {
         syntaxHighlightController.clearCache()
-//        let allTextRendererIDs = Set(textRenderers.keys)
-//        let unusedTextRendererIDs = allTextRendererIDs.subtracting(visibleTextRendererIDs)
-//        for unusedTextRendererID in unusedTextRendererIDs {
-//            textRenderers.removeValue(forKey: unusedTextRendererID)
-//        }
     }
 }
 
@@ -658,23 +632,33 @@ extension EditorTextInputView: LineManagerDelegate {
 
     func lineManager(_ lineManager: LineManager, didInsert line: DocumentLineNode) {
         _contentSize = nil
-        createTextRenderer(for: line)
     }
 
     func lineManager(_ lineManager: LineManager, didRemove line: DocumentLineNode) {
         _contentSize = nil
-        textRenderers.removeValue(forKey: line.id)
     }
 }
 
 // MARK: - ParserDelegate
 extension EditorTextInputView: ParserDelegate {
-    func parser(_ parser: Parser, substringAtByteIndex byteIndex: uint, point: SourcePoint) -> String? {
+    func parser(_ parser: Parser, substringAtByteIndex byteIndex: uint) -> String? {
         if byteIndex < string.length {
             return string.substring(with: NSRange(location: Int(byteIndex), length: 1))
         } else {
             return nil
         }
+    }
+}
+
+// MARK: - SyntaxHighlightControllerDelegate
+extension EditorTextInputView: SyntaxHighlightControllerDelegate {
+    func syntaxHighlightController(_ controller: SyntaxHighlightController, rangeFromStartByte startByte: uint, to endByte: uint) -> NSRange {
+        let swiftString = string as String
+        let v = swiftString.utf8
+        let start = v.index(v.startIndex, offsetBy: Int(startByte))
+        let end = v.index(v.startIndex, offsetBy: Int(endByte))
+        let range = start ..< end
+        return NSRange(range, in: swiftString)
     }
 }
 

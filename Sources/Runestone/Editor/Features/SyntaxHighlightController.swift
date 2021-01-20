@@ -13,7 +13,12 @@ enum SyntaxHighlightControllerError: Error {
     case highlightsQueryUnavailable
 }
 
+protocol SyntaxHighlightControllerDelegate: AnyObject {
+    func syntaxHighlightController(_ controller: SyntaxHighlightController, rangeFromStartByte startByte: uint, to endByte: uint) -> NSRange
+}
+
 final class SyntaxHighlightController {
+    weak var delegate: SyntaxHighlightControllerDelegate?
     var parser: Parser?
     var theme: EditorTheme = DefaultEditorTheme()
     var canHighlight: Bool {
@@ -53,17 +58,23 @@ final class SyntaxHighlightController {
         for capture in captures {
             // We highlight each line separately but a capture may extend beyond a line, e.g. an unterminated string,
             // so we need to cap the start and end location to ensure it's within the line.
-            let captureStartLocation = Int(capture.startByte)
-            let captureEndLocation = Int(capture.endByte)
-            let cappedStartLocation = max(captureStartLocation, lineRange.location)
-            let cappedEndLocation = min(captureEndLocation, lineRange.location + lineRange.length)
+            let range = self.delegate!.syntaxHighlightController(self, rangeFromStartByte: capture.startByte, to: capture.endByte)
+            let cappedStartLocation = max(range.location, lineRange.location)
+            let cappedEndLocation = min(range.location + range.length, lineRange.location + lineRange.length)
             let length = cappedEndLocation - cappedStartLocation
             if length > 0 {
-                let range = NSRange(location: cappedStartLocation - lineRange.location, length: length)
-                let attrs = attributes(for: capture, in: range)
+                let cappedRange = NSRange(location: cappedStartLocation - lineRange.location, length: length)
+                print("\(lineRange.location) [\(cappedRange.location) - \(cappedRange.length)] \(capture.name)")
+//            let r = NSRange(location: range.location - lineRange.location, length: range.length)
+//            print("\(lineRange.location) [\(r.location) - \(r.length)] \(capture.name)")
+                let attrs = attributes(for: capture, in: cappedRange)
                 if !attrs.isEmpty {
                     allAttributes.append(attrs)
+                } else {
+                    print("  Empty")
                 }
+            } else {
+                print("\(lineRange.location) Discarded: [\(range.location) - \(range.length)] \(capture.name)")
             }
         }
         return allAttributes
@@ -96,6 +107,10 @@ final class SyntaxHighlightController {
 
     func clearCache() {
         cache = [:]
+    }
+
+    func removedCachedAttributes(for lineID: DocumentLineNodeID) {
+        cache.removeValue(forKey: lineID)
     }
 }
 
