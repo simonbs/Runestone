@@ -46,8 +46,9 @@ final class Parser {
     }
 
     func parse(_ string: String) {
+        let byteCount = UInt32(string.utf8.count)
         let newTreePointer = string.withCString { stringPointer in
-            return ts_parser_parse_string(parser, latestTree?.pointer, stringPointer, UInt32(string.count))
+            return ts_parser_parse_string(parser, latestTree?.pointer, stringPointer, byteCount)
         }
         if let newTreePointer = newTreePointer {
             latestTree = Tree(newTreePointer)
