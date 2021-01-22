@@ -8,17 +8,17 @@
 import TreeSitter
 
 final class InputEdit {
-    let startByte: uint
-    let oldEndByte: uint
-    let newEndByte: uint
+    let startByte: ByteCount
+    let oldEndByte: ByteCount
+    let newEndByte: ByteCount
     let startPoint: SourcePoint
     let oldEndPoint: SourcePoint
     let newEndPoint: SourcePoint
 
     init(
-        startByte: uint,
-        oldEndByte: uint,
-        newEndByte: uint,
+        startByte: ByteCount,
+        oldEndByte: ByteCount,
+        newEndByte: ByteCount,
         startPoint: SourcePoint,
         oldEndPoint: SourcePoint,
         newEndPoint: SourcePoint) {
@@ -32,9 +32,9 @@ final class InputEdit {
 
     func asRawInputEdit() -> TSInputEdit {
         return TSInputEdit(
-            start_byte: startByte,
-            old_end_byte: oldEndByte,
-            new_end_byte: newEndByte,
+            start_byte: UInt32(startByte.value),
+            old_end_byte: UInt32(oldEndByte.value),
+            new_end_byte: UInt32(newEndByte.value),
             start_point: startPoint.rawValue,
             old_end_point: oldEndPoint.rawValue,
             new_end_point: newEndPoint.rawValue)

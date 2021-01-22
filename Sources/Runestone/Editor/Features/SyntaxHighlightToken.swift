@@ -1,5 +1,5 @@
 //
-//  EditorLineAttributes.swift
+//  SyntaxHighlightToken.swift
 //  
 //
 //  Created by Simon Støvring on 22/01/2021.
@@ -7,8 +7,8 @@
 
 import UIKit
 
-final class EditorLineAttributes {
-    let range: NSRange
+final class SyntaxHighlightToken {
+    let range: ByteRange
     let textColor: UIColor?
     let font: UIFont?
     var isEmpty: Bool {
@@ -18,21 +18,21 @@ final class EditorLineAttributes {
         return textColor != nil || font != nil
     }
 
-    init(range: NSRange, textColor: UIColor?, font: UIFont?) {
+    init(range: ByteRange, textColor: UIColor?, font: UIFont?) {
         self.range = range
         self.textColor = textColor
         self.font = font
     }
 }
 
-extension EditorLineAttributes: Equatable {
-    static func == (lhs: EditorLineAttributes, rhs: EditorLineAttributes) -> Bool {
+extension SyntaxHighlightToken: Equatable {
+    static func == (lhs: SyntaxHighlightToken, rhs: SyntaxHighlightToken) -> Bool {
         return lhs.range == rhs.range && lhs.textColor == rhs.textColor && lhs.font == rhs.font
     }
 }
 
-extension EditorLineAttributes {
-    static func locationSort(_ lhs: EditorLineAttributes, _ rhs: EditorLineAttributes) -> Bool {
+extension SyntaxHighlightToken {
+    static func locationSort(_ lhs: SyntaxHighlightToken, _ rhs: SyntaxHighlightToken) -> Bool {
         if lhs.range.location != rhs.range.location {
             return lhs.range.location < rhs.range.location
         } else {
@@ -41,8 +41,8 @@ extension EditorLineAttributes {
     }
 }
 
-extension EditorLineAttributes: CustomDebugStringConvertible {
+extension SyntaxHighlightToken: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[EditorLineAttributes: \(range.location) - \(range.length)]"
+        return "[SyntaxHighlightToken: \(range.location) - \(range.length)]"
     }
 }

@@ -31,9 +31,13 @@ final class Tree {
         var count = CUnsignedInt(0)
         let ptr = ts_tree_get_changed_ranges(pointer, otherTree.pointer, &count)
         return UnsafeBufferPointer(start: ptr, count: Int(count)).map {
-            let startPoint = SourcePoint(point: $0.start_point)
-            let endPoint = SourcePoint(point: $0.end_point)
-            return SourceRange(startPoint: startPoint, endPoint: endPoint, startByte: $0.start_byte, endByte: $0.end_byte)
+            let startPoint = SourcePoint($0.start_point)
+            let endPoint = SourcePoint($0.end_point)
+            return SourceRange(
+                startPoint: startPoint,
+                endPoint: endPoint,
+                startByte: ByteCount($0.start_byte),
+                endByte: ByteCount($0.end_byte))
         }
     }
 }

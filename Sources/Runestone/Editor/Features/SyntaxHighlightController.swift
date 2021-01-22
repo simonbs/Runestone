@@ -13,12 +13,7 @@ enum SyntaxHighlightControllerError: Error {
     case highlightsQueryUnavailable
 }
 
-protocol SyntaxHighlightControllerDelegate: AnyObject {
-    func syntaxHighlightController(_ controller: SyntaxHighlightController, rangeFromStartByte startByte: uint, to endByte: uint) -> NSRange
-}
-
 final class SyntaxHighlightController {
-    weak var delegate: SyntaxHighlightControllerDelegate?
     var parser: Parser?
     var theme: EditorTheme = DefaultEditorTheme()
     var canHighlight: Bool {
@@ -30,7 +25,7 @@ final class SyntaxHighlightController {
     }
 
     private var query: Query?
-    private var cache: [DocumentLineNodeID: [EditorLineAttributes]] = [:]
+    private var cache: [DocumentLineNodeID: [SyntaxHighlightToken]] = [:]
 
     func reset() {
         query = nil
@@ -53,31 +48,26 @@ final class SyntaxHighlightController {
         }
     }
 
-    func attributes(for captures: [Capture], in lineRange: NSRange) -> [EditorLineAttributes] {
-        var allAttributes: [EditorLineAttributes] = []
+    func attributes(for captures: [Capture], localTo range: ByteRange) -> [SyntaxHighlightToken] {
+        var tokens: [SyntaxHighlightToken] = []
         for capture in captures {
             // We highlight each line separately but a capture may extend beyond a line, e.g. an unterminated string,
             // so we need to cap the start and end location to ensure it's within the line.
-            let range = self.delegate!.syntaxHighlightController(self, rangeFromStartByte: capture.startByte, to: capture.endByte)
-            let cappedStartLocation = max(range.location, lineRange.location)
-            let cappedEndLocation = min(range.location + range.length, lineRange.location + lineRange.length)
-            let length = cappedEndLocation - cappedStartLocation
-            if length > 0 {
-                let cappedRange = NSRange(location: cappedStartLocation - lineRange.location, length: length)
+            let cappedStartByte = max(capture.byteRange.location, range.location)
+            let cappedEndByte = min(capture.byteRange.location + capture.byteRange.length, range.location + range.length)
+            let length = cappedEndByte - cappedStartByte
+            if length > ByteCount(0) {
+                let cappedRange = ByteRange(location: cappedStartByte - range.location, length: length)
                 let attrs = attributes(for: capture, in: cappedRange)
                 if !attrs.isEmpty {
-                    allAttributes.append(attrs)
-                } else {
-                    print("  Empty")
+                    tokens.append(attrs)
                 }
-            } else {
-                print("\(lineRange.location) Discarded: [\(range.location) - \(range.length)] \(capture.name)")
             }
         }
-        return allAttributes
+        return tokens
     }
 
-    func captures(in range: NSRange) -> Result<[Capture], SyntaxHighlightControllerError> {
+    func captures(in range: ByteRange) -> Result<[Capture], SyntaxHighlightControllerError> {
         guard let parser = parser else {
             return .failure(.parserUnavailable)
         }
@@ -86,19 +76,17 @@ final class SyntaxHighlightController {
         }
         return getQuery().map { query in
             let captureQuery = CaptureQuery(query: query, node: tree.rootNode)
-            let startLocation = UInt32(range.location)
-            let endLocation = UInt32(range.location + range.length)
-            captureQuery.setQueryRange(from: startLocation, to: endLocation)
+            captureQuery.setQueryRange(range)
             captureQuery.execute()
             return captureQuery.allCaptures()
         }
     }
 
-    func cache(_ attributes: [EditorLineAttributes], for lineID: DocumentLineNodeID) {
+    func cache(_ attributes: [SyntaxHighlightToken], for lineID: DocumentLineNodeID) {
         cache[lineID] = attributes
     }
 
-    func cachedAttributes(for lineID: DocumentLineNodeID) -> [EditorLineAttributes]? {
+    func cachedAttributes(for lineID: DocumentLineNodeID) -> [SyntaxHighlightToken]? {
         return cache[lineID]
     }
 
@@ -112,10 +100,10 @@ final class SyntaxHighlightController {
 }
 
 private extension SyntaxHighlightController {
-    private func attributes(for capture: Capture, in range: NSRange) -> EditorLineAttributes {
+    private func attributes(for capture: Capture, in range: ByteRange) -> SyntaxHighlightToken {
         let textColor = theme.textColorForCaptureSequence(capture.name)
         let font = theme.fontForCapture(named: capture.name)
-        return EditorLineAttributes(range: range, textColor: textColor, font: font)
+        return SyntaxHighlightToken(range: range, textColor: textColor, font: font)
     }
 
     private func getQuery() -> Result<Query, SyntaxHighlightControllerError> {

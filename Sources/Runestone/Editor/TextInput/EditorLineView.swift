@@ -37,6 +37,8 @@ final class EditorLineView: UIView {
     var textColor: UIColor?
     var font: UIFont?
 
+    private var string: String?
+    private var lineID: DocumentLineNodeID?
     private var typesetter: CTTypesetter?
     private var preparedLines: [PreparedLine] = []
     private let syntaxHighlightController: SyntaxHighlightController
@@ -67,16 +69,25 @@ final class EditorLineView: UIView {
     func prepareForReuse() {
         currentSyntaxHighlightOperation?.cancel()
         currentSyntaxHighlightOperation = nil
+        string = nil
+        lineID = nil
+        attributedString = nil
         preparedLines = []
         totalHeight = 0
         typesetter = nil
         isHighlighted = false
     }
 
-    func show(_ string: NSString, fromLineWithID lineID: DocumentLineNodeID) {
-        attributedString = CFAttributedStringCreateMutable(kCFAllocatorDefault, string.length)
+    func show(_ string: String, fromLineWithID lineID: DocumentLineNodeID) {
+        guard hasChanged(from: string, inLineWithID: lineID) else {
+            return
+        }
+        prepareForReuse()
+        self.string = string
+        self.lineID = lineID
+        attributedString = CFAttributedStringCreateMutable(kCFAllocatorDefault, string.utf16.count)
         if let attributedString = attributedString {
-            CFAttributedStringReplaceString(attributedString, CFRangeMake(0, 0), string)
+            CFAttributedStringReplaceString(attributedString, CFRangeMake(0, 0), string as CFString)
             applyDefaultAttributes()
             if let cachedAttributes = syntaxHighlightController.cachedAttributes(for: lineID) {
                 apply(cachedAttributes)
@@ -86,7 +97,7 @@ final class EditorLineView: UIView {
         }
     }
 
-    func syntaxHighlight(_ documentRange: NSRange, inLineWithID lineID: DocumentLineNodeID) {
+    func syntaxHighlight(_ documentRange: ByteRange, inLineWithID lineID: DocumentLineNodeID) {
         guard !isHighlighted else {
             return
         }
@@ -157,6 +168,10 @@ final class EditorLineView: UIView {
 }
 
 private extension EditorLineView {
+    private func hasChanged(from string: String, inLineWithID lineID: DocumentLineNodeID) -> Bool {
+        return string != self.string || lineID != self.lineID
+    }
+
     private func recreateTypesetter() {
         if let attributedString = attributedString {
             typesetter = CTTypesetterCreateWithAttributedString(attributedString)
@@ -170,6 +185,7 @@ private extension EditorLineView {
         guard let attributedString = attributedString else {
             return
         }
+        totalHeight = 0
         let stringLength = CFAttributedStringGetLength(attributedString)
         var startOffset = 0
         while startOffset < stringLength {
@@ -196,7 +212,7 @@ private extension EditorLineView {
         }
     }
 
-    private func syntaxHighlight(documentRange: NSRange, inLineWithID lineID: DocumentLineNodeID, using operation: Operation) {
+    private func syntaxHighlight(documentRange: ByteRange, inLineWithID lineID: DocumentLineNodeID, using operation: Operation) {
         if case let .success(captures) = syntaxHighlightController.captures(in: documentRange) {
             if !operation.isCancelled {
                 DispatchQueue.main.sync {
@@ -208,10 +224,12 @@ private extension EditorLineView {
         }
     }
 
-    private func syntaxHighlight(using captures: [Capture], in documentRange: NSRange, lineID: DocumentLineNodeID) {
-        let attributes = syntaxHighlightController.attributes(for: captures, in: documentRange)
+    private func syntaxHighlight(using captures: [Capture], in documentRange: ByteRange, lineID: DocumentLineNodeID) {
+        preparedLines = []
+        totalHeight = 0
+        typesetter = nil
+        let attributes = syntaxHighlightController.attributes(for: captures, localTo: documentRange)
         syntaxHighlightController.cache(attributes, for: lineID)
-        prepareForReuse()
         apply(attributes)
         recreateTypesetter()
         isHighlighted = true
@@ -235,17 +253,19 @@ private extension EditorLineView {
         }
     }
 
-    private func apply(_ attributes: [EditorLineAttributes]) {
+    private func apply(_ tokens: [SyntaxHighlightToken]) {
         guard let attributedString = attributedString else {
             return
         }
         CFAttributedStringBeginEditing(attributedString)
-        for attribute in attributes {
-            let range = CFRangeMake(attribute.range.location, attribute.range.length)
-            var rawAttributes: [NSAttributedString.Key: Any] = [:]
-            rawAttributes[.foregroundColor] = attribute.textColor ?? textColor
-            rawAttributes[.font] = attribute.font ?? font
-            CFAttributedStringSetAttributes(attributedString, range, rawAttributes as CFDictionary, true)
+        for token in tokens {
+            if let range = string?.range(from: token.range) {
+                let cfRange = CFRangeMake(range.location, range.length)
+                var rawAttributes: [NSAttributedString.Key: Any] = [:]
+                rawAttributes[.foregroundColor] = token.textColor ?? textColor
+                rawAttributes[.font] = token.font ?? font
+                CFAttributedStringSetAttributes(attributedString, cfRange, rawAttributes as CFDictionary, true)
+            }
         }
         CFAttributedStringEndEditing(attributedString)
     }

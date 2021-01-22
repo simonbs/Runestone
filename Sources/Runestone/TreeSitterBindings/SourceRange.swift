@@ -14,17 +14,21 @@ final class SourceRange {
     var endPoint: SourcePoint {
         return SourcePoint(row: rawValue.end_point.row, column: rawValue.end_point.column)
     }
-    var startByte: UInt32 {
-        return rawValue.start_byte
+    var startByte: ByteCount {
+        return ByteCount(rawValue.start_byte)
     }
-    var endByte: UInt32 {
-        return rawValue.end_byte
+    var endByte: ByteCount {
+        return ByteCount(rawValue.end_byte)
     }
 
     private let rawValue: TSRange
 
-    init(startPoint: SourcePoint, endPoint: SourcePoint, startByte: UInt32, endByte: UInt32) {
-        self.rawValue = TSRange(start_point: startPoint.rawValue, end_point: endPoint.rawValue, start_byte: startByte, end_byte: endByte)
+    init(startPoint: SourcePoint, endPoint: SourcePoint, startByte: ByteCount, endByte: ByteCount) {
+        self.rawValue = TSRange(
+            start_point: startPoint.rawValue,
+            end_point: endPoint.rawValue,
+            start_byte: UInt32(startByte.value),
+            end_byte: UInt32(endByte.value))
     }
 }
 

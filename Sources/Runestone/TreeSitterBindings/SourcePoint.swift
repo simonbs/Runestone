@@ -12,12 +12,12 @@ final class SourcePoint {
         return rawValue.row
     }
     var column: CUnsignedInt {
-        return rawValue.row
+        return rawValue.column
     }
 
     let rawValue: TSPoint
 
-    init(point: TSPoint) {
+    init(_ point: TSPoint) {
         self.rawValue = point
     }
 

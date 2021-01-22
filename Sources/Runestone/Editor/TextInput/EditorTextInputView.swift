@@ -137,7 +137,7 @@ final class EditorTextInputView: UIView, UITextInput {
     private var _contentSize: CGSize?
     private let syntaxHighlightController = SyntaxHighlightController()
     private var queuedLineViews: Set<EditorLineView> = []
-    private var currentLineViews: [DocumentLineNodeID: EditorLineView] = [:]
+    private var visibleLineViews: [DocumentLineNodeID: EditorLineView] = [:]
     private let syntaxHighlightQueue = OperationQueue()
 
     // MARK: - Lifecycle
@@ -145,8 +145,8 @@ final class EditorTextInputView: UIView, UITextInput {
         super.init(frame: .zero)
         lineManager.delegate = self
         lineManager.estimatedLineHeight = font?.lineHeight ?? 16
-        syntaxHighlightController.delegate = self
         syntaxHighlightController.theme = theme
+        syntaxHighlightQueue.name = "Runestone.SyntaxHighlightQueue"
         syntaxHighlightQueue.qualityOfService = .userInitiated
         NotificationCenter.default.addObserver(self, selector: #selector(didReceiveMemoryWarning(_:)), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
     }
@@ -208,7 +208,7 @@ extension EditorTextInputView {
         if string.length == 0 {
             return CGRect(x: 0, y: 0, width: EditorCaret.width, height: EditorCaret.defaultHeight(for: font))
         } else if let line = lineManager.line(containingCharacterAt: indexedPosition.index) {
-            let lineView = currentLineViews[line.id]
+            let lineView = visibleLineViews[line.id]
             let localIndex = indexedPosition.index - line.location
             let caretRect = lineView!.caretRect(atIndex: localIndex)
             return CGRect(x: caretRect.minX, y: line.yPosition + caretRect.minY, width: caretRect.width, height: caretRect.height)
@@ -225,7 +225,7 @@ extension EditorTextInputView {
         guard let line = lineManager.line(containingCharacterAt: range.location) else {
             fatalError("Cannot find first rect.")
         }
-        let lineView = currentLineViews[line.id]!
+        let lineView = visibleLineViews[line.id]!
         let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
         return lineView.firstRect(for: localRange)
     }
@@ -235,8 +235,9 @@ extension EditorTextInputView {
 extension EditorTextInputView {
     func insertText(_ text: String) {
         if let range = selectedRange {
-            replaceCharacters(in: range, with: text)
-            selectedRange = NSRange(location: range.location + text.utf16.count, length: 0)
+            let nsString = text as NSString
+            replaceCharacters(in: range, with: nsString)
+            selectedRange = NSRange(location: range.location + nsString.length, length: 0)
         }
     }
 
@@ -256,7 +257,7 @@ extension EditorTextInputView {
 
     func replace(_ range: UITextRange, withText text: String) {
         if let indexedRange = range as? EditorIndexedRange {
-            replace(indexedRange.range, withText: text)
+            replace(indexedRange.range, withText: text as NSString)
         }
     }
 
@@ -276,43 +277,41 @@ extension EditorTextInputView {
         }
     }
 
-    private func replace(_ range: NSRange, withText text: String) {
+    private func replace(_ range: NSRange, withText text: NSString) {
         replaceCharacters(in: range, with: text)
-        selectedRange = NSRange(location: range.location + text.utf16.count, length: 0)
+        selectedRange = NSRange(location: range.location + text.length, length: 0)
     }
 
-    private func replaceCharacters(in range: NSRange, with newString: String) {
+    private func replaceCharacters(in range: NSRange, with newString: NSString) {
         inputDelegate?.textWillChange(self)
+        let swiftString = string as String
+        let swiftNewString = newString as String
+        let byteRange = swiftString.byteRange(from: range)
+        let bytesRemoved = byteRange.length
+        let bytesAdded = swiftNewString.byteCount
         var editedLines: Set<DocumentLineNode> = []
-        let nsNewString = newString as NSString
-        let bytesRemoved = range.length
-        let bytesAdded = nsNewString.length
-        let oldEndLinePosition = lineManager.linePosition(at: range.location + bytesRemoved)
-        string.replaceCharacters(in: range, with: newString)
+        let oldEndLinePosition = lineManager.linePosition(at: range.location + range.length)!
+        string.replaceCharacters(in: range, with: swiftNewString)
         lineManager.removeCharacters(in: range, editedLines: &editedLines)
-        lineManager.insert(nsNewString, at: range.location, editedLines: &editedLines)
-        let startLinePosition = lineManager.linePosition(at: range.location)
-        let newEndLinePosition = lineManager.linePosition(at: range.location + bytesAdded)
-        if let oldEndLinePosition = oldEndLinePosition, let startLinePosition = startLinePosition, let newEndLinePosition = newEndLinePosition {
-            let edit = SimpleInputEdit(
-                location: range.location,
-                bytesRemoved: bytesRemoved,
-                bytesAdded: bytesAdded,
-                startLinePosition: startLinePosition,
-                oldEndLinePosition: oldEndLinePosition,
-                newEndLinePosition: newEndLinePosition)
-            let parser = syntaxHighlightController.parser
-            let oldTree = parser?.latestTree
-            parser?.apply(edit)
-            parser?.parse()
-            // Find lines changed by Tree-sitter and make sure we rehighlight them
-            if let oldTree = oldTree, let newTree = parser?.latestTree {
-                let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
-                let changedLines = lines(in: changedRanges)
-                editedLines.formUnion(changedLines)
-            }
-        } else {
-            fatalError("Cannot edit syntax tree because one or more line positions are not available")
+        lineManager.insert(newString, at: range.location, editedLines: &editedLines)
+        let startLinePosition = lineManager.linePosition(at: range.location)!
+        let newEndLinePosition = lineManager.linePosition(at: range.location + newString.length)!
+        let edit = InputEdit(
+            startByte: byteRange.location,
+            oldEndByte: byteRange.location + bytesRemoved,
+            newEndByte: byteRange.location + bytesAdded,
+            startPoint: SourcePoint(startLinePosition),
+            oldEndPoint: SourcePoint(oldEndLinePosition),
+            newEndPoint: SourcePoint(newEndLinePosition))
+        let parser = syntaxHighlightController.parser
+        let oldTree = parser?.latestTree
+        parser?.apply(edit)
+        parser?.parse()
+        // Find lines changed by Tree-sitter and make sure we rehighlight them
+        if let oldTree = oldTree, let newTree = parser?.latestTree {
+            let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
+            let changedLines = lines(in: changedRanges)
+            editedLines.formUnion(changedLines)
         }
         updateStrings(in: editedLines)
         layoutLines()
@@ -353,7 +352,7 @@ extension EditorTextInputView {
         let lineIndexRange = startLine.index ..< endLine.index + 1
         for lineIndex in lineIndexRange {
             let line = lineManager.line(atIndex: lineIndex)
-            if let lineView = currentLineViews[line.id] {
+            if let lineView = visibleLineViews[line.id] {
                 let lineStartLocation = line.location
                 let lineEndLocation = lineStartLocation + line.data.totalLength
                 let localRangeLocation = max(range.location, lineStartLocation) - lineStartLocation
@@ -478,20 +477,14 @@ extension EditorTextInputView {
 
     private func closestIndex(to point: CGPoint) -> Int? {
         if let line = lineManager.line(containingYOffset: point.y) {
-            let lineView = currentLineViews[line.id]!
+            let lineView = visibleLineViews[line.id]!
             return closestIndex(to: point, in: lineView, showing: line)
         } else if point.y <= 0 {
             let firstLine = lineManager.firstLine
-            let lineView = currentLineViews[firstLine.id]!
+            let lineView = visibleLineViews[firstLine.id]!
             return closestIndex(to: point, in: lineView, showing: firstLine)
         } else {
-            let lastLine = lineManager.lastLine
-            if point.y >= lastLine.yPosition {
-                let lineView = currentLineViews[lastLine.id]!
-                return closestIndex(to: point, in: lineView, showing: lastLine)
-            } else {
-                fatalError("Cannot find first rect.")
-            }
+            return string.length
         }
     }
 
@@ -549,7 +542,7 @@ extension EditorTextInputView {
 // MARK: - Drawing
 extension EditorTextInputView {
     private func layoutLines() {
-        let currentVisibleLineIDs = Set(currentLineViews.keys)
+        let currentVisibleLineIDs = Set(visibleLineViews.keys)
         let newVisibleLines = lineManager.visibleLines(in: viewport)
         let newVisibleLineIDs = Set(newVisibleLines.map(\.id))
         let lineIDsToEnqueue = currentVisibleLineIDs.subtracting(newVisibleLineIDs)
@@ -568,8 +561,10 @@ extension EditorTextInputView {
 
     private func layout(_ lineView: EditorLineView, for line: DocumentLineNode) {
         syntaxHighlightController.prepare()
+        let swiftString = string as String
         let range = NSRange(location: line.location, length: line.value)
-        let lineString = string.substring(with: range) as NSString
+        let lineString = string.substring(with: range)
+        let byteRange = swiftString.byteRange(from: range)
         lineView.lineWidth = frame.width
         lineView.font = font
         lineView.textColor = textColor
@@ -579,7 +574,7 @@ extension EditorTextInputView {
         lineView.frame = CGRect(x: 0, y: line.yPosition, width: frame.width, height: lineHeight)
         lineView.backgroundColor = backgroundColor
         lineView.setNeedsDisplay()
-        lineView.syntaxHighlight(range, inLineWithID: line.id)
+        lineView.syntaxHighlight(byteRange, inLineWithID: line.id)
         if didUpdateHeight {
             _contentSize = nil
         }
@@ -587,7 +582,7 @@ extension EditorTextInputView {
 
     private func enqueueLineViews(withIDs lineIDs: Set<DocumentLineNodeID>) {
         for lineID in lineIDs {
-            if let lineView = currentLineViews.removeValue(forKey: lineID) {
+            if let lineView = visibleLineViews.removeValue(forKey: lineID) {
                 lineView.removeFromSuperview()
                 queuedLineViews.insert(lineView)
             }
@@ -595,44 +590,34 @@ extension EditorTextInputView {
     }
 
     private func dequeueLineView(withID lineID: DocumentLineNodeID) -> EditorLineView {
-        if let lineView = currentLineViews[lineID] {
-            lineView.prepareForReuse()
+        if let lineView = visibleLineViews[lineID] {
             return lineView
         } else if !queuedLineViews.isEmpty {
             let lineView = queuedLineViews.removeFirst()
             lineView.prepareForReuse()
-            currentLineViews[lineID] = lineView
+            visibleLineViews[lineID] = lineView
             return lineView
         } else {
             let lineView = EditorLineView(syntaxHighlightController: syntaxHighlightController, syntaxHighlightQueue: syntaxHighlightQueue)
-            currentLineViews[lineID] = lineView
+            visibleLineViews[lineID] = lineView
             return lineView
         }
     }
 
     private func updateStrings(in lines: Set<DocumentLineNode>) {
         for line in lines {
-            if let lineView = currentLineViews[line.id] {
+            if let lineView = visibleLineViews[line.id] {
                 syntaxHighlightController.removedCachedAttributes(for: line.id)
+                let swiftString = string as String
                 let lineLocation = line.location
                 let range = NSRange(location: lineLocation, length: line.value)
-                let substring = string.substring(with: range) as NSString
-                lineView.show(substring, fromLineWithID: line.id)
-                lineView.syntaxHighlight(range, inLineWithID: line.id)
+                let lineString = string.substring(with: range)
+                let byteRange = swiftString.byteRange(from: range)
+                lineView.show(lineString, fromLineWithID: line.id)
+                lineView.syntaxHighlight(byteRange, inLineWithID: line.id)
                 lineManager.setHeight(lineView.totalHeight, of: line)
             }
         }
-    }
-
-    private func attributedString(_ string: String, with attributes: [EditorLineAttributes]) -> NSAttributedString {
-        let attributedString = NSMutableAttributedString(string: string)
-        for attribute in attributes {
-            var rawAttributes: [NSAttributedString.Key: Any] = [:]
-            rawAttributes[.foregroundColor] = attribute.textColor ?? textColor
-            rawAttributes[.font] = attribute.font ?? font
-            attributedString.addAttributes(rawAttributes, range: attribute.range)
-        }
-        return attributedString
     }
 }
 
@@ -660,24 +645,15 @@ extension EditorTextInputView: LineManagerDelegate {
 
 // MARK: - ParserDelegate
 extension EditorTextInputView: ParserDelegate {
-    func parser(_ parser: Parser, substringAtByteIndex byteIndex: uint) -> String? {
-        if byteIndex < string.length {
-            return string.substring(with: NSRange(location: Int(byteIndex), length: 1))
-        } else {
+    func parser(_ parser: Parser, bytesAt byteIndex: ByteCount) -> [Int8]? {
+        let swiftString = string as String
+        let location = swiftString.location(from: byteIndex)
+        guard location < string.length else {
             return nil
         }
-    }
-}
-
-// MARK: - SyntaxHighlightControllerDelegate
-extension EditorTextInputView: SyntaxHighlightControllerDelegate {
-    func syntaxHighlightController(_ controller: SyntaxHighlightController, rangeFromStartByte startByte: uint, to endByte: uint) -> NSRange {
-        let swiftString = string as String
-        let v = swiftString.utf8
-        let start = v.index(v.startIndex, offsetBy: Int(startByte))
-        let end = v.index(v.startIndex, offsetBy: Int(endByte))
-        let range = start ..< end
-        return NSRange(range, in: swiftString)
+        let range = string.rangeOfComposedCharacterSequence(at: location)
+        let substring = string.substring(with: range)
+        return substring.cString(using: .utf8)?.dropLast()
     }
 }
 

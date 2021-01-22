@@ -8,19 +8,17 @@
 import Foundation
 
 final class Capture {
-    let startByte: uint
-    let endByte: uint
+    let byteRange: ByteRange
     let name: String
 
-    init(startByte: uint, endByte: uint, name: String) {
-        self.startByte = startByte
-        self.endByte = endByte
+    init(byteRange: ByteRange, name: String) {
+        self.byteRange = byteRange
         self.name = name
     }
 }
 
 extension Capture: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[\(startByte) - \(endByte)] \(name)"
+        return "[\(byteRange.location) - \(byteRange.length)] \(name)"
     }
 }
