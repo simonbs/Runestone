@@ -313,7 +313,7 @@ extension EditorTextInputView {
             let changedLines = lines(in: changedRanges)
             editedLines.formUnion(changedLines)
         }
-        updateStrings(in: editedLines)
+        updateLineViews(showing: editedLines, for: swiftString)
         layoutLines()
         inputDelegate?.textDidChange(self)
         delegate?.editorTextInputViewDidChange(self)
@@ -547,21 +547,21 @@ extension EditorTextInputView {
         let newVisibleLineIDs = Set(newVisibleLines.map(\.id))
         let lineIDsToEnqueue = currentVisibleLineIDs.subtracting(newVisibleLineIDs)
         enqueueLineViews(withIDs: lineIDsToEnqueue)
+        let swiftString = string as String
         for visibleLine in newVisibleLines {
             let lineView = dequeueLineView(withID: visibleLine.id)
             if lineView.superview == nil {
                 addSubview(lineView)
             }
-            layout(lineView, for: visibleLine)
+            show(visibleLine, in: lineView, for: swiftString)
         }
         if _contentSize == nil {
             delegate?.editorTextInputViewDidInvalidateContentSize(self)
         }
     }
 
-    private func layout(_ lineView: EditorLineView, for line: DocumentLineNode) {
+    private func show(_ line: DocumentLineNode, in lineView: EditorLineView, for swiftString: String) {
         syntaxHighlightController.prepare()
-        let swiftString = string as String
         let range = NSRange(location: line.location, length: line.value)
         let lineString = string.substring(with: range)
         let byteRange = swiftString.byteRange(from: range)
@@ -604,11 +604,10 @@ extension EditorTextInputView {
         }
     }
 
-    private func updateStrings(in lines: Set<DocumentLineNode>) {
+    private func updateLineViews(showing lines: Set<DocumentLineNode>, for swiftString: String) {
         for line in lines {
             if let lineView = visibleLineViews[line.id] {
                 syntaxHighlightController.removedCachedAttributes(for: line.id)
-                let swiftString = string as String
                 let lineLocation = line.location
                 let range = NSRange(location: lineLocation, length: line.value)
                 let lineString = string.substring(with: range)
