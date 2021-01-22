@@ -22,6 +22,16 @@ private final class PreparedLine {
 }
 
 final class EditorLineView: UIView {
+    struct SelectionRect {
+        let rect: CGRect
+        let range: NSRange
+
+        init(rect: CGRect, range: NSRange) {
+            self.rect = rect
+            self.range = range
+        }
+    }
+
     private(set) var totalHeight: CGFloat = 0
     var lineWidth: CGFloat = 0
     var textColor: UIColor?
@@ -102,8 +112,8 @@ final class EditorLineView: UIView {
         return CGRect(x: 0, y: 0, width: EditorCaret.width, height: EditorCaret.defaultHeight(for: font))
     }
 
-    func selectionRects(in range: NSRange) -> [EditorTextRendererSelectionRect] {
-        var selectionRects: [EditorTextRendererSelectionRect] = []
+    func selectionRects(in range: NSRange) -> [EditorLineView.SelectionRect] {
+        var selectionRects: [EditorLineView.SelectionRect] = []
         for preparedLine in preparedLines {
             let line = preparedLine.line
             let _lineRange = CTLineGetStringRange(line)
@@ -114,7 +124,7 @@ final class EditorLineView: UIView {
                 let xEnd = CTLineGetOffsetForStringIndex(line, selectionIntersection.location + selectionIntersection.length, nil)
                 let yPos = preparedLine.yPosition
                 let rect = CGRect(x: xStart, y: yPos, width: xEnd - xStart, height: preparedLine.lineHeight)
-                let selectionRect = EditorTextRendererSelectionRect(rect: rect, range: selectionIntersection)
+                let selectionRect = EditorLineView.SelectionRect(rect: rect, range: selectionIntersection)
                 selectionRects.append(selectionRect)
             }
         }
@@ -225,7 +235,7 @@ private extension EditorLineView {
         }
     }
 
-    private func apply(_ attributes: [EditorTextRendererAttributes]) {
+    private func apply(_ attributes: [EditorLineAttributes]) {
         guard let attributedString = attributedString else {
             return
         }

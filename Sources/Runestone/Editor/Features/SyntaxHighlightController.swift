@@ -30,7 +30,7 @@ final class SyntaxHighlightController {
     }
 
     private var query: Query?
-    private var cache: [DocumentLineNodeID: [EditorTextRendererAttributes]] = [:]
+    private var cache: [DocumentLineNodeID: [EditorLineAttributes]] = [:]
 
     func reset() {
         query = nil
@@ -53,8 +53,8 @@ final class SyntaxHighlightController {
         }
     }
 
-    func attributes(for captures: [Capture], in lineRange: NSRange) -> [EditorTextRendererAttributes] {
-        var allAttributes: [EditorTextRendererAttributes] = []
+    func attributes(for captures: [Capture], in lineRange: NSRange) -> [EditorLineAttributes] {
+        var allAttributes: [EditorLineAttributes] = []
         for capture in captures {
             // We highlight each line separately but a capture may extend beyond a line, e.g. an unterminated string,
             // so we need to cap the start and end location to ensure it's within the line.
@@ -97,11 +97,11 @@ final class SyntaxHighlightController {
         }
     }
 
-    func cache(_ attributes: [EditorTextRendererAttributes], for lineID: DocumentLineNodeID) {
+    func cache(_ attributes: [EditorLineAttributes], for lineID: DocumentLineNodeID) {
         cache[lineID] = attributes
     }
 
-    func cachedAttributes(for lineID: DocumentLineNodeID) -> [EditorTextRendererAttributes]? {
+    func cachedAttributes(for lineID: DocumentLineNodeID) -> [EditorLineAttributes]? {
         return cache[lineID]
     }
 
@@ -115,10 +115,10 @@ final class SyntaxHighlightController {
 }
 
 private extension SyntaxHighlightController {
-    private func attributes(for capture: Capture, in range: NSRange) -> EditorTextRendererAttributes {
+    private func attributes(for capture: Capture, in range: NSRange) -> EditorLineAttributes {
         let textColor = theme.textColorForCaptureSequence(capture.name)
         let font = theme.fontForCapture(named: capture.name)
-        return EditorTextRendererAttributes(range: range, textColor: textColor, font: font)
+        return EditorLineAttributes(range: range, textColor: textColor, font: font)
     }
 
     private func getQuery() -> Result<Query, SyntaxHighlightControllerError> {
@@ -126,16 +126,6 @@ private extension SyntaxHighlightController {
             return .success(query)
         } else {
             return .failure(.highlightsQueryUnavailable)
-        }
-    }
-}
-
-private extension EditorTextRendererAttributes {
-    static func locationSort(_ lhs: EditorTextRendererAttributes, _ rhs: EditorTextRendererAttributes) -> Bool {
-        if lhs.range.location != rhs.range.location {
-            return lhs.range.location < rhs.range.location
-        } else {
-            return lhs.range.length < rhs.range.length
         }
     }
 }

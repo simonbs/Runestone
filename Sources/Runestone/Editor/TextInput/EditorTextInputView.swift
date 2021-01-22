@@ -605,7 +605,7 @@ extension EditorTextInputView {
         }
     }
 
-    private func attributedString(_ string: String, with attributes: [EditorTextRendererAttributes]) -> NSAttributedString {
+    private func attributedString(_ string: String, with attributes: [EditorLineAttributes]) -> NSAttributedString {
         let attributedString = NSMutableAttributedString(string: string)
         for attribute in attributes {
             var rawAttributes: [NSAttributedString.Key: Any] = [:]
