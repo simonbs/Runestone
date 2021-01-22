@@ -51,6 +51,7 @@ final class EditorLineView: UIView {
         self.syntaxHighlightController = syntaxHighlightController
         self.syntaxHighlightQueue = syntaxHighlightQueue
         super.init(frame: .zero)
+        isUserInteractionEnabled = false
     }
 
     required init?(coder: NSCoder) {
