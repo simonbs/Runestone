@@ -8,7 +8,7 @@
 import TreeSitter
 
 protocol ParserDelegate: AnyObject {
-    func parser(_ parser: Parser, substringAtByteIndex byteIndex: uint) -> String?
+    func parser(_ parser: Parser, bytesAt byteIndex: Int) -> [Int8]?
 }
 
 final class Parser {
@@ -57,17 +57,10 @@ final class Parser {
 
     func parse() {
         let input = SourceInput(encoding: encoding) { [weak self] byteIndex, _ in
-            guard let self = self, let str = self.delegate?.parser(self, substringAtByteIndex: byteIndex) else {
-                return []
-            }
-            guard let cStr = str.cString(using: self.encoding.swiftEncoding) else {
-                return []
-            }
-            // Remove null determinator when there's more than a single character.
-            if cStr.count > 1 && cStr.last == 0 {
-                return cStr.dropLast()
+            if let self = self, let bytes = self.delegate?.parser(self, bytesAt: Int(byteIndex)) {
+                return bytes
             } else {
-                return cStr
+                return []
             }
         }
         let newTreePointer = ts_parser_parse(parser, latestTree?.pointer, input.rawInput)
