@@ -476,15 +476,22 @@ extension EditorTextInputView {
     }
 
     private func closestIndex(to point: CGPoint) -> Int? {
-        if let line = lineManager.line(containingYOffset: point.y) {
-            let lineView = visibleLineViews[line.id]!
+        if let line = lineManager.line(containingYOffset: point.y), let lineView = visibleLineViews[line.id] {
             return closestIndex(to: point, in: lineView, showing: line)
         } else if point.y <= 0 {
             let firstLine = lineManager.firstLine
-            let lineView = visibleLineViews[firstLine.id]!
-            return closestIndex(to: point, in: lineView, showing: firstLine)
+            if let lineView = visibleLineViews[firstLine.id] {
+                return closestIndex(to: point, in: lineView, showing: firstLine)
+            } else {
+                return 0
+            }
         } else {
-            return string.length
+            let lastLine = lineManager.lastLine
+            if point.y >= lastLine.yPosition, let lineView = visibleLineViews[lastLine.id] {
+                return closestIndex(to: point, in: lineView, showing: lastLine)
+            } else {
+                return string.length
+            }
         }
     }
 
