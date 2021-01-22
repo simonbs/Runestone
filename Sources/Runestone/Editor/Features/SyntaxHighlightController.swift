@@ -64,9 +64,6 @@ final class SyntaxHighlightController {
             let length = cappedEndLocation - cappedStartLocation
             if length > 0 {
                 let cappedRange = NSRange(location: cappedStartLocation - lineRange.location, length: length)
-                print("\(lineRange.location) [\(cappedRange.location) - \(cappedRange.length)] \(capture.name)")
-//            let r = NSRange(location: range.location - lineRange.location, length: range.length)
-//            print("\(lineRange.location) [\(r.location) - \(r.length)] \(capture.name)")
                 let attrs = attributes(for: capture, in: cappedRange)
                 if !attrs.isEmpty {
                     allAttributes.append(attrs)
