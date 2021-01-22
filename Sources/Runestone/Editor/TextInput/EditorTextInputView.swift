@@ -398,10 +398,10 @@ extension EditorTextInputView {
         }
         var newPosition = indexedPosition.index
         switch direction {
-        case .right:
-            newPosition += offset
         case .left:
-            newPosition -= offset
+            newPosition = targetPositionForMoving(fromLocation: indexedPosition.index, by: offset * -1)
+        case .right:
+            newPosition = targetPositionForMoving(fromLocation: indexedPosition.index, by: offset)
         case .up:
             newPosition = targetPositionForMovingFromLine(containingCharacterAt: indexedPosition.index, lineOffset: offset * -1)
         case .down:
@@ -504,6 +504,25 @@ extension EditorTextInputView {
             }
         } else {
             return nil
+        }
+    }
+
+    private func targetPositionForMoving(fromLocation location: Int, by offset: Int) -> Int {
+        let naiveNewLocation = location + offset
+        guard naiveNewLocation >= 0 && naiveNewLocation <= string.length else {
+            return location
+        }
+        guard naiveNewLocation > 0 && naiveNewLocation < string.length else {
+            return naiveNewLocation
+        }
+        let range = string.rangeOfComposedCharacterSequence(at: naiveNewLocation)
+        guard naiveNewLocation > range.location && naiveNewLocation < range.location + range.length else {
+            return naiveNewLocation
+        }
+        if offset < 0 {
+            return location - range.length
+        } else {
+            return location + range.length
         }
     }
 
