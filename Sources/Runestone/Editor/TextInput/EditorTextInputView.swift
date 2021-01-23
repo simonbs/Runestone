@@ -15,6 +15,11 @@ protocol EditorTextInputViewDelegate: AnyObject {
 }
 
 final class EditorTextInputView: UIView, UITextInput {
+    private struct CaretRect {
+        let position: EditorIndexedPosition
+        let rect: CGRect
+    }
+
     // MARK: - UITextInput
     var selectedTextRange: UITextRange? {
         get {
@@ -138,6 +143,7 @@ final class EditorTextInputView: UIView, UITextInput {
     private let syntaxHighlightController = SyntaxHighlightController()
     private var queuedLineViews: Set<EditorLineView> = []
     private var visibleLineViews: [DocumentLineNodeID: EditorLineView] = [:]
+    private var textRenderers: [DocumentLineNodeID: EditorTextRenderer] = [:]
     private let syntaxHighlightQueue = OperationQueue()
 
     // MARK: - Lifecycle
@@ -208,12 +214,13 @@ extension EditorTextInputView {
         if string.length == 0 {
             return CGRect(x: 0, y: 0, width: EditorCaret.width, height: EditorCaret.defaultHeight(for: font))
         } else if let line = lineManager.line(containingCharacterAt: indexedPosition.index) {
-            let lineView = visibleLineViews[line.id]
+            let textRenderer = textRenderers[line.id]!
             let localIndex = indexedPosition.index - line.location
-            let caretRect = lineView!.caretRect(atIndex: localIndex)
-            return CGRect(x: caretRect.minX, y: line.yPosition + caretRect.minY, width: caretRect.width, height: caretRect.height)
+            let localCaretRect = textRenderer.caretRect(atIndex: localIndex)
+            let globalYPosition = line.yPosition + localCaretRect.minY
+            return CGRect(x: localCaretRect.minX, y: globalYPosition, width: localCaretRect.width, height: localCaretRect.height)
         } else {
-            fatalError("Cannot find caret rect.")
+            fatalError("Cannot create caret rect as line is unavailable.")
         }
     }
 
@@ -225,9 +232,13 @@ extension EditorTextInputView {
         guard let line = lineManager.line(containingCharacterAt: range.location) else {
             fatalError("Cannot find first rect.")
         }
-        let lineView = visibleLineViews[line.id]!
+        let textRenderer = textRenderers[line.id]!
         let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
-        return lineView.firstRect(for: localRange)
+        if let firstRect = textRenderer.firstRect(for: localRange) {
+            return firstRect
+        } else {
+            fatalError("First rect is unavailable.")
+        }
     }
 }
 
@@ -352,13 +363,13 @@ extension EditorTextInputView {
         let lineIndexRange = startLine.index ..< endLine.index + 1
         for lineIndex in lineIndexRange {
             let line = lineManager.line(atIndex: lineIndex)
-            if let lineView = visibleLineViews[line.id] {
+            if let textRenderer = textRenderers[line.id] {
                 let lineStartLocation = line.location
                 let lineEndLocation = lineStartLocation + line.data.totalLength
                 let localRangeLocation = max(range.location, lineStartLocation) - lineStartLocation
                 let localRangeLength = min(range.location + range.length, lineEndLocation) - lineStartLocation - localRangeLocation
                 let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
-                let rendererSelectionRects = lineView.selectionRects(in: localRange)
+                let rendererSelectionRects = textRenderer.selectionRects(in: localRange)
                 let textSelectionRects: [EditorTextSelectionRect] = rendererSelectionRects.map { rendererSelectionRect in
                     let y = line.yPosition + rendererSelectionRect.rect.minY
                     var screenRect = CGRect(x: rendererSelectionRect.rect.minX, y: y, width: rendererSelectionRect.rect.width, height: rendererSelectionRect.rect.height)
@@ -476,27 +487,27 @@ extension EditorTextInputView {
     }
 
     private func closestIndex(to point: CGPoint) -> Int? {
-        if let line = lineManager.line(containingYOffset: point.y), let lineView = visibleLineViews[line.id] {
-            return closestIndex(to: point, in: lineView, showing: line)
+        if let line = lineManager.line(containingYOffset: point.y), let textRenderer = textRenderers[line.id] {
+            return closestIndex(to: point, in: textRenderer, showing: line)
         } else if point.y <= 0 {
             let firstLine = lineManager.firstLine
-            if let lineView = visibleLineViews[firstLine.id] {
-                return closestIndex(to: point, in: lineView, showing: firstLine)
+            if let textRenderer = textRenderers[firstLine.id] {
+                return closestIndex(to: point, in: textRenderer, showing: firstLine)
             } else {
                 return 0
             }
         } else {
             let lastLine = lineManager.lastLine
-            if point.y >= lastLine.yPosition, let lineView = visibleLineViews[lastLine.id] {
-                return closestIndex(to: point, in: lineView, showing: lastLine)
+            if point.y >= lastLine.yPosition, let textRenderer = textRenderers[lastLine.id] {
+                return closestIndex(to: point, in: textRenderer, showing: lastLine)
             } else {
                 return string.length
             }
         }
     }
 
-    private func closestIndex(to point: CGPoint, in lineView: EditorLineView, showing line: DocumentLineNode) -> Int? {
-        if let index = lineView.closestIndex(to: point) {
+    private func closestIndex(to point: CGPoint, in textRenderer: EditorTextRenderer, showing line: DocumentLineNode) -> Int? {
+        if let index = textRenderer.closestIndex(to: point) {
             if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
                 return line.location + line.data.length
             } else {
@@ -556,32 +567,34 @@ extension EditorTextInputView {
         enqueueLineViews(withIDs: lineIDsToEnqueue)
         let swiftString = string as String
         for visibleLine in newVisibleLines {
-            let lineView = dequeueLineView(withID: visibleLine.id)
-            if lineView.superview == nil {
-                addSubview(lineView)
-            }
-            show(visibleLine, in: lineView, for: swiftString)
+            show(visibleLine, for: swiftString)
         }
         if _contentSize == nil {
             delegate?.editorTextInputViewDidInvalidateContentSize(self)
         }
     }
 
-    private func show(_ line: DocumentLineNode, in lineView: EditorLineView, for swiftString: String) {
+    private func show(_ line: DocumentLineNode, for swiftString: String) {
+        let lineView = dequeueLineView(withID: line.id)
+        if lineView.superview == nil {
+            addSubview(lineView)
+        }
         syntaxHighlightController.prepare()
+        let textRenderer = getTextRenderer(withID: line.id)
         let range = NSRange(location: line.location, length: line.value)
         let lineString = string.substring(with: range)
         let byteRange = swiftString.byteRange(from: range)
-        lineView.lineWidth = frame.width
-        lineView.font = font
-        lineView.textColor = textColor
-        lineView.show(lineString, fromLineWithID: line.id)
-        let lineHeight = ceil(lineView.totalHeight)
+        textRenderer.lineWidth = frame.width
+        textRenderer.font = font
+        textRenderer.textColor = textColor
+        textRenderer.show(lineString, fromLineWithID: line.id)
+        let lineHeight = ceil(textRenderer.totalHeight)
         let didUpdateHeight = lineManager.setHeight(lineHeight, of: line)
+        lineView.textRenderer = textRenderer
         lineView.frame = CGRect(x: 0, y: line.yPosition, width: frame.width, height: lineHeight)
         lineView.backgroundColor = backgroundColor
         lineView.setNeedsDisplay()
-        lineView.syntaxHighlight(byteRange, inLineWithID: line.id)
+        textRenderer.syntaxHighlight(byteRange, inLineWithID: line.id)
         if didUpdateHeight {
             _contentSize = nil
         }
@@ -601,27 +614,37 @@ extension EditorTextInputView {
             return lineView
         } else if !queuedLineViews.isEmpty {
             let lineView = queuedLineViews.removeFirst()
-            lineView.prepareForReuse()
             visibleLineViews[lineID] = lineView
             return lineView
         } else {
-            let lineView = EditorLineView(syntaxHighlightController: syntaxHighlightController, syntaxHighlightQueue: syntaxHighlightQueue)
+            let lineView = EditorLineView()
             visibleLineViews[lineID] = lineView
             return lineView
         }
     }
 
+    private func getTextRenderer(withID lineID: DocumentLineNodeID) -> EditorTextRenderer {
+        if let cachedTextRenderer = textRenderers[lineID] {
+            return cachedTextRenderer
+        } else {
+            let textRenderer = EditorTextRenderer(syntaxHighlightController: syntaxHighlightController, syntaxHighlightQueue: syntaxHighlightQueue)
+            textRenderer.delegate = self
+            textRenderers[lineID] = textRenderer
+            return textRenderer
+        }
+    }
+
     private func updateLineViews(showing lines: Set<DocumentLineNode>, for swiftString: String) {
         for line in lines {
-            if let lineView = visibleLineViews[line.id] {
+            if let textRenderer = textRenderers[line.id] {
                 syntaxHighlightController.removedCachedAttributes(for: line.id)
                 let lineLocation = line.location
                 let range = NSRange(location: lineLocation, length: line.value)
                 let lineString = string.substring(with: range)
                 let byteRange = swiftString.byteRange(from: range)
-                lineView.show(lineString, fromLineWithID: line.id)
-                lineView.syntaxHighlight(byteRange, inLineWithID: line.id)
-                lineManager.setHeight(lineView.totalHeight, of: line)
+                textRenderer.show(lineString, fromLineWithID: line.id)
+                textRenderer.syntaxHighlight(byteRange, inLineWithID: line.id)
+                lineManager.setHeight(textRenderer.totalHeight, of: line)
             }
         }
     }
@@ -663,9 +686,12 @@ extension EditorTextInputView: ParserDelegate {
     }
 }
 
-// MARK: - Helpers
-private extension LinePosition {
-    func offsettingLineNumber(by offset: Int) -> LinePosition {
-        return LinePosition(lineStartLocation: lineStartLocation, lineNumber: lineNumber + offset, column: column, totalLength: totalLength)
+// MARK: - EditorTextRendererDelegate
+extension EditorTextInputView: EditorTextRendererDelegate {
+    func editorTextRendererDidUpdateSyntaxHighlighting(_ textRenderer: EditorTextRenderer) {
+        if let lineID = textRenderer.lineID {
+            let lineView = visibleLineViews[lineID]
+            lineView?.setNeedsDisplay()
+        }
     }
 }
