@@ -185,6 +185,34 @@ final class EditorTextInputView: UIView, UITextInput {
         }
         return didResignFirstResponder
     }
+
+    override func copy(_ sender: Any?) {
+        if let selectedTextRange = selectedTextRange, let text = text(in: selectedTextRange) {
+            UIPasteboard.general.string = text
+        }
+    }
+
+    override func paste(_ sender: Any?) {
+        if let selectedTextRange = selectedTextRange, let string = UIPasteboard.general.string {
+            inputDelegate?.selectionWillChange(self)
+            replace(selectedTextRange, withText: string)
+            inputDelegate?.selectionDidChange(self)
+        }
+    }
+
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if action == #selector(copy(_:)) {
+            if let selectedTextRange = selectedTextRange {
+                return !selectedTextRange.isEmpty
+            } else {
+                return false
+            }
+        } else if action == #selector(paste(_:)) {
+            return UIPasteboard.general.hasStrings
+        } else {
+            return super.canPerformAction(action, withSender: sender)
+        }
+    }
 }
 
 // MARK: - Public
