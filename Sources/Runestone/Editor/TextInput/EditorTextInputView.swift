@@ -256,7 +256,7 @@ extension EditorTextInputView {
         if string.length == 0 {
             return CGRect(x: 0, y: 0, width: EditorCaret.width, height: EditorCaret.defaultHeight(for: font))
         } else if let line = lineManager.line(containingCharacterAt: indexedPosition.index) {
-            let textRenderer = textRenderers[line.id]!
+            let textRenderer = getTextRenderer(for: line)
             let localIndex = indexedPosition.index - line.location
             let localCaretRect = textRenderer.caretRect(atIndex: localIndex)
             let globalYPosition = line.yPosition + localCaretRect.minY
