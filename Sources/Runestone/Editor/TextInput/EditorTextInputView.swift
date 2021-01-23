@@ -595,6 +595,8 @@ extension EditorTextInputView {
             show(line, for: swiftString, maxY: &maxY)
             if line.index < lineManager.lineCount - 1 {
                 nextLine = lineManager.line(atIndex: line.index + 1)
+            } else {
+                nextLine = nil
             }
         }
         let disappearedLineIDs = oldVisibleLineIds.subtracting(appearedLineIDs)
