@@ -585,21 +585,26 @@ extension EditorTextInputView {
 // MARK: - Drawing
 extension EditorTextInputView {
     private func layoutLines() {
-        let currentVisibleLineIDs = Set(visibleLineViews.keys)
-        let newVisibleLines = lineManager.visibleLines(in: viewport)
-        let newVisibleLineIDs = Set(newVisibleLines.map(\.id))
-        let lineIDsToEnqueue = currentVisibleLineIDs.subtracting(newVisibleLineIDs)
-        enqueueLineViews(withIDs: lineIDsToEnqueue)
+        let oldVisibleLineIds = Set(visibleLineViews.keys)
+        var nextLine = lineManager.line(containingYOffset: viewport.minY)
+        var appearedLineIDs: Set<DocumentLineNodeID> = []
         let swiftString = string as String
-        for visibleLine in newVisibleLines {
-            show(visibleLine, for: swiftString)
+        var maxY = viewport.minY
+        while let line = nextLine, maxY < viewport.maxY {
+            appearedLineIDs.insert(line.id)
+            show(line, for: swiftString, maxY: &maxY)
+            if line.index < lineManager.lineCount - 1 {
+                nextLine = lineManager.line(atIndex: line.index + 1)
+            }
         }
+        let disappearedLineIDs = oldVisibleLineIds.subtracting(appearedLineIDs)
+        enqueueLineViews(withIDs: disappearedLineIDs)
         if _contentSize == nil {
             delegate?.editorTextInputViewDidInvalidateContentSize(self)
         }
     }
 
-    private func show(_ line: DocumentLineNode, for swiftString: String) {
+    private func show(_ line: DocumentLineNode, for swiftString: String, maxY: inout CGFloat) {
         syntaxHighlightController.prepare()
         let lineView = dequeueLineView(withID: line.id)
         if lineView.superview == nil {
@@ -613,6 +618,7 @@ extension EditorTextInputView {
         let range = NSRange(location: line.location, length: line.value)
         let byteRange = swiftString.byteRange(from: range)
         textRenderer.syntaxHighlight(byteRange, inLineWithID: line.id)
+        maxY = lineView.frame.maxY
     }
 
     private func enqueueLineViews(withIDs lineIDs: Set<DocumentLineNodeID>) {
