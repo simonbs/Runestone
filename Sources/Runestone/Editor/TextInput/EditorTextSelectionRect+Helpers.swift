@@ -10,7 +10,7 @@ import CoreGraphics
 extension Array where Element == EditorTextSelectionRect {
     // Ensures that the array of rectangles are all properly aligned on the Y-axis
     // so there's no distance between the rectangles and they don't overlap.
-    func ensuringYAxisAlignemnt() -> [Element] {
+    func ensuringYAxisAlignment() -> [Element] {
         guard count > 1 else {
             return self
         }

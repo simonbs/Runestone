@@ -22,6 +22,7 @@ private final class PreparedLine {
 }
 
 protocol EditorTextRendererDelegate: AnyObject {
+    func editorTextRenderer(_ textRenderer: EditorTextRenderer, stringIn line: DocumentLineNode) -> String
     func editorTextRendererDidUpdateSyntaxHighlighting(_ textRenderer: EditorTextRenderer)
 }
 
@@ -38,10 +39,34 @@ final class EditorTextRenderer {
 
     weak var delegate: EditorTextRendererDelegate?
     private(set) var totalHeight: CGFloat = 0
-    private(set) var lineID: DocumentLineNodeID?
-    var lineWidth: CGFloat = 0
-    var textColor: UIColor?
-    var font: UIFont?
+    var line: DocumentLineNode? {
+        didSet {
+            if line !== oldValue {
+                invalidate()
+            }
+        }
+    }
+    var lineWidth: CGFloat = 0 {
+        didSet {
+            if lineWidth != oldValue {
+                invalidate()
+            }
+        }
+    }
+    var textColor: UIColor? {
+        didSet {
+            if textColor != oldValue {
+                invalidate()
+            }
+        }
+    }
+    var font: UIFont? {
+        didSet {
+            if font != oldValue {
+                invalidate()
+            }
+        }
+    }
 
     private var string: String?
     private var typesetter: CTTypesetter?
@@ -51,6 +76,7 @@ final class EditorTextRenderer {
     private var isHighlighted = false
     private let syntaxHighlightQueue: OperationQueue
     private var currentSyntaxHighlightOperation: Operation?
+    private var isInvalid = true
 
     init(syntaxHighlightController: SyntaxHighlightController, syntaxHighlightQueue: OperationQueue) {
         self.syntaxHighlightController = syntaxHighlightController
@@ -64,30 +90,23 @@ final class EditorTextRenderer {
         drawPreparedLines(to: context)
     }
 
-    func prepareForReuse() {
-        currentSyntaxHighlightOperation?.cancel()
-        currentSyntaxHighlightOperation = nil
-        string = nil
-        lineID = nil
-        attributedString = nil
-        preparedLines = []
-        totalHeight = 0
-        typesetter = nil
-        isHighlighted = false
+    func invalidate() {
+        isInvalid = true
     }
 
-    func show(_ string: String, fromLineWithID lineID: DocumentLineNodeID) {
-        guard hasChanged(from: string, inLineWithID: lineID) else {
+    func prepare() {
+        guard let line = line, isInvalid else {
             return
         }
-        prepareForReuse()
+        reset()
+        let string = delegate!.editorTextRenderer(self, stringIn: line)
         self.string = string
-        self.lineID = lineID
         attributedString = CFAttributedStringCreateMutable(kCFAllocatorDefault, string.utf16.count)
         if let attributedString = attributedString {
+            isInvalid = false
             CFAttributedStringReplaceString(attributedString, CFRangeMake(0, 0), string as CFString)
             applyDefaultAttributes()
-            if let cachedAttributes = syntaxHighlightController.cachedAttributes(for: lineID) {
+            if let cachedAttributes = syntaxHighlightController.cachedAttributes(for: line.id) {
                 apply(cachedAttributes)
                 isHighlighted = true
             }
@@ -166,8 +185,15 @@ final class EditorTextRenderer {
 }
 
 private extension EditorTextRenderer {
-    private func hasChanged(from string: String, inLineWithID lineID: DocumentLineNodeID) -> Bool {
-        return string != self.string || lineID != self.lineID
+    private func reset() {
+        currentSyntaxHighlightOperation?.cancel()
+        currentSyntaxHighlightOperation = nil
+        string = nil
+        attributedString = nil
+        preparedLines = []
+        totalHeight = 0
+        typesetter = nil
+        isHighlighted = false
     }
 
     private func recreateTypesetter() {
@@ -183,9 +209,9 @@ private extension EditorTextRenderer {
         guard let attributedString = attributedString else {
             return
         }
-        totalHeight = 0
-        let stringLength = CFAttributedStringGetLength(attributedString)
+        var nextYPosition: CGFloat = 0
         var startOffset = 0
+        let stringLength = CFAttributedStringGetLength(attributedString)
         while startOffset < stringLength {
             let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, lineWidth)
             let range = CFRangeMake(startOffset, length)
@@ -195,11 +221,12 @@ private extension EditorTextRenderer {
             var leading: CGFloat = 0
             CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
             let lineHeight = ascent + descent + leading
-            let preparedLine = PreparedLine(line: line, descent: descent, lineHeight: lineHeight, yPosition: totalHeight)
+            let preparedLine = PreparedLine(line: line, descent: descent, lineHeight: lineHeight, yPosition: nextYPosition)
             preparedLines.append(preparedLine)
-            totalHeight += lineHeight
+            nextYPosition += lineHeight
             startOffset += length
         }
+        totalHeight = ceil(nextYPosition)
     }
 
     private func syntaxHighlight(documentRange: ByteRange, inLineWithID lineID: DocumentLineNodeID, using operation: Operation) {

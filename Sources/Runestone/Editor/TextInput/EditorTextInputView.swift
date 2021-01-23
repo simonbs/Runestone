@@ -106,7 +106,9 @@ final class EditorTextInputView: UIView, UITextInput {
     var viewport: CGRect = .zero {
         didSet {
             if viewport != oldValue {
+                inputDelegate?.selectionWillChange(self)
                 layoutLines()
+                inputDelegate?.selectionDidChange(self)
             }
         }
     }
@@ -168,7 +170,9 @@ final class EditorTextInputView: UIView, UITextInput {
         if !wasFirstResponder && isFirstResponder {
             markedRange = nil
             if selectedRange == nil {
+                inputDelegate?.selectionWillChange(self)
                 selectedRange = NSRange(location: 0, length: 0)
+                inputDelegate?.selectionDidChange(self)
             }
             delegate?.editorTextInputViewDidBeginEditing(self)
         }
@@ -180,8 +184,10 @@ final class EditorTextInputView: UIView, UITextInput {
         let wasFirstResponder = isFirstResponder
         let didResignFirstResponder = super.resignFirstResponder()
         if wasFirstResponder && !isFirstResponder {
+            inputDelegate?.selectionWillChange(self)
             selectedRange = nil
             markedRange = nil
+            inputDelegate?.selectionDidChange(self)
         }
         return didResignFirstResponder
     }
@@ -200,6 +206,12 @@ final class EditorTextInputView: UIView, UITextInput {
         }
     }
 
+    override func selectAll(_ sender: Any?) {
+        inputDelegate?.selectionWillChange(self)
+        selectedRange = NSRange(location: 0, length: string.length)
+        inputDelegate?.selectionDidChange(self)
+    }
+
     override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
         if action == #selector(copy(_:)) {
             if let selectedTextRange = selectedTextRange {
@@ -209,6 +221,8 @@ final class EditorTextInputView: UIView, UITextInput {
             }
         } else if action == #selector(paste(_:)) {
             return UIPasteboard.general.hasStrings
+        } else if action == #selector(selectAll(_:)) {
+            return true
         } else {
             return super.canPerformAction(action, withSender: sender)
         }
@@ -391,29 +405,28 @@ extension EditorTextInputView {
         let lineIndexRange = startLine.index ..< endLine.index + 1
         for lineIndex in lineIndexRange {
             let line = lineManager.line(atIndex: lineIndex)
-            if let textRenderer = textRenderers[line.id] {
-                let lineStartLocation = line.location
-                let lineEndLocation = lineStartLocation + line.data.totalLength
-                let localRangeLocation = max(range.location, lineStartLocation) - lineStartLocation
-                let localRangeLength = min(range.location + range.length, lineEndLocation) - lineStartLocation - localRangeLocation
-                let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
-                let rendererSelectionRects = textRenderer.selectionRects(in: localRange)
-                let textSelectionRects: [EditorTextSelectionRect] = rendererSelectionRects.map { rendererSelectionRect in
-                    let y = line.yPosition + rendererSelectionRect.rect.minY
-                    var screenRect = CGRect(x: rendererSelectionRect.rect.minX, y: y, width: rendererSelectionRect.rect.width, height: rendererSelectionRect.rect.height)
-                    let startLocation = lineStartLocation + rendererSelectionRect.range.location
-                    let endLocation = startLocation + rendererSelectionRect.range.length
-                    let containsStart = range.location >= startLocation && range.location <= endLocation
-                    let containsEnd = range.location + range.length >= startLocation && range.location + range.length <= endLocation
-                    if endLocation < range.location + range.length {
-                        screenRect.size.width = frame.width - screenRect.minX
-                    }
-                    return EditorTextSelectionRect(rect: screenRect, writingDirection: .leftToRight, containsStart: containsStart, containsEnd: containsEnd)
+            let textRenderer = getTextRenderer(for: line)
+            let lineStartLocation = line.location
+            let lineEndLocation = lineStartLocation + line.data.totalLength
+            let localRangeLocation = max(range.location, lineStartLocation) - lineStartLocation
+            let localRangeLength = min(range.location + range.length, lineEndLocation) - lineStartLocation - localRangeLocation
+            let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
+            let rendererSelectionRects = textRenderer.selectionRects(in: localRange)
+            let textSelectionRects: [EditorTextSelectionRect] = rendererSelectionRects.map { rendererSelectionRect in
+                let y = line.yPosition + rendererSelectionRect.rect.minY
+                var screenRect = CGRect(x: rendererSelectionRect.rect.minX, y: y, width: rendererSelectionRect.rect.width, height: rendererSelectionRect.rect.height)
+                let startLocation = lineStartLocation + rendererSelectionRect.range.location
+                let endLocation = startLocation + rendererSelectionRect.range.length
+                let containsStart = range.location >= startLocation && range.location <= endLocation
+                let containsEnd = range.location + range.length >= startLocation && range.location + range.length <= endLocation
+                if endLocation < range.location + range.length {
+                    screenRect.size.width = frame.width - screenRect.minX
                 }
-                selectionRects.append(contentsOf: textSelectionRects)
-            }
+                return EditorTextSelectionRect(rect: screenRect, writingDirection: .leftToRight, containsStart: containsStart, containsEnd: containsEnd)
+                }
+            selectionRects.append(contentsOf: textSelectionRects)
         }
-        return selectionRects.ensuringYAxisAlignemnt()
+        return selectionRects.ensuringYAxisAlignment()
     }
 }
 
@@ -603,29 +616,19 @@ extension EditorTextInputView {
     }
 
     private func show(_ line: DocumentLineNode, for swiftString: String) {
+        syntaxHighlightController.prepare()
         let lineView = dequeueLineView(withID: line.id)
         if lineView.superview == nil {
             addSubview(lineView)
         }
-        syntaxHighlightController.prepare()
-        let textRenderer = getTextRenderer(withID: line.id)
-        let range = NSRange(location: line.location, length: line.value)
-        let lineString = string.substring(with: range)
-        let byteRange = swiftString.byteRange(from: range)
-        textRenderer.lineWidth = frame.width
-        textRenderer.font = font
-        textRenderer.textColor = textColor
-        textRenderer.show(lineString, fromLineWithID: line.id)
-        let lineHeight = ceil(textRenderer.totalHeight)
-        let didUpdateHeight = lineManager.setHeight(lineHeight, of: line)
+        let textRenderer = getTextRenderer(for: line)
+        prepare(textRenderer, toShow: line)
         lineView.textRenderer = textRenderer
-        lineView.frame = CGRect(x: 0, y: line.yPosition, width: frame.width, height: lineHeight)
+        lineView.frame = CGRect(x: 0, y: line.yPosition, width: frame.width, height: textRenderer.totalHeight)
         lineView.backgroundColor = backgroundColor
-        lineView.setNeedsDisplay()
+        let range = NSRange(location: line.location, length: line.value)
+        let byteRange = swiftString.byteRange(from: range)
         textRenderer.syntaxHighlight(byteRange, inLineWithID: line.id)
-        if didUpdateHeight {
-            _contentSize = nil
-        }
     }
 
     private func enqueueLineViews(withIDs lineIDs: Set<DocumentLineNodeID>) {
@@ -651,14 +654,28 @@ extension EditorTextInputView {
         }
     }
 
-    private func getTextRenderer(withID lineID: DocumentLineNodeID) -> EditorTextRenderer {
-        if let cachedTextRenderer = textRenderers[lineID] {
+    private func getTextRenderer(for line: DocumentLineNode) -> EditorTextRenderer {
+        if let cachedTextRenderer = textRenderers[line.id] {
             return cachedTextRenderer
         } else {
             let textRenderer = EditorTextRenderer(syntaxHighlightController: syntaxHighlightController, syntaxHighlightQueue: syntaxHighlightQueue)
             textRenderer.delegate = self
-            textRenderers[lineID] = textRenderer
+            prepare(textRenderer, toShow: line)
+            textRenderers[line.id] = textRenderer
             return textRenderer
+        }
+    }
+
+    private func prepare(_ textRenderer: EditorTextRenderer, toShow line: DocumentLineNode) {
+        textRenderer.line = line
+        textRenderer.lineWidth = frame.width
+        textRenderer.font = font
+        textRenderer.textColor = textColor
+        textRenderer.prepare()
+        let lineHeight = ceil(textRenderer.totalHeight)
+        let didUpdateHeight = lineManager.setHeight(of: line, to: lineHeight)
+        if didUpdateHeight {
+            _contentSize = nil
         }
     }
 
@@ -666,13 +683,14 @@ extension EditorTextInputView {
         for line in lines {
             if let textRenderer = textRenderers[line.id] {
                 syntaxHighlightController.removedCachedAttributes(for: line.id)
-                let lineLocation = line.location
-                let range = NSRange(location: lineLocation, length: line.value)
-                let lineString = string.substring(with: range)
-                let byteRange = swiftString.byteRange(from: range)
-                textRenderer.show(lineString, fromLineWithID: line.id)
-                textRenderer.syntaxHighlight(byteRange, inLineWithID: line.id)
-                lineManager.setHeight(textRenderer.totalHeight, of: line)
+                textRenderer.invalidate()
+//                let lineLocation = line.location
+//                let range = NSRange(location: lineLocation, length: line.value)
+//                let lineString = string.substring(with: range)
+//                let byteRange = swiftString.byteRange(from: range)
+//                textRenderer.show(lineString, fromLineWithID: line.id)
+//                textRenderer.syntaxHighlight(byteRange, inLineWithID: line.id)
+//                lineManager.setHeight(textRenderer.totalHeight, of: line)
             }
         }
     }
@@ -697,6 +715,7 @@ extension EditorTextInputView: LineManagerDelegate {
 
     func lineManager(_ lineManager: LineManager, didRemove line: DocumentLineNode) {
         _contentSize = nil
+        textRenderers.removeValue(forKey: line.id)
     }
 }
 
@@ -716,8 +735,13 @@ extension EditorTextInputView: ParserDelegate {
 
 // MARK: - EditorTextRendererDelegate
 extension EditorTextInputView: EditorTextRendererDelegate {
+    func editorTextRenderer(_ textRenderer: EditorTextRenderer, stringIn line: DocumentLineNode) -> String {
+        let range = NSRange(location: line.location, length: line.value)
+        return string.substring(with: range)
+    }
+
     func editorTextRendererDidUpdateSyntaxHighlighting(_ textRenderer: EditorTextRenderer) {
-        if let lineID = textRenderer.lineID {
+        if let lineID = textRenderer.line?.id {
             let lineView = visibleLineViews[lineID]
             lineView?.setNeedsDisplay()
         }
