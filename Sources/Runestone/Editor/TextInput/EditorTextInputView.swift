@@ -68,25 +68,17 @@ final class EditorTextInputView: UIView, UITextInput {
     @objc var selectionHighlightColor: UIColor = .black
 
     // MARK: - Styling
-    var textColor: UIColor = .black {
-        didSet {
-            if textColor != oldValue {
-//                setNeedsDisplay()
-            }
-        }
-    }
+    var textColor: UIColor = .black
     var font: UIFont? = .systemFont(ofSize: 16) {
         didSet {
             if font != oldValue {
                 lineManager.estimatedLineHeight = font?.lineHeight ?? 16
-//                setNeedsDisplay()
             }
         }
     }
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
             syntaxHighlightController.theme = theme
-//            setNeedsDisplay()
         }
     }
 
@@ -124,14 +116,6 @@ final class EditorTextInputView: UIView, UITextInput {
 
     // MARK: - Misc
     weak var delegate: EditorTextInputViewDelegate?
-    override var frame: CGRect {
-        didSet {
-            if frame.size != oldValue.size {
-//                setNeedsDisplay()
-//                layoutLines()
-            }
-        }
-    }
     override var canBecomeFirstResponder: Bool {
         return true
     }
