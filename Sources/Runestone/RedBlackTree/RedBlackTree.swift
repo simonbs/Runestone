@@ -221,7 +221,8 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNode
             node.nodeTotalValue = totalValue
         }
         let didUpdateExternally = childrenUpdater?.updateAfterChangingChildren(of: node) ?? false
-        if (hasNewTotalValues || didUpdateExternally), let parent = node.parent {
+        let didUpdate = hasNewTotalValues || didUpdateExternally
+        if let parent = node.parent, didUpdate {
             updateAfterChangingChildren(of: parent)
         }
     }
