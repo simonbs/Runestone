@@ -111,6 +111,7 @@ final class EditorTextRenderer {
                 isHighlighted = true
             }
             recreateTypesetter()
+            delegate?.editorTextRendererDidUpdateSyntaxHighlighting(self)
         }
     }
 
