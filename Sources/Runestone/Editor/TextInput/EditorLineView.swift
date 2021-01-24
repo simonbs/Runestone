@@ -11,7 +11,15 @@ final class EditorLineView: UIView {
     var textRenderer: EditorTextRenderer? {
         didSet {
             if textRenderer !== oldValue {
+                textRenderer?.frame = frame
                 setNeedsDisplay()
+            }
+        }
+    }
+    override var frame: CGRect {
+        didSet {
+            if frame != oldValue {
+                textRenderer?.frame = frame
             }
         }
     }

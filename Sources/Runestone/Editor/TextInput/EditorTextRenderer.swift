@@ -38,7 +38,8 @@ final class EditorTextRenderer {
     }
 
     weak var delegate: EditorTextRendererDelegate?
-    private(set) var totalHeight: CGFloat = 0
+    private(set) var preferredHeight: CGFloat = 0
+    var frame: CGRect = .zero
     var line: DocumentLineNode? {
         didSet {
             if line !== oldValue {
@@ -85,7 +86,7 @@ final class EditorTextRenderer {
 
     func draw(in context: CGContext) {
         context.textMatrix = .identity
-        context.translateBy(x: 0, y: totalHeight)
+        context.translateBy(x: 0, y: frame.height)
         context.scaleBy(x: 1, y: -1)
         drawPreparedLines(to: context)
     }
@@ -193,7 +194,7 @@ private extension EditorTextRenderer {
         string = nil
         attributedString = nil
         preparedLines = []
-        totalHeight = 0
+        preferredHeight = 0
         typesetter = nil
         isHighlighted = false
     }
@@ -228,7 +229,7 @@ private extension EditorTextRenderer {
             nextYPosition += lineHeight
             startOffset += length
         }
-        totalHeight = ceil(nextYPosition)
+        preferredHeight = ceil(nextYPosition)
     }
 
     private func syntaxHighlight(documentRange: ByteRange, inLineWithID lineID: DocumentLineNodeID, using operation: Operation) {
@@ -245,7 +246,7 @@ private extension EditorTextRenderer {
 
     private func syntaxHighlight(using captures: [Capture], in documentRange: ByteRange, lineID: DocumentLineNodeID) {
         preparedLines = []
-        totalHeight = 0
+        preferredHeight = 0
         typesetter = nil
         let attributes = syntaxHighlightController.attributes(for: captures, localTo: documentRange)
         syntaxHighlightController.cache(attributes, for: lineID)
@@ -291,7 +292,7 @@ private extension EditorTextRenderer {
 
     private func drawPreparedLines(to context: CGContext) {
         for preparedLine in preparedLines {
-            let yPosition = preparedLine.descent + (totalHeight - preparedLine.yPosition - preparedLine.lineHeight)
+            let yPosition = preparedLine.descent + (frame.height - preparedLine.yPosition - preparedLine.lineHeight)
             context.textPosition = CGPoint(x: 0, y: yPosition)
             CTLineDraw(preparedLine.line, context)
         }

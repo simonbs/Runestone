@@ -551,8 +551,7 @@ extension EditorTextInputView {
     }
 
     private func closestIndex(to point: CGPoint, in textRenderer: EditorTextRenderer, showing line: DocumentLineNode) -> Int? {
-        let lineView = visibleLineViews[line.id]!
-        let localPoint = CGPoint(x: point.x, y: point.y - lineView.frame.minY)
+        let localPoint = CGPoint(x: point.x, y: point.y - textRenderer.frame.minY)
         if let index = textRenderer.closestIndex(to: localPoint) {
             if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
                 return line.location + line.data.length
@@ -635,7 +634,7 @@ extension EditorTextInputView {
         let textRenderer = getTextRenderer(for: line)
         prepare(textRenderer, toShow: line)
         lineView.textRenderer = textRenderer
-        lineView.frame = CGRect(x: 0, y: line.yPosition, width: frame.width, height: textRenderer.totalHeight)
+        lineView.frame = CGRect(x: 0, y: line.yPosition, width: frame.width, height: textRenderer.preferredHeight)
         lineView.backgroundColor = backgroundColor
         textRenderer.syntaxHighlight(line.data.byteRange, inLineWithID: line.id)
         maxY = lineView.frame.maxY
@@ -682,7 +681,7 @@ extension EditorTextInputView {
         textRenderer.font = font
         textRenderer.textColor = textColor
         textRenderer.prepare()
-        let lineHeight = ceil(textRenderer.totalHeight)
+        let lineHeight = ceil(textRenderer.preferredHeight)
         let didUpdateHeight = lineManager.setHeight(of: line, to: lineHeight)
         if didUpdateHeight {
             _contentSize = nil
