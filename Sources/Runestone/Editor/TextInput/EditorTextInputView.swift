@@ -137,6 +137,18 @@ final class EditorTextInputView: UIView, UITextInput {
     private var textRenderers: [DocumentLineNodeID: EditorTextRenderer] = [:]
     private let syntaxHighlightQueue = OperationQueue()
     private var parsedLine: ParsedLine?
+    private var floatingCaretView: EditorFloatingCaretView?
+    private var insertionPointColorBeforeFloatingBegan: UIColor = .black
+    private var textSelectionView: UIView? {
+        if let klass = NSClassFromString("UITextSelectionView") {
+            for subview in subviews {
+                if subview.isKind(of: klass) {
+                    return subview
+                }
+            }
+        }
+        return nil
+    }
 
     // MARK: - Lifecycle
     init() {
@@ -233,6 +245,47 @@ extension EditorTextInputView {
     func moveCaret(to point: CGPoint) {
         if let index = closestIndex(to: point) {
             selectedRange = NSRange(location: index, length: 0)
+        }
+    }
+}
+
+// MARK: - Floating Caret
+extension EditorTextInputView {
+    func beginFloatingCursor(at point: CGPoint) {
+        if floatingCaretView == nil, let position = closestPosition(to: point) {
+            insertionPointColorBeforeFloatingBegan = insertionPointColor
+            insertionPointColor = insertionPointColorBeforeFloatingBegan.withAlphaComponent(0.5)
+            updateCaretColor()
+            let caretRect = self.caretRect(for: position)
+            let caretOrigin = CGPoint(x: point.x - caretRect.width / 2, y: point.y - caretRect.height / 2)
+            let floatingCaretView = EditorFloatingCaretView()
+            floatingCaretView.backgroundColor = insertionPointColorBeforeFloatingBegan
+            floatingCaretView.frame = CGRect(origin: caretOrigin, size: caretRect.size)
+            addSubview(floatingCaretView)
+            self.floatingCaretView = floatingCaretView
+        }
+    }
+
+    func updateFloatingCursor(at point: CGPoint) {
+        if let floatingCaretView = floatingCaretView {
+            let caretSize = floatingCaretView.frame.size
+            let caretOrigin = CGPoint(x: point.x - caretSize.width / 2, y: point.y - caretSize.height / 2)
+            floatingCaretView.frame = CGRect(origin: caretOrigin, size: caretSize)
+        }
+    }
+
+    func endFloatingCursor() {
+        insertionPointColor = insertionPointColorBeforeFloatingBegan
+        updateCaretColor()
+        floatingCaretView?.removeFromSuperview()
+        floatingCaretView = nil
+    }
+
+    private func updateCaretColor() {
+        // Removing the UITextSelectionView and re-adding it forces it to query the insertion point color.
+        if let textSelectionView = textSelectionView {
+            textSelectionView.removeFromSuperview()
+            addSubview(textSelectionView)
         }
     }
 }
