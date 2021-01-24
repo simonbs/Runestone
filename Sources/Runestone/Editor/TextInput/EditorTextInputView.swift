@@ -15,9 +15,14 @@ protocol EditorTextInputViewDelegate: AnyObject {
 }
 
 final class EditorTextInputView: UIView, UITextInput {
-    private struct CaretRect {
-        let position: EditorIndexedPosition
-        let rect: CGRect
+    private struct ParsedLine {
+        let startByte: ByteCount
+        let byteCount: ByteCount
+        var endByte: ByteCount {
+            return startByte + byteCount
+        }
+        let lineRange: NSRange
+        let lineString: String
     }
 
     // MARK: - UITextInput
@@ -131,6 +136,7 @@ final class EditorTextInputView: UIView, UITextInput {
     private var visibleLineViews: [DocumentLineNodeID: EditorLineView] = [:]
     private var textRenderers: [DocumentLineNodeID: EditorTextRenderer] = [:]
     private let syntaxHighlightQueue = OperationQueue()
+    private var parsedLine: ParsedLine?
 
     // MARK: - Lifecycle
     init() {
@@ -724,12 +730,31 @@ extension EditorTextInputView: LineManagerDelegate {
 // MARK: - ParserDelegate
 extension EditorTextInputView: ParserDelegate {
     func parser(_ parser: Parser, bytesAt byteIndex: ByteCount) -> [Int8]? {
-        let swiftString = string as String
-        let location = swiftString.location(from: byteIndex)
-        guard location < string.length else {
+        // Speed up parsing by using the line we recently parsed bytes in when possible.
+        if let parsedLine = parsedLine, byteIndex >= parsedLine.startByte && byteIndex < parsedLine.endByte {
+            return bytes(at: byteIndex, in: parsedLine)
+        } else if let line = lineManager.line(containingByteAt: byteIndex) {
+            let startByte = line.data.startByte
+            let lineRange = NSRange(location: line.location, length: line.data.length)
+            let lineString = string.substring(with: lineRange)
+            let parsedLine = ParsedLine(startByte: startByte, byteCount: line.data.byteCount, lineRange: lineRange, lineString: lineString)
+            self.parsedLine = parsedLine
+            return bytes(at: byteIndex, in: parsedLine)
+        } else {
+            parsedLine = nil
             return nil
         }
-        let range = string.rangeOfComposedCharacterSequence(at: location)
+    }
+
+    private func bytes(at byteIndex: ByteCount, in parsedLine: ParsedLine) -> [Int8]? {
+        let lineString = parsedLine.lineString
+        let localByteIndex = byteIndex - parsedLine.startByte
+        let localLocation = lineString.location(from: localByteIndex)
+        let globalLocation = parsedLine.lineRange.location + localLocation
+        guard globalLocation < string.length else {
+            return nil
+        }
+        let range = string.rangeOfComposedCharacterSequence(at: globalLocation)
         let substring = string.substring(with: range)
         return substring.cString(using: .utf8)?.dropLast()
     }

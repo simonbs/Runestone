@@ -71,7 +71,7 @@ final class LineManager {
         var lastDelimiterEnd = 0
         var totalFrameHeight: CGFloat = 0
         while let newLineRange = workingNewLineRange {
-            let totalLength = (newLineRange.location + newLineRange.length) - lastDelimiterEnd
+            let totalLength = newLineRange.location + newLineRange.length - lastDelimiterEnd
             let substring = string.substring(with: NSRange(location: lastDelimiterEnd, length: totalLength))
             line.value = totalLength
             line.data.totalLength = totalLength
@@ -87,8 +87,8 @@ final class LineManager {
             workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: lastDelimiterEnd)
             totalFrameHeight += estimatedLineHeight
         }
-        let substring = string.substring(with: NSRange(location: lastDelimiterEnd, length: string.length - lastDelimiterEnd))
         let totalLength = string.length - lastDelimiterEnd
+        let substring = string.substring(with: NSRange(location: lastDelimiterEnd, length: totalLength))
         line.value = totalLength
         line.data.totalLength = totalLength
         line.data.byteCount = substring.byteCount
@@ -202,6 +202,14 @@ final class LineManager {
             totalValueKeyPath: \.data.totalFrameHeight)
     }
 
+    func line(containingByteAt byteIndex: ByteCount) -> DocumentLineNode? {
+        return documentLineTree.node(
+            containingLocation: byteIndex,
+            minimumValue: ByteCount(0),
+            valueKeyPath: \.data.byteCount,
+            totalValueKeyPath: \.data.nodeTotalByteCount)
+    }
+
     func line(atIndex index: Int) -> DocumentLineNode {
         return documentLineTree.node(atIndex: index)
     }
@@ -267,9 +275,15 @@ private extension LineManager {
         let data = DocumentLineNodeData(frameHeight: estimatedLineHeight)
         let insertedLine = documentLineTree.insertNode(value: length, data: data, after: otherLine)
         let substring = getString(in: NSRange(location: insertedLine.location, length: length))
+        let byteCount = substring.byteCount
         insertedLine.data.totalLength = length
-        insertedLine.data.byteCount = substring.byteCount
+        insertedLine.data.byteCount = byteCount
+        insertedLine.data.nodeTotalByteCount = byteCount
         insertedLine.data.node = insertedLine
+        // Call updateAfterChangingChildren(of:) to update the values of nodeTotalByteCount.
+        if let parent = insertedLine.parent {
+            documentLineTree.updateAfterChangingChildren(of: parent)
+        }
         delegate?.lineManager(self, didInsert: insertedLine)
         return insertedLine
     }
