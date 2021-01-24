@@ -532,7 +532,9 @@ extension EditorTextInputView {
     }
 
     private func closestIndex(to point: CGPoint, in textRenderer: EditorTextRenderer, showing line: DocumentLineNode) -> Int? {
-        if let index = textRenderer.closestIndex(to: point) {
+        let lineView = visibleLineViews[line.id]!
+        let localPoint = CGPoint(x: point.x, y: point.y - lineView.frame.minY)
+        if let index = textRenderer.closestIndex(to: localPoint) {
             if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
                 return line.location + line.data.length
             } else {

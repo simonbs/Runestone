@@ -176,7 +176,8 @@ final class EditorTextRenderer {
 
     func closestIndex(to point: CGPoint) -> Int? {
         for preparedLine in preparedLines {
-            if point.y > preparedLine.yPosition {
+            let lineMaxY = preparedLine.yPosition + preparedLine.lineHeight
+            if point.y <= lineMaxY {
                 return CTLineGetStringIndexForPosition(preparedLine.line, point)
             }
         }
