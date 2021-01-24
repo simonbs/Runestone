@@ -61,12 +61,12 @@ extension ByteCount: AdditiveArithmetic {
 
 extension ByteCount: CustomStringConvertible {
     var description: String {
-        return value.description
+        return "\(value)"
     }
 }
 
 extension ByteCount: CustomDebugStringConvertible {
     var debugDescription: String {
-        return value.description
+        return "\(value)"
     }
 }
