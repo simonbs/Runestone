@@ -678,13 +678,6 @@ extension EditorTextInputView {
             if let textRenderer = textRenderers[line.id] {
                 syntaxHighlightController.removedCachedAttributes(for: line.id)
                 textRenderer.invalidate()
-//                let lineLocation = line.location
-//                let range = NSRange(location: lineLocation, length: line.value)
-//                let lineString = string.substring(with: range)
-//                let byteRange = swiftString.byteRange(from: range)
-//                textRenderer.show(lineString, fromLineWithID: line.id)
-//                textRenderer.syntaxHighlight(byteRange, inLineWithID: line.id)
-//                lineManager.setHeight(textRenderer.totalHeight, of: line)
             }
         }
     }
