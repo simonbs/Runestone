@@ -113,14 +113,18 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNode
     }
 
     func location(of node: Node) -> NodeValue {
-        var location = node.left?.nodeTotalValue ?? minimumValue
+        return offset(of: node, totalValueKeyPath: \.nodeTotalValue, valueKeyPath: \.value, minimumValue: minimumValue)
+    }
+
+    func offset<T: AdditiveArithmetic>(of node: Node, totalValueKeyPath: KeyPath<Node, T>, valueKeyPath: KeyPath<Node, T>, minimumValue: T) -> T {
+        var location = node.left?[keyPath: totalValueKeyPath] ?? minimumValue
         var workingNode = node
         while let parentNode = workingNode.parent {
             if workingNode === workingNode.parent?.right {
                 if let leftNode = workingNode.parent?.left {
-                    location += leftNode.nodeTotalValue
+                    location += leftNode[keyPath: totalValueKeyPath]
                 }
-                location += parentNode.value
+                location += parentNode[keyPath: valueKeyPath]
             }
             workingNode = parentNode
         }
