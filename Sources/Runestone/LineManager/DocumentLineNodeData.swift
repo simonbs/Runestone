@@ -41,6 +41,6 @@ final class DocumentLineNodeData {
 
 private extension DocumentLineTree {
     func startByte(of node: Node) -> ByteCount {
-        return offset(of: node, totalValueKeyPath: \.data.nodeTotalByteCount, valueKeyPath: \.data.byteCount, minimumValue: ByteCount(0))
+        return offset(of: node, valueKeyPath: \.data.byteCount, totalValueKeyPath: \.data.nodeTotalByteCount, minimumValue: ByteCount(0))
     }
 }
