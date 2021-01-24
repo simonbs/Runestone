@@ -13,8 +13,8 @@ private final class LinePositionTestCase: LineManagerDelegate {
         lineManager.insert(string, at: 0, editedLines: &editedLines)
     }
 
-    func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> String {
-        return string.substring(with: NSRange(location: location, length: 1))
+    func lineManager(_ lineManager: LineManager, substringIn range: NSRange) -> String {
+        return string.substring(with: range)
     }
 }
 

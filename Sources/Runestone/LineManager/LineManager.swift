@@ -9,7 +9,7 @@ import Foundation
 import CoreGraphics
 
 protocol LineManagerDelegate: class {
-    func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> String
+    func lineManager(_ lineManager: LineManager, substringIn range: NSRange) -> String
     func lineManager(_ lineManager: LineManager, didInsert line: DocumentLineNode)
     func lineManager(_ lineManager: LineManager, didRemove line: DocumentLineNode)
 }
@@ -56,12 +56,14 @@ final class LineManager {
         let rootData = DocumentLineNodeData(frameHeight: estimatedLineHeight)
         documentLineTree = DocumentLineTree(minimumValue: 0, rootValue: 0, rootData: rootData)
         documentLineTree.childrenUpdater = DocumentLineChildrenUpdater()
+        rootData.node = documentLineTree.root
     }
 
     func rebuild(from string: NSString) {
         // Reset the tree so we only have a single line.
         let rootData = DocumentLineNodeData(frameHeight: estimatedLineHeight)
         documentLineTree.reset(rootValue: 0, rootData: rootData)
+        rootData.node = documentLineTree.root
         // Iterate over lines in the string.
         var line = documentLineTree.node(atIndex: 0)
         var workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: 0)
@@ -70,21 +72,26 @@ final class LineManager {
         var totalFrameHeight: CGFloat = 0
         while let newLineRange = workingNewLineRange {
             let totalLength = (newLineRange.location + newLineRange.length) - lastDelimiterEnd
+            let substring = string.substring(with: NSRange(location: lastDelimiterEnd, length: totalLength))
             line.value = totalLength
             line.data.totalLength = totalLength
             line.data.delimiterLength = newLineRange.length
             line.data.frameHeight = estimatedLineHeight
             line.data.totalFrameHeight = totalFrameHeight
+            line.data.byteCount = substring.byteCount
             lastDelimiterEnd = newLineRange.location + newLineRange.length
             lines.append(line)
             let data = DocumentLineNodeData(frameHeight: estimatedLineHeight)
             line = DocumentLineNode(tree: documentLineTree, value: 0, data: data)
+            data.node = line
             workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: lastDelimiterEnd)
             totalFrameHeight += estimatedLineHeight
         }
+        let substring = string.substring(with: NSRange(location: lastDelimiterEnd, length: string.length - lastDelimiterEnd))
         let totalLength = string.length - lastDelimiterEnd
         line.value = totalLength
         line.data.totalLength = totalLength
+        line.data.byteCount = substring.byteCount
         lines.append(line)
         documentLineTree.rebuild(from: lines)
     }
@@ -224,8 +231,10 @@ private extension LineManager {
         editedLines.insert(line)
         let delta = newTotalLength - line.value
         if delta != 0 {
+            let substring = getString(in: NSRange(location: line.location, length: newTotalLength))
             line.value = newTotalLength
             line.data.totalLength = newTotalLength
+            line.data.byteCount = substring.byteCount
             documentLineTree.updateAfterChangingChildren(of: line)
         }
         // Determine new delimiter length.
@@ -257,7 +266,10 @@ private extension LineManager {
     private func insertLine(ofLength length: Int, after otherLine: DocumentLineNode) -> DocumentLineNode {
         let data = DocumentLineNodeData(frameHeight: estimatedLineHeight)
         let insertedLine = documentLineTree.insertNode(value: length, data: data, after: otherLine)
+        let substring = getString(in: NSRange(location: insertedLine.location, length: length))
         insertedLine.data.totalLength = length
+        insertedLine.data.byteCount = substring.byteCount
+        insertedLine.data.node = insertedLine
         delegate?.lineManager(self, didInsert: insertedLine)
         return insertedLine
     }
@@ -268,7 +280,12 @@ private extension LineManager {
     }
 
     private func getCharacter(at location: Int) -> String {
-        return currentDelegate.lineManager(self, characterAtLocation: location)
+        let range = NSRange(location: location, length: 1)
+        return currentDelegate.lineManager(self, substringIn: range)
+    }
+
+    private func getString(in range: NSRange) -> String {
+        return currentDelegate.lineManager(self, substringIn: range)
     }
 }
 

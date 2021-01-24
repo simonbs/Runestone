@@ -321,9 +321,8 @@ extension EditorTextInputView {
 
     private func replaceCharacters(in range: NSRange, with newString: NSString) {
         inputDelegate?.textWillChange(self)
-        let swiftString = string as String
+        let byteRange = self.byteRange(from: range)
         let swiftNewString = newString as String
-        let byteRange = swiftString.byteRange(from: range)
         let bytesRemoved = byteRange.length
         let bytesAdded = swiftNewString.byteCount
         var editedLines: Set<DocumentLineNode> = []
@@ -350,7 +349,7 @@ extension EditorTextInputView {
             let changedLines = lines(in: changedRanges)
             editedLines.formUnion(changedLines)
         }
-        updateLineViews(showing: editedLines, for: swiftString)
+        updateLineViews(showing: editedLines)
         layoutLines()
         inputDelegate?.textDidChange(self)
         delegate?.editorTextInputViewDidChange(self)
@@ -365,6 +364,26 @@ extension EditorTextInputView {
             }
         }
         return lines
+    }
+
+    private func byteRange(from range: NSRange) -> ByteRange {
+        if range.length == 0 {
+            let byteOffset = byteOffsetForCharacter(at: range.location)
+            return ByteRange(location: byteOffset, length: ByteCount(0))
+        } else {
+            let startByteOffset = byteOffsetForCharacter(at: range.location)
+            let endByteOffset = byteOffsetForCharacter(at: range.location + range.length)
+            return ByteRange(from: startByteOffset, to: endByteOffset)
+        }
+    }
+
+    private func byteOffsetForCharacter(at location: Int) -> ByteCount {
+        let line = lineManager.line(containingCharacterAt: location)!
+        let lineGlobalRange = NSRange(location: line.location, length: line.value)
+        let lineLocalLocation = location - lineGlobalRange.location
+        let lineString = string.substring(with: lineGlobalRange)
+        let localByteOffset = lineString.byteOffset(at: lineLocalLocation)
+        return line.data.startByte + localByteOffset
     }
 }
 
@@ -590,11 +609,10 @@ extension EditorTextInputView {
         let oldVisibleLineIds = Set(visibleLineViews.keys)
         var nextLine = lineManager.line(containingYOffset: viewport.minY)
         var appearedLineIDs: Set<DocumentLineNodeID> = []
-        let swiftString = string as String
         var maxY = viewport.minY
         while let line = nextLine, maxY < viewport.maxY {
             appearedLineIDs.insert(line.id)
-            show(line, for: swiftString, maxY: &maxY)
+            show(line, maxY: &maxY)
             if line.index < lineManager.lineCount - 1 {
                 nextLine = lineManager.line(atIndex: line.index + 1)
             } else {
@@ -608,7 +626,7 @@ extension EditorTextInputView {
         }
     }
 
-    private func show(_ line: DocumentLineNode, for swiftString: String, maxY: inout CGFloat) {
+    private func show(_ line: DocumentLineNode, maxY: inout CGFloat) {
         syntaxHighlightController.prepare()
         let lineView = dequeueLineView(withID: line.id)
         if lineView.superview == nil {
@@ -619,9 +637,7 @@ extension EditorTextInputView {
         lineView.textRenderer = textRenderer
         lineView.frame = CGRect(x: 0, y: line.yPosition, width: frame.width, height: textRenderer.totalHeight)
         lineView.backgroundColor = backgroundColor
-        let range = NSRange(location: line.location, length: line.value)
-        let byteRange = swiftString.byteRange(from: range)
-        textRenderer.syntaxHighlight(byteRange, inLineWithID: line.id)
+        textRenderer.syntaxHighlight(line.data.byteRange, inLineWithID: line.id)
         maxY = lineView.frame.maxY
     }
 
@@ -673,7 +689,7 @@ extension EditorTextInputView {
         }
     }
 
-    private func updateLineViews(showing lines: Set<DocumentLineNode>, for swiftString: String) {
+    private func updateLineViews(showing lines: Set<DocumentLineNode>) {
         for line in lines {
             if let textRenderer = textRenderers[line.id] {
                 syntaxHighlightController.removedCachedAttributes(for: line.id)
@@ -692,8 +708,8 @@ private extension EditorTextInputView {
 
 // MARK: - LineManagerDelegate
 extension EditorTextInputView: LineManagerDelegate {
-    func lineManager(_ lineManager: LineManager, characterAtLocation location: Int) -> String {
-        return string.substring(with: NSMakeRange(location, 1))
+    func lineManager(_ lineManager: LineManager, substringIn range: NSRange) -> String {
+        return string.substring(with: range)
     }
 
     func lineManager(_ lineManager: LineManager, didInsert line: DocumentLineNode) {
