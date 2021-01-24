@@ -37,13 +37,13 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNode
         root.color = .black
     }
 
-    func node(containgLocation location: NodeValue) -> Node {
+    func node(containingLocation location: NodeValue) -> Node {
         assert(location >= minimumValue)
         assert(location <= root.nodeTotalValue)
-        return node(containgLocation: location, minimumValue: minimumValue, valueKeyPath: \.value, totalValueKeyPath: \.nodeTotalValue)!
+        return node(containingLocation: location, minimumValue: minimumValue, valueKeyPath: \.value, totalValueKeyPath: \.nodeTotalValue)!
     }
 
-    func node<T: Comparable & AdditiveArithmetic>(containgLocation location: T, minimumValue: T, valueKeyPath: KeyPath<Node, T>, totalValueKeyPath: KeyPath<Node, T>) -> Node? {
+    func node<T: Comparable & AdditiveArithmetic>(containingLocation location: T, minimumValue: T, valueKeyPath: KeyPath<Node, T>, totalValueKeyPath: KeyPath<Node, T>) -> Node? {
         if location == root[keyPath: totalValueKeyPath] {
             return root.rightMost
         } else {

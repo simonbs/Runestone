@@ -100,7 +100,7 @@ final class LineManager {
         guard range.length > 0 else {
             return
         }
-        let startLine = documentLineTree.node(containgLocation: range.location)
+        let startLine = documentLineTree.node(containingLocation: range.location)
         if range.location > Int(startLine.location) + startLine.data.length {
             // Deleting starting in the middle of a delimiter.
             setLength(of: startLine, to: startLine.value - 1, editedLines: &editedLines)
@@ -113,7 +113,7 @@ final class LineManager {
             // possibly removing lines in between if multiple delimeters were deleted.
             let charactersRemovedInStartLine = Int(startLine.location) + startLine.value - range.location
             assert(charactersRemovedInStartLine > 0)
-            let endLine = documentLineTree.node(containgLocation: range.location + range.length)
+            let endLine = documentLineTree.node(containingLocation: range.location + range.length)
             if endLine === startLine {
                 // Removing characters in the last line.
                 setLength(of: startLine, to: startLine.value - range.length, editedLines: &editedLines)
@@ -135,7 +135,7 @@ final class LineManager {
     }
 
     func insert(_ string: NSString, at location: Int, editedLines: inout Set<DocumentLineNode>) {
-        var line = documentLineTree.node(containgLocation: location)
+        var line = documentLineTree.node(containingLocation: location)
         var lineLocation = Int(line.location)
         assert(location <= lineLocation + line.value)
         if location > lineLocation + line.data.length {
@@ -188,7 +188,7 @@ final class LineManager {
 
     func line(containingCharacterAt location: Int) -> DocumentLineNode? {
         if location >= 0 && location <= Int(documentLineTree.nodeTotalValue) {
-            return documentLineTree.node(containgLocation: location)
+            return documentLineTree.node(containingLocation: location)
         } else {
             return nil
         }
@@ -196,7 +196,7 @@ final class LineManager {
 
     func line(containingYOffset yOffset: CGFloat) -> DocumentLineNode? {
         return documentLineTree.node(
-            containgLocation: yOffset,
+            containingLocation: yOffset,
             minimumValue: 0,
             valueKeyPath: \.data.frameHeight,
             totalValueKeyPath: \.data.totalFrameHeight)
