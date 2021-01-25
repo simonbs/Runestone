@@ -74,12 +74,24 @@ final class TextInputView: UIView, UITextInput {
     @objc var selectionBarColor: UIColor = .black
     @objc var selectionHighlightColor: UIColor = .black
 
-    // MARK: - Styling
+    // MARK: - Appearance
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
             lineManager.estimatedLineHeight = theme.font.lineHeight
             layoutManager.theme = theme
             syntaxHighlightController.theme = theme
+        }
+    }
+    var language: Language? {
+        set {
+            operationQueue.cancelAllOperations()
+            _language = newValue
+            parse(with: newValue)
+            layoutManager.invalidateLines()
+            layoutManager.layoutLines()
+        }
+        get {
+            return _language
         }
     }
     override var backgroundColor: UIColor? {
@@ -91,6 +103,7 @@ final class TextInputView: UIView, UITextInput {
     }
 
     // MARK: - Contents
+    weak var delegate: TextInputViewDelegate?
     var string: NSMutableString {
         get {
             return _string
@@ -127,15 +140,14 @@ final class TextInputView: UIView, UITextInput {
         return layoutManager.contentSize
     }
     private(set) var selectedRange: NSRange?
-
-    // MARK: - Misc
-    weak var delegate: TextInputViewDelegate?
     override var canBecomeFirstResponder: Bool {
         return true
     }
 
     // MARK: - Private
     private var _string = NSMutableString()
+    private var _language: Language?
+    private let operationQueue = OperationQueue()
     private var markedRange: NSRange?
     private var lineManager = LineManager()
     private let syntaxHighlightController = SyntaxHighlightController()
@@ -156,7 +168,9 @@ final class TextInputView: UIView, UITextInput {
 
     // MARK: - Lifecycle
     init() {
-        layoutManager = LayoutManager(lineManager: lineManager, syntaxHighlightController: syntaxHighlightController)
+        operationQueue.name = "Runestone"
+        operationQueue.qualityOfService = .userInitiated
+        layoutManager = LayoutManager(lineManager: lineManager, syntaxHighlightController: syntaxHighlightController, operationQueue: operationQueue)
         super.init(frame: .zero)
         lineManager.delegate = self
         lineManager.estimatedLineHeight = theme.font.lineHeight
@@ -238,10 +252,7 @@ final class TextInputView: UIView, UITextInput {
     func linePosition(at location: Int) -> LinePosition? {
         return lineManager.linePosition(at: location)
     }
-}
 
-// MARK: - Public
-extension TextInputView {
     func setState(_ state: EditorState) {
         _string = NSMutableString(string: state.text)
         lineManager = state.lineManager
@@ -258,6 +269,46 @@ extension TextInputView {
             selectedRange = NSRange(location: index, length: 0)
             inputDelegate?.selectionDidChange(self)
         }
+    }
+
+    func setLanguage(_ language: Language?, completion: ((Bool) -> Void)? = nil) {
+        operationQueue.cancelAllOperations()
+        _language = language
+        let operation = BlockOperation()
+        operation.addExecutionBlock { [weak operation, weak self] in
+            if let self = self, let operation = operation, !operation.isCancelled {
+                self.parse(with: language)
+                DispatchQueue.main.sync {
+                    if !operation.isCancelled {
+                        self.layoutManager.invalidateLines()
+                        self.layoutManager.layoutLines()
+                        completion?(true)
+                    } else {
+                        completion?(false)
+                    }
+                }
+            } else {
+                DispatchQueue.main.sync {
+                    completion?(false)
+                }
+            }
+        }
+        operationQueue.addOperation(operation)
+    }
+}
+
+// MARK: - Language
+private extension TextInputView {
+    func parse(with language: Language?) {
+        let parser = Parser(encoding: .utf8)
+        parser.delegate = self
+        parser.reset()
+        parser.language = language
+        if language != nil {
+            parser.parse(string as String)
+        }
+        syntaxHighlightController.parser = parser
+        syntaxHighlightController.reset()
     }
 }
 

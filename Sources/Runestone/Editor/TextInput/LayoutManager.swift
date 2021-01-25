@@ -20,7 +20,7 @@ final class LayoutManager {
     var frame: CGRect = .zero {
         didSet {
             if frame.size != oldValue.size {
-                invlaidateLines()
+                invalidateLines()
                 layoutLines()
             }
         }
@@ -38,7 +38,8 @@ final class LayoutManager {
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
             if theme !== oldValue {
-                invlaidateLines()
+                invalidateLines()
+                layoutLines()
             }
         }
     }
@@ -54,7 +55,7 @@ final class LayoutManager {
     }
 
     private let syntaxHighlightController: SyntaxHighlightController
-    private let syntaxHighlightQueue = OperationQueue()
+    private let operationQueue: OperationQueue
     private var queuedLineViews: Set<LineView> = []
     private var visibleLineViews: [DocumentLineNodeID: LineView] = [:]
     private var textRenderers: [DocumentLineNodeID: TextRenderer] = [:]
@@ -67,11 +68,10 @@ final class LayoutManager {
         }
     }
 
-    init(lineManager: LineManager, syntaxHighlightController: SyntaxHighlightController) {
+    init(lineManager: LineManager, syntaxHighlightController: SyntaxHighlightController, operationQueue: OperationQueue) {
         self.lineManager = lineManager
         self.syntaxHighlightController = syntaxHighlightController
-        self.syntaxHighlightQueue.name = "Runestone.SyntaxHighlightQueue"
-        self.syntaxHighlightQueue.qualityOfService = .userInitiated
+        self.operationQueue = operationQueue
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(didReceiveMemoryWarning(_:)),
@@ -114,6 +114,13 @@ final class LayoutManager {
             if let textRenderer = textRenderers[line.id] {
                 textRenderer.invalidate()
             }
+        }
+    }
+
+    func invalidateLines() {
+        let allTextRenderers = textRenderers.values
+        for textRenderer in allTextRenderers {
+            textRenderer.invalidate()
         }
     }
 }
@@ -221,6 +228,7 @@ extension LayoutManager {
         lineView.textRenderer = textRenderer
         lineView.frame = CGRect(x: 0, y: line.yPosition, width: frame.width, height: textRenderer.preferredHeight)
         lineView.backgroundColor = backgroundColor
+        lineView.setNeedsDisplay()
         textRenderer.syntaxHighlight()
         maxY = lineView.frame.maxY
     }
@@ -252,7 +260,7 @@ extension LayoutManager {
         if let cachedTextRenderer = textRenderers[line.id] {
             return cachedTextRenderer
         } else {
-            let textRenderer = TextRenderer(syntaxHighlightController: syntaxHighlightController, syntaxHighlightQueue: syntaxHighlightQueue)
+            let textRenderer = TextRenderer(syntaxHighlightController: syntaxHighlightController, syntaxHighlightQueue: operationQueue)
             textRenderer.delegate = self
             textRenderer.lineID = line.id
             prepare(textRenderer, toDraw: line)
@@ -274,14 +282,6 @@ extension LayoutManager {
         if didUpdateHeight {
             _contentSize = nil
         }
-    }
-
-    private func invlaidateLines() {
-        let allTextRenderers = textRenderers.values
-        for textRenderer in allTextRenderers {
-            textRenderer.invalidate()
-        }
-        layoutLines()
     }
 }
 

@@ -169,6 +169,9 @@ extension TextRenderer {
         guard syntaxHighlightState == .notHighlighted else {
             return
         }
+        guard syntaxHighlightController.canHighlight else {
+            return
+        }
         syntaxHighlightState = .highlighting
         let operation = BlockOperation()
         operation.addExecutionBlock { [weak operation, weak self] in

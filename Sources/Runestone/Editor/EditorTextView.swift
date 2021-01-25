@@ -31,33 +31,6 @@ public extension EditorTextViewDelegate {
 }
 
 public final class EditorTextView: UIScrollView {
-    public override var inputAccessoryView: UIView? {
-        get {
-            return _inputAccessoryView
-        }
-        set {
-            _inputAccessoryView = newValue
-        }
-    }
-    public override var canBecomeFirstResponder: Bool {
-        return true
-    }
-    public override var backgroundColor: UIColor? {
-        get {
-            return textInputView.backgroundColor
-        }
-        set {
-            super.backgroundColor = newValue
-            textInputView.backgroundColor = newValue
-        }
-    }
-    public override var contentOffset: CGPoint {
-        didSet {
-            if contentOffset != oldValue {
-                textInputView.viewport = CGRect(origin: contentOffset, size: frame.size)
-            }
-        }
-    }
     public weak var editorDelegate: EditorTextViewDelegate?
     public var text: String {
         get {
@@ -74,6 +47,14 @@ public final class EditorTextView: UIScrollView {
         }
         set {
             textInputView.theme = newValue
+        }
+    }
+    public var language: Language? {
+        get {
+            return textInputView.language
+        }
+        set {
+            textInputView.language = newValue
         }
     }
     public var autocorrectionType: UITextAutocorrectionType {
@@ -175,6 +156,33 @@ public final class EditorTextView: UIScrollView {
     public var selectedTextRange: NSRange? {
         return textInputView.selectedRange
     }
+    public override var inputAccessoryView: UIView? {
+        get {
+            return _inputAccessoryView
+        }
+        set {
+            _inputAccessoryView = newValue
+        }
+    }
+    public override var canBecomeFirstResponder: Bool {
+        return true
+    }
+    public override var backgroundColor: UIColor? {
+        get {
+            return textInputView.backgroundColor
+        }
+        set {
+            super.backgroundColor = newValue
+            textInputView.backgroundColor = newValue
+        }
+    }
+    public override var contentOffset: CGPoint {
+        didSet {
+            if contentOffset != oldValue {
+                textInputView.viewport = CGRect(origin: contentOffset, size: frame.size)
+            }
+        }
+    }
 
     private let textInputView = TextInputView()
     private let editingTextInteraction = UITextInteraction(for: .editable)
@@ -241,6 +249,10 @@ public final class EditorTextView: UIScrollView {
 
     public func linePosition(at location: Int) -> LinePosition? {
         return textInputView.linePosition(at: location)
+    }
+
+    public func setLanguage(_ language: Language?, completion: ((Bool) -> Void)? = nil) {
+        textInputView.setLanguage(language, completion: completion)
     }
 }
 
