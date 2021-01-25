@@ -269,5 +269,11 @@ extension LayoutManager: TextRendererDelegate {
 private extension LayoutManager {
     @objc private func didReceiveMemoryWarning(_ notification: Notification) {
         syntaxHighlightController.clearCache()
+        let allLineIDs = Set(textRenderers.keys)
+        let visibleLineIDs = Set(visibleLineViews.keys)
+        let lineIDsToRelease = allLineIDs.subtracting(visibleLineIDs)
+        for lineID in lineIDsToRelease {
+            textRenderers.removeValue(forKey: lineID)
+        }
     }
 }
