@@ -25,11 +25,9 @@ final class SyntaxHighlightController {
     }
 
     private var query: Query?
-    private var cache: [DocumentLineNodeID: [SyntaxHighlightToken]] = [:]
 
     func reset() {
         query = nil
-        cache = [:]
     }
 
     func prepare() {
@@ -80,22 +78,6 @@ final class SyntaxHighlightController {
             captureQuery.execute()
             return captureQuery.allCaptures()
         }
-    }
-
-    func cache(_ attributes: [SyntaxHighlightToken], for lineID: DocumentLineNodeID) {
-        cache[lineID] = attributes
-    }
-
-    func cachedAttributes(for lineID: DocumentLineNodeID) -> [SyntaxHighlightToken]? {
-        return cache[lineID]
-    }
-
-    func clearCache() {
-        cache = [:]
-    }
-
-    func removedCachedAttributes(for lineID: DocumentLineNodeID) {
-        cache.removeValue(forKey: lineID)
     }
 }
 

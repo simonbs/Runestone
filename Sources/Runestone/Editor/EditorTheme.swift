@@ -7,7 +7,9 @@
 
 import UIKit
 
-public protocol EditorTheme {
+public protocol EditorTheme: AnyObject {
+    var font: UIFont { get }
+    var textColor: UIColor { get }
     var gutterBackgroundColor: UIColor { get }
     var gutterHairlineColor: UIColor { get }
     var gutterHairlineWidth: CGFloat { get }

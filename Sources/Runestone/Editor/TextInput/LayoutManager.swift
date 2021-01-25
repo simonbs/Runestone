@@ -16,6 +16,7 @@ protocol LayoutManagerDelegate: AnyObject {
 
 final class LayoutManager {
     weak var delegate: LayoutManagerDelegate?
+    var lineManager: LineManager
     var frame: CGRect = .zero
     var viewport: CGRect = .zero
     var contentSize: CGSize {
@@ -27,10 +28,23 @@ final class LayoutManager {
             return contentSize
         }
     }
-    var font: UIFont?
-    var textColor: UIColor?
-    var backgroundColor: UIColor?
-    var lineManager: LineManager
+    var theme: EditorTheme = DefaultEditorTheme() {
+        didSet {
+            if theme !== oldValue {
+                updateAppearance()
+            }
+        }
+    }
+    var backgroundColor: UIColor? {
+        didSet {
+            if backgroundColor != oldValue {
+                let allVisibleLineViews = visibleLineViews.values
+                for visibleLineView in allVisibleLineViews {
+                    visibleLineView.backgroundColor = backgroundColor
+                }
+            }
+        }
+    }
 
     private let syntaxHighlightController: SyntaxHighlightController
     private let syntaxHighlightQueue = OperationQueue()
@@ -51,10 +65,15 @@ final class LayoutManager {
         self.syntaxHighlightController = syntaxHighlightController
         self.syntaxHighlightQueue.name = "Runestone.SyntaxHighlightQueue"
         self.syntaxHighlightQueue.qualityOfService = .userInitiated
-        NotificationCenter.default.addObserver(self, selector: #selector(didReceiveMemoryWarning(_:)), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(didReceiveMemoryWarning(_:)),
+            name: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil)
     }
 
     func layoutLines() {
+        syntaxHighlightController.prepare()
         let oldVisibleLineIds = Set(visibleLineViews.keys)
         var nextLine = lineManager.line(containingYOffset: viewport.minY)
         var appearedLineIDs: Set<DocumentLineNodeID> = []
@@ -75,7 +94,7 @@ final class LayoutManager {
         }
     }
 
-    func invalidate() {
+    func invalidateContentSize() {
         _contentSize = nil
     }
 
@@ -84,13 +103,12 @@ final class LayoutManager {
     }
 
     func updateLineViews(showing lines: Set<DocumentLineNode>) {
-       for line in lines {
-           if let textRenderer = textRenderers[line.id] {
-               syntaxHighlightController.removedCachedAttributes(for: line.id)
-               textRenderer.invalidate()
-           }
-       }
-   }
+        for line in lines {
+            if let textRenderer = textRenderers[line.id] {
+                textRenderer.invalidate()
+            }
+        }
+    }
 }
 
 // MARK: - UITextInput
@@ -187,17 +205,16 @@ extension LayoutManager {
 // MARK: - Drawing
 extension LayoutManager {
     private func show(_ line: DocumentLineNode, maxY: inout CGFloat) {
-        syntaxHighlightController.prepare()
         let lineView = dequeueLineView(withID: line.id)
         if lineView.superview == nil {
             currentDelegate.layoutManager(self, shouldInsertViewIntoViewHierarchy: lineView)
         }
         let textRenderer = getTextRenderer(for: line)
-        prepare(textRenderer, toShow: line)
+        prepare(textRenderer, toDraw: line)
         lineView.textRenderer = textRenderer
         lineView.frame = CGRect(x: 0, y: line.yPosition, width: frame.width, height: textRenderer.preferredHeight)
         lineView.backgroundColor = backgroundColor
-        textRenderer.syntaxHighlight(line.data.byteRange, inLineWithID: line.id)
+        textRenderer.syntaxHighlight()
         maxY = lineView.frame.maxY
     }
 
@@ -230,35 +247,45 @@ extension LayoutManager {
         } else {
             let textRenderer = TextRenderer(syntaxHighlightController: syntaxHighlightController, syntaxHighlightQueue: syntaxHighlightQueue)
             textRenderer.delegate = self
-            prepare(textRenderer, toShow: line)
+            textRenderer.lineID = line.id
+            prepare(textRenderer, toDraw: line)
             textRenderers[line.id] = textRenderer
             return textRenderer
         }
     }
 
-    private func prepare(_ textRenderer: TextRenderer, toShow line: DocumentLineNode) {
-        textRenderer.line = line
+    private func prepare(_ textRenderer: TextRenderer, toDraw line: DocumentLineNode) {
+        textRenderer.lineID = line.id
+        textRenderer.documentRange = NSRange(location: line.location, length: line.data.totalLength)
+        textRenderer.documentByteRange = line.data.byteRange
         textRenderer.lineWidth = frame.width
-        textRenderer.font = font
-        textRenderer.textColor = textColor
-        textRenderer.prepare()
+        textRenderer.font = theme.font
+        textRenderer.textColor = theme.textColor
+        textRenderer.prepareToDraw()
         let lineHeight = ceil(textRenderer.preferredHeight)
         let didUpdateHeight = lineManager.setHeight(of: line, to: lineHeight)
         if didUpdateHeight {
             _contentSize = nil
         }
     }
+
+    private func updateAppearance() {
+        let allTextRenderers = textRenderers.values
+        for textRenderer in allTextRenderers {
+            textRenderer.invalidate()
+        }
+        layoutLines()
+    }
 }
 
 // MARK: - TextRendererDelegate
 extension LayoutManager: TextRendererDelegate {
-    func textRenderer(_ textRenderer: TextRenderer, stringIn line: DocumentLineNode) -> String {
-        let range = NSRange(location: line.location, length: line.value)
+    func textRenderer(_ textRenderer: TextRenderer, stringIn range: NSRange) -> String {
         return currentDelegate.layoutManager(self, stringIn: range)
     }
 
     func textRendererDidUpdateSyntaxHighlighting(_ textRenderer: TextRenderer) {
-        if let lineID = textRenderer.line?.id {
+        if let lineID = textRenderer.lineID {
             let lineView = visibleLineViews[lineID]
             lineView?.setNeedsDisplay()
         }
@@ -268,7 +295,6 @@ extension LayoutManager: TextRendererDelegate {
 // MARK: - Memory Management
 private extension LayoutManager {
     @objc private func didReceiveMemoryWarning(_ notification: Notification) {
-        syntaxHighlightController.clearCache()
         let allLineIDs = Set(textRenderers.keys)
         let visibleLineIDs = Set(visibleLineViews.keys)
         let lineIDsToRelease = allLineIDs.subtracting(visibleLineIDs)

@@ -12,10 +12,7 @@ final class SyntaxHighlightToken {
     let textColor: UIColor?
     let font: UIFont?
     var isEmpty: Bool {
-        return !hasContent
-    }
-    private var hasContent: Bool {
-        return textColor != nil || font != nil
+        return range.length == ByteCount(0) || (textColor == nil && font == nil)
     }
 
     init(range: ByteRange, textColor: UIColor?, font: UIFont?) {

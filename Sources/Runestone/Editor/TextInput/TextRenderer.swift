@@ -22,11 +22,17 @@ private final class PreparedLine {
 }
 
 protocol TextRendererDelegate: AnyObject {
-    func textRenderer(_ textRenderer: TextRenderer, stringIn line: DocumentLineNode) -> String
+    func textRenderer(_ textRenderer: TextRenderer, stringIn range: NSRange) -> String
     func textRendererDidUpdateSyntaxHighlighting(_ textRenderer: TextRenderer)
 }
 
 final class TextRenderer {
+    private enum SyntaxHighlightState {
+        case notHighlighted
+        case highlighting
+        case highlighted
+    }
+
     struct SelectionRect {
         let rect: CGRect
         let range: NSRange
@@ -40,50 +46,107 @@ final class TextRenderer {
     weak var delegate: TextRendererDelegate?
     private(set) var preferredHeight: CGFloat = 0
     var frame: CGRect = .zero
-    var line: DocumentLineNode? {
-        didSet {
-            if line !== oldValue {
-                invalidate()
-            }
-        }
-    }
-    var lineWidth: CGFloat = 0 {
-        didSet {
-            if lineWidth != oldValue {
-                invalidate()
-            }
-        }
-    }
-    var textColor: UIColor? {
-        didSet {
-            if textColor != oldValue {
-                invalidate()
-            }
-        }
-    }
-    var font: UIFont? {
-        didSet {
-            if font != oldValue {
-                invalidate()
-            }
-        }
-    }
+    var lineWidth: CGFloat = 0
+    var textColor: UIColor?
+    var font: UIFont?
+    var lineID: DocumentLineNodeID?
+    var documentRange: NSRange?
+    var documentByteRange: ByteRange?
 
+    private var isInvalid = true
     private var string: String?
+    private var attributedString: CFMutableAttributedString?
     private var typesetter: CTTypesetter?
     private var preparedLines: [PreparedLine] = []
     private let syntaxHighlightController: SyntaxHighlightController
-    private var attributedString: CFMutableAttributedString?
-    private var isHighlighted = false
+    private var syntaxHighlightState: SyntaxHighlightState = .notHighlighted
     private let syntaxHighlightQueue: OperationQueue
     private var currentSyntaxHighlightOperation: Operation?
-    private var isInvalid = true
+    private var captures: [Capture]?
 
     init(syntaxHighlightController: SyntaxHighlightController, syntaxHighlightQueue: OperationQueue) {
         self.syntaxHighlightController = syntaxHighlightController
         self.syntaxHighlightQueue = syntaxHighlightQueue
     }
+}
 
+// MARK: - Preparation
+extension TextRenderer {
+    func invalidate() {
+        cancelHighlightOperation()
+        isInvalid = true
+    }
+
+    func prepareToDraw() {
+        if isInvalid, let documentRange = documentRange {
+            captures = nil
+            syntaxHighlightState = .notHighlighted
+            string = delegate!.textRenderer(self, stringIn: documentRange)
+            recreateAttributedString()
+            applyDefaultAttributes()
+            recreateTypesetter()
+            prepareLines()
+            isInvalid = false
+        }
+    }
+
+    private func cancelHighlightOperation() {
+        if syntaxHighlightState == .highlighting {
+            syntaxHighlightState = .notHighlighted
+        }
+        currentSyntaxHighlightOperation?.cancel()
+        currentSyntaxHighlightOperation = nil
+    }
+
+    private func recreateAttributedString() {
+        if let string = string, let attributedString = CFAttributedStringCreateMutable(kCFAllocatorDefault, string.utf16.count) {
+            self.attributedString = attributedString
+            CFAttributedStringReplaceString(attributedString, CFRangeMake(0, 0), string as CFString)
+        } else {
+            attributedString = nil
+        }
+    }
+
+    private func recreateTypesetter() {
+        if let attributedString = attributedString {
+            typesetter = CTTypesetterCreateWithAttributedString(attributedString)
+        } else {
+            typesetter = nil
+        }
+    }
+
+    private func prepareLines() {
+        preparedLines = []
+        preferredHeight = 0
+        guard let typesetter = typesetter else {
+            return
+        }
+        guard let attributedString = attributedString else {
+            return
+        }
+        var nextYPosition: CGFloat = 0
+        var startOffset = 0
+        let stringLength = CFAttributedStringGetLength(attributedString)
+        while startOffset < stringLength {
+            let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(lineWidth))
+            let range = CFRangeMake(startOffset, length)
+            let line = CTTypesetterCreateLine(typesetter, range)
+            var ascent: CGFloat = 0
+            var descent: CGFloat = 0
+            var leading: CGFloat = 0
+            CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
+            let lineHeight = ascent + descent + leading
+            let preparedLine = PreparedLine(line: line, descent: descent, lineHeight: lineHeight, yPosition: nextYPosition)
+            preparedLines.append(preparedLine)
+            nextYPosition += lineHeight
+            startOffset += length
+        }
+        preferredHeight = ceil(nextYPosition)
+    }
+}
+
+// MARK: - Drawing
+extension TextRenderer {
     func draw(in context: CGContext) {
         context.textMatrix = .identity
         context.translateBy(x: 0, y: frame.height)
@@ -91,45 +154,93 @@ final class TextRenderer {
         drawPreparedLines(to: context)
     }
 
-    func invalidate() {
-        isInvalid = true
-    }
-
-    func prepare() {
-        guard let line = line, isInvalid else {
-            return
-        }
-        reset()
-        let string = delegate!.textRenderer(self, stringIn: line)
-        self.string = string
-        attributedString = CFAttributedStringCreateMutable(kCFAllocatorDefault, string.utf16.count)
-        if let attributedString = attributedString {
-            isInvalid = false
-            CFAttributedStringReplaceString(attributedString, CFRangeMake(0, 0), string as CFString)
-            applyDefaultAttributes()
-            if let cachedAttributes = syntaxHighlightController.cachedAttributes(for: line.id) {
-                apply(cachedAttributes)
-                isHighlighted = true
-            }
-            recreateTypesetter()
-            delegate?.textRendererDidUpdateSyntaxHighlighting(self)
+    private func drawPreparedLines(to context: CGContext) {
+        for preparedLine in preparedLines {
+            let yPosition = preparedLine.descent + (frame.height - preparedLine.yPosition - preparedLine.lineHeight)
+            context.textPosition = CGPoint(x: 0, y: yPosition)
+            CTLineDraw(preparedLine.line, context)
         }
     }
+}
 
-    func syntaxHighlight(_ documentRange: ByteRange, inLineWithID lineID: DocumentLineNodeID) {
-        guard !isHighlighted else {
+// MARK: - Appearance
+extension TextRenderer {
+    func syntaxHighlight() {
+        guard syntaxHighlightState == .notHighlighted else {
             return
         }
+        syntaxHighlightState = .highlighting
         let operation = BlockOperation()
         operation.addExecutionBlock { [weak operation, weak self] in
             if let operation = operation, !operation.isCancelled {
-                self?.syntaxHighlight(documentRange: documentRange, inLineWithID: lineID, using: operation)
+                self?.syntaxHighlight(using: operation)
             }
         }
         currentSyntaxHighlightOperation = operation
         syntaxHighlightQueue.addOperation(operation)
     }
 
+    private func syntaxHighlight(using operation: Operation) {
+        if let documentByteRange = documentByteRange, case let .success(captures) = syntaxHighlightController.captures(in: documentByteRange) {
+            if !operation.isCancelled {
+                DispatchQueue.main.sync {
+                    if !operation.isCancelled {
+                        self.captures = captures
+                        self.applyAttributes(for: captures)
+                        self.recreateTypesetter()
+                        self.prepareLines()
+                        self.syntaxHighlightState = .highlighted
+                        self.delegate?.textRendererDidUpdateSyntaxHighlighting(self)
+                    }
+                }
+            }
+        }
+    }
+
+    private func applyDefaultAttributes() {
+        guard let attributedString = attributedString else {
+            return
+        }
+        let entireRange = CFRangeMake(0, CFAttributedStringGetLength(attributedString))
+        var rawAttributes: [NSAttributedString.Key: Any] = [:]
+        if let textColor = textColor {
+            rawAttributes[.foregroundColor] = textColor
+        }
+        if let font = font {
+            rawAttributes[.font] = font
+        }
+        if !rawAttributes.isEmpty {
+            CFAttributedStringSetAttributes(attributedString, entireRange, rawAttributes as CFDictionary, true)
+        }
+    }
+
+    private func applyAttributes(for captures: [Capture]) {
+        if let documentRange = documentByteRange {
+            let attributes = syntaxHighlightController.attributes(for: captures, localTo: documentRange)
+            apply(attributes)
+        }
+    }
+
+    private func apply(_ tokens: [SyntaxHighlightToken]) {
+        guard let attributedString = attributedString else {
+            return
+        }
+        CFAttributedStringBeginEditing(attributedString)
+        for token in tokens {
+            if let range = string?.range(from: token.range) {
+                let cfRange = CFRangeMake(range.location, range.length)
+                var rawAttributes: [NSAttributedString.Key: Any] = [:]
+                rawAttributes[.foregroundColor] = token.textColor ?? textColor
+                rawAttributes[.font] = token.font ?? font
+                CFAttributedStringSetAttributes(attributedString, cfRange, rawAttributes as CFDictionary, true)
+            }
+        }
+        CFAttributedStringEndEditing(attributedString)
+    }
+}
+
+// MARK: - UITextInput
+extension TextRenderer {
     func caretRect(atIndex index: Int) -> CGRect {
         for preparedLine in preparedLines {
             let lineRange = CTLineGetStringRange(preparedLine.line)
@@ -184,117 +295,5 @@ final class TextRenderer {
             }
         }
         return nil
-    }
-}
-
-private extension TextRenderer {
-    private func reset() {
-        currentSyntaxHighlightOperation?.cancel()
-        currentSyntaxHighlightOperation = nil
-        string = nil
-        attributedString = nil
-        preparedLines = []
-        preferredHeight = 0
-        typesetter = nil
-        isHighlighted = false
-    }
-
-    private func recreateTypesetter() {
-        if let attributedString = attributedString {
-            typesetter = CTTypesetterCreateWithAttributedString(attributedString)
-            if let typesetter = typesetter {
-                prepareLines(in: typesetter, lineWidth: Double(lineWidth))
-            }
-        }
-    }
-
-    private func prepareLines(in typesetter: CTTypesetter, lineWidth: Double) {
-        guard let attributedString = attributedString else {
-            return
-        }
-        var nextYPosition: CGFloat = 0
-        var startOffset = 0
-        let stringLength = CFAttributedStringGetLength(attributedString)
-        while startOffset < stringLength {
-            let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, lineWidth)
-            let range = CFRangeMake(startOffset, length)
-            let line = CTTypesetterCreateLine(typesetter, range)
-            var ascent: CGFloat = 0
-            var descent: CGFloat = 0
-            var leading: CGFloat = 0
-            CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
-            let lineHeight = ascent + descent + leading
-            let preparedLine = PreparedLine(line: line, descent: descent, lineHeight: lineHeight, yPosition: nextYPosition)
-            preparedLines.append(preparedLine)
-            nextYPosition += lineHeight
-            startOffset += length
-        }
-        preferredHeight = ceil(nextYPosition)
-    }
-
-    private func syntaxHighlight(documentRange: ByteRange, inLineWithID lineID: DocumentLineNodeID, using operation: Operation) {
-        if case let .success(captures) = syntaxHighlightController.captures(in: documentRange) {
-            if !operation.isCancelled {
-                DispatchQueue.main.sync {
-                    if !operation.isCancelled {
-                        self.syntaxHighlight(using: captures, in: documentRange, lineID: lineID)
-                    }
-                }
-            }
-        }
-    }
-
-    private func syntaxHighlight(using captures: [Capture], in documentRange: ByteRange, lineID: DocumentLineNodeID) {
-        preparedLines = []
-        preferredHeight = 0
-        typesetter = nil
-        let attributes = syntaxHighlightController.attributes(for: captures, localTo: documentRange)
-        syntaxHighlightController.cache(attributes, for: lineID)
-        apply(attributes)
-        recreateTypesetter()
-        isHighlighted = true
-        delegate?.textRendererDidUpdateSyntaxHighlighting(self)
-    }
-
-    private func applyDefaultAttributes() {
-        guard let attributedString = attributedString else {
-            return
-        }
-        let entireRange = CFRangeMake(0, CFAttributedStringGetLength(attributedString))
-        var rawAttributes: [NSAttributedString.Key: Any] = [:]
-        if let textColor = textColor {
-            rawAttributes[.foregroundColor] = textColor
-        }
-        if let font = font {
-            rawAttributes[.font] = font
-        }
-        if !rawAttributes.isEmpty {
-            CFAttributedStringSetAttributes(attributedString, entireRange, rawAttributes as CFDictionary, true)
-        }
-    }
-
-    private func apply(_ tokens: [SyntaxHighlightToken]) {
-        guard let attributedString = attributedString else {
-            return
-        }
-        CFAttributedStringBeginEditing(attributedString)
-        for token in tokens {
-            if let range = string?.range(from: token.range) {
-                let cfRange = CFRangeMake(range.location, range.length)
-                var rawAttributes: [NSAttributedString.Key: Any] = [:]
-                rawAttributes[.foregroundColor] = token.textColor ?? textColor
-                rawAttributes[.font] = token.font ?? font
-                CFAttributedStringSetAttributes(attributedString, cfRange, rawAttributes as CFDictionary, true)
-            }
-        }
-        CFAttributedStringEndEditing(attributedString)
-    }
-
-    private func drawPreparedLines(to context: CGContext) {
-        for preparedLine in preparedLines {
-            let yPosition = preparedLine.descent + (frame.height - preparedLine.yPosition - preparedLine.lineHeight)
-            context.textPosition = CGPoint(x: 0, y: yPosition)
-            CTLineDraw(preparedLine.line, context)
-        }
     }
 }

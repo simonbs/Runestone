@@ -54,22 +54,6 @@ public final class EditorTextView: UIScrollView {
             contentSize = textInputView.contentSize
         }
     }
-    public var font: UIFont? {
-        get {
-            return textInputView.font
-        }
-        set {
-            textInputView.font = newValue
-        }
-    }
-    public var textColor: UIColor {
-        get {
-            return textInputView.textColor
-        }
-        set {
-            textInputView.textColor = newValue
-        }
-    }
     public var theme: EditorTheme {
         get {
             return textInputView.theme

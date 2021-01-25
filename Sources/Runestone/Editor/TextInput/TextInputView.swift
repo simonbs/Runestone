@@ -73,19 +73,11 @@ final class TextInputView: UIView, UITextInput {
     @objc var selectionHighlightColor: UIColor = .black
 
     // MARK: - Styling
-    var textColor: UIColor = .black {
+    var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
-            if textColor != oldValue {
-                layoutManager.textColor = textColor
-            }
-        }
-    }
-    var font: UIFont? = .systemFont(ofSize: 16) {
-        didSet {
-            if font != oldValue {
-                lineManager.estimatedLineHeight = font?.lineHeight ?? 16
-                layoutManager.font = font
-            }
+            lineManager.estimatedLineHeight = theme.font.lineHeight
+            layoutManager.theme = theme
+            syntaxHighlightController.theme = theme
         }
     }
     override var backgroundColor: UIColor? {
@@ -93,11 +85,6 @@ final class TextInputView: UIView, UITextInput {
             if backgroundColor != oldValue {
                 layoutManager.backgroundColor = backgroundColor
             }
-        }
-    }
-    var theme: EditorTheme = DefaultEditorTheme() {
-        didSet {
-            syntaxHighlightController.theme = theme
         }
     }
 
@@ -110,7 +97,7 @@ final class TextInputView: UIView, UITextInput {
             if _string != newValue {
                 _string = newValue
                 lineManager.rebuild(from: newValue)
-                layoutManager.invalidate()
+                layoutManager.invalidateContentSize()
             }
         }
     }
@@ -170,10 +157,9 @@ final class TextInputView: UIView, UITextInput {
         layoutManager = LayoutManager(lineManager: lineManager, syntaxHighlightController: syntaxHighlightController)
         super.init(frame: .zero)
         lineManager.delegate = self
-        lineManager.estimatedLineHeight = font?.lineHeight ?? 16
+        lineManager.estimatedLineHeight = theme.font.lineHeight
         layoutManager.delegate = self
-        layoutManager.font = font
-        layoutManager.textColor = textColor
+        layoutManager.theme = theme
         layoutManager.backgroundColor = backgroundColor
         syntaxHighlightController.theme = theme
     }
@@ -257,7 +243,7 @@ extension TextInputView {
         syntaxHighlightController.parser = state.parser
         syntaxHighlightController.parser?.delegate = self
         layoutManager.lineManager = state.lineManager
-        layoutManager.invalidate()
+        layoutManager.invalidateContentSize()
     }
 
     func moveCaret(to point: CGPoint) {
@@ -315,7 +301,7 @@ extension TextInputView {
             fatalError("Expected position to be of type \(IndexedPosition.self)")
         }
         if string.length == 0 {
-            return CGRect(x: 0, y: 0, width: Caret.width, height: Caret.defaultHeight(for: font))
+            return CGRect(x: 0, y: 0, width: Caret.width, height: Caret.defaultHeight(for: theme.font))
         } else if let caretRect = layoutManager.caretRect(at: indexedPosition.index) {
             return caretRect
         } else {
@@ -608,11 +594,11 @@ extension TextInputView: LineManagerDelegate {
     }
 
     func lineManager(_ lineManager: LineManager, didInsert line: DocumentLineNode) {
-        layoutManager.invalidate()
+        layoutManager.invalidateContentSize()
     }
 
     func lineManager(_ lineManager: LineManager, didRemove line: DocumentLineNode) {
-        layoutManager.invalidate()
+        layoutManager.invalidateContentSize()
         layoutManager.removeLine(withID: line.id)
     }
 }
