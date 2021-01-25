@@ -254,7 +254,9 @@ extension TextInputView {
 
     func moveCaret(to point: CGPoint) {
         if let index = layoutManager.closestIndex(to: point) {
+            inputDelegate?.selectionWillChange(self)
             selectedRange = NSRange(location: index, length: 0)
+            inputDelegate?.selectionDidChange(self)
         }
     }
 }
@@ -333,7 +335,9 @@ extension TextInputView {
         if let range = selectedRange {
             let nsString = text as NSString
             replaceCharacters(in: range, with: nsString)
+            inputDelegate?.selectionWillChange(self)
             selectedRange = NSRange(location: range.location + nsString.length, length: 0)
+            inputDelegate?.selectionDidChange(self)
         }
     }
 
@@ -343,11 +347,15 @@ extension TextInputView {
         }
         if range.length > 0 {
             replaceCharacters(in: range, with: "")
+            inputDelegate?.selectionWillChange(self)
             selectedRange = NSRange(location: range.location, length: 0)
+            inputDelegate?.selectionDidChange(self)
         } else {
             let deleteRange = NSRange(location: range.location - 1, length: 1)
             replaceCharacters(in: deleteRange, with: "")
+            inputDelegate?.selectionWillChange(self)
             selectedRange = NSRange(location: range.location, length: 0)
+            inputDelegate?.selectionDidChange(self)
         }
     }
 
@@ -375,7 +383,9 @@ extension TextInputView {
 
     private func replace(_ range: NSRange, withText text: NSString) {
         replaceCharacters(in: range, with: text)
+        inputDelegate?.selectionWillChange(self)
         selectedRange = NSRange(location: range.location + text.length, length: 0)
+        inputDelegate?.selectionDidChange(self)
     }
 
     private func replaceCharacters(in range: NSRange, with newString: NSString) {
