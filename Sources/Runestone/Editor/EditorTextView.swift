@@ -9,11 +9,25 @@ import UIKit
 import CoreText
 
 public protocol EditorTextViewDelegate: AnyObject {
+    func editorTextViewShouldBeginEditing(_ textView: EditorTextView) -> Bool
+    func editorTextViewShouldEndEditing(_ textView: EditorTextView) -> Bool
+    func editorTextViewDidBeginEditing(_ textView: EditorTextView)
+    func editorTextViewDidEndEditing(_ textView: EditorTextView)
     func editorTextViewDidChange(_ textView: EditorTextView)
+    func editorTextViewDidChangeSelection(_ textView: EditorTextView)
 }
 
 public extension EditorTextViewDelegate {
+    func editorTextViewShouldBeginEditing(_ textView: EditorTextView) -> Bool {
+        return true
+    }
+    func editorTextViewShouldEndEditing(_ textView: EditorTextView) -> Bool {
+        return true
+    }
+    func editorTextViewDidBeginEditing(_ textView: EditorTextView) {}
+    func editorTextViewDidEndEditing(_ textView: EditorTextView) {}
     func editorTextViewDidChange(_ textView: EditorTextView) {}
+    func editorTextViewDidChangeSelection(_ textView: EditorTextView) {}
 }
 
 public final class EditorTextView: UIScrollView {
@@ -158,11 +172,28 @@ public final class EditorTextView: UIScrollView {
             textInputView.selectionHighlightColor = newValue
         }
     }
+    public var selectedTextRange: NSRange? {
+        return textInputView.selectedRange
+    }
 
     private let textInputView = TextInputView()
     private let editingTextInteraction = UITextInteraction(for: .editable)
     private let tapGestureRecognizer = UITapGestureRecognizer()
     private var _inputAccessoryView: UIView?
+    private var shouldBeginEditing: Bool {
+        if let editorDelegate = editorDelegate {
+            return editorDelegate.editorTextViewShouldBeginEditing(self)
+        } else {
+            return true
+        }
+    }
+    private var shouldEndEditing: Bool {
+        if let editorDelegate = editorDelegate {
+            return editorDelegate.editorTextViewShouldEndEditing(self)
+        } else {
+            return true
+        }
+    }
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -185,19 +216,31 @@ public final class EditorTextView: UIScrollView {
         textInputView.viewport = CGRect(origin: contentOffset, size: frame.size)
     }
 
+    @discardableResult
+    public override func becomeFirstResponder() -> Bool {
+        if shouldBeginEditing {
+            return textInputView.becomeFirstResponder()
+        } else {
+            return false
+        }
+    }
+
+    @discardableResult
+    public override func resignFirstResponder() -> Bool {
+        if shouldEndEditing {
+            return textInputView.resignFirstResponder()
+        } else {
+            return false
+        }
+    }
+
     public func setState(_ state: EditorState) {
         textInputView.setState(state)
         contentSize = textInputView.contentSize
     }
 
-    @discardableResult
-    public override func becomeFirstResponder() -> Bool {
-        return textInputView.becomeFirstResponder()
-    }
-
-    @discardableResult
-    public override func resignFirstResponder() -> Bool {
-        return textInputView.resignFirstResponder()
+    public func linePosition(at location: Int) -> LinePosition? {
+        return textInputView.linePosition(at: location)
     }
 }
 
@@ -207,7 +250,7 @@ private extension EditorTextView {
         if tapGestureRecognizer.state == .ended {
             let point = gestureRecognizer.location(in: textInputView)
             textInputView.moveCaret(to: point)
-            becomeFirstResponder()
+            textInputView.becomeFirstResponder()
         }
     }
 }
@@ -216,10 +259,20 @@ private extension EditorTextView {
 extension EditorTextView: TextInputViewDelegate {
     func textInputViewDidBeginEditing(_ view: TextInputView) {
         addInteraction(editingTextInteraction)
+        editorDelegate?.editorTextViewDidBeginEditing(self)
     }
 
     func textInputViewDidEndEditing(_ view: TextInputView) {
         removeInteraction(editingTextInteraction)
+        editorDelegate?.editorTextViewDidEndEditing(self)
+    }
+
+    func textInputViewDidChange(_ view: TextInputView) {
+        editorDelegate?.editorTextViewDidChange(self)
+    }
+
+    func textInputViewDidChangeSelection(_ view: TextInputView) {
+        editorDelegate?.editorTextViewDidChangeSelection(self)
     }
 
     func textInputViewDidInvalidateContentSize(_ view: TextInputView) {
@@ -228,17 +281,13 @@ extension EditorTextView: TextInputViewDelegate {
             setNeedsLayout()
         }
     }
-
-    func textInputViewDidChange(_ view: TextInputView) {
-        editorDelegate?.editorTextViewDidChange(self)
-    }
 }
 
 // MARK: - UIGestureRecognizerDelegate
 extension EditorTextView: UIGestureRecognizerDelegate {
     public override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         if gestureRecognizer === tapGestureRecognizer {
-            return !isFirstResponder && !textInputView.isFirstResponder
+            return shouldBeginEditing && !isFirstResponder && !textInputView.isFirstResponder
         } else {
             return true
         }

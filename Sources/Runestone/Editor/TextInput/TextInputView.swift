@@ -11,6 +11,7 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidBeginEditing(_ view: TextInputView)
     func textInputViewDidEndEditing(_ view: TextInputView)
     func textInputViewDidChange(_ view: TextInputView)
+    func textInputViewDidChangeSelection(_ view: TextInputView)
     func textInputViewDidInvalidateContentSize(_ view: TextInputView)
 }
 
@@ -40,6 +41,7 @@ final class TextInputView: UIView, UITextInput {
                     inputDelegate?.selectionWillChange(self)
                     selectedRange = newRange
                     inputDelegate?.selectionDidChange(self)
+                    delegate?.textInputViewDidChangeSelection(self)
                 }
             } else {
                 selectedRange = nil
@@ -124,6 +126,7 @@ final class TextInputView: UIView, UITextInput {
     var contentSize: CGSize {
         return layoutManager.contentSize
     }
+    private(set) var selectedRange: NSRange?
 
     // MARK: - Misc
     weak var delegate: TextInputViewDelegate?
@@ -133,7 +136,6 @@ final class TextInputView: UIView, UITextInput {
 
     // MARK: - Private
     private var _string = NSMutableString()
-    private var selectedRange: NSRange?
     private var markedRange: NSRange?
     private var lineManager = LineManager()
     private let syntaxHighlightController = SyntaxHighlightController()
@@ -169,7 +171,7 @@ final class TextInputView: UIView, UITextInput {
     }
 
     @discardableResult
-    public override func becomeFirstResponder() -> Bool {
+    override func becomeFirstResponder() -> Bool {
         let wasFirstResponder = isFirstResponder
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if !wasFirstResponder && isFirstResponder {
@@ -185,7 +187,7 @@ final class TextInputView: UIView, UITextInput {
     }
 
     @discardableResult
-    public override func resignFirstResponder() -> Bool {
+    override func resignFirstResponder() -> Bool {
         let wasFirstResponder = isFirstResponder
         let didResignFirstResponder = super.resignFirstResponder()
         if wasFirstResponder && !isFirstResponder {
@@ -231,6 +233,10 @@ final class TextInputView: UIView, UITextInput {
         } else {
             return super.canPerformAction(action, withSender: sender)
         }
+    }
+
+    func linePosition(at location: Int) -> LinePosition? {
+        return lineManager.linePosition(at: location)
     }
 }
 
