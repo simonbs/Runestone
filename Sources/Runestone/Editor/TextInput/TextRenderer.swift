@@ -288,12 +288,19 @@ extension TextRenderer {
     }
 
     func closestIndex(to point: CGPoint) -> Int? {
+        var closestPreparedLine = preparedLines.last
         for preparedLine in preparedLines {
             let lineMaxY = preparedLine.yPosition + preparedLine.lineHeight
             if point.y <= lineMaxY {
-                return CTLineGetStringIndexForPosition(preparedLine.line, point)
+                closestPreparedLine = preparedLine
+                break
+
             }
         }
-        return nil
+        if let closestPreparedLine = closestPreparedLine {
+            return CTLineGetStringIndexForPosition(closestPreparedLine.line, point)
+        } else {
+            return nil
+        }
     }
 }
