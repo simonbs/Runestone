@@ -401,7 +401,7 @@ extension TextInputView {
             inputDelegate?.selectionWillChange(self)
             selectedRange = NSRange(location: range.location, length: 0)
             inputDelegate?.selectionDidChange(self)
-        } else {
+        } else if range.location > 0 {
             let deleteRange = NSRange(location: range.location - 1, length: 1)
             replaceCharacters(in: deleteRange, with: "")
             inputDelegate?.selectionWillChange(self)
