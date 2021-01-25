@@ -177,8 +177,8 @@ public final class EditorTextView: UIScrollView {
 
     private let textInputView = TextInputView()
     private let editingTextInteraction = UITextInteraction(for: .editable)
-    private var _inputAccessoryView: UIView?
     private let tapGestureRecognizer = UITapGestureRecognizer()
+    private var _inputAccessoryView: UIView?
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
