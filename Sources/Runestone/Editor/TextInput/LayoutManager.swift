@@ -17,7 +17,14 @@ protocol LayoutManagerDelegate: AnyObject {
 final class LayoutManager {
     weak var delegate: LayoutManagerDelegate?
     var lineManager: LineManager
-    var frame: CGRect = .zero
+    var frame: CGRect = .zero {
+        didSet {
+            if frame.size != oldValue.size {
+                invlaidateLines()
+                layoutLines()
+            }
+        }
+    }
     var viewport: CGRect = .zero
     var contentSize: CGSize {
         if let contentSize = _contentSize {
