@@ -31,7 +31,7 @@ final class LayoutManager {
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
             if theme !== oldValue {
-                updateAppearance()
+                invlaidateLines()
             }
         }
     }
@@ -269,7 +269,7 @@ extension LayoutManager {
         }
     }
 
-    private func updateAppearance() {
+    private func invlaidateLines() {
         let allTextRenderers = textRenderers.values
         for textRenderer in allTextRenderers {
             textRenderer.invalidate()
