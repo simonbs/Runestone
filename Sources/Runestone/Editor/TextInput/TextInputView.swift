@@ -127,6 +127,13 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
+    override var frame: CGRect {
+        didSet {
+            if frame != oldValue {
+                layoutManager.frame = frame
+            }
+        }
+    }
     var contentSize: CGSize {
         return layoutManager.contentSize
     }
@@ -249,11 +256,12 @@ extension TextInputView {
         lineManager.delegate = self
         syntaxHighlightController.parser = state.parser
         syntaxHighlightController.parser?.delegate = self
+        layoutManager.lineManager = state.lineManager
         layoutManager.invalidate()
     }
 
     func moveCaret(to point: CGPoint) {
-        if let index = closestIndex(to: point) {
+        if let index = layoutManager.closestIndex(to: point) {
             selectedRange = NSRange(location: index, length: 0)
         }
     }
@@ -408,8 +416,8 @@ extension TextInputView {
             let changedLines = lines(in: changedRanges)
             editedLines.formUnion(changedLines)
         }
-        updateLineViews(showing: editedLines)
-        layoutLines()
+        layoutManager.updateLineViews(showing: editedLines)
+        layoutManager.layoutLines()
         inputDelegate?.textDidChange(self)
         delegate?.textInputViewDidChange(self)
     }
@@ -450,45 +458,10 @@ extension TextInputView {
 extension TextInputView {
     func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
         if let indexedRange = range as? IndexedRange {
-            return selectionRects(in: indexedRange.range)
+            return layoutManager.selectionRects(in: indexedRange.range)
         } else {
             return []
         }
-    }
-
-    private func selectionRects(in range: NSRange) -> [TextSelectionRect] {
-        guard let startLine = lineManager.line(containingCharacterAt: range.location) else {
-            return []
-        }
-        guard let endLine = lineManager.line(containingCharacterAt: range.location + range.length) else {
-            return []
-        }
-        var selectionRects: [TextSelectionRect] = []
-        let lineIndexRange = startLine.index ..< endLine.index + 1
-        for lineIndex in lineIndexRange {
-            let line = lineManager.line(atIndex: lineIndex)
-            let textRenderer = getTextRenderer(for: line)
-            let lineStartLocation = line.location
-            let lineEndLocation = lineStartLocation + line.data.totalLength
-            let localRangeLocation = max(range.location, lineStartLocation) - lineStartLocation
-            let localRangeLength = min(range.location + range.length, lineEndLocation) - lineStartLocation - localRangeLocation
-            let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
-            let rendererSelectionRects = textRenderer.selectionRects(in: localRange)
-            let textSelectionRects: [TextSelectionRect] = rendererSelectionRects.map { rendererSelectionRect in
-                let y = line.yPosition + rendererSelectionRect.rect.minY
-                var screenRect = CGRect(x: rendererSelectionRect.rect.minX, y: y, width: rendererSelectionRect.rect.width, height: rendererSelectionRect.rect.height)
-                let startLocation = lineStartLocation + rendererSelectionRect.range.location
-                let endLocation = startLocation + rendererSelectionRect.range.length
-                let containsStart = range.location >= startLocation && range.location <= endLocation
-                let containsEnd = range.location + range.length >= startLocation && range.location + range.length <= endLocation
-                if endLocation < range.location + range.length {
-                    screenRect.size.width = frame.width - screenRect.minX
-                }
-                return TextSelectionRect(rect: screenRect, writingDirection: .leftToRight, containsStart: containsStart, containsEnd: containsEnd)
-            }
-            selectionRects.append(contentsOf: textSelectionRects)
-        }
-        return selectionRects.ensuringYAxisAlignment()
     }
 }
 
@@ -538,7 +511,7 @@ extension TextInputView {
     }
 
     func closestPosition(to point: CGPoint) -> UITextPosition? {
-        if let index = closestIndex(to: point) {
+        if let index = layoutManager.closestIndex(to: point) {
             return IndexedPosition(index: index)
         } else {
             return nil
@@ -586,39 +559,6 @@ extension TextInputView {
             return toPosition.index - fromPosition.index
         } else {
             return 0
-        }
-    }
-
-    private func closestIndex(to point: CGPoint) -> Int? {
-        if let line = lineManager.line(containingYOffset: point.y), let textRenderer = textRenderers[line.id] {
-            return closestIndex(to: point, in: textRenderer, showing: line)
-        } else if point.y <= 0 {
-            let firstLine = lineManager.firstLine
-            if let textRenderer = textRenderers[firstLine.id] {
-                return closestIndex(to: point, in: textRenderer, showing: firstLine)
-            } else {
-                return 0
-            }
-        } else {
-            let lastLine = lineManager.lastLine
-            if point.y >= lastLine.yPosition, let textRenderer = textRenderers[lastLine.id] {
-                return closestIndex(to: point, in: textRenderer, showing: lastLine)
-            } else {
-                return string.length
-            }
-        }
-    }
-
-    private func closestIndex(to point: CGPoint, in textRenderer: TextRenderer, showing line: DocumentLineNode) -> Int? {
-        let localPoint = CGPoint(x: point.x, y: point.y - textRenderer.frame.minY)
-        if let index = textRenderer.closestIndex(to: localPoint) {
-            if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
-                return line.location + line.data.length
-            } else {
-                return line.location + index
-            }
-        } else {
-            return nil
         }
     }
 
@@ -722,5 +662,9 @@ extension TextInputView: LayoutManagerDelegate {
 
     func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager) {
         delegate?.textInputViewDidInvalidateContentSize(self)
+    }
+
+    func lengthOfString(in layoutManager: LayoutManager) -> Int {
+        return string.length
     }
 }

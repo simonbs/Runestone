@@ -11,6 +11,7 @@ protocol LayoutManagerDelegate: AnyObject {
     func layoutManager(_ layoutManager: LayoutManager, stringIn range: NSRange) -> String
     func layoutManager(_ layoutManager: LayoutManager, shouldInsertViewIntoViewHierarchy view: UIView)
     func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager)
+    func lengthOfString(in layoutManager: LayoutManager) -> Int
 }
 
 final class LayoutManager {
@@ -29,8 +30,8 @@ final class LayoutManager {
     var font: UIFont?
     var textColor: UIColor?
     var backgroundColor: UIColor?
+    var lineManager: LineManager
 
-    private let lineManager: LineManager
     private let syntaxHighlightController: SyntaxHighlightController
     private let syntaxHighlightQueue = OperationQueue()
     private var queuedLineViews: Set<LineView> = []
@@ -82,6 +83,18 @@ final class LayoutManager {
         textRenderers.removeValue(forKey: lineID)
     }
 
+    func updateLineViews(showing lines: Set<DocumentLineNode>) {
+       for line in lines {
+           if let textRenderer = textRenderers[line.id] {
+               syntaxHighlightController.removedCachedAttributes(for: line.id)
+               textRenderer.invalidate()
+           }
+       }
+   }
+}
+
+// MARK: - UITextInput
+extension LayoutManager {
     func caretRect(at location: Int) -> CGRect? {
         guard let line = lineManager.line(containingCharacterAt: location) else {
             return nil
@@ -100,6 +113,74 @@ final class LayoutManager {
         let textRenderer = textRenderers[line.id]!
         let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
         return textRenderer.firstRect(for: localRange)
+    }
+
+    func selectionRects(in range: NSRange) -> [TextSelectionRect] {
+        guard let startLine = lineManager.line(containingCharacterAt: range.location) else {
+            return []
+        }
+        guard let endLine = lineManager.line(containingCharacterAt: range.location + range.length) else {
+            return []
+        }
+        var selectionRects: [TextSelectionRect] = []
+        let lineIndexRange = startLine.index ..< endLine.index + 1
+        for lineIndex in lineIndexRange {
+            let line = lineManager.line(atIndex: lineIndex)
+            let textRenderer = getTextRenderer(for: line)
+            let lineStartLocation = line.location
+            let lineEndLocation = lineStartLocation + line.data.totalLength
+            let localRangeLocation = max(range.location, lineStartLocation) - lineStartLocation
+            let localRangeLength = min(range.location + range.length, lineEndLocation) - lineStartLocation - localRangeLocation
+            let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
+            let rendererSelectionRects = textRenderer.selectionRects(in: localRange)
+            let textSelectionRects: [TextSelectionRect] = rendererSelectionRects.map { rendererSelectionRect in
+                let y = line.yPosition + rendererSelectionRect.rect.minY
+                var screenRect = CGRect(x: rendererSelectionRect.rect.minX, y: y, width: rendererSelectionRect.rect.width, height: rendererSelectionRect.rect.height)
+                let startLocation = lineStartLocation + rendererSelectionRect.range.location
+                let endLocation = startLocation + rendererSelectionRect.range.length
+                let containsStart = range.location >= startLocation && range.location <= endLocation
+                let containsEnd = range.location + range.length >= startLocation && range.location + range.length <= endLocation
+                if endLocation < range.location + range.length {
+                    screenRect.size.width = frame.width - screenRect.minX
+                }
+                return TextSelectionRect(rect: screenRect, writingDirection: .leftToRight, containsStart: containsStart, containsEnd: containsEnd)
+            }
+            selectionRects.append(contentsOf: textSelectionRects)
+        }
+        return selectionRects.ensuringYAxisAlignment()
+    }
+
+    func closestIndex(to point: CGPoint) -> Int? {
+        if let line = lineManager.line(containingYOffset: point.y), let textRenderer = textRenderers[line.id] {
+            return closestIndex(to: point, in: textRenderer, showing: line)
+        } else if point.y <= 0 {
+            let firstLine = lineManager.firstLine
+            if let textRenderer = textRenderers[firstLine.id] {
+                return closestIndex(to: point, in: textRenderer, showing: firstLine)
+            } else {
+                return 0
+            }
+        } else {
+            let lastLine = lineManager.lastLine
+            if point.y >= lastLine.yPosition, let textRenderer = textRenderers[lastLine.id] {
+                return closestIndex(to: point, in: textRenderer, showing: lastLine)
+            } else {
+                return currentDelegate.lengthOfString(in: self)
+            }
+        }
+    }
+
+    private func closestIndex(to point: CGPoint, in textRenderer: TextRenderer, showing line: DocumentLineNode) -> Int? {
+        let localPoint = CGPoint(x: point.x, y: point.y - textRenderer.frame.minY)
+        if let index = textRenderer.closestIndex(to: localPoint) {
+            if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
+                return line.location + line.data.length
+            } else {
+                return line.location + index
+            }
+        } else {
+            return nil
+        }
     }
 }
 
@@ -165,15 +246,6 @@ extension LayoutManager {
         let didUpdateHeight = lineManager.setHeight(of: line, to: lineHeight)
         if didUpdateHeight {
             _contentSize = nil
-        }
-    }
-
-    private func updateLineViews(showing lines: Set<DocumentLineNode>) {
-        for line in lines {
-            if let textRenderer = textRenderers[line.id] {
-                syntaxHighlightController.removedCachedAttributes(for: line.id)
-                textRenderer.invalidate()
-            }
         }
     }
 }
