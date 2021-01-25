@@ -1,5 +1,5 @@
 //
-//  EditorTextInputStringTokenizer.swift
+//  TextInputStringTokenizer.swift
 //  
 //
 //  Created by Simon Støvring on 13/01/2021.
@@ -7,7 +7,7 @@
 
 import UIKit
 
-final class EditorTextInputStringTokenizer: UITextInputStringTokenizer {
+final class TextInputStringTokenizer: UITextInputStringTokenizer {
     private let lineManager: LineManager
 
     init(textInput: UIResponder & UITextInput, lineManager: LineManager) {
@@ -16,7 +16,7 @@ final class EditorTextInputStringTokenizer: UITextInputStringTokenizer {
     }
 
     override func isPosition(_ position: UITextPosition, atBoundary granularity: UITextGranularity, inDirection direction: UITextDirection) -> Bool {
-        guard let indexedPosition = position as? EditorIndexedPosition else {
+        guard let indexedPosition = position as? IndexedPosition else {
             return super.isPosition(position, atBoundary: granularity, inDirection: direction)
         }
         if granularity == .line, let line = lineManager.line(containingCharacterAt: indexedPosition.index) {

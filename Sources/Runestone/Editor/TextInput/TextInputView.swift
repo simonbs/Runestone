@@ -1,5 +1,5 @@
 //
-//  EditorTextInputView.swift
+//  TextInputView.swift
 //  
 //
 //  Created by Simon Støvring on 05/01/2021.
@@ -7,14 +7,14 @@
 
 import UIKit
 
-protocol EditorTextInputViewDelegate: AnyObject {
-    func editorTextInputViewDidBeginEditing(_ view: EditorTextInputView)
-    func editorTextInputViewDidEndEditing(_ view: EditorTextInputView)
-    func editorTextInputViewDidChange(_ view: EditorTextInputView)
-    func editorTextInputViewDidInvalidateContentSize(_ view: EditorTextInputView)
+protocol TextInputViewDelegate: AnyObject {
+    func textInputViewDidBeginEditing(_ view: TextInputView)
+    func textInputViewDidEndEditing(_ view: TextInputView)
+    func textInputViewDidChange(_ view: TextInputView)
+    func textInputViewDidInvalidateContentSize(_ view: TextInputView)
 }
 
-final class EditorTextInputView: UIView, UITextInput {
+final class TextInputView: UIView, UITextInput {
     private struct ParsedLine {
         let startByte: ByteCount
         let byteCount: ByteCount
@@ -29,13 +29,13 @@ final class EditorTextInputView: UIView, UITextInput {
     var selectedTextRange: UITextRange? {
         get {
             if let range = selectedRange {
-                return EditorIndexedRange(range: range)
+                return IndexedRange(range: range)
             } else {
                 return nil
             }
         }
         set {
-            if let newRange = (newValue as? EditorIndexedRange)?.range {
+            if let newRange = (newValue as? IndexedRange)?.range {
                 if newRange != selectedRange {
                     inputDelegate?.selectionWillChange(self)
                     selectedRange = newRange
@@ -49,16 +49,16 @@ final class EditorTextInputView: UIView, UITextInput {
     private(set) var markedTextRange: UITextRange?
     var markedTextStyle: [NSAttributedString.Key: Any]?
     var beginningOfDocument: UITextPosition {
-        return EditorIndexedPosition(index: 0)
+        return IndexedPosition(index: 0)
     }
     var endOfDocument: UITextPosition {
-        return EditorIndexedPosition(index: string.length)
+        return IndexedPosition(index: string.length)
     }
     var inputDelegate: UITextInputDelegate?
     var hasText: Bool {
         return string.length > 0
     }
-    private(set) lazy var tokenizer: UITextInputTokenizer = EditorTextInputStringTokenizer(textInput: self, lineManager: lineManager)
+    private(set) lazy var tokenizer: UITextInputTokenizer = TextInputStringTokenizer(textInput: self, lineManager: lineManager)
     var autocorrectionType: UITextAutocorrectionType = .default
     var autocapitalizationType: UITextAutocapitalizationType = .sentences
     var smartQuotesType: UITextSmartQuotesType = .default
@@ -120,7 +120,7 @@ final class EditorTextInputView: UIView, UITextInput {
     }
 
     // MARK: - Misc
-    weak var delegate: EditorTextInputViewDelegate?
+    weak var delegate: TextInputViewDelegate?
     override var canBecomeFirstResponder: Bool {
         return true
     }
@@ -132,12 +132,12 @@ final class EditorTextInputView: UIView, UITextInput {
     private var lineManager = LineManager()
     private var _contentSize: CGSize?
     private let syntaxHighlightController = SyntaxHighlightController()
-    private var queuedLineViews: Set<EditorLineView> = []
-    private var visibleLineViews: [DocumentLineNodeID: EditorLineView] = [:]
-    private var textRenderers: [DocumentLineNodeID: EditorTextRenderer] = [:]
+    private var queuedLineViews: Set<LineView> = []
+    private var visibleLineViews: [DocumentLineNodeID: LineView] = [:]
+    private var textRenderers: [DocumentLineNodeID: TextRenderer] = [:]
     private let syntaxHighlightQueue = OperationQueue()
     private var parsedLine: ParsedLine?
-    private var floatingCaretView: EditorFloatingCaretView?
+    private var floatingCaretView: FloatingCaretView?
     private var insertionPointColorBeforeFloatingBegan: UIColor = .black
     private var textSelectionView: UIView? {
         if let klass = NSClassFromString("UITextSelectionView") {
@@ -176,7 +176,7 @@ final class EditorTextInputView: UIView, UITextInput {
                 selectedRange = NSRange(location: 0, length: 0)
                 inputDelegate?.selectionDidChange(self)
             }
-            delegate?.editorTextInputViewDidBeginEditing(self)
+            delegate?.textInputViewDidBeginEditing(self)
         }
         return didBecomeFirstResponder
     }
@@ -232,7 +232,7 @@ final class EditorTextInputView: UIView, UITextInput {
 }
 
 // MARK: - Public
-extension EditorTextInputView {
+extension TextInputView {
     func setState(_ state: EditorState) {
         _string = NSMutableString(string: state.text)
         lineManager = state.lineManager
@@ -250,7 +250,7 @@ extension EditorTextInputView {
 }
 
 // MARK: - Floating Caret
-extension EditorTextInputView {
+extension TextInputView {
     func beginFloatingCursor(at point: CGPoint) {
         if floatingCaretView == nil, let position = closestPosition(to: point) {
             insertionPointColorBeforeFloatingBegan = insertionPointColor
@@ -258,7 +258,7 @@ extension EditorTextInputView {
             updateCaretColor()
             let caretRect = self.caretRect(for: position)
             let caretOrigin = CGPoint(x: point.x - caretRect.width / 2, y: point.y - caretRect.height / 2)
-            let floatingCaretView = EditorFloatingCaretView()
+            let floatingCaretView = FloatingCaretView()
             floatingCaretView.backgroundColor = insertionPointColorBeforeFloatingBegan
             floatingCaretView.frame = CGRect(origin: caretOrigin, size: caretRect.size)
             addSubview(floatingCaretView)
@@ -291,13 +291,13 @@ extension EditorTextInputView {
 }
 
 // MARK: - Rects
-extension EditorTextInputView {
+extension TextInputView {
     func caretRect(for position: UITextPosition) -> CGRect {
-        guard let indexedPosition = position as? EditorIndexedPosition else {
-            fatalError("Expected position to be of type \(EditorIndexedPosition.self)")
+        guard let indexedPosition = position as? IndexedPosition else {
+            fatalError("Expected position to be of type \(IndexedPosition.self)")
         }
         if string.length == 0 {
-            return CGRect(x: 0, y: 0, width: EditorCaret.width, height: EditorCaret.defaultHeight(for: font))
+            return CGRect(x: 0, y: 0, width: Caret.width, height: Caret.defaultHeight(for: font))
         } else if let line = lineManager.line(containingCharacterAt: indexedPosition.index) {
             let textRenderer = getTextRenderer(for: line)
             let localIndex = indexedPosition.index - line.location
@@ -310,8 +310,8 @@ extension EditorTextInputView {
     }
 
     func firstRect(for range: UITextRange) -> CGRect {
-        guard let indexedRange = range as? EditorIndexedRange else {
-            fatalError("Expected range to be of type \(EditorIndexedRange.self)")
+        guard let indexedRange = range as? IndexedRange else {
+            fatalError("Expected range to be of type \(IndexedRange.self)")
         }
         let range = indexedRange.range
         guard let line = lineManager.line(containingCharacterAt: range.location) else {
@@ -328,7 +328,7 @@ extension EditorTextInputView {
 }
 
 // MARK: - Editing
-extension EditorTextInputView {
+extension TextInputView {
     func insertText(_ text: String) {
         if let range = selectedRange {
             let nsString = text as NSString
@@ -352,13 +352,13 @@ extension EditorTextInputView {
     }
 
     func replace(_ range: UITextRange, withText text: String) {
-        if let indexedRange = range as? EditorIndexedRange {
+        if let indexedRange = range as? IndexedRange {
             replace(indexedRange.range, withText: text as NSString)
         }
     }
 
     func text(in range: UITextRange) -> String? {
-        if let indexedRange = range as? EditorIndexedRange {
+        if let indexedRange = range as? IndexedRange {
             return text(in: indexedRange.range)
         } else {
             return nil
@@ -411,7 +411,7 @@ extension EditorTextInputView {
         updateLineViews(showing: editedLines)
         layoutLines()
         inputDelegate?.textDidChange(self)
-        delegate?.editorTextInputViewDidChange(self)
+        delegate?.textInputViewDidChange(self)
     }
 
     private func lines(in changedRanges: [SourceRange]) -> Set<DocumentLineNode> {
@@ -447,23 +447,23 @@ extension EditorTextInputView {
 }
 
 // MARK: - Selection
-extension EditorTextInputView {
+extension TextInputView {
     func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
-        if let indexedRange = range as? EditorIndexedRange {
+        if let indexedRange = range as? IndexedRange {
             return selectionRects(in: indexedRange.range)
         } else {
             return []
         }
     }
 
-    private func selectionRects(in range: NSRange) -> [EditorTextSelectionRect] {
+    private func selectionRects(in range: NSRange) -> [TextSelectionRect] {
         guard let startLine = lineManager.line(containingCharacterAt: range.location) else {
             return []
         }
         guard let endLine = lineManager.line(containingCharacterAt: range.location + range.length) else {
             return []
         }
-        var selectionRects: [EditorTextSelectionRect] = []
+        var selectionRects: [TextSelectionRect] = []
         let lineIndexRange = startLine.index ..< endLine.index + 1
         for lineIndex in lineIndexRange {
             let line = lineManager.line(atIndex: lineIndex)
@@ -474,7 +474,7 @@ extension EditorTextInputView {
             let localRangeLength = min(range.location + range.length, lineEndLocation) - lineStartLocation - localRangeLocation
             let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
             let rendererSelectionRects = textRenderer.selectionRects(in: localRange)
-            let textSelectionRects: [EditorTextSelectionRect] = rendererSelectionRects.map { rendererSelectionRect in
+            let textSelectionRects: [TextSelectionRect] = rendererSelectionRects.map { rendererSelectionRect in
                 let y = line.yPosition + rendererSelectionRect.rect.minY
                 var screenRect = CGRect(x: rendererSelectionRect.rect.minX, y: y, width: rendererSelectionRect.rect.width, height: rendererSelectionRect.rect.height)
                 let startLocation = lineStartLocation + rendererSelectionRect.range.location
@@ -484,7 +484,7 @@ extension EditorTextInputView {
                 if endLocation < range.location + range.length {
                     screenRect.size.width = frame.width - screenRect.minX
                 }
-                return EditorTextSelectionRect(rect: screenRect, writingDirection: .leftToRight, containsStart: containsStart, containsEnd: containsEnd)
+                return TextSelectionRect(rect: screenRect, writingDirection: .leftToRight, containsStart: containsStart, containsEnd: containsEnd)
                 }
             selectionRects.append(contentsOf: textSelectionRects)
         }
@@ -493,20 +493,20 @@ extension EditorTextInputView {
 }
 
 // MARK: - Marking
-extension EditorTextInputView {
+extension TextInputView {
     func setMarkedText(_ markedText: String?, selectedRange: NSRange) {}
 
     func unmarkText() {}
 }
 
 // MARK: - Ranges and Positions
-extension EditorTextInputView {
+extension TextInputView {
     func position(within range: UITextRange, farthestIn direction: UITextLayoutDirection) -> UITextPosition? {
         return nil
     }
 
     func position(from position: UITextPosition, in direction: UITextLayoutDirection, offset: Int) -> UITextPosition? {
-        guard let indexedPosition = position as? EditorIndexedPosition else {
+        guard let indexedPosition = position as? IndexedPosition else {
             return nil
         }
         var newPosition = indexedPosition.index
@@ -523,7 +523,7 @@ extension EditorTextInputView {
             break
         }
         if newPosition >= 0 && newPosition <= string.length {
-            return EditorIndexedPosition(index: newPosition)
+            return IndexedPosition(index: newPosition)
         } else {
             return nil
         }
@@ -539,7 +539,7 @@ extension EditorTextInputView {
 
     func closestPosition(to point: CGPoint) -> UITextPosition? {
         if let index = closestIndex(to: point) {
-            return EditorIndexedPosition(index: index)
+            return IndexedPosition(index: index)
         } else {
             return nil
         }
@@ -550,27 +550,27 @@ extension EditorTextInputView {
     }
 
     func textRange(from fromPosition: UITextPosition, to toPosition: UITextPosition) -> UITextRange? {
-        guard let fromIndexedPosition = fromPosition as? EditorIndexedPosition, let toIndexedPosition = toPosition as? EditorIndexedPosition else {
+        guard let fromIndexedPosition = fromPosition as? IndexedPosition, let toIndexedPosition = toPosition as? IndexedPosition else {
             return nil
         }
         let range = NSRange(location: fromIndexedPosition.index, length: toIndexedPosition.index - fromIndexedPosition.index)
-        return EditorIndexedRange(range: range)
+        return IndexedRange(range: range)
     }
 
     func position(from position: UITextPosition, offset: Int) -> UITextPosition? {
-        guard let indexedPosition = position as? EditorIndexedPosition else {
+        guard let indexedPosition = position as? IndexedPosition else {
             return nil
         }
         let newPosition = indexedPosition.index + offset
         guard newPosition >= 0 && newPosition <= string.length else {
             return nil
         }
-        return EditorIndexedPosition(index: newPosition)
+        return IndexedPosition(index: newPosition)
     }
 
     func compare(_ position: UITextPosition, to other: UITextPosition) -> ComparisonResult {
-        guard let indexedPosition = position as? EditorIndexedPosition, let otherIndexedPosition = other as? EditorIndexedPosition else {
-            fatalError("Positions must be of type \(EditorIndexedPosition.self)")
+        guard let indexedPosition = position as? IndexedPosition, let otherIndexedPosition = other as? IndexedPosition else {
+            fatalError("Positions must be of type \(IndexedPosition.self)")
         }
         if indexedPosition.index < otherIndexedPosition.index {
             return .orderedAscending
@@ -582,7 +582,7 @@ extension EditorTextInputView {
     }
 
     func offset(from: UITextPosition, to toPosition: UITextPosition) -> Int {
-        if let fromPosition = from as? EditorIndexedPosition, let toPosition = toPosition as? EditorIndexedPosition {
+        if let fromPosition = from as? IndexedPosition, let toPosition = toPosition as? IndexedPosition {
             return toPosition.index - fromPosition.index
         } else {
             return 0
@@ -609,7 +609,7 @@ extension EditorTextInputView {
         }
     }
 
-    private func closestIndex(to point: CGPoint, in textRenderer: EditorTextRenderer, showing line: DocumentLineNode) -> Int? {
+    private func closestIndex(to point: CGPoint, in textRenderer: TextRenderer, showing line: DocumentLineNode) -> Int? {
         let localPoint = CGPoint(x: point.x, y: point.y - textRenderer.frame.minY)
         if let index = textRenderer.closestIndex(to: localPoint) {
             if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
@@ -653,7 +653,7 @@ extension EditorTextInputView {
 }
 
 // MARK: - Writing Direction
-extension EditorTextInputView {
+extension TextInputView {
     func baseWritingDirection(for position: UITextPosition, in direction: UITextStorageDirection) -> NSWritingDirection {
         return .natural
     }
@@ -662,7 +662,7 @@ extension EditorTextInputView {
 }
 
 // MARK: - Drawing
-extension EditorTextInputView {
+extension TextInputView {
     private func layoutLines() {
         let oldVisibleLineIds = Set(visibleLineViews.keys)
         var nextLine = lineManager.line(containingYOffset: viewport.minY)
@@ -680,7 +680,7 @@ extension EditorTextInputView {
         let disappearedLineIDs = oldVisibleLineIds.subtracting(appearedLineIDs)
         enqueueLineViews(withIDs: disappearedLineIDs)
         if _contentSize == nil {
-            delegate?.editorTextInputViewDidInvalidateContentSize(self)
+            delegate?.textInputViewDidInvalidateContentSize(self)
         }
     }
 
@@ -708,7 +708,7 @@ extension EditorTextInputView {
         }
     }
 
-    private func dequeueLineView(withID lineID: DocumentLineNodeID) -> EditorLineView {
+    private func dequeueLineView(withID lineID: DocumentLineNodeID) -> LineView {
         if let lineView = visibleLineViews[lineID] {
             return lineView
         } else if !queuedLineViews.isEmpty {
@@ -716,17 +716,17 @@ extension EditorTextInputView {
             visibleLineViews[lineID] = lineView
             return lineView
         } else {
-            let lineView = EditorLineView()
+            let lineView = LineView()
             visibleLineViews[lineID] = lineView
             return lineView
         }
     }
 
-    private func getTextRenderer(for line: DocumentLineNode) -> EditorTextRenderer {
+    private func getTextRenderer(for line: DocumentLineNode) -> TextRenderer {
         if let cachedTextRenderer = textRenderers[line.id] {
             return cachedTextRenderer
         } else {
-            let textRenderer = EditorTextRenderer(syntaxHighlightController: syntaxHighlightController, syntaxHighlightQueue: syntaxHighlightQueue)
+            let textRenderer = TextRenderer(syntaxHighlightController: syntaxHighlightController, syntaxHighlightQueue: syntaxHighlightQueue)
             textRenderer.delegate = self
             prepare(textRenderer, toShow: line)
             textRenderers[line.id] = textRenderer
@@ -734,7 +734,7 @@ extension EditorTextInputView {
         }
     }
 
-    private func prepare(_ textRenderer: EditorTextRenderer, toShow line: DocumentLineNode) {
+    private func prepare(_ textRenderer: TextRenderer, toShow line: DocumentLineNode) {
         textRenderer.line = line
         textRenderer.lineWidth = frame.width
         textRenderer.font = font
@@ -758,14 +758,14 @@ extension EditorTextInputView {
 }
 
 // MARK: - Memory Management
-private extension EditorTextInputView {
+private extension TextInputView {
     @objc private func didReceiveMemoryWarning(_ notification: Notification) {
         syntaxHighlightController.clearCache()
     }
 }
 
 // MARK: - LineManagerDelegate
-extension EditorTextInputView: LineManagerDelegate {
+extension TextInputView: LineManagerDelegate {
     func lineManager(_ lineManager: LineManager, substringIn range: NSRange) -> String {
         return string.substring(with: range)
     }
@@ -781,7 +781,7 @@ extension EditorTextInputView: LineManagerDelegate {
 }
 
 // MARK: - ParserDelegate
-extension EditorTextInputView: ParserDelegate {
+extension TextInputView: ParserDelegate {
     func parser(_ parser: Parser, bytesAt byteIndex: ByteCount) -> [Int8]? {
         // Speed up parsing by using the line we recently parsed bytes in when possible.
         if let parsedLine = parsedLine, byteIndex >= parsedLine.startByte && byteIndex < parsedLine.endByte {
@@ -813,14 +813,14 @@ extension EditorTextInputView: ParserDelegate {
     }
 }
 
-// MARK: - EditorTextRendererDelegate
-extension EditorTextInputView: EditorTextRendererDelegate {
-    func editorTextRenderer(_ textRenderer: EditorTextRenderer, stringIn line: DocumentLineNode) -> String {
+// MARK: - TextRendererDelegate
+extension TextInputView: TextRendererDelegate {
+    func textRenderer(_ textRenderer: TextRenderer, stringIn line: DocumentLineNode) -> String {
         let range = NSRange(location: line.location, length: line.value)
         return string.substring(with: range)
     }
 
-    func editorTextRendererDidUpdateSyntaxHighlighting(_ textRenderer: EditorTextRenderer) {
+    func textRendererDidUpdateSyntaxHighlighting(_ textRenderer: TextRenderer) {
         if let lineID = textRenderer.line?.id {
             let lineView = visibleLineViews[lineID]
             lineView?.setNeedsDisplay()

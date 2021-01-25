@@ -1,5 +1,5 @@
 //
-//  EditorTextRenderer.swift
+//  TextRenderer.swift
 //  
 //
 //  Created by Simon Støvring on 23/01/2021.
@@ -21,12 +21,12 @@ private final class PreparedLine {
     }
 }
 
-protocol EditorTextRendererDelegate: AnyObject {
-    func editorTextRenderer(_ textRenderer: EditorTextRenderer, stringIn line: DocumentLineNode) -> String
-    func editorTextRendererDidUpdateSyntaxHighlighting(_ textRenderer: EditorTextRenderer)
+protocol TextRendererDelegate: AnyObject {
+    func textRenderer(_ textRenderer: TextRenderer, stringIn line: DocumentLineNode) -> String
+    func textRendererDidUpdateSyntaxHighlighting(_ textRenderer: TextRenderer)
 }
 
-final class EditorTextRenderer {
+final class TextRenderer {
     struct SelectionRect {
         let rect: CGRect
         let range: NSRange
@@ -37,7 +37,7 @@ final class EditorTextRenderer {
         }
     }
 
-    weak var delegate: EditorTextRendererDelegate?
+    weak var delegate: TextRendererDelegate?
     private(set) var preferredHeight: CGFloat = 0
     var frame: CGRect = .zero
     var line: DocumentLineNode? {
@@ -100,7 +100,7 @@ final class EditorTextRenderer {
             return
         }
         reset()
-        let string = delegate!.editorTextRenderer(self, stringIn: line)
+        let string = delegate!.textRenderer(self, stringIn: line)
         self.string = string
         attributedString = CFAttributedStringCreateMutable(kCFAllocatorDefault, string.utf16.count)
         if let attributedString = attributedString {
@@ -112,7 +112,7 @@ final class EditorTextRenderer {
                 isHighlighted = true
             }
             recreateTypesetter()
-            delegate?.editorTextRendererDidUpdateSyntaxHighlighting(self)
+            delegate?.textRendererDidUpdateSyntaxHighlighting(self)
         }
     }
 
@@ -136,10 +136,10 @@ final class EditorTextRenderer {
             let localIndex = index - lineRange.location
             if localIndex >= 0 && localIndex <= lineRange.length {
                 let xPos = CTLineGetOffsetForStringIndex(preparedLine.line, index, nil)
-                return CGRect(x: xPos, y: preparedLine.yPosition, width: EditorCaret.width, height: preparedLine.lineHeight)
+                return CGRect(x: xPos, y: preparedLine.yPosition, width: Caret.width, height: preparedLine.lineHeight)
             }
         }
-        return CGRect(x: 0, y: 0, width: EditorCaret.width, height: EditorCaret.defaultHeight(for: font))
+        return CGRect(x: 0, y: 0, width: Caret.width, height: Caret.defaultHeight(for: font))
     }
 
     func selectionRects(in range: NSRange) -> [SelectionRect] {
@@ -187,7 +187,7 @@ final class EditorTextRenderer {
     }
 }
 
-private extension EditorTextRenderer {
+private extension TextRenderer {
     private func reset() {
         currentSyntaxHighlightOperation?.cancel()
         currentSyntaxHighlightOperation = nil
@@ -253,7 +253,7 @@ private extension EditorTextRenderer {
         apply(attributes)
         recreateTypesetter()
         isHighlighted = true
-        delegate?.editorTextRendererDidUpdateSyntaxHighlighting(self)
+        delegate?.textRendererDidUpdateSyntaxHighlighting(self)
     }
 
     private func applyDefaultAttributes() {

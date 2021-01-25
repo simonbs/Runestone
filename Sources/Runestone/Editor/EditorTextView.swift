@@ -175,7 +175,7 @@ public final class EditorTextView: UIScrollView {
         }
     }
 
-    private let textInputView = EditorTextInputView()
+    private let textInputView = TextInputView()
     private let editingTextInteraction = UITextInteraction(for: .editable)
     private var _inputAccessoryView: UIView?
     private let tapGestureRecognizer = UITapGestureRecognizer()
@@ -228,24 +228,24 @@ private extension EditorTextView {
     }
 }
 
-// MARK: - EditorTextInputViewDelegate
-extension EditorTextView: EditorTextInputViewDelegate {
-    func editorTextInputViewDidBeginEditing(_ view: EditorTextInputView) {
+// MARK: - TextInputViewDelegate
+extension EditorTextView: TextInputViewDelegate {
+    func textInputViewDidBeginEditing(_ view: TextInputView) {
         addInteraction(editingTextInteraction)
     }
 
-    func editorTextInputViewDidEndEditing(_ view: EditorTextInputView) {
+    func textInputViewDidEndEditing(_ view: TextInputView) {
         removeInteraction(editingTextInteraction)
     }
 
-    func editorTextInputViewDidInvalidateContentSize(_ view: EditorTextInputView) {
+    func textInputViewDidInvalidateContentSize(_ view: TextInputView) {
         if contentSize != view.contentSize {
             contentSize = view.contentSize
             setNeedsLayout()
         }
     }
 
-    func editorTextInputViewDidChange(_ view: EditorTextInputView) {
+    func textInputViewDidChange(_ view: TextInputView) {
         editorDelegate?.editorTextViewDidChange(self)
     }
 }

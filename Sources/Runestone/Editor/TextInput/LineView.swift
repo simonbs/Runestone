@@ -1,5 +1,5 @@
 //
-//  EditorLineView.swift
+//  LineView.swift
 //  
 //
 //  Created by Simon Støvring on 18/01/2021.
@@ -7,8 +7,8 @@
 
 import UIKit
 
-final class EditorLineView: UIView {
-    var textRenderer: EditorTextRenderer? {
+final class LineView: UIView {
+    var textRenderer: TextRenderer? {
         didSet {
             if textRenderer !== oldValue {
                 textRenderer?.frame = frame

@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  IndexedRange.swift
 //  
 //
 //  Created by Simon Støvring on 04/01/2021.
@@ -7,13 +7,13 @@
 
 import UIKit
 
-final class EditorIndexedRange: UITextRange {
+final class IndexedRange: UITextRange {
     let range: NSRange
     override var start: UITextPosition {
-        return EditorIndexedPosition(index: range.location)
+        return IndexedPosition(index: range.location)
     }
     override var end: UITextPosition {
-        return EditorIndexedPosition(index: range.location + range.length)
+        return IndexedPosition(index: range.location + range.length)
     }
     override var isEmpty: Bool {
         return range.length == 0

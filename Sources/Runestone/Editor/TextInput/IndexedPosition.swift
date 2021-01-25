@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  IndexedPosition.swift
 //  
 //
 //  Created by Simon Støvring on 04/01/2021.
@@ -7,7 +7,7 @@
 
 import UIKit
 
-final class EditorIndexedPosition: UITextPosition {
+final class IndexedPosition: UITextPosition {
     let index: Int
 
     init(index: Int) {
