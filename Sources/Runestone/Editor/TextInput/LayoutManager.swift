@@ -81,6 +81,26 @@ final class LayoutManager {
     func removeLine(withID lineID: DocumentLineNodeID) {
         textRenderers.removeValue(forKey: lineID)
     }
+
+    func caretRect(at location: Int) -> CGRect? {
+        guard let line = lineManager.line(containingCharacterAt: location) else {
+            return nil
+        }
+        let textRenderer = getTextRenderer(for: line)
+        let localLocation = location - line.location
+        let localCaretRect = textRenderer.caretRect(atIndex: localLocation)
+        let globalYPosition = line.yPosition + localCaretRect.minY
+        return CGRect(x: localCaretRect.minX, y: globalYPosition, width: localCaretRect.width, height: localCaretRect.height)
+    }
+
+    func firstRect(for range: NSRange) -> CGRect? {
+        guard let line = lineManager.line(containingCharacterAt: range.location) else {
+            fatalError("Cannot find first rect.")
+        }
+        let textRenderer = textRenderers[line.id]!
+        let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
+        return textRenderer.firstRect(for: localRange)
+    }
 }
 
 // MARK: - Drawing

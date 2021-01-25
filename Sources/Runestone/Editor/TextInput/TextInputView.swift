@@ -308,12 +308,8 @@ extension TextInputView {
         }
         if string.length == 0 {
             return CGRect(x: 0, y: 0, width: Caret.width, height: Caret.defaultHeight(for: font))
-        } else if let line = lineManager.line(containingCharacterAt: indexedPosition.index) {
-            let textRenderer = getTextRenderer(for: line)
-            let localIndex = indexedPosition.index - line.location
-            let localCaretRect = textRenderer.caretRect(atIndex: localIndex)
-            let globalYPosition = line.yPosition + localCaretRect.minY
-            return CGRect(x: localCaretRect.minX, y: globalYPosition, width: localCaretRect.width, height: localCaretRect.height)
+        } else if let caretRect = layoutManager.caretRect(at: indexedPosition.index) {
+            return caretRect
         } else {
             fatalError("Cannot create caret rect as line is unavailable.")
         }
@@ -323,13 +319,7 @@ extension TextInputView {
         guard let indexedRange = range as? IndexedRange else {
             fatalError("Expected range to be of type \(IndexedRange.self)")
         }
-        let range = indexedRange.range
-        guard let line = lineManager.line(containingCharacterAt: range.location) else {
-            fatalError("Cannot find first rect.")
-        }
-        let textRenderer = textRenderers[line.id]!
-        let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
-        if let firstRect = textRenderer.firstRect(for: localRange) {
+        if let firstRect = layoutManager.firstRect(for: indexedRange.range) {
             return firstRect
         } else {
             fatalError("First rect is unavailable.")
