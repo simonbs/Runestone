@@ -12,6 +12,7 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidEndEditing(_ view: TextInputView)
     func textInputViewDidChange(_ view: TextInputView)
     func textInputViewDidChangeSelection(_ view: TextInputView)
+    func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
     func textInputViewDidInvalidateContentSize(_ view: TextInputView)
 }
 
@@ -383,7 +384,7 @@ extension TextInputView {
 // MARK: - Editing
 extension TextInputView {
     func insertText(_ text: String) {
-        if let range = selectedRange {
+        if let range = selectedRange, shouldChangeText(in: range, replacementText: text) {
             let nsString = text as NSString
             replaceCharacters(in: range, with: nsString)
             inputDelegate?.selectionWillChange(self)
@@ -397,21 +398,25 @@ extension TextInputView {
             return
         }
         if range.length > 0 {
-            replaceCharacters(in: range, with: "")
-            inputDelegate?.selectionWillChange(self)
-            selectedRange = NSRange(location: range.location, length: 0)
-            inputDelegate?.selectionDidChange(self)
+            if shouldChangeText(in: range, replacementText: "") {
+                replaceCharacters(in: range, with: "")
+                inputDelegate?.selectionWillChange(self)
+                selectedRange = NSRange(location: range.location, length: 0)
+                inputDelegate?.selectionDidChange(self)
+            }
         } else if range.location > 0 {
-            let deleteRange = NSRange(location: range.location - 1, length: 1)
-            replaceCharacters(in: deleteRange, with: "")
-            inputDelegate?.selectionWillChange(self)
-            selectedRange = NSRange(location: range.location, length: 0)
-            inputDelegate?.selectionDidChange(self)
+            if shouldChangeText(in: range, replacementText: "") {
+                let deleteRange = NSRange(location: range.location - 1, length: 1)
+                replaceCharacters(in: deleteRange, with: "")
+                inputDelegate?.selectionWillChange(self)
+                selectedRange = NSRange(location: range.location, length: 0)
+                inputDelegate?.selectionDidChange(self)
+            }
         }
     }
 
     func replace(_ range: UITextRange, withText text: String) {
-        if let indexedRange = range as? IndexedRange {
+        if let indexedRange = range as? IndexedRange, shouldChangeText(in: indexedRange.range, replacementText: text) {
             replace(indexedRange.range, withText: text as NSString)
         }
     }
@@ -504,6 +509,10 @@ extension TextInputView {
         let lineString = string.substring(with: lineGlobalRange)
         let localByteOffset = lineString.byteOffset(at: lineLocalLocation)
         return line.data.startByte + localByteOffset
+    }
+
+    private func shouldChangeText(in range: NSRange, replacementText text: String) -> Bool {
+        return delegate?.textInputView(self, shouldChangeTextIn: range, replacementText: text) ?? true
     }
 }
 

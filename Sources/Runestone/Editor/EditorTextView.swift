@@ -15,6 +15,7 @@ public protocol EditorTextViewDelegate: AnyObject {
     func editorTextViewDidEndEditing(_ textView: EditorTextView)
     func editorTextViewDidChange(_ textView: EditorTextView)
     func editorTextViewDidChangeSelection(_ textView: EditorTextView)
+    func editorTextView(_ textView: EditorTextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
 }
 
 public extension EditorTextViewDelegate {
@@ -28,6 +29,9 @@ public extension EditorTextViewDelegate {
     func editorTextViewDidEndEditing(_ textView: EditorTextView) {}
     func editorTextViewDidChange(_ textView: EditorTextView) {}
     func editorTextViewDidChangeSelection(_ textView: EditorTextView) {}
+    func editorTextView(_ textView: EditorTextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+        return true
+    }
 }
 
 public final class EditorTextView: UIScrollView {
@@ -292,6 +296,10 @@ extension EditorTextView: TextInputViewDelegate {
             contentSize = view.contentSize
             setNeedsLayout()
         }
+    }
+
+    func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+        return editorDelegate?.editorTextView(self, shouldChangeTextIn: range, replacementText: text) ?? true
     }
 }
 
