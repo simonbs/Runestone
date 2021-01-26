@@ -417,7 +417,7 @@ extension TextInputView {
 
     func replace(_ range: UITextRange, withText text: String) {
         if let indexedRange = range as? IndexedRange, shouldChangeText(in: indexedRange.range, replacementText: text) {
-            replace(indexedRange.range, withText: text as NSString)
+            replace(indexedRange.range, withText: text)
         }
     }
 
@@ -429,7 +429,7 @@ extension TextInputView {
         }
     }
 
-    private func text(in range: NSRange) -> String? {
+    func text(in range: NSRange) -> String? {
         if range.location >= 0 && range.location + range.length <= string.length {
             return string.substring(with: range)
         } else {
@@ -437,10 +437,11 @@ extension TextInputView {
         }
     }
 
-    private func replace(_ range: NSRange, withText text: NSString) {
-        replaceCharacters(in: range, with: text)
+    func replace(_ range: NSRange, withText text: String) {
+        let nsText = text as NSString
+        replaceCharacters(in: range, with: nsText)
         inputDelegate?.selectionWillChange(self)
-        selectedRange = NSRange(location: range.location + text.length, length: 0)
+        selectedRange = NSRange(location: range.location + nsText.length, length: 0)
         inputDelegate?.selectionDidChange(self)
     }
 

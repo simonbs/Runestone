@@ -16,6 +16,7 @@ public protocol EditorTextViewDelegate: AnyObject {
     func editorTextViewDidChange(_ textView: EditorTextView)
     func editorTextViewDidChangeSelection(_ textView: EditorTextView)
     func editorTextView(_ textView: EditorTextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
+    func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: EditorCharacterPair, in range: NSRange) -> Bool
 }
 
 public extension EditorTextViewDelegate {
@@ -30,6 +31,9 @@ public extension EditorTextViewDelegate {
     func editorTextViewDidChange(_ textView: EditorTextView) {}
     func editorTextViewDidChangeSelection(_ textView: EditorTextView) {}
     func editorTextView(_ textView: EditorTextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+        return true
+    }
+    func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: EditorCharacterPair, in range: NSRange) -> Bool {
         return true
     }
 }
@@ -187,6 +191,7 @@ public final class EditorTextView: UIScrollView {
             }
         }
     }
+    public var characterPairs: [EditorCharacterPair] = []
 
     private let textInputView = TextInputView()
     private let editingTextInteraction = UITextInteraction(for: .editable)
@@ -271,6 +276,25 @@ private extension EditorTextView {
     }
 }
 
+// MARK: - Editing
+private extension EditorTextView {
+    private func insert(_ characterPair: EditorCharacterPair, in range: NSRange) {
+        guard let selectedRange = textInputView.selectedRange else {
+            return
+        }
+        if selectedRange.length == 0 {
+            textInputView.insertText(characterPair.leading + characterPair.trailing)
+            let newSelectedRange = NSRange(location: range.location + characterPair.leading.count, length: 0)
+            textInputView.selectedTextRange = IndexedRange(range: newSelectedRange)
+        } else if let text = textInputView.text(in: selectedRange) {
+            let modifiedText = characterPair.leading + text + characterPair.trailing
+            textInputView.replace(selectedRange, withText: modifiedText)
+            let newSelectedRange = NSRange(location: range.location + characterPair.leading.count, length: range.length)
+            textInputView.selectedTextRange = IndexedRange(range: newSelectedRange)
+        }
+    }
+}
+
 // MARK: - TextInputViewDelegate
 extension EditorTextView: TextInputViewDelegate {
     func textInputViewDidBeginEditing(_ view: TextInputView) {
@@ -299,7 +323,17 @@ extension EditorTextView: TextInputViewDelegate {
     }
 
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
-        return editorDelegate?.editorTextView(self, shouldChangeTextIn: range, replacementText: text) ?? true
+        if let characterPair = characterPairs.first(where: { $0.leading == text }) {
+            let shouldInsertCharacterPair = editorDelegate?.editorTextView(self, shouldInsert: characterPair, in: range) ?? true
+            if shouldInsertCharacterPair {
+                insert(characterPair, in: range)
+                return false
+            } else {
+                return editorDelegate?.editorTextView(self, shouldChangeTextIn: range, replacementText: text) ?? true
+            }
+        } else {
+            return editorDelegate?.editorTextView(self, shouldChangeTextIn: range, replacementText: text) ?? true
+        }
     }
 }
 
