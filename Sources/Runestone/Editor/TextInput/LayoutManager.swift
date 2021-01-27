@@ -9,13 +9,13 @@ import UIKit
 
 protocol LayoutManagerDelegate: AnyObject {
     func layoutManager(_ layoutManager: LayoutManager, stringIn range: NSRange) -> String
-    func layoutManager(_ layoutManager: LayoutManager, shouldInsertViewIntoViewHierarchy view: UIView)
     func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager)
     func lengthOfString(in layoutManager: LayoutManager) -> Int
 }
 
 final class LayoutManager {
     weak var delegate: LayoutManagerDelegate?
+    weak var containerView: UIView?
     var lineManager: LineManager
     var frame: CGRect = .zero {
         didSet {
@@ -38,6 +38,9 @@ final class LayoutManager {
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
             if theme !== oldValue {
+                gutterView.backgroundColor = theme.gutterBackgroundColor
+                gutterView.hairlineColor = theme.gutterHairlineColor
+                gutterView.hairlineWidth = theme.gutterHairlineWidth
                 invalidateLines()
                 layoutLines()
             }
@@ -46,20 +49,45 @@ final class LayoutManager {
     var backgroundColor: UIColor? {
         didSet {
             if backgroundColor != oldValue {
-                let allVisibleLineViews = visibleLineViews.values
+                let allVisibleLineViews = lineViewReuseQueue.visibleViews.values
                 for visibleLineView in allVisibleLineViews {
                     visibleLineView.backgroundColor = backgroundColor
                 }
             }
         }
     }
+    var showLineNumbers = false {
+        didSet {
+            if showLineNumbers != oldValue {
+                if showLineNumbers {
+                    updateGutterWidth()
+                }
+            }
+        }
+    }
+    var gutterLeadingPadding: CGFloat = 3
+    var gutterTrailingPadding: CGFloat = 3
+    var gutterMargin: CGFloat = 10
+    var totalGutterWidth: CGFloat {
+        return gutterWidth + gutterLeadingPadding + gutterTrailingPadding
+    }
 
     private let syntaxHighlightController: SyntaxHighlightController
     private let operationQueue: OperationQueue
-    private var queuedLineViews: Set<LineView> = []
-    private var visibleLineViews: [DocumentLineNodeID: LineView] = [:]
+    private var lineViewReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineView>()
+    private var lineNumberLabelReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineNumberView>()
     private var textRenderers: [DocumentLineNodeID: TextRenderer] = [:]
+    private let gutterView = GutterView()
     private var _contentSize: CGSize?
+    private var gutterWidth: CGFloat = 0
+    private var previousGutterWidthUpdateLineCount: Int?
+    private var leadingLineSpacing: CGFloat {
+        if showLineNumbers {
+            return totalGutterWidth + gutterMargin
+        } else {
+            return 0
+        }
+    }
     private var currentDelegate: LayoutManagerDelegate {
         if let delegate = delegate {
             return delegate
@@ -80,8 +108,18 @@ final class LayoutManager {
     }
 
     func layoutLines() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         syntaxHighlightController.prepare()
-        let oldVisibleLineIds = Set(visibleLineViews.keys)
+        if showLineNumbers {
+            if gutterView.superview == nil {
+                containerView?.addSubview(gutterView)
+            }
+        } else {
+            gutterView.removeFromSuperview()
+        }
+        gutterView.frame = CGRect(x: 0, y: viewport.minY, width: totalGutterWidth, height: viewport.height)
+        let oldVisibleLineIds = Set(lineViewReuseQueue.visibleViews.keys)
         var nextLine = lineManager.line(containingYOffset: viewport.minY)
         var appearedLineIDs: Set<DocumentLineNodeID> = []
         var maxY = viewport.minY
@@ -95,10 +133,12 @@ final class LayoutManager {
             }
         }
         let disappearedLineIDs = oldVisibleLineIds.subtracting(appearedLineIDs)
-        enqueueLineViews(withIDs: disappearedLineIDs)
+        lineViewReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
+        lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
         if _contentSize == nil {
             delegate?.layoutManagerDidInvalidateContentSize(self)
         }
+        CATransaction.commit()
     }
 
     func invalidateContentSize() {
@@ -123,6 +163,21 @@ final class LayoutManager {
             textRenderer.invalidate()
         }
     }
+
+    func updateGutterWidth() {
+        guard showLineNumbers else {
+            return
+        }
+        let lineCount = lineManager.lineCount
+        if lineCount != previousGutterWidthUpdateLineCount {
+            previousGutterWidthUpdateLineCount = lineCount
+            let characterCount = "\(lineCount)".count
+            let wideLineNumberString = String(repeating: "8", count: characterCount)
+            let wideLineNumberNSString = wideLineNumberString as NSString
+            let size = wideLineNumberNSString.size(withAttributes: [.font: theme.lineNumberFont])
+            gutterWidth = ceil(size.width) + gutterLeadingPadding + gutterTrailingPadding
+        }
+    }
 }
 
 // MARK: - UITextInput
@@ -135,7 +190,8 @@ extension LayoutManager {
         let localLocation = location - line.location
         let localCaretRect = textRenderer.caretRect(atIndex: localLocation)
         let globalYPosition = line.yPosition + localCaretRect.minY
-        return CGRect(x: localCaretRect.minX, y: globalYPosition, width: localCaretRect.width, height: localCaretRect.height)
+        let globalRect = CGRect(x: localCaretRect.minX, y: globalYPosition, width: localCaretRect.width, height: localCaretRect.height)
+        return globalRect.offsetBy(dx: leadingLineSpacing, dy: 0)
     }
 
     func firstRect(for range: NSRange) -> CGRect? {
@@ -144,7 +200,8 @@ extension LayoutManager {
         }
         let textRenderer = textRenderers[line.id]!
         let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
-        return textRenderer.firstRect(for: localRange)
+        let firstRect = textRenderer.firstRect(for: localRange)
+        return firstRect?.offsetBy(dx: leadingLineSpacing, dy: 0)
     }
 
     func selectionRects(in range: NSRange) -> [TextSelectionRect] {
@@ -172,6 +229,7 @@ extension LayoutManager {
                 let endLocation = startLocation + rendererSelectionRect.range.length
                 let containsStart = range.location >= startLocation && range.location <= endLocation
                 let containsEnd = range.location + range.length >= startLocation && range.location + range.length <= endLocation
+                screenRect.origin.x += leadingLineSpacing
                 if endLocation < range.location + range.length {
                     screenRect.size.width = frame.width - screenRect.minX
                 }
@@ -195,7 +253,11 @@ extension LayoutManager {
         } else {
             let lastLine = lineManager.lastLine
             if point.y >= lastLine.yPosition, let textRenderer = textRenderers[lastLine.id] {
-                return closestIndex(to: point, in: textRenderer, showing: lastLine)
+                if let index = closestIndex(to: point, in: textRenderer, showing: lastLine) {
+                    return index
+                } else {
+                    return currentDelegate.lengthOfString(in: self)
+                }
             } else {
                 return currentDelegate.lengthOfString(in: self)
             }
@@ -203,15 +265,12 @@ extension LayoutManager {
     }
 
     private func closestIndex(to point: CGPoint, in textRenderer: TextRenderer, showing line: DocumentLineNode) -> Int? {
-        let localPoint = CGPoint(x: point.x, y: point.y - textRenderer.frame.minY)
-        if let index = textRenderer.closestIndex(to: localPoint) {
-            if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
-                return line.location + line.data.length
-            } else {
-                return line.location + index
-            }
+        let localPoint = CGPoint(x: point.x - leadingLineSpacing, y: point.y - textRenderer.frame.minY)
+        let index = textRenderer.closestIndex(to: localPoint)
+        if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
+            return line.location + line.data.length
         } else {
-            return nil
+            return line.location + index
         }
     }
 }
@@ -219,41 +278,32 @@ extension LayoutManager {
 // MARK: - Drawing
 extension LayoutManager {
     private func show(_ line: DocumentLineNode, maxY: inout CGFloat) {
-        let lineView = dequeueLineView(withID: line.id)
+        let lineView = lineViewReuseQueue.dequeueView(forKey: line.id)
+        let lineNumberView = lineNumberLabelReuseQueue.dequeueView(forKey: line.id)
+        // Ensure views are added to the view hiearchy
         if lineView.superview == nil {
-            currentDelegate.layoutManager(self, shouldInsertViewIntoViewHierarchy: lineView)
+            containerView?.addSubview(lineView)
         }
+        if lineNumberView.superview == nil {
+            containerView?.addSubview(lineNumberView)
+        }
+        // Setup the line
+        let lineYPosition = line.yPosition
         let textRenderer = getTextRenderer(for: line)
         prepare(textRenderer, toDraw: line)
         lineView.textRenderer = textRenderer
-        lineView.frame = CGRect(x: 0, y: line.yPosition, width: frame.width, height: textRenderer.preferredHeight)
+        lineView.frame = CGRect(x: leadingLineSpacing, y: lineYPosition, width: textRenderer.lineWidth, height: textRenderer.preferredHeight)
         lineView.backgroundColor = backgroundColor
         lineView.setNeedsDisplay()
+        // Setup the line number
+        lineNumberView.text = "\(line.index + 1)"
+        lineNumberView.textColor = theme.lineNumberColor
+        lineNumberView.font = theme.font
+        lineNumberView.frame = CGRect(x: gutterLeadingPadding, y: lineYPosition, width: gutterWidth, height: textRenderer.preferredHeight)
+        // Start highlighting the line
         textRenderer.syntaxHighlight()
+        // Pass back the maximum Y position so the caller can determine if it needs to show more lines.
         maxY = lineView.frame.maxY
-    }
-
-    private func enqueueLineViews(withIDs lineIDs: Set<DocumentLineNodeID>) {
-        for lineID in lineIDs {
-            if let lineView = visibleLineViews.removeValue(forKey: lineID) {
-                lineView.removeFromSuperview()
-                queuedLineViews.insert(lineView)
-            }
-        }
-    }
-
-    private func dequeueLineView(withID lineID: DocumentLineNodeID) -> LineView {
-        if let lineView = visibleLineViews[lineID] {
-            return lineView
-        } else if !queuedLineViews.isEmpty {
-            let lineView = queuedLineViews.removeFirst()
-            visibleLineViews[lineID] = lineView
-            return lineView
-        } else {
-            let lineView = LineView()
-            visibleLineViews[lineID] = lineView
-            return lineView
-        }
     }
 
     private func getTextRenderer(for line: DocumentLineNode) -> TextRenderer {
@@ -273,7 +323,7 @@ extension LayoutManager {
         textRenderer.lineID = line.id
         textRenderer.documentRange = NSRange(location: line.location, length: line.data.totalLength)
         textRenderer.documentByteRange = line.data.byteRange
-        textRenderer.lineWidth = frame.width
+        textRenderer.lineWidth = frame.width - leadingLineSpacing
         textRenderer.font = theme.font
         textRenderer.textColor = theme.textColor
         textRenderer.prepareToDraw()
@@ -293,7 +343,7 @@ extension LayoutManager: TextRendererDelegate {
 
     func textRendererDidUpdateSyntaxHighlighting(_ textRenderer: TextRenderer) {
         if let lineID = textRenderer.lineID {
-            let lineView = visibleLineViews[lineID]
+            let lineView = lineViewReuseQueue.visibleViews[lineID]
             lineView?.setNeedsDisplay()
         }
     }
@@ -303,7 +353,7 @@ extension LayoutManager: TextRendererDelegate {
 private extension LayoutManager {
     @objc private func didReceiveMemoryWarning(_ notification: Notification) {
         let allLineIDs = Set(textRenderers.keys)
-        let visibleLineIDs = Set(visibleLineViews.keys)
+        let visibleLineIDs = Set(lineViewReuseQueue.visibleViews.keys)
         let lineIDsToRelease = allLineIDs.subtracting(visibleLineIDs)
         for lineID in lineIDsToRelease {
             textRenderers.removeValue(forKey: lineID)

@@ -192,6 +192,38 @@ public final class EditorTextView: UIScrollView {
         }
     }
     public var characterPairs: [EditorCharacterPair] = []
+    public var showLineNumbers: Bool {
+        get {
+            return textInputView.showLineNumbers
+        }
+        set {
+            textInputView.showLineNumbers = newValue
+        }
+    }
+    public var gutterLeadingPadding: CGFloat {
+        get {
+            return textInputView.gutterLeadingPadding
+        }
+        set {
+            textInputView.gutterLeadingPadding = newValue
+        }
+    }
+    public var gutterTrailingPadding: CGFloat {
+        get {
+            return textInputView.gutterTrailingPadding
+        }
+        set {
+            textInputView.gutterTrailingPadding = newValue
+        }
+    }
+    public var gutterMargin: CGFloat {
+        get {
+            return textInputView.gutterMargin
+        }
+        set {
+            textInputView.gutterMargin = newValue
+        }
+    }
 
     private let textInputView = TextInputView()
     private let editingTextInteraction = UITextInteraction(for: .editable)

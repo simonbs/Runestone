@@ -102,6 +102,38 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
+    var showLineNumbers: Bool {
+        get {
+            return layoutManager.showLineNumbers
+        }
+        set {
+            layoutManager.showLineNumbers = newValue
+        }
+    }
+    var gutterLeadingPadding: CGFloat {
+        get {
+            return layoutManager.gutterLeadingPadding
+        }
+        set {
+            layoutManager.gutterLeadingPadding = newValue
+        }
+    }
+    var gutterTrailingPadding: CGFloat {
+        get {
+            return layoutManager.gutterTrailingPadding
+        }
+        set {
+            layoutManager.gutterTrailingPadding = newValue
+        }
+    }
+    var gutterMargin: CGFloat {
+        get {
+            return layoutManager.gutterMargin
+        }
+        set {
+            layoutManager.gutterMargin = newValue
+        }
+    }
 
     // MARK: - Contents
     weak var delegate: TextInputViewDelegate?
@@ -114,6 +146,7 @@ final class TextInputView: UIView, UITextInput {
                 _string = newValue
                 lineManager.rebuild(from: newValue)
                 layoutManager.invalidateContentSize()
+                layoutManager.updateGutterWidth()
             }
         }
     }
@@ -176,6 +209,7 @@ final class TextInputView: UIView, UITextInput {
         lineManager.delegate = self
         lineManager.estimatedLineHeight = theme.font.lineHeight
         layoutManager.delegate = self
+        layoutManager.containerView = self
         layoutManager.theme = theme
         layoutManager.backgroundColor = backgroundColor
         syntaxHighlightController.theme = theme
@@ -262,6 +296,7 @@ final class TextInputView: UIView, UITextInput {
         syntaxHighlightController.parser?.delegate = self
         layoutManager.lineManager = state.lineManager
         layoutManager.invalidateContentSize()
+        layoutManager.updateGutterWidth()
     }
 
     func moveCaret(to point: CGPoint) {
@@ -361,7 +396,7 @@ extension TextInputView {
             fatalError("Expected position to be of type \(IndexedPosition.self)")
         }
         if string.length == 0 {
-            return CGRect(x: 0, y: 0, width: Caret.width, height: Caret.defaultHeight(for: theme.font))
+            return CGRect(x: layoutManager.totalGutterWidth, y: 0, width: Caret.width, height: Caret.defaultHeight(for: theme.font))
         } else if let caretRect = layoutManager.caretRect(at: indexedPosition.index) {
             return caretRect
         } else {
@@ -672,11 +707,13 @@ extension TextInputView: LineManagerDelegate {
 
     func lineManager(_ lineManager: LineManager, didInsert line: DocumentLineNode) {
         layoutManager.invalidateContentSize()
+        layoutManager.updateGutterWidth()
     }
 
     func lineManager(_ lineManager: LineManager, didRemove line: DocumentLineNode) {
         layoutManager.invalidateContentSize()
         layoutManager.removeLine(withID: line.id)
+        layoutManager.updateGutterWidth()
     }
 }
 
@@ -717,10 +754,6 @@ extension TextInputView: ParserDelegate {
 extension TextInputView: LayoutManagerDelegate {
     func layoutManager(_ layoutManager: LayoutManager, stringIn range: NSRange) -> String {
         return string.substring(with: range)
-    }
-
-    func layoutManager(_ layoutManager: LayoutManager, shouldInsertViewIntoViewHierarchy view: UIView) {
-        addSubview(view)
     }
 
     func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager) {
