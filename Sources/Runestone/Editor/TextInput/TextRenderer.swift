@@ -124,9 +124,13 @@ extension TextRenderer {
         guard let attributedString = attributedString else {
             return
         }
+        let stringLength = CFAttributedStringGetLength(attributedString)
+        guard stringLength > 0 else {
+            preferredHeight = font?.lineHeight ?? 0
+            return
+        }
         var nextYPosition: CGFloat = 0
         var startOffset = 0
-        let stringLength = CFAttributedStringGetLength(attributedString)
         while startOffset < stringLength {
             let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(lineWidth))
             let range = CFRangeMake(startOffset, length)
