@@ -253,18 +253,14 @@ extension LayoutManager {
         } else {
             let lastLine = lineManager.lastLine
             if point.y >= lastLine.yPosition, let textRenderer = textRenderers[lastLine.id] {
-                if let index = closestIndex(to: point, in: textRenderer, showing: lastLine) {
-                    return index
-                } else {
-                    return currentDelegate.lengthOfString(in: self)
-                }
+                return closestIndex(to: point, in: textRenderer, showing: lastLine)
             } else {
                 return currentDelegate.lengthOfString(in: self)
             }
         }
     }
 
-    private func closestIndex(to point: CGPoint, in textRenderer: TextRenderer, showing line: DocumentLineNode) -> Int? {
+    private func closestIndex(to point: CGPoint, in textRenderer: TextRenderer, showing line: DocumentLineNode) -> Int {
         let localPoint = CGPoint(x: point.x - leadingLineSpacing, y: point.y - textRenderer.frame.minY)
         let index = textRenderer.closestIndex(to: localPoint)
         if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
