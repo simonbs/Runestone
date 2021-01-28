@@ -237,12 +237,12 @@ private extension LineManager {
     @discardableResult
     private func setLength(of line: DocumentLineNode, to newTotalLength: Int, editedLines: inout Set<DocumentLineNode>) -> DocumentLineNode {
         editedLines.insert(line)
-        let delta = newTotalLength - line.value
-        if delta != 0 {
-            let substring = getString(in: NSRange(location: line.location, length: newTotalLength))
+        let substring = getString(in: NSRange(location: line.location, length: newTotalLength))
+        let newByteCount = substring.byteCount
+        if newTotalLength != line.value || newTotalLength != line.data.totalLength || newByteCount != line.data.byteCount {
             line.value = newTotalLength
             line.data.totalLength = newTotalLength
-            line.data.byteCount = substring.byteCount
+            line.data.byteCount = newByteCount
             documentLineTree.updateAfterChangingChildren(of: line)
         }
         // Determine new delimiter length.
@@ -281,9 +281,7 @@ private extension LineManager {
         insertedLine.data.nodeTotalByteCount = byteCount
         insertedLine.data.node = insertedLine
         // Call updateAfterChangingChildren(of:) to update the values of nodeTotalByteCount.
-        if let parent = insertedLine.parent {
-            documentLineTree.updateAfterChangingChildren(of: parent)
-        }
+        documentLineTree.updateAfterChangingChildren(of: insertedLine)
         delegate?.lineManager(self, didInsert: insertedLine)
         return insertedLine
     }
