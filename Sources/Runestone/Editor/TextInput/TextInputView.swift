@@ -719,12 +719,14 @@ extension TextInputView: LineManagerDelegate {
     func lineManager(_ lineManager: LineManager, didInsert line: DocumentLineNode) {
         layoutManager.invalidateContentSize()
         layoutManager.updateGutterWidth()
+        delegate?.textInputViewDidInvalidateContentSize(self)
     }
 
     func lineManager(_ lineManager: LineManager, didRemove line: DocumentLineNode) {
         layoutManager.invalidateContentSize()
         layoutManager.removeLine(withID: line.id)
         layoutManager.updateGutterWidth()
+        delegate?.textInputViewDidInvalidateContentSize(self)
     }
 }
 
