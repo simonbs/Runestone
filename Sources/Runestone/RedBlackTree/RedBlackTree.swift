@@ -1,53 +1,109 @@
 //
-//  DocumentLineTree.swift
+//  RedBlackTree.swift
 //  
 //
-//  Created by Simon Støvring on 08/12/2020.
+//  Created by Simon Støvring on 10/01/2021.
 //
 
 import Foundation
 
-final class DocumentLineTree {
-    private enum Side {
-        case left
-        case right
-    }
+final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNodeValue, NodeData> {
+    typealias Node = RedBlackTreeNode<NodeID, NodeValue, NodeData>
 
-    var lineCount: Int {
+    private(set) var root: Node!
+    var nodeTotalCount: Int {
         return root.nodeTotalCount
     }
-    var totalCharacterCount: Int {
-        return root.nodeTotalLength
+    var nodeTotalValue: NodeValue {
+        return root.nodeTotalValue
+    }
+    var childrenUpdater: RedBlackTreeChildrenUpdater<NodeID, NodeValue, NodeData>?
+
+    private let minimumValue: NodeValue
+
+    init(minimumValue: NodeValue, rootValue: NodeValue, rootData: NodeData) {
+        self.minimumValue = minimumValue
+        self.root = Node(tree: self, value: rootValue, data: rootData)
+        self.root.color = .black
     }
 
-    private lazy var root = DocumentLine(tree: self, totalLength: 0)
+    func reset(rootValue: NodeValue, rootData: NodeData) {
+        root = Node(tree: self, value: rootValue, data: rootData)
+    }
 
-    init() {
+    func rebuild(from nodes: [Node]) {
+        let height = getTreeHeight(nodeCount: nodes.count)
+        root = buildTree(from: nodes, start: 0, end: nodes.count, subtreeHeight: height)!
         root.color = .black
     }
 
-    func reset() {
-        root = DocumentLine(tree: self, totalLength: 0)
+    func node(containingLocation location: NodeValue) -> Node {
+        assert(location >= minimumValue)
+        assert(location <= root.nodeTotalValue)
+        return node(containingLocation: location, minimumValue: minimumValue, valueKeyPath: \.value, totalValueKeyPath: \.nodeTotalValue)!
     }
 
-    func line(containingCharacterAt location: Int) -> DocumentLine {
-        assert(location >= 0)
-        assert(location <= root.nodeTotalLength)
-        if location == root.nodeTotalLength {
+    func node<T: Comparable & AdditiveArithmetic>(containingLocation location: T, minimumValue: T, valueKeyPath: KeyPath<Node, T>, totalValueKeyPath: KeyPath<Node, T>) -> Node? {
+        if location == root[keyPath: totalValueKeyPath] {
             return root.rightMost
         } else {
             var remainingLocation = location
-            var node = root
+            var node = root!
             while true {
-                if let leftNode = node.left, remainingLocation < leftNode.nodeTotalLength {
+                if let leftNode = node.left, remainingLocation < leftNode[keyPath: totalValueKeyPath] {
                     node = leftNode
                 } else {
                     if let leftNode = node.left {
-                        remainingLocation -= leftNode.nodeTotalLength
+                        remainingLocation -= leftNode[keyPath: totalValueKeyPath]
                     }
-                    remainingLocation -= node.totalLength
-                    if remainingLocation < 0 {
+                    remainingLocation -= node[keyPath: valueKeyPath]
+                    if remainingLocation < minimumValue {
                         return node
+                    } else if let rightNode = node.right {
+                        node = rightNode
+                    } else {
+                        return nil
+                    }
+                }
+            }
+        }
+    }
+
+    func nodePosition(at location: NodeValue) -> RedBlackTreeNodePosition<NodeValue>? {
+        guard location >= minimumValue && location <= root.nodeTotalValue else {
+            return nil
+        }
+        if location == root.nodeTotalValue {
+            let node = root.rightMost
+            let nodeStartLocation = root.nodeTotalValue - node.nodeTotalValue
+            let offset = location - nodeStartLocation
+            return RedBlackTreeNodePosition(
+                nodeStartLocation: nodeStartLocation,
+                index: node.index,
+                offset: offset,
+                value: node.value)
+        } else {
+            var nodeStartLocation = minimumValue
+            var remainingLocation = location
+            var node = root!
+            while true {
+                if let leftNode = node.left, remainingLocation < leftNode.nodeTotalValue {
+                    node = leftNode
+                } else {
+                    if let leftNode = node.left {
+                        nodeStartLocation += leftNode.nodeTotalValue
+                        remainingLocation -= leftNode.nodeTotalValue
+                    }
+                    nodeStartLocation += node.value
+                    remainingLocation -= node.value
+                    if remainingLocation < minimumValue {
+                        nodeStartLocation -= node.value
+                        let offset = location - nodeStartLocation
+                        return RedBlackTreeNodePosition(
+                            nodeStartLocation: nodeStartLocation,
+                            index: node.index,
+                            offset: offset,
+                            value: node.value)
                     } else {
                         node = node.right!
                     }
@@ -56,67 +112,26 @@ final class DocumentLineTree {
         }
     }
 
-    func linePosition(at location: Int) -> LinePosition? {
-        guard location >= 0 && location <= root.nodeTotalLength else {
-            return nil
-        }
-        if location == root.nodeTotalLength {
-            let node = root.rightMost
-            let lineStartLocation = root.nodeTotalLength - node.nodeTotalLength
-            let column = location - lineStartLocation
-            return LinePosition(
-                lineStartLocation: lineStartLocation,
-                lineNumber: node.lineNumber!,
-                column: column,
-                length: node.length,
-                delimiterLength: node.delimiterLength)
-        } else {
-            var lineStartLocation = 0
-            var remainingLocation = location
-            var node = root
-            while true {
-                if let leftNode = node.left, remainingLocation < leftNode.nodeTotalLength {
-                    node = leftNode
-                } else {
-                    if let leftNode = node.left {
-                        lineStartLocation += leftNode.nodeTotalLength
-                        remainingLocation -= leftNode.nodeTotalLength
-                    }
-                    lineStartLocation += node.totalLength
-                    remainingLocation -= node.totalLength
-                    if remainingLocation < 0 {
-                        lineStartLocation -= node.totalLength
-                        let column = location - lineStartLocation
-                        return LinePosition(
-                            lineStartLocation: lineStartLocation,
-                            lineNumber: node.lineNumber!,
-                            column: column,
-                            length: node.length,
-                            delimiterLength: node.delimiterLength)
-                    } else {
-                        node = node.right!
-                    }
-                }
-            }
-        }
+    func location(of node: Node) -> NodeValue {
+        return offset(of: node, valueKeyPath: \.value, totalValueKeyPath: \.nodeTotalValue, minimumValue: minimumValue)
     }
-    
-    func location(of node: DocumentLine) -> Int {
-        var location = node.left?.nodeTotalLength ?? 0
+
+    func offset<T: AdditiveArithmetic>(of node: Node, valueKeyPath: KeyPath<Node, T>, totalValueKeyPath: KeyPath<Node, T>, minimumValue: T) -> T {
+        var location = node.left?[keyPath: totalValueKeyPath] ?? minimumValue
         var workingNode = node
         while let parentNode = workingNode.parent {
             if workingNode === workingNode.parent?.right {
                 if let leftNode = workingNode.parent?.left {
-                    location += leftNode.nodeTotalLength
+                    location += leftNode[keyPath: totalValueKeyPath]
                 }
-                location += parentNode.totalLength
+                location += parentNode[keyPath: valueKeyPath]
             }
             workingNode = parentNode
         }
         return location
     }
 
-    func index(of node: DocumentLine) -> Int {
+    func index(of node: Node) -> Int {
         var index = node.left?.nodeTotalCount ?? 0
         var workingNode = node
         while let parentNode = workingNode.parent {
@@ -131,14 +146,35 @@ final class DocumentLineTree {
         return index
     }
 
-    @discardableResult
-    func insertLine(ofLength length: Int, after existingLine: DocumentLine) -> DocumentLine {
-        let newLine = DocumentLine(tree: self, totalLength: length)
-        insert(newLine, after: existingLine)
-        return newLine
+    func node(atIndex index: Int) -> Node {
+        assert(index >= 0)
+        assert(index < root.nodeTotalCount)
+        var remainingIndex = index
+        var node = root!
+        while true {
+            if let leftNode = node.left, remainingIndex < leftNode.nodeTotalCount {
+                node = leftNode
+            } else {
+                if let leftNode = node.left {
+                    remainingIndex -= leftNode.nodeTotalCount
+                }
+                if remainingIndex == 0 {
+                    return node
+                }
+                remainingIndex -= 1
+                node = node.right!
+            }
+        }
     }
 
-    func remove(_ removedNode: DocumentLine) {
+    @discardableResult
+    func insertNode(value: NodeValue, data: NodeData, after existingNode: Node) -> Node {
+        let newNode = Node(tree: self, value: value, data: data)
+        insert(newNode, after: existingNode)
+        return newNode
+    }
+
+    func remove(_ removedNode: Node) {
         if let removedNodeRight = removedNode.right, removedNode.left != nil {
             let leftMost = removedNodeRight.leftMost
             // Remove leftMost node from its current location
@@ -172,58 +208,69 @@ final class DocumentLineTree {
         }
     }
 
-    func updateAfterChangingChildren(of node: DocumentLine) {
+    func updateAfterChangingChildren(of node: Node) {
         var totalCount = 1
-        var totalLength = node.totalLength
-        if let leftLine = node.left {
-            totalCount += leftLine.nodeTotalCount
-            totalLength += leftLine.nodeTotalLength
+        var totalValue = node.value
+        if let leftNode = node.left {
+            totalCount += leftNode.nodeTotalCount
+            totalValue += leftNode.nodeTotalValue
         }
-        if let rightLine = node.right {
-            totalCount += rightLine.nodeTotalCount
-            totalLength += rightLine.nodeTotalLength
+        if let rightNode = node.right {
+            totalCount += rightNode.nodeTotalCount
+            totalValue += rightNode.nodeTotalValue
         }
-        if totalCount != node.nodeTotalCount || totalLength != node.nodeTotalLength {
+        let hasNewTotalValues = totalCount != node.nodeTotalCount || totalValue != node.nodeTotalValue
+        if hasNewTotalValues {
             node.nodeTotalCount = totalCount
-            node.nodeTotalLength = totalLength
-            if let parent = node.parent {
-                updateAfterChangingChildren(of: parent)
+            node.nodeTotalValue = totalValue
+        }
+        let didUpdateExternally = childrenUpdater?.updateAfterChangingChildren(of: node) ?? false
+        let didUpdate = hasNewTotalValues || didUpdateExternally
+        if let parent = node.parent, didUpdate {
+            updateAfterChangingChildren(of: parent)
+        }
+    }
+
+    func searchRange(_ range: ClosedRange<NodeValue>) -> [RedBlackTreeSearchMatch<NodeID, NodeValue, NodeData>] {
+        let query = ClosedRangeValueSearchQuery<NodeID, NodeValue, NodeData>(range: range)
+        return search(using: query)
+    }
+
+    func search<T: RedBlackTreeSearchQuery>(using query: T) -> [RedBlackTreeSearchMatch<NodeID, NodeValue, NodeData>] where T.NodeID == NodeID, T.NodeValue == NodeValue, T.NodeData == NodeData {
+        var matches: [RedBlackTreeSearchMatch<NodeID, NodeValue, NodeData>] = []
+        func search(from node: Node) {
+            let nodeLowerBound = node.location
+            let nodeUpperBound = nodeLowerBound + node.value
+            if query.shouldTraverseLeftChildren(of: node) {
+                if let leftNode = node.left {
+                    search(from: leftNode)
+                }
+            }
+            if query.shouldInclude(node) {
+                let match = RedBlackTreeSearchMatch(location: nodeLowerBound, value: nodeUpperBound, node: node)
+                matches.append(match)
+            }
+            if query.shouldTraverseRightChildren(of: node) {
+                if let rightNode = node.right {
+                    search(from: rightNode)
+                }
             }
         }
+        search(from: root)
+        return matches
     }
 }
 
-private extension DocumentLineTree {
-    private func line(atIndex index: Int) -> DocumentLine {
-        assert(index >= 0)
-        assert(index < root.nodeTotalCount)
-        var remainingIndex = index
-        var node = root
-        while true {
-            if let leftNode = node.left, index < leftNode.nodeTotalCount {
-                node = leftNode
-            } else {
-                if let leftNode = node.left {
-                    remainingIndex -= leftNode.nodeTotalCount
-                }
-                if remainingIndex == 0 {
-                    return node
-                }
-                remainingIndex -= 1
-                node = node.right!
-            }
-        }
-    }
-
-    private func insert(_ newLine: DocumentLine, after node: DocumentLine) {
+private extension RedBlackTree {
+    private func insert(_ newNode: Node, after node: Node) {
         if node.right == nil {
-            insert(newLine, asRightChildOf: node)
+            insert(newNode, asRightChildOf: node)
         } else {
-            insert(newLine, asLeftChildOf: node.right!.leftMost)
+            insert(newNode, asLeftChildOf: node.right!.leftMost)
         }
     }
 
-    private func insert(_ newNode: DocumentLine, asLeftChildOf parentNode: DocumentLine) {
+    private func insert(_ newNode: Node, asLeftChildOf parentNode: Node) {
         assert(parentNode.left == nil)
         parentNode.left = newNode
         newNode.parent = parentNode
@@ -232,7 +279,7 @@ private extension DocumentLineTree {
         fixTree(afterInserting: newNode)
     }
 
-    private func insert(_ newNode: DocumentLine, asRightChildOf parentNode: DocumentLine) {
+    private func insert(_ newNode: Node, asRightChildOf parentNode: Node) {
         assert(parentNode.right == nil)
         parentNode.right = newNode
         newNode.parent = parentNode
@@ -241,7 +288,7 @@ private extension DocumentLineTree {
         fixTree(afterInserting: newNode)
     }
 
-    private func replace(_ replacedNode: DocumentLine, with newNode: DocumentLine?) {
+    private func replace(_ replacedNode: Node, with newNode: Node?) {
         if replacedNode.parent == nil {
             assert(replacedNode === root)
             root = newNode!
@@ -254,8 +301,8 @@ private extension DocumentLineTree {
         replacedNode.parent = nil
     }
 
-    private func fixTree(afterInserting newLine: DocumentLine) {
-        var node = newLine
+    private func fixTree(afterInserting newNode: Node) {
+        var node = newNode
         assert(node.color == .red)
         assert(node.left == nil || node.left?.color == .black)
         assert(node.right == nil || node.right?.color == .black)
@@ -306,7 +353,7 @@ private extension DocumentLineTree {
         }
     }
 
-    private func fixTree(afterDeleting node: DocumentLine?, parentNode: DocumentLine) {
+    private func fixTree(afterDeleting node: Node?, parentNode: Node) {
         assert(node == nil || node?.parent === parentNode)
         var sibling = self.sibling(to: node, through: parentNode)
         if sibling?.color == .red {
@@ -374,7 +421,7 @@ private extension DocumentLineTree {
         }
     }
 
-    private func rotateLeft(_ p: DocumentLine) {
+    private func rotateLeft(_ p: Node) {
         // Let q be p's right child.
         guard let q = p.right else {
             fatalError("Can't rotate left when p's right-hand side child is nil.")
@@ -391,7 +438,7 @@ private extension DocumentLineTree {
         updateAfterChangingChildren(of: p)
     }
 
-    private func rotateRight(_ p: DocumentLine) {
+    private func rotateRight(_ p: Node) {
         // Let q be p's left child.
         guard let q = p.left else {
             fatalError("Can't rotate right when p's left-hand side child is nil.")
@@ -408,7 +455,7 @@ private extension DocumentLineTree {
         updateAfterChangingChildren(of: p)
     }
 
-    private func sibling(to node: DocumentLine) -> DocumentLine? {
+    private func sibling(to node: Node) -> Node? {
         if node === node.parent?.left {
             return node.parent?.right
         } else {
@@ -416,7 +463,7 @@ private extension DocumentLineTree {
         }
     }
 
-    private func sibling(to node: DocumentLine?, through parentNode: DocumentLine) -> DocumentLine? {
+    private func sibling(to node: Node?, through parentNode: Node) -> Node? {
         assert(node == nil || node?.parent === parentNode)
         if node === parentNode.left {
             return parentNode.right
@@ -425,17 +472,43 @@ private extension DocumentLineTree {
         }
     }
 
-    private func getColor(of node: DocumentLine?) -> DocumentLine.Color {
+    private func getColor(of node: Node?) -> RedBlackTreeNodeColor {
         return node?.color ?? .black
+    }
+
+    private func buildTree(from nodes: [Node], start: Int, end: Int, subtreeHeight: Int) -> Node? {
+        assert(start <= end)
+        if start == end {
+            return nil
+        }
+        let middle = (start + end) / 2
+        let node = nodes[middle]
+        node.left = buildTree(from: nodes, start: start, end: middle, subtreeHeight: subtreeHeight - 1)
+        node.right = buildTree(from: nodes, start: middle + 1, end: end, subtreeHeight: subtreeHeight - 1)
+        node.left?.parent = node
+        node.right?.parent = node
+        if subtreeHeight == 1 {
+            node.color = .red
+        }
+        updateAfterChangingChildren(of: node)
+        return node
+    }
+
+    private func getTreeHeight(nodeCount: Int) -> Int {
+        if nodeCount == 0 {
+            return 0
+        } else {
+            return getTreeHeight(nodeCount: nodeCount / 2) + 1
+        }
     }
 }
 
-extension DocumentLineTree: CustomDebugStringConvertible {
+extension RedBlackTree: CustomDebugStringConvertible {
     var debugDescription: String {
         return append(root, to: "", indent: 0)
     }
 
-    private func append(_ node: DocumentLine, to string: String, indent: Int) -> String {
+    private func append(_ node: Node, to string: String, indent: Int) -> String {
         var result = string
         switch node.color {
         case .red:

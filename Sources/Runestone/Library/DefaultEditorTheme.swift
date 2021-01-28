@@ -22,6 +22,9 @@ final class DefaultEditorTheme: EditorTheme {
         case punctuationDelimiter = "punctuation.delimiter"
     }
 
+    let textColor: UIColor = .label
+    let font = UIFont(name: "Menlo-Regular", size: 14)!
+
     let gutterBackgroundColor: UIColor = .secondarySystemBackground
     let gutterHairlineColor: UIColor = .opaqueSeparator
 

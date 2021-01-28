@@ -12,12 +12,12 @@ final class SourcePoint {
         return rawValue.row
     }
     var column: CUnsignedInt {
-        return rawValue.row
+        return rawValue.column
     }
 
     let rawValue: TSPoint
 
-    init(point: TSPoint) {
+    init(_ point: TSPoint) {
         self.rawValue = point
     }
 
@@ -28,6 +28,6 @@ final class SourcePoint {
 
 extension SourcePoint: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "(row = \(row), column = \(column)"
+        return "[SourcePoint row=\(row) column=\(column)]"
     }
 }

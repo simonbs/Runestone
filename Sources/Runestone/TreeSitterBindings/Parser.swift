@@ -8,7 +8,7 @@
 import TreeSitter
 
 protocol ParserDelegate: AnyObject {
-    func parser(_ parser: Parser, substringAtByteIndex byteIndex: uint, point: SourcePoint) -> String?
+    func parser(_ parser: Parser, bytesAt byteIndex: ByteCount) -> [Int8]?
 }
 
 final class Parser {
@@ -46,8 +46,9 @@ final class Parser {
     }
 
     func parse(_ string: String) {
+        let byteCount = UInt32(string.byteCount.value)
         let newTreePointer = string.withCString { stringPointer in
-            return ts_parser_parse_string(parser, latestTree?.pointer, stringPointer, UInt32(string.count))
+            return ts_parser_parse_string(parser, latestTree?.pointer, stringPointer, byteCount)
         }
         if let newTreePointer = newTreePointer {
             latestTree = Tree(newTreePointer)
@@ -55,18 +56,11 @@ final class Parser {
     }
 
     func parse() {
-        let input = SourceInput(encoding: encoding) { [weak self] byteIndex, point in
-            guard let self = self, let str = self.delegate?.parser(self, substringAtByteIndex: byteIndex, point: point) else {
-                return []
-            }
-            guard let cStr = str.cString(using: self.encoding.swiftEncoding) else {
-                return []
-            }
-            // Remove null determinator when there's more than a single character.
-            if cStr.count > 1 && cStr.last == 0 {
-                return cStr.dropLast()
+        let input = SourceInput(encoding: encoding) { [weak self] byteIndex, _ in
+            if let self = self, let bytes = self.delegate?.parser(self, bytesAt: byteIndex) {
+                return bytes
             } else {
-                return cStr
+                return []
             }
         }
         let newTreePointer = ts_parser_parse(parser, latestTree?.pointer, input.rawInput)

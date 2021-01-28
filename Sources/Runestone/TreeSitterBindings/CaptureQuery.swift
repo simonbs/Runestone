@@ -27,12 +27,10 @@ final class CaptureQuery {
         ts_query_cursor_delete(cursorPointer)
     }
 
-    func setQueryRange(from start: UInt32, to end: UInt32) {
+    func setQueryRange(_ range: ByteRange) {
+        let start = UInt32(range.location.value)
+        let end = UInt32((range.location + range.length).value)
         ts_query_cursor_set_byte_range(cursorPointer, start, end)
-    }
-
-    func setQueryRange(from startPoint: SourcePoint, to endPoint: SourcePoint) {
-        ts_query_cursor_set_point_range(cursorPointer, startPoint.rawValue, endPoint.rawValue)
     }
 
     func execute() {
@@ -54,7 +52,8 @@ final class CaptureQuery {
                 let match = matchPointer.pointee.captures[Int(i)]
                 let captureName = query.captureName(forId: match.index)
                 let node = Node(node: match.node)
-                result[node] = Capture(startByte: node.startByte, endByte: node.endByte, name: captureName)
+                let byteRange = ByteRange(from: node.startByte, to: node.endByte)
+                result[node] = Capture(byteRange: byteRange, name: captureName)
             }
         }
         return Array(result.values)
