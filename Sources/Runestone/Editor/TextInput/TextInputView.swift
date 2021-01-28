@@ -725,7 +725,7 @@ extension TextInputView: ParserDelegate {
             return bytes(at: byteIndex, in: parsedLine)
         } else if let line = lineManager.line(containingByteAt: byteIndex) {
             let startByte = line.data.startByte
-            let lineRange = NSRange(location: line.location, length: line.data.length)
+            let lineRange = NSRange(location: line.location, length: line.data.totalLength)
             let lineString = string.substring(with: lineRange)
             let parsedLine = ParsedLine(startByte: startByte, byteCount: line.data.byteCount, lineRange: lineRange, lineString: lineString)
             self.parsedLine = parsedLine
