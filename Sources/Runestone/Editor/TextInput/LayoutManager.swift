@@ -14,6 +14,7 @@ protocol LayoutManagerDelegate: AnyObject {
 }
 
 final class LayoutManager {
+    // MARK: - Public
     weak var delegate: LayoutManagerDelegate?
     weak var containerView: UIView?
     var lineManager: LineManager
@@ -21,7 +22,6 @@ final class LayoutManager {
         didSet {
             if frame.size.width != oldValue.size.width {
                 invalidateAllLines()
-                layoutLines()
             }
         }
     }
@@ -38,11 +38,10 @@ final class LayoutManager {
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
             if theme !== oldValue {
-                gutterView.backgroundColor = theme.gutterBackgroundColor
-                gutterView.hairlineColor = theme.gutterHairlineColor
-                gutterView.hairlineWidth = theme.gutterHairlineWidth
+                gutterBackgroundView.backgroundColor = theme.gutterBackgroundColor
+                gutterBackgroundView.hairlineColor = theme.gutterHairlineColor
+                gutterBackgroundView.hairlineWidth = theme.gutterHairlineWidth
                 invalidateAllLines()
-                layoutLines()
             }
         }
     }
@@ -72,12 +71,13 @@ final class LayoutManager {
         return gutterWidth + gutterLeadingPadding + gutterTrailingPadding
     }
 
-    private let syntaxHighlightController: SyntaxHighlightController
-    private let operationQueue: OperationQueue
+    // MARK: - Views
     private var lineViewReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineView>()
     private var lineNumberLabelReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineNumberView>()
-    private var textRenderers: [DocumentLineNodeID: TextRenderer] = [:]
-    private let gutterView = GutterView()
+    private let gutterBackgroundView = GutterBackgroundView()
+    private let lineNumberContainerView = UIView()
+
+    // MARK: - Sizing
     private var _contentSize: CGSize?
     private var gutterWidth: CGFloat = 0
     private var previousGutterWidthUpdateLineCount: Int?
@@ -88,6 +88,14 @@ final class LayoutManager {
             return 0
         }
     }
+
+    // MARK: - Rendering
+    private let operationQueue: OperationQueue
+    private let syntaxHighlightController: SyntaxHighlightController
+    private var textRenderers: [DocumentLineNodeID: TextRenderer] = [:]
+    private var needsLayoutLines = false
+
+    // MARK: - Misc
     private var currentDelegate: LayoutManagerDelegate {
         if let delegate = delegate {
             return delegate
@@ -107,18 +115,19 @@ final class LayoutManager {
             object: nil)
     }
 
-    func layoutLines() {
+    func setNeedsLayout() {
+        needsLayoutLines = true
+    }
+
+    func layoutIfNeeded() {
+        guard needsLayoutLines else {
+            return
+        }
+        needsLayoutLines = false
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         syntaxHighlightController.prepare()
-        if showLineNumbers {
-            if gutterView.superview == nil {
-                containerView?.addSubview(gutterView)
-            }
-        } else {
-            gutterView.removeFromSuperview()
-        }
-        gutterView.frame = CGRect(x: 0, y: viewport.minY, width: totalGutterWidth, height: viewport.height)
+        layoutGutter()
         let oldVisibleLineIds = Set(lineViewReuseQueue.visibleViews.keys)
         var nextLine = lineManager.line(containingYOffset: viewport.minY)
         var appearedLineIDs: Set<DocumentLineNodeID> = []
@@ -271,6 +280,27 @@ extension LayoutManager {
     }
 }
 
+// MARK: - Layout
+extension LayoutManager {
+    private func layoutGutter() {
+        if showLineNumbers {
+            if gutterBackgroundView.superview == nil {
+                containerView?.addSubview(gutterBackgroundView)
+            }
+            if lineNumberContainerView.superview == nil {
+                containerView?.addSubview(lineNumberContainerView)
+            }
+            gutterBackgroundView.frame = CGRect(x: 0, y: viewport.minY, width: totalGutterWidth, height: viewport.height)
+            lineNumberContainerView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: contentSize.height)
+        } else {
+            gutterBackgroundView.removeFromSuperview()
+            lineNumberContainerView.removeFromSuperview()
+            let allLineNumberKeys = lineViewReuseQueue.visibleViews.keys
+            lineViewReuseQueue.enqueueViews(withKeys: Set(allLineNumberKeys))
+        }
+    }
+}
+
 // MARK: - Drawing
 extension LayoutManager {
     private func show(_ line: DocumentLineNode, maxY: inout CGFloat) {
@@ -281,7 +311,7 @@ extension LayoutManager {
             containerView?.addSubview(lineView)
         }
         if lineNumberView.superview == nil {
-            containerView?.addSubview(lineNumberView)
+            lineNumberContainerView.addSubview(lineNumberView)
         }
         // Setup the line
         let lineYPosition = line.yPosition

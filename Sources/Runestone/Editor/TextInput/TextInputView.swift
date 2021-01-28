@@ -89,7 +89,8 @@ final class TextInputView: UIView, UITextInput {
             _language = newValue
             parse(with: newValue)
             layoutManager.invalidateAllLines()
-            layoutManager.layoutLines()
+            layoutManager.setNeedsLayout()
+            setNeedsLayout()
         }
         get {
             return _language
@@ -108,6 +109,8 @@ final class TextInputView: UIView, UITextInput {
         }
         set {
             layoutManager.showLineNumbers = newValue
+            layoutManager.setNeedsLayout()
+            setNeedsLayout()
         }
     }
     var gutterLeadingPadding: CGFloat {
@@ -158,7 +161,8 @@ final class TextInputView: UIView, UITextInput {
             if newValue != layoutManager.viewport {
                 inputDelegate?.selectionWillChange(self)
                 layoutManager.viewport = newValue
-                layoutManager.layoutLines()
+                layoutManager.setNeedsLayout()
+                setNeedsLayout()
                 inputDelegate?.selectionDidChange(self)
             }
         }
@@ -217,6 +221,11 @@ final class TextInputView: UIView, UITextInput {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        layoutManager.layoutIfNeeded()
     }
 
     @discardableResult
@@ -317,7 +326,8 @@ final class TextInputView: UIView, UITextInput {
                 DispatchQueue.main.sync {
                     if !operation.isCancelled {
                         self.layoutManager.invalidateAllLines()
-                        self.layoutManager.layoutLines()
+                        self.layoutManager.setNeedsLayout()
+                        self.setNeedsLayout()
                         completion?(true)
                     } else {
                         completion?(false)
@@ -511,7 +521,8 @@ extension TextInputView {
             editedLines.formUnion(changedLines)
         }
         layoutManager.invalidate(editedLines)
-        layoutManager.layoutLines()
+        layoutManager.setNeedsLayout()
+        setNeedsLayout()
         inputDelegate?.textDidChange(self)
         delegate?.textInputViewDidChange(self)
     }

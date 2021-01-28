@@ -1,5 +1,5 @@
 //
-//  GutterView.swift
+//  GutterBackgroundView.swift
 //  
 //
 //  Created by Simon Støvring on 27/01/2021.
@@ -7,7 +7,7 @@
 
 import UIKit
 
-final class GutterView: UIView {
+final class GutterBackgroundView: UIView {
     var hairlineWidth: CGFloat = 1 {
         didSet {
             if hairlineWidth != oldValue {
