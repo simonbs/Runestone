@@ -28,6 +28,6 @@ final class SourcePoint {
 
 extension SourcePoint: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "(row = \(row), column = \(column)"
+        return "[SourcePoint row=\(row) column=\(column)]"
     }
 }

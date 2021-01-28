@@ -40,3 +40,10 @@ final class InputEdit {
             new_end_point: newEndPoint.rawValue)
     }
 }
+
+extension InputEdit: CustomDebugStringConvertible {
+    var debugDescription: String {
+        return "[InputEdit startByte=\(startByte) oldEndByte=\(oldEndByte) newEndByte=\(newEndByte)"
+            + " startPoint=\(startPoint) oldEndPoint=\(oldEndPoint) newEndPoint=\(newEndPoint)]"
+    }
+}

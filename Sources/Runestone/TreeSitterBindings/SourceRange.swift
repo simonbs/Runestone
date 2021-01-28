@@ -34,6 +34,6 @@ final class SourceRange {
 
 extension SourceRange: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "(\(startPoint.debugDescription) - \(endPoint.debugDescription))"
+        return "[SourceRange startByte=\(startByte) endByte=\(endByte) startPoint=\(startPoint) endPoint=\(endPoint)]"
     }
 }
