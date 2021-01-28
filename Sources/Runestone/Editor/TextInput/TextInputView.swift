@@ -301,6 +301,7 @@ final class TextInputView: UIView, UITextInput {
         _string = NSMutableString(string: state.text)
         lineManager = state.lineManager
         lineManager.delegate = self
+        lineManager.estimatedLineHeight = theme.font.lineHeight
         syntaxHighlightController.parser = state.parser
         syntaxHighlightController.parser?.delegate = self
         layoutManager.lineManager = state.lineManager
