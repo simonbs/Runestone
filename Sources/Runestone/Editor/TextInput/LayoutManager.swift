@@ -19,8 +19,8 @@ final class LayoutManager {
     var lineManager: LineManager
     var frame: CGRect = .zero {
         didSet {
-            if frame.size != oldValue.size {
-                invalidateLines()
+            if frame.size.width != oldValue.size.width {
+                invalidateAllLines()
                 layoutLines()
             }
         }
@@ -41,7 +41,7 @@ final class LayoutManager {
                 gutterView.backgroundColor = theme.gutterBackgroundColor
                 gutterView.hairlineColor = theme.gutterHairlineColor
                 gutterView.hairlineWidth = theme.gutterHairlineWidth
-                invalidateLines()
+                invalidateAllLines()
                 layoutLines()
             }
         }
@@ -149,7 +149,7 @@ final class LayoutManager {
         textRenderers.removeValue(forKey: lineID)
     }
 
-    func updateLineViews(showing lines: Set<DocumentLineNode>) {
+    func invalidate(_ lines: Set<DocumentLineNode>) {
         for line in lines {
             if let textRenderer = textRenderers[line.id] {
                 textRenderer.invalidate()
@@ -157,7 +157,7 @@ final class LayoutManager {
         }
     }
 
-    func invalidateLines() {
+    func invalidateAllLines() {
         let allTextRenderers = textRenderers.values
         for textRenderer in allTextRenderers {
             textRenderer.invalidate()

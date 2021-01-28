@@ -88,7 +88,7 @@ final class TextInputView: UIView, UITextInput {
             operationQueue.cancelAllOperations()
             _language = newValue
             parse(with: newValue)
-            layoutManager.invalidateLines()
+            layoutManager.invalidateAllLines()
             layoutManager.layoutLines()
         }
         get {
@@ -316,7 +316,7 @@ final class TextInputView: UIView, UITextInput {
                 self.parse(with: language)
                 DispatchQueue.main.sync {
                     if !operation.isCancelled {
-                        self.layoutManager.invalidateLines()
+                        self.layoutManager.invalidateAllLines()
                         self.layoutManager.layoutLines()
                         completion?(true)
                     } else {
@@ -510,7 +510,7 @@ extension TextInputView {
             let changedLines = lines(in: changedRanges)
             editedLines.formUnion(changedLines)
         }
-        layoutManager.updateLineViews(showing: editedLines)
+        layoutManager.invalidate(editedLines)
         layoutManager.layoutLines()
         inputDelegate?.textDidChange(self)
         delegate?.textInputViewDidChange(self)
