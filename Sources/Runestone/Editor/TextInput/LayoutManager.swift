@@ -41,17 +41,9 @@ final class LayoutManager {
                 gutterBackgroundView.backgroundColor = theme.gutterBackgroundColor
                 gutterBackgroundView.hairlineColor = theme.gutterHairlineColor
                 gutterBackgroundView.hairlineWidth = theme.gutterHairlineWidth
+                gutterSelectionBackgroundView.backgroundColor = theme.selectedLinesGutterBackgroundColor
+                lineSelectionBackgroundView.backgroundColor = theme.selectedLineBackgroundColor
                 invalidateAllLines()
-            }
-        }
-    }
-    var backgroundColor: UIColor? {
-        didSet {
-            if backgroundColor != oldValue {
-                let allVisibleLineViews = lineViewReuseQueue.visibleViews.values
-                for visibleLineView in allVisibleLineViews {
-                    visibleLineView.backgroundColor = backgroundColor
-                }
             }
         }
     }
@@ -64,9 +56,11 @@ final class LayoutManager {
             }
         }
     }
+    var highlightSelectedLine = false
     var gutterLeadingPadding: CGFloat = 3
     var gutterTrailingPadding: CGFloat = 3
     var gutterMargin: CGFloat = 10
+    var selectedRange: NSRange?
     var totalGutterWidth: CGFloat {
         return gutterWidth + gutterLeadingPadding + gutterTrailingPadding
     }
@@ -93,9 +87,12 @@ final class LayoutManager {
     private let operationQueue: OperationQueue
     private let syntaxHighlightController: SyntaxHighlightController
     private var textRenderers: [DocumentLineNodeID: TextRenderer] = [:]
-    private var needsLayoutLines = false
+    private var needsLayout = false
+    private var needsLayoutSelection = false
+    private let gutterSelectionBackgroundView = UIView()
+    private let lineSelectionBackgroundView = UIView()
 
-    // MARK: - Misc
+    // MARK: - Helpers
     private var currentDelegate: LayoutManagerDelegate {
         if let delegate = delegate {
             return delegate
@@ -116,18 +113,20 @@ final class LayoutManager {
     }
 
     func setNeedsLayout() {
-        needsLayoutLines = true
+        needsLayout = true
     }
 
     func layoutIfNeeded() {
-        guard needsLayoutLines else {
+        guard needsLayout else {
             return
         }
-        needsLayoutLines = false
+        needsLayout = false
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         syntaxHighlightController.prepare()
-        layoutGutter()
+        layoutGutterBackground()
+        layoutLineNumbers()
+        layoutSelection()
         let oldVisibleLineIds = Set(lineViewReuseQueue.visibleViews.keys)
         var nextLine = lineManager.line(containingYOffset: viewport.minY)
         var appearedLineIDs: Set<DocumentLineNodeID> = []
@@ -147,6 +146,21 @@ final class LayoutManager {
         if _contentSize == nil {
             delegate?.layoutManagerDidInvalidateContentSize(self)
         }
+        CATransaction.commit()
+    }
+
+    func setNeedsLayoutSelection() {
+        needsLayoutSelection = true
+    }
+
+    func layoutSelectionIfNeeded() {
+        guard needsLayoutSelection else {
+            return
+        }
+        needsLayoutSelection = true
+        CATransaction.begin()
+        CATransaction.setDisableActions(false)
+        layoutSelection()
         CATransaction.commit()
     }
 
@@ -282,21 +296,62 @@ extension LayoutManager {
 
 // MARK: - Layout
 extension LayoutManager {
-    private func layoutGutter() {
+    private func layoutGutterBackground() {
         if showLineNumbers {
             if gutterBackgroundView.superview == nil {
                 containerView?.addSubview(gutterBackgroundView)
             }
+            gutterBackgroundView.frame = CGRect(x: 0, y: viewport.minY, width: totalGutterWidth, height: viewport.height)
+        } else {
+            gutterBackgroundView.removeFromSuperview()
+        }
+    }
+
+    private func layoutLineNumbers() {
+        if showLineNumbers {
             if lineNumberContainerView.superview == nil {
                 containerView?.addSubview(lineNumberContainerView)
             }
-            gutterBackgroundView.frame = CGRect(x: 0, y: viewport.minY, width: totalGutterWidth, height: viewport.height)
             lineNumberContainerView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: contentSize.height)
         } else {
-            gutterBackgroundView.removeFromSuperview()
             lineNumberContainerView.removeFromSuperview()
             let allLineNumberKeys = lineViewReuseQueue.visibleViews.keys
             lineViewReuseQueue.enqueueViews(withKeys: Set(allLineNumberKeys))
+        }
+    }
+
+    private func layoutSelection() {
+        if showLineNumbers && highlightSelectedLine && selectedRange != nil {
+            if gutterSelectionBackgroundView.superview == nil {
+                containerView?.addSubview(gutterSelectionBackgroundView)
+            }
+            containerView?.sendSubviewToBack(gutterSelectionBackgroundView)
+            containerView?.sendSubviewToBack(gutterBackgroundView)
+        } else {
+            gutterSelectionBackgroundView.removeFromSuperview()
+        }
+        if highlightSelectedLine, let selectedRange = selectedRange {
+            if lineSelectionBackgroundView.superview == nil {
+                containerView?.addSubview(lineSelectionBackgroundView)
+            }
+            containerView?.sendSubviewToBack(lineSelectionBackgroundView)
+            let startRange = NSRange(location: selectedRange.location, length: 0)
+            let endRange = NSRange(location: selectedRange.location + selectedRange.length, length: 0)
+            let startSelectionRects = selectionRects(in: startRange)
+            let allSelectionRects: [TextSelectionRect]
+            if selectedRange.length > 0 {
+                let endSelectionRects = selectionRects(in: endRange)
+                allSelectionRects = startSelectionRects + endSelectionRects
+                lineSelectionBackgroundView.isHidden = true
+            } else {
+                allSelectionRects = startSelectionRects
+                lineSelectionBackgroundView.isHidden = false
+            }
+            let selectionRect = allSelectionRects.map { $0.rect }.union()!
+            gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectionRect.minY, width: totalGutterWidth, height: selectionRect.height)
+            lineSelectionBackgroundView.frame = CGRect(x: totalGutterWidth, y: selectionRect.minY, width: frame.width - totalGutterWidth, height: selectionRect.height)
+        } else {
+            lineSelectionBackgroundView.removeFromSuperview()
         }
     }
 }
@@ -319,7 +374,6 @@ extension LayoutManager {
         prepare(textRenderer, toDraw: line)
         lineView.textRenderer = textRenderer
         lineView.frame = CGRect(x: leadingLineSpacing, y: lineYPosition, width: textRenderer.lineWidth, height: textRenderer.preferredHeight)
-        lineView.backgroundColor = backgroundColor
         lineView.setNeedsDisplay()
         // Setup the line number
         lineNumberView.text = "\(line.index + 1)"
@@ -383,6 +437,18 @@ private extension LayoutManager {
         let lineIDsToRelease = allLineIDs.subtracting(visibleLineIDs)
         for lineID in lineIDsToRelease {
             textRenderers.removeValue(forKey: lineID)
+        }
+    }
+}
+
+private extension Array where Element == CGRect {
+    func union() -> CGRect? {
+        if count > 1 {
+            return (1 ..< count).reduce(first!) { currentRect, idx in
+                return currentRect.union(self[idx])
+            }
+        } else {
+            return first
         }
     }
 }

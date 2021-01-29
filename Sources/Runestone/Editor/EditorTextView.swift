@@ -200,6 +200,14 @@ public final class EditorTextView: UIScrollView {
             textInputView.showLineNumbers = newValue
         }
     }
+    public var highlightSelectedLine: Bool {
+        get {
+            return textInputView.highlightSelectedLine
+        }
+        set {
+            textInputView.highlightSelectedLine = newValue
+        }
+    }
     public var gutterLeadingPadding: CGFloat {
         get {
             return textInputView.gutterLeadingPadding

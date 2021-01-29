@@ -96,13 +96,6 @@ final class TextInputView: UIView, UITextInput {
             return _language
         }
     }
-    override var backgroundColor: UIColor? {
-        didSet {
-            if backgroundColor != oldValue {
-                layoutManager.backgroundColor = backgroundColor
-            }
-        }
-    }
     var showLineNumbers: Bool {
         get {
             return layoutManager.showLineNumbers
@@ -111,6 +104,14 @@ final class TextInputView: UIView, UITextInput {
             layoutManager.showLineNumbers = newValue
             layoutManager.setNeedsLayout()
             setNeedsLayout()
+        }
+    }
+    var highlightSelectedLine: Bool {
+        get {
+            return layoutManager.highlightSelectedLine
+        }
+        set {
+            layoutManager.highlightSelectedLine = newValue
         }
     }
     var gutterLeadingPadding: CGFloat {
@@ -177,7 +178,15 @@ final class TextInputView: UIView, UITextInput {
     var contentSize: CGSize {
         return layoutManager.contentSize
     }
-    private(set) var selectedRange: NSRange?
+    private(set) var selectedRange: NSRange? {
+        didSet {
+            if selectedRange != oldValue {
+                layoutManager.selectedRange = selectedRange
+                layoutManager.setNeedsLayoutSelection()
+                setNeedsLayout()
+            }
+        }
+    }
     override var canBecomeFirstResponder: Bool {
         return true
     }
@@ -215,7 +224,6 @@ final class TextInputView: UIView, UITextInput {
         layoutManager.delegate = self
         layoutManager.containerView = self
         layoutManager.theme = theme
-        layoutManager.backgroundColor = backgroundColor
         syntaxHighlightController.theme = theme
     }
 
@@ -226,6 +234,7 @@ final class TextInputView: UIView, UITextInput {
     override func layoutSubviews() {
         super.layoutSubviews()
         layoutManager.layoutIfNeeded()
+        layoutManager.layoutSelectionIfNeeded()
     }
 
     @discardableResult

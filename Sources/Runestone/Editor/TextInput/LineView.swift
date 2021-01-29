@@ -27,6 +27,7 @@ final class LineView: UIView {
     init() {
         super.init(frame: .zero)
         isUserInteractionEnabled = false
+        backgroundColor = .clear
     }
 
     required init?(coder: NSCoder) {
