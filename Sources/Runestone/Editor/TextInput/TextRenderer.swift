@@ -248,7 +248,7 @@ extension TextRenderer {
 
 // MARK: - UITextInput
 extension TextRenderer {
-    func caretRect(atIndex index: Int) -> CGRect {
+    func caretRect(atIndex index: Int) -> CGRect? {
         for preparedLine in preparedLines {
             let lineRange = CTLineGetStringRange(preparedLine.line)
             let localIndex = index - lineRange.location
@@ -257,7 +257,7 @@ extension TextRenderer {
                 return CGRect(x: xPos, y: preparedLine.yPosition, width: Caret.width, height: preparedLine.lineHeight)
             }
         }
-        return CGRect(x: 0, y: 0, width: Caret.width, height: Caret.defaultHeight(for: font))
+        return nil
     }
 
     func selectionRects(in range: NSRange) -> [SelectionRect] {
