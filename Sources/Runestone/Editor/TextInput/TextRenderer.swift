@@ -63,6 +63,9 @@ final class TextRenderer {
     private let syntaxHighlightQueue: OperationQueue
     private var currentSyntaxHighlightOperation: Operation?
     private var captures: [Capture]?
+    private var lineHeight: CGFloat {
+        return font?.lineHeight ?? 0
+    }
 
     init(syntaxHighlightController: SyntaxHighlightController, syntaxHighlightQueue: OperationQueue) {
         self.syntaxHighlightController = syntaxHighlightController
@@ -126,7 +129,7 @@ extension TextRenderer {
         }
         let stringLength = CFAttributedStringGetLength(attributedString)
         guard stringLength > 0 else {
-            preferredHeight = font?.lineHeight ?? 0
+            preferredHeight = lineHeight
             return
         }
         var nextYPosition: CGFloat = 0
@@ -248,7 +251,7 @@ extension TextRenderer {
 
 // MARK: - UITextInput
 extension TextRenderer {
-    func caretRect(atIndex index: Int) -> CGRect? {
+    func caretRect(atIndex index: Int) -> CGRect {
         for preparedLine in preparedLines {
             let lineRange = CTLineGetStringRange(preparedLine.line)
             let localIndex = index - lineRange.location
@@ -257,7 +260,7 @@ extension TextRenderer {
                 return CGRect(x: xPos, y: preparedLine.yPosition, width: Caret.width, height: preparedLine.lineHeight)
             }
         }
-        return nil
+        return CGRect(x: 0, y: 0, width: Caret.width, height: lineHeight)
     }
 
     func selectionRects(in range: NSRange) -> [SelectionRect] {

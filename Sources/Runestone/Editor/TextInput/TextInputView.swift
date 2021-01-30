@@ -416,7 +416,7 @@ extension TextInputView {
             fatalError("Expected position to be of type \(IndexedPosition.self)")
         }
         if string.length == 0 {
-            return CGRect(x: layoutManager.totalGutterWidth, y: 0, width: Caret.width, height: Caret.defaultHeight(for: theme.font))
+            return CGRect(x: layoutManager.gutterWidth, y: 0, width: Caret.width, height: Caret.defaultHeight(for: theme.font))
         } else if let caretRect = layoutManager.caretRect(at: indexedPosition.index) {
             return caretRect
         } else {
