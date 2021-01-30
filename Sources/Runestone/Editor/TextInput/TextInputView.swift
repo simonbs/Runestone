@@ -530,7 +530,7 @@ extension TextInputView {
             let changedLines = lines(in: changedRanges)
             editedLines.formUnion(changedLines)
         }
-        layoutManager.invalidate(editedLines)
+        layoutManager.invalidateAndPrepare(editedLines)
         layoutManager.setNeedsLayout()
         setNeedsLayout()
         inputDelegate?.textDidChange(self)

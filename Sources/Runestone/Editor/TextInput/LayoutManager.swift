@@ -172,10 +172,13 @@ final class LayoutManager {
         textRenderers.removeValue(forKey: lineID)
     }
 
-    func invalidate(_ lines: Set<DocumentLineNode>) {
+    func invalidateAndPrepare(_ lines: Set<DocumentLineNode>) {
         for line in lines {
             if let textRenderer = textRenderers[line.id] {
+                textRenderer.documentRange = NSRange(location: line.location, length: line.data.totalLength)
+                textRenderer.documentByteRange = line.data.byteRange
                 textRenderer.invalidate()
+                textRenderer.prepareToDraw()
             }
         }
     }
