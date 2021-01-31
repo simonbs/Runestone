@@ -318,7 +318,7 @@ extension TextRenderer {
         return selectionRects
     }
 
-    func firstRect(for range: NSRange) -> CGRect? {
+    func firstRect(for range: NSRange) -> CGRect {
         for preparedLine in preparedLines {
             let line = preparedLine.line
             let lineRange = CTLineGetStringRange(line)
@@ -330,7 +330,7 @@ extension TextRenderer {
                 return CGRect(x: xStart, y: preparedLine.yPosition, width: xEnd - xStart, height: preparedLine.lineHeight)
             }
         }
-        return nil
+        return CGRect(x: 0, y: 0, width: 0, height: lineHeight)
     }
 
     func closestIndex(to point: CGPoint) -> Int {

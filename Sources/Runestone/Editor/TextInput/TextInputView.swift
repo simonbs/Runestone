@@ -502,11 +502,7 @@ extension TextInputView {
         guard let indexedRange = range as? IndexedRange else {
             fatalError("Expected range to be of type \(IndexedRange.self)")
         }
-        if let firstRect = layoutManager.firstRect(for: indexedRange.range) {
-            return firstRect
-        } else {
-            fatalError("First rect is unavailable.")
-        }
+        return layoutManager.firstRect(for: indexedRange.range)
     }
 }
 

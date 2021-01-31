@@ -255,14 +255,14 @@ extension LayoutManager {
         return globalRect.offsetBy(dx: leadingLineSpacing, dy: 0)
     }
 
-    func firstRect(for range: NSRange) -> CGRect? {
+    func firstRect(for range: NSRange) -> CGRect {
         guard let line = lineManager.line(containingCharacterAt: range.location) else {
             fatalError("Cannot find first rect.")
         }
         let textRenderer = textRenderers[line.id]!
         let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
         let firstRect = textRenderer.firstRect(for: localRange)
-        return firstRect?.offsetBy(dx: leadingLineSpacing, dy: 0)
+        return firstRect.offsetBy(dx: leadingLineSpacing, dy: 0)
     }
 
     func selectionRects(in range: NSRange) -> [TextSelectionRect] {
