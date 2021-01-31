@@ -208,6 +208,54 @@ public final class EditorTextView: UIScrollView {
             textInputView.highlightSelectedLine = newValue
         }
     }
+    public var showTabs: Bool {
+        get {
+            return textInputView.showTabs
+        }
+        set {
+            textInputView.showTabs = newValue
+        }
+    }
+    public var showSpaces: Bool {
+        get {
+            return textInputView.showSpaces
+        }
+        set {
+            textInputView.showSpaces = newValue
+        }
+    }
+    public var showLineBreaks: Bool {
+        get {
+            return textInputView.showLineBreaks
+        }
+        set {
+            textInputView.showLineBreaks = newValue
+        }
+    }
+    public var tabSymbol: String {
+        get {
+            return textInputView.tabSymbol
+        }
+        set {
+            textInputView.tabSymbol = newValue
+        }
+    }
+    public var spaceSymbol: String {
+        get {
+            return textInputView.spaceSymbol
+        }
+        set {
+            textInputView.spaceSymbol = newValue
+        }
+    }
+    public var lineBreakSymbol: String {
+        get {
+            return textInputView.lineBreakSymbol
+        }
+        set {
+            textInputView.lineBreakSymbol = newValue
+        }
+    }
     public var gutterLeadingPadding: CGFloat {
         get {
             return textInputView.gutterLeadingPadding
@@ -302,6 +350,22 @@ public final class EditorTextView: UIScrollView {
 
     public func setLanguage(_ language: Language?, completion: ((Bool) -> Void)? = nil) {
         textInputView.setLanguage(language, completion: completion)
+    }
+
+    public func insertText(_ text: String) {
+        textInputView.insertText(text)
+    }
+
+    public func replace(_ range: NSRange, withText text: String) {
+        textInputView.replace(range, withText: text)
+    }
+
+    public func deleteBackward() {
+        textInputView.deleteBackward()
+    }
+
+    public func text(in range: NSRange) -> String? {
+        return textInputView.text(in: range)
     }
 }
 

@@ -79,7 +79,8 @@ final class LayoutManager {
     }
     var gutterLeadingPadding: CGFloat = 3
     var gutterTrailingPadding: CGFloat = 3
-    var gutterMargin: CGFloat = 10
+    var gutterMargin: CGFloat = 5
+    var invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
     var selectedRange: NSRange? {
         didSet {
             if selectedRange != oldValue {
@@ -434,8 +435,8 @@ extension LayoutManager {
         textRenderer.documentRange = NSRange(location: line.location, length: line.data.totalLength)
         textRenderer.documentByteRange = line.data.byteRange
         textRenderer.lineWidth = frame.width - leadingLineSpacing
-        textRenderer.font = theme.font
-        textRenderer.textColor = theme.textColor
+        textRenderer.theme = theme
+        textRenderer.invisibleCharacterConfiguration = invisibleCharacterConfiguration
         textRenderer.prepareToDraw()
         let lineHeight = ceil(textRenderer.preferredHeight)
         let didUpdateHeight = lineManager.setHeight(of: line, to: lineHeight)

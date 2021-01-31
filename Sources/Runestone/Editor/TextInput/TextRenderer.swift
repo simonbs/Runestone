@@ -47,11 +47,11 @@ final class TextRenderer {
     private(set) var preferredHeight: CGFloat = 0
     var frame: CGRect = .zero
     var lineWidth: CGFloat = 0
-    var textColor: UIColor?
-    var font: UIFont?
     var lineID: DocumentLineNodeID?
     var documentRange: NSRange?
     var documentByteRange: ByteRange?
+    var theme: EditorTheme = DefaultEditorTheme()
+    var invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
 
     private var isInvalid = true
     private var string: String?
@@ -64,7 +64,7 @@ final class TextRenderer {
     private var currentSyntaxHighlightOperation: Operation?
     private var captures: [Capture]?
     private var lineHeight: CGFloat {
-        return font?.lineHeight ?? 0
+        return theme.font.lineHeight
     }
 
     init(syntaxHighlightController: SyntaxHighlightController, syntaxHighlightQueue: OperationQueue) {
@@ -155,18 +155,60 @@ extension TextRenderer {
 // MARK: - Drawing
 extension TextRenderer {
     func draw(in context: CGContext) {
+        drawBackgrounds(to: context)
+        context.saveGState()
         context.textMatrix = .identity
         context.translateBy(x: 0, y: frame.height)
         context.scaleBy(x: 1, y: -1)
-        drawPreparedLines(to: context)
+        drawLines(to: context)
+        context.restoreGState()
     }
 
-    private func drawPreparedLines(to context: CGContext) {
+    private func drawBackgrounds(to context: CGContext) {
+        if invisibleCharacterConfiguration.showTabs || invisibleCharacterConfiguration.showSpaces || invisibleCharacterConfiguration.showLineBreaks {
+            for preparedLine in preparedLines {
+                drawInvisibleCharacters(in: preparedLine, to: context)
+            }
+        }
+    }
+
+    private func drawLines(to context: CGContext) {
         for preparedLine in preparedLines {
             let yPosition = preparedLine.descent + (frame.height - preparedLine.yPosition - preparedLine.lineHeight)
             context.textPosition = CGPoint(x: 0, y: yPosition)
             CTLineDraw(preparedLine.line, context)
         }
+    }
+
+    private func drawInvisibleCharacters(in preparedLine: PreparedLine, to context: CGContext) {
+        guard let string = string else {
+            return
+        }
+        let textRange = CTLineGetStringRange(preparedLine.line)
+        let stringRange = Range(NSRange(location: textRange.location, length: textRange.length), in: string)!
+        let lineString = string[stringRange]
+        for (index, substring) in lineString.enumerated() {
+            if invisibleCharacterConfiguration.showSpaces && substring == Symbol.Character.space {
+                let xPosition = round(CTLineGetOffsetForStringIndex(preparedLine.line, index, nil))
+                let point = CGPoint(x: CGFloat(xPosition), y: preparedLine.yPosition)
+                draw(invisibleCharacterConfiguration.spaceSymbol, at: point)
+            } else if invisibleCharacterConfiguration.showTabs && substring == Symbol.Character.tab {
+                let xPosition = round(CTLineGetOffsetForStringIndex(preparedLine.line, index, nil))
+                let point = CGPoint(x: CGFloat(xPosition), y: preparedLine.yPosition)
+                draw(invisibleCharacterConfiguration.tabSymbol, at: point)
+            } else if invisibleCharacterConfiguration.showLineBreaks && substring == Symbol.Character.lineFeed {
+                let xPosition = round(CTLineGetTypographicBounds(preparedLine.line, nil, nil, nil))
+                let point = CGPoint(x: CGFloat(xPosition), y: preparedLine.yPosition)
+                draw(invisibleCharacterConfiguration.lineBreakSymbol, at: point)
+            }
+        }
+    }
+
+    private func draw(_ symbol: String, at point: CGPoint) {
+        let attrs: [NSAttributedString.Key: Any] = [.foregroundColor: theme.invisibleCharactersColor, .font: theme.font as Any]
+        let size = symbol.size(withAttributes: attrs)
+        let rect = CGRect(x: point.x, y: point.y, width: size.width, height: size.height)
+        symbol.draw(in: rect, withAttributes: attrs)
     }
 }
 
@@ -213,15 +255,9 @@ extension TextRenderer {
         }
         let entireRange = CFRangeMake(0, CFAttributedStringGetLength(attributedString))
         var rawAttributes: [NSAttributedString.Key: Any] = [:]
-        if let textColor = textColor {
-            rawAttributes[.foregroundColor] = textColor
-        }
-        if let font = font {
-            rawAttributes[.font] = font
-        }
-        if !rawAttributes.isEmpty {
-            CFAttributedStringSetAttributes(attributedString, entireRange, rawAttributes as CFDictionary, true)
-        }
+        rawAttributes[.foregroundColor] = theme.textColor
+        rawAttributes[.font] = theme.font
+        CFAttributedStringSetAttributes(attributedString, entireRange, rawAttributes as CFDictionary, true)
     }
 
     private func applyAttributes(for captures: [Capture]) {
@@ -240,8 +276,8 @@ extension TextRenderer {
             if let range = string?.range(from: token.range) {
                 let cfRange = CFRangeMake(range.location, range.length)
                 var rawAttributes: [NSAttributedString.Key: Any] = [:]
-                rawAttributes[.foregroundColor] = token.textColor ?? textColor
-                rawAttributes[.font] = token.font ?? font
+                rawAttributes[.foregroundColor] = token.textColor ?? theme.textColor
+                rawAttributes[.font] = token.font ?? theme.font
                 CFAttributedStringSetAttributes(attributedString, cfRange, rawAttributes as CFDictionary, true)
             }
         }

@@ -114,6 +114,78 @@ final class TextInputView: UIView, UITextInput {
             layoutManager.highlightSelectedLine = newValue
         }
     }
+    var showTabs: Bool {
+        get {
+            return layoutManager.invisibleCharacterConfiguration.showTabs
+        }
+        set {
+            if newValue != layoutManager.invisibleCharacterConfiguration.showTabs {
+                layoutManager.invisibleCharacterConfiguration.showTabs = newValue
+                layoutManager.invalidateAllLines()
+                setNeedsLayout()
+            }
+        }
+    }
+    var showSpaces: Bool {
+        get {
+            return layoutManager.invisibleCharacterConfiguration.showSpaces
+        }
+        set {
+            if newValue != layoutManager.invisibleCharacterConfiguration.showSpaces {
+                layoutManager.invisibleCharacterConfiguration.showSpaces = newValue
+                layoutManager.invalidateAllLines()
+                setNeedsLayout()
+            }
+        }
+    }
+    var showLineBreaks: Bool {
+        get {
+            return layoutManager.invisibleCharacterConfiguration.showLineBreaks
+        }
+        set {
+            if newValue != layoutManager.invisibleCharacterConfiguration.showLineBreaks {
+                layoutManager.invisibleCharacterConfiguration.showLineBreaks = newValue
+                layoutManager.invalidateAllLines()
+                setNeedsLayout()
+            }
+        }
+    }
+    var tabSymbol: String {
+        get {
+            return layoutManager.invisibleCharacterConfiguration.tabSymbol
+        }
+        set {
+            if newValue != layoutManager.invisibleCharacterConfiguration.tabSymbol {
+                layoutManager.invisibleCharacterConfiguration.tabSymbol = newValue
+                layoutManager.invalidateAllLines()
+                setNeedsLayout()
+            }
+        }
+    }
+    var spaceSymbol: String {
+        get {
+            return layoutManager.invisibleCharacterConfiguration.spaceSymbol
+        }
+        set {
+            if newValue != layoutManager.invisibleCharacterConfiguration.spaceSymbol {
+                layoutManager.invisibleCharacterConfiguration.spaceSymbol = newValue
+                layoutManager.invalidateAllLines()
+                setNeedsLayout()
+            }
+        }
+    }
+    var lineBreakSymbol: String {
+        get {
+            return layoutManager.invisibleCharacterConfiguration.lineBreakSymbol
+        }
+        set {
+            if newValue != layoutManager.invisibleCharacterConfiguration.lineBreakSymbol {
+                layoutManager.invisibleCharacterConfiguration.lineBreakSymbol = newValue
+                layoutManager.invalidateAllLines()
+                setNeedsLayout()
+            }
+        }
+    }
     var gutterLeadingPadding: CGFloat {
         get {
             return layoutManager.gutterLeadingPadding
