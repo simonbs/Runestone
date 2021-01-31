@@ -53,6 +53,13 @@ final class LayoutManager {
             }
         }
     }
+    var isEditing = false {
+        didSet {
+            if isEditing != oldValue {
+                updateShownViews()
+            }
+        }
+    }
     var showLineNumbers = false {
         didSet {
             if showLineNumbers != oldValue {
@@ -374,8 +381,8 @@ extension LayoutManager {
         let selectedLength = selectedRange?.length ?? 0
         gutterBackgroundView.isHidden = !showLineNumbers
         lineNumberContainerView.isHidden = !showLineNumbers
-        gutterSelectionBackgroundView.isHidden = !highlightSelectedLine || !showLineNumbers
-        lineSelectionBackgroundView.isHidden = !highlightSelectedLine || selectedLength > 0
+        gutterSelectionBackgroundView.isHidden = !highlightSelectedLine || !showLineNumbers || !isEditing
+        lineSelectionBackgroundView.isHidden = !highlightSelectedLine || !isEditing || selectedLength > 0
     }
 }
 

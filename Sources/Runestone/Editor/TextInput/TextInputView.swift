@@ -242,6 +242,7 @@ final class TextInputView: UIView, UITextInput {
         let wasFirstResponder = isFirstResponder
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if !wasFirstResponder && isFirstResponder {
+            layoutManager.isEditing = true
             markedRange = nil
             if selectedRange == nil {
                 inputDelegate?.selectionWillChange(self)
@@ -258,6 +259,7 @@ final class TextInputView: UIView, UITextInput {
         let wasFirstResponder = isFirstResponder
         let didResignFirstResponder = super.resignFirstResponder()
         if wasFirstResponder && !isFirstResponder {
+            layoutManager.isEditing = false
             inputDelegate?.selectionWillChange(self)
             selectedRange = nil
             markedRange = nil
