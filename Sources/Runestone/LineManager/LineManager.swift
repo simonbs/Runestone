@@ -216,12 +216,12 @@ final class LineManager {
 
     @discardableResult
     func setHeight(of line: DocumentLineNode, to newHeight: CGFloat) -> Bool {
-        if newHeight != line.data.frameHeight {
+        if abs(newHeight - line.data.frameHeight) < CGFloat.ulpOfOne {
+            return false
+        } else {
             line.data.frameHeight = newHeight
             documentLineTree.updateAfterChangingChildren(of: line)
             return true
-        } else {
-            return false
         }
     }
 

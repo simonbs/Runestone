@@ -33,13 +33,7 @@ final class LayoutManager {
     }
     var viewport: CGRect = .zero
     var contentSize: CGSize {
-        if let contentSize = _contentSize {
-            return contentSize
-        } else {
-            let contentSize = CGSize(width: frame.width, height: lineManager.contentHeight)
-            _contentSize = contentSize
-            return contentSize
-        }
+        return CGSize(width: contentWidth, height: contentHeight)
     }
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
@@ -77,10 +71,35 @@ final class LayoutManager {
             }
         }
     }
-    var gutterLeadingPadding: CGFloat = 3
-    var gutterTrailingPadding: CGFloat = 3
-    var gutterMargin: CGFloat = 5
     var invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
+    var isLineWrappingEnabled = true {
+        didSet {
+            if isLineWrappingEnabled != oldValue {
+                invalidateContentSize()
+            }
+        }
+    }
+    var gutterLeadingPadding: CGFloat = 3 {
+        didSet {
+            if gutterLeadingPadding != oldValue {
+                invalidateContentSize()
+            }
+        }
+    }
+    var gutterTrailingPadding: CGFloat = 3 {
+        didSet {
+            if gutterTrailingPadding != oldValue {
+                invalidateContentSize()
+            }
+        }
+    }
+    var gutterMargin: CGFloat = 5 {
+        didSet {
+            if gutterMargin != oldValue {
+                invalidateContentSize()
+            }
+        }
+    }
     var selectedRange: NSRange? {
         didSet {
             if selectedRange != oldValue {
@@ -99,13 +118,50 @@ final class LayoutManager {
     // MARK: - Views
     private var lineViewReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineView>()
     private var lineNumberLabelReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineNumberView>()
+    private let linesContainerView = UIView()
     private let gutterBackgroundView = GutterBackgroundView()
-    private let lineNumberContainerView = UIView()
+    private let lineNumbersContainerView = UIView()
     private let gutterSelectionBackgroundView = UIView()
     private let lineSelectionBackgroundView = UIView()
 
     // MARK: - Sizing
-    private var _contentSize: CGSize?
+    private var contentWidth: CGFloat {
+        if let contentWidth = _contentWidth {
+            return contentWidth
+        } else if isLineWrappingEnabled {
+            let contentWidth = frame.width
+            _contentWidth = contentWidth
+            return contentWidth
+        } else {
+            lineIDTrackingWidth = nil
+            var currentMaximumWidth: CGFloat?
+            for (lineID, lineWidth) in lineWidths {
+                if let _currentMaximumWidth = currentMaximumWidth {
+                    if lineWidth > _currentMaximumWidth {
+                        lineIDTrackingWidth = lineID
+                        currentMaximumWidth = lineWidth
+                    }
+                } else {
+                    lineIDTrackingWidth = lineID
+                    currentMaximumWidth = lineWidth
+                }
+            }
+            let contentWidth = currentMaximumWidth ?? frame.width
+            _contentWidth = contentWidth + gutterWidth + leadingLineSpacing
+            return contentWidth
+        }
+    }
+    private var contentHeight: CGFloat {
+        if let contentHeight = _contentHeight {
+            return contentHeight
+        } else {
+            let contentHeight = lineManager.contentHeight
+            _contentHeight = contentHeight
+            return contentHeight
+        }
+    }
+    private var _contentWidth: CGFloat?
+    private var _contentHeight: CGFloat?
     private var lineNumberWidth: CGFloat = 0
     private var previousGutterWidthUpdateLineCount: Int?
     private var leadingLineSpacing: CGFloat {
@@ -122,6 +178,8 @@ final class LayoutManager {
     private var textRenderers: [DocumentLineNodeID: TextRenderer] = [:]
     private var needsLayout = false
     private var needsLayoutSelection = false
+    private var lineWidths: [DocumentLineNodeID: CGFloat] = [:]
+    private var lineIDTrackingWidth: DocumentLineNodeID?
 
     // MARK: - Helpers
     private var currentDelegate: LayoutManagerDelegate {
@@ -136,8 +194,9 @@ final class LayoutManager {
         self.lineManager = lineManager
         self.syntaxHighlightController = syntaxHighlightController
         self.operationQueue = operationQueue
+        self.linesContainerView.isUserInteractionEnabled = false
         self.gutterBackgroundView.isUserInteractionEnabled = false
-        self.lineNumberContainerView.isUserInteractionEnabled = false
+        self.lineNumbersContainerView.isUserInteractionEnabled = false
         self.gutterSelectionBackgroundView.isUserInteractionEnabled = false
         self.lineSelectionBackgroundView.isUserInteractionEnabled = false
         self.updateShownViews()
@@ -178,7 +237,7 @@ final class LayoutManager {
         let disappearedLineIDs = oldVisibleLineIds.subtracting(appearedLineIDs)
         lineViewReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
         lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
-        if _contentSize == nil {
+        if _contentWidth == nil || _contentHeight == nil {
             delegate?.layoutManagerDidInvalidateContentSize(self)
         }
         CATransaction.commit()
@@ -200,10 +259,17 @@ final class LayoutManager {
     }
 
     func invalidateContentSize() {
-        _contentSize = nil
+        _contentWidth = nil
+        _contentHeight = nil
     }
 
     func removeLine(withID lineID: DocumentLineNodeID) {
+        if lineID == lineIDTrackingWidth {
+            lineIDTrackingWidth = nil
+            _contentWidth = nil
+            delegate?.layoutManagerDidInvalidateContentSize(self)
+        }
+        lineWidths.removeValue(forKey: lineID)
         textRenderers.removeValue(forKey: lineID)
     }
 
@@ -236,7 +302,12 @@ final class LayoutManager {
             let wideLineNumberString = String(repeating: "8", count: characterCount)
             let wideLineNumberNSString = wideLineNumberString as NSString
             let size = wideLineNumberNSString.size(withAttributes: [.font: theme.lineNumberFont])
+            let oldLineNumberWidth = lineNumberWidth
             lineNumberWidth = ceil(size.width) + gutterLeadingPadding + gutterTrailingPadding
+            if lineNumberWidth != oldLineNumberWidth {
+                _contentWidth = nil
+                delegate?.layoutManagerDidInvalidateContentSize(self)
+            }
         }
     }
 }
@@ -335,8 +406,8 @@ extension LayoutManager {
 // MARK: - Layout
 extension LayoutManager {
     private func layoutGutter() {
-        gutterBackgroundView.frame = CGRect(x: 0, y: viewport.minY, width: gutterWidth, height: viewport.height)
-        lineNumberContainerView.frame = CGRect(x: 0, y: 0, width: gutterWidth, height: contentSize.height)
+        gutterBackgroundView.frame = CGRect(x: viewport.minX, y: viewport.minY, width: gutterWidth, height: viewport.height)
+        lineNumbersContainerView.frame = CGRect(x: viewport.minX, y: 0, width: gutterWidth, height: contentSize.height)
     }
 
     private func layoutSelection() {
@@ -359,29 +430,30 @@ extension LayoutManager {
             let textRenderer = getTextRenderer(for: line)
             selectedRect = CGRect(x: 0, y: textRenderer.frame.minY, width: frame.width, height: textRenderer.frame.height)
         }
-        gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: gutterWidth, height: selectedRect.height)
-        lineSelectionBackgroundView.frame = CGRect(x: gutterWidth, y: selectedRect.minY, width: frame.width - gutterWidth, height: selectedRect.height)
+        gutterSelectionBackgroundView.frame = CGRect(x: viewport.minX, y: selectedRect.minY, width: gutterWidth, height: selectedRect.height)
+        lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: frame.width - gutterWidth, height: selectedRect.height)
     }
 
     private func setupViewHierarchy() {
         // Remove views from view hierarchy
         gutterBackgroundView.removeFromSuperview()
-        lineNumberContainerView.removeFromSuperview()
+        lineNumbersContainerView.removeFromSuperview()
         gutterSelectionBackgroundView.removeFromSuperview()
         lineSelectionBackgroundView.removeFromSuperview()
         let allLineNumberKeys = lineViewReuseQueue.visibleViews.keys
         lineViewReuseQueue.enqueueViews(withKeys: Set(allLineNumberKeys))
         // Add views to view hierarchy
+        containerView?.addSubview(lineSelectionBackgroundView)
+        containerView?.addSubview(linesContainerView)
         containerView?.addSubview(gutterBackgroundView)
         containerView?.addSubview(gutterSelectionBackgroundView)
-        containerView?.addSubview(lineSelectionBackgroundView)
-        containerView?.addSubview(lineNumberContainerView)
+        containerView?.addSubview(lineNumbersContainerView)
     }
 
     private func updateShownViews() {
         let selectedLength = selectedRange?.length ?? 0
         gutterBackgroundView.isHidden = !showLineNumbers
-        lineNumberContainerView.isHidden = !showLineNumbers
+        lineNumbersContainerView.isHidden = !showLineNumbers
         gutterSelectionBackgroundView.isHidden = !highlightSelectedLine || !showLineNumbers || !isEditing
         lineSelectionBackgroundView.isHidden = !highlightSelectedLine || !isEditing || selectedLength > 0
     }
@@ -394,23 +466,24 @@ extension LayoutManager {
         let lineNumberView = lineNumberLabelReuseQueue.dequeueView(forKey: line.id)
         // Ensure views are added to the view hiearchy
         if lineView.superview == nil {
-            containerView?.addSubview(lineView)
+            linesContainerView.addSubview(lineView)
         }
         if lineNumberView.superview == nil {
-            lineNumberContainerView.addSubview(lineNumberView)
+            lineNumbersContainerView.addSubview(lineNumberView)
         }
         // Setup the line
         let lineYPosition = line.yPosition
         let textRenderer = getTextRenderer(for: line)
         prepare(textRenderer, toDraw: line)
+        let lineSize = textRenderer.preferredLineSize
         lineView.textRenderer = textRenderer
-        lineView.frame = CGRect(x: leadingLineSpacing, y: lineYPosition, width: textRenderer.lineWidth, height: textRenderer.preferredHeight)
+        lineView.frame = CGRect(x: leadingLineSpacing, y: lineYPosition, width: lineSize.width, height: lineSize.height)
         lineView.setNeedsDisplay()
         // Setup the line number
         lineNumberView.text = "\(line.index + 1)"
         lineNumberView.textColor = theme.lineNumberColor
         lineNumberView.font = theme.font
-        lineNumberView.frame = CGRect(x: gutterLeadingPadding, y: lineYPosition, width: lineNumberWidth, height: textRenderer.preferredHeight)
+        lineNumberView.frame = CGRect(x: gutterLeadingPadding, y: lineYPosition, width: lineNumberWidth, height: lineSize.height)
         // Start highlighting the line
         textRenderer.syntaxHighlight()
         // Pass back the maximum Y position so the caller can determine if it needs to show more lines.
@@ -434,14 +507,28 @@ extension LayoutManager {
         textRenderer.lineID = line.id
         textRenderer.documentRange = NSRange(location: line.location, length: line.data.totalLength)
         textRenderer.documentByteRange = line.data.byteRange
-        textRenderer.lineWidth = frame.width - leadingLineSpacing
         textRenderer.theme = theme
         textRenderer.invisibleCharacterConfiguration = invisibleCharacterConfiguration
+        if isLineWrappingEnabled {
+            textRenderer.constrainingLineWidth = frame.width - leadingLineSpacing
+        } else {
+            textRenderer.constrainingLineWidth = nil
+        }
         textRenderer.prepareToDraw()
-        let lineHeight = ceil(textRenderer.preferredHeight)
-        let didUpdateHeight = lineManager.setHeight(of: line, to: lineHeight)
+        let didUpdateHeight = lineManager.setHeight(of: line, to: textRenderer.preferredLineSize.height)
+        if lineWidths[line.id] != textRenderer.preferredLineSize.width {
+            lineWidths[line.id] = textRenderer.preferredLineSize.width
+            if let lineIDTrackingWidth = lineIDTrackingWidth {
+                let maximumLineWidth = lineWidths[lineIDTrackingWidth] ?? 0
+                if line.id == lineIDTrackingWidth || textRenderer.preferredLineSize.width > maximumLineWidth {
+                    _contentWidth = nil
+                }
+            } else if !isLineWrappingEnabled {
+                _contentWidth = nil
+            }
+        }
         if didUpdateHeight {
-            _contentSize = nil
+            _contentHeight = nil
         }
     }
 }

@@ -280,6 +280,14 @@ public final class EditorTextView: UIScrollView {
             textInputView.gutterMargin = newValue
         }
     }
+    public var isLineWrappingEnabled: Bool {
+        get {
+            return textInputView.isLineWrappingEnabled
+        }
+        set {
+            textInputView.isLineWrappingEnabled = newValue
+        }
+    }
 
     private let textInputView = TextInputView()
     private let editingTextInteraction = UITextInteraction(for: .editable)

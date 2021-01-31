@@ -210,6 +210,14 @@ final class TextInputView: UIView, UITextInput {
             layoutManager.gutterMargin = newValue
         }
     }
+    var isLineWrappingEnabled: Bool {
+        get {
+            return layoutManager.isLineWrappingEnabled
+        }
+        set {
+            layoutManager.isLineWrappingEnabled = newValue
+        }
+    }
 
     // MARK: - Contents
     weak var delegate: TextInputViewDelegate?

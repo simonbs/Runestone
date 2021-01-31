@@ -10,13 +10,13 @@ import UIKit
 private final class PreparedLine {
     let line: CTLine
     let descent: CGFloat
-    let lineHeight: CGFloat
+    let lineSize: CGSize
     let yPosition: CGFloat
 
-    init(line: CTLine, descent: CGFloat, lineHeight: CGFloat, yPosition: CGFloat) {
+    init(line: CTLine, descent: CGFloat, lineSize: CGSize, yPosition: CGFloat) {
         self.line = line
         self.descent = descent
-        self.lineHeight = lineHeight
+        self.lineSize = lineSize
         self.yPosition = yPosition
     }
 }
@@ -44,9 +44,9 @@ final class TextRenderer {
     }
 
     weak var delegate: TextRendererDelegate?
-    private(set) var preferredHeight: CGFloat = 0
+    private(set) var preferredLineSize: CGSize = .zero
     var frame: CGRect = .zero
-    var lineWidth: CGFloat = 0
+    var constrainingLineWidth: CGFloat?
     var lineID: DocumentLineNodeID?
     var documentRange: NSRange?
     var documentByteRange: ByteRange?
@@ -63,7 +63,7 @@ final class TextRenderer {
     private let syntaxHighlightQueue: OperationQueue
     private var currentSyntaxHighlightOperation: Operation?
     private var captures: [Capture]?
-    private var lineHeight: CGFloat {
+    private var defaultLineHeight: CGFloat {
         return theme.font.lineHeight
     }
 
@@ -120,7 +120,7 @@ extension TextRenderer {
 
     private func prepareLines() {
         preparedLines = []
-        preferredHeight = 0
+        preferredLineSize = .zero
         guard let typesetter = typesetter else {
             return
         }
@@ -129,26 +129,42 @@ extension TextRenderer {
         }
         let stringLength = CFAttributedStringGetLength(attributedString)
         guard stringLength > 0 else {
-            preferredHeight = lineHeight
+            preferredLineSize = CGSize(width: 0, height: defaultLineHeight)
             return
         }
-        var nextYPosition: CGFloat = 0
-        var startOffset = 0
-        while startOffset < stringLength {
-            let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(lineWidth))
-            let range = CFRangeMake(startOffset, length)
-            let line = CTTypesetterCreateLine(typesetter, range)
-            var ascent: CGFloat = 0
-            var descent: CGFloat = 0
-            var leading: CGFloat = 0
-            CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
-            let lineHeight = ascent + descent + leading
-            let preparedLine = PreparedLine(line: line, descent: descent, lineHeight: lineHeight, yPosition: nextYPosition)
+        if let constrainingLineWidth = constrainingLineWidth {
+            var nextYPosition: CGFloat = 0
+            var startOffset = 0
+            var maximumLineWidth: CGFloat = 0
+            while startOffset < stringLength {
+                let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingLineWidth))
+                let range = CFRangeMake(startOffset, length)
+                let preparedLine = createPreparedLine(for: range, in: typesetter, yPosition: nextYPosition)
+                preparedLines.append(preparedLine)
+                nextYPosition += preparedLine.lineSize.height
+                startOffset += length
+                if preparedLine.lineSize.width > maximumLineWidth {
+                    maximumLineWidth = preparedLine.lineSize.width
+                }
+            }
+            preferredLineSize = CGSize(width: maximumLineWidth, height: nextYPosition)
+        } else {
+            let range = CFRangeMake(0, stringLength)
+            let preparedLine = createPreparedLine(for: range, in: typesetter, yPosition: 0)
             preparedLines.append(preparedLine)
-            nextYPosition += lineHeight
-            startOffset += length
+            preferredLineSize = CGSize(width: preparedLine.lineSize.width, height: preparedLine.lineSize.height)
         }
-        preferredHeight = ceil(nextYPosition)
+    }
+
+    private func createPreparedLine(for range: CFRange, in typesetter: CTTypesetter, yPosition: CGFloat) -> PreparedLine {
+        let line = CTTypesetterCreateLine(typesetter, range)
+        var ascent: CGFloat = 0
+        var descent: CGFloat = 0
+        var leading: CGFloat = 0
+        let lineWidth = CGFloat(CTLineGetTypographicBounds(line, &ascent, &descent, &leading))
+        let lineHeight = ascent + descent + leading
+        let lineSize = CGSize(width: lineWidth, height: lineHeight)
+        return PreparedLine(line: line, descent: descent, lineSize: lineSize, yPosition: yPosition)
     }
 }
 
@@ -174,7 +190,7 @@ extension TextRenderer {
 
     private func drawLines(to context: CGContext) {
         for preparedLine in preparedLines {
-            let yPosition = preparedLine.descent + (frame.height - preparedLine.yPosition - preparedLine.lineHeight)
+            let yPosition = preparedLine.descent + (frame.height - preparedLine.yPosition - preparedLine.lineSize.height)
             context.textPosition = CGPoint(x: 0, y: yPosition)
             CTLineDraw(preparedLine.line, context)
         }
@@ -293,10 +309,10 @@ extension TextRenderer {
             let localIndex = index - lineRange.location
             if localIndex >= 0 && localIndex <= lineRange.length {
                 let xPos = CTLineGetOffsetForStringIndex(preparedLine.line, index, nil)
-                return CGRect(x: xPos, y: preparedLine.yPosition, width: Caret.width, height: preparedLine.lineHeight)
+                return CGRect(x: xPos, y: preparedLine.yPosition, width: Caret.width, height: preparedLine.lineSize.height)
             }
         }
-        return CGRect(x: 0, y: 0, width: Caret.width, height: lineHeight)
+        return CGRect(x: 0, y: 0, width: Caret.width, height: defaultLineHeight)
     }
 
     func selectionRects(in range: NSRange) -> [SelectionRect] {
@@ -310,7 +326,7 @@ extension TextRenderer {
                 let xStart = CTLineGetOffsetForStringIndex(line, selectionIntersection.location, nil)
                 let xEnd = CTLineGetOffsetForStringIndex(line, selectionIntersection.location + selectionIntersection.length, nil)
                 let yPos = preparedLine.yPosition
-                let rect = CGRect(x: xStart, y: yPos, width: xEnd - xStart, height: preparedLine.lineHeight)
+                let rect = CGRect(x: xStart, y: yPos, width: xEnd - xStart, height: preparedLine.lineSize.height)
                 let selectionRect = SelectionRect(rect: rect, range: selectionIntersection)
                 selectionRects.append(selectionRect)
             }
@@ -327,16 +343,16 @@ extension TextRenderer {
                 let finalIndex = min(lineRange.location + lineRange.length, range.location + range.length)
                 let xStart = CTLineGetOffsetForStringIndex(line, index, nil)
                 let xEnd = CTLineGetOffsetForStringIndex(line, finalIndex, nil)
-                return CGRect(x: xStart, y: preparedLine.yPosition, width: xEnd - xStart, height: preparedLine.lineHeight)
+                return CGRect(x: xStart, y: preparedLine.yPosition, width: xEnd - xStart, height: preparedLine.lineSize.height)
             }
         }
-        return CGRect(x: 0, y: 0, width: 0, height: lineHeight)
+        return CGRect(x: 0, y: 0, width: 0, height: defaultLineHeight)
     }
 
     func closestIndex(to point: CGPoint) -> Int {
         var closestPreparedLine = preparedLines.last
         for preparedLine in preparedLines {
-            let lineMaxY = preparedLine.yPosition + preparedLine.lineHeight
+            let lineMaxY = preparedLine.yPosition + preparedLine.lineSize.height
             if point.y <= lineMaxY {
                 closestPreparedLine = preparedLine
                 break

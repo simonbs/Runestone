@@ -9,11 +9,13 @@ import Foundation
 
 public final class EditorState {
     let text: String
+    let theme: EditorTheme
     let lineManager = LineManager()
     let parser: Parser?
 
-    public init(text: String, language: Language? = nil) {
+    public init(text: String, theme: EditorTheme, language: Language? = nil) {
         self.text = text
+        self.theme = theme
         if let language = language {
             parser = Parser(encoding: .utf8)
             parser?.language = language
@@ -26,6 +28,7 @@ public final class EditorState {
 
 private extension EditorState {
     private func prepare() {
+        lineManager.estimatedLineHeight = theme.font.lineHeight
         lineManager.rebuild(from: text as NSString)
         parser?.parse(text)
     }
