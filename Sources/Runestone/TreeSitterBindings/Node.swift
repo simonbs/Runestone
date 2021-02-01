@@ -7,7 +7,7 @@
 
 import TreeSitter
 
-final class Node {
+public final class Node {
     let rawValue: TSNode
     var expressionString: String? {
         if let str = ts_node_string(rawValue) {
@@ -18,7 +18,7 @@ final class Node {
             return nil
         }
     }
-    var type: String? {
+    public var type: String? {
         if let str = ts_node_type(rawValue) {
             return String(cString: str)
         } else {
@@ -63,11 +63,11 @@ final class Node {
 }
 
 extension Node: Hashable {
-    static func == (lhs: Node, rhs: Node) -> Bool {
+    public static func == (lhs: Node, rhs: Node) -> Bool {
         return lhs.rawValue.id == rhs.rawValue.id
     }
 
-    func hash(into hasher: inout Hasher) {
+    public func hash(into hasher: inout Hasher) {
         hasher.combine(rawValue.id)
     }
 }

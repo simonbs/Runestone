@@ -442,6 +442,14 @@ final class TextInputView: UIView, UITextInput {
         }
         operationQueue.addOperation(operation)
     }
+
+    func node(at location: Int) -> Node? {
+        let parser = syntaxHighlightController.parser
+        let rootNode = parser?.latestTree?.rootNode
+        let byteOffset = (_string as String).byteOffset(at: location)
+        let byteRange = ByteRange(location: byteOffset, length: ByteCount(0))
+        return rootNode?.namedDescendant(in: byteRange)
+    }
 }
 
 // MARK: - Language

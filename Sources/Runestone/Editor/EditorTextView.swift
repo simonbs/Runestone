@@ -435,6 +435,20 @@ public final class EditorTextView: UIScrollView {
     public func text(in range: NSRange) -> String? {
         return textInputView.text(in: range)
     }
+
+    /// Returns the node at the specified location in the document. This provides information about the type
+    /// of token at the location, e.g. if it's a string, a number, a keyword etc.
+    ///
+    /// This can be used with character pairs to determine if a pair should be inserted or not.
+    /// For example, a character pair consisting of two quotes (") to surround a string, should probably not be
+    /// inserted when the quote is typed while the caret is already inside a string.
+    ///
+    /// This requires a language to be set on the editor.
+    /// - Parameter location: A location in the document.
+    /// - Returns: The node at the location.
+    public func node(at location: Int) -> Node? {
+        return textInputView.node(at: location)
+    }
 }
 
 // MARK: - Interaction
