@@ -343,6 +343,7 @@ public final class EditorTextView: UIScrollView {
         super.init(frame: frame)
         backgroundColor = .white
         textInputView.delegate = self
+        textInputView.editorView = self
         editingTextInteraction.textInput = textInputView
         addSubview(textInputView)
         tapGestureRecognizer.delegate = self
@@ -358,6 +359,7 @@ public final class EditorTextView: UIScrollView {
         super.layoutSubviews()
         textInputView.frame = CGRect(x: 0, y: 0, width: frame.width, height: contentSize.height)
         textInputView.viewport = CGRect(origin: contentOffset, size: frame.size)
+        bringSubviewToFront(textInputView.gutterContainerView)
     }
 
     @discardableResult

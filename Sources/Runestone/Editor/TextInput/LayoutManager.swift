@@ -16,9 +16,16 @@ protocol LayoutManagerDelegate: AnyObject {
 final class LayoutManager {
     // MARK: - Public
     weak var delegate: LayoutManagerDelegate?
-    weak var containerView: UIView? {
+    weak var editorView: UIView? {
         didSet {
-            if containerView != oldValue {
+            if editorView != oldValue {
+                setupViewHierarchy()
+            }
+        }
+    }
+    weak var textInputView: UIView? {
+        didSet {
+            if textInputView != oldValue {
                 setupViewHierarchy()
             }
         }
@@ -123,6 +130,7 @@ final class LayoutManager {
     }
 
     // MARK: - Views
+    let gutterContainerView = UIView()
     private var lineViewReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineView>()
     private var lineNumberLabelReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineNumberView>()
     private let linesContainerView = UIView()
@@ -202,8 +210,9 @@ final class LayoutManager {
         self.syntaxHighlightController = syntaxHighlightController
         self.operationQueue = operationQueue
         self.linesContainerView.isUserInteractionEnabled = false
-        self.gutterBackgroundView.isUserInteractionEnabled = false
         self.lineNumbersContainerView.isUserInteractionEnabled = false
+        self.gutterContainerView.isUserInteractionEnabled = false
+        self.gutterBackgroundView.isUserInteractionEnabled = false
         self.gutterSelectionBackgroundView.isUserInteractionEnabled = false
         self.lineSelectionBackgroundView.isUserInteractionEnabled = false
         self.updateShownViews()
@@ -413,8 +422,9 @@ extension LayoutManager {
 // MARK: - Layout
 extension LayoutManager {
     private func layoutGutter() {
-        gutterBackgroundView.frame = CGRect(x: viewport.minX, y: viewport.minY, width: gutterWidth, height: viewport.height)
-        lineNumbersContainerView.frame = CGRect(x: viewport.minX, y: 0, width: gutterWidth, height: contentSize.height)
+        gutterContainerView.frame = CGRect(x: viewport.minX, y: 0, width: gutterWidth, height: contentSize.height)
+        gutterBackgroundView.frame = CGRect(x: 0, y: viewport.minY, width: gutterWidth, height: viewport.height)
+        lineNumbersContainerView.frame = CGRect(x: 0, y: 0, width: gutterWidth, height: contentSize.height)
     }
 
     private func layoutSelection() {
@@ -437,7 +447,7 @@ extension LayoutManager {
             let textRenderer = getTextRenderer(for: line)
             selectedRect = CGRect(x: 0, y: textRenderer.frame.minY, width: frame.width, height: textRenderer.frame.height)
         }
-        gutterSelectionBackgroundView.frame = CGRect(x: viewport.minX, y: selectedRect.minY, width: gutterWidth, height: selectedRect.height)
+        gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: gutterWidth, height: selectedRect.height)
         lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: frame.width - gutterWidth, height: selectedRect.height)
     }
 
@@ -450,11 +460,12 @@ extension LayoutManager {
         let allLineNumberKeys = lineViewReuseQueue.visibleViews.keys
         lineViewReuseQueue.enqueueViews(withKeys: Set(allLineNumberKeys))
         // Add views to view hierarchy
-        containerView?.addSubview(lineSelectionBackgroundView)
-        containerView?.addSubview(linesContainerView)
-        containerView?.addSubview(gutterBackgroundView)
-        containerView?.addSubview(gutterSelectionBackgroundView)
-        containerView?.addSubview(lineNumbersContainerView)
+        textInputView?.addSubview(lineSelectionBackgroundView)
+        textInputView?.addSubview(linesContainerView)
+        editorView?.addSubview(gutterContainerView)
+        gutterContainerView.addSubview(gutterBackgroundView)
+        gutterContainerView.addSubview(gutterSelectionBackgroundView)
+        gutterContainerView.addSubview(lineNumbersContainerView)
     }
 
     private func updateShownViews() {

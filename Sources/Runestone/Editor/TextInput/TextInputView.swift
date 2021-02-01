@@ -278,6 +278,17 @@ final class TextInputView: UIView, UITextInput {
     override var canBecomeFirstResponder: Bool {
         return true
     }
+    weak var editorView: UIView? {
+        get {
+            return layoutManager.editorView
+        }
+        set {
+            layoutManager.editorView = newValue
+        }
+    }
+    var gutterContainerView: UIView {
+        return layoutManager.gutterContainerView
+    }
 
     // MARK: - Private
     private var _string = NSMutableString()
@@ -310,7 +321,7 @@ final class TextInputView: UIView, UITextInput {
         lineManager.delegate = self
         lineManager.estimatedLineHeight = theme.font.lineHeight
         layoutManager.delegate = self
-        layoutManager.containerView = self
+        layoutManager.textInputView = self
         layoutManager.theme = theme
         syntaxHighlightController.theme = theme
     }
