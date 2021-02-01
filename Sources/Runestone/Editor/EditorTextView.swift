@@ -280,6 +280,14 @@ public final class EditorTextView: UIScrollView {
             textInputView.gutterMargin = newValue
         }
     }
+    public var lineMargin: CGFloat {
+        get {
+            return textInputView.lineMargin
+        }
+        set {
+            textInputView.lineMargin = newValue
+        }
+    }
     public var isLineWrappingEnabled: Bool {
         get {
             return textInputView.isLineWrappingEnabled

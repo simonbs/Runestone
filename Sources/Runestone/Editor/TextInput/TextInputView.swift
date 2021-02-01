@@ -210,6 +210,14 @@ final class TextInputView: UIView, UITextInput {
             layoutManager.gutterMargin = newValue
         }
     }
+    var lineMargin: CGFloat {
+        get {
+            return layoutManager.lineMargin
+        }
+        set {
+            layoutManager.lineMargin = newValue
+        }
+    }
     var isLineWrappingEnabled: Bool {
         get {
             return layoutManager.isLineWrappingEnabled

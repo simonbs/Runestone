@@ -100,6 +100,13 @@ final class LayoutManager {
             }
         }
     }
+    var lineMargin: CGFloat = 5 {
+        didSet {
+            if lineMargin != oldValue {
+                invalidateContentSize()
+            }
+        }
+    }
     var selectedRange: NSRange? {
         didSet {
             if selectedRange != oldValue {
@@ -147,7 +154,7 @@ final class LayoutManager {
                 }
             }
             let contentWidth = currentMaximumWidth ?? frame.width
-            _contentWidth = contentWidth + gutterWidth + leadingLineSpacing
+            _contentWidth = contentWidth + leadingLineSpacing + lineMargin
             return contentWidth
         }
     }
