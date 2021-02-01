@@ -378,8 +378,13 @@ extension LayoutManager {
                 let containsStart = range.location >= startLocation && range.location <= endLocation
                 let containsEnd = range.location + range.length >= startLocation && range.location + range.length <= endLocation
                 screenRect.origin.x += leadingLineSpacing
+                if !containsStart {
+                    // If this is not the starting line then we ignore the leading line spacing so
+                    // the selection rect starts right after the gutter.
+                    screenRect.origin.x = gutterWidth
+                }
                 if endLocation < range.location + range.length {
-                    screenRect.size.width = frame.width - screenRect.minX
+                    screenRect.size.width = contentWidth - screenRect.minX
                 }
                 return TextSelectionRect(rect: screenRect, writingDirection: .leftToRight, containsStart: containsStart, containsEnd: containsEnd)
             }
