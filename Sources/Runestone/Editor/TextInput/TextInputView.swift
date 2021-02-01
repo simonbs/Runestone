@@ -14,6 +14,7 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidChangeSelection(_ view: TextInputView)
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
     func textInputViewDidInvalidateContentSize(_ view: TextInputView)
+    func textInputView(_ view: TextInputView, shouldScrollTo targetRect: CGRect)
 }
 
 final class TextInputView: UIView, UITextInput {
@@ -225,6 +226,9 @@ final class TextInputView: UIView, UITextInput {
         set {
             layoutManager.isLineWrappingEnabled = newValue
         }
+    }
+    var gutterWidth: CGFloat {
+        return layoutManager.gutterWidth
     }
 
     // MARK: - Contents
@@ -676,6 +680,13 @@ extension TextInputView {
 
     private func shouldChangeText(in range: NSRange, replacementText text: String) -> Bool {
         return delegate?.textInputView(self, shouldChangeTextIn: range, replacementText: text) ?? true
+    }
+
+    private func scrollToCaret() {
+        if let selectedTextRange = selectedTextRange?.end {
+            let caretRect = self.caretRect(for: selectedTextRange)
+            delegate?.textInputView(self, shouldScrollTo: caretRect)
+        }
     }
 }
 

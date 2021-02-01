@@ -500,6 +500,29 @@ extension EditorTextView: TextInputViewDelegate {
     }
 
     func textInputViewDidChangeSelection(_ view: TextInputView) {
+        if let selectedTextRange = textInputView.selectedTextRange?.end {
+            let gutterWidth = textInputView.gutterWidth
+            let caretRect = textInputView.caretRect(for: selectedTextRange)
+            var newXOffset = contentOffset.x
+            var newYOffset = contentOffset.y
+            var visibleBounds = bounds
+            visibleBounds.origin.y += adjustedContentInset.top
+            visibleBounds.size.height -= adjustedContentInset.top + adjustedContentInset.bottom
+            if caretRect.minX - gutterWidth < visibleBounds.minX {
+                newXOffset = caretRect.minX - gutterWidth
+            } else if caretRect.maxX > visibleBounds.maxX {
+                newXOffset = caretRect.maxX - frame.width
+            }
+            if caretRect.minY < visibleBounds.minY {
+                newYOffset = caretRect.minY - adjustedContentInset.top
+            } else if caretRect.maxY > visibleBounds.maxY {
+                newYOffset = caretRect.maxY - visibleBounds.height - adjustedContentInset.top
+            }
+            let newContentOffset = CGPoint(x: newXOffset, y: newYOffset)
+            if newContentOffset != contentOffset {
+                contentOffset = newContentOffset
+            }
+        }
         editorDelegate?.editorTextViewDidChangeSelection(self)
     }
 
@@ -522,6 +545,10 @@ extension EditorTextView: TextInputViewDelegate {
         } else {
             return editorDelegate?.editorTextView(self, shouldChangeTextIn: range, replacementText: text) ?? true
         }
+    }
+
+    func textInputView(_ view: TextInputView, shouldScrollTo targetRect: CGRect) {
+
     }
 }
 
