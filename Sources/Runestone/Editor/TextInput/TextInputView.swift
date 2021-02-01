@@ -106,12 +106,12 @@ final class TextInputView: UIView, UITextInput {
             setNeedsLayout()
         }
     }
-    var highlightSelectedLine: Bool {
+    var showSelectedLines: Bool {
         get {
-            return layoutManager.highlightSelectedLine
+            return layoutManager.showSelectedLines
         }
         set {
-            layoutManager.highlightSelectedLine = newValue
+            layoutManager.showSelectedLines = newValue
         }
     }
     var showTabs: Bool {
@@ -398,6 +398,7 @@ final class TextInputView: UIView, UITextInput {
 
     func setState(_ state: EditorState) {
         _string = NSMutableString(string: state.text)
+        theme = state.theme
         lineManager = state.lineManager
         lineManager.delegate = self
         lineManager.estimatedLineHeight = theme.font.lineHeight

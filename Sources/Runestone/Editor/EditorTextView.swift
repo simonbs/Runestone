@@ -39,6 +39,7 @@ public extension EditorTextViewDelegate {
 }
 
 public final class EditorTextView: UIScrollView {
+    /// Delegate to receive callbacks for events triggered by the editor.
     public weak var editorDelegate: EditorTextViewDelegate?
     public var text: String {
         get {
@@ -49,6 +50,7 @@ public final class EditorTextView: UIScrollView {
             contentSize = textInputView.contentSize
         }
     }
+    /// Colors and fonts to be used by the editor.
     public var theme: EditorTheme {
         get {
             return textInputView.theme
@@ -57,6 +59,9 @@ public final class EditorTextView: UIScrollView {
             textInputView.theme = newValue
         }
     }
+    /// Languages to for syntax highlighting the text in the editor. Setting the language will cause
+    /// the parser to immediately parse the entire document. Consider using `setLanguage(:completion:)`
+    /// to parse the language on a background thread.
     public var language: Language? {
         get {
             return textInputView.language
@@ -137,6 +142,7 @@ public final class EditorTextView: UIScrollView {
             textInputView.returnKeyType = newValue
         }
     }
+    /// The color of the insertion point. This can be used to control the color of the caret.
     public var insertionPointColor: UIColor {
         get {
             return textInputView.insertionPointColor
@@ -145,6 +151,7 @@ public final class EditorTextView: UIScrollView {
             textInputView.insertionPointColor = newValue
         }
     }
+    /// The color of the selection bar. It is most common to set this to the same color as the color used for the insertion point.
     public var selectionBarColor: UIColor {
         get {
             return textInputView.selectionBarColor
@@ -153,6 +160,7 @@ public final class EditorTextView: UIScrollView {
             textInputView.selectionBarColor = newValue
         }
     }
+    /// The color of the selection highlight. It is most common to set this to the same color as the color used for the insertion point.
     public var selectionHighlightColor: UIColor {
         get {
             return textInputView.selectionHighlightColor
@@ -191,7 +199,9 @@ public final class EditorTextView: UIScrollView {
             }
         }
     }
+    /// Character pairs are used by the editor to automatically insert a trailing character when the user types the leading character. Common usages of this includes the \" character to surround strings and { } to surround a scope.
     public var characterPairs: [EditorCharacterPair] = []
+    /// Enable to show line numbers in the gutter.
     public var showLineNumbers: Bool {
         get {
             return textInputView.showLineNumbers
@@ -200,14 +210,16 @@ public final class EditorTextView: UIScrollView {
             textInputView.showLineNumbers = newValue
         }
     }
-    public var highlightSelectedLine: Bool {
+    /// Enable to show highlight the selected lines. The selection is only shown in the gutter when multiple lines are selected.
+    public var showSelectedLines: Bool {
         get {
-            return textInputView.highlightSelectedLine
+            return textInputView.showSelectedLines
         }
         set {
-            textInputView.highlightSelectedLine = newValue
+            textInputView.showSelectedLines = newValue
         }
     }
+    /// The text view renders invisible tabs when enabled. The `tabsSymbol` is used to render tabs.
     public var showTabs: Bool {
         get {
             return textInputView.showTabs
@@ -216,6 +228,7 @@ public final class EditorTextView: UIScrollView {
             textInputView.showTabs = newValue
         }
     }
+    /// The text view renders invisible spaces when enabled. The `spaceSymbol` is used to render spaces.
     public var showSpaces: Bool {
         get {
             return textInputView.showSpaces
@@ -224,6 +237,7 @@ public final class EditorTextView: UIScrollView {
             textInputView.showSpaces = newValue
         }
     }
+    /// The text view renders invisible line breaks when enabled. The `lineBreakSymbol` is used to render line breaks.
     public var showLineBreaks: Bool {
         get {
             return textInputView.showLineBreaks
@@ -232,6 +246,7 @@ public final class EditorTextView: UIScrollView {
             textInputView.showLineBreaks = newValue
         }
     }
+    /// Used when rendering tabs. The value is only used when invisible tab characters is enabled. The default is ▸.
     public var tabSymbol: String {
         get {
             return textInputView.tabSymbol
@@ -240,6 +255,7 @@ public final class EditorTextView: UIScrollView {
             textInputView.tabSymbol = newValue
         }
     }
+    /// Used when rendering spaces. The value is only used when showing invisible space characters is enabled. The default is ·.
     public var spaceSymbol: String {
         get {
             return textInputView.spaceSymbol
@@ -248,6 +264,7 @@ public final class EditorTextView: UIScrollView {
             textInputView.spaceSymbol = newValue
         }
     }
+    /// Used when rendering line breaks. The value is only used when showing invisible line break characters is enabled. The default is ¬.
     public var lineBreakSymbol: String {
         get {
             return textInputView.lineBreakSymbol
@@ -256,6 +273,7 @@ public final class EditorTextView: UIScrollView {
             textInputView.lineBreakSymbol = newValue
         }
     }
+    /// The amount of padding before the line numbers inside the gutter.
     public var gutterLeadingPadding: CGFloat {
         get {
             return textInputView.gutterLeadingPadding
@@ -264,6 +282,7 @@ public final class EditorTextView: UIScrollView {
             textInputView.gutterLeadingPadding = newValue
         }
     }
+    /// The amount of padding after the line numbers inside the gutter.
     public var gutterTrailingPadding: CGFloat {
         get {
             return textInputView.gutterTrailingPadding
@@ -272,6 +291,7 @@ public final class EditorTextView: UIScrollView {
             textInputView.gutterTrailingPadding = newValue
         }
     }
+    // The amount of spacing between the gutter and the lines. The value is only used when line numbers are enabled.
     public var gutterMargin: CGFloat {
         get {
             return textInputView.gutterMargin
@@ -280,6 +300,7 @@ public final class EditorTextView: UIScrollView {
             textInputView.gutterMargin = newValue
         }
     }
+    /// The amount of spacing after a line. The value is only used when line wrapping is disabled.
     public var lineMargin: CGFloat {
         get {
             return textInputView.lineMargin
@@ -288,6 +309,8 @@ public final class EditorTextView: UIScrollView {
             textInputView.lineMargin = newValue
         }
     }
+    /// When line wrapping is disabled, users can scroll the text view horizontally to see the entire line.
+    /// Line wrapping is enabled by default.
     public var isLineWrappingEnabled: Bool {
         get {
             return textInputView.isLineWrappingEnabled
@@ -355,31 +378,60 @@ public final class EditorTextView: UIScrollView {
         }
     }
 
+    /// Sets the current _state_ of the editor. The state contains the text to be displayed by the editor and
+    /// various additional information about the text that the editor needs to show the text.
+    ///
+    /// It is safe to create an instance of <code>EditorState</code> in the background, and as such it can be
+    /// created before presenting the editor to the user, e.g. when opening the document from an instance of
+    /// <code>UIDocumentBrowserViewController</code>.
+    ///
+    /// This is the preferred way to initially set the text, language and theme on the <code>EditorTextView</code>.
+    /// - Parameter state: The new state to be used by the editor.
     public func setState(_ state: EditorState) {
         textInputView.setState(state)
         contentSize = textInputView.contentSize
     }
 
+    /// The line position at a location in the text. Common usages of this includes showing the line and column\
+    /// that the caret is currently located at.
+    /// - Parameter location: The location is relative to the first index in the string.
+    /// - Returns: The line position if the location could be found in the string, otherwise nil.
     public func linePosition(at location: Int) -> LinePosition? {
         return textInputView.linePosition(at: location)
     }
 
+    /// Sets the language used to highlight the content of the editor on a background thread.
+    /// This should generally be preferred over using the <code>language</code> setter.
+    ///
+    /// - Parameters:
+    ///   - language: The new language to be used by the parser.
+    ///   - completion: Called when the content have been parsed or when parsing fails.
     public func setLanguage(_ language: Language?, completion: ((Bool) -> Void)? = nil) {
         textInputView.setLanguage(language, completion: completion)
     }
 
+    /// Insets text at the location of the caret.
+    /// - Parameter text: A text to insert.
     public func insertText(_ text: String) {
         textInputView.insertText(text)
     }
 
+    /// Replaces the text that is in the specified range.
+    /// - Parameters:
+    ///   - range: A range of text in the document.
+    ///   - text: A string to replace the text in range.
     public func replace(_ range: NSRange, withText text: String) {
         textInputView.replace(range, withText: text)
     }
 
+    /// Deletes the character before the caret.
     public func deleteBackward() {
         textInputView.deleteBackward()
     }
 
+    /// Returns the text in the specified range.
+    /// - Parameter range: A range of text in the document.
+    /// - Returns: The substring that falls within the specified range.
     public func text(in range: NSRange) -> String? {
         return textInputView.text(in: range)
     }

@@ -64,9 +64,9 @@ final class LayoutManager {
             }
         }
     }
-    var highlightSelectedLine = false {
+    var showSelectedLines = false {
         didSet {
-            if highlightSelectedLine != oldValue {
+            if showSelectedLines != oldValue {
                 updateShownViews()
             }
         }
@@ -418,7 +418,7 @@ extension LayoutManager {
     }
 
     private func layoutSelection() {
-        guard highlightSelectedLine, let selectedRange = selectedRange else {
+        guard showSelectedLines, let selectedRange = selectedRange else {
             return
         }
         let startLocation = selectedRange.location
@@ -461,8 +461,8 @@ extension LayoutManager {
         let selectedLength = selectedRange?.length ?? 0
         gutterBackgroundView.isHidden = !showLineNumbers
         lineNumbersContainerView.isHidden = !showLineNumbers
-        gutterSelectionBackgroundView.isHidden = !highlightSelectedLine || !showLineNumbers || !isEditing
-        lineSelectionBackgroundView.isHidden = !highlightSelectedLine || !isEditing || selectedLength > 0
+        gutterSelectionBackgroundView.isHidden = !showSelectedLines || !showLineNumbers || !isEditing
+        lineSelectionBackgroundView.isHidden = !showSelectedLines || !isEditing || selectedLength > 0
     }
 }
 
