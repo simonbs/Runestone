@@ -147,12 +147,14 @@ extension TextRenderer {
                     maximumLineWidth = preparedLine.lineSize.width
                 }
             }
-            preferredLineSize = CGSize(width: maximumLineWidth, height: nextYPosition)
+            let adjustedWidth = lineWidthWithInvisibleCharacters(baseLineWidth: maximumLineWidth)
+            preferredLineSize = CGSize(width: adjustedWidth, height: nextYPosition)
         } else {
             let range = CFRangeMake(0, stringLength)
             let preparedLine = createPreparedLine(for: range, in: typesetter, yPosition: 0)
             preparedLines.append(preparedLine)
-            preferredLineSize = CGSize(width: preparedLine.lineSize.width, height: preparedLine.lineSize.height)
+            let adjustedWidth = lineWidthWithInvisibleCharacters(baseLineWidth: preparedLine.lineSize.width)
+            preferredLineSize = CGSize(width: adjustedWidth, height: preparedLine.lineSize.height)
         }
     }
 
@@ -165,6 +167,16 @@ extension TextRenderer {
         let lineHeight = ascent + descent + leading
         let lineSize = CGSize(width: lineWidth, height: lineHeight)
         return PreparedLine(line: line, descent: descent, lineSize: lineSize, yPosition: yPosition)
+    }
+
+    private func lineWidthWithInvisibleCharacters(baseLineWidth: CGFloat) -> CGFloat {
+        if invisibleCharacterConfiguration.showLineBreaks {
+            let attrs: [NSAttributedString.Key: Any] = [.font: theme.font as Any]
+            let size = invisibleCharacterConfiguration.lineBreakSymbol.size(withAttributes: attrs)
+            return baseLineWidth + size.width
+        } else {
+            return baseLineWidth
+        }
     }
 }
 
