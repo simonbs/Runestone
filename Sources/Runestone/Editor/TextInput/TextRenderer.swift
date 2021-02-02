@@ -23,6 +23,7 @@ private final class PreparedLine {
 
 protocol TextRendererDelegate: AnyObject {
     func textRenderer(_ textRenderer: TextRenderer, stringIn range: NSRange) -> String
+    func textRendererDidPrepareToDraw(_ textRenderer: TextRenderer)
     func textRendererDidUpdateSyntaxHighlighting(_ textRenderer: TextRenderer)
 }
 
@@ -55,14 +56,13 @@ final class TextRenderer {
 
     private var isInvalid = true
     private var string: String?
-    private var attributedString: CFMutableAttributedString?
+    private(set) var attributedString: CFMutableAttributedString?
     private var typesetter: CTTypesetter?
     private var preparedLines: [PreparedLine] = []
     private let syntaxHighlightController: SyntaxHighlightController
     private var syntaxHighlightState: SyntaxHighlightState = .notHighlighted
     private let syntaxHighlightQueue: OperationQueue
     private var currentSyntaxHighlightOperation: Operation?
-    private var captures: [Capture]?
     private var defaultLineHeight: CGFloat {
         return theme.font.lineHeight
     }
@@ -82,7 +82,6 @@ extension TextRenderer {
 
     func prepareToDraw() {
         if isInvalid, let documentRange = documentRange {
-            captures = nil
             syntaxHighlightState = .notHighlighted
             string = delegate!.textRenderer(self, stringIn: documentRange)
             recreateAttributedString()
@@ -90,6 +89,7 @@ extension TextRenderer {
             recreateTypesetter()
             prepareLines()
             isInvalid = false
+            delegate?.textRendererDidPrepareToDraw(self)
         }
     }
 
@@ -183,92 +183,92 @@ extension TextRenderer {
 // MARK: - Drawing
 extension TextRenderer {
     func draw(in context: CGContext) {
-        drawBackgrounds(to: context)
-        context.saveGState()
-        context.textMatrix = .identity
-        context.translateBy(x: 0, y: frame.height)
-        context.scaleBy(x: 1, y: -1)
-        drawLines(to: context)
-        context.restoreGState()
+//        drawBackgrounds(to: context)
+//        context.saveGState()
+//        context.textMatrix = .identity
+//        context.translateBy(x: 0, y: frame.height)
+//        context.scaleBy(x: 1, y: -1)
+//        drawLines(to: context)
+//        context.restoreGState()
+
     }
 
-    private func drawBackgrounds(to context: CGContext) {
-        if invisibleCharacterConfiguration.showTabs || invisibleCharacterConfiguration.showSpaces || invisibleCharacterConfiguration.showLineBreaks {
-            for preparedLine in preparedLines {
-                drawInvisibleCharacters(in: preparedLine, to: context)
-            }
-        }
-    }
-
-    private func drawLines(to context: CGContext) {
-        for preparedLine in preparedLines {
-            let yPosition = preparedLine.descent + (frame.height - preparedLine.yPosition - preparedLine.lineSize.height)
-            context.textPosition = CGPoint(x: 0, y: yPosition)
-            CTLineDraw(preparedLine.line, context)
-        }
-    }
-
-    private func drawInvisibleCharacters(in preparedLine: PreparedLine, to context: CGContext) {
-        guard let string = string else {
-            return
-        }
-        let textRange = CTLineGetStringRange(preparedLine.line)
-        let stringRange = Range(NSRange(location: textRange.location, length: textRange.length), in: string)!
-        let lineString = string[stringRange]
-        for (index, substring) in lineString.enumerated() {
-            if invisibleCharacterConfiguration.showSpaces && substring == Symbol.Character.space {
-                let xPosition = round(CTLineGetOffsetForStringIndex(preparedLine.line, index, nil))
-                let point = CGPoint(x: CGFloat(xPosition), y: preparedLine.yPosition)
-                draw(invisibleCharacterConfiguration.spaceSymbol, at: point)
-            } else if invisibleCharacterConfiguration.showTabs && substring == Symbol.Character.tab {
-                let xPosition = round(CTLineGetOffsetForStringIndex(preparedLine.line, index, nil))
-                let point = CGPoint(x: CGFloat(xPosition), y: preparedLine.yPosition)
-                draw(invisibleCharacterConfiguration.tabSymbol, at: point)
-            } else if invisibleCharacterConfiguration.showLineBreaks && substring == Symbol.Character.lineFeed {
-                let xPosition = round(CTLineGetTypographicBounds(preparedLine.line, nil, nil, nil))
-                let point = CGPoint(x: CGFloat(xPosition), y: preparedLine.yPosition)
-                draw(invisibleCharacterConfiguration.lineBreakSymbol, at: point)
-            }
-        }
-    }
-
-    private func draw(_ symbol: String, at point: CGPoint) {
-        let attrs: [NSAttributedString.Key: Any] = [.foregroundColor: theme.invisibleCharactersColor, .font: theme.font as Any]
-        let size = symbol.size(withAttributes: attrs)
-        let rect = CGRect(x: point.x, y: point.y, width: size.width, height: size.height)
-        symbol.draw(in: rect, withAttributes: attrs)
-    }
+//    private func drawBackgrounds(to context: CGContext) {
+//        if invisibleCharacterConfiguration.showTabs || invisibleCharacterConfiguration.showSpaces || invisibleCharacterConfiguration.showLineBreaks {
+//            for preparedLine in preparedLines {
+//                drawInvisibleCharacters(in: preparedLine, to: context)
+//            }
+//        }
+//    }
+//
+//    private func drawLines(to context: CGContext) {
+//        for preparedLine in preparedLines {
+//            let yPosition = preparedLine.descent + (frame.height - preparedLine.yPosition - preparedLine.lineSize.height)
+//            context.textPosition = CGPoint(x: 0, y: yPosition)
+//            CTLineDraw(preparedLine.line, context)
+//        }
+//    }
+//
+//    private func drawInvisibleCharacters(in preparedLine: PreparedLine, to context: CGContext) {
+//        guard let string = string else {
+//            return
+//        }
+//        let textRange = CTLineGetStringRange(preparedLine.line)
+//        let stringRange = Range(NSRange(location: textRange.location, length: textRange.length), in: string)!
+//        let lineString = string[stringRange]
+//        for (index, substring) in lineString.enumerated() {
+//            if invisibleCharacterConfiguration.showSpaces && substring == Symbol.Character.space {
+//                let xPosition = round(CTLineGetOffsetForStringIndex(preparedLine.line, index, nil))
+//                let point = CGPoint(x: CGFloat(xPosition), y: preparedLine.yPosition)
+//                draw(invisibleCharacterConfiguration.spaceSymbol, at: point)
+//            } else if invisibleCharacterConfiguration.showTabs && substring == Symbol.Character.tab {
+//                let xPosition = round(CTLineGetOffsetForStringIndex(preparedLine.line, index, nil))
+//                let point = CGPoint(x: CGFloat(xPosition), y: preparedLine.yPosition)
+//                draw(invisibleCharacterConfiguration.tabSymbol, at: point)
+//            } else if invisibleCharacterConfiguration.showLineBreaks && substring == Symbol.Character.lineFeed {
+//                let xPosition = round(CTLineGetTypographicBounds(preparedLine.line, nil, nil, nil))
+//                let point = CGPoint(x: CGFloat(xPosition), y: preparedLine.yPosition)
+//                draw(invisibleCharacterConfiguration.lineBreakSymbol, at: point)
+//            }
+//        }
+//    }
+//
+//    private func draw(_ symbol: String, at point: CGPoint) {
+//        let attrs: [NSAttributedString.Key: Any] = [.foregroundColor: theme.invisibleCharactersColor, .font: theme.font as Any]
+//        let size = symbol.size(withAttributes: attrs)
+//        let rect = CGRect(x: point.x, y: point.y, width: size.width, height: size.height)
+//        symbol.draw(in: rect, withAttributes: attrs)
+//    }
 }
 
 // MARK: - Appearance
 extension TextRenderer {
     func syntaxHighlight() {
-        guard syntaxHighlightState == .notHighlighted else {
-            return
-        }
-        guard syntaxHighlightController.canHighlight else {
-            return
-        }
-        syntaxHighlightState = .highlighting
-        let operation = BlockOperation()
-        operation.addExecutionBlock { [weak operation, weak self] in
-            if let operation = operation, !operation.isCancelled {
-                self?.syntaxHighlight(using: operation)
-            }
-        }
-        currentSyntaxHighlightOperation = operation
-        syntaxHighlightQueue.addOperation(operation)
+//        guard syntaxHighlightState == .notHighlighted else {
+//            return
+//        }
+//        guard syntaxHighlightController.canHighlight else {
+//            return
+//        }
+//        syntaxHighlightState = .highlighting
+//        let operation = BlockOperation()
+//        operation.addExecutionBlock { [weak operation, weak self] in
+//            if let operation = operation, !operation.isCancelled {
+//                self?.syntaxHighlight(using: operation)
+//            }
+//        }
+//        currentSyntaxHighlightOperation = operation
+//        syntaxHighlightQueue.addOperation(operation)
     }
 
     private func syntaxHighlight(using operation: Operation) {
         if let documentByteRange = documentByteRange, case let .success(captures) = syntaxHighlightController.captures(in: documentByteRange) {
             if !operation.isCancelled {
+                self.applyAttributes(for: captures)
+                self.recreateTypesetter()
+                self.prepareLines()
                 DispatchQueue.main.sync {
                     if !operation.isCancelled {
-                        self.captures = captures
-                        self.applyAttributes(for: captures)
-                        self.recreateTypesetter()
-                        self.prepareLines()
                         self.syntaxHighlightState = .highlighted
                         self.delegate?.textRendererDidUpdateSyntaxHighlighting(self)
                     }

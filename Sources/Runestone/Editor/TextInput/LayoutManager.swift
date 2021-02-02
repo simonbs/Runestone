@@ -486,6 +486,7 @@ extension LayoutManager {
 extension LayoutManager {
     private func show(_ line: DocumentLineNode, maxY: inout CGFloat) {
         let lineView = lineViewReuseQueue.dequeueView(forKey: line.id)
+        lineView.delegate = self
         let lineNumberView = lineNumberLabelReuseQueue.dequeueView(forKey: line.id)
         // Ensure views are added to the view hiearchy
         if lineView.superview == nil {
@@ -497,9 +498,9 @@ extension LayoutManager {
         // Setup the line
         let lineYPosition = line.yPosition
         let textRenderer = getTextRenderer(for: line)
+        lineView.textRenderer = textRenderer
         prepare(textRenderer, toDraw: line)
         let lineSize = textRenderer.preferredLineSize
-        lineView.textRenderer = textRenderer
         lineView.frame = CGRect(x: leadingLineSpacing, y: lineYPosition, width: lineSize.width, height: lineSize.height)
         lineView.setNeedsDisplay()
         // Setup the line number
@@ -518,9 +519,8 @@ extension LayoutManager {
             return cachedTextRenderer
         } else {
             let textRenderer = TextRenderer(syntaxHighlightController: syntaxHighlightController, syntaxHighlightQueue: operationQueue)
-            textRenderer.delegate = self
             textRenderer.lineID = line.id
-            prepare(textRenderer, toDraw: line)
+//            prepare(textRenderer, toDraw: line)
             textRenderers[line.id] = textRenderer
             return textRenderer
         }
@@ -557,16 +557,9 @@ extension LayoutManager {
 }
 
 // MARK: - TextRendererDelegate
-extension LayoutManager: TextRendererDelegate {
-    func textRenderer(_ textRenderer: TextRenderer, stringIn range: NSRange) -> String {
+extension LayoutManager: LineViewDelegate {
+    func lineView(_ lineView: LineView, stringIn range: NSRange) -> String {
         return currentDelegate.layoutManager(self, stringIn: range)
-    }
-
-    func textRendererDidUpdateSyntaxHighlighting(_ textRenderer: TextRenderer) {
-        if let lineID = textRenderer.lineID {
-            let lineView = lineViewReuseQueue.visibleViews[lineID]
-            lineView?.setNeedsDisplay()
-        }
     }
 }
 
