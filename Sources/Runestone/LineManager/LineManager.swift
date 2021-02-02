@@ -8,7 +8,7 @@
 import Foundation
 import CoreGraphics
 
-protocol LineManagerDelegate: class {
+protocol LineManagerDelegate: AnyObject {
     func lineManager(_ lineManager: LineManager, substringIn range: NSRange) -> String
     func lineManager(_ lineManager: LineManager, didInsert line: DocumentLineNode)
     func lineManager(_ lineManager: LineManager, didRemove line: DocumentLineNode)
