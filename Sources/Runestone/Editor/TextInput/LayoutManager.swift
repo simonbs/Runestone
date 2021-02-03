@@ -190,7 +190,7 @@ final class LayoutManager {
     // MARK: - Rendering
     private let operationQueue: OperationQueue
     private let syntaxHighlightController: SyntaxHighlightController
-    private var textRenderers: [DocumentLineNodeID: TextRenderer] = [:]
+    private var lineControllers: [DocumentLineNodeID: LineController] = [:]
     private var needsLayout = false
     private var needsLayoutSelection = false
     private var lineWidths: [DocumentLineNodeID: CGFloat] = [:]
@@ -286,25 +286,25 @@ final class LayoutManager {
             delegate?.layoutManagerDidInvalidateContentSize(self)
         }
         lineWidths.removeValue(forKey: lineID)
-        textRenderers.removeValue(forKey: lineID)
+        lineControllers.removeValue(forKey: lineID)
     }
 
     func invalidateAndPrepare(_ lines: Set<DocumentLineNode>) {
-        for line in lines {
-            if let textRenderer = textRenderers[line.id] {
-                textRenderer.documentRange = NSRange(location: line.location, length: line.data.totalLength)
-                textRenderer.documentByteRange = line.data.byteRange
-                textRenderer.invalidate()
-                textRenderer.prepareToDraw()
-            }
-        }
+//        for line in lines {
+//            if let textRenderer = textRenderers[line.id] {
+//                textRenderer.documentRange = NSRange(location: line.location, length: line.data.totalLength)
+//                textRenderer.documentByteRange = line.data.byteRange
+//                textRenderer.invalidate()
+//                textRenderer.prepareToDraw()
+//            }
+//        }
     }
 
     func invalidateAllLines() {
-        let allTextRenderers = textRenderers.values
-        for textRenderer in allTextRenderers {
-            textRenderer.invalidate()
-        }
+//        let allTextRenderers = textRenderers.values
+//        for textRenderer in allTextRenderers {
+//            textRenderer.invalidate()
+//        }
     }
 
     func updateGutterWidth() {
@@ -334,9 +334,9 @@ extension LayoutManager {
         guard let line = lineManager.line(containingCharacterAt: location) else {
             return nil
         }
-        let textRenderer = getTextRenderer(for: line)
+        let lineController = getLineController(for: line)
         let localLocation = location - line.location
-        let localCaretRect = textRenderer.caretRect(atIndex: localLocation)
+        let localCaretRect = lineController.caretRect(atIndex: localLocation)
         let globalYPosition = line.yPosition + localCaretRect.minY
         let globalRect = CGRect(x: localCaretRect.minX, y: globalYPosition, width: localCaretRect.width, height: localCaretRect.height)
         return globalRect.offsetBy(dx: leadingLineSpacing, dy: 0)
@@ -346,9 +346,9 @@ extension LayoutManager {
         guard let line = lineManager.line(containingCharacterAt: range.location) else {
             fatalError("Cannot find first rect.")
         }
-        let textRenderer = textRenderers[line.id]!
+        let lineController = lineControllers[line.id]!
         let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
-        let firstRect = textRenderer.firstRect(for: localRange)
+        let firstRect = lineController.firstRect(for: localRange)
         return firstRect.offsetBy(dx: leadingLineSpacing, dy: 0)
     }
 
@@ -363,13 +363,13 @@ extension LayoutManager {
         let lineIndexRange = startLine.index ..< endLine.index + 1
         for lineIndex in lineIndexRange {
             let line = lineManager.line(atIndex: lineIndex)
-            let textRenderer = getTextRenderer(for: line)
+            let lineController = getLineController(for: line)
             let lineStartLocation = line.location
             let lineEndLocation = lineStartLocation + line.data.totalLength
             let localRangeLocation = max(range.location, lineStartLocation) - lineStartLocation
             let localRangeLength = min(range.location + range.length, lineEndLocation) - lineStartLocation - localRangeLocation
             let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
-            let rendererSelectionRects = textRenderer.selectionRects(in: localRange)
+            let rendererSelectionRects = lineController.selectionRects(in: localRange)
             let textSelectionRects: [TextSelectionRect] = rendererSelectionRects.map { rendererSelectionRect in
                 let y = line.yPosition + rendererSelectionRect.rect.minY
                 var screenRect = CGRect(x: rendererSelectionRect.rect.minX, y: y, width: rendererSelectionRect.rect.width, height: rendererSelectionRect.rect.height)
@@ -394,18 +394,18 @@ extension LayoutManager {
     }
 
     func closestIndex(to point: CGPoint) -> Int? {
-        if let line = lineManager.line(containingYOffset: point.y), let textRenderer = textRenderers[line.id] {
-            return closestIndex(to: point, in: textRenderer, showing: line)
+        if let line = lineManager.line(containingYOffset: point.y), let lineController = lineControllers[line.id] {
+            return closestIndex(to: point, in: lineController, showing: line)
         } else if point.y <= 0 {
             let firstLine = lineManager.firstLine
-            if let textRenderer = textRenderers[firstLine.id] {
+            if let textRenderer = lineControllers[firstLine.id] {
                 return closestIndex(to: point, in: textRenderer, showing: firstLine)
             } else {
                 return 0
             }
         } else {
             let lastLine = lineManager.lastLine
-            if point.y >= lastLine.yPosition, let textRenderer = textRenderers[lastLine.id] {
+            if point.y >= lastLine.yPosition, let textRenderer = lineControllers[lastLine.id] {
                 return closestIndex(to: point, in: textRenderer, showing: lastLine)
             } else {
                 return currentDelegate.lengthOfString(in: self)
@@ -413,9 +413,9 @@ extension LayoutManager {
         }
     }
 
-    private func closestIndex(to point: CGPoint, in textRenderer: TextRenderer, showing line: DocumentLineNode) -> Int {
-        let localPoint = CGPoint(x: point.x - leadingLineSpacing, y: point.y - textRenderer.frame.minY)
-        let index = textRenderer.closestIndex(to: localPoint)
+    private func closestIndex(to point: CGPoint, in lineController: LineController, showing line: DocumentLineNode) -> Int {
+        let localPoint = CGPoint(x: point.x - leadingLineSpacing, y: point.y - lineController.lineViewFrame.minY)
+        let index = lineController.closestIndex(to: localPoint)
         if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
             return line.location + line.data.length
         } else {
@@ -433,27 +433,27 @@ extension LayoutManager {
     }
 
     private func layoutSelection() {
-        guard showSelectedLines, let selectedRange = selectedRange else {
-            return
-        }
-        let startLocation = selectedRange.location
-        let endLocation = selectedRange.location + selectedRange.length
-        let selectedRect: CGRect
-        if selectedRange.length > 0 {
-            let startLine = lineManager.line(containingCharacterAt: startLocation)!
-            let endLine = lineManager.line(containingCharacterAt: endLocation)!
-            let startTextRenderer = getTextRenderer(for: startLine)
-            let endTextRenderer = getTextRenderer(for: endLine)
-            let yPos = startTextRenderer.frame.minY
-            let height = endTextRenderer.frame.maxY - startTextRenderer.frame.minY
-            selectedRect = CGRect(x: 0, y: yPos, width: frame.width, height: height)
-        } else {
-            let line = lineManager.line(containingCharacterAt: startLocation)!
-            let textRenderer = getTextRenderer(for: line)
-            selectedRect = CGRect(x: 0, y: textRenderer.frame.minY, width: frame.width, height: textRenderer.frame.height)
-        }
-        gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: gutterWidth, height: selectedRect.height)
-        lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: frame.width - gutterWidth, height: selectedRect.height)
+//        guard showSelectedLines, let selectedRange = selectedRange else {
+//            return
+//        }
+//        let startLocation = selectedRange.location
+//        let endLocation = selectedRange.location + selectedRange.length
+//        let selectedRect: CGRect
+//        if selectedRange.length > 0 {
+//            let startLine = lineManager.line(containingCharacterAt: startLocation)!
+//            let endLine = lineManager.line(containingCharacterAt: endLocation)!
+//            let startLineController = getLineController(for: startLine)
+//            let endLineController = getLineController(for: endLine)
+//            let yPos = startLineController.frame.minY
+//            let height = endLineController.frame.maxY - startLineController.frame.minY
+//            selectedRect = CGRect(x: 0, y: yPos, width: frame.width, height: height)
+//        } else {
+//            let line = lineManager.line(containingCharacterAt: startLocation)!
+//            let lineController = getLineController(for: line)
+//            selectedRect = CGRect(x: 0, y: lineController.frame.minY, width: frame.width, height: lineController.frame.height)
+//        }
+//        gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: gutterWidth, height: selectedRect.height)
+//        lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: frame.width - gutterWidth, height: selectedRect.height)
     }
 
     private func setupViewHierarchy() {
@@ -485,10 +485,9 @@ extension LayoutManager {
 // MARK: - Drawing
 extension LayoutManager {
     private func show(_ line: DocumentLineNode, maxY: inout CGFloat) {
-        let lineView = lineViewReuseQueue.dequeueView(forKey: line.id)
-        lineView.delegate = self
-        let lineNumberView = lineNumberLabelReuseQueue.dequeueView(forKey: line.id)
         // Ensure views are added to the view hiearchy
+        let lineView = lineViewReuseQueue.dequeueView(forKey: line.id)
+        let lineNumberView = lineNumberLabelReuseQueue.dequeueView(forKey: line.id)
         if lineView.superview == nil {
             linesContainerView.addSubview(lineView)
         }
@@ -496,69 +495,70 @@ extension LayoutManager {
             lineNumbersContainerView.addSubview(lineNumberView)
         }
         // Setup the line
-        let lineYPosition = line.yPosition
-        let textRenderer = getTextRenderer(for: line)
-        lineView.textRenderer = textRenderer
-        prepare(textRenderer, toDraw: line)
-        let lineSize = textRenderer.preferredLineSize
-        lineView.frame = CGRect(x: leadingLineSpacing, y: lineYPosition, width: lineSize.width, height: lineSize.height)
-        lineView.setNeedsDisplay()
+        let lineController = getLineController(for: line)
+        lineController.lineView = lineView
+        lineController.willDisplay()
+        let lineSize = lineController.preferredSize
+        let lineViewFrame = CGRect(x: leadingLineSpacing, y: line.yPosition, width: lineSize.width, height: lineSize.height)
+        lineController.lineViewFrame = lineViewFrame
         // Setup the line number
         lineNumberView.text = "\(line.index + 1)"
         lineNumberView.textColor = theme.lineNumberColor
         lineNumberView.font = theme.font
-        lineNumberView.frame = CGRect(x: gutterLeadingPadding, y: lineYPosition, width: lineNumberWidth, height: lineSize.height)
-        // Start highlighting the line
-        textRenderer.syntaxHighlight()
+        lineNumberView.frame = CGRect(x: gutterLeadingPadding, y: lineViewFrame.minY, width: lineNumberWidth, height: lineViewFrame.height)
         // Pass back the maximum Y position so the caller can determine if it needs to show more lines.
         maxY = lineView.frame.maxY
+
+        lineManager.setHeight(of: line, to: lineController.preferredSize.height)
     }
 
-    private func getTextRenderer(for line: DocumentLineNode) -> TextRenderer {
-        if let cachedTextRenderer = textRenderers[line.id] {
-            return cachedTextRenderer
+    private func getLineController(for line: DocumentLineNode) -> LineController {
+        if let cachedLineController = lineControllers[line.id] {
+            return cachedLineController
         } else {
-            let textRenderer = TextRenderer(syntaxHighlightController: syntaxHighlightController, syntaxHighlightQueue: operationQueue)
-            textRenderer.lineID = line.id
-//            prepare(textRenderer, toDraw: line)
-            textRenderers[line.id] = textRenderer
-            return textRenderer
+            let lineController = LineController(line: line)
+            lineController.defaultLineHeight = theme.font.lineHeight
+            lineController.delegate = self
+            lineControllers[line.id] = lineController
+            return lineController
         }
     }
 
-    private func prepare(_ textRenderer: TextRenderer, toDraw line: DocumentLineNode) {
-        textRenderer.lineID = line.id
-        textRenderer.documentRange = NSRange(location: line.location, length: line.data.totalLength)
-        textRenderer.documentByteRange = line.data.byteRange
-        textRenderer.theme = theme
-        textRenderer.invisibleCharacterConfiguration = invisibleCharacterConfiguration
-        if isLineWrappingEnabled {
-            textRenderer.constrainingLineWidth = frame.width - leadingLineSpacing
-        } else {
-            textRenderer.constrainingLineWidth = nil
-        }
-        textRenderer.prepareToDraw()
-        let didUpdateHeight = lineManager.setHeight(of: line, to: textRenderer.preferredLineSize.height)
-        if lineWidths[line.id] != textRenderer.preferredLineSize.width {
-            lineWidths[line.id] = textRenderer.preferredLineSize.width
-            if let lineIDTrackingWidth = lineIDTrackingWidth {
-                let maximumLineWidth = lineWidths[lineIDTrackingWidth] ?? 0
-                if line.id == lineIDTrackingWidth || textRenderer.preferredLineSize.width > maximumLineWidth {
-                    _contentWidth = nil
-                }
-            } else if !isLineWrappingEnabled {
-                _contentWidth = nil
-            }
-        }
-        if didUpdateHeight {
-            _contentHeight = nil
-        }
-    }
+//    private func prepare(_ textRenderer: TextRenderer, toDraw line: DocumentLineNode) {
+//        textRenderer.lineID = line.id
+//        textRenderer.documentRange = NSRange(location: line.location, length: line.data.totalLength)
+//        textRenderer.documentByteRange = line.data.byteRange
+//        textRenderer.theme = theme
+//        textRenderer.invisibleCharacterConfiguration = invisibleCharacterConfiguration
+//        if isLineWrappingEnabled {
+//            textRenderer.constrainingLineWidth = frame.width - leadingLineSpacing
+//        } else {
+//            textRenderer.constrainingLineWidth = nil
+//        }
+//        textRenderer.prepareToDraw()
+//        let didUpdateHeight = lineManager.setHeight(of: line, to: textRenderer.preferredLineSize.height)
+//        if lineWidths[line.id] != textRenderer.preferredLineSize.width {
+//            lineWidths[line.id] = textRenderer.preferredLineSize.width
+//            if let lineIDTrackingWidth = lineIDTrackingWidth {
+//                let maximumLineWidth = lineWidths[lineIDTrackingWidth] ?? 0
+//                if line.id == lineIDTrackingWidth || textRenderer.preferredLineSize.width > maximumLineWidth {
+//                    _contentWidth = nil
+//                }
+//            } else if !isLineWrappingEnabled {
+//                _contentWidth = nil
+//            }
+//        }
+//        if didUpdateHeight {
+//            _contentHeight = nil
+//        }
+//    }
 }
 
-// MARK: - TextRendererDelegate
-extension LayoutManager: LineViewDelegate {
-    func lineView(_ lineView: LineView, stringIn range: NSRange) -> String {
+// MARK: - LineControllerDelegate
+extension LayoutManager: LineControllerDelegate {
+    func string(in lineController: LineController) -> String {
+        let line = lineController.line
+        let range = NSRange(location: line.location, length: line.data.totalLength)
         return currentDelegate.layoutManager(self, stringIn: range)
     }
 }
@@ -566,11 +566,11 @@ extension LayoutManager: LineViewDelegate {
 // MARK: - Memory Management
 private extension LayoutManager {
     @objc private func didReceiveMemoryWarning(_ notification: Notification) {
-        let allLineIDs = Set(textRenderers.keys)
+        let allLineIDs = Set(lineControllers.keys)
         let visibleLineIDs = Set(lineViewReuseQueue.visibleViews.keys)
         let lineIDsToRelease = allLineIDs.subtracting(visibleLineIDs)
         for lineID in lineIDsToRelease {
-            textRenderers.removeValue(forKey: lineID)
+            lineControllers.removeValue(forKey: lineID)
         }
     }
 }

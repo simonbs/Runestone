@@ -53,10 +53,10 @@ final class TextRenderer {
     var documentByteRange: ByteRange?
     var theme: EditorTheme = DefaultEditorTheme()
     var invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
+    private(set) var attributedString: CFMutableAttributedString?
 
     private var isInvalid = true
     private var string: String?
-    private(set) var attributedString: CFMutableAttributedString?
     private var typesetter: CTTypesetter?
     private var preparedLines: [PreparedLine] = []
     private let syntaxHighlightController: SyntaxHighlightController
@@ -190,7 +190,6 @@ extension TextRenderer {
 //        context.scaleBy(x: 1, y: -1)
 //        drawLines(to: context)
 //        context.restoreGState()
-
     }
 
 //    private func drawBackgrounds(to context: CGContext) {
