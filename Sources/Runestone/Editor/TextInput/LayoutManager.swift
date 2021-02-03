@@ -34,7 +34,9 @@ final class LayoutManager {
     var frame: CGRect = .zero {
         didSet {
             if frame.size.width != oldValue.size.width {
-//                invalidateAllLines()
+                if isLineWrappingEnabled {
+                    invalidateTypesetting()
+                }
             }
         }
     }
@@ -84,6 +86,7 @@ final class LayoutManager {
         didSet {
             if isLineWrappingEnabled != oldValue {
                 invalidateContentSize()
+                invalidateTypesetting()
             }
         }
     }
@@ -457,6 +460,34 @@ extension LayoutManager {
         lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: frame.width - gutterWidth, height: selectedRect.height)
     }
 
+    private func layoutViews(for line: DocumentLineNode, maxY: inout CGFloat) {
+        // Ensure views are added to the view hiearchy
+        let lineView = lineViewReuseQueue.dequeueView(forKey: line.id)
+        let lineNumberView = lineNumberLabelReuseQueue.dequeueView(forKey: line.id)
+        if lineView.superview == nil {
+            linesContainerView.addSubview(lineView)
+        }
+        if lineNumberView.superview == nil {
+            lineNumbersContainerView.addSubview(lineNumberView)
+        }
+        // Setup the line
+        let lineController = getLineController(for: line)
+        lineController.lineView = lineView
+        lineController.constrainingWidth = isLineWrappingEnabled ? frame.width - leadingLineSpacing : nil
+        lineController.willDisplay()
+        let lineSize = lineController.preferredSize
+        let lineViewFrame = CGRect(x: leadingLineSpacing, y: line.yPosition, width: lineSize.width, height: lineSize.height)
+        lineController.lineViewFrame = lineViewFrame
+        // Setup the line number
+        lineNumberView.text = "\(line.index + 1)"
+        lineNumberView.font = theme.font
+        lineNumberView.textColor = theme.lineNumberColor
+        lineNumberView.frame = CGRect(x: gutterLeadingPadding, y: lineViewFrame.minY, width: lineNumberWidth, height: lineViewFrame.height)
+        // Pass back the maximum Y position so the caller can determine if it needs to show more lines.
+        maxY = lineView.frame.maxY
+        updateSize(of: line, newLineSize: lineController.preferredSize)
+    }
+
     private func updateLineNumberColors() {
         let visibleViews = lineNumberLabelReuseQueue.visibleViews
         let selectionFrame = gutterSelectionBackgroundView.frame
@@ -496,36 +527,6 @@ extension LayoutManager {
         gutterSelectionBackgroundView.isHidden = !showSelectedLines || !showLineNumbers || !isEditing
         lineSelectionBackgroundView.isHidden = !showSelectedLines || !isEditing || selectedLength > 0
     }
-}
-
-// MARK: - Drawing
-extension LayoutManager {
-    private func layoutViews(for line: DocumentLineNode, maxY: inout CGFloat) {
-        // Ensure views are added to the view hiearchy
-        let lineView = lineViewReuseQueue.dequeueView(forKey: line.id)
-        let lineNumberView = lineNumberLabelReuseQueue.dequeueView(forKey: line.id)
-        if lineView.superview == nil {
-            linesContainerView.addSubview(lineView)
-        }
-        if lineNumberView.superview == nil {
-            lineNumbersContainerView.addSubview(lineNumberView)
-        }
-        // Setup the line
-        let lineController = getLineController(for: line)
-        lineController.lineView = lineView
-        lineController.willDisplay()
-        let lineSize = lineController.preferredSize
-        let lineViewFrame = CGRect(x: leadingLineSpacing, y: line.yPosition, width: lineSize.width, height: lineSize.height)
-        lineController.lineViewFrame = lineViewFrame
-        // Setup the line number
-        lineNumberView.text = "\(line.index + 1)"
-        lineNumberView.font = theme.font
-        lineNumberView.textColor = theme.lineNumberColor
-        lineNumberView.frame = CGRect(x: gutterLeadingPadding, y: lineViewFrame.minY, width: lineNumberWidth, height: lineViewFrame.height)
-        // Pass back the maximum Y position so the caller can determine if it needs to show more lines.
-        maxY = lineView.frame.maxY
-        updateSize(of: line, newLineSize: lineController.preferredSize)
-    }
 
     private func updateSize(of line: DocumentLineNode, newLineSize: CGSize) {
         let didUpdateHeight = lineManager.setHeight(of: line, to: newLineSize.height)
@@ -545,6 +546,18 @@ extension LayoutManager {
         }
     }
 
+    private func invalidateSyntaxHighlighting() {
+        for (_, lineController) in lineControllers {
+            lineController.invalidateSyntaxHighlighting()
+        }
+    }
+
+    private func invalidateTypesetting() {
+        for (_, lineController) in lineControllers {
+            lineController.invalidateTypesetting()
+        }
+    }
+
     private func getLineController(for line: DocumentLineNode) -> LineController {
         if let cachedLineController = lineControllers[line.id] {
             return cachedLineController
@@ -554,12 +567,6 @@ extension LayoutManager {
             lineController.theme = theme
             lineControllers[line.id] = lineController
             return lineController
-        }
-    }
-
-    private func invalidateSyntaxHighlighting() {
-        for (_, lineController) in lineControllers {
-            lineController.invalidateSyntaxHighlighting()
         }
     }
 }

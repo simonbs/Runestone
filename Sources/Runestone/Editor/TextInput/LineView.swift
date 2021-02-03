@@ -21,6 +21,7 @@ final class LineView: UIView {
         isUserInteractionEnabled = false
         backgroundColor = .clear
         textLayer.contentsScale = UIScreen.main.scale
+        textLayer.isWrapped = true
     }
 
     required init?(coder: NSCoder) {

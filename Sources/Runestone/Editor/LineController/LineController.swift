@@ -22,6 +22,14 @@ final class LineController {
             syntaxHighlighter.theme = theme
         }
     }
+    var constrainingWidth: CGFloat? {
+        get {
+            return typesetter.constrainingWidth
+        }
+        set {
+            typesetter.constrainingWidth = newValue
+        }
+    }
     var lineViewFrame: CGRect = .zero {
         didSet {
             if lineViewFrame != oldValue {
@@ -74,6 +82,10 @@ final class LineController {
         updateSyntaxHighlightingIfNecessary(async: true)
         lineView?.textLayer.string = attributedString
         lineView?.frame = lineViewFrame
+    }
+
+    func invalidateTypesetting() {
+        isTypesetterInvalid = true
     }
 
     func invalidateSyntaxHighlighting() {
