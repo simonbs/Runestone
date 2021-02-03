@@ -29,8 +29,8 @@ final class LineTypesetter {
         let stringLength = CFAttributedStringGetLength(attributedString)
         let typesetter = CTTypesetterCreateWithAttributedString(attributedString)
         let typesetResult = self.typesetLines(in: typesetter, stringLength: stringLength)
-        typesetLines = typesetResult.typesetLines
-        if let lastLine = typesetResult.typesetLines.last {
+        if let typesetResult = typesetResult, let lastLine = typesetResult.typesetLines.last {
+            typesetLines = typesetResult.typesetLines
             preferredSize = CGSize(width: typesetResult.maximumLineWidth, height: lastLine.yPosition + lastLine.size.height)
         }
     }
@@ -51,7 +51,10 @@ private extension LineTypesetter {
         }
     }
 
-    private func typesetLines(in typesetter: CTTypesetter, stringLength: Int) -> TypesetResult {
+    private func typesetLines(in typesetter: CTTypesetter, stringLength: Int) -> TypesetResult? {
+        guard stringLength > 0 else {
+            return nil
+        }
         if let constrainingWidth = constrainingWidth {
             return typesetWrappingLines(in: typesetter, stringLength: stringLength, constrainingWidth: constrainingWidth)
         } else {
@@ -67,12 +70,12 @@ private extension LineTypesetter {
         while startOffset < stringLength {
             let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingWidth))
             let range = CFRangeMake(startOffset, length)
-            let preparedLine = createTypesetLine(for: range, in: typesetter, yPosition: nextYPosition)
-            typesetLines.append(preparedLine)
-            nextYPosition += preparedLine.size.height
+            let typesetLine = createTypesetLine(for: range, in: typesetter, yPosition: nextYPosition)
+            typesetLines.append(typesetLine)
+            nextYPosition += typesetLine.size.height
             startOffset += length
-            if preparedLine.size.width > maximumLineWidth {
-                maximumLineWidth = preparedLine.size.width
+            if typesetLine.size.width > maximumLineWidth {
+                maximumLineWidth = typesetLine.size.width
             }
         }
         return TypesetResult(typesetLines: typesetLines, maximumLineWidth: maximumLineWidth)

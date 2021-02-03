@@ -372,7 +372,9 @@ extension LayoutManager {
             return []
         }
         var selectionRects: [TextSelectionRect] = []
-        let lineIndexRange = startLine.index ..< endLine.index + 1
+        let startLineIndex = startLine.index
+        let endLineIndex = endLine.index
+        let lineIndexRange = startLineIndex ..< endLineIndex + 1
         for lineIndex in lineIndexRange {
             let line = lineManager.line(atIndex: lineIndex)
             let lineController = getLineController(for: line)
@@ -385,18 +387,17 @@ extension LayoutManager {
             let textSelectionRects: [TextSelectionRect] = rendererSelectionRects.map { rendererSelectionRect in
                 let yPosition = textContainerInset.top + line.yPosition + rendererSelectionRect.rect.minY
                 var screenRect = CGRect(x: rendererSelectionRect.rect.minX, y: yPosition, width: rendererSelectionRect.rect.width, height: rendererSelectionRect.rect.height)
-                let startLocation = lineStartLocation + rendererSelectionRect.range.location
-                let endLocation = startLocation + rendererSelectionRect.range.length
-                let containsStart = range.location >= startLocation && range.location <= endLocation
-                let containsEnd = range.location + range.length >= startLocation && range.location + range.length <= endLocation
+                let containsStart = lineIndex == startLineIndex
+                let containsEnd = lineIndex == endLineIndex
                 screenRect.origin.x += leadingLineSpacing
                 if !containsStart {
-                    // If this is not the starting line then we ignore the leading line spacing so
-                    // the selection rect starts right after the gutter.
+                    // If this is not the starting line then we ignore the leading line spacing so the selection rect starts right after the gutter.
+                    screenRect.size.width += screenRect.origin.x - gutterWidth
                     screenRect.origin.x = gutterWidth
                 }
-                if endLocation < range.location + range.length {
-                    screenRect.size.width = contentWidth - screenRect.minX
+                if !containsEnd {
+                    // If the following lines are selected, we make sure that the selections extends the entire line.
+                    screenRect.size.width = max(contentWidth, frame.width) - screenRect.minX
                 }
                 return TextSelectionRect(rect: screenRect, writingDirection: .leftToRight, containsStart: containsStart, containsEnd: containsEnd)
             }
@@ -462,7 +463,7 @@ extension LayoutManager {
         } else {
             let line = lineManager.line(containingCharacterAt: startLocation)!
             let lineController = getLineController(for: line)
-            selectedRect = CGRect(x: 0, y: lineController.lineViewFrame.minY, width: frame.width, height: lineController.lineViewFrame.height)
+            selectedRect = CGRect(x: 0, y: lineController.lineViewFrame.minY, width: frame.width, height: lineController.preferredSize.height)
         }
         gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: gutterWidth, height: selectedRect.height)
         lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: frame.width - gutterWidth, height: selectedRect.height)

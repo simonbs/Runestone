@@ -18,7 +18,7 @@ final class LineController {
     weak var lineView: LineView?
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
-            textInputProxy.defaultLineHeight = theme.font.leading
+            textInputProxy.defaultLineHeight = theme.font.lineHeight
             syntaxHighlighter.theme = theme
         }
     }
