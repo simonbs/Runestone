@@ -203,20 +203,12 @@ final class TextInputView: UIView, UITextInput {
             layoutManager.gutterTrailingPadding = newValue
         }
     }
-    var gutterMargin: CGFloat {
+    var textContainerInset: UIEdgeInsets {
         get {
-            return layoutManager.gutterMargin
+            return layoutManager.textContainerInset
         }
         set {
-            layoutManager.gutterMargin = newValue
-        }
-    }
-    var lineMargin: CGFloat {
-        get {
-            return layoutManager.lineMargin
-        }
-        set {
-            layoutManager.lineMargin = newValue
+            layoutManager.textContainerInset = newValue
         }
     }
     var isLineWrappingEnabled: Bool {

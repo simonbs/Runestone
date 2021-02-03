@@ -291,22 +291,13 @@ public final class EditorTextView: UIScrollView {
             textInputView.gutterTrailingPadding = newValue
         }
     }
-    // The amount of spacing between the gutter and the lines. The value is only used when line numbers are enabled.
-    public var gutterMargin: CGFloat {
+    // The amount of spacing surrounding the lines.
+    public var textContainerInset: UIEdgeInsets {
         get {
-            return textInputView.gutterMargin
+            return textInputView.textContainerInset
         }
         set {
-            textInputView.gutterMargin = newValue
-        }
-    }
-    /// The amount of spacing after a line. The value is only used when line wrapping is disabled.
-    public var lineMargin: CGFloat {
-        get {
-            return textInputView.lineMargin
-        }
-        set {
-            textInputView.lineMargin = newValue
+            textInputView.textContainerInset = newValue
         }
     }
     /// When line wrapping is disabled, users can scroll the text view horizontally to see the entire line.

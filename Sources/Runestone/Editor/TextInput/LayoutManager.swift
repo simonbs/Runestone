@@ -105,16 +105,9 @@ final class LayoutManager {
             }
         }
     }
-    var gutterMargin: CGFloat = 5 {
+    var textContainerInset: UIEdgeInsets = .zero {
         didSet {
-            if gutterMargin != oldValue {
-                invalidateContentSize()
-            }
-        }
-    }
-    var lineMargin: CGFloat = 5 {
-        didSet {
-            if lineMargin != oldValue {
+            if textContainerInset != oldValue {
                 invalidateContentSize()
             }
         }
@@ -167,7 +160,7 @@ final class LayoutManager {
                 }
             }
             let contentWidth = currentMaximumWidth ?? frame.width
-            _contentWidth = contentWidth + leadingLineSpacing + lineMargin
+            _contentWidth = contentWidth + leadingLineSpacing + textContainerInset.right
             return contentWidth
         }
     }
@@ -176,7 +169,7 @@ final class LayoutManager {
             return contentHeight
         } else {
             let contentHeight = lineManager.contentHeight
-            _contentHeight = contentHeight
+            _contentHeight = contentHeight + textContainerInset.top + textContainerInset.bottom
             return contentHeight
         }
     }
@@ -186,7 +179,7 @@ final class LayoutManager {
     private var previousGutterWidthUpdateLineCount: Int?
     private var leadingLineSpacing: CGFloat {
         if showLineNumbers {
-            return gutterWidth + gutterMargin
+            return gutterWidth + textContainerInset.left
         } else {
             return 0
         }
@@ -354,7 +347,7 @@ extension LayoutManager {
         let lineController = getLineController(for: line)
         let localLocation = location - line.location
         let localCaretRect = lineController.caretRect(atIndex: localLocation)
-        let globalYPosition = line.yPosition + localCaretRect.minY
+        let globalYPosition = textContainerInset.top + line.yPosition + localCaretRect.minY
         let globalRect = CGRect(x: localCaretRect.minX, y: globalYPosition, width: localCaretRect.width, height: localCaretRect.height)
         return globalRect.offsetBy(dx: leadingLineSpacing, dy: 0)
     }
@@ -366,7 +359,7 @@ extension LayoutManager {
         let lineController = lineControllers[line.id]!
         let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
         let firstRect = lineController.firstRect(for: localRange)
-        return firstRect.offsetBy(dx: leadingLineSpacing, dy: 0)
+        return firstRect.offsetBy(dx: leadingLineSpacing, dy: textContainerInset.top)
     }
 
     func selectionRects(in range: NSRange) -> [TextSelectionRect] {
@@ -388,8 +381,8 @@ extension LayoutManager {
             let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
             let rendererSelectionRects = lineController.selectionRects(in: localRange)
             let textSelectionRects: [TextSelectionRect] = rendererSelectionRects.map { rendererSelectionRect in
-                let y = line.yPosition + rendererSelectionRect.rect.minY
-                var screenRect = CGRect(x: rendererSelectionRect.rect.minX, y: y, width: rendererSelectionRect.rect.width, height: rendererSelectionRect.rect.height)
+                let yPosition = textContainerInset.top + line.yPosition + rendererSelectionRect.rect.minY
+                var screenRect = CGRect(x: rendererSelectionRect.rect.minX, y: yPosition, width: rendererSelectionRect.rect.width, height: rendererSelectionRect.rect.height)
                 let startLocation = lineStartLocation + rendererSelectionRect.range.location
                 let endLocation = startLocation + rendererSelectionRect.range.length
                 let containsStart = range.location >= startLocation && range.location <= endLocation
@@ -411,7 +404,7 @@ extension LayoutManager {
     }
 
     func closestIndex(to point: CGPoint) -> Int? {
-        if let line = lineManager.line(containingYOffset: point.y), let lineController = lineControllers[line.id] {
+        if let line = lineManager.line(containingYOffset: point.y - textContainerInset.top), let lineController = lineControllers[line.id] {
             return closestIndex(to: point, in: lineController, showing: line)
         } else if point.y <= 0 {
             let firstLine = lineManager.firstLine
@@ -486,10 +479,10 @@ extension LayoutManager {
         // Setup the line
         let lineController = getLineController(for: line)
         lineController.lineView = lineView
-        lineController.constrainingWidth = isLineWrappingEnabled ? frame.width - leadingLineSpacing : nil
+        lineController.constrainingWidth = isLineWrappingEnabled ? frame.width - leadingLineSpacing - textContainerInset.right : nil
         lineController.willDisplay()
         let lineSize = lineController.preferredSize
-        let lineViewFrame = CGRect(x: leadingLineSpacing, y: line.yPosition, width: lineSize.width, height: lineSize.height)
+        let lineViewFrame = CGRect(x: leadingLineSpacing, y: textContainerInset.top + line.yPosition, width: lineSize.width, height: lineSize.height)
         lineController.lineViewFrame = lineViewFrame
         // Setup the line number
         lineNumberView.text = "\(line.index + 1)"
