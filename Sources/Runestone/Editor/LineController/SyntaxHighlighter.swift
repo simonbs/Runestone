@@ -1,5 +1,5 @@
 //
-//  SyntaxHighlightController.swift
+//  SyntaxHighlighter.swift
 //  
 //
 //  Created by Simon Støvring on 16/01/2021.
@@ -7,13 +7,13 @@
 
 import UIKit
 
-enum SyntaxHighlightControllerError: Error {
+enum SyntaxHighlighterError: Error {
     case parserUnavailable
     case treeUnavailable
     case highlightsQueryUnavailable
 }
 
-final class SyntaxHighlightController {
+final class SyntaxHighlighter {
     var parser: Parser?
     var theme: EditorTheme = DefaultEditorTheme()
     var canHighlight: Bool {
@@ -46,7 +46,7 @@ final class SyntaxHighlightController {
         }
     }
 
-    func captures(in range: ByteRange) -> Result<[Capture], SyntaxHighlightControllerError> {
+    func captures(in range: ByteRange) -> Result<[Capture], SyntaxHighlighterError> {
         guard let parser = parser else {
             return .failure(.parserUnavailable)
         }
@@ -81,14 +81,14 @@ final class SyntaxHighlightController {
     }
 }
 
-private extension SyntaxHighlightController {
+private extension SyntaxHighlighter {
     private func attributes(for capture: Capture, in range: ByteRange) -> SyntaxHighlightToken {
         let textColor = theme.textColorForCaptureSequence(capture.name)
         let font = theme.fontForCapture(named: capture.name)
         return SyntaxHighlightToken(range: range, textColor: textColor, font: font)
     }
 
-    private func getQuery() -> Result<Query, SyntaxHighlightControllerError> {
+    private func getQuery() -> Result<Query, SyntaxHighlighterError> {
         if let query = query {
             return .success(query)
         } else {

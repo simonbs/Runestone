@@ -59,7 +59,7 @@ final class TextRenderer {
     private var string: String?
     private var typesetter: CTTypesetter?
     private var preparedLines: [PreparedLine] = []
-    private let syntaxHighlightController: SyntaxHighlightController
+    private let syntaxHighlighter: SyntaxHighlighter
     private var syntaxHighlightState: SyntaxHighlightState = .notHighlighted
     private let syntaxHighlightQueue: OperationQueue
     private var currentSyntaxHighlightOperation: Operation?
@@ -67,8 +67,8 @@ final class TextRenderer {
         return theme.font.lineHeight
     }
 
-    init(syntaxHighlightController: SyntaxHighlightController, syntaxHighlightQueue: OperationQueue) {
-        self.syntaxHighlightController = syntaxHighlightController
+    init(syntaxHighlighter: SyntaxHighlighter, syntaxHighlightQueue: OperationQueue) {
+        self.syntaxHighlighter = syntaxHighlighter
         self.syntaxHighlightQueue = syntaxHighlightQueue
     }
 }
@@ -246,7 +246,7 @@ extension TextRenderer {
 //        guard syntaxHighlightState == .notHighlighted else {
 //            return
 //        }
-//        guard syntaxHighlightController.canHighlight else {
+//        guard syntaxHighlighter.canHighlight else {
 //            return
 //        }
 //        syntaxHighlightState = .highlighting
@@ -261,7 +261,7 @@ extension TextRenderer {
     }
 
     private func syntaxHighlight(using operation: Operation) {
-        if let documentByteRange = documentByteRange, case let .success(captures) = syntaxHighlightController.captures(in: documentByteRange) {
+        if let documentByteRange = documentByteRange, case let .success(captures) = syntaxHighlighter.captures(in: documentByteRange) {
             if !operation.isCancelled {
                 self.applyAttributes(for: captures)
                 self.recreateTypesetter()
@@ -289,7 +289,7 @@ extension TextRenderer {
 
     private func applyAttributes(for captures: [Capture]) {
         if let documentRange = documentByteRange {
-            let tokens = syntaxHighlightController.tokens(for: captures, localTo: documentRange)
+            let tokens = syntaxHighlighter.tokens(for: captures, localTo: documentRange)
             applyAttributes(for: tokens)
         }
     }

@@ -81,7 +81,7 @@ final class TextInputView: UIView, UITextInput {
         didSet {
             lineManager.estimatedLineHeight = theme.font.lineHeight
             layoutManager.theme = theme
-            syntaxHighlightController.theme = theme
+            syntaxHighlighter.theme = theme
         }
     }
     var language: Language? {
@@ -300,7 +300,7 @@ final class TextInputView: UIView, UITextInput {
     private let operationQueue = OperationQueue()
     private var markedRange: NSRange?
     private var lineManager = LineManager()
-    private let syntaxHighlightController = SyntaxHighlightController()
+    private let syntaxHighlighter = SyntaxHighlighter()
     private let layoutManager: LayoutManager
     private var parsedLine: ParsedLine?
     private var floatingCaretView: FloatingCaretView?
@@ -320,14 +320,14 @@ final class TextInputView: UIView, UITextInput {
     init() {
         operationQueue.name = "Runestone"
         operationQueue.qualityOfService = .userInitiated
-        layoutManager = LayoutManager(lineManager: lineManager, syntaxHighlightController: syntaxHighlightController, operationQueue: operationQueue)
+        layoutManager = LayoutManager(lineManager: lineManager, syntaxHighlighter: syntaxHighlighter, operationQueue: operationQueue)
         super.init(frame: .zero)
         lineManager.delegate = self
         lineManager.estimatedLineHeight = theme.font.lineHeight
         layoutManager.delegate = self
         layoutManager.textInputView = self
         layoutManager.theme = theme
-        syntaxHighlightController.theme = theme
+        syntaxHighlighter.theme = theme
     }
 
     required init?(coder: NSCoder) {
@@ -417,8 +417,8 @@ final class TextInputView: UIView, UITextInput {
         lineManager = state.lineManager
         lineManager.delegate = self
         lineManager.estimatedLineHeight = theme.font.lineHeight
-        syntaxHighlightController.parser = state.parser
-        syntaxHighlightController.parser?.delegate = self
+        syntaxHighlighter.parser = state.parser
+        syntaxHighlighter.parser?.delegate = self
         layoutManager.lineManager = state.lineManager
         layoutManager.invalidateContentSize()
         layoutManager.updateGutterWidth()
@@ -459,7 +459,7 @@ final class TextInputView: UIView, UITextInput {
     }
 
     func node(at location: Int) -> Node? {
-        let parser = syntaxHighlightController.parser
+        let parser = syntaxHighlighter.parser
         let rootNode = parser?.latestTree?.rootNode
         let byteOffset = (_string as String).byteOffset(at: location)
         let byteRange = ByteRange(location: byteOffset, length: ByteCount(0))
@@ -477,8 +477,8 @@ private extension TextInputView {
         if language != nil {
             parser.parse(string as String)
         }
-        syntaxHighlightController.parser = parser
-        syntaxHighlightController.reset()
+        syntaxHighlighter.parser = parser
+        syntaxHighlighter.reset()
     }
 }
 
@@ -630,7 +630,7 @@ extension TextInputView {
             startPoint: SourcePoint(startLinePosition),
             oldEndPoint: SourcePoint(oldEndLinePosition),
             newEndPoint: SourcePoint(newEndLinePosition))
-        let parser = syntaxHighlightController.parser
+        let parser = syntaxHighlighter.parser
         let oldTree = parser?.latestTree
         parser?.apply(edit)
         parser?.parse()
@@ -641,6 +641,7 @@ extension TextInputView {
             editedLines.formUnion(changedLines)
         }
         layoutManager.typeset(editedLines)
+        layoutManager.syntaxHighlight(editedLines)
         layoutManager.setNeedsLayout()
         setNeedsLayout()
         inputDelegate?.textDidChange(self)

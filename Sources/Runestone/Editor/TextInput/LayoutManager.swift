@@ -58,6 +58,7 @@ final class LayoutManager {
         didSet {
             if isEditing != oldValue {
                 updateShownViews()
+                updateLineNumberColors()
             }
         }
     }
@@ -189,7 +190,7 @@ final class LayoutManager {
 
     // MARK: - Rendering
     private let operationQueue: OperationQueue
-    private let syntaxHighlightController: SyntaxHighlightController
+    private let syntaxHighlighter: SyntaxHighlighter
     private var lineControllers: [DocumentLineNodeID: LineController] = [:]
     private var needsLayout = false
     private var needsLayoutSelection = false
@@ -205,9 +206,9 @@ final class LayoutManager {
         }
     }
 
-    init(lineManager: LineManager, syntaxHighlightController: SyntaxHighlightController, operationQueue: OperationQueue) {
+    init(lineManager: LineManager, syntaxHighlighter: SyntaxHighlighter, operationQueue: OperationQueue) {
         self.lineManager = lineManager
-        self.syntaxHighlightController = syntaxHighlightController
+        self.syntaxHighlighter = syntaxHighlighter
         self.operationQueue = operationQueue
         self.linesContainerView.isUserInteractionEnabled = false
         self.lineNumbersContainerView.isUserInteractionEnabled = false
@@ -234,9 +235,10 @@ final class LayoutManager {
         needsLayout = false
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        syntaxHighlightController.prepare()
+        syntaxHighlighter.prepare()
         layoutGutter()
         layoutSelection()
+        updateLineNumberColors()
         let oldVisibleLineIds = Set(lineViewReuseQueue.visibleViews.keys)
         var nextLine = lineManager.line(containingYOffset: viewport.minY)
         var appearedLineIDs: Set<DocumentLineNodeID> = []
@@ -271,6 +273,7 @@ final class LayoutManager {
         CATransaction.begin()
         CATransaction.setDisableActions(false)
         layoutSelection()
+        updateLineNumberColors()
         CATransaction.commit()
     }
 
@@ -313,6 +316,14 @@ final class LayoutManager {
         for line in lines {
             if let lineController = lineControllers[line.id] {
                 lineController.typeset()
+            }
+        }
+    }
+
+    func syntaxHighlight(_ lines: Set<DocumentLineNode>) {
+        for line in lines {
+            if let lineController = lineControllers[line.id] {
+                lineController.syntaxHighlight()
             }
         }
     }
@@ -423,27 +434,42 @@ extension LayoutManager {
     }
 
     private func layoutSelection() {
-//        guard showSelectedLines, let selectedRange = selectedRange else {
-//            return
-//        }
-//        let startLocation = selectedRange.location
-//        let endLocation = selectedRange.location + selectedRange.length
-//        let selectedRect: CGRect
-//        if selectedRange.length > 0 {
-//            let startLine = lineManager.line(containingCharacterAt: startLocation)!
-//            let endLine = lineManager.line(containingCharacterAt: endLocation)!
-//            let startLineController = getLineController(for: startLine)
-//            let endLineController = getLineController(for: endLine)
-//            let yPos = startLineController.frame.minY
-//            let height = endLineController.frame.maxY - startLineController.frame.minY
-//            selectedRect = CGRect(x: 0, y: yPos, width: frame.width, height: height)
-//        } else {
-//            let line = lineManager.line(containingCharacterAt: startLocation)!
-//            let lineController = getLineController(for: line)
-//            selectedRect = CGRect(x: 0, y: lineController.frame.minY, width: frame.width, height: lineController.frame.height)
-//        }
-//        gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: gutterWidth, height: selectedRect.height)
-//        lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: frame.width - gutterWidth, height: selectedRect.height)
+        guard showSelectedLines, let selectedRange = selectedRange else {
+            return
+        }
+        let startLocation = selectedRange.location
+        let endLocation = selectedRange.location + selectedRange.length
+        let selectedRect: CGRect
+        if selectedRange.length > 0 {
+            let startLine = lineManager.line(containingCharacterAt: startLocation)!
+            let endLine = lineManager.line(containingCharacterAt: endLocation)!
+            let startLineController = getLineController(for: startLine)
+            let endLineController = getLineController(for: endLine)
+            let yPos = startLineController.lineViewFrame.minY
+            let height = endLineController.lineViewFrame.maxY - startLineController.lineViewFrame.minY
+            selectedRect = CGRect(x: 0, y: yPos, width: frame.width, height: height)
+        } else {
+            let line = lineManager.line(containingCharacterAt: startLocation)!
+            let lineController = getLineController(for: line)
+            selectedRect = CGRect(x: 0, y: lineController.lineViewFrame.minY, width: frame.width, height: lineController.lineViewFrame.height)
+        }
+        gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: gutterWidth, height: selectedRect.height)
+        lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: frame.width - gutterWidth, height: selectedRect.height)
+    }
+
+    private func updateLineNumberColors() {
+        let visibleViews = lineNumberLabelReuseQueue.visibleViews
+        let selectionFrame = gutterSelectionBackgroundView.frame
+        let isSelectionVisible = !gutterSelectionBackgroundView.isHidden
+        for (_, lineNumberView) in visibleViews {
+            if isSelectionVisible {
+                let lineNumberFrame = lineNumberView.frame
+                let isInSelection = lineNumberFrame.midY >= selectionFrame.minY && lineNumberFrame.midY <= selectionFrame.maxY
+                lineNumberView.textColor = isInSelection && isEditing ? theme.selectedLinesLineNumberColor : theme.lineNumberColor
+            } else {
+                lineNumberView.textColor = theme.lineNumberColor
+            }
+        }
     }
 
     private func setupViewHierarchy() {
@@ -493,8 +519,8 @@ extension LayoutManager {
         lineController.lineViewFrame = lineViewFrame
         // Setup the line number
         lineNumberView.text = "\(line.index + 1)"
-        lineNumberView.textColor = theme.lineNumberColor
         lineNumberView.font = theme.font
+        lineNumberView.textColor = theme.lineNumberColor
         lineNumberView.frame = CGRect(x: gutterLeadingPadding, y: lineViewFrame.minY, width: lineNumberWidth, height: lineViewFrame.height)
         // Pass back the maximum Y position so the caller can determine if it needs to show more lines.
         maxY = lineView.frame.maxY
@@ -523,7 +549,7 @@ extension LayoutManager {
         if let cachedLineController = lineControllers[line.id] {
             return cachedLineController
         } else {
-            let lineController = LineController(syntaxHighlightController: syntaxHighlightController, line: line)
+            let lineController = LineController(syntaxHighlighter: syntaxHighlighter, syntaxHighlightQueue: operationQueue, line: line)
             lineController.delegate = self
             lineController.theme = theme
             lineControllers[line.id] = lineController

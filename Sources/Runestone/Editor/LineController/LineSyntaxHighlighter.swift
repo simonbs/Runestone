@@ -7,13 +7,35 @@
 
 import Foundation
 
+enum LineSyntaxHighlighterError: LocalizedError {
+    case failedCreatingCaptures
+    case cancelled
+    case operationDeallocated
+
+    var errorDescription: String? {
+        switch self {
+        case .failedCreatingCaptures:
+            return "Failed creating captures"
+        case .cancelled:
+            return "Operation was cancelled"
+        case .operationDeallocated:
+            return "The operation was deallocated"
+        }
+    }
+}
+
 final class LineSyntaxHighlighter {
+    typealias AsyncCallback = (Result<Void, LineSyntaxHighlighterError>) -> Void
+
     var theme: EditorTheme = DefaultEditorTheme()
 
-    private let syntaxHighlightController: SyntaxHighlightController
+    private let syntaxHighlighter: SyntaxHighlighter
+    private let queue: OperationQueue
+    private var currentOperation: Operation?
 
-    init(syntaxHighlightController: SyntaxHighlightController) {
-        self.syntaxHighlightController = syntaxHighlightController
+    init(syntaxHighlighter: SyntaxHighlighter, queue: OperationQueue) {
+        self.syntaxHighlighter = syntaxHighlighter
+        self.queue = queue
     }
 
     func setDefaultAttributes(on attributedString: NSMutableAttributedString) {
@@ -26,10 +48,53 @@ final class LineSyntaxHighlighter {
     }
 
     func syntaxHighlight(_ attributedString: NSMutableAttributedString, documentByteRange: ByteRange) {
-        if case let .success(captures) = syntaxHighlightController.captures(in: documentByteRange) {
-            let tokens = syntaxHighlightController.tokens(for: captures, localTo: documentByteRange)
+        cancelCurrentOperation()
+        if case let .success(captures) = syntaxHighlighter.captures(in: documentByteRange) {
+            let tokens = syntaxHighlighter.tokens(for: captures, localTo: documentByteRange)
             setAttributes(for: tokens, on: attributedString)
         }
+    }
+
+    func syntaxHighlight(_ attributedString: NSMutableAttributedString, documentByteRange: ByteRange, completion: @escaping AsyncCallback) {
+        cancelCurrentOperation()
+        let operation = BlockOperation()
+        operation.addExecutionBlock { [weak operation, weak self] in
+            guard let operation = operation, let self = self else {
+                DispatchQueue.main.sync {
+                    completion(.failure(.operationDeallocated))
+                }
+                return
+            }
+            guard !operation.isCancelled else {
+                DispatchQueue.main.sync {
+                    completion(.failure(.cancelled))
+                }
+                return
+            }
+            if case let .success(captures) = self.syntaxHighlighter.captures(in: documentByteRange) {
+                if !operation.isCancelled {
+                    DispatchQueue.main.sync {
+                        if !operation.isCancelled {
+                            let tokens = self.syntaxHighlighter.tokens(for: captures, localTo: documentByteRange)
+                            self.setAttributes(for: tokens, on: attributedString)
+                            completion(.success(()))
+                        } else {
+                            completion(.failure(.cancelled))
+                        }
+                    }
+                } else {
+                    DispatchQueue.main.sync {
+                        completion(.failure(.failedCreatingCaptures))
+                    }
+                }
+            } else {
+                DispatchQueue.main.sync {
+                    completion(.failure(.failedCreatingCaptures))
+                }
+            }
+        }
+        currentOperation = operation
+        queue.addOperation(operation)
     }
 }
 
@@ -46,5 +111,10 @@ private extension LineSyntaxHighlighter {
             attributedString.setAttributes(attributes, range: range)
         }
         attributedString.endEditing()
+    }
+
+    private func cancelCurrentOperation() {
+        currentOperation?.cancel()
+        currentOperation = nil
     }
 }

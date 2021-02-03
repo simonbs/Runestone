@@ -46,9 +46,9 @@ final class LineController {
     private var isSyntaxHighlightingInvalid = true
     private var isTypesetterInvalid = true
 
-    init(syntaxHighlightController: SyntaxHighlightController, line: DocumentLineNode) {
+    init(syntaxHighlighter: SyntaxHighlighter, syntaxHighlightQueue: OperationQueue, line: DocumentLineNode) {
         self.line = line
-        self.syntaxHighlighter = LineSyntaxHighlighter(syntaxHighlightController: syntaxHighlightController)
+        self.syntaxHighlighter = LineSyntaxHighlighter(syntaxHighlighter: syntaxHighlighter, queue: syntaxHighlightQueue)
         self.textInputProxy = LineTextInputProxy(lineTypesetter: typesetter)
         self.textInputProxy.defaultLineHeight = theme.font.lineHeight
     }
@@ -62,10 +62,16 @@ final class LineController {
         updateTypesetterIfNecessary()
     }
 
+    func syntaxHighlight() {
+        isSyntaxHighlightingInvalid = true
+        updateSyntaxHighlightingIfNecessary(async: false)
+    }
+
     func willDisplay() {
         updateStringIfNecessary()
         updateDefaultAttributesIfNecessary()
         updateTypesetterIfNecessary()
+        updateSyntaxHighlightingIfNecessary(async: true)
         lineView?.textLayer.string = attributedString
         lineView?.frame = lineViewFrame
     }
@@ -89,13 +95,24 @@ private extension LineController {
         }
     }
 
-    private func updateSyntaxHighlightingIfNecessary() {
+    private func updateSyntaxHighlightingIfNecessary(async: Bool) {
         if isSyntaxHighlightingInvalid {
             if let attributedString = attributedString {
                 let documentByteRange = line.data.byteRange
-                syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: documentByteRange)
+                if async {
+                    syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: documentByteRange) { [weak self] result in
+                        if case .success = result {
+                            self?.lineView?.textLayer.string = attributedString
+                            self?.isSyntaxHighlightingInvalid = false
+                        }
+                    }
+                } else {
+                    syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: documentByteRange)
+                    isSyntaxHighlightingInvalid = false
+                }
+            } else {
+                isSyntaxHighlightingInvalid = false
             }
-            isSyntaxHighlightingInvalid = false
         }
     }
 
