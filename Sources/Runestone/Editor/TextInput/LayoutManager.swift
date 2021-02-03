@@ -10,6 +10,7 @@ import UIKit
 protocol LayoutManagerDelegate: AnyObject {
     func layoutManager(_ layoutManager: LayoutManager, stringIn range: NSRange) -> String
     func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager)
+    func layoutManagerDidUpdateGutterWidth(_ layoutManager: LayoutManager)
     func lengthOfString(in layoutManager: LayoutManager) -> Int
 }
 
@@ -303,6 +304,7 @@ final class LayoutManager {
             let oldLineNumberWidth = lineNumberWidth
             lineNumberWidth = ceil(size.width) + gutterLeadingPadding + gutterTrailingPadding
             if lineNumberWidth != oldLineNumberWidth {
+                delegate?.layoutManagerDidUpdateGutterWidth(self)
                 _contentWidth = nil
                 delegate?.layoutManagerDidInvalidateContentSize(self)
             }

@@ -17,6 +17,7 @@ public protocol EditorTextViewDelegate: AnyObject {
     func editorTextViewDidChangeSelection(_ textView: EditorTextView)
     func editorTextView(_ textView: EditorTextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
     func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: EditorCharacterPair, in range: NSRange) -> Bool
+    func editorTextViewDidUpdateGutterWidth(_ textView: EditorTextView)
 }
 
 public extension EditorTextViewDelegate {
@@ -36,6 +37,7 @@ public extension EditorTextViewDelegate {
     func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: EditorCharacterPair, in range: NSRange) -> Bool {
         return true
     }
+    func editorTextViewDidUpdateGutterWidth(_ textView: EditorTextView) {}
 }
 
 public final class EditorTextView: UIScrollView {
@@ -310,6 +312,10 @@ public final class EditorTextView: UIScrollView {
             textInputView.isLineWrappingEnabled = newValue
         }
     }
+    /// Width of the gutter.
+    public var gutterWidth: CGFloat {
+        return textInputView.gutterWidth
+    }
 
     private let textInputView = TextInputView()
     private let editingTextInteraction = UITextInteraction(for: .editable)
@@ -540,6 +546,10 @@ extension EditorTextView: TextInputViewDelegate {
 
     func textInputView(_ view: TextInputView, shouldScrollTo targetRect: CGRect) {
 
+    }
+
+    func textInputViewDidUpdateGutterWidth(_ view: TextInputView) {
+        editorDelegate?.editorTextViewDidUpdateGutterWidth(self)
     }
 }
 

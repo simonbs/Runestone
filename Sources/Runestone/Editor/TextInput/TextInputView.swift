@@ -14,6 +14,7 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidChangeSelection(_ view: TextInputView)
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
     func textInputViewDidInvalidateContentSize(_ view: TextInputView)
+    func textInputViewDidUpdateGutterWidth(_ view: TextInputView)
     func textInputView(_ view: TextInputView, shouldScrollTo targetRect: CGRect)
 }
 
@@ -891,6 +892,10 @@ extension TextInputView: LayoutManagerDelegate {
 
     func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager) {
         delegate?.textInputViewDidInvalidateContentSize(self)
+    }
+
+    func layoutManagerDidUpdateGutterWidth(_ layoutManager: LayoutManager) {
+        delegate?.textInputViewDidUpdateGutterWidth(self)
     }
 
     func lengthOfString(in layoutManager: LayoutManager) -> Int {
