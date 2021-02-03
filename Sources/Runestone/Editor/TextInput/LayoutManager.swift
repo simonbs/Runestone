@@ -35,6 +35,7 @@ final class LayoutManager {
         didSet {
             if frame.size.width != oldValue.size.width {
                 if isLineWrappingEnabled {
+                    invalidateContentSize()
                     invalidateTypesetting()
                 }
             }
