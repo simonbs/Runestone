@@ -75,6 +75,10 @@ final class LineController {
         lineView?.textLayer.string = attributedString
         lineView?.frame = lineViewFrame
     }
+
+    func invalidateSyntaxHighlighting() {
+        isSyntaxHighlightingInvalid = true
+    }
 }
 
 private extension LineController {

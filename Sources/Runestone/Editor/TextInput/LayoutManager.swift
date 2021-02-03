@@ -50,7 +50,7 @@ final class LayoutManager {
                 gutterBackgroundView.hairlineWidth = theme.gutterHairlineWidth
                 gutterSelectionBackgroundView.backgroundColor = theme.selectedLinesGutterBackgroundColor
                 lineSelectionBackgroundView.backgroundColor = theme.selectedLineBackgroundColor
-//                invalidateAllLines()
+                invalidateSyntaxHighlighting()
             }
         }
     }
@@ -554,6 +554,12 @@ extension LayoutManager {
             lineController.theme = theme
             lineControllers[line.id] = lineController
             return lineController
+        }
+    }
+
+    private func invalidateSyntaxHighlighting() {
+        for (_, lineController) in lineControllers {
+            lineController.invalidateSyntaxHighlighting()
         }
     }
 }
