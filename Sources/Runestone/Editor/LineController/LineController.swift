@@ -89,6 +89,7 @@ final class LineController {
     }
 
     func invalidateSyntaxHighlighting() {
+        isDefaultAttributesInvalid = true
         isSyntaxHighlightingInvalid = true
     }
 }

@@ -89,7 +89,7 @@ final class TextInputView: UIView, UITextInput {
             operationQueue.cancelAllOperations()
             _language = newValue
             parse(with: newValue)
-//            layoutManager.invalidateAllLines()
+            layoutManager.invalidateSyntaxHighlighting()
             layoutManager.setNeedsLayout()
             setNeedsLayout()
         }
@@ -441,7 +441,7 @@ final class TextInputView: UIView, UITextInput {
                 self.parse(with: language)
                 DispatchQueue.main.sync {
                     if !operation.isCancelled {
-//                        self.layoutManager.invalidateAllLines()
+                        self.layoutManager.invalidateSyntaxHighlighting()
                         self.layoutManager.setNeedsLayout()
                         self.setNeedsLayout()
                         completion?(true)

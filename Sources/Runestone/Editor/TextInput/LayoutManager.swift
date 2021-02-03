@@ -330,6 +330,18 @@ final class LayoutManager {
             }
         }
     }
+
+    func invalidateSyntaxHighlighting() {
+        for (_, lineController) in lineControllers {
+            lineController.invalidateSyntaxHighlighting()
+        }
+    }
+
+    func invalidateTypesetting() {
+        for (_, lineController) in lineControllers {
+            lineController.invalidateTypesetting()
+        }
+    }
 }
 
 // MARK: - UITextInput
@@ -543,18 +555,6 @@ extension LayoutManager {
         }
         if didUpdateHeight {
             _contentHeight = nil
-        }
-    }
-
-    private func invalidateSyntaxHighlighting() {
-        for (_, lineController) in lineControllers {
-            lineController.invalidateSyntaxHighlighting()
-        }
-    }
-
-    private func invalidateTypesetting() {
-        for (_, lineController) in lineControllers {
-            lineController.invalidateTypesetting()
         }
     }
 
