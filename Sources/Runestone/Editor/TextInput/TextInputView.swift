@@ -89,7 +89,7 @@ final class TextInputView: UIView, UITextInput {
             operationQueue.cancelAllOperations()
             _language = newValue
             parse(with: newValue)
-            layoutManager.invalidateAllLines()
+//            layoutManager.invalidateAllLines()
             layoutManager.setNeedsLayout()
             setNeedsLayout()
         }
@@ -122,7 +122,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.showTabs {
                 layoutManager.invisibleCharacterConfiguration.showTabs = newValue
-                layoutManager.invalidateAllLines()
+//                layoutManager.invalidateAllLines()
                 setNeedsLayout()
             }
         }
@@ -134,7 +134,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.showSpaces {
                 layoutManager.invisibleCharacterConfiguration.showSpaces = newValue
-                layoutManager.invalidateAllLines()
+//                layoutManager.invalidateAllLines()
                 setNeedsLayout()
             }
         }
@@ -146,7 +146,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.showLineBreaks {
                 layoutManager.invisibleCharacterConfiguration.showLineBreaks = newValue
-                layoutManager.invalidateAllLines()
+//                layoutManager.invalidateAllLines()
                 setNeedsLayout()
             }
         }
@@ -158,7 +158,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.tabSymbol {
                 layoutManager.invisibleCharacterConfiguration.tabSymbol = newValue
-                layoutManager.invalidateAllLines()
+//                layoutManager.invalidateAllLines()
                 setNeedsLayout()
             }
         }
@@ -170,7 +170,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.spaceSymbol {
                 layoutManager.invisibleCharacterConfiguration.spaceSymbol = newValue
-                layoutManager.invalidateAllLines()
+//                layoutManager.invalidateAllLines()
                 setNeedsLayout()
             }
         }
@@ -182,7 +182,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.lineBreakSymbol {
                 layoutManager.invisibleCharacterConfiguration.lineBreakSymbol = newValue
-                layoutManager.invalidateAllLines()
+//                layoutManager.invalidateAllLines()
                 setNeedsLayout()
             }
         }
@@ -441,7 +441,7 @@ final class TextInputView: UIView, UITextInput {
                 self.parse(with: language)
                 DispatchQueue.main.sync {
                     if !operation.isCancelled {
-                        self.layoutManager.invalidateAllLines()
+//                        self.layoutManager.invalidateAllLines()
                         self.layoutManager.setNeedsLayout()
                         self.setNeedsLayout()
                         completion?(true)
@@ -640,7 +640,7 @@ extension TextInputView {
             let changedLines = lines(in: changedRanges)
             editedLines.formUnion(changedLines)
         }
-        layoutManager.invalidateAndPrepare(editedLines)
+        layoutManager.typeset(editedLines)
         layoutManager.setNeedsLayout()
         setNeedsLayout()
         inputDelegate?.textDidChange(self)

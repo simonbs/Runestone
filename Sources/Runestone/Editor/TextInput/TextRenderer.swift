@@ -289,12 +289,12 @@ extension TextRenderer {
 
     private func applyAttributes(for captures: [Capture]) {
         if let documentRange = documentByteRange {
-            let attributes = syntaxHighlightController.attributes(for: captures, localTo: documentRange)
-            apply(attributes)
+            let tokens = syntaxHighlightController.tokens(for: captures, localTo: documentRange)
+            applyAttributes(for: tokens)
         }
     }
 
-    private func apply(_ tokens: [SyntaxHighlightToken]) {
+    private func applyAttributes(for tokens: [SyntaxHighlightToken]) {
         guard let attributedString = attributedString else {
             return
         }

@@ -34,7 +34,7 @@ final class LayoutManager {
     var frame: CGRect = .zero {
         didSet {
             if frame.size.width != oldValue.size.width {
-                invalidateAllLines()
+//                invalidateAllLines()
             }
         }
     }
@@ -50,7 +50,7 @@ final class LayoutManager {
                 gutterBackgroundView.hairlineWidth = theme.gutterHairlineWidth
                 gutterSelectionBackgroundView.backgroundColor = theme.selectedLinesGutterBackgroundColor
                 lineSelectionBackgroundView.backgroundColor = theme.selectedLineBackgroundColor
-                invalidateAllLines()
+//                invalidateAllLines()
             }
         }
     }
@@ -243,7 +243,7 @@ final class LayoutManager {
         var maxY = viewport.minY
         while let line = nextLine, maxY < viewport.maxY {
             appearedLineIDs.insert(line.id)
-            show(line, maxY: &maxY)
+            layoutViews(for: line, maxY: &maxY)
             if line.index < lineManager.lineCount - 1 {
                 nextLine = lineManager.line(atIndex: line.index + 1)
             } else {
@@ -289,24 +289,6 @@ final class LayoutManager {
         lineControllers.removeValue(forKey: lineID)
     }
 
-    func invalidateAndPrepare(_ lines: Set<DocumentLineNode>) {
-//        for line in lines {
-//            if let textRenderer = textRenderers[line.id] {
-//                textRenderer.documentRange = NSRange(location: line.location, length: line.data.totalLength)
-//                textRenderer.documentByteRange = line.data.byteRange
-//                textRenderer.invalidate()
-//                textRenderer.prepareToDraw()
-//            }
-//        }
-    }
-
-    func invalidateAllLines() {
-//        let allTextRenderers = textRenderers.values
-//        for textRenderer in allTextRenderers {
-//            textRenderer.invalidate()
-//        }
-    }
-
     func updateGutterWidth() {
         guard showLineNumbers else {
             return
@@ -323,6 +305,14 @@ final class LayoutManager {
             if lineNumberWidth != oldLineNumberWidth {
                 _contentWidth = nil
                 delegate?.layoutManagerDidInvalidateContentSize(self)
+            }
+        }
+    }
+
+    func typeset(_ lines: Set<DocumentLineNode>) {
+        for line in lines {
+            if let lineController = lineControllers[line.id] {
+                lineController.typeset()
             }
         }
     }
@@ -484,7 +474,7 @@ extension LayoutManager {
 
 // MARK: - Drawing
 extension LayoutManager {
-    private func show(_ line: DocumentLineNode, maxY: inout CGFloat) {
+    private func layoutViews(for line: DocumentLineNode, maxY: inout CGFloat) {
         // Ensure views are added to the view hiearchy
         let lineView = lineViewReuseQueue.dequeueView(forKey: line.id)
         let lineNumberView = lineNumberLabelReuseQueue.dequeueView(forKey: line.id)
@@ -508,50 +498,38 @@ extension LayoutManager {
         lineNumberView.frame = CGRect(x: gutterLeadingPadding, y: lineViewFrame.minY, width: lineNumberWidth, height: lineViewFrame.height)
         // Pass back the maximum Y position so the caller can determine if it needs to show more lines.
         maxY = lineView.frame.maxY
+        updateSize(of: line, newLineSize: lineController.preferredSize)
+    }
 
-        lineManager.setHeight(of: line, to: lineController.preferredSize.height)
+    private func updateSize(of line: DocumentLineNode, newLineSize: CGSize) {
+        let didUpdateHeight = lineManager.setHeight(of: line, to: newLineSize.height)
+        if lineWidths[line.id] != newLineSize.width {
+            lineWidths[line.id] = newLineSize.width
+            if let lineIDTrackingWidth = lineIDTrackingWidth {
+                let maximumLineWidth = lineWidths[lineIDTrackingWidth] ?? 0
+                if line.id == lineIDTrackingWidth || newLineSize.width > maximumLineWidth {
+                    _contentWidth = nil
+                }
+            } else if !isLineWrappingEnabled {
+                _contentWidth = nil
+            }
+        }
+        if didUpdateHeight {
+            _contentHeight = nil
+        }
     }
 
     private func getLineController(for line: DocumentLineNode) -> LineController {
         if let cachedLineController = lineControllers[line.id] {
             return cachedLineController
         } else {
-            let lineController = LineController(line: line)
-            lineController.defaultLineHeight = theme.font.lineHeight
+            let lineController = LineController(syntaxHighlightController: syntaxHighlightController, line: line)
             lineController.delegate = self
+            lineController.theme = theme
             lineControllers[line.id] = lineController
             return lineController
         }
     }
-
-//    private func prepare(_ textRenderer: TextRenderer, toDraw line: DocumentLineNode) {
-//        textRenderer.lineID = line.id
-//        textRenderer.documentRange = NSRange(location: line.location, length: line.data.totalLength)
-//        textRenderer.documentByteRange = line.data.byteRange
-//        textRenderer.theme = theme
-//        textRenderer.invisibleCharacterConfiguration = invisibleCharacterConfiguration
-//        if isLineWrappingEnabled {
-//            textRenderer.constrainingLineWidth = frame.width - leadingLineSpacing
-//        } else {
-//            textRenderer.constrainingLineWidth = nil
-//        }
-//        textRenderer.prepareToDraw()
-//        let didUpdateHeight = lineManager.setHeight(of: line, to: textRenderer.preferredLineSize.height)
-//        if lineWidths[line.id] != textRenderer.preferredLineSize.width {
-//            lineWidths[line.id] = textRenderer.preferredLineSize.width
-//            if let lineIDTrackingWidth = lineIDTrackingWidth {
-//                let maximumLineWidth = lineWidths[lineIDTrackingWidth] ?? 0
-//                if line.id == lineIDTrackingWidth || textRenderer.preferredLineSize.width > maximumLineWidth {
-//                    _contentWidth = nil
-//                }
-//            } else if !isLineWrappingEnabled {
-//                _contentWidth = nil
-//            }
-//        }
-//        if didUpdateHeight {
-//            _contentHeight = nil
-//        }
-//    }
 }
 
 // MARK: - LineControllerDelegate

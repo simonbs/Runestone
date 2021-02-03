@@ -16,19 +16,16 @@ final class LineController {
     weak var delegate: LineControllerDelegate?
     let line: DocumentLineNode
     weak var lineView: LineView?
+    var theme: EditorTheme = DefaultEditorTheme() {
+        didSet {
+            textInputProxy.defaultLineHeight = theme.font.leading
+            syntaxHighlighter.theme = theme
+        }
+    }
     var lineViewFrame: CGRect = .zero {
         didSet {
             if lineViewFrame != oldValue {
-                lineView?.lineController?.lineView = nil
-                lineView?.lineController = self
                 lineView?.frame = lineViewFrame
-            }
-        }
-    }
-    var defaultLineHeight: CGFloat = 12 {
-        didSet {
-            if defaultLineHeight != oldValue {
-                textInputProxy.defaultLineHeight = defaultLineHeight
             }
         }
     }
@@ -36,41 +33,79 @@ final class LineController {
         if let preferredSize = typesetter.preferredSize {
             return preferredSize
         } else {
-            return CGSize(width: 0, height: defaultLineHeight)
+            return CGSize(width: 0, height: theme.font.lineHeight)
         }
     }
 
     private let typesetter = LineTypesetter()
+    private let syntaxHighlighter: LineSyntaxHighlighter
     private let textInputProxy: LineTextInputProxy
+    private var attributedString: NSMutableAttributedString?
+    private var isStringInvalid = true
+    private var isDefaultAttributesInvalid = true
+    private var isSyntaxHighlightingInvalid = true
     private var isTypesetterInvalid = true
-    private var attributedString: CFAttributedString?
 
-    init(line: DocumentLineNode) {
+    init(syntaxHighlightController: SyntaxHighlightController, line: DocumentLineNode) {
         self.line = line
+        self.syntaxHighlighter = LineSyntaxHighlighter(syntaxHighlightController: syntaxHighlightController)
         self.textInputProxy = LineTextInputProxy(lineTypesetter: typesetter)
+        self.textInputProxy.defaultLineHeight = theme.font.lineHeight
+    }
+
+    func typeset() {
+        isStringInvalid = true
+        isDefaultAttributesInvalid = true
+        isTypesetterInvalid = true
+        updateStringIfNecessary()
+        updateDefaultAttributesIfNecessary()
+        updateTypesetterIfNecessary()
     }
 
     func willDisplay() {
+        updateStringIfNecessary()
+        updateDefaultAttributesIfNecessary()
         updateTypesetterIfNecessary()
         lineView?.textLayer.string = attributedString
         lineView?.frame = lineViewFrame
     }
+}
 
-    func updateTypesetterIfNecessary() {
+private extension LineController {
+    private func updateStringIfNecessary() {
+        if isStringInvalid {
+            let string = delegate!.string(in: self)
+            attributedString = NSMutableAttributedString(string: string)
+            isStringInvalid = false
+        }
+    }
+
+    private func updateDefaultAttributesIfNecessary() {
+        if isDefaultAttributesInvalid {
+            if let attributedString = attributedString {
+                syntaxHighlighter.setDefaultAttributes(on: attributedString)
+            }
+            isDefaultAttributesInvalid = false
+        }
+    }
+
+    private func updateSyntaxHighlightingIfNecessary() {
+        if isSyntaxHighlightingInvalid {
+            if let attributedString = attributedString {
+                let documentByteRange = line.data.byteRange
+                syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: documentByteRange)
+            }
+            isSyntaxHighlightingInvalid = false
+        }
+    }
+
+    private func updateTypesetterIfNecessary() {
         if isTypesetterInvalid {
-            updateAttributedString()
             if let attributedString = attributedString {
                 typesetter.typeset(attributedString)
             }
             isTypesetterInvalid = false
         }
-    }
-}
-
-private extension LineController {
-    private func updateAttributedString() {
-        let string = delegate!.string(in: self)
-        attributedString = CFAttributedStringCreate(kCFAllocatorDefault, string as CFString, nil)
     }
 }
 

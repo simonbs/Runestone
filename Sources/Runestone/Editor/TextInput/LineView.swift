@@ -8,8 +8,6 @@
 import UIKit
 
 final class LineView: UIView {
-    weak var lineController: LineController?
-
     var textLayer: CATextLayer {
         return layer as! CATextLayer
     }
@@ -22,7 +20,6 @@ final class LineView: UIView {
         super.init(frame: .zero)
         isUserInteractionEnabled = false
         backgroundColor = .clear
-        backgroundColor = .systemBlue
         textLayer.contentsScale = UIScreen.main.scale
     }
 

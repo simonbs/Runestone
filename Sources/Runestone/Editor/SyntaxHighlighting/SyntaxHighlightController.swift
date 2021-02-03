@@ -46,7 +46,22 @@ final class SyntaxHighlightController {
         }
     }
 
-    func attributes(for captures: [Capture], localTo range: ByteRange) -> [SyntaxHighlightToken] {
+    func captures(in range: ByteRange) -> Result<[Capture], SyntaxHighlightControllerError> {
+        guard let parser = parser else {
+            return .failure(.parserUnavailable)
+        }
+        guard let tree = parser.latestTree else {
+            return .failure(.treeUnavailable)
+        }
+        return getQuery().map { query in
+            let captureQuery = CaptureQuery(query: query, node: tree.rootNode)
+            captureQuery.setQueryRange(range)
+            captureQuery.execute()
+            return captureQuery.allCaptures()
+        }
+    }
+
+    func tokens(for captures: [Capture], localTo range: ByteRange) -> [SyntaxHighlightToken] {
         var tokens: [SyntaxHighlightToken] = []
         for capture in captures {
             // We highlight each line separately but a capture may extend beyond a line, e.g. an unterminated string,
@@ -63,21 +78,6 @@ final class SyntaxHighlightController {
             }
         }
         return tokens
-    }
-
-    func captures(in range: ByteRange) -> Result<[Capture], SyntaxHighlightControllerError> {
-        guard let parser = parser else {
-            return .failure(.parserUnavailable)
-        }
-        guard let tree = parser.latestTree else {
-            return .failure(.treeUnavailable)
-        }
-        return getQuery().map { query in
-            let captureQuery = CaptureQuery(query: query, node: tree.rootNode)
-            captureQuery.setQueryRange(range)
-            captureQuery.execute()
-            return captureQuery.allCaptures()
-        }
     }
 }
 
