@@ -15,7 +15,6 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
     func textInputViewDidInvalidateContentSize(_ view: TextInputView)
     func textInputViewDidUpdateGutterWidth(_ view: TextInputView)
-    func textInputView(_ view: TextInputView, shouldScrollTo targetRect: CGRect)
 }
 
 final class TextInputView: UIView, UITextInput {
@@ -76,6 +75,7 @@ final class TextInputView: UIView, UITextInput {
     @objc var insertionPointColor: UIColor = .black
     @objc var selectionBarColor: UIColor = .black
     @objc var selectionHighlightColor: UIColor = .black
+    private(set) var isEditing = false
 
     // MARK: - Appearance
     var theme: EditorTheme = DefaultEditorTheme() {
@@ -338,6 +338,7 @@ final class TextInputView: UIView, UITextInput {
         let wasFirstResponder = isFirstResponder
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if !wasFirstResponder && isFirstResponder {
+            isEditing = true
             layoutManager.isEditing = true
             markedRange = nil
             if selectedRange == nil {
@@ -355,6 +356,7 @@ final class TextInputView: UIView, UITextInput {
         let wasFirstResponder = isFirstResponder
         let didResignFirstResponder = super.resignFirstResponder()
         if wasFirstResponder && !isFirstResponder {
+            isEditing = false
             layoutManager.isEditing = false
             inputDelegate?.selectionWillChange(self)
             selectedRange = nil
@@ -382,6 +384,7 @@ final class TextInputView: UIView, UITextInput {
         inputDelegate?.selectionWillChange(self)
         selectedRange = NSRange(location: 0, length: string.length)
         inputDelegate?.selectionDidChange(self)
+        delegate?.textInputViewDidChangeSelection(self)
     }
 
     override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
@@ -422,6 +425,7 @@ final class TextInputView: UIView, UITextInput {
             inputDelegate?.selectionWillChange(self)
             selectedRange = NSRange(location: index, length: 0)
             inputDelegate?.selectionDidChange(self)
+            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
@@ -549,6 +553,7 @@ extension TextInputView {
             inputDelegate?.selectionWillChange(self)
             selectedRange = NSRange(location: range.location + nsString.length, length: 0)
             inputDelegate?.selectionDidChange(self)
+            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
@@ -562,6 +567,7 @@ extension TextInputView {
                 inputDelegate?.selectionWillChange(self)
                 selectedRange = NSRange(location: range.location, length: 0)
                 inputDelegate?.selectionDidChange(self)
+                delegate?.textInputViewDidChangeSelection(self)
             }
         } else if range.location > 0 {
             if shouldChangeText(in: range, replacementText: "") {
@@ -570,13 +576,19 @@ extension TextInputView {
                 inputDelegate?.selectionWillChange(self)
                 selectedRange = NSRange(location: range.location, length: 0)
                 inputDelegate?.selectionDidChange(self)
+                delegate?.textInputViewDidChangeSelection(self)
             }
         }
     }
 
     func replace(_ range: UITextRange, withText text: String) {
         if let indexedRange = range as? IndexedRange, shouldChangeText(in: indexedRange.range, replacementText: text) {
-            replace(indexedRange.range, withText: text)
+            let nsText = text as NSString
+            replaceCharacters(in: indexedRange.range, with: nsText)
+            inputDelegate?.selectionWillChange(self)
+            selectedRange = NSRange(location: indexedRange.range.location + nsText.length, length: 0)
+            inputDelegate?.selectionDidChange(self)
+            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
@@ -594,14 +606,6 @@ extension TextInputView {
         } else {
             return nil
         }
-    }
-
-    func replace(_ range: NSRange, withText text: String) {
-        let nsText = text as NSString
-        replaceCharacters(in: range, with: nsText)
-        inputDelegate?.selectionWillChange(self)
-        selectedRange = NSRange(location: range.location + nsText.length, length: 0)
-        inputDelegate?.selectionDidChange(self)
     }
 
     private func replaceCharacters(in range: NSRange, with newString: NSString) {
@@ -675,13 +679,6 @@ extension TextInputView {
 
     private func shouldChangeText(in range: NSRange, replacementText text: String) -> Bool {
         return delegate?.textInputView(self, shouldChangeTextIn: range, replacementText: text) ?? true
-    }
-
-    private func scrollToCaret() {
-        if let selectedTextRange = selectedTextRange?.end {
-            let caretRect = self.caretRect(for: selectedTextRange)
-            delegate?.textInputView(self, shouldScrollTo: caretRect)
-        }
     }
 }
 

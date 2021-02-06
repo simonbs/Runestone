@@ -171,8 +171,20 @@ public final class EditorTextView: UIScrollView {
             textInputView.selectionHighlightColor = newValue
         }
     }
-    public var selectedTextRange: NSRange? {
-        return textInputView.selectedRange
+    /// Whether the text view is currently in an editing state.
+    public var isEditing: Bool {
+        return textInputView.isEditing
+    }
+    public var selectedRange: NSRange {
+        if let selectedRange = textInputView.selectedRange {
+            return selectedRange
+        } else {
+            // UITextView returns the end of the document for the selectedRange by default.
+            return NSRange(location: textInputView.string.length, length: 0)
+        }
+    }
+    public var selectedTextRange: UITextRange? {
+        return IndexedRange(range: selectedRange)
     }
     public override var inputAccessoryView: UIView? {
         get {
@@ -419,13 +431,8 @@ public final class EditorTextView: UIScrollView {
     /// - Parameters:
     ///   - range: A range of text in the document.
     ///   - text: A string to replace the text in range.
-    public func replace(_ range: NSRange, withText text: String) {
+    public func replace(_ range: UITextRange, withText text: String) {
         textInputView.replace(range, withText: text)
-    }
-
-    /// Deletes the character before the caret.
-    public func deleteBackward() {
-        textInputView.deleteBackward()
     }
 
     /// Returns the text in the specified range.
@@ -459,6 +466,36 @@ private extension EditorTextView {
             textInputView.becomeFirstResponder()
         }
     }
+
+    private func scrollToCaret() {
+        if let textPosition = textInputView.selectedTextRange?.end {
+            scroll(to: textPosition)
+        }
+    }
+
+    private func scroll(to textPosition: UITextPosition) {
+        let gutterWidth = textInputView.gutterWidth
+        let caretRect = textInputView.caretRect(for: textPosition)
+        var newXOffset = contentOffset.x
+        var newYOffset = contentOffset.y
+        var visibleBounds = bounds
+        visibleBounds.origin.y += adjustedContentInset.top
+        visibleBounds.size.height -= adjustedContentInset.top + adjustedContentInset.bottom
+        if caretRect.minX - gutterWidth < visibleBounds.minX {
+            newXOffset = caretRect.minX - gutterWidth
+        } else if caretRect.maxX > visibleBounds.maxX {
+            newXOffset = caretRect.maxX - frame.width
+        }
+        if caretRect.minY < visibleBounds.minY {
+            newYOffset = caretRect.minY - adjustedContentInset.top
+        } else if caretRect.maxY > visibleBounds.maxY {
+            newYOffset = caretRect.maxY - visibleBounds.height - adjustedContentInset.top
+        }
+        let newContentOffset = CGPoint(x: newXOffset, y: newYOffset)
+        if newContentOffset != contentOffset {
+            contentOffset = newContentOffset
+        }
+    }
 }
 
 // MARK: - Editing
@@ -473,7 +510,8 @@ private extension EditorTextView {
             textInputView.selectedTextRange = IndexedRange(range: newSelectedRange)
         } else if let text = textInputView.text(in: selectedRange) {
             let modifiedText = characterPair.leading + text + characterPair.trailing
-            textInputView.replace(selectedRange, withText: modifiedText)
+            let indexedRange = IndexedRange(range: selectedRange)
+            textInputView.replace(indexedRange, withText: modifiedText)
             let newSelectedRange = NSRange(location: range.location + characterPair.leading.count, length: range.length)
             textInputView.selectedTextRange = IndexedRange(range: newSelectedRange)
         }
@@ -497,29 +535,7 @@ extension EditorTextView: TextInputViewDelegate {
     }
 
     func textInputViewDidChangeSelection(_ view: TextInputView) {
-        if let selectedTextRange = textInputView.selectedTextRange?.end {
-            let gutterWidth = textInputView.gutterWidth
-            let caretRect = textInputView.caretRect(for: selectedTextRange)
-            var newXOffset = contentOffset.x
-            var newYOffset = contentOffset.y
-            var visibleBounds = bounds
-            visibleBounds.origin.y += adjustedContentInset.top
-            visibleBounds.size.height -= adjustedContentInset.top + adjustedContentInset.bottom
-            if caretRect.minX - gutterWidth < visibleBounds.minX {
-                newXOffset = caretRect.minX - gutterWidth
-            } else if caretRect.maxX > visibleBounds.maxX {
-                newXOffset = caretRect.maxX - frame.width
-            }
-            if caretRect.minY < visibleBounds.minY {
-                newYOffset = caretRect.minY - adjustedContentInset.top
-            } else if caretRect.maxY > visibleBounds.maxY {
-                newYOffset = caretRect.maxY - visibleBounds.height - adjustedContentInset.top
-            }
-            let newContentOffset = CGPoint(x: newXOffset, y: newYOffset)
-            if newContentOffset != contentOffset {
-                contentOffset = newContentOffset
-            }
-        }
+        scrollToCaret()
         editorDelegate?.editorTextViewDidChangeSelection(self)
     }
 
@@ -542,10 +558,6 @@ extension EditorTextView: TextInputViewDelegate {
         } else {
             return editorDelegate?.editorTextView(self, shouldChangeTextIn: range, replacementText: text) ?? true
         }
-    }
-
-    func textInputView(_ view: TextInputView, shouldScrollTo targetRect: CGRect) {
-
     }
 
     func textInputViewDidUpdateGutterWidth(_ view: TextInputView) {
