@@ -422,7 +422,7 @@ extension LayoutManager {
     }
 
     func closestIndex(to point: CGPoint) -> Int? {
-        if let line = lineManager.line(containingYOffset: point.y - textContainerInset.top), let lineController = lineControllers[line.id] {
+        if let line = lineManager.line(containingYOffset: point.y), let lineController = lineControllers[line.id] {
             return closestIndex(to: point, in: lineController, showing: line)
         } else if point.y <= 0 {
             let firstLine = lineManager.firstLine
@@ -442,7 +442,9 @@ extension LayoutManager {
     }
 
     private func closestIndex(to point: CGPoint, in lineController: LineController, showing line: DocumentLineNode) -> Int {
-        let localPoint = CGPoint(x: point.x - leadingLineSpacing, y: point.y - lineController.lineViewFrame.minY)
+        let adjustedXPosition = point.x - leadingLineSpacing
+        let adjustedYPosition = point.y - lineController.lineViewFrame.minY - textContainerInset.top
+        let localPoint = CGPoint(x: adjustedXPosition, y: adjustedYPosition)
         let index = lineController.closestIndex(to: localPoint)
         if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
             return line.location + line.data.length
