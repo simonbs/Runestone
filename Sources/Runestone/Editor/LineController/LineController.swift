@@ -84,6 +84,9 @@ final class LineController {
     }
 
     func syntaxHighlight() {
+        // We need to invalidate the typesetter when invalidating the syntax highlighting because
+        // the CTTypesetter needs to generate new instances of CTLine with the new attributes.
+        isTypesetterInvalid = true
         isSyntaxHighlightingInvalid = true
         updateSyntaxHighlightingIfNecessary(async: false)
     }
