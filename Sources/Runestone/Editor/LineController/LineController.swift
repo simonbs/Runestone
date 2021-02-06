@@ -6,6 +6,7 @@
 //
 
 import CoreGraphics
+import CoreText
 import Foundation
 
 protocol LineControllerDelegate: AnyObject {
@@ -34,6 +35,7 @@ final class LineController {
         didSet {
             if lineViewFrame != oldValue {
                 lineView?.frame = lineViewFrame
+                renderer.lineViewFrame = lineViewFrame
             }
         }
     }
@@ -48,6 +50,7 @@ final class LineController {
     private let typesetter = LineTypesetter()
     private let syntaxHighlighter: LineSyntaxHighlighter
     private let textInputProxy: LineTextInputProxy
+    private let renderer: LineRenderer
     private var attributedString: NSMutableAttributedString?
     private var isStringInvalid = true
     private var isDefaultAttributesInvalid = true
@@ -59,6 +62,7 @@ final class LineController {
         self.syntaxHighlighter = LineSyntaxHighlighter(syntaxHighlighter: syntaxHighlighter, queue: syntaxHighlightQueue)
         self.textInputProxy = LineTextInputProxy(lineTypesetter: typesetter)
         self.textInputProxy.defaultLineHeight = theme.font.lineHeight
+        self.renderer = LineRenderer(typesetter: typesetter)
     }
 
     func typeset() {
@@ -80,11 +84,12 @@ final class LineController {
         updateDefaultAttributesIfNecessary()
         updateTypesetterIfNecessary()
         updateSyntaxHighlightingIfNecessary(async: true)
-        lineView?.textLayer.string = attributedString
+        lineView?.delegate = self
         lineView?.frame = lineViewFrame
     }
 
     func didEndDisplaying() {
+        lineView?.delegate = nil
         lineView = nil
         syntaxHighlighter.cancelHighlightOperation()
     }
@@ -124,8 +129,10 @@ private extension LineController {
                 if async {
                     syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: documentByteRange) { [weak self] result in
                         if case .success = result {
-                            self?.lineView?.textLayer.string = attributedString
+                            self?.typesetter.typeset(attributedString)
+                            self?.lineView?.setNeedsDisplay()
                             self?.isSyntaxHighlightingInvalid = false
+                            self?.isTypesetterInvalid = false
                         }
                     }
                 } else {
@@ -164,5 +171,12 @@ extension LineController {
 
     func closestIndex(to point: CGPoint) -> Int {
         return textInputProxy.closestIndex(to: point)
+    }
+}
+
+// MARK: - LineViewDelegate
+extension LineController: LineViewDelegate {
+    func lineView(_ lineView: LineView, shouldDrawTo context: CGContext) {
+        renderer.draw(to: context)
     }
 }

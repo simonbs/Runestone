@@ -7,24 +7,35 @@
 
 import UIKit
 
+protocol LineViewDelegate: AnyObject {
+    func lineView(_ lineView: LineView, shouldDrawTo context: CGContext)
+}
+
 final class LineView: UIView {
-    var textLayer: CATextLayer {
-        return layer as! CATextLayer
-    }
+    weak var delegate: LineViewDelegate?
 
-    override class var layerClass: AnyClass {
-        return CATextLayer.self
+    override var frame: CGRect {
+        didSet {
+            if frame != oldValue {
+                setNeedsDisplay()
+            }
+        }
     }
-
+    
     init() {
         super.init(frame: .zero)
         isUserInteractionEnabled = false
         backgroundColor = .clear
-        textLayer.contentsScale = UIScreen.main.scale
-        textLayer.isWrapped = true
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        if let context = UIGraphicsGetCurrentContext() {
+            delegate?.lineView(self, shouldDrawTo: context)
+        }
     }
 }
