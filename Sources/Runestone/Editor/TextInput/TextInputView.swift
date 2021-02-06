@@ -217,6 +217,20 @@ final class TextInputView: UIView, UITextInput {
     var gutterWidth: CGFloat {
         return layoutManager.gutterWidth
     }
+    var lineHeightMultiplier: CGFloat {
+        get {
+            return layoutManager.lineHeightMultiplier
+        }
+        set {
+            // Notify the delegate that the selection may change as the position of the caret will change when we adjust the height of lines.
+            inputDelegate?.selectionWillChange(self)
+            layoutManager.lineHeightMultiplier = newValue
+            inputDelegate?.selectionDidChange(self)
+            // Do a layout pass to ensure the position of the caret is correct.
+            setNeedsLayout()
+            layoutIfNeeded()
+        }
+    }
 
     // MARK: - Contents
     weak var delegate: TextInputViewDelegate?

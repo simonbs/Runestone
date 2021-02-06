@@ -44,8 +44,9 @@ private extension LineRenderer {
         context.translateBy(x: 0, y: lineViewFrame.height)
         context.scaleBy(x: 1, y: -1)
         for typesetLine in typesetter.typesetLines {
-            let yPosition = typesetLine.descent + (lineViewFrame.height - typesetLine.yPosition - typesetLine.size.height)
-            context.textPosition = CGPoint(x: 0, y: yPosition)
+            let yPosition = typesetLine.descent + (lineViewFrame.height - typesetLine.yPosition - typesetLine.baseSize.height)
+            let yOffset = (typesetLine.scaledSize.height - typesetLine.baseSize.height) / 2
+            context.textPosition = CGPoint(x: 0, y: yPosition - yOffset)
             CTLineDraw(typesetLine.line, context)
         }
         context.restoreGState()
@@ -57,17 +58,18 @@ private extension LineRenderer {
         let lineString = string[stringRange]
         for (indexInLineFragment, substring) in lineString.enumerated() {
             let indexInLine = textRange.location + indexInLineFragment
+            let yPosition = typesetLine.yPosition + (typesetLine.scaledSize.height - typesetLine.baseSize.height) / 2
             if invisibleCharacterConfiguration.showSpaces && substring == Symbol.Character.space {
                 let xPosition = round(CTLineGetOffsetForStringIndex(typesetLine.line, indexInLine, nil))
-                let point = CGPoint(x: CGFloat(xPosition), y: typesetLine.yPosition)
+                let point = CGPoint(x: CGFloat(xPosition), y: yPosition)
                 draw(invisibleCharacterConfiguration.spaceSymbol, at: point)
             } else if invisibleCharacterConfiguration.showTabs && substring == Symbol.Character.tab {
                 let xPosition = round(CTLineGetOffsetForStringIndex(typesetLine.line, indexInLine, nil))
-                let point = CGPoint(x: CGFloat(xPosition), y: typesetLine.yPosition)
+                let point = CGPoint(x: CGFloat(xPosition), y: yPosition)
                 draw(invisibleCharacterConfiguration.tabSymbol, at: point)
             } else if invisibleCharacterConfiguration.showLineBreaks && substring == Symbol.Character.lineFeed {
                 let xPosition = round(CTLineGetTypographicBounds(typesetLine.line, nil, nil, nil))
-                let point = CGPoint(x: CGFloat(xPosition), y: typesetLine.yPosition)
+                let point = CGPoint(x: CGFloat(xPosition), y: yPosition)
                 draw(invisibleCharacterConfiguration.lineBreakSymbol, at: point)
             }
         }

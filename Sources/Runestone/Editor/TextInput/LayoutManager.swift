@@ -129,6 +129,14 @@ final class LayoutManager {
             return 0
         }
     }
+    var lineHeightMultiplier: CGFloat = 1 {
+        didSet {
+            if lineHeightMultiplier != oldValue {
+                invalidateContentSize()
+                invalidateTypesetting()
+            }
+        }
+    }
 
     // MARK: - Views
     let gutterContainerView = UIView()
@@ -499,6 +507,7 @@ extension LayoutManager {
         // Setup the line
         let lineController = getLineController(for: line)
         lineController.lineView = lineView
+        lineController.lineHeightMultiplier = lineHeightMultiplier
         lineController.constrainingWidth = maximumLineWidth
         lineController.invisibleCharacterConfiguration = invisibleCharacterConfiguration
         lineController.willDisplay()
@@ -506,10 +515,13 @@ extension LayoutManager {
         let lineViewFrame = CGRect(x: leadingLineSpacing, y: textContainerInset.top + line.yPosition, width: lineSize.width, height: lineSize.height)
         lineController.lineViewFrame = lineViewFrame
         // Setup the line number
+        let baseLineHeight = theme.font.lineHeight
+        let scaledLineHeight = baseLineHeight * lineHeightMultiplier
+        let lineNumberYOffset = (scaledLineHeight - baseLineHeight) / 2
         lineNumberView.text = "\(line.index + 1)"
         lineNumberView.font = theme.font
         lineNumberView.textColor = theme.lineNumberColor
-        lineNumberView.frame = CGRect(x: gutterLeadingPadding, y: lineViewFrame.minY, width: lineNumberWidth, height: lineViewFrame.height)
+        lineNumberView.frame = CGRect(x: gutterLeadingPadding, y: lineViewFrame.minY + lineNumberYOffset, width: lineNumberWidth, height: lineViewFrame.height)
         // Pass back the maximum Y position so the caller can determine if it needs to show more lines.
         maxY = lineView.frame.maxY
         updateSize(of: line, newLineSize: lineController.preferredSize)

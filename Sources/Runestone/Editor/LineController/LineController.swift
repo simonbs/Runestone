@@ -17,6 +17,14 @@ final class LineController {
     weak var delegate: LineControllerDelegate?
     let line: DocumentLineNode
     weak var lineView: LineView?
+    var lineHeightMultiplier: CGFloat {
+        get {
+            return typesetter.lineHeightMultiplier
+        }
+        set {
+            typesetter.lineHeightMultiplier = newValue
+        }
+    }
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
             textInputProxy.defaultLineHeight = theme.font.lineHeight

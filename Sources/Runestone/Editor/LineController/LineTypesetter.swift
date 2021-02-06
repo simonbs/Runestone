@@ -21,6 +21,7 @@ private final class TypesetResult {
 
 final class LineTypesetter {
     var constrainingWidth: CGFloat?
+    var lineHeightMultiplier: CGFloat = 1
     private(set) var preferredSize: CGSize?
     private(set) var typesetLines: [TypesetLine] = []
 
@@ -31,7 +32,7 @@ final class LineTypesetter {
         let typesetResult = self.typesetLines(in: typesetter, stringLength: stringLength)
         if let typesetResult = typesetResult, let lastLine = typesetResult.typesetLines.last {
             typesetLines = typesetResult.typesetLines
-            preferredSize = CGSize(width: typesetResult.maximumLineWidth, height: lastLine.yPosition + lastLine.size.height)
+            preferredSize = CGSize(width: typesetResult.maximumLineWidth, height: lastLine.yPosition + lastLine.scaledSize.height)
         }
     }
 }
@@ -72,10 +73,10 @@ private extension LineTypesetter {
             let range = CFRangeMake(startOffset, length)
             let typesetLine = createTypesetLine(for: range, in: typesetter, yPosition: nextYPosition)
             typesetLines.append(typesetLine)
-            nextYPosition += typesetLine.size.height
+            nextYPosition += typesetLine.scaledSize.height
             startOffset += length
-            if typesetLine.size.width > maximumLineWidth {
-                maximumLineWidth = typesetLine.size.width
+            if typesetLine.scaledSize.width > maximumLineWidth {
+                maximumLineWidth = typesetLine.scaledSize.width
             }
         }
         return TypesetResult(typesetLines: typesetLines, maximumLineWidth: maximumLineWidth)
@@ -84,7 +85,7 @@ private extension LineTypesetter {
     private func typesetNonWrappingLine(in typesetter: CTTypesetter, stringLength: Int) -> TypesetResult {
         let range = CFRangeMake(0, stringLength)
         let typesetLine = createTypesetLine(for: range, in: typesetter, yPosition: 0)
-        return TypesetResult(typesetLines: [typesetLine], maximumLineWidth: typesetLine.size.width)
+        return TypesetResult(typesetLines: [typesetLine], maximumLineWidth: typesetLine.scaledSize.width)
     }
 
     private func createTypesetLine(for range: CFRange, in typesetter: CTTypesetter, yPosition: CGFloat) -> TypesetLine {
@@ -94,7 +95,8 @@ private extension LineTypesetter {
         var leading: CGFloat = 0
         let width = CGFloat(CTLineGetTypographicBounds(line, &ascent, &descent, &leading))
         let height = ascent + descent + leading
-        let size = CGSize(width: width, height: height)
-        return TypesetLine(line: line, descent: descent, size: size, yPosition: yPosition)
+        let baseSize = CGSize(width: width, height: height)
+        let scaledSize = CGSize(width: width, height: height * lineHeightMultiplier)
+        return TypesetLine(line: line, descent: descent, baseSize: baseSize, scaledSize: scaledSize, yPosition: yPosition)
     }
 }

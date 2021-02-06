@@ -328,6 +328,15 @@ public final class EditorTextView: UIScrollView {
     public var gutterWidth: CGFloat {
         return textInputView.gutterWidth
     }
+    /// The line height is multiplied with the value.
+    public var lineHeightMultiplier: CGFloat {
+        get {
+            return textInputView.lineHeightMultiplier
+        }
+        set {
+            textInputView.lineHeightMultiplier = newValue
+        }
+    }
 
     private let textInputView = TextInputView()
     private let editingTextInteraction = UITextInteraction(for: .editable)
