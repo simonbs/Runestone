@@ -411,11 +411,6 @@ extension LayoutManager {
                 let containsStart = lineIndex == startLineIndex
                 let containsEnd = lineIndex == endLineIndex
                 screenRect.origin.x += leadingLineSpacing
-                if !containsStart {
-                    // If this is not the starting line then we ignore the leading line spacing so the selection rect starts right after the gutter.
-                    screenRect.size.width += screenRect.origin.x - gutterWidth
-                    screenRect.origin.x = gutterWidth
-                }
                 if !containsEnd {
                     // If the following lines are selected, we make sure that the selections extends the entire line.
                     screenRect.size.width = max(contentWidth, frame.width) - screenRect.minX
