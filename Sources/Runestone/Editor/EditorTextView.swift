@@ -366,7 +366,7 @@ public final class EditorTextView: UIScrollView {
 
     public override func layoutSubviews() {
         super.layoutSubviews()
-        textInputView.frame = CGRect(x: 0, y: 0, width: contentSize.width, height: contentSize.height)
+        textInputView.frame = CGRect(x: 0, y: 0, width: max(contentSize.width, frame.width), height: max(contentSize.height, frame.height))
         textInputView.viewport = CGRect(origin: contentOffset, size: frame.size)
         bringSubviewToFront(textInputView.gutterContainerView)
     }
