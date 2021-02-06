@@ -14,7 +14,7 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidChangeSelection(_ view: TextInputView)
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
     func textInputViewDidInvalidateContentSize(_ view: TextInputView)
-    func textInputView(_ view: TextInputView, shouldScrollTo targetRect: CGRect)
+    func textInputViewDidUpdateGutterWidth(_ view: TextInputView)
 }
 
 final class TextInputView: UIView, UITextInput {
@@ -75,13 +75,14 @@ final class TextInputView: UIView, UITextInput {
     @objc var insertionPointColor: UIColor = .black
     @objc var selectionBarColor: UIColor = .black
     @objc var selectionHighlightColor: UIColor = .black
+    private(set) var isEditing = false
 
     // MARK: - Appearance
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
             lineManager.estimatedLineHeight = theme.font.lineHeight
             layoutManager.theme = theme
-            syntaxHighlightController.theme = theme
+            syntaxHighlighter.theme = theme
         }
     }
     var language: Language? {
@@ -89,7 +90,7 @@ final class TextInputView: UIView, UITextInput {
             operationQueue.cancelAllOperations()
             _language = newValue
             parse(with: newValue)
-            layoutManager.invalidateAllLines()
+            layoutManager.invalidateSyntaxHighlighting()
             layoutManager.setNeedsLayout()
             setNeedsLayout()
         }
@@ -122,7 +123,6 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.showTabs {
                 layoutManager.invisibleCharacterConfiguration.showTabs = newValue
-                layoutManager.invalidateAllLines()
                 setNeedsLayout()
             }
         }
@@ -134,7 +134,6 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.showSpaces {
                 layoutManager.invisibleCharacterConfiguration.showSpaces = newValue
-                layoutManager.invalidateAllLines()
                 setNeedsLayout()
             }
         }
@@ -146,7 +145,6 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.showLineBreaks {
                 layoutManager.invisibleCharacterConfiguration.showLineBreaks = newValue
-                layoutManager.invalidateAllLines()
                 setNeedsLayout()
             }
         }
@@ -158,7 +156,6 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.tabSymbol {
                 layoutManager.invisibleCharacterConfiguration.tabSymbol = newValue
-                layoutManager.invalidateAllLines()
                 setNeedsLayout()
             }
         }
@@ -170,7 +167,6 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.spaceSymbol {
                 layoutManager.invisibleCharacterConfiguration.spaceSymbol = newValue
-                layoutManager.invalidateAllLines()
                 setNeedsLayout()
             }
         }
@@ -182,7 +178,6 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.lineBreakSymbol {
                 layoutManager.invisibleCharacterConfiguration.lineBreakSymbol = newValue
-                layoutManager.invalidateAllLines()
                 setNeedsLayout()
             }
         }
@@ -203,20 +198,12 @@ final class TextInputView: UIView, UITextInput {
             layoutManager.gutterTrailingPadding = newValue
         }
     }
-    var gutterMargin: CGFloat {
+    var textContainerInset: UIEdgeInsets {
         get {
-            return layoutManager.gutterMargin
+            return layoutManager.textContainerInset
         }
         set {
-            layoutManager.gutterMargin = newValue
-        }
-    }
-    var lineMargin: CGFloat {
-        get {
-            return layoutManager.lineMargin
-        }
-        set {
-            layoutManager.lineMargin = newValue
+            layoutManager.textContainerInset = newValue
         }
     }
     var isLineWrappingEnabled: Bool {
@@ -300,7 +287,7 @@ final class TextInputView: UIView, UITextInput {
     private let operationQueue = OperationQueue()
     private var markedRange: NSRange?
     private var lineManager = LineManager()
-    private let syntaxHighlightController = SyntaxHighlightController()
+    private let syntaxHighlighter = SyntaxHighlighter()
     private let layoutManager: LayoutManager
     private var parsedLine: ParsedLine?
     private var floatingCaretView: FloatingCaretView?
@@ -320,14 +307,14 @@ final class TextInputView: UIView, UITextInput {
     init() {
         operationQueue.name = "Runestone"
         operationQueue.qualityOfService = .userInitiated
-        layoutManager = LayoutManager(lineManager: lineManager, syntaxHighlightController: syntaxHighlightController, operationQueue: operationQueue)
+        layoutManager = LayoutManager(lineManager: lineManager, syntaxHighlighter: syntaxHighlighter, operationQueue: operationQueue)
         super.init(frame: .zero)
         lineManager.delegate = self
         lineManager.estimatedLineHeight = theme.font.lineHeight
         layoutManager.delegate = self
         layoutManager.textInputView = self
         layoutManager.theme = theme
-        syntaxHighlightController.theme = theme
+        syntaxHighlighter.theme = theme
     }
 
     required init?(coder: NSCoder) {
@@ -345,6 +332,7 @@ final class TextInputView: UIView, UITextInput {
         let wasFirstResponder = isFirstResponder
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if !wasFirstResponder && isFirstResponder {
+            isEditing = true
             layoutManager.isEditing = true
             markedRange = nil
             if selectedRange == nil {
@@ -362,6 +350,7 @@ final class TextInputView: UIView, UITextInput {
         let wasFirstResponder = isFirstResponder
         let didResignFirstResponder = super.resignFirstResponder()
         if wasFirstResponder && !isFirstResponder {
+            isEditing = false
             layoutManager.isEditing = false
             inputDelegate?.selectionWillChange(self)
             selectedRange = nil
@@ -389,6 +378,7 @@ final class TextInputView: UIView, UITextInput {
         inputDelegate?.selectionWillChange(self)
         selectedRange = NSRange(location: 0, length: string.length)
         inputDelegate?.selectionDidChange(self)
+        delegate?.textInputViewDidChangeSelection(self)
     }
 
     override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
@@ -417,8 +407,8 @@ final class TextInputView: UIView, UITextInput {
         lineManager = state.lineManager
         lineManager.delegate = self
         lineManager.estimatedLineHeight = theme.font.lineHeight
-        syntaxHighlightController.parser = state.parser
-        syntaxHighlightController.parser?.delegate = self
+        syntaxHighlighter.parser = state.parser
+        syntaxHighlighter.parser?.delegate = self
         layoutManager.lineManager = state.lineManager
         layoutManager.invalidateContentSize()
         layoutManager.updateGutterWidth()
@@ -429,6 +419,7 @@ final class TextInputView: UIView, UITextInput {
             inputDelegate?.selectionWillChange(self)
             selectedRange = NSRange(location: index, length: 0)
             inputDelegate?.selectionDidChange(self)
+            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
@@ -441,7 +432,7 @@ final class TextInputView: UIView, UITextInput {
                 self.parse(with: language)
                 DispatchQueue.main.sync {
                     if !operation.isCancelled {
-                        self.layoutManager.invalidateAllLines()
+                        self.layoutManager.invalidateSyntaxHighlighting()
                         self.layoutManager.setNeedsLayout()
                         self.setNeedsLayout()
                         completion?(true)
@@ -459,7 +450,7 @@ final class TextInputView: UIView, UITextInput {
     }
 
     func node(at location: Int) -> Node? {
-        let parser = syntaxHighlightController.parser
+        let parser = syntaxHighlighter.parser
         let rootNode = parser?.latestTree?.rootNode
         let byteOffset = (_string as String).byteOffset(at: location)
         let byteRange = ByteRange(location: byteOffset, length: ByteCount(0))
@@ -477,8 +468,8 @@ private extension TextInputView {
         if language != nil {
             parser.parse(string as String)
         }
-        syntaxHighlightController.parser = parser
-        syntaxHighlightController.reset()
+        syntaxHighlighter.parser = parser
+        syntaxHighlighter.reset()
     }
 }
 
@@ -530,7 +521,8 @@ extension TextInputView {
             fatalError("Expected position to be of type \(IndexedPosition.self)")
         }
         if string.length == 0 {
-            return CGRect(x: layoutManager.gutterWidth, y: 0, width: Caret.width, height: Caret.defaultHeight(for: theme.font))
+            let caretHeight = Caret.defaultHeight(for: theme.font)
+            return CGRect(x: layoutManager.gutterWidth + textContainerInset.left, y: textContainerInset.top, width: Caret.width, height: caretHeight)
         } else if let caretRect = layoutManager.caretRect(at: indexedPosition.index) {
             return caretRect
         } else {
@@ -555,6 +547,7 @@ extension TextInputView {
             inputDelegate?.selectionWillChange(self)
             selectedRange = NSRange(location: range.location + nsString.length, length: 0)
             inputDelegate?.selectionDidChange(self)
+            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
@@ -568,6 +561,7 @@ extension TextInputView {
                 inputDelegate?.selectionWillChange(self)
                 selectedRange = NSRange(location: range.location, length: 0)
                 inputDelegate?.selectionDidChange(self)
+                delegate?.textInputViewDidChangeSelection(self)
             }
         } else if range.location > 0 {
             if shouldChangeText(in: range, replacementText: "") {
@@ -576,13 +570,19 @@ extension TextInputView {
                 inputDelegate?.selectionWillChange(self)
                 selectedRange = NSRange(location: range.location, length: 0)
                 inputDelegate?.selectionDidChange(self)
+                delegate?.textInputViewDidChangeSelection(self)
             }
         }
     }
 
     func replace(_ range: UITextRange, withText text: String) {
         if let indexedRange = range as? IndexedRange, shouldChangeText(in: indexedRange.range, replacementText: text) {
-            replace(indexedRange.range, withText: text)
+            let nsText = text as NSString
+            replaceCharacters(in: indexedRange.range, with: nsText)
+            inputDelegate?.selectionWillChange(self)
+            selectedRange = NSRange(location: indexedRange.range.location + nsText.length, length: 0)
+            inputDelegate?.selectionDidChange(self)
+            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
@@ -600,14 +600,6 @@ extension TextInputView {
         } else {
             return nil
         }
-    }
-
-    func replace(_ range: NSRange, withText text: String) {
-        let nsText = text as NSString
-        replaceCharacters(in: range, with: nsText)
-        inputDelegate?.selectionWillChange(self)
-        selectedRange = NSRange(location: range.location + nsText.length, length: 0)
-        inputDelegate?.selectionDidChange(self)
     }
 
     private func replaceCharacters(in range: NSRange, with newString: NSString) {
@@ -630,7 +622,7 @@ extension TextInputView {
             startPoint: SourcePoint(startLinePosition),
             oldEndPoint: SourcePoint(oldEndLinePosition),
             newEndPoint: SourcePoint(newEndLinePosition))
-        let parser = syntaxHighlightController.parser
+        let parser = syntaxHighlighter.parser
         let oldTree = parser?.latestTree
         parser?.apply(edit)
         parser?.parse()
@@ -640,7 +632,8 @@ extension TextInputView {
             let changedLines = lines(in: changedRanges)
             editedLines.formUnion(changedLines)
         }
-        layoutManager.invalidateAndPrepare(editedLines)
+        layoutManager.typeset(editedLines)
+        layoutManager.syntaxHighlight(editedLines)
         layoutManager.setNeedsLayout()
         setNeedsLayout()
         inputDelegate?.textDidChange(self)
@@ -680,13 +673,6 @@ extension TextInputView {
 
     private func shouldChangeText(in range: NSRange, replacementText text: String) -> Bool {
         return delegate?.textInputView(self, shouldChangeTextIn: range, replacementText: text) ?? true
-    }
-
-    private func scrollToCaret() {
-        if let selectedTextRange = selectedTextRange?.end {
-            let caretRect = self.caretRect(for: selectedTextRange)
-            delegate?.textInputView(self, shouldScrollTo: caretRect)
-        }
     }
 }
 
@@ -898,6 +884,10 @@ extension TextInputView: LayoutManagerDelegate {
 
     func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager) {
         delegate?.textInputViewDidInvalidateContentSize(self)
+    }
+
+    func layoutManagerDidUpdateGutterWidth(_ layoutManager: LayoutManager) {
+        delegate?.textInputViewDidUpdateGutterWidth(self)
     }
 
     func lengthOfString(in layoutManager: LayoutManager) -> Int {

@@ -1,5 +1,5 @@
 //
-//  SyntaxHighlightController.swift
+//  SyntaxHighlighter.swift
 //  
 //
 //  Created by Simon Støvring on 16/01/2021.
@@ -7,13 +7,13 @@
 
 import UIKit
 
-enum SyntaxHighlightControllerError: Error {
+enum SyntaxHighlighterError: Error {
     case parserUnavailable
     case treeUnavailable
     case highlightsQueryUnavailable
 }
 
-final class SyntaxHighlightController {
+final class SyntaxHighlighter {
     var parser: Parser?
     var theme: EditorTheme = DefaultEditorTheme()
     var canHighlight: Bool {
@@ -46,7 +46,22 @@ final class SyntaxHighlightController {
         }
     }
 
-    func attributes(for captures: [Capture], localTo range: ByteRange) -> [SyntaxHighlightToken] {
+    func captures(in range: ByteRange) -> Result<[Capture], SyntaxHighlighterError> {
+        guard let parser = parser else {
+            return .failure(.parserUnavailable)
+        }
+        guard let tree = parser.latestTree else {
+            return .failure(.treeUnavailable)
+        }
+        return getQuery().map { query in
+            let captureQuery = CaptureQuery(query: query, node: tree.rootNode)
+            captureQuery.setQueryRange(range)
+            captureQuery.execute()
+            return captureQuery.allCaptures()
+        }
+    }
+
+    func tokens(for captures: [Capture], localTo range: ByteRange) -> [SyntaxHighlightToken] {
         var tokens: [SyntaxHighlightToken] = []
         for capture in captures {
             // We highlight each line separately but a capture may extend beyond a line, e.g. an unterminated string,
@@ -64,31 +79,16 @@ final class SyntaxHighlightController {
         }
         return tokens
     }
-
-    func captures(in range: ByteRange) -> Result<[Capture], SyntaxHighlightControllerError> {
-        guard let parser = parser else {
-            return .failure(.parserUnavailable)
-        }
-        guard let tree = parser.latestTree else {
-            return .failure(.treeUnavailable)
-        }
-        return getQuery().map { query in
-            let captureQuery = CaptureQuery(query: query, node: tree.rootNode)
-            captureQuery.setQueryRange(range)
-            captureQuery.execute()
-            return captureQuery.allCaptures()
-        }
-    }
 }
 
-private extension SyntaxHighlightController {
+private extension SyntaxHighlighter {
     private func attributes(for capture: Capture, in range: ByteRange) -> SyntaxHighlightToken {
         let textColor = theme.textColorForCaptureSequence(capture.name)
         let font = theme.fontForCapture(named: capture.name)
         return SyntaxHighlightToken(range: range, textColor: textColor, font: font)
     }
 
-    private func getQuery() -> Result<Query, SyntaxHighlightControllerError> {
+    private func getQuery() -> Result<Query, SyntaxHighlighterError> {
         if let query = query {
             return .success(query)
         } else {

@@ -7,23 +7,21 @@
 
 import UIKit
 
+protocol LineViewDelegate: AnyObject {
+    func lineView(_ lineView: LineView, shouldDrawTo context: CGContext)
+}
+
 final class LineView: UIView {
-    var textRenderer: TextRenderer? {
+    weak var delegate: LineViewDelegate?
+
+    override var frame: CGRect {
         didSet {
-            if textRenderer !== oldValue {
-                textRenderer?.frame = frame
+            if frame != oldValue {
                 setNeedsDisplay()
             }
         }
     }
-    override var frame: CGRect {
-        didSet {
-            if frame != oldValue {
-                textRenderer?.frame = frame
-            }
-        }
-    }
-
+    
     init() {
         super.init(frame: .zero)
         isUserInteractionEnabled = false
@@ -37,7 +35,7 @@ final class LineView: UIView {
     override func draw(_ rect: CGRect) {
         super.draw(rect)
         if let context = UIGraphicsGetCurrentContext() {
-            textRenderer?.draw(in: context)
+            delegate?.lineView(self, shouldDrawTo: context)
         }
     }
 }
