@@ -21,6 +21,7 @@ public protocol EditorTheme: AnyObject {
     var invisibleCharactersColor: UIColor { get }
     func textColorForCaptureSequence(_ captureSequence: String) -> UIColor?
     func fontForCaptureSequence(_ captureSequence: String) -> UIFont?
+    func shadowForCaptureSequence(_ captureSequence: String) -> NSShadow?
 }
 
 public extension EditorTheme {
@@ -28,7 +29,11 @@ public extension EditorTheme {
         return 1 / UIScreen.main.scale
     }
 
-    func fontForCapture(named captureName: String) -> UIFont? {
+    func fontForCaptureSequence(_ captureSequence: String) -> UIFont? {
+        return nil
+    }
+
+    func shadowForCaptureSequence(_ captureSequence: String) -> NSShadow? {
         return nil
     }
 }

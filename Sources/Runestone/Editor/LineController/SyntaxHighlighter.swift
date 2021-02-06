@@ -84,8 +84,9 @@ final class SyntaxHighlighter {
 private extension SyntaxHighlighter {
     private func attributes(for capture: Capture, in range: ByteRange) -> SyntaxHighlightToken {
         let textColor = theme.textColorForCaptureSequence(capture.name)
-        let font = theme.fontForCapture(named: capture.name)
-        return SyntaxHighlightToken(range: range, textColor: textColor, font: font)
+        let font = theme.fontForCaptureSequence(capture.name)
+        let shadow = theme.shadowForCaptureSequence(capture.name)
+        return SyntaxHighlightToken(range: range, textColor: textColor, font: font, shadow: shadow)
     }
 
     private func getQuery() -> Result<Query, SyntaxHighlighterError> {

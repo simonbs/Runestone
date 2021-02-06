@@ -11,14 +11,16 @@ final class SyntaxHighlightToken {
     let range: ByteRange
     let textColor: UIColor?
     let font: UIFont?
+    let shadow: NSShadow?
     var isEmpty: Bool {
-        return range.length == ByteCount(0) || (textColor == nil && font == nil)
+        return range.length == ByteCount(0) || (textColor == nil && font == nil && shadow == nil)
     }
 
-    init(range: ByteRange, textColor: UIColor?, font: UIFont?) {
+    init(range: ByteRange, textColor: UIColor?, font: UIFont?, shadow: NSShadow?) {
         self.range = range
         self.textColor = textColor
         self.font = font
+        self.shadow = shadow
     }
 }
 

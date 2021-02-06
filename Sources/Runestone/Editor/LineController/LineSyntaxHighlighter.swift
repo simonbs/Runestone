@@ -47,7 +47,10 @@ final class LineSyntaxHighlighter {
             .foregroundColor: theme.textColor,
             .font: theme.font
         ]
+        attributedString.beginEditing()
+        attributedString.removeAttribute(.shadow, range: entireRange)
         attributedString.setAttributes(attributes, range: entireRange)
+        attributedString.endEditing()
     }
 
     func syntaxHighlight(_ attributedString: NSMutableAttributedString, documentByteRange: ByteRange) {
@@ -112,10 +115,13 @@ private extension LineSyntaxHighlighter {
         let string = attributedString.string
         for token in tokens {
             let range = string.range(from: token.range)
-            let attributes: [NSAttributedString.Key: Any] = [
+            var attributes: [NSAttributedString.Key: Any] = [
                 .foregroundColor: token.textColor ?? theme.textColor,
                 .font: token.font ?? theme.font
             ]
+            if let shadow = token.shadow {
+                attributes[.shadow] = shadow
+            }
             attributedString.setAttributes(attributes, range: range)
         }
         attributedString.endEditing()
