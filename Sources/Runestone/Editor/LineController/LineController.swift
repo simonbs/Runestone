@@ -89,12 +89,16 @@ final class LineController {
     }
 
     func willDisplay() {
+        let needsDisplay = isStringInvalid || isTypesetterInvalid || isDefaultAttributesInvalid || isSyntaxHighlightingInvalid
         updateStringIfNecessary()
         updateDefaultAttributesIfNecessary()
         updateTypesetterIfNecessary()
         updateSyntaxHighlightingIfNecessary(async: true)
         lineView?.delegate = self
         lineView?.frame = lineViewFrame
+        if needsDisplay {
+            lineView?.setNeedsDisplay()
+        }
     }
 
     func didEndDisplaying() {
@@ -108,6 +112,7 @@ final class LineController {
     }
 
     func invalidateSyntaxHighlighting() {
+        isTypesetterInvalid = true
         isDefaultAttributesInvalid = true
         isSyntaxHighlightingInvalid = true
     }
@@ -132,25 +137,30 @@ private extension LineController {
     }
 
     private func updateSyntaxHighlightingIfNecessary(async: Bool) {
-        if isSyntaxHighlightingInvalid {
-            if let attributedString = attributedString {
-                let documentByteRange = line.data.byteRange
-                if async {
-                    syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: documentByteRange) { [weak self] result in
-                        if case .success = result {
-                            self?.typesetter.typeset(attributedString)
-                            self?.lineView?.setNeedsDisplay()
-                            self?.isSyntaxHighlightingInvalid = false
-                            self?.isTypesetterInvalid = false
-                        }
-                    }
-                } else {
-                    syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: documentByteRange)
-                    isSyntaxHighlightingInvalid = false
+        guard isSyntaxHighlightingInvalid else {
+            return
+        }
+        guard syntaxHighlighter.canHighlight else {
+            isSyntaxHighlightingInvalid = false
+            return
+        }
+        guard let attributedString = attributedString else {
+            isSyntaxHighlightingInvalid = false
+            return
+        }
+        let documentByteRange = line.data.byteRange
+        if async {
+            syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: documentByteRange) { [weak self] result in
+                if case .success = result {
+                    self?.typesetter.typeset(attributedString)
+                    self?.lineView?.setNeedsDisplay()
+                    self?.isSyntaxHighlightingInvalid = false
+                    self?.isTypesetterInvalid = false
                 }
-            } else {
-                isSyntaxHighlightingInvalid = false
             }
+        } else {
+            syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: documentByteRange)
+            isSyntaxHighlightingInvalid = false
         }
     }
 

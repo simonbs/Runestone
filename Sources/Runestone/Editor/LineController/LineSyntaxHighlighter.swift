@@ -28,6 +28,9 @@ final class LineSyntaxHighlighter {
     typealias AsyncCallback = (Result<Void, LineSyntaxHighlighterError>) -> Void
 
     var theme: EditorTheme = DefaultEditorTheme()
+    var canHighlight: Bool {
+        return syntaxHighlighter.canHighlight
+    }
 
     private let syntaxHighlighter: SyntaxHighlighter
     private let queue: OperationQueue
