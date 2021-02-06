@@ -11,6 +11,7 @@ import Foundation
 
 final class LineTextInputProxy {
     var defaultLineHeight: CGFloat = 12
+    var lineHeightMultiplier: CGFloat = 1
 
     private let lineTypesetter: LineTypesetter
     private var typesetLines: [TypesetLine] {
@@ -31,12 +32,13 @@ final class LineTextInputProxy {
                 return CGRect(x: xPosition, y: yPosition, width: Caret.width, height: typesetLine.baseSize.height)
             }
         }
-        return CGRect(x: 0, y: 0, width: Caret.width, height: defaultLineHeight)
+        let yPosition = (defaultLineHeight * lineHeightMultiplier - defaultLineHeight) / 2
+        return CGRect(x: 0, y: yPosition, width: Caret.width, height: defaultLineHeight)
     }
 
     func selectionRects(in range: NSRange) -> [TypesetLineSelectionRect] {
         guard !typesetLines.isEmpty else {
-            let rect = CGRect(x: 0, y: 0, width: 0, height: defaultLineHeight)
+            let rect = CGRect(x: 0, y: 0, width: 0, height: defaultLineHeight * lineHeightMultiplier)
             return [TypesetLineSelectionRect(rect: rect, range: range)]
         }
         var selectionRects: [TypesetLineSelectionRect] = []
@@ -69,7 +71,7 @@ final class LineTextInputProxy {
                 return CGRect(x: xStart, y: typesetLine.yPosition, width: xEnd - xStart, height: typesetLine.scaledSize.height)
             }
         }
-        return CGRect(x: 0, y: 0, width: 0, height: defaultLineHeight)
+        return CGRect(x: 0, y: 0, width: 0, height: defaultLineHeight * lineHeightMultiplier)
     }
 
     func closestIndex(to point: CGPoint) -> Int {

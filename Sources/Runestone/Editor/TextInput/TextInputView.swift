@@ -534,14 +534,7 @@ extension TextInputView {
         guard let indexedPosition = position as? IndexedPosition else {
             fatalError("Expected position to be of type \(IndexedPosition.self)")
         }
-        if string.length == 0 {
-            let caretHeight = Caret.defaultHeight(for: theme.font)
-            return CGRect(x: layoutManager.gutterWidth + textContainerInset.left, y: textContainerInset.top, width: Caret.width, height: caretHeight)
-        } else if let caretRect = layoutManager.caretRect(at: indexedPosition.index) {
-            return caretRect
-        } else {
-            fatalError("Cannot create caret rect as line is unavailable.")
-        }
+        return layoutManager.caretRect(at: indexedPosition.index)
     }
 
     func firstRect(for range: UITextRange) -> CGRect {

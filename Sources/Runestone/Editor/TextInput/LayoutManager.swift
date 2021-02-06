@@ -365,10 +365,8 @@ final class LayoutManager {
 
 // MARK: - UITextInput
 extension LayoutManager {
-    func caretRect(at location: Int) -> CGRect? {
-        guard let line = lineManager.line(containingCharacterAt: location) else {
-            return nil
-        }
+    func caretRect(at location: Int) -> CGRect {
+        let line = lineManager.line(containingCharacterAt: location)!
         let lineController = getLineController(for: line)
         let localLocation = location - line.location
         let localCaretRect = lineController.caretRect(atIndex: localLocation)
@@ -592,6 +590,7 @@ extension LayoutManager {
             let lineController = LineController(syntaxHighlighter: syntaxHighlighter, syntaxHighlightQueue: operationQueue, line: line)
             lineController.delegate = self
             lineController.theme = theme
+            lineController.lineHeightMultiplier = lineHeightMultiplier
             lineControllers[line.id] = lineController
             return lineController
         }

@@ -17,12 +17,12 @@ final class LineController {
     weak var delegate: LineControllerDelegate?
     let line: DocumentLineNode
     weak var lineView: LineView?
-    var lineHeightMultiplier: CGFloat {
-        get {
-            return typesetter.lineHeightMultiplier
-        }
-        set {
-            typesetter.lineHeightMultiplier = newValue
+    var lineHeightMultiplier: CGFloat = 1 {
+        didSet {
+            if lineHeightMultiplier != oldValue {
+                typesetter.lineHeightMultiplier = lineHeightMultiplier
+                textInputProxy.lineHeightMultiplier = lineHeightMultiplier
+            }
         }
     }
     var theme: EditorTheme = DefaultEditorTheme() {
@@ -60,7 +60,7 @@ final class LineController {
             let lineBreakSymbolWidth = invisibleCharacterConfiguration.lineBreakSymbolSize.width
             return CGSize(width: preferredSize.width + lineBreakSymbolWidth, height: preferredSize.height)
         } else {
-            return CGSize(width: 0, height: theme.font.lineHeight)
+            return CGSize(width: 0, height: theme.font.lineHeight * lineHeightMultiplier)
         }
     }
 
