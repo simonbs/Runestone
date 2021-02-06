@@ -118,11 +118,7 @@ final class LineController {
         syntaxHighlighter.cancelHighlightOperation()
     }
 
-    func invalidateTypesetting() {
-        isTypesetterInvalid = true
-    }
-
-    func invalidateSyntaxHighlighting() {
+    func invalidate() {
         isTypesetterInvalid = true
         isDefaultAttributesInvalid = true
         isSyntaxHighlightingInvalid = true

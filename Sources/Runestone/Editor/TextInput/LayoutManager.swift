@@ -32,12 +32,12 @@ final class LayoutManager {
         }
     }
     var lineManager: LineManager
-    var frame: CGRect = .zero {
+    var scrollViewWidth: CGFloat = 0 {
         didSet {
-            if frame.size.width != oldValue.size.width {
+            if scrollViewWidth != oldValue {
                 if isLineWrappingEnabled {
                     invalidateContentSize()
-                    invalidateTypesetting()
+                    invalidateLines()
                 }
             }
         }
@@ -56,7 +56,7 @@ final class LayoutManager {
                 invisibleCharacterConfiguration.textColor = theme.invisibleCharactersColor
                 gutterSelectionBackgroundView.backgroundColor = theme.selectedLinesGutterBackgroundColor
                 lineSelectionBackgroundView.backgroundColor = theme.selectedLineBackgroundColor
-                invalidateSyntaxHighlighting()
+                invalidateLines()
             }
         }
     }
@@ -90,7 +90,7 @@ final class LayoutManager {
         didSet {
             if isLineWrappingEnabled != oldValue {
                 invalidateContentSize()
-                invalidateTypesetting()
+                invalidateLines()
             }
         }
     }
@@ -133,7 +133,7 @@ final class LayoutManager {
         didSet {
             if lineHeightMultiplier != oldValue {
                 invalidateContentSize()
-                invalidateTypesetting()
+                invalidateLines()
             }
         }
     }
@@ -153,7 +153,7 @@ final class LayoutManager {
         if let contentWidth = _contentWidth {
             return contentWidth
         } else if isLineWrappingEnabled {
-            let contentWidth = frame.width
+            let contentWidth = scrollViewWidth
             _contentWidth = contentWidth
             return contentWidth
         } else {
@@ -170,7 +170,7 @@ final class LayoutManager {
                     currentMaximumWidth = lineWidth
                 }
             }
-            let contentWidth = currentMaximumWidth ?? frame.width
+            let contentWidth = currentMaximumWidth ?? scrollViewWidth
             _contentWidth = contentWidth + leadingLineSpacing + textContainerInset.right
             return contentWidth
         }
@@ -206,7 +206,7 @@ final class LayoutManager {
     private var lineIDTrackingWidth: DocumentLineNodeID?
     private var maximumLineWidth: CGFloat {
         if isLineWrappingEnabled {
-            return frame.width - leadingLineSpacing - textContainerInset.right
+            return scrollViewWidth - leadingLineSpacing - textContainerInset.right
         } else {
             // Rendering multiple very long lines is very expensive. In order to let the editor remain useable,
             // we set a very high maximum line width when line wrapping is disabled.
@@ -349,16 +349,10 @@ final class LayoutManager {
             }
         }
     }
-
-    func invalidateSyntaxHighlighting() {
+    
+    func invalidateLines() {
         for (_, lineController) in lineControllers {
-            lineController.invalidateSyntaxHighlighting()
-        }
-    }
-
-    func invalidateTypesetting() {
-        for (_, lineController) in lineControllers {
-            lineController.invalidateTypesetting()
+            lineController.invalidate()
         }
     }
 }
@@ -413,7 +407,7 @@ extension LayoutManager {
                 screenRect.origin.x += leadingLineSpacing
                 if !containsEnd {
                     // If the following lines are selected, we make sure that the selections extends the entire line.
-                    screenRect.size.width = max(contentWidth, frame.width) - screenRect.minX
+                    screenRect.size.width = max(contentWidth, scrollViewWidth) - screenRect.minX
                 }
                 return TextSelectionRect(rect: screenRect, writingDirection: .leftToRight, containsStart: containsStart, containsEnd: containsEnd)
             }
@@ -477,14 +471,14 @@ extension LayoutManager {
             let endLineController = getLineController(for: endLine)
             let yPos = startLineController.lineViewFrame.minY
             let height = endLineController.lineViewFrame.maxY - startLineController.lineViewFrame.minY
-            selectedRect = CGRect(x: 0, y: yPos, width: frame.width, height: height)
+            selectedRect = CGRect(x: 0, y: yPos, width: scrollViewWidth, height: height)
         } else {
             let line = lineManager.line(containingCharacterAt: startLocation)!
             let lineController = getLineController(for: line)
-            selectedRect = CGRect(x: 0, y: lineController.lineViewFrame.minY, width: frame.width, height: lineController.preferredSize.height)
+            selectedRect = CGRect(x: 0, y: lineController.lineViewFrame.minY, width: scrollViewWidth, height: lineController.preferredSize.height)
         }
         gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: gutterWidth, height: selectedRect.height)
-        lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: frame.width - gutterWidth, height: selectedRect.height)
+        lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: scrollViewWidth - gutterWidth, height: selectedRect.height)
     }
 
     private func layoutViews(for line: DocumentLineNode, maxY: inout CGFloat) {

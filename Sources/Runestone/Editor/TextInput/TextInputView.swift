@@ -90,7 +90,7 @@ final class TextInputView: UIView, UITextInput {
             operationQueue.cancelAllOperations()
             _language = newValue
             parse(with: newValue)
-            layoutManager.invalidateSyntaxHighlighting()
+            layoutManager.invalidateLines()
             layoutManager.setNeedsLayout()
             setNeedsLayout()
         }
@@ -261,11 +261,12 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
-    override var frame: CGRect {
-        didSet {
-            if frame != oldValue {
-                layoutManager.frame = frame
-            }
+    var scrollViewWidth: CGFloat {
+        get {
+            return layoutManager.scrollViewWidth
+        }
+        set {
+            layoutManager.scrollViewWidth = newValue
         }
     }
     var contentSize: CGSize {
@@ -446,7 +447,7 @@ final class TextInputView: UIView, UITextInput {
                 self.parse(with: language)
                 DispatchQueue.main.sync {
                     if !operation.isCancelled {
-                        self.layoutManager.invalidateSyntaxHighlighting()
+                        self.layoutManager.invalidateLines()
                         self.layoutManager.setNeedsLayout()
                         self.setNeedsLayout()
                         completion?(true)
