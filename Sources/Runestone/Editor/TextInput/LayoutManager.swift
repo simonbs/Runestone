@@ -251,6 +251,10 @@ final class LayoutManager {
             }
         }
         let disappearedLineIDs = oldVisibleLineIds.subtracting(appearedLineIDs)
+        for disapparedLineID in disappearedLineIDs {
+            let lineController = lineControllers[disapparedLineID]
+            lineController?.didEndDisplaying()
+        }
         lineViewReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
         lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
         if _contentWidth == nil || _contentHeight == nil {

@@ -84,6 +84,11 @@ final class LineController {
         lineView?.frame = lineViewFrame
     }
 
+    func didEndDisplaying() {
+        lineView = nil
+        syntaxHighlighter.cancelHighlightOperation()
+    }
+
     func invalidateTypesetting() {
         isTypesetterInvalid = true
     }

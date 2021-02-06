@@ -48,7 +48,7 @@ final class LineSyntaxHighlighter {
     }
 
     func syntaxHighlight(_ attributedString: NSMutableAttributedString, documentByteRange: ByteRange) {
-        cancelCurrentOperation()
+        cancelHighlightOperation()
         if case let .success(captures) = syntaxHighlighter.captures(in: documentByteRange) {
             let tokens = syntaxHighlighter.tokens(for: captures, localTo: documentByteRange)
             setAttributes(for: tokens, on: attributedString)
@@ -56,7 +56,7 @@ final class LineSyntaxHighlighter {
     }
 
     func syntaxHighlight(_ attributedString: NSMutableAttributedString, documentByteRange: ByteRange, completion: @escaping AsyncCallback) {
-        cancelCurrentOperation()
+        cancelHighlightOperation()
         let operation = BlockOperation()
         operation.addExecutionBlock { [weak operation, weak self] in
             guard let operation = operation, let self = self else {
@@ -84,7 +84,7 @@ final class LineSyntaxHighlighter {
                     }
                 } else {
                     DispatchQueue.main.sync {
-                        completion(.failure(.failedCreatingCaptures))
+                        completion(.failure(.cancelled))
                     }
                 }
             } else {
@@ -95,6 +95,11 @@ final class LineSyntaxHighlighter {
         }
         currentOperation = operation
         queue.addOperation(operation)
+    }
+
+    func cancelHighlightOperation() {
+        currentOperation?.cancel()
+        currentOperation = nil
     }
 }
 
@@ -111,10 +116,5 @@ private extension LineSyntaxHighlighter {
             attributedString.setAttributes(attributes, range: range)
         }
         attributedString.endEditing()
-    }
-
-    private func cancelCurrentOperation() {
-        currentOperation?.cancel()
-        currentOperation = nil
     }
 }
