@@ -194,6 +194,15 @@ final class LayoutManager {
     private var needsLayoutSelection = false
     private var lineWidths: [DocumentLineNodeID: CGFloat] = [:]
     private var lineIDTrackingWidth: DocumentLineNodeID?
+    private var maximumLineWidth: CGFloat {
+        if isLineWrappingEnabled {
+            return frame.width - leadingLineSpacing - textContainerInset.right
+        } else {
+            // Rendering multiple very long lines is very expensive. In order to let the editor remain useable,
+            // we set a very high maximum line width when line wrapping is disabled.
+            return 10000
+        }
+    }
 
     // MARK: - Helpers
     private var currentDelegate: LayoutManagerDelegate {
@@ -486,7 +495,7 @@ extension LayoutManager {
         // Setup the line
         let lineController = getLineController(for: line)
         lineController.lineView = lineView
-        lineController.constrainingWidth = isLineWrappingEnabled ? frame.width - leadingLineSpacing - textContainerInset.right : nil
+        lineController.constrainingWidth = maximumLineWidth
         lineController.willDisplay()
         let lineSize = lineController.preferredSize
         let lineViewFrame = CGRect(x: leadingLineSpacing, y: textContainerInset.top + line.yPosition, width: lineSize.width, height: lineSize.height)
