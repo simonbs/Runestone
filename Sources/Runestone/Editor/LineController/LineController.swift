@@ -23,6 +23,14 @@ final class LineController {
             syntaxHighlighter.theme = theme
         }
     }
+    var invisibleCharacterConfiguration: InvisibleCharacterConfiguration {
+        get {
+            return renderer.invisibleCharacterConfiguration
+        }
+        set {
+            renderer.invisibleCharacterConfiguration = newValue
+        }
+    }
     var constrainingWidth: CGFloat? {
         get {
             return typesetter.constrainingWidth
@@ -41,7 +49,8 @@ final class LineController {
     }
     var preferredSize: CGSize {
         if let preferredSize = typesetter.preferredSize {
-            return preferredSize
+            let lineBreakSymbolWidth = invisibleCharacterConfiguration.lineBreakSymbolSize.width
+            return CGSize(width: preferredSize.width + lineBreakSymbolWidth, height: preferredSize.height)
         } else {
             return CGSize(width: 0, height: theme.font.lineHeight)
         }
@@ -177,6 +186,8 @@ extension LineController {
 // MARK: - LineViewDelegate
 extension LineController: LineViewDelegate {
     func lineView(_ lineView: LineView, shouldDrawTo context: CGContext) {
-        renderer.draw(to: context)
+        if let string = attributedString?.string {
+            renderer.draw(string, to: context)
+        }
     }
 }

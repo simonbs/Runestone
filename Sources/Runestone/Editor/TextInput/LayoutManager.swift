@@ -52,6 +52,8 @@ final class LayoutManager {
                 gutterBackgroundView.backgroundColor = theme.gutterBackgroundColor
                 gutterBackgroundView.hairlineColor = theme.gutterHairlineColor
                 gutterBackgroundView.hairlineWidth = theme.gutterHairlineWidth
+                invisibleCharacterConfiguration.font = theme.font
+                invisibleCharacterConfiguration.textColor = theme.invisibleCharactersColor
                 gutterSelectionBackgroundView.backgroundColor = theme.selectedLinesGutterBackgroundColor
                 lineSelectionBackgroundView.backgroundColor = theme.selectedLineBackgroundColor
                 invalidateSyntaxHighlighting()
@@ -496,6 +498,7 @@ extension LayoutManager {
         let lineController = getLineController(for: line)
         lineController.lineView = lineView
         lineController.constrainingWidth = maximumLineWidth
+        lineController.invisibleCharacterConfiguration = invisibleCharacterConfiguration
         lineController.willDisplay()
         let lineSize = lineController.preferredSize
         let lineViewFrame = CGRect(x: leadingLineSpacing, y: textContainerInset.top + line.yPosition, width: lineSize.width, height: lineSize.height)
