@@ -289,14 +289,6 @@ final class TextInputView: UIView, UITextInput {
     override var canBecomeFirstResponder: Bool {
         return true
     }
-    weak var editorView: UIView? {
-        get {
-            return layoutManager.editorView
-        }
-        set {
-            layoutManager.editorView = newValue
-        }
-    }
     var gutterContainerView: UIView {
         return layoutManager.gutterContainerView
     }

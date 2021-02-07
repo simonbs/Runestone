@@ -361,7 +361,6 @@ public final class EditorTextView: UIScrollView {
         super.init(frame: frame)
         backgroundColor = .white
         textInputView.delegate = self
-        textInputView.editorView = self
         editingTextInteraction.textInput = textInputView
         addSubview(textInputView)
         tapGestureRecognizer.delegate = self
