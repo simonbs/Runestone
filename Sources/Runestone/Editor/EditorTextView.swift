@@ -49,7 +49,7 @@ public final class EditorTextView: UIScrollView {
         }
         set {
             textInputView.string = NSMutableString(string: newValue)
-            contentSize = textInputView.contentSize
+            contentSize = preferredContentSize
         }
     }
     /// Colors and fonts to be used by the editor.
@@ -359,6 +359,13 @@ public final class EditorTextView: UIScrollView {
             return true
         }
     }
+    private var hasPendingContentSizeUpdate = false
+    private var preferredContentSize: CGSize {
+        // Ensure the content size is as minimum as big as the frame of the view.
+        let width = max(textInputView.contentSize.width, frame.width)
+        let height = max(textInputView.contentSize.height, frame.height)
+        return CGSize(width: width, height: height)
+    }
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -379,6 +386,7 @@ public final class EditorTextView: UIScrollView {
 
     public override func layoutSubviews() {
         super.layoutSubviews()
+        handleContentSizeUpdateIfNecessary()
         textInputView.scrollViewWidth = frame.width
         textInputView.frame = CGRect(x: 0, y: 0, width: max(contentSize.width, frame.width), height: max(contentSize.height, frame.height))
         textInputView.viewport = CGRect(origin: contentOffset, size: frame.size)
@@ -387,7 +395,7 @@ public final class EditorTextView: UIScrollView {
 
     public override func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
-        contentSize = textInputView.contentSize
+        contentSize = preferredContentSize
     }
 
     @discardableResult
@@ -419,7 +427,7 @@ public final class EditorTextView: UIScrollView {
     /// - Parameter state: The new state to be used by the editor.
     public func setState(_ state: EditorState) {
         textInputView.setState(state)
-        contentSize = textInputView.contentSize
+        contentSize = preferredContentSize
     }
 
     /// The line position at a location in the text. Common usages of this includes showing the line and column\
@@ -476,7 +484,6 @@ public final class EditorTextView: UIScrollView {
     }
 }
 
-// MARK: - Interaction
 private extension EditorTextView {
     @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
         if tapGestureRecognizer.state == .ended {
@@ -515,10 +522,7 @@ private extension EditorTextView {
             contentOffset = newContentOffset
         }
     }
-}
 
-// MARK: - Editing
-private extension EditorTextView {
     private func insert(_ characterPair: EditorCharacterPair, in range: NSRange) {
         guard let selectedRange = textInputView.selectedRange else {
             return
@@ -533,6 +537,22 @@ private extension EditorTextView {
             textInputView.replace(indexedRange, withText: modifiedText)
             let newSelectedRange = NSRange(location: range.location + characterPair.leading.count, length: range.length)
             textInputView.selectedTextRange = IndexedRange(range: newSelectedRange)
+        }
+    }
+
+    private func handleContentSizeUpdateIfNecessary() {
+        if hasPendingContentSizeUpdate {
+            // We don't want to update the content size when the scroll view is "bouncing" near the gutter,
+            // since it causes flickering when updating the content size while scrolling.
+            // However, we do allow updating the content size if the text view is scrolled far enough on
+            // the y-axis as that means it will soon run out of text to display.
+            let isBouncingAtGutter = contentOffset.x < -contentInset.left
+            let isCriticalUpdate = contentOffset.y > contentSize.height - frame.height * 1.5
+            if !isBouncingAtGutter || isCriticalUpdate {
+                hasPendingContentSizeUpdate = false
+                contentSize = preferredContentSize
+                setNeedsLayout()
+            }
         }
     }
 }
@@ -560,8 +580,8 @@ extension EditorTextView: TextInputViewDelegate {
 
     func textInputViewDidInvalidateContentSize(_ view: TextInputView) {
         if contentSize != view.contentSize {
-            contentSize = view.contentSize
-            setNeedsLayout()
+            hasPendingContentSizeUpdate = true
+            handleContentSizeUpdateIfNecessary()
         }
     }
 
