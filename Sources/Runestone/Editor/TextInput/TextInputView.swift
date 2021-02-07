@@ -80,7 +80,7 @@ final class TextInputView: UIView, UITextInput {
     // MARK: - Appearance
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
-            lineManager.estimatedLineHeight = theme.font.lineHeight
+            lineManager.estimatedLineHeight = estimatedLineHeight
             layoutManager.theme = theme
             syntaxHighlighter.theme = theme
         }
@@ -225,11 +225,15 @@ final class TextInputView: UIView, UITextInput {
             // Notify the delegate that the selection may change as the position of the caret will change when we adjust the height of lines.
             inputDelegate?.selectionWillChange(self)
             layoutManager.lineHeightMultiplier = newValue
+            lineManager.estimatedLineHeight = estimatedLineHeight
             inputDelegate?.selectionDidChange(self)
             // Do a layout pass to ensure the position of the caret is correct.
             setNeedsLayout()
             layoutIfNeeded()
         }
+    }
+    private var estimatedLineHeight: CGFloat {
+        return theme.font.lineHeight * lineHeightMultiplier
     }
 
     // MARK: - Contents
@@ -325,7 +329,7 @@ final class TextInputView: UIView, UITextInput {
         layoutManager = LayoutManager(lineManager: lineManager, syntaxHighlighter: syntaxHighlighter, operationQueue: operationQueue)
         super.init(frame: .zero)
         lineManager.delegate = self
-        lineManager.estimatedLineHeight = theme.font.lineHeight
+        lineManager.estimatedLineHeight = estimatedLineHeight
         layoutManager.delegate = self
         layoutManager.textInputView = self
         layoutManager.theme = theme
@@ -421,7 +425,7 @@ final class TextInputView: UIView, UITextInput {
         theme = state.theme
         lineManager = state.lineManager
         lineManager.delegate = self
-        lineManager.estimatedLineHeight = theme.font.lineHeight
+        lineManager.estimatedLineHeight = estimatedLineHeight
         syntaxHighlighter.parser = state.parser
         syntaxHighlighter.parser?.delegate = self
         layoutManager.lineManager = state.lineManager
