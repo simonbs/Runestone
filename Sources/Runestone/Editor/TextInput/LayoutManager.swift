@@ -429,20 +429,20 @@ extension LayoutManager {
     func closestIndex(to point: CGPoint) -> Int? {
         let adjustedXPosition = point.x - leadingLineSpacing
         let adjustedYPosition = point.y - safeAreaInsets.top - textContainerInset.top
-        let localPoint = CGPoint(x: adjustedXPosition, y: adjustedYPosition)
-        if let line = lineManager.line(containingYOffset: localPoint.y), let lineController = lineControllers[line.id] {
-            return closestIndex(to: localPoint, in: lineController, showing: line)
-        } else if localPoint.y <= 0 {
+        let adjustedPoint = CGPoint(x: adjustedXPosition, y: adjustedYPosition)
+        if let line = lineManager.line(containingYOffset: adjustedPoint.y), let lineController = lineControllers[line.id] {
+            return closestIndex(to: adjustedPoint, in: lineController, showing: line)
+        } else if adjustedPoint.y <= 0 {
             let firstLine = lineManager.firstLine
             if let textRenderer = lineControllers[firstLine.id] {
-                return closestIndex(to: localPoint, in: textRenderer, showing: firstLine)
+                return closestIndex(to: adjustedPoint, in: textRenderer, showing: firstLine)
             } else {
                 return 0
             }
         } else {
             let lastLine = lineManager.lastLine
-            if localPoint.y >= lastLine.yPosition, let textRenderer = lineControllers[lastLine.id] {
-                return closestIndex(to: localPoint, in: textRenderer, showing: lastLine)
+            if adjustedPoint.y >= lastLine.yPosition, let textRenderer = lineControllers[lastLine.id] {
+                return closestIndex(to: adjustedPoint, in: textRenderer, showing: lastLine)
             } else {
                 return currentDelegate.lengthOfString(in: self)
             }
@@ -450,7 +450,8 @@ extension LayoutManager {
     }
 
     private func closestIndex(to point: CGPoint, in lineController: LineController, showing line: DocumentLineNode) -> Int {
-        let index = lineController.closestIndex(to: point)
+        let localPoint = CGPoint(x: point.x, y: point.y - line.yPosition)
+        let index = lineController.closestIndex(to: localPoint)
         if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
             return line.location + line.data.length
         } else {
