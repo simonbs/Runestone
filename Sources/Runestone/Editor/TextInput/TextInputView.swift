@@ -733,7 +733,7 @@ extension TextInputView {
 
     private func addUndoOperation(replacing range: NSRange, withText text: String) {
         timedUndoManager.beginUndoGrouping()
-        timerUndoManager.setActionName(L10n.Undo.ActionName.typing)
+        timedUndoManager.setActionName(L10n.Undo.ActionName.typing)
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
             let indexedRange = IndexedRange(range: range)
             textInputView.justReplace(indexedRange, withText: text)
