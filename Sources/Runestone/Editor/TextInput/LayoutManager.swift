@@ -151,7 +151,11 @@ final class LayoutManager {
 
     // MARK: - Sizing
     private var contentWidth: CGFloat {
-        return textContentWidth + leadingLineSpacing + textContainerInset.right + safeAreaInsets.right
+        if isLineWrappingEnabled {
+            return scrollViewWidth
+        } else {
+            return textContentWidth + leadingLineSpacing + textContainerInset.right + safeAreaInsets.right
+        }
     }
     private var contentHeight: CGFloat {
         return textContentHeight + textContainerInset.top + textContainerInset.bottom + safeAreaInsets.top + safeAreaInsets.bottom
@@ -159,10 +163,6 @@ final class LayoutManager {
     private var textContentWidth: CGFloat {
         if let textContentWidth = _textContentWidth {
             return textContentWidth
-        } else if isLineWrappingEnabled {
-            let contentWidth = scrollViewWidth
-            _textContentWidth = contentWidth
-            return contentWidth
         } else {
             lineIDTrackingWidth = nil
             var currentMaximumWidth: CGFloat?
