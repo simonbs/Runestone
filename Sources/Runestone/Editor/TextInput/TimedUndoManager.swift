@@ -29,9 +29,9 @@ final class TimedUndoManager: UndoManager {
 
     override func endUndoGrouping() {
         if hasOpenGroup {
-            super.endUndoGrouping()
             hasOpenGroup = false
             cancelTimer()
+            super.endUndoGrouping()
         }
     }
 
