@@ -556,6 +556,13 @@ extension EditorTextView: TextInputViewDelegate {
         }
     }
 
+    func textInputView(_ view: TextInputView, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint) {
+        let isScrolling = isDragging && isDecelerating
+        if contentOffsetAdjustment.y != 0 && isScrolling {
+            contentOffset = CGPoint(x: contentOffset.x, y: contentOffset.y + contentOffsetAdjustment.y)
+        }
+    }
+
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
         if let characterPair = characterPairs.first(where: { $0.leading == text }) {
             let shouldInsertCharacterPair = editorDelegate?.editorTextView(self, shouldInsert: characterPair, in: range) ?? true

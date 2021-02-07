@@ -14,6 +14,7 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidChangeSelection(_ view: TextInputView)
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
     func textInputViewDidInvalidateContentSize(_ view: TextInputView)
+    func textInputView(_ view: TextInputView, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
     func textInputViewDidUpdateGutterWidth(_ view: TextInputView)
 }
 
@@ -896,6 +897,10 @@ extension TextInputView: LayoutManagerDelegate {
 
     func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager) {
         delegate?.textInputViewDidInvalidateContentSize(self)
+    }
+
+    func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint) {
+        delegate?.textInputView(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
     }
 
     func layoutManagerDidUpdateGutterWidth(_ layoutManager: LayoutManager) {

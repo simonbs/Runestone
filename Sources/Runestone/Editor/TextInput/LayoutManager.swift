@@ -10,6 +10,7 @@ import UIKit
 protocol LayoutManagerDelegate: AnyObject {
     func layoutManager(_ layoutManager: LayoutManager, stringIn range: NSRange) -> String
     func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager)
+    func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
     func layoutManagerDidUpdateGutterWidth(_ layoutManager: LayoutManager)
     func lengthOfString(in layoutManager: LayoutManager) -> Int
 }
@@ -511,7 +512,7 @@ extension LayoutManager {
         lineNumberView.frame = CGRect(x: gutterLeadingPadding, y: lineViewFrame.minY + lineNumberYOffset, width: lineNumberWidth, height: lineViewFrame.height)
         // Pass back the maximum Y position so the caller can determine if it needs to show more lines.
         maxY = lineView.frame.maxY
-        updateSize(of: line, newLineSize: lineController.preferredSize)
+        updateSize(of: line, newLineFrame: lineViewFrame)
     }
 
     private func updateLineNumberColors() {
@@ -554,13 +555,14 @@ extension LayoutManager {
         lineSelectionBackgroundView.isHidden = !showSelectedLines || !isEditing || selectedLength > 0
     }
 
-    private func updateSize(of line: DocumentLineNode, newLineSize: CGSize) {
-        let didUpdateHeight = lineManager.setHeight(of: line, to: newLineSize.height)
-        if lineWidths[line.id] != newLineSize.width {
-            lineWidths[line.id] = newLineSize.width
+    private func updateSize(of line: DocumentLineNode, newLineFrame: CGRect) {
+        let oldLineHeight = line.data.frameHeight
+        let didUpdateHeight = lineManager.setHeight(of: line, to: newLineFrame.height)
+        if lineWidths[line.id] != newLineFrame.width {
+            lineWidths[line.id] = newLineFrame.width
             if let lineIDTrackingWidth = lineIDTrackingWidth {
                 let maximumLineWidth = lineWidths[lineIDTrackingWidth] ?? 0
-                if line.id == lineIDTrackingWidth || newLineSize.width > maximumLineWidth {
+                if line.id == lineIDTrackingWidth || newLineFrame.width > maximumLineWidth {
                     _contentWidth = nil
                 }
             } else if !isLineWrappingEnabled {
@@ -569,6 +571,15 @@ extension LayoutManager {
         }
         if didUpdateHeight {
             _contentHeight = nil
+            // Updating the height of a line that's above the current content offset will cause the content below it to move up or down.
+            // This happens when layout information above the content offset is invalidated and the user is scrolling upwards, e.g. after
+            // changing the line height. To accommodate this change and reduce the "jump", we ask the scroll view to adjust the content offset
+            // by the amount that the line height has changed. The solution is borrowed from https://github.com/airbnb/MagazineLayout/pull/11
+            let isSizingElementAboveTopEdge = newLineFrame.minY < viewport.minY
+            if isSizingElementAboveTopEdge {
+                let contentOffsetAdjustment = CGPoint(x: 0, y: newLineFrame.height - oldLineHeight)
+                delegate?.layoutManager(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
+            }
         }
     }
 
