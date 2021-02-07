@@ -363,6 +363,7 @@ public final class EditorTextView: UIScrollView {
         textInputView.delegate = self
         textInputView.editorView = self
         editingTextInteraction.textInput = textInputView
+        contentInsetAdjustmentBehavior = .never
         addSubview(textInputView)
         tapGestureRecognizer.delegate = self
         tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
@@ -379,6 +380,11 @@ public final class EditorTextView: UIScrollView {
         textInputView.frame = CGRect(x: 0, y: 0, width: max(contentSize.width, frame.width), height: max(contentSize.height, frame.height))
         textInputView.viewport = CGRect(origin: contentOffset, size: frame.size)
         bringSubviewToFront(textInputView.gutterContainerView)
+    }
+
+    public override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        contentSize = textInputView.contentSize
     }
 
     @discardableResult

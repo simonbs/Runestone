@@ -125,7 +125,7 @@ final class LayoutManager {
     }
     var gutterWidth: CGFloat {
         if showLineNumbers {
-            return lineNumberWidth + gutterLeadingPadding + gutterTrailingPadding
+            return lineNumberWidth + gutterLeadingPadding + gutterTrailingPadding + safeAreaInsets.left
         } else {
             return 0
         }
@@ -151,11 +151,17 @@ final class LayoutManager {
 
     // MARK: - Sizing
     private var contentWidth: CGFloat {
-        if let contentWidth = _contentWidth {
-            return contentWidth
+        return textContentWidth + leadingLineSpacing + textContainerInset.right + safeAreaInsets.right
+    }
+    private var contentHeight: CGFloat {
+        return textContentHeight + textContainerInset.top + textContainerInset.bottom + safeAreaInsets.top + safeAreaInsets.bottom
+    }
+    private var textContentWidth: CGFloat {
+        if let textContentWidth = _textContentWidth {
+            return textContentWidth
         } else if isLineWrappingEnabled {
             let contentWidth = scrollViewWidth
-            _contentWidth = contentWidth
+            _textContentWidth = contentWidth
             return contentWidth
         } else {
             lineIDTrackingWidth = nil
@@ -171,24 +177,27 @@ final class LayoutManager {
                     currentMaximumWidth = lineWidth
                 }
             }
-            let contentWidth = currentMaximumWidth ?? scrollViewWidth
-            _contentWidth = contentWidth + leadingLineSpacing + textContainerInset.right
-            return contentWidth
+            let textContentWidth = currentMaximumWidth ?? scrollViewWidth
+            _textContentWidth = textContentWidth
+            return textContentWidth
         }
     }
-    private var contentHeight: CGFloat {
-        if let contentHeight = _contentHeight {
+    private var textContentHeight: CGFloat {
+        if let contentHeight = _textContentHeight {
             return contentHeight
         } else {
             let contentHeight = lineManager.contentHeight
-            _contentHeight = contentHeight + textContainerInset.top + textContainerInset.bottom
+            _textContentHeight = contentHeight
             return contentHeight
         }
     }
-    private var _contentWidth: CGFloat?
-    private var _contentHeight: CGFloat?
+    private var _textContentWidth: CGFloat?
+    private var _textContentHeight: CGFloat?
     private var lineNumberWidth: CGFloat = 0
     private var previousGutterWidthUpdateLineCount: Int?
+    private var safeAreaInsets: UIEdgeInsets {
+        return editorView?.safeAreaInsets ?? .zero
+    }
     private var leadingLineSpacing: CGFloat {
         if showLineNumbers {
             return gutterWidth + textContainerInset.left
@@ -277,7 +286,7 @@ final class LayoutManager {
         }
         lineViewReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
         lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
-        if _contentWidth == nil || _contentHeight == nil {
+        if _textContentWidth == nil || _textContentHeight == nil {
             delegate?.layoutManagerDidInvalidateContentSize(self)
         }
         CATransaction.commit()
@@ -300,14 +309,14 @@ final class LayoutManager {
     }
 
     func invalidateContentSize() {
-        _contentWidth = nil
-        _contentHeight = nil
+        _textContentWidth = nil
+        _textContentHeight = nil
     }
 
     func removeLine(withID lineID: DocumentLineNodeID) {
         if lineID == lineIDTrackingWidth {
             lineIDTrackingWidth = nil
-            _contentWidth = nil
+            _textContentWidth = nil
             delegate?.layoutManagerDidInvalidateContentSize(self)
         }
         lineWidths.removeValue(forKey: lineID)
@@ -329,7 +338,7 @@ final class LayoutManager {
             lineNumberWidth = ceil(size.width) + gutterLeadingPadding + gutterTrailingPadding
             if lineNumberWidth != oldLineNumberWidth {
                 delegate?.layoutManagerDidUpdateGutterWidth(self)
-                _contentWidth = nil
+                _textContentWidth = nil
                 delegate?.layoutManagerDidInvalidateContentSize(self)
             }
         }
@@ -365,9 +374,9 @@ extension LayoutManager {
         let lineController = getLineController(for: line)
         let localLocation = location - line.location
         let localCaretRect = lineController.caretRect(atIndex: localLocation)
-        let globalYPosition = textContainerInset.top + line.yPosition + localCaretRect.minY
+        let globalYPosition = line.yPosition + localCaretRect.minY
         let globalRect = CGRect(x: localCaretRect.minX, y: globalYPosition, width: localCaretRect.width, height: localCaretRect.height)
-        return globalRect.offsetBy(dx: leadingLineSpacing, dy: 0)
+        return globalRect.offsetBy(dx: leadingLineSpacing, dy: safeAreaInsets.top + textContainerInset.top)
     }
 
     func firstRect(for range: NSRange) -> CGRect {
@@ -377,7 +386,7 @@ extension LayoutManager {
         let lineController = lineControllers[line.id]!
         let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
         let firstRect = lineController.firstRect(for: localRange)
-        return firstRect.offsetBy(dx: leadingLineSpacing, dy: textContainerInset.top)
+        return firstRect.offsetBy(dx: leadingLineSpacing, dy: safeAreaInsets.top + textContainerInset.top)
     }
 
     func selectionRects(in range: NSRange) -> [TextSelectionRect] {
@@ -401,11 +410,11 @@ extension LayoutManager {
             let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
             let rendererSelectionRects = lineController.selectionRects(in: localRange)
             let textSelectionRects: [TextSelectionRect] = rendererSelectionRects.map { rendererSelectionRect in
-                let yPosition = textContainerInset.top + line.yPosition + rendererSelectionRect.rect.minY
-                var screenRect = CGRect(x: rendererSelectionRect.rect.minX, y: yPosition, width: rendererSelectionRect.rect.width, height: rendererSelectionRect.rect.height)
                 let containsStart = lineIndex == startLineIndex
                 let containsEnd = lineIndex == endLineIndex
+                var screenRect = rendererSelectionRect.rect
                 screenRect.origin.x += leadingLineSpacing
+                screenRect.origin.y = safeAreaInsets.top + textContainerInset.top + line.yPosition + rendererSelectionRect.rect.minY
                 if !containsEnd {
                     // If the following lines are selected, we make sure that the selections extends the entire line.
                     screenRect.size.width = max(contentWidth, scrollViewWidth) - screenRect.minX
@@ -418,19 +427,22 @@ extension LayoutManager {
     }
 
     func closestIndex(to point: CGPoint) -> Int? {
-        if let line = lineManager.line(containingYOffset: point.y), let lineController = lineControllers[line.id] {
-            return closestIndex(to: point, in: lineController, showing: line)
-        } else if point.y <= 0 {
+        let adjustedXPosition = point.x - leadingLineSpacing
+        let adjustedYPosition = point.y - safeAreaInsets.top - textContainerInset.top
+        let localPoint = CGPoint(x: adjustedXPosition, y: adjustedYPosition)
+        if let line = lineManager.line(containingYOffset: localPoint.y), let lineController = lineControllers[line.id] {
+            return closestIndex(to: localPoint, in: lineController, showing: line)
+        } else if localPoint.y <= 0 {
             let firstLine = lineManager.firstLine
             if let textRenderer = lineControllers[firstLine.id] {
-                return closestIndex(to: point, in: textRenderer, showing: firstLine)
+                return closestIndex(to: localPoint, in: textRenderer, showing: firstLine)
             } else {
                 return 0
             }
         } else {
             let lastLine = lineManager.lastLine
-            if point.y >= lastLine.yPosition, let textRenderer = lineControllers[lastLine.id] {
-                return closestIndex(to: point, in: textRenderer, showing: lastLine)
+            if localPoint.y >= lastLine.yPosition, let textRenderer = lineControllers[lastLine.id] {
+                return closestIndex(to: localPoint, in: textRenderer, showing: lastLine)
             } else {
                 return currentDelegate.lengthOfString(in: self)
             }
@@ -438,10 +450,7 @@ extension LayoutManager {
     }
 
     private func closestIndex(to point: CGPoint, in lineController: LineController, showing line: DocumentLineNode) -> Int {
-        let adjustedXPosition = point.x - leadingLineSpacing
-        let adjustedYPosition = point.y - lineController.lineViewFrame.minY - textContainerInset.top
-        let localPoint = CGPoint(x: adjustedXPosition, y: adjustedYPosition)
-        let index = lineController.closestIndex(to: localPoint)
+        let index = lineController.closestIndex(to: point)
         if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
             return line.location + line.data.length
         } else {
@@ -500,16 +509,19 @@ extension LayoutManager {
         lineController.invisibleCharacterConfiguration = invisibleCharacterConfiguration
         lineController.willDisplay()
         let lineSize = lineController.preferredSize
-        let lineViewFrame = CGRect(x: leadingLineSpacing, y: textContainerInset.top + line.yPosition, width: lineSize.width, height: lineSize.height)
+        let lineYPosition = safeAreaInsets.top + textContainerInset.top + line.yPosition
+        let lineViewFrame = CGRect(x: leadingLineSpacing, y: lineYPosition, width: lineSize.width, height: lineSize.height)
         lineController.lineViewFrame = lineViewFrame
         // Setup the line number
         let baseLineHeight = theme.font.lineHeight
         let scaledLineHeight = baseLineHeight * lineHeightMultiplier
         let lineNumberYOffset = (scaledLineHeight - baseLineHeight) / 2
+        let lineNumberXPosition = safeAreaInsets.left + gutterLeadingPadding
+        let lineNumberYPosition = lineViewFrame.minY + lineNumberYOffset
         lineNumberView.text = "\(line.index + 1)"
         lineNumberView.font = theme.font
         lineNumberView.textColor = theme.lineNumberColor
-        lineNumberView.frame = CGRect(x: gutterLeadingPadding, y: lineViewFrame.minY + lineNumberYOffset, width: lineNumberWidth, height: lineViewFrame.height)
+        lineNumberView.frame = CGRect(x: lineNumberXPosition, y: lineNumberYPosition, width: lineNumberWidth, height: lineViewFrame.height)
         // Pass back the maximum Y position so the caller can determine if it needs to show more lines.
         maxY = lineView.frame.maxY
         updateSize(of: line, newLineFrame: lineViewFrame)
@@ -563,14 +575,14 @@ extension LayoutManager {
             if let lineIDTrackingWidth = lineIDTrackingWidth {
                 let maximumLineWidth = lineWidths[lineIDTrackingWidth] ?? 0
                 if line.id == lineIDTrackingWidth || newLineFrame.width > maximumLineWidth {
-                    _contentWidth = nil
+                    _textContentWidth = nil
                 }
             } else if !isLineWrappingEnabled {
-                _contentWidth = nil
+                _textContentWidth = nil
             }
         }
         if didUpdateHeight {
-            _contentHeight = nil
+            _textContentHeight = nil
             // Updating the height of a line that's above the current content offset will cause the content below it to move up or down.
             // This happens when layout information above the content offset is invalidated and the user is scrolling upwards, e.g. after
             // changing the line height. To accommodate this change and reduce the "jump", we ask the scroll view to adjust the content offset
