@@ -17,6 +17,12 @@ final class TimedUndoManager: UndoManager {
         groupsByEvent = false
     }
 
+    override func removeAllActions() {
+        hasOpenGroup = false
+        cancelTimer()
+        super.removeAllActions()
+    }
+
     override func beginUndoGrouping() {
         if !hasOpenGroup {
             hasOpenGroup = true
