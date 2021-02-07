@@ -394,6 +394,13 @@ final class TextInputView: UIView, UITextInput {
         }
     }
 
+    override func cut(_ sender: Any?) {
+        if let selectedTextRange = selectedTextRange, let text = text(in: selectedTextRange) {
+            UIPasteboard.general.string = text
+            replace(selectedTextRange, withText: "")
+        }
+    }
+
     override func selectAll(_ sender: Any?) {
         inputDelegate?.selectionWillChange(self)
         selectedRange = NSRange(location: 0, length: string.length)
@@ -402,7 +409,7 @@ final class TextInputView: UIView, UITextInput {
     }
 
     override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
-        if action == #selector(copy(_:)) {
+        if action == #selector(copy(_:)) || action == #selector(cut(_:)) {
             if let selectedTextRange = selectedTextRange {
                 return !selectedTextRange.isEmpty
             } else {
