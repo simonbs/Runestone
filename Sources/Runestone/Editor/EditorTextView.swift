@@ -586,9 +586,9 @@ extension EditorTextView: TextInputViewDelegate {
     }
 
     func textInputView(_ view: TextInputView, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint) {
-        let isScrolling = isDragging && isDecelerating
-        if contentOffsetAdjustment.y != 0 && isScrolling {
-            contentOffset = CGPoint(x: contentOffset.x, y: contentOffset.y + contentOffsetAdjustment.y)
+        let isScrolling = isDragging || isDecelerating
+        if contentOffsetAdjustment != .zero && isScrolling {
+            contentOffset = CGPoint(x: contentOffset.x + contentOffsetAdjustment.x, y: contentOffset.y + contentOffsetAdjustment.y)
         }
     }
 

@@ -270,9 +270,12 @@ final class LayoutManager {
         var nextLine = lineManager.line(containingYOffset: viewport.minY)
         var appearedLineIDs: Set<DocumentLineNodeID> = []
         var maxY = viewport.minY
+        var contentOffsetAdjustmentY: CGFloat = 0
         while let line = nextLine, maxY < viewport.maxY {
             appearedLineIDs.insert(line.id)
-            layoutViews(for: line, maxY: &maxY)
+            var localContentOffsetAdjustmentY: CGFloat = 0
+            layoutViews(for: line, maxY: &maxY, contentOffsetAdjustment: &localContentOffsetAdjustmentY)
+            contentOffsetAdjustmentY += localContentOffsetAdjustmentY
             if line.index < lineManager.lineCount - 1 {
                 nextLine = lineManager.line(atIndex: line.index + 1)
             } else {
@@ -288,6 +291,10 @@ final class LayoutManager {
         lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
         if _textContentWidth == nil || _textContentHeight == nil {
             delegate?.layoutManagerDidInvalidateContentSize(self)
+        }
+        if contentOffsetAdjustmentY != 0 {
+            let contentOffsetAdjustment = CGPoint(x: 0, y: contentOffsetAdjustmentY)
+            delegate?.layoutManager(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
         }
         CATransaction.commit()
     }
@@ -492,7 +499,7 @@ extension LayoutManager {
         lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: scrollViewWidth - gutterWidth, height: selectedRect.height)
     }
 
-    private func layoutViews(for line: DocumentLineNode, maxY: inout CGFloat) {
+    private func layoutViews(for line: DocumentLineNode, maxY: inout CGFloat, contentOffsetAdjustment: inout CGFloat) {
         // Ensure views are added to the view hiearchy
         let lineView = lineViewReuseQueue.dequeueView(forKey: line.id)
         let lineNumberView = lineNumberLabelReuseQueue.dequeueView(forKey: line.id)
@@ -525,7 +532,7 @@ extension LayoutManager {
         lineNumberView.frame = CGRect(x: lineNumberXPosition, y: lineNumberYPosition, width: lineNumberWidth, height: lineViewFrame.height)
         // Pass back the maximum Y position so the caller can determine if it needs to show more lines.
         maxY = lineView.frame.maxY
-        updateSize(of: line, newLineFrame: lineViewFrame)
+        updateSize(of: line, newLineFrame: lineViewFrame, contentOffsetAdjustment: &contentOffsetAdjustment)
     }
 
     private func updateLineNumberColors() {
@@ -568,7 +575,7 @@ extension LayoutManager {
         lineSelectionBackgroundView.isHidden = !showSelectedLines || !isEditing || selectedLength > 0
     }
 
-    private func updateSize(of line: DocumentLineNode, newLineFrame: CGRect) {
+    private func updateSize(of line: DocumentLineNode, newLineFrame: CGRect, contentOffsetAdjustment: inout CGFloat) {
         let oldLineHeight = line.data.frameHeight
         let didUpdateHeight = lineManager.setHeight(of: line, to: newLineFrame.height)
         if lineWidths[line.id] != newLineFrame.width {
@@ -588,10 +595,9 @@ extension LayoutManager {
             // This happens when layout information above the content offset is invalidated and the user is scrolling upwards, e.g. after
             // changing the line height. To accommodate this change and reduce the "jump", we ask the scroll view to adjust the content offset
             // by the amount that the line height has changed. The solution is borrowed from https://github.com/airbnb/MagazineLayout/pull/11
-            let isSizingElementAboveTopEdge = newLineFrame.minY < viewport.minY
+            let isSizingElementAboveTopEdge = newLineFrame.minY < viewport.minY + safeAreaInsets.top + textContainerInset.top
             if isSizingElementAboveTopEdge {
-                let contentOffsetAdjustment = CGPoint(x: 0, y: newLineFrame.height - oldLineHeight)
-                delegate?.layoutManager(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
+                contentOffsetAdjustment = newLineFrame.height - oldLineHeight
             }
         }
     }
