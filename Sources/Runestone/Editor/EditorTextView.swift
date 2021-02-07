@@ -144,6 +144,9 @@ public final class EditorTextView: UIScrollView {
             textInputView.returnKeyType = newValue
         }
     }
+    public override var undoManager: UndoManager? {
+        return textInputView.undoManager
+    }
     /// The color of the insertion point. This can be used to control the color of the caret.
     public var insertionPointColor: UIColor {
         get {
