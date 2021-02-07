@@ -485,11 +485,6 @@ final class TextInputView: UIView, UITextInput {
         return rootNode?.namedDescendant(in: byteRange)
     }
 
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        super.touchesBegan(touches, with: event)
-        print("Touch")
-    }
-
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         // We end our current undo group when the user touches the view.
         let result = super.hitTest(point, with: event)
