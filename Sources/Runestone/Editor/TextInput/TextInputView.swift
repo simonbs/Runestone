@@ -8,8 +8,6 @@
 import UIKit
 
 protocol TextInputViewDelegate: AnyObject {
-    func textInputViewDidBeginEditing(_ view: TextInputView)
-    func textInputViewDidEndEditing(_ view: TextInputView)
     func textInputViewDidChange(_ view: TextInputView)
     func textInputViewDidChangeSelection(_ view: TextInputView)
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
@@ -76,7 +74,13 @@ final class TextInputView: UIView, UITextInput {
     @objc var insertionPointColor: UIColor = .black
     @objc var selectionBarColor: UIColor = .black
     @objc var selectionHighlightColor: UIColor = .black
-    private(set) var isEditing = false
+    var isEditing = false {
+        didSet {
+            if isEditing != oldValue {
+                layoutManager.isEditing = isEditing
+            }
+        }
+    }
     override var undoManager: UndoManager? {
         return timedUndoManager
     }
@@ -349,36 +353,6 @@ final class TextInputView: UIView, UITextInput {
         super.layoutSubviews()
         layoutManager.layoutIfNeeded()
         layoutManager.layoutSelectionIfNeeded()
-    }
-
-    @discardableResult
-    override func becomeFirstResponder() -> Bool {
-        let wasFirstResponder = isFirstResponder
-        let didBecomeFirstResponder = super.becomeFirstResponder()
-        if !wasFirstResponder && isFirstResponder {
-            isEditing = true
-            layoutManager.isEditing = true
-            markedRange = nil
-            if selectedRange == nil {
-                inputDelegate?.selectionWillChange(self)
-                selectedRange = NSRange(location: 0, length: 0)
-                inputDelegate?.selectionDidChange(self)
-            }
-            delegate?.textInputViewDidBeginEditing(self)
-        }
-        return didBecomeFirstResponder
-    }
-
-    @discardableResult
-    override func resignFirstResponder() -> Bool {
-        let wasFirstResponder = isFirstResponder
-        let didResignFirstResponder = super.resignFirstResponder()
-        if wasFirstResponder && !isFirstResponder {
-            isEditing = false
-            layoutManager.isEditing = false
-            markedRange = nil
-        }
-        return didResignFirstResponder
     }
 
     override func copy(_ sender: Any?) {

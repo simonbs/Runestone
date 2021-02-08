@@ -43,6 +43,14 @@ public extension EditorTextViewDelegate {
 public final class EditorTextView: UIScrollView {
     /// Delegate to receive callbacks for events triggered by the editor.
     public weak var editorDelegate: EditorTextViewDelegate?
+    /// Whether the text view is in a state where the contents can be edited.
+    public private(set) var isEditing = false {
+        didSet {
+            if isEditing != oldValue {
+                textInputView.isEditing = isEditing
+            }
+        }
+    }
     public var text: String {
         get {
             return textInputView.string as String
@@ -174,10 +182,6 @@ public final class EditorTextView: UIScrollView {
             textInputView.selectionHighlightColor = newValue
         }
     }
-    /// Whether the text view is currently in an editing state.
-    public var isEditing: Bool {
-        return textInputView.isEditing
-    }
     public var selectedRange: NSRange {
         if let selectedRange = textInputView.selectedRange {
             return selectedRange
@@ -198,7 +202,7 @@ public final class EditorTextView: UIScrollView {
         }
     }
     public override var canBecomeFirstResponder: Bool {
-        return true
+        return !textInputView.isFirstResponder
     }
     public override var backgroundColor: UIColor? {
         get {
@@ -400,8 +404,11 @@ public final class EditorTextView: UIScrollView {
 
     @discardableResult
     public override func becomeFirstResponder() -> Bool {
-        if shouldBeginEditing {
-            return textInputView.becomeFirstResponder()
+        if !textInputView.isFirstResponder && shouldBeginEditing && textInputView.becomeFirstResponder()  {
+            isEditing = true
+            addInteraction(editingTextInteraction)
+            editorDelegate?.editorTextViewDidBeginEditing(self)
+            return true
         } else {
             return false
         }
@@ -410,6 +417,9 @@ public final class EditorTextView: UIScrollView {
     @discardableResult
     public override func resignFirstResponder() -> Bool {
         if shouldEndEditing {
+            isEditing = false
+            removeInteraction(editingTextInteraction)
+            editorDelegate?.editorTextViewDidEndEditing(self)
             return textInputView.resignFirstResponder()
         } else {
             return false
@@ -488,8 +498,8 @@ private extension EditorTextView {
     @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
         if tapGestureRecognizer.state == .ended {
             let point = gestureRecognizer.location(in: textInputView)
+            becomeFirstResponder()
             textInputView.moveCaret(to: point)
-            textInputView.becomeFirstResponder()
         }
     }
 
@@ -559,16 +569,6 @@ private extension EditorTextView {
 
 // MARK: - TextInputViewDelegate
 extension EditorTextView: TextInputViewDelegate {
-    func textInputViewDidBeginEditing(_ view: TextInputView) {
-        addInteraction(editingTextInteraction)
-        editorDelegate?.editorTextViewDidBeginEditing(self)
-    }
-
-    func textInputViewDidEndEditing(_ view: TextInputView) {
-        removeInteraction(editingTextInteraction)
-        editorDelegate?.editorTextViewDidEndEditing(self)
-    }
-
     func textInputViewDidChange(_ view: TextInputView) {
         editorDelegate?.editorTextViewDidChange(self)
     }
