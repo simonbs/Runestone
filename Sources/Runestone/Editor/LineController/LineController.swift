@@ -27,8 +27,10 @@ final class LineController {
     }
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
-            textInputProxy.defaultLineHeight = theme.font.lineHeight
-            syntaxHighlighter.theme = theme
+            if theme !== oldValue {
+                textInputProxy.defaultLineHeight = theme.font.lineHeight
+                syntaxHighlighter.theme = theme
+            }
         }
     }
     var invisibleCharacterConfiguration: InvisibleCharacterConfiguration {

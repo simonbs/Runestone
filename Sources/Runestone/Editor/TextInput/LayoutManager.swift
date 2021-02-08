@@ -512,6 +512,7 @@ extension LayoutManager {
         // Setup the line
         let lineController = getLineController(for: line)
         lineController.lineView = lineView
+        lineController.theme = theme
         lineController.lineHeightMultiplier = lineHeightMultiplier
         lineController.constrainingWidth = maximumLineWidth
         lineController.invisibleCharacterConfiguration = invisibleCharacterConfiguration
