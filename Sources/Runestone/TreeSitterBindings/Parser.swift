@@ -13,6 +13,7 @@ protocol ParserDelegate: AnyObject {
 
 final class Parser {
     weak var delegate: ParserDelegate?
+    let encoding: TextEncoding
     var language: Language? {
         didSet {
             if language !== oldValue {
@@ -29,10 +30,9 @@ final class Parser {
     }
     private(set) var latestTree: Tree?
 
-    private let encoding: SourceEncoding
     private var parser: OpaquePointer
 
-    init(encoding: SourceEncoding) {
+    init(encoding: TextEncoding) {
         self.encoding = encoding
         self.parser = ts_parser_new()
     }
@@ -56,7 +56,7 @@ final class Parser {
     }
 
     func parse() {
-        let input = SourceInput(encoding: encoding) { [weak self] byteIndex, _ in
+        let input = TextInput(encoding: encoding) { [weak self] byteIndex, _ in
             if let self = self, let bytes = self.delegate?.parser(self, bytesAt: byteIndex) {
                 return bytes
             } else {

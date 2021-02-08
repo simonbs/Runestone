@@ -1,5 +1,5 @@
 //
-//  SourceInput.swift
+//  TextInput.swift
 //  
 //
 //  Created by Simon Støvring on 05/12/2020.
@@ -7,12 +7,12 @@
 
 import TreeSitter
 
-typealias SourceProviderCallback = (_ byteIndex: ByteCount, _ position: SourcePoint) -> [Int8]
-private typealias SourceInputRead = @convention(c) (UnsafeMutableRawPointer?, UInt32, TSPoint, UnsafeMutablePointer<UInt32>?) -> UnsafePointer<Int8>?
+typealias TextProviderCallback = (_ byteIndex: ByteCount, _ position: TextPoint) -> [Int8]
+private typealias TextInputRead = @convention(c) (UnsafeMutableRawPointer?, UInt32, TSPoint, UnsafeMutablePointer<UInt32>?) -> UnsafePointer<Int8>?
 
-final class SourceInput {
+final class TextInput {
     struct Payload {
-        var callback: SourceProviderCallback
+        var callback: TextProviderCallback
         var bytePointers: [UnsafePointer<Int8>] = []
     }
 
@@ -20,11 +20,11 @@ final class SourceInput {
     
     private var payload: Payload
 
-    init(encoding: SourceEncoding, callback: @escaping SourceProviderCallback) {
+    init(encoding: TextEncoding, callback: @escaping TextProviderCallback) {
         self.payload = Payload(callback: callback)
-        let read: SourceInputRead = { payload, byteIndex, position, bytesRead in
+        let read: TextInputRead = { payload, byteIndex, position, bytesRead in
             var payload = payload!.assumingMemoryBound(to: Payload.self).pointee
-            let point = SourcePoint(position)
+            let point = TextPoint(position)
             let bytes = payload.callback(ByteCount(byteIndex), point)
             assert(!(bytes.count > 1 && bytes.last == 0), "Parser callback bytes should not be null terminated")
             bytesRead!.initialize(to: UInt32(bytes.count))

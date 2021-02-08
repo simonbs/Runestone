@@ -1,5 +1,5 @@
 //
-//  SourcePoint.swift
+//  TextPoint.swift
 //  
 //
 //  Created by Simon Støvring on 05/12/2020.
@@ -7,7 +7,7 @@
 
 import TreeSitter
 
-final class SourcePoint {
+final class TextPoint {
     public var row: CUnsignedInt {
         return rawValue.row
     }
@@ -26,8 +26,8 @@ final class SourcePoint {
     }
 }
 
-extension SourcePoint: CustomDebugStringConvertible {
+extension TextPoint: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[SourcePoint row=\(row) column=\(column)]"
+        return "[TextPoint row=\(row) column=\(column)]"
     }
 }

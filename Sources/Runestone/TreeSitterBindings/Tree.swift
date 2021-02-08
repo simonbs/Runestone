@@ -27,13 +27,13 @@ final class Tree {
         }
     }
 
-    func rangesChanged(comparingTo otherTree: Tree) -> [SourceRange] {
+    func rangesChanged(comparingTo otherTree: Tree) -> [TextRange] {
         var count = CUnsignedInt(0)
         let ptr = ts_tree_get_changed_ranges(pointer, otherTree.pointer, &count)
         return UnsafeBufferPointer(start: ptr, count: Int(count)).map {
-            let startPoint = SourcePoint($0.start_point)
-            let endPoint = SourcePoint($0.end_point)
-            return SourceRange(
+            let startPoint = TextPoint($0.start_point)
+            let endPoint = TextPoint($0.end_point)
+            return TextRange(
                 startPoint: startPoint,
                 endPoint: endPoint,
                 startByte: ByteCount($0.start_byte),

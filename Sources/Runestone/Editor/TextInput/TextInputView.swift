@@ -93,19 +93,6 @@ final class TextInputView: UIView, UITextInput {
             syntaxHighlighter.theme = theme
         }
     }
-    var language: Language? {
-        set {
-            operationQueue.cancelAllOperations()
-            _language = newValue
-            parse(with: newValue)
-            layoutManager.invalidateLines()
-            layoutManager.setNeedsLayout()
-            setNeedsLayout()
-        }
-        get {
-            return _language
-        }
-    }
     var showLineNumbers: Bool {
         get {
             return layoutManager.showLineNumbers
@@ -330,6 +317,7 @@ final class TextInputView: UIView, UITextInput {
         }
         return nil
     }
+    private var latestEncoding: TextEncoding = .utf8
 
     // MARK: - Lifecycle
     init() {
@@ -414,6 +402,7 @@ final class TextInputView: UIView, UITextInput {
         layoutManager.lineManager = state.lineManager
         layoutManager.invalidateContentSize()
         layoutManager.updateGutterWidth()
+        latestEncoding = state.parser?.encoding ?? .utf8
     }
 
     func moveCaret(to point: CGPoint) {
@@ -426,12 +415,17 @@ final class TextInputView: UIView, UITextInput {
     }
 
     func setLanguage(_ language: Language?, completion: ((Bool) -> Void)? = nil) {
+        setLanguage(language, using: latestEncoding, completion: completion)
+    }
+
+    func setLanguage(_ language: Language?, using encoding: TextEncoding, completion: ((Bool) -> Void)? = nil) {
         operationQueue.cancelAllOperations()
         _language = language
         let operation = BlockOperation()
         operation.addExecutionBlock { [weak operation, weak self] in
             if let self = self, let operation = operation, !operation.isCancelled {
-                self.parse(with: language)
+                self.latestEncoding = encoding
+                self.parse(with: language, using: encoding)
                 DispatchQueue.main.sync {
                     if !operation.isCancelled {
                         self.layoutManager.invalidateLines()
@@ -471,8 +465,8 @@ final class TextInputView: UIView, UITextInput {
 
 // MARK: - Language
 private extension TextInputView {
-    func parse(with language: Language?) {
-        let parser = Parser(encoding: .utf8)
+    private func parse(with language: Language?, using encoding: TextEncoding) {
+        let parser = Parser(encoding: encoding)
         parser.delegate = self
         parser.reset()
         parser.language = language
@@ -644,9 +638,9 @@ extension TextInputView {
             startByte: byteRange.location,
             oldEndByte: byteRange.location + bytesRemoved,
             newEndByte: byteRange.location + bytesAdded,
-            startPoint: SourcePoint(startLinePosition),
-            oldEndPoint: SourcePoint(oldEndLinePosition),
-            newEndPoint: SourcePoint(newEndLinePosition))
+            startPoint: TextPoint(startLinePosition),
+            oldEndPoint: TextPoint(oldEndLinePosition),
+            newEndPoint: TextPoint(newEndLinePosition))
         let parser = syntaxHighlighter.parser
         let oldTree = parser?.latestTree
         parser?.apply(edit)
@@ -665,7 +659,7 @@ extension TextInputView {
         delegate?.textInputViewDidChange(self)
     }
 
-    private func lines(in changedRanges: [SourceRange]) -> Set<DocumentLineNode> {
+    private func lines(in changedRanges: [TextRange]) -> Set<DocumentLineNode> {
         var lines: Set<DocumentLineNode> = []
         for changedRange in changedRanges {
             for row in changedRange.startPoint.row ... changedRange.endPoint.row {
@@ -845,9 +839,9 @@ extension TextInputView {
         }
     }
 
-    private func targetPositionForMovingFromLine(containingCharacterAt sourceIndex: Int, lineOffset: Int) -> Int {
-        guard let currentLinePosition = lineManager.linePosition(at: sourceIndex) else {
-            return sourceIndex
+    private func targetPositionForMovingFromLine(containingCharacterAt location: Int, lineOffset: Int) -> Int {
+        guard let currentLinePosition = lineManager.linePosition(at: location) else {
+            return location
         }
         let targetLineNumber = min(max(currentLinePosition.lineNumber + lineOffset, 0), lineManager.lineCount - 1)
         let targetLine = lineManager.line(atIndex: targetLineNumber)

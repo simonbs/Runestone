@@ -13,11 +13,11 @@ public final class EditorState {
     let lineManager = LineManager()
     let parser: Parser?
 
-    public init(text: String, theme: EditorTheme, language: Language? = nil) {
+    public init(text: String, theme: EditorTheme, language: Language? = nil, encoding: TextEncoding) {
         self.text = text
         self.theme = theme
         if let language = language {
-            parser = Parser(encoding: .utf8)
+            parser = Parser(encoding: encoding)
             parser?.language = language
         } else {
             parser = nil

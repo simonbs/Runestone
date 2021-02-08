@@ -11,17 +11,17 @@ final class InputEdit {
     let startByte: ByteCount
     let oldEndByte: ByteCount
     let newEndByte: ByteCount
-    let startPoint: SourcePoint
-    let oldEndPoint: SourcePoint
-    let newEndPoint: SourcePoint
+    let startPoint: TextPoint
+    let oldEndPoint: TextPoint
+    let newEndPoint: TextPoint
 
     init(
         startByte: ByteCount,
         oldEndByte: ByteCount,
         newEndByte: ByteCount,
-        startPoint: SourcePoint,
-        oldEndPoint: SourcePoint,
-        newEndPoint: SourcePoint) {
+        startPoint: TextPoint,
+        oldEndPoint: TextPoint,
+        newEndPoint: TextPoint) {
         self.startByte = startByte
         self.oldEndByte = oldEndByte
         self.newEndByte = newEndByte

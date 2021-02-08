@@ -69,17 +69,6 @@ public final class EditorTextView: UIScrollView {
             textInputView.theme = newValue
         }
     }
-    /// Languages to for syntax highlighting the text in the editor. Setting the language will cause
-    /// the parser to immediately parse the entire document. Consider using `setLanguage(:completion:)`
-    /// to parse the language on a background thread.
-    public var language: Language? {
-        get {
-            return textInputView.language
-        }
-        set {
-            textInputView.language = newValue
-        }
-    }
     public var autocorrectionType: UITextAutocorrectionType {
         get {
             return textInputView.autocorrectionType
