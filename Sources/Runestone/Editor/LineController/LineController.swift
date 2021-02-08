@@ -155,9 +155,8 @@ private extension LineController {
             isSyntaxHighlightingInvalid = false
             return
         }
-        let documentByteRange = line.data.byteRange
         if async {
-            syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: documentByteRange) { [weak self] result in
+            syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: line.data.byteRange) { [weak self] result in
                 if case .success = result {
                     self?.typesetter.typeset(attributedString)
                     self?.lineView?.setNeedsDisplay()
@@ -166,7 +165,7 @@ private extension LineController {
                 }
             }
         } else {
-            syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: documentByteRange)
+            syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: line.data.byteRange)
             isSyntaxHighlightingInvalid = false
         }
     }
