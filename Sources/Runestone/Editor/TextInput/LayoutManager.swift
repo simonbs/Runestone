@@ -202,7 +202,7 @@ final class LayoutManager {
         if showLineNumbers {
             return gutterWidth + textContainerInset.left
         } else {
-            return 0
+            return textContainerInset.left
         }
     }
 
