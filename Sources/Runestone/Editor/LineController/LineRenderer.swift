@@ -67,7 +67,7 @@ private extension LineRenderer {
                 let xPosition = round(CTLineGetOffsetForStringIndex(typesetLine.line, indexInLine, nil))
                 let point = CGPoint(x: CGFloat(xPosition), y: yPosition)
                 draw(invisibleCharacterConfiguration.tabSymbol, at: point)
-            } else if invisibleCharacterConfiguration.showLineBreaks && substring == Symbol.Character.lineFeed {
+            } else if invisibleCharacterConfiguration.showLineBreaks && substring == Symbol.Character.lineFeed || substring == Symbol.Character.carriageReturnLineFeed {
                 let xPosition = round(CTLineGetTypographicBounds(typesetLine.line, nil, nil, nil))
                 let point = CGPoint(x: CGFloat(xPosition), y: yPosition)
                 draw(invisibleCharacterConfiguration.lineBreakSymbol, at: point)
