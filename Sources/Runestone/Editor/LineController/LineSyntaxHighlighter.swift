@@ -43,12 +43,11 @@ final class LineSyntaxHighlighter {
 
     func setDefaultAttributes(on attributedString: NSMutableAttributedString) {
         let entireRange = NSRange(location: 0, length: attributedString.length)
-        let attributes: [NSAttributedString.Key: Any] = [
-            .foregroundColor: theme.textColor,
-            .font: theme.font
-        ]
+        let attributes: [NSAttributedString.Key: Any] = [.foregroundColor: theme.textColor, .font: theme.font]
         attributedString.beginEditing()
         attributedString.removeAttribute(.shadow, range: entireRange)
+        attributedString.removeAttribute(.font, range: entireRange)
+        attributedString.removeAttribute(.foregroundColor, range: entireRange)
         attributedString.setAttributes(attributes, range: entireRange)
         attributedString.endEditing()
     }
