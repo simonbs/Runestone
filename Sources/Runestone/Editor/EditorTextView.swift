@@ -542,12 +542,14 @@ private extension EditorTextView {
     private func handleContentSizeUpdateIfNecessary() {
         if hasPendingContentSizeUpdate {
             // We don't want to update the content size when the scroll view is "bouncing" near the gutter,
-            // since it causes flickering when updating the content size while scrolling.
+            // or at the end of a line since it causes flickering when updating the content size while scrolling.
             // However, we do allow updating the content size if the text view is scrolled far enough on
             // the y-axis as that means it will soon run out of text to display.
             let isBouncingAtGutter = contentOffset.x < -contentInset.left
+            let isBouncingAtLineEnd = contentOffset.x > contentSize.width - frame.size.width + contentInset.right
+            let isBouncingHorizontally = isBouncingAtGutter || isBouncingAtLineEnd
             let isCriticalUpdate = contentOffset.y > contentSize.height - frame.height * 1.5
-            if !isBouncingAtGutter || isCriticalUpdate {
+            if !isBouncingHorizontally || isCriticalUpdate {
                 hasPendingContentSizeUpdate = false
                 contentSize = preferredContentSize
                 setNeedsLayout()
