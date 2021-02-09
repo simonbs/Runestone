@@ -17,6 +17,7 @@ public protocol EditorTextViewDelegate: AnyObject {
     func editorTextViewDidChangeSelection(_ textView: EditorTextView)
     func editorTextView(_ textView: EditorTextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
     func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: EditorCharacterPair, in range: NSRange) -> Bool
+    func editorTextView(_ textView: EditorTextView, shouldSkipTrailingComponentOf characterPair: EditorCharacterPair, in range: NSRange) -> Bool
     func editorTextViewDidUpdateGutterWidth(_ textView: EditorTextView)
 }
 
@@ -35,6 +36,9 @@ public extension EditorTextViewDelegate {
         return true
     }
     func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: EditorCharacterPair, in range: NSRange) -> Bool {
+        return true
+    }
+    func editorTextView(_ textView: EditorTextView, shouldSkipTrailingComponentOf characterPair: EditorCharacterPair, in range: NSRange) -> Bool {
         return true
     }
     func editorTextViewDidUpdateGutterWidth(_ textView: EditorTextView) {}
@@ -522,19 +526,52 @@ private extension EditorTextView {
         }
     }
 
-    private func insert(_ characterPair: EditorCharacterPair, in range: NSRange) {
+    private func insertLeadingComponent(of characterPair: EditorCharacterPair, in range: NSRange) -> Bool {
+        let shouldInsertCharacterPair = editorDelegate?.editorTextView(self, shouldInsert: characterPair, in: range) ?? true
+        guard shouldInsertCharacterPair else {
+            return false
+        }
         guard let selectedRange = textInputView.selectedRange else {
-            return
+            return false
         }
         if selectedRange.length == 0 {
             textInputView.insertText(characterPair.leading + characterPair.trailing)
             let newSelectedRange = NSRange(location: range.location + characterPair.leading.count, length: 0)
             textInputView.selectedTextRange = IndexedRange(range: newSelectedRange)
+            return true
         } else if let text = textInputView.text(in: selectedRange) {
             let modifiedText = characterPair.leading + text + characterPair.trailing
             let indexedRange = IndexedRange(range: selectedRange)
             textInputView.replace(indexedRange, withText: modifiedText)
             let newSelectedRange = NSRange(location: range.location + characterPair.leading.count, length: range.length)
+            textInputView.selectedTextRange = IndexedRange(range: newSelectedRange)
+            return true
+        } else {
+            return false
+        }
+    }
+
+    private func skipInsertingTrailingComponent(of characterPair: EditorCharacterPair, in range: NSRange) -> Bool {
+        // If the user is typing the trailing component of a character pair, e.g. ) or } and the cursor is just in front
+        // of that character, then we give the delegate the option to skip inserting the character. In that case we
+        // move the caret to after the character in front of it instead.
+        let followingTextRange = NSRange(location: range.location + range.length, length: characterPair.trailing.count)
+        let followingText = textInputView.text(in: followingTextRange)
+        guard followingText == characterPair.trailing else {
+            return false
+        }
+        let shouldSkip = editorDelegate?.editorTextView(self, shouldSkipTrailingComponentOf: characterPair, in: range) ?? true
+        if shouldSkip {
+            moveCaret(byOffset: characterPair.trailing.count)
+            return true
+        } else {
+            return editorDelegate?.editorTextView(self, shouldChangeTextIn: range, replacementText: text) ?? true
+        }
+    }
+
+    private func moveCaret(byOffset offset: Int) {
+        if let selectedRange = textInputView.selectedRange {
+            let newSelectedRange = NSRange(location: selectedRange.location + offset, length: 0)
             textInputView.selectedTextRange = IndexedRange(range: newSelectedRange)
         }
     }
@@ -584,14 +621,10 @@ extension EditorTextView: TextInputViewDelegate {
     }
 
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
-        if let characterPair = characterPairs.first(where: { $0.leading == text }) {
-            let shouldInsertCharacterPair = editorDelegate?.editorTextView(self, shouldInsert: characterPair, in: range) ?? true
-            if shouldInsertCharacterPair {
-                insert(characterPair, in: range)
-                return false
-            } else {
-                return editorDelegate?.editorTextView(self, shouldChangeTextIn: range, replacementText: text) ?? true
-            }
+        if let characterPair = characterPairs.first(where: { $0.trailing == text }), skipInsertingTrailingComponent(of: characterPair, in: range) {
+            return false
+        } else if let characterPair = characterPairs.first(where: { $0.leading == text }), insertLeadingComponent(of: characterPair, in: range) {
+            return false
         } else {
             return editorDelegate?.editorTextView(self, shouldChangeTextIn: range, replacementText: text) ?? true
         }
