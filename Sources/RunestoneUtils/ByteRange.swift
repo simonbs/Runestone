@@ -7,29 +7,29 @@
 
 import Foundation
 
-struct ByteRange: Hashable {
-    let location: ByteCount
-    let length: ByteCount
+public struct ByteRange: Hashable {
+    public let location: ByteCount
+    public let length: ByteCount
 
-    init(location: ByteCount, length: ByteCount) {
+    public init(location: ByteCount, length: ByteCount) {
         self.location = location
         self.length = length
     }
 
-    init(from startByte: ByteCount, to endByte: ByteCount) {
+    public  init(from startByte: ByteCount, to endByte: ByteCount) {
         self.location = startByte
         self.length = endByte - startByte
     }
 }
 
 extension ByteRange: CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "{\(location), \(length)}"
     }
 }
 
 extension ByteRange: CustomDebugStringConvertible {
-    var debugDescription: String {
+    public var debugDescription: String {
         return "{\(location), \(length)}"
     }
 }

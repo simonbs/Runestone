@@ -6,10 +6,11 @@
 //
 
 import TreeSitter
+import RunestoneUtils
 
-final class Tree {
+public final class Tree {
     let pointer: OpaquePointer
-    var rootNode: Node {
+    public var rootNode: Node {
         return Node(node: ts_tree_root_node(pointer))
     }
 
@@ -21,13 +22,13 @@ final class Tree {
         ts_tree_delete(pointer)
     }
 
-    func apply(_ inputEdit: InputEdit) {
+    public func apply(_ inputEdit: InputEdit) {
         withUnsafePointer(to: inputEdit.asRawInputEdit()) { inputEditPointer in
             ts_tree_edit(pointer, inputEditPointer)
         }
     }
 
-    func rangesChanged(comparingTo otherTree: Tree) -> [TextRange] {
+    public func rangesChanged(comparingTo otherTree: Tree) -> [TextRange] {
         var count = CUnsignedInt(0)
         let ptr = ts_tree_get_changed_ranges(pointer, otherTree.pointer, &count)
         return UnsafeBufferPointer(start: ptr, count: Int(count)).map {

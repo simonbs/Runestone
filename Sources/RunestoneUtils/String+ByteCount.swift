@@ -1,5 +1,5 @@
 //
-//  String+Helpers.swift
+//  String+ByteCount.swift
 //  
 //
 //  Created by Simon Støvring on 01/12/2020.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-extension String {
+public extension String {
     var byteCount: ByteCount {
         return ByteCount(utf8.count)
     }

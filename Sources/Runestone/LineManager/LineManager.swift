@@ -5,8 +5,9 @@
 //  Created by Simon Støvring on 08/12/2020.
 //
 
-import Foundation
 import CoreGraphics
+import Foundation
+import RunestoneUtils
 
 protocol LineManagerDelegate: AnyObject {
     func lineManager(_ lineManager: LineManager, substringIn range: NSRange) -> String
@@ -96,18 +97,18 @@ final class LineManager {
         documentLineTree.rebuild(from: lines)
     }
 
-    func removeCharacters(in range: NSRange, editedLines: inout Set<DocumentLineNode>) {
+    func removeCharacters(in range: NSRange) {
         guard range.length > 0 else {
             return
         }
         let startLine = documentLineTree.node(containingLocation: range.location)
         if range.location > Int(startLine.location) + startLine.data.length {
             // Deleting starting in the middle of a delimiter.
-            setLength(of: startLine, to: startLine.value - 1, editedLines: &editedLines)
-            removeCharacters(in: NSRange(location: range.location, length: range.length - 1), editedLines: &editedLines)
+            setLength(of: startLine, to: startLine.value - 1)
+            removeCharacters(in: NSRange(location: range.location, length: range.length - 1))
         } else if range.location + range.length < Int(startLine.location) + startLine.value {
             // Removing a part of the start line.
-            setLength(of: startLine, to: startLine.value - range.length, editedLines: &editedLines)
+            setLength(of: startLine, to: startLine.value - range.length)
         } else {
             // Merge startLine with another line because the startLine's delimeter was deleted,
             // possibly removing lines in between if multiple delimeters were deleted.
@@ -116,7 +117,7 @@ final class LineManager {
             let endLine = documentLineTree.node(containingLocation: range.location + range.length)
             if endLine === startLine {
                 // Removing characters in the last line.
-                setLength(of: startLine, to: startLine.value - range.length, editedLines: &editedLines)
+                setLength(of: startLine, to: startLine.value - range.length)
             } else {
                 let charactersLeftInEndLine = Int(endLine.location) + endLine.value - (range.location + range.length)
                 // Remove all lines between startLine and endLine, excluding startLine but including endLine.
@@ -125,25 +126,24 @@ final class LineManager {
                 repeat {
                     lineToRemove = tmp
                     tmp = tmp.next
-                    editedLines.remove(lineToRemove)
                     remove(lineToRemove)
                 } while lineToRemove !== endLine
                 let newLength = startLine.value - charactersRemovedInStartLine + charactersLeftInEndLine
-                setLength(of: startLine, to: newLength, editedLines: &editedLines)
+                setLength(of: startLine, to: newLength)
             }
         }
     }
 
-    func insert(_ string: NSString, at location: Int, editedLines: inout Set<DocumentLineNode>) {
+    func insert(_ string: NSString, at location: Int) {
         var line = documentLineTree.node(containingLocation: location)
         var lineLocation = Int(line.location)
         assert(location <= lineLocation + line.value)
         if location > lineLocation + line.data.length {
             // Inserting in the middle of a delimiter.
-            setLength(of: line, to: line.value - 1, editedLines: &editedLines)
+            setLength(of: line, to: line.value - 1)
             // Add new line.
             line = insertLine(ofLength: 1, after: line)
-            line = setLength(of: line, to: 1, editedLines: &editedLines)
+            line = setLength(of: line, to: 1)
         }
         if let rangeOfFirstNewLine = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: 0) {
             var lastDelimiterEnd = 0
@@ -153,9 +153,9 @@ final class LineManager {
                 let lineBreakLocation = location + rangeOfNewLine.location + rangeOfNewLine.length
                 lineLocation = Int(line.location)
                 let lengthAfterInsertionPos = lineLocation + line.value - (location + lastDelimiterEnd)
-                line = setLength(of: line, to: lineBreakLocation - lineLocation, editedLines: &editedLines)
+                line = setLength(of: line, to: lineBreakLocation - lineLocation)
                 var newLine = insertLine(ofLength: lengthAfterInsertionPos, after: line)
-                newLine = setLength(of: newLine, to: lengthAfterInsertionPos, editedLines: &editedLines)
+                newLine = setLength(of: newLine, to: lengthAfterInsertionPos)
                 line = newLine
                 lastDelimiterEnd = rangeOfNewLine.location + rangeOfNewLine.length
                 if let rangeOfNextNewLine = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: lastDelimiterEnd) {
@@ -166,11 +166,11 @@ final class LineManager {
             }
             // Insert rest of last delimiter.
             if lastDelimiterEnd != string.length {
-                setLength(of: line, to: line.value + string.length - lastDelimiterEnd, editedLines: &editedLines)
+                setLength(of: line, to: line.value + string.length - lastDelimiterEnd)
             }
         } else {
             // No newline is being inserted. All the text is in a single line.
-            setLength(of: line, to: line.value + string.length, editedLines: &editedLines)
+            setLength(of: line, to: line.value + string.length)
         }
     }
 
@@ -235,8 +235,7 @@ final class LineManager {
 
 private extension LineManager {
     @discardableResult
-    private func setLength(of line: DocumentLineNode, to newTotalLength: Int, editedLines: inout Set<DocumentLineNode>) -> DocumentLineNode {
-        editedLines.insert(line)
+    private func setLength(of line: DocumentLineNode, to newTotalLength: Int) -> DocumentLineNode {
         let substring = getString(in: NSRange(location: line.location, length: newTotalLength))
         let newByteCount = substring.byteCount
         if newTotalLength != line.value || newTotalLength != line.data.totalLength || newByteCount != line.data.byteCount {
@@ -259,7 +258,7 @@ private extension LineManager {
                     // We need to join this line with the previous line.
                     let previousLine = line.previous
                     remove(line)
-                    return setLength(of: previousLine, to: previousLine.value + 1, editedLines: &editedLines)
+                    return setLength(of: previousLine, to: previousLine.value + 1)
                 } else {
                     line.data.delimiterLength = 1
                 }

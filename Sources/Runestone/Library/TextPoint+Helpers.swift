@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import RunestoneTreeSitter
 
 extension TextPoint {
     convenience init(_ linePosition: LinePosition) {

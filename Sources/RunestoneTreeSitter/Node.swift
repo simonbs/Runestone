@@ -6,6 +6,7 @@
 //
 
 import TreeSitter
+import RunestoneUtils
 
 public final class Node {
     let rawValue: TSNode
@@ -54,7 +55,7 @@ public final class Node {
         self.rawValue = node
     }
 
-    func namedDescendant(in byteRange: ByteRange) -> Node {
+    public func namedDescendant(in byteRange: ByteRange) -> Node {
         let startOffset = UInt32(byteRange.location.value)
         let endOffset = UInt32((byteRange.location + byteRange.length).value)
         let descendantRawValue = ts_node_named_descendant_for_byte_range(rawValue, startOffset, endOffset)

@@ -6,18 +6,19 @@
 //
 
 import TreeSitter
+import RunestoneUtils
 
-final class TextRange {
-    var startPoint: TextPoint {
+public final class TextRange {
+    public var startPoint: TextPoint {
         return TextPoint(row: rawValue.start_point.row, column: rawValue.start_point.column)
     }
-    var endPoint: TextPoint {
+    public var endPoint: TextPoint {
         return TextPoint(row: rawValue.end_point.row, column: rawValue.end_point.column)
     }
-    var startByte: ByteCount {
+    public var startByte: ByteCount {
         return ByteCount(rawValue.start_byte)
     }
-    var endByte: ByteCount {
+    public var endByte: ByteCount {
         return ByteCount(rawValue.end_byte)
     }
 
@@ -33,7 +34,7 @@ final class TextRange {
 }
 
 extension TextRange: CustomDebugStringConvertible {
-    var debugDescription: String {
+    public var debugDescription: String {
         return "[TextRange startByte=\(startByte) endByte=\(endByte) startPoint=\(startPoint) endPoint=\(endPoint)]"
     }
 }

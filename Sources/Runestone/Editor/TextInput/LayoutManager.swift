@@ -207,8 +207,6 @@ final class LayoutManager {
     }
 
     // MARK: - Rendering
-    private let operationQueue: OperationQueue
-    private let syntaxHighlighter: SyntaxHighlighter
     private var lineControllers: [DocumentLineNodeID: LineController] = [:]
     private var needsLayout = false
     private var needsLayoutSelection = false
@@ -233,10 +231,8 @@ final class LayoutManager {
         }
     }
 
-    init(lineManager: LineManager, syntaxHighlighter: SyntaxHighlighter, operationQueue: OperationQueue) {
+    init(lineManager: LineManager) {
         self.lineManager = lineManager
-        self.syntaxHighlighter = syntaxHighlighter
-        self.operationQueue = operationQueue
         self.linesContainerView.isUserInteractionEnabled = false
         self.lineNumbersContainerView.isUserInteractionEnabled = false
         self.gutterContainerView.isUserInteractionEnabled = false
@@ -262,7 +258,7 @@ final class LayoutManager {
         needsLayout = false
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        syntaxHighlighter.prepare()
+//        syntaxHighlighter.prepare()
         layoutGutter()
         layoutSelection()
         updateLineNumberColors()
@@ -607,7 +603,7 @@ extension LayoutManager {
         if let cachedLineController = lineControllers[line.id] {
             return cachedLineController
         } else {
-            let lineController = LineController(syntaxHighlighter: syntaxHighlighter, syntaxHighlightQueue: operationQueue, line: line)
+            let lineController = LineController(line: line)
             lineController.delegate = self
             lineController.theme = theme
             lineController.lineHeightMultiplier = lineHeightMultiplier

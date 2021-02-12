@@ -1,19 +1,21 @@
 //
-//  SyntaxHighlighter.swift
+//  TreeSitterSyntaxHighlighter.swift
 //  
 //
 //  Created by Simon Støvring on 16/01/2021.
 //
 
 import UIKit
+import RunestoneTreeSitter
+import RunestoneUtils
 
-enum SyntaxHighlighterError: Error {
+enum TreeSitterSyntaxHighlighterError: Error {
     case parserUnavailable
     case treeUnavailable
     case highlightsQueryUnavailable
 }
 
-final class SyntaxHighlighter {
+final class TreeSitterSyntaxHighlighter {
     var parser: Parser?
     var theme: EditorTheme = DefaultEditorTheme()
     var canHighlight: Bool {
@@ -30,35 +32,21 @@ final class SyntaxHighlighter {
         query = nil
     }
 
-    func prepare() {
-        guard query == nil else {
-            return
-        }
-        guard let language = parser?.language else {
-            return
-        }
-        language.highlightsQuery.prepare()
-        guard let highlightsSource = language.highlightsQuery.string else {
-            return
-        }
-        if case let .success(query) = Query.create(fromSource: highlightsSource, in: language) {
-            self.query = query
-        }
-    }
-
-    func captures(in range: ByteRange) -> Result<[Capture], SyntaxHighlighterError> {
+    func captures(in range: ByteRange) -> Result<[Capture], TreeSitterSyntaxHighlighterError> {
         guard let parser = parser else {
             return .failure(.parserUnavailable)
         }
         guard let tree = parser.latestTree else {
             return .failure(.treeUnavailable)
         }
-        return getQuery().map { query in
-            let captureQuery = CaptureQuery(query: query, node: tree.rootNode)
-            captureQuery.setQueryRange(range)
-            captureQuery.execute()
-            return captureQuery.allCaptures()
+        guard let query = query else {
+            return .failure(.highlightsQueryUnavailable)
         }
+        let captureQuery = CaptureQuery(query: query, node: tree.rootNode)
+        captureQuery.setQueryRange(range)
+        captureQuery.execute()
+        let captures = captureQuery.allCaptures()
+        return .success(captures)
     }
 
     func tokens(for captures: [Capture], localTo range: ByteRange) -> [SyntaxHighlightToken] {
@@ -81,19 +69,11 @@ final class SyntaxHighlighter {
     }
 }
 
-private extension SyntaxHighlighter {
+private extension TreeSitterSyntaxHighlighter {
     private func attributes(for capture: Capture, in range: ByteRange) -> SyntaxHighlightToken {
         let textColor = theme.textColorForCaptureSequence(capture.name)
         let font = theme.fontForCaptureSequence(capture.name)
         let shadow = theme.shadowForCaptureSequence(capture.name)
         return SyntaxHighlightToken(range: range, textColor: textColor, font: font, shadow: shadow)
-    }
-
-    private func getQuery() -> Result<Query, SyntaxHighlighterError> {
-        if let query = query {
-            return .success(query)
-        } else {
-            return .failure(.highlightsQueryUnavailable)
-        }
     }
 }

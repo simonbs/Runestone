@@ -15,8 +15,8 @@ protocol LineControllerDelegate: AnyObject {
 
 final class LineController {
     weak var delegate: LineControllerDelegate?
-    let line: DocumentLineNode
     weak var lineView: LineView?
+    let line: DocumentLineNode
     var lineHeightMultiplier: CGFloat = 1 {
         didSet {
             if lineHeightMultiplier != oldValue {
@@ -29,7 +29,7 @@ final class LineController {
         didSet {
             if theme !== oldValue {
                 textInputProxy.defaultLineHeight = theme.font.lineHeight
-                syntaxHighlighter.theme = theme
+//                syntaxHighlighter.theme = theme
             }
         }
     }
@@ -66,8 +66,9 @@ final class LineController {
         }
     }
 
+//    private let languageMode: LanguageMode
     private let typesetter = LineTypesetter()
-    private let syntaxHighlighter: LineSyntaxHighlighter
+//    private let syntaxHighlighter: LineSyntaxHighlighter
     private let textInputProxy: LineTextInputProxy
     private let renderer: LineRenderer
     private var attributedString: NSMutableAttributedString?
@@ -76,9 +77,9 @@ final class LineController {
     private var isSyntaxHighlightingInvalid = true
     private var isTypesetterInvalid = true
 
-    init(syntaxHighlighter: SyntaxHighlighter, syntaxHighlightQueue: OperationQueue, line: DocumentLineNode) {
+    init(line: DocumentLineNode) {
         self.line = line
-        self.syntaxHighlighter = LineSyntaxHighlighter(syntaxHighlighter: syntaxHighlighter, queue: syntaxHighlightQueue)
+//        self.syntaxHighlighter = LineSyntaxHighlighter(syntaxHighlighter: syntaxHighlighter, queue: syntaxHighlightQueue)
         self.textInputProxy = LineTextInputProxy(lineTypesetter: typesetter)
         self.textInputProxy.defaultLineHeight = theme.font.lineHeight
         self.renderer = LineRenderer(typesetter: typesetter)
@@ -117,7 +118,7 @@ final class LineController {
     func didEndDisplaying() {
         lineView?.delegate = nil
         lineView = nil
-        syntaxHighlighter.cancelHighlightOperation()
+//        syntaxHighlighter.cancelHighlightOperation()
     }
 
     func invalidate() {
@@ -138,38 +139,38 @@ private extension LineController {
 
     private func updateDefaultAttributesIfNecessary() {
         if isDefaultAttributesInvalid {
-            if let attributedString = attributedString {
-                syntaxHighlighter.setDefaultAttributes(on: attributedString)
-            }
-            isDefaultAttributesInvalid = false
+//            if let attributedString = attributedString {
+//                syntaxHighlighter.setDefaultAttributes(on: attributedString)
+//            }
+//            isDefaultAttributesInvalid = false
         }
     }
 
     private func updateSyntaxHighlightingIfNecessary(async: Bool) {
-        guard isSyntaxHighlightingInvalid else {
-            return
-        }
-        guard syntaxHighlighter.canHighlight else {
-            isSyntaxHighlightingInvalid = false
-            return
-        }
-        guard let attributedString = attributedString else {
-            isSyntaxHighlightingInvalid = false
-            return
-        }
-        if async {
-            syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: line.data.byteRange) { [weak self] result in
-                if case .success = result {
-                    self?.typesetter.typeset(attributedString)
-                    self?.lineView?.setNeedsDisplay()
-                    self?.isSyntaxHighlightingInvalid = false
-                    self?.isTypesetterInvalid = false
-                }
-            }
-        } else {
-            syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: line.data.byteRange)
-            isSyntaxHighlightingInvalid = false
-        }
+//        guard isSyntaxHighlightingInvalid else {
+//            return
+//        }
+//        guard syntaxHighlighter.canHighlight else {
+//            isSyntaxHighlightingInvalid = false
+//            return
+//        }
+//        guard let attributedString = attributedString else {
+//            isSyntaxHighlightingInvalid = false
+//            return
+//        }
+//        if async {
+//            syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: line.data.byteRange) { [weak self] result in
+//                if case .success = result {
+//                    self?.typesetter.typeset(attributedString)
+//                    self?.lineView?.setNeedsDisplay()
+//                    self?.isSyntaxHighlightingInvalid = false
+//                    self?.isTypesetterInvalid = false
+//                }
+//            }
+//        } else {
+//            syntaxHighlighter.syntaxHighlight(attributedString, documentByteRange: line.data.byteRange)
+//            isSyntaxHighlightingInvalid = false
+//        }
     }
 
     private func updateTypesetterIfNecessary() {

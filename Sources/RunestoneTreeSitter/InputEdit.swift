@@ -6,16 +6,17 @@
 //
 
 import TreeSitter
+import RunestoneUtils
 
-final class InputEdit {
-    let startByte: ByteCount
-    let oldEndByte: ByteCount
-    let newEndByte: ByteCount
-    let startPoint: TextPoint
-    let oldEndPoint: TextPoint
-    let newEndPoint: TextPoint
+public final class InputEdit {
+    public let startByte: ByteCount
+    public let oldEndByte: ByteCount
+    public let newEndByte: ByteCount
+    public let startPoint: TextPoint
+    public let oldEndPoint: TextPoint
+    public let newEndPoint: TextPoint
 
-    init(
+    public init(
         startByte: ByteCount,
         oldEndByte: ByteCount,
         newEndByte: ByteCount,
@@ -42,7 +43,7 @@ final class InputEdit {
 }
 
 extension InputEdit: CustomDebugStringConvertible {
-    var debugDescription: String {
+    public var debugDescription: String {
         return "[InputEdit startByte=\(startByte) oldEndByte=\(oldEndByte) newEndByte=\(newEndByte)"
             + " startPoint=\(startPoint) oldEndPoint=\(oldEndPoint) newEndPoint=\(newEndPoint)]"
     }

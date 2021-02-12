@@ -6,6 +6,7 @@
 //
 
 import TreeSitter
+import RunestoneUtils
 
 typealias TextProviderCallback = (_ byteIndex: ByteCount, _ position: TextPoint) -> [Int8]
 private typealias TextInputRead = @convention(c) (UnsafeMutableRawPointer?, UInt32, TSPoint, UnsafeMutablePointer<UInt32>?) -> UnsafePointer<Int8>?

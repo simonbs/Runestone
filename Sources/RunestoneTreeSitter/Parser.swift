@@ -6,33 +6,28 @@
 //
 
 import TreeSitter
+import RunestoneUtils
 
-protocol ParserDelegate: AnyObject {
+public protocol ParserDelegate: AnyObject {
     func parser(_ parser: Parser, bytesAt byteIndex: ByteCount) -> [Int8]?
 }
 
-final class Parser {
-    weak var delegate: ParserDelegate?
-    let encoding: TextEncoding
-    var language: Language? {
+public final class Parser {
+    public weak var delegate: ParserDelegate?
+    public let encoding: TextEncoding
+    public var language: UnsafePointer<TSLanguage>? {
         didSet {
-            if language !== oldValue {
-                if let language = language {
-                    ts_parser_set_language(parser, language.pointer)
-                } else {
-                    ts_parser_set_language(parser, nil)
-                }
-            }
+            ts_parser_set_language(parser, language)
         }
     }
-    var canParse: Bool {
+    public var canParse: Bool {
         return language != nil
     }
-    private(set) var latestTree: Tree?
+    public private(set) var latestTree: Tree?
 
     private var parser: OpaquePointer
 
-    init(encoding: TextEncoding) {
+    public init(encoding: TextEncoding) {
         self.encoding = encoding
         self.parser = ts_parser_new()
     }
@@ -41,11 +36,11 @@ final class Parser {
         ts_parser_delete(parser)
     }
 
-    func reset() {
+    public func reset() {
         latestTree = nil
     }
 
-    func parse(_ string: String) {
+    public func parse(_ string: String) {
         let byteCount = UInt32(string.byteCount.value)
         let newTreePointer = string.withCString { stringPointer in
             return ts_parser_parse_string(parser, latestTree?.pointer, stringPointer, byteCount)
@@ -55,7 +50,7 @@ final class Parser {
         }
     }
 
-    func parse() {
+    public func parse() {
         let input = TextInput(encoding: encoding) { [weak self] byteIndex, _ in
             if let self = self, let bytes = self.delegate?.parser(self, bytesAt: byteIndex) {
                 return bytes
@@ -71,7 +66,7 @@ final class Parser {
     }
 
     @discardableResult
-    func apply(_ inputEdit: InputEdit) -> Bool {
+    public func apply(_ inputEdit: InputEdit) -> Bool {
         if let latestTree = latestTree {
             latestTree.apply(inputEdit)
             return true

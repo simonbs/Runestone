@@ -6,10 +6,11 @@
 //
 
 import Foundation
+import RunestoneUtils
 
-final class Capture {
-    let byteRange: ByteRange
-    let name: String
+public final class Capture {
+    public let byteRange: ByteRange
+    public let name: String
 
     init(byteRange: ByteRange, name: String) {
         self.byteRange = byteRange
@@ -18,7 +19,7 @@ final class Capture {
 }
 
 extension Capture: CustomDebugStringConvertible {
-    var debugDescription: String {
+    public var debugDescription: String {
         return "[\(byteRange.location) - \(byteRange.length)] \(name)"
     }
 }

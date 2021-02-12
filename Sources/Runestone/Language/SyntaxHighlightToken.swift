@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import RunestoneUtils
 
 final class SyntaxHighlightToken {
     let range: ByteRange

@@ -17,7 +17,11 @@ let package = Package(
     targets: [
         .target(
             name: "Runestone",
-            dependencies: ["TreeSitter"]),
+            dependencies: ["RunestoneTreeSitter", "RunestoneUtils"]),
+        .target(
+            name: "RunestoneTreeSitter",
+            dependencies: ["RunestoneUtils", "TreeSitter"]),
+        .target(name: "RunestoneUtils"),
         .target(
             name: "TreeSitter",
             exclude: [

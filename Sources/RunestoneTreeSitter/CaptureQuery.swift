@@ -6,14 +6,15 @@
 //
 
 import TreeSitter
+import RunestoneUtils
 
-final class CaptureQuery {
+public final class CaptureQuery {
     private let cursorPointer: OpaquePointer
     private let query: Query
     private let node: Node
     private var haveExecuted = false
 
-    convenience init(query: Query, node: Node) {
+    public convenience init(query: Query, node: Node) {
         self.init(cursorPointer: ts_query_cursor_new(), query: query, node: node)
     }
 
@@ -27,20 +28,20 @@ final class CaptureQuery {
         ts_query_cursor_delete(cursorPointer)
     }
 
-    func setQueryRange(_ range: ByteRange) {
+    public func setQueryRange(_ range: ByteRange) {
         let start = UInt32(range.location.value)
         let end = UInt32((range.location + range.length).value)
         ts_query_cursor_set_byte_range(cursorPointer, start, end)
     }
 
-    func execute() {
+    public func execute() {
         if !haveExecuted {
             haveExecuted = true
             ts_query_cursor_exec(cursorPointer, query.pointer, node.rawValue)
         }
     }
 
-    func allCaptures() -> [Capture] {
+    public func allCaptures() -> [Capture] {
         guard haveExecuted else {
             fatalError("Cannot get captures of a query that has not been executed.")
         }

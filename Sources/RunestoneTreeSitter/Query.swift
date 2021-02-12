@@ -7,7 +7,7 @@
 
 import TreeSitter
 
-enum QueryError: Error {
+public enum QueryError: Error {
     case syntax(offset: UInt32)
     case nodeType(offset: UInt32)
     case field(offset: UInt32)
@@ -16,12 +16,12 @@ enum QueryError: Error {
     case unknown
 }
 
-final class Query {
+public final class Query {
     let pointer: OpaquePointer
     
-    private let language: Language
+    private let language: UnsafePointer<TSLanguage>
 
-    fileprivate init(language: Language, pointer: OpaquePointer) {
+    fileprivate init(language: UnsafePointer<TSLanguage>, pointer: OpaquePointer) {
         self.language = language
         self.pointer = pointer
     }
@@ -30,11 +30,11 @@ final class Query {
         ts_query_delete(pointer)
     }
 
-    static func create(fromSource source: String, in language: Language) -> Result<Query, QueryError> {
+    public static func create(fromSource source: String, in language: UnsafePointer<TSLanguage>) -> Result<Query, QueryError> {
         let errorOffset = UnsafeMutablePointer<UInt32>.allocate(capacity: 1)
         let errorType = UnsafeMutablePointer<TSQueryError>.allocate(capacity: 1)
         let pointer = source.withCString { cstr in
-            ts_query_new(language.pointer, cstr, UInt32(source.count), errorOffset, errorType)
+            ts_query_new(language, cstr, UInt32(source.count), errorOffset, errorType)
         }
         defer {
             errorOffset.deallocate()
@@ -60,7 +60,7 @@ final class Query {
         }
     }
 
-    func captureName(forId id: UInt32) -> String {
+    public func captureName(forId id: UInt32) -> String {
         let lengthPointer = UnsafeMutablePointer<UInt32>.allocate(capacity: 1)
         let cString = ts_query_capture_name_for_id(pointer, id, lengthPointer)
         lengthPointer.deallocate()

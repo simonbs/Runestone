@@ -5,8 +5,9 @@
 //  Created by Simon Støvring on 04/01/2021.
 //
 
-import UIKit
 import CoreText
+import RunestoneTreeSitter
+import UIKit
 
 public protocol EditorTextViewDelegate: AnyObject {
     func editorTextViewShouldBeginEditing(_ textView: EditorTextView) -> Bool
@@ -441,11 +442,10 @@ public final class EditorTextView: UIScrollView {
         return textInputView.linePosition(at: location)
     }
 
-    /// Sets the language used to highlight the content of the editor on a background thread.
-    /// This should generally be preferred over using the <code>language</code> setter.
+    /// Sets the language on a background thread.
     ///
     /// - Parameters:
-    ///   - language: The new language to be used by the parser.
+    ///   - language: The new language to be used by the editor.
     ///   - completion: Called when the content have been parsed or when parsing fails.
     public func setLanguage(_ language: Language?, completion: ((Bool) -> Void)? = nil) {
         textInputView.setLanguage(language, completion: completion)
@@ -472,8 +472,7 @@ public final class EditorTextView: UIScrollView {
         return textInputView.text(in: range)
     }
 
-    /// Returns the node at the specified location in the document. This provides information about the type
-    /// of token at the location, e.g. if it's a string, a number, a keyword etc.
+    /// Returns the type of the token at the specified location in the document.
     ///
     /// This can be used with character pairs to determine if a pair should be inserted or not.
     /// For example, a character pair consisting of two quotes (") to surround a string, should probably not be
@@ -481,9 +480,9 @@ public final class EditorTextView: UIScrollView {
     ///
     /// This requires a language to be set on the editor.
     /// - Parameter location: A location in the document.
-    /// - Returns: The node at the location.
-    public func node(at location: Int) -> Node? {
-        return textInputView.node(at: location)
+    /// - Returns: The type of the token at the location.
+    public func tokenType(at location: Int) -> String? {
+        return textInputView.tokenType(at: location)
     }
 }
 
