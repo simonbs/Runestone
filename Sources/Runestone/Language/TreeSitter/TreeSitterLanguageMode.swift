@@ -11,14 +11,16 @@ import TreeSitter
 final class TreeSitterLanguageMode: LanguageMode {
     weak var delegate: LanguageModeDelegate?
 
-    private let highlightsQuery: TreeSitterQuery?
     private let parser: TreeSitterParser
+    private let highlightsQuery: TreeSitterQuery?
+    private let injectionsQuery: TreeSitterQuery?
     private let operationQueue = OperationQueue()
 
     init(_ language: TreeSitterLanguage) {
         operationQueue.name = "TreeSitterLanguageMode"
         operationQueue.qualityOfService = .userInitiated
-        highlightsQuery = Self.createHighlightsQuery(from: language)
+        highlightsQuery = language.highlightsQuery
+        injectionsQuery = language.injectionsQuery
         parser = TreeSitterParser(encoding: language.textEncoding.tsEncoding)
         parser.language = language.languagePointer
         parser.delegate = self
@@ -87,22 +89,6 @@ final class TreeSitterLanguageMode: LanguageMode {
 
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter {
         return TreeSitterSyntaxHighlighter(parser: parser, highlightsQuery: highlightsQuery, queue: operationQueue)
-    }
-}
-
-private extension TreeSitterLanguageMode {
-    private static func createHighlightsQuery(from language: TreeSitterLanguage) -> TreeSitterQuery? {
-        language.highlightsQuery?.prepare()
-        guard let queryString = language.highlightsQuery?.string else {
-            return nil
-        }
-        let createQueryResult = TreeSitterQuery.create(fromSource: queryString, in: language.languagePointer)
-        switch createQueryResult {
-        case .success(let query):
-            return query
-        case .failure:
-            return nil
-        }
     }
 }
 
