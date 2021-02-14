@@ -1,28 +1,27 @@
 //
-//  InputEdit.swift
+//  TreeSitterInputEdit.swift
 //  
 //
 //  Created by Simon Støvring on 17/12/2020.
 //
 
 import TreeSitter
-import RunestoneUtils
 
-public final class InputEdit {
-    public let startByte: ByteCount
-    public let oldEndByte: ByteCount
-    public let newEndByte: ByteCount
-    public let startPoint: TextPoint
-    public let oldEndPoint: TextPoint
-    public let newEndPoint: TextPoint
+final class TreeSitterInputEdit {
+    let startByte: ByteCount
+    let oldEndByte: ByteCount
+    let newEndByte: ByteCount
+    let startPoint: TreeSitterTextPoint
+    let oldEndPoint: TreeSitterTextPoint
+    let newEndPoint: TreeSitterTextPoint
 
-    public init(
+    init(
         startByte: ByteCount,
         oldEndByte: ByteCount,
         newEndByte: ByteCount,
-        startPoint: TextPoint,
-        oldEndPoint: TextPoint,
-        newEndPoint: TextPoint) {
+        startPoint: TreeSitterTextPoint,
+        oldEndPoint: TreeSitterTextPoint,
+        newEndPoint: TreeSitterTextPoint) {
         self.startByte = startByte
         self.oldEndByte = oldEndByte
         self.newEndByte = newEndByte
@@ -42,9 +41,9 @@ public final class InputEdit {
     }
 }
 
-extension InputEdit: CustomDebugStringConvertible {
-    public var debugDescription: String {
-        return "[InputEdit startByte=\(startByte) oldEndByte=\(oldEndByte) newEndByte=\(newEndByte)"
+extension TreeSitterInputEdit: CustomDebugStringConvertible {
+    var debugDescription: String {
+        return "[TreeSitterInputEdit startByte=\(startByte) oldEndByte=\(oldEndByte) newEndByte=\(newEndByte)"
             + " startPoint=\(startPoint) oldEndPoint=\(oldEndPoint) newEndPoint=\(newEndPoint)]"
     }
 }

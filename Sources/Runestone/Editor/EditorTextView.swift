@@ -6,7 +6,6 @@
 //
 
 import CoreText
-import RunestoneTreeSitter
 import UIKit
 
 public protocol EditorTextViewDelegate: AnyObject {
@@ -447,8 +446,13 @@ public final class EditorTextView: UIScrollView {
     /// - Parameters:
     ///   - language: The new language to be used by the editor.
     ///   - completion: Called when the content have been parsed or when parsing fails.
-    public func setLanguage(_ language: Language?, completion: ((Bool) -> Void)? = nil) {
-        textInputView.setLanguage(language, completion: completion)
+    public func setLanguage(_ language: TreeSitterLanguage?, completion: ((Bool) -> Void)? = nil) {
+        if let language = language {
+            let languageMode = TreeSitterLanguageMode(language)
+            textInputView.setLanguageMode(languageMode, completion: completion)
+        } else {
+            textInputView.setLanguageMode(nil, completion: completion)
+        }
     }
 
     /// Insets text at the location of the caret.

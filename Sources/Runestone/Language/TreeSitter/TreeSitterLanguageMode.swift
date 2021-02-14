@@ -7,31 +7,25 @@
 
 import Foundation
 import TreeSitter
-import RunestoneTreeSitter
-import RunestoneUtils
 
 final class TreeSitterLanguageMode: LanguageMode {
     weak var delegate: LanguageModeDelegate?
 
-    private let language: UnsafePointer<TSLanguage>?
-    private let highlightsQuery: TreeSitterHighlightsQuery?
-    private let parser: Parser
+    private let highlightsQuery: TreeSitterQuery?
+    private let parser: TreeSitterParser
     private let operationQueue = OperationQueue()
-    private let syntaxHighlighter = TreeSitterSyntaxHighlighter()
 
-    init(_ language: Language) {
-        self.operationQueue.name = "TreeSitterLanguageMode"
-        self.operationQueue.qualityOfService = .userInitiated
-        self.language = language.languagePointer
-        self.highlightsQuery = language.highlightsQuery
-        parser = Parser(encoding: language.encoding)
+    init(_ language: TreeSitterLanguage) {
+        operationQueue.name = "TreeSitterLanguageMode"
+        operationQueue.qualityOfService = .userInitiated
+        highlightsQuery = Self.createHighlightsQuery(from: language)
+        parser = TreeSitterParser(encoding: language.textEncoding.tsEncoding)
         parser.language = language.languagePointer
         parser.delegate = self
     }
 
     func parse(_ text: String) {
         parser.parse(text)
-        syntaxHighlighter.reset()
     }
 
     func parse(_ text: String, completion: @escaping ((Bool) -> Void)) {
@@ -52,16 +46,16 @@ final class TreeSitterLanguageMode: LanguageMode {
         operationQueue.addOperation(operation)
     }
 
-    func textDidChange(_ change: LanguageModeTextChange) {
+    func textDidChange(_ change: LanguageModeTextChange) -> LanguageModeTextChangeResult {
         let bytesRemoved = change.byteRange.length
         let bytesAdded = change.newString.byteCount
-        let edit = InputEdit(
+        let edit = TreeSitterInputEdit(
             startByte: change.byteRange.location,
             oldEndByte: change.byteRange.location + bytesRemoved,
             newEndByte: change.byteRange.location + bytesAdded,
-            startPoint: TextPoint(change.startLinePosition),
-            oldEndPoint: TextPoint(change.oldEndLinePosition),
-            newEndPoint: TextPoint(change.newEndLinePosition))
+            startPoint: TreeSitterTextPoint(change.startLinePosition),
+            oldEndPoint: TreeSitterTextPoint(change.oldEndLinePosition),
+            newEndPoint: TreeSitterTextPoint(change.newEndLinePosition))
         let oldTree = parser.latestTree
         parser.apply(edit)
         parser.parse()
@@ -74,7 +68,9 @@ final class TreeSitterLanguageMode: LanguageMode {
                     lineIndices.insert(Int(lineIndex))
                 }
             }
-            delegate?.languageMode(self, didChangeLineIndices: lineIndices)
+            return LanguageModeTextChangeResult(changedLineIndices: lineIndices)
+        } else {
+            return LanguageModeTextChangeResult(changedLineIndices: [])
         }
     }
 
@@ -89,13 +85,29 @@ final class TreeSitterLanguageMode: LanguageMode {
         }
     }
 
-    func tokens(in range: ByteRange) -> [SyntaxHighlightToken] {
-        return []
+    func createLineSyntaxHighlighter() -> LineSyntaxHighlighter {
+        return TreeSitterSyntaxHighlighter(parser: parser, highlightsQuery: highlightsQuery, queue: operationQueue)
     }
 }
 
-extension TreeSitterLanguageMode: ParserDelegate {
-    func parser(_ parser: Parser, bytesAt byteIndex: ByteCount) -> [Int8]? {
+private extension TreeSitterLanguageMode {
+    private static func createHighlightsQuery(from language: TreeSitterLanguage) -> TreeSitterQuery? {
+        language.highlightsQuery?.prepare()
+        guard let queryString = language.highlightsQuery?.string else {
+            return nil
+        }
+        let createQueryResult = TreeSitterQuery.create(fromSource: queryString, in: language.languagePointer)
+        switch createQueryResult {
+        case .success(let query):
+            return query
+        case .failure:
+            return nil
+        }
+    }
+}
+
+extension TreeSitterLanguageMode: TreeSitterParserDelegate {
+    func parser(_ parser: TreeSitterParser, bytesAt byteIndex: ByteCount) -> [Int8]? {
         return delegate?.languageMode(self, bytesAt: byteIndex)
     }
 }

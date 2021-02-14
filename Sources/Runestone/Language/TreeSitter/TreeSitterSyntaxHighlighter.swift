@@ -6,17 +6,31 @@
 //
 
 import UIKit
-import RunestoneTreeSitter
-import RunestoneUtils
 
-enum TreeSitterSyntaxHighlighterError: Error {
+enum TreeSitterSyntaxHighlighterError: LocalizedError {
     case parserUnavailable
     case treeUnavailable
     case highlightsQueryUnavailable
+    case cancelled
+    case operationDeallocated
+
+    var errorDescription: String? {
+        switch self {
+        case .parserUnavailable:
+            return "Parser is unavailable."
+        case .treeUnavailable:
+            return "Syntax tree is unavailable."
+        case .highlightsQueryUnavailable:
+            return "Highlights query is unavailable."
+        case .cancelled:
+            return "Operation was cancelled"
+        case .operationDeallocated:
+            return "The operation was deallocated"
+        }
+    }
 }
 
-final class TreeSitterSyntaxHighlighter {
-    var parser: Parser?
+final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
     var theme: EditorTheme = DefaultEditorTheme()
     var canHighlight: Bool {
         if let parser = parser {
@@ -26,31 +40,114 @@ final class TreeSitterSyntaxHighlighter {
         }
     }
 
-    private var query: Query?
+    private let parser: TreeSitterParser?
+    private var highlightsQuery: TreeSitterQuery?
+    private let queue: OperationQueue
+    private var currentOperation: Operation?
 
-    func reset() {
-        query = nil
+    init(parser: TreeSitterParser, highlightsQuery: TreeSitterQuery?, queue: OperationQueue) {
+        self.parser = parser
+        self.highlightsQuery = highlightsQuery
+        self.queue = queue
     }
 
-    func captures(in range: ByteRange) -> Result<[Capture], TreeSitterSyntaxHighlighterError> {
+    func reset() {
+        highlightsQuery = nil
+    }
+
+    func syntaxHighlight(_ input: LineSyntaxHighlighterInput) {
+        if case let .success(captures) = captures(in: input.byteRange) {
+            let tokens = self.tokens(for: captures, localTo: input.byteRange)
+            setAttributes(for: tokens, on: input.attributedString)
+        }
+    }
+
+    func syntaxHighlight(_ input: LineSyntaxHighlighterInput, completion: @escaping AsyncCallback) {
+        let operation = BlockOperation()
+        operation.addExecutionBlock { [weak operation, weak self] in
+            guard let operation = operation, let self = self else {
+                DispatchQueue.main.sync {
+                    completion(.failure(TreeSitterSyntaxHighlighterError.operationDeallocated))
+                }
+                return
+            }
+            guard !operation.isCancelled else {
+                DispatchQueue.main.sync {
+                    completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
+                }
+                return
+            }
+            let capturesResult = self.captures(in: input.byteRange)
+            switch capturesResult {
+            case .success(let captures):
+                if !operation.isCancelled {
+                    DispatchQueue.main.sync {
+                        if !operation.isCancelled {
+                            let tokens = self.tokens(for: captures, localTo: input.byteRange)
+                            self.setAttributes(for: tokens, on: input.attributedString)
+                            completion(.success(()))
+                        } else {
+                            completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
+                        }
+                    }
+                } else {
+                    DispatchQueue.main.sync {
+                        completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
+                    }
+                }
+            case .failure(let error):
+                DispatchQueue.main.sync {
+                    completion(.failure(error))
+                }
+            }
+        }
+        currentOperation = operation
+        queue.addOperation(operation)
+    }
+
+    func cancel() {
+        currentOperation?.cancel()
+        currentOperation = nil
+    }
+}
+
+private extension TreeSitterSyntaxHighlighter {
+    private func setAttributes(for tokens: [TreeSitterSyntaxHighlightToken], on attributedString: NSMutableAttributedString) {
+        attributedString.beginEditing()
+        let string = attributedString.string
+        for token in tokens {
+            let range = string.range(from: token.range)
+            var attributes: [NSAttributedString.Key: Any] = [
+                .foregroundColor: token.textColor ?? theme.textColor,
+                .font: token.font ?? theme.font
+            ]
+            if let shadow = token.shadow {
+                attributes[.shadow] = shadow
+            }
+            attributedString.setAttributes(attributes, range: range)
+        }
+        attributedString.endEditing()
+    }
+
+    private func captures(in range: ByteRange) -> Result<[TreeSitterCapture], TreeSitterSyntaxHighlighterError> {
         guard let parser = parser else {
             return .failure(.parserUnavailable)
         }
         guard let tree = parser.latestTree else {
             return .failure(.treeUnavailable)
         }
-        guard let query = query else {
+        guard let query = highlightsQuery else {
             return .failure(.highlightsQueryUnavailable)
         }
-        let captureQuery = CaptureQuery(query: query, node: tree.rootNode)
+        let captureQuery = TreeSitterCaptureQuery(query: query, node: tree.rootNode)
         captureQuery.setQueryRange(range)
         captureQuery.execute()
         let captures = captureQuery.allCaptures()
         return .success(captures)
     }
 
-    func tokens(for captures: [Capture], localTo range: ByteRange) -> [SyntaxHighlightToken] {
-        var tokens: [SyntaxHighlightToken] = []
+    private func tokens(for captures: [TreeSitterCapture], localTo range: ByteRange) -> [TreeSitterSyntaxHighlightToken] {
+        var tokens: [TreeSitterSyntaxHighlightToken] = []
         for capture in captures {
             // We highlight each line separately but a capture may extend beyond a line, e.g. an unterminated string,
             // so we need to cap the start and end location to ensure it's within the line.
@@ -70,10 +167,10 @@ final class TreeSitterSyntaxHighlighter {
 }
 
 private extension TreeSitterSyntaxHighlighter {
-    private func attributes(for capture: Capture, in range: ByteRange) -> SyntaxHighlightToken {
+    private func attributes(for capture: TreeSitterCapture, in range: ByteRange) -> TreeSitterSyntaxHighlightToken {
         let textColor = theme.textColorForCaptureSequence(capture.name)
         let font = theme.fontForCaptureSequence(capture.name)
         let shadow = theme.shadowForCaptureSequence(capture.name)
-        return SyntaxHighlightToken(range: range, textColor: textColor, font: font, shadow: shadow)
+        return TreeSitterSyntaxHighlightToken(range: range, textColor: textColor, font: font, shadow: shadow)
     }
 }

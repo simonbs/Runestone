@@ -22,7 +22,7 @@ public final class TreeSitterHighlightsQuery {
         self.string = string
     }
 
-    public func prepare() {
+    func prepare() {
         if !isPrepared {
             isPrepared = true
             if string == nil, let fileURL = fileURL {

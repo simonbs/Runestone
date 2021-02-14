@@ -1,14 +1,13 @@
 //
-//  Node.swift
+//  TreeSitterNode.swift
 //  
 //
 //  Created by Simon Støvring on 05/12/2020.
 //
 
 import TreeSitter
-import RunestoneUtils
 
-public final class Node {
+final class TreeSitterNode {
     let rawValue: TSNode
     var expressionString: String? {
         if let str = ts_node_string(rawValue) {
@@ -19,7 +18,7 @@ public final class Node {
             return nil
         }
     }
-    public var type: String? {
+    var type: String? {
         if let str = ts_node_type(rawValue) {
             return String(cString: str)
         } else {
@@ -55,20 +54,20 @@ public final class Node {
         self.rawValue = node
     }
 
-    public func namedDescendant(in byteRange: ByteRange) -> Node {
+    func namedDescendant(in byteRange: ByteRange) -> TreeSitterNode {
         let startOffset = UInt32(byteRange.location.value)
         let endOffset = UInt32((byteRange.location + byteRange.length).value)
         let descendantRawValue = ts_node_named_descendant_for_byte_range(rawValue, startOffset, endOffset)
-        return Node(node: descendantRawValue)
+        return TreeSitterNode(node: descendantRawValue)
     }
 }
 
-extension Node: Hashable {
-    public static func == (lhs: Node, rhs: Node) -> Bool {
+extension TreeSitterNode: Hashable {
+    static func == (lhs: TreeSitterNode, rhs: TreeSitterNode) -> Bool {
         return lhs.rawValue.id == rhs.rawValue.id
     }
 
-    public func hash(into hasher: inout Hasher) {
+    func hash(into hasher: inout Hasher) {
         hasher.combine(rawValue.id)
     }
 }

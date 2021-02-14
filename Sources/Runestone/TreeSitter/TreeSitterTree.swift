@@ -1,17 +1,16 @@
 //
-//  Tree.swift
+//  TreeSitterTree.swift
 //  
 //
 //  Created by Simon Støvring on 05/12/2020.
 //
 
 import TreeSitter
-import RunestoneUtils
 
-public final class Tree {
+final class TreeSitterTree {
     let pointer: OpaquePointer
-    public var rootNode: Node {
-        return Node(node: ts_tree_root_node(pointer))
+    var rootNode: TreeSitterNode {
+        return TreeSitterNode(node: ts_tree_root_node(pointer))
     }
 
     init(_ tree: OpaquePointer) {
@@ -22,18 +21,18 @@ public final class Tree {
         ts_tree_delete(pointer)
     }
 
-    public func apply(_ inputEdit: InputEdit) {
+    func apply(_ inputEdit: TreeSitterInputEdit) {
         withUnsafePointer(to: inputEdit.asRawInputEdit()) { inputEditPointer in
             ts_tree_edit(pointer, inputEditPointer)
         }
     }
 
-    public func rangesChanged(comparingTo otherTree: Tree) -> [TextRange] {
+    func rangesChanged(comparingTo otherTree: TreeSitterTree) -> [TextRange] {
         var count = CUnsignedInt(0)
         let ptr = ts_tree_get_changed_ranges(pointer, otherTree.pointer, &count)
         return UnsafeBufferPointer(start: ptr, count: Int(count)).map {
-            let startPoint = TextPoint($0.start_point)
-            let endPoint = TextPoint($0.end_point)
+            let startPoint = TreeSitterTextPoint($0.start_point)
+            let endPoint = TreeSitterTextPoint($0.end_point)
             return TextRange(
                 startPoint: startPoint,
                 endPoint: endPoint,

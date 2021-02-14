@@ -6,28 +6,27 @@
 //
 
 import TreeSitter
-import RunestoneUtils
 
-public protocol ParserDelegate: AnyObject {
-    func parser(_ parser: Parser, bytesAt byteIndex: ByteCount) -> [Int8]?
+protocol TreeSitterParserDelegate: AnyObject {
+    func parser(_ parser: TreeSitterParser, bytesAt byteIndex: ByteCount) -> [Int8]?
 }
 
-public final class Parser {
-    public weak var delegate: ParserDelegate?
-    public let encoding: TextEncoding
-    public var language: UnsafePointer<TSLanguage>? {
+final class TreeSitterParser {
+    weak var delegate: TreeSitterParserDelegate?
+    let encoding: TSInputEncoding
+    var language: UnsafePointer<TSLanguage>? {
         didSet {
             ts_parser_set_language(parser, language)
         }
     }
-    public var canParse: Bool {
+    var canParse: Bool {
         return language != nil
     }
-    public private(set) var latestTree: Tree?
+    private(set) var latestTree: TreeSitterTree?
 
     private var parser: OpaquePointer
 
-    public init(encoding: TextEncoding) {
+    init(encoding: TSInputEncoding) {
         self.encoding = encoding
         self.parser = ts_parser_new()
     }
@@ -36,22 +35,22 @@ public final class Parser {
         ts_parser_delete(parser)
     }
 
-    public func reset() {
+    func reset() {
         latestTree = nil
     }
 
-    public func parse(_ string: String) {
+    func parse(_ string: String) {
         let byteCount = UInt32(string.byteCount.value)
         let newTreePointer = string.withCString { stringPointer in
             return ts_parser_parse_string(parser, latestTree?.pointer, stringPointer, byteCount)
         }
         if let newTreePointer = newTreePointer {
-            latestTree = Tree(newTreePointer)
+            latestTree = TreeSitterTree(newTreePointer)
         }
     }
 
-    public func parse() {
-        let input = TextInput(encoding: encoding) { [weak self] byteIndex, _ in
+    func parse() {
+        let input = TreeSitterTextInput(encoding: encoding) { [weak self] byteIndex, _ in
             if let self = self, let bytes = self.delegate?.parser(self, bytesAt: byteIndex) {
                 return bytes
             } else {
@@ -61,12 +60,12 @@ public final class Parser {
         let newTreePointer = ts_parser_parse(parser, latestTree?.pointer, input.rawInput)
         input.deallocate()
         if let newTreePointer = newTreePointer {
-            latestTree = Tree(newTreePointer)
+            latestTree = TreeSitterTree(newTreePointer)
         }
     }
 
     @discardableResult
-    public func apply(_ inputEdit: InputEdit) -> Bool {
+    func apply(_ inputEdit: TreeSitterInputEdit) -> Bool {
         if let latestTree = latestTree {
             latestTree.apply(inputEdit)
             return true

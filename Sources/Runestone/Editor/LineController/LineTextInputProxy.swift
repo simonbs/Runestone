@@ -10,7 +10,7 @@ import CoreText
 import Foundation
 
 final class LineTextInputProxy {
-    var defaultLineHeight: CGFloat = 12
+    var estimatedLineHeight: CGFloat = 12
     var lineHeightMultiplier: CGFloat = 1
 
     private let lineTypesetter: LineTypesetter
@@ -32,13 +32,13 @@ final class LineTextInputProxy {
                 return CGRect(x: xPosition, y: yPosition, width: Caret.width, height: typesetLine.baseSize.height)
             }
         }
-        let yPosition = (defaultLineHeight * lineHeightMultiplier - defaultLineHeight) / 2
-        return CGRect(x: 0, y: yPosition, width: Caret.width, height: defaultLineHeight)
+        let yPosition = (estimatedLineHeight * lineHeightMultiplier - estimatedLineHeight) / 2
+        return CGRect(x: 0, y: yPosition, width: Caret.width, height: estimatedLineHeight)
     }
 
     func selectionRects(in range: NSRange) -> [TypesetLineSelectionRect] {
         guard !typesetLines.isEmpty else {
-            let rect = CGRect(x: 0, y: 0, width: 0, height: defaultLineHeight * lineHeightMultiplier)
+            let rect = CGRect(x: 0, y: 0, width: 0, height: estimatedLineHeight * lineHeightMultiplier)
             return [TypesetLineSelectionRect(rect: rect, range: range)]
         }
         var selectionRects: [TypesetLineSelectionRect] = []
@@ -71,7 +71,7 @@ final class LineTextInputProxy {
                 return CGRect(x: xStart, y: typesetLine.yPosition, width: xEnd - xStart, height: typesetLine.scaledSize.height)
             }
         }
-        return CGRect(x: 0, y: 0, width: 0, height: defaultLineHeight * lineHeightMultiplier)
+        return CGRect(x: 0, y: 0, width: 0, height: estimatedLineHeight * lineHeightMultiplier)
     }
 
     func closestIndex(to point: CGPoint) -> Int {

@@ -7,7 +7,6 @@
 
 import CoreGraphics
 import Foundation
-import RunestoneUtils
 
 public final class DocumentLineNodeData {
     var delimiterLength = 0 {

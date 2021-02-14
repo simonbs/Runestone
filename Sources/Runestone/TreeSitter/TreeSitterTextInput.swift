@@ -6,14 +6,13 @@
 //
 
 import TreeSitter
-import RunestoneUtils
 
-typealias TextProviderCallback = (_ byteIndex: ByteCount, _ position: TextPoint) -> [Int8]
+typealias TreeSitterTextProviderCallback = (_ byteIndex: ByteCount, _ position: TreeSitterTextPoint) -> [Int8]
 private typealias TextInputRead = @convention(c) (UnsafeMutableRawPointer?, UInt32, TSPoint, UnsafeMutablePointer<UInt32>?) -> UnsafePointer<Int8>?
 
-final class TextInput {
+final class TreeSitterTextInput {
     struct Payload {
-        var callback: TextProviderCallback
+        var callback: TreeSitterTextProviderCallback
         var bytePointers: [UnsafePointer<Int8>] = []
     }
 
@@ -21,11 +20,11 @@ final class TextInput {
     
     private var payload: Payload
 
-    init(encoding: TextEncoding, callback: @escaping TextProviderCallback) {
+    init(encoding: TSInputEncoding, callback: @escaping TreeSitterTextProviderCallback) {
         self.payload = Payload(callback: callback)
         let read: TextInputRead = { payload, byteIndex, position, bytesRead in
             var payload = payload!.assumingMemoryBound(to: Payload.self).pointee
-            let point = TextPoint(position)
+            let point = TreeSitterTextPoint(position)
             let bytes = payload.callback(ByteCount(byteIndex), point)
             assert(!(bytes.count > 1 && bytes.last == 0), "Parser callback bytes should not be null terminated")
             bytesRead!.initialize(to: UInt32(bytes.count))
@@ -38,7 +37,7 @@ final class TextInput {
             return UnsafePointer(resultBytesPointer)
         }
         rawInput = withUnsafeMutableBytes(of: &payload) {
-            TSInput(payload: $0.baseAddress, read: read, encoding: encoding.treeSitterEncoding)
+            TSInput(payload: $0.baseAddress, read: read, encoding: encoding)
         }
     }
 
