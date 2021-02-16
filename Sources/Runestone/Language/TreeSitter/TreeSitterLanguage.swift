@@ -24,21 +24,28 @@ public extension TreeSitterTextEncoding {
     }
 }
 
+public protocol TreeSitterLanguageProvider: AnyObject {
+    func treeSitterLanguage(named languageName: String) -> TreeSitterLanguage?
+}
+
 public final class TreeSitterLanguage {
     let languagePointer: UnsafePointer<TSLanguage>
     let textEncoding: TreeSitterTextEncoding
     let highlightsQuery: TreeSitterQuery?
     let injectionsQuery: TreeSitterQuery?
+    private(set) weak var injectedLanguageProvider: TreeSitterLanguageProvider?
 
     public init(
         _ language: UnsafePointer<TSLanguage>,
         textEncoding: TreeSitterTextEncoding,
         highlightsQuery: Query? = nil,
-        injectionsQuery: Query? = nil) {
+        injectionsQuery: Query? = nil,
+        injectedLanguageProvider: TreeSitterLanguageProvider? = nil) {
         self.languagePointer = language
         self.textEncoding = textEncoding
         self.highlightsQuery = highlightsQuery?.createQuery(with: language)
         self.injectionsQuery = injectionsQuery?.createQuery(with: language)
+        self.injectedLanguageProvider = injectedLanguageProvider
     }
 }
 
@@ -55,14 +62,9 @@ extension TreeSitterLanguage {
         }
 
         func createQuery(with language: UnsafePointer<TSLanguage>) -> TreeSitterQuery? {
-            guard let string = string else {
-                return nil
-            }
-            let result = TreeSitterQuery.create(fromSource: string, in: language)
-            switch result {
-            case .success(let query):
-                return query
-            case .failure:
+            if let string = string {
+                return try? TreeSitterQuery(source: string, language: language)
+            } else {
                 return nil
             }
         }

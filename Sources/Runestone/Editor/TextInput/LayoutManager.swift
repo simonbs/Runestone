@@ -52,6 +52,7 @@ final class LayoutManager {
             if languageMode !== oldValue {
                 for (_, lineController) in lineControllers {
                     lineController.syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
+                    lineController.syntaxHighlighter?.theme = theme
                     lineController.invalidate()
                 }
             }

@@ -8,26 +8,29 @@
 import Foundation
 import TreeSitter
 
-final class TreeSitterLanguageMode: LanguageMode {
-    weak var delegate: LanguageModeDelegate?
+protocol TreeSitterLanguageModeDeleage: AnyObject {
+    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, bytesAt byteIndex: ByteCount) -> [Int8]?
+    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, byteOffsetAt location: Int) -> ByteCount
+}
 
-    private let parser: TreeSitterParser
-    private let highlightsQuery: TreeSitterQuery?
-    private let injectionsQuery: TreeSitterQuery?
+final class TreeSitterLanguageMode: LanguageMode {
+    weak var delegate: TreeSitterLanguageModeDeleage?
+    var canHighlight: Bool {
+        return rootLanguageLayer.canHighlight
+    }
+
+    private let rootLanguageLayer: TreeSitterLanguageLayer
     private let operationQueue = OperationQueue()
 
     init(_ language: TreeSitterLanguage) {
         operationQueue.name = "TreeSitterLanguageMode"
         operationQueue.qualityOfService = .userInitiated
-        highlightsQuery = language.highlightsQuery
-        injectionsQuery = language.injectionsQuery
-        parser = TreeSitterParser(encoding: language.textEncoding.tsEncoding)
-        parser.language = language.languagePointer
-        parser.delegate = self
+        rootLanguageLayer = TreeSitterLanguageLayer(language, capturedNode: nil)
+        rootLanguageLayer.delegate = self
     }
 
     func parse(_ text: String) {
-        parser.parse(text)
+        rootLanguageLayer.parse(text)
     }
 
     func parse(_ text: String, completion: @escaping ((Bool) -> Void)) {
@@ -58,29 +61,17 @@ final class TreeSitterLanguageMode: LanguageMode {
             startPoint: TreeSitterTextPoint(change.startLinePosition),
             oldEndPoint: TreeSitterTextPoint(change.oldEndLinePosition),
             newEndPoint: TreeSitterTextPoint(change.newEndLinePosition))
-        let oldTree = parser.latestTree
-        parser.apply(edit)
-        parser.parse()
-        // Find lines changed by Tree-sitter and tell delegate to rehighlight them
-        if let oldTree = oldTree, let newTree = parser.latestTree {
-            let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
-            var lineIndices: Set<Int> = []
-            for changedRange in changedRanges {
-                for lineIndex in changedRange.startPoint.row ... changedRange.endPoint.row {
-                    lineIndices.insert(Int(lineIndex))
-                }
-            }
-            return LanguageModeTextChangeResult(changedLineIndices: lineIndices)
-        } else {
-            return LanguageModeTextChangeResult(changedLineIndices: [])
-        }
+        return rootLanguageLayer.apply(edit)
+    }
+
+    func captures(in range: ByteRange) -> [TreeSitterCapture] {
+        return rootLanguageLayer.captures(in: range)
     }
 
     func tokenType(at location: Int) -> String? {
-        if let byteOffset = delegate?.languageMode(self, byteOffsetAt: location) {
-            let rootNode = parser.latestTree?.rootNode
+        if let byteOffset = delegate?.treeSitterLanguageMode(self, byteOffsetAt: location) {
             let byteRange = ByteRange(location: byteOffset, length: ByteCount(0))
-            let node = rootNode?.namedDescendant(in: byteRange)
+            let node = rootLanguageLayer.rootNode?.namedDescendant(in: byteRange)
             return node?.type
         } else {
             return nil
@@ -88,12 +79,12 @@ final class TreeSitterLanguageMode: LanguageMode {
     }
 
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter {
-        return TreeSitterSyntaxHighlighter(parser: parser, highlightsQuery: highlightsQuery, queue: operationQueue)
+        return TreeSitterSyntaxHighlighter(languageMode: self, operationQueue: operationQueue)
     }
 }
 
-extension TreeSitterLanguageMode: TreeSitterParserDelegate {
-    func parser(_ parser: TreeSitterParser, bytesAt byteIndex: ByteCount) -> [Int8]? {
-        return delegate?.languageMode(self, bytesAt: byteIndex)
+extension TreeSitterLanguageMode: TreeSitterLanguageLayerDelegate {
+    func treeSitterLanguageLayer(_ languageLayer: TreeSitterLanguageLayer, bytesAt byteIndex: ByteCount) -> [Int8]? {
+        return delegate?.treeSitterLanguageMode(self, bytesAt: byteIndex)
     }
 }

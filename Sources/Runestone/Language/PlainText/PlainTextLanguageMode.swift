@@ -8,8 +8,6 @@
 import Foundation
 
 final class PlainTextLanguageMode: LanguageMode {
-    weak var delegate: LanguageModeDelegate?
-
     func parse(_ text: String) {}
 
     func parse(_ text: String, completion: @escaping ((Bool) -> Void)) {

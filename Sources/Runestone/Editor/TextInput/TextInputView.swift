@@ -296,7 +296,15 @@ final class TextInputView: UIView, UITextInput {
 
     // MARK: - Private
     private var _string = NSMutableString()
-    private var languageMode: LanguageMode = PlainTextLanguageMode()
+    private var languageMode: LanguageMode = PlainTextLanguageMode() {
+        didSet {
+            if languageMode !== oldValue {
+                if let treeSitterLanguageMode = languageMode as? TreeSitterLanguageMode {
+                    treeSitterLanguageMode.delegate = self
+                }
+            }
+        }
+    }
     private let timedUndoManager = TimedUndoManager()
     private var markedRange: NSRange?
     private var lineManager = LineManager()
@@ -388,7 +396,6 @@ final class TextInputView: UIView, UITextInput {
         _string = NSMutableString(string: state.text)
         theme = state.theme
         languageMode = state.languageMode
-        languageMode.delegate = self
         lineManager = state.lineManager
         lineManager.delegate = self
         lineManager.estimatedLineHeight = estimatedLineHeight
@@ -417,6 +424,7 @@ final class TextInputView: UIView, UITextInput {
                 self?.layoutManager.setNeedsLayout()
                 self?.setNeedsLayout()
             }
+            completion?(finished)
         }
     }
 
@@ -816,13 +824,13 @@ extension TextInputView: LineManagerDelegate {
     }
 }
 
-// MARK: - LanguageModeDelegate
-extension TextInputView: LanguageModeDelegate {
-    func languageMode(_ languageMode: LanguageMode, byteOffsetAt location: Int) -> ByteCount {
+// MARK: - TreeSitterLanguageModeDeleage
+extension TextInputView: TreeSitterLanguageModeDeleage {
+    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, byteOffsetAt location: Int) -> ByteCount {
         return (_string as String).byteOffset(at: location)
     }
 
-    func languageMode(_ languageMode: LanguageMode, bytesAt byteIndex: ByteCount) -> [Int8]? {
+    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, bytesAt byteIndex: ByteCount) -> [Int8]? {
         // Speed up parsing by using the line we recently parsed bytes in when possible.
         if let parsedLine = parsedLine, byteIndex >= parsedLine.startByte && byteIndex < parsedLine.endByte {
             return bytes(at: byteIndex, in: parsedLine)

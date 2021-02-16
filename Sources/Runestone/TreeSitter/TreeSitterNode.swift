@@ -49,6 +49,9 @@ final class TreeSitterNode {
     var childCount: uint {
         return ts_node_child_count(rawValue)
     }
+    var byteRange: ByteRange {
+        return ByteRange(from: startByte, to: endByte)
+    }
 
     init(node: TSNode) {
         self.rawValue = node
