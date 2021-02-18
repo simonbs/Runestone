@@ -847,6 +847,12 @@ extension TextInputView: TreeSitterLanguageModeDeleage {
         }
     }
 
+    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, linePositionAt byteOffset: ByteCount) -> LinePosition? {
+        let string = self.string as String
+        let location = string.location(from: byteOffset)
+        return linePosition(at: location)
+    }
+
     private func bytes(at byteIndex: ByteCount, in parsedLine: ParsedLine) -> [Int8]? {
         let lineString = parsedLine.lineString
         let localByteIndex = byteIndex - parsedLine.startByte

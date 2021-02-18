@@ -16,9 +16,15 @@ public struct ByteRange: Hashable {
         self.length = length
     }
 
-    public  init(from startByte: ByteCount, to endByte: ByteCount) {
+    public init(from startByte: ByteCount, to endByte: ByteCount) {
         self.location = startByte
         self.length = endByte - startByte
+    }
+
+    public func overlaps(_ otherRange: ByteRange) -> Bool {
+        let r1 = location ... location + length
+        let r2 = otherRange.location ... otherRange.location + otherRange.length
+        return r1.overlaps(r2)
     }
 }
 

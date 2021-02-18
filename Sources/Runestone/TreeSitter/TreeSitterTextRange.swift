@@ -7,7 +7,7 @@
 
 import TreeSitter
 
-final class TextRange {
+final class TreeSitterTextRange {
     var startPoint: TreeSitterTextPoint {
         return TreeSitterTextPoint(row: rawValue.start_point.row, column: rawValue.start_point.column)
     }
@@ -32,7 +32,7 @@ final class TextRange {
     }
 }
 
-extension TextRange: CustomDebugStringConvertible {
+extension TreeSitterTextRange: CustomDebugStringConvertible {
     var debugDescription: String {
         return "[TreeSitterTextRange startByte=\(startByte) endByte=\(endByte) startPoint=\(startPoint) endPoint=\(endPoint)]"
     }

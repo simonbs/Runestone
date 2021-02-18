@@ -12,15 +12,24 @@ final class TreeSitterCapture {
     let name: String
     let predicates: [TreeSitterPredicate]
     let properties: [String: String]
-    var byteRange: ByteRange {
-        return node.byteRange
+    let byteRange: ByteRange
+
+    convenience init(node: TreeSitterNode, name: String, predicates: [TreeSitterPredicate]) {
+        let properties = Self.extractProperties(from: predicates)
+        self.init(node: node, name: name, predicates: predicates, properties: properties, byteRange: node.byteRange)
     }
 
-    init(node: TreeSitterNode, name: String, predicates: [TreeSitterPredicate]) {
+    private init(node: TreeSitterNode, name: String, predicates: [TreeSitterPredicate], properties: [String: String], byteRange: ByteRange) {
         self.node = node
         self.name = name
         self.predicates = predicates
-        self.properties = Self.extractProperties(from: predicates)
+        self.properties = properties
+        self.byteRange = byteRange
+    }
+
+    func offsettingByteRange(by offset: ByteCount) -> TreeSitterCapture {
+        let offsetByteRange = ByteRange(location: byteRange.location + offset, length: byteRange.length)
+        return TreeSitterCapture(node: node, name: name, predicates: predicates, properties: properties, byteRange: offsetByteRange)
     }
 }
 
