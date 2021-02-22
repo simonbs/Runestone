@@ -37,24 +37,6 @@ final class TreeSitterNode {
     var endPoint: TreeSitterTextPoint {
         return TreeSitterTextPoint(ts_node_end_point(rawValue))
     }
-    var isNull: Bool {
-        return ts_node_is_null(rawValue)
-    }
-    var isNamed: Bool {
-        return ts_node_is_named(rawValue)
-    }
-    var isExtra: Bool {
-        return ts_node_is_extra(rawValue)
-    }
-    var isMissing: Bool {
-        return ts_node_is_missing(rawValue)
-    }
-    var hasError: Bool {
-        return ts_node_has_error(rawValue)
-    }
-    var childCount: uint {
-        return ts_node_child_count(rawValue)
-    }
     var byteRange: ByteRange {
         return ByteRange(from: startByte, to: endByte)
     }
