@@ -17,37 +17,24 @@ final class TreeSitterLanguageLayer {
 
     private let language: TreeSitterLanguage
     private let parser: TreeSitterParser
-    private let node: TreeSitterNode?
     private var childLanguageLayers: [TreeSitterLanguageLayer] = []
     private var tree: TreeSitterTree?
 
-    init(language: TreeSitterLanguage, parser: TreeSitterParser, node: TreeSitterNode? = nil) {
+    init(language: TreeSitterLanguage, parser: TreeSitterParser) {
         self.language = language
         self.parser = parser
-        self.node = node
     }
 
     func parse(_ text: String) {
-        prepareParser()
-        tree = parser.parse(text)
-        childLanguageLayers.removeAll()
-        if let injectionsQuery = language.injectionsQuery, let node = tree?.rootNode {
-            let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
-            injectionsQueryCursor.execute()
-            let captures = injectionsQueryCursor.allCaptures()
-            for capture in captures {
-                if let childLanguageLayer = insertLanguageLayer(forInjectionCapture: capture) {
-                    childLanguageLayer.parse(text)
-                }
-            }
-        }
+        prepareParserToParse(from: rootNode)
+        parseAndUpdateChildLayers(text: text)
     }
 
     func apply(_ edit: TreeSitterInputEdit) -> LanguageModeTextChangeResult {
         let oldTree = tree
-        prepareParser()
         tree?.apply(edit)
-        tree = parser.parse(oldTree: oldTree)
+        prepareParserToParse(from: rootNode)
+        tree = parser.parse(oldTree: tree)
         var lineIndices = applyEditToChildren(edit)
         if let oldTree = oldTree, let newTree = tree {
             let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
@@ -77,13 +64,29 @@ final class TreeSitterLanguageLayer {
 }
 
 private extension TreeSitterLanguageLayer {
-    private func prepareParser() {
+    private func prepareParserToParse(from rootNode: TreeSitterNode?) {
         parser.language = language.languagePointer
-        if let node = node {
+        if let node = rootNode {
             let range = TreeSitterTextRange(startPoint: node.startPoint, endPoint: node.endPoint, startByte: node.startByte, endByte: node.endByte)
             parser.setIncludedRanges([range])
         } else {
             parser.removeAllIncludedRanges()
+        }
+    }
+
+    private func parseAndUpdateChildLayers(text: String) {
+        tree = parser.parse(text)
+        childLanguageLayers.removeAll()
+        if let injectionsQuery = language.injectionsQuery, let node = tree?.rootNode {
+            let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
+            injectionsQueryCursor.execute()
+            let captures = injectionsQueryCursor.allCaptures()
+            for capture in captures {
+                if let childLanguageLayer = insertLanguageLayer(forInjectionCapture: capture) {
+                    childLanguageLayer.prepareParserToParse(from: capture.node)
+                    childLanguageLayer.parseAndUpdateChildLayers(text: text)
+                }
+            }
         }
     }
 
@@ -113,7 +116,7 @@ private extension TreeSitterLanguageLayer {
         guard let language = language.injectedLanguageProvider?.treeSitterLanguage(named: languageName) else {
             return nil
         }
-        let childLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser, node: capture.node)
+        let childLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser)
         childLanguageLayers.append(childLanguageLayer)
         return childLanguageLayer
     }
@@ -121,6 +124,6 @@ private extension TreeSitterLanguageLayer {
 
 extension TreeSitterLanguageLayer: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TreeSitterLanguageLayer node=\(node?.debugDescription ?? "") childLanguageLayers=\(childLanguageLayers)]"
+        return "[TreeSitterLanguageLayer node=\(rootNode?.debugDescription ?? "") childLanguageLayers=\(childLanguageLayers)]"
     }
 }
