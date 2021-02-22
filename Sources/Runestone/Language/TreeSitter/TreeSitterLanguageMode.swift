@@ -11,7 +11,6 @@ import TreeSitter
 protocol TreeSitterLanguageModeDeleage: AnyObject {
     func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, bytesAt byteIndex: ByteCount) -> [Int8]?
     func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, byteOffsetAt location: Int) -> ByteCount
-    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, linePositionAt byteOffset: ByteCount) -> LinePosition?
 }
 
 final class TreeSitterLanguageMode: LanguageMode {
@@ -20,14 +19,16 @@ final class TreeSitterLanguageMode: LanguageMode {
         return rootLanguageLayer.canHighlight
     }
 
+    private let parser: TreeSitterParser
     private let rootLanguageLayer: TreeSitterLanguageLayer
     private let operationQueue = OperationQueue()
 
-    init(_ language: TreeSitterLanguage) {
+    init(language: TreeSitterLanguage) {
         operationQueue.name = "TreeSitterLanguageMode"
         operationQueue.qualityOfService = .userInitiated
-        rootLanguageLayer = TreeSitterLanguageLayer(language, capturedNode: nil)
-        rootLanguageLayer.delegate = self
+        parser = TreeSitterParser(encoding: language.textEncoding.treeSitterEncoding)
+        rootLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser)
+        parser.delegate = self
     }
 
     func parse(_ text: String) {
@@ -84,12 +85,8 @@ final class TreeSitterLanguageMode: LanguageMode {
     }
 }
 
-extension TreeSitterLanguageMode: TreeSitterLanguageLayerDelegate {
-    func treeSitterLanguageLayer(_ languageLayer: TreeSitterLanguageLayer, bytesAt byteIndex: ByteCount) -> [Int8]? {
+extension TreeSitterLanguageMode: TreeSitterParserDelegate {
+    func parser(_ parser: TreeSitterParser, bytesAt byteIndex: ByteCount) -> [Int8]? {
         return delegate?.treeSitterLanguageMode(self, bytesAt: byteIndex)
-    }
-
-    func treeSitterLanguageLayer(_ languageLayer: TreeSitterLanguageLayer, linePositionAt byteOffset: ByteCount) -> LinePosition? {
-        return delegate?.treeSitterLanguageMode(self, linePositionAt: byteOffset)
     }
 }

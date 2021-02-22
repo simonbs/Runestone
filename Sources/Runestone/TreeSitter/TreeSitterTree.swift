@@ -39,3 +39,9 @@ final class TreeSitterTree {
         }
     }
 }
+
+extension TreeSitterTree: CustomDebugStringConvertible {
+    var debugDescription: String {
+        return "[TreeSitterTree rootNode=\(rootNode)]"
+    }
+}

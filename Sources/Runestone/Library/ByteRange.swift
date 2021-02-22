@@ -10,6 +10,12 @@ import Foundation
 public struct ByteRange: Hashable {
     public let location: ByteCount
     public let length: ByteCount
+    public var lowerBound: ByteCount {
+        return location
+    }
+    public var upperBound: ByteCount {
+        return location + length
+    }
 
     public init(location: ByteCount, length: ByteCount) {
         self.location = location

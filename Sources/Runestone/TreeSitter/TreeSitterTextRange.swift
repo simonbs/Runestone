@@ -1,5 +1,5 @@
 //
-//  TextRange.swift
+//  TreeSitterTextRange.swift
 //  
 //
 //  Created by Simon Støvring on 05/12/2020.
@@ -8,6 +8,7 @@
 import TreeSitter
 
 final class TreeSitterTextRange {
+    let rawValue: TSRange
     var startPoint: TreeSitterTextPoint {
         return TreeSitterTextPoint(row: rawValue.start_point.row, column: rawValue.start_point.column)
     }
@@ -20,8 +21,6 @@ final class TreeSitterTextRange {
     var endByte: ByteCount {
         return ByteCount(rawValue.end_byte)
     }
-
-    private let rawValue: TSRange
 
     init(startPoint: TreeSitterTextPoint, endPoint: TreeSitterTextPoint, startByte: ByteCount, endByte: ByteCount) {
         self.rawValue = TSRange(

@@ -33,6 +33,12 @@ public extension String {
         return ByteRange(location: ByteCount(location), length: ByteCount(length))
     }
 
+    func index(from byteOffset: ByteCount) -> String.Index {
+        let utf8View = utf8
+        let location = byteOffset.value
+        return utf8View.index(utf8View.startIndex, offsetBy: location, limitedBy: utf8View.endIndex) ?? utf8View.endIndex
+    }
+
     func location(from byteOffset: ByteCount) -> Int {
         let utf8View = utf8
         let utf16View = utf16

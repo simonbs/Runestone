@@ -26,11 +26,6 @@ final class TreeSitterCapture {
         self.properties = properties
         self.byteRange = byteRange
     }
-
-    func offsettingByteRange(by offset: ByteCount) -> TreeSitterCapture {
-        let offsetByteRange = ByteRange(location: byteRange.location + offset, length: byteRange.length)
-        return TreeSitterCapture(node: node, name: name, predicates: predicates, properties: properties, byteRange: offsetByteRange)
-    }
 }
 
 private extension TreeSitterCapture {

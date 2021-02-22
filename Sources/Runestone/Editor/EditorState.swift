@@ -17,7 +17,7 @@ public final class EditorState {
         self.text = text
         self.theme = theme
         if let language = language {
-            self.languageMode = TreeSitterLanguageMode(language)
+            self.languageMode = TreeSitterLanguageMode(language: language)
         } else {
             self.languageMode = PlainTextLanguageMode()
         }

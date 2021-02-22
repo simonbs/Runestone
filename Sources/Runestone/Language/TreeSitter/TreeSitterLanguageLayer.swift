@@ -7,62 +7,49 @@
 
 import Foundation
 
-protocol TreeSitterLanguageLayerDelegate: AnyObject {
-    func treeSitterLanguageLayer(_ languageLayer: TreeSitterLanguageLayer, linePositionAt byteOffset: ByteCount) -> LinePosition?
-    func treeSitterLanguageLayer(_ languageLayer: TreeSitterLanguageLayer, bytesAt byteIndex: ByteCount) -> [Int8]?
-}
-
 final class TreeSitterLanguageLayer {
-    weak var delegate: TreeSitterLanguageLayerDelegate?
     var rootNode: TreeSitterNode? {
-        return parser.latestTree?.rootNode
+        return tree?.rootNode
     }
     var canHighlight: Bool {
-        return parser.language != nil && parser.latestTree != nil
+        return parser.language != nil && tree != nil
     }
 
+    private let language: TreeSitterLanguage
     private let parser: TreeSitterParser
-    private let highlightsQuery: TreeSitterQuery?
-    private let injectionsQuery: TreeSitterQuery?
-    private weak var injectedLanguageProvider: TreeSitterLanguageProvider?
+    private let node: TreeSitterNode?
     private var childLanguageLayers: [TreeSitterLanguageLayer] = []
-    private let capturedNode: TreeSitterNode?
+    private var tree: TreeSitterTree?
 
-    init(_ language: TreeSitterLanguage, capturedNode: TreeSitterNode?) {
-        self.capturedNode = capturedNode
-        highlightsQuery = language.highlightsQuery
-        injectionsQuery = language.injectionsQuery
-        injectedLanguageProvider = language.injectedLanguageProvider
-        parser = TreeSitterParser(encoding: language.textEncoding.tsEncoding)
-        parser.language = language.languagePointer
-        parser.delegate = self
+    init(language: TreeSitterLanguage, parser: TreeSitterParser, node: TreeSitterNode? = nil) {
+        self.language = language
+        self.parser = parser
+        self.node = node
     }
 
     func parse(_ text: String) {
-        parser.parse(text)
+        prepareParser()
+        tree = parser.parse(text)
         childLanguageLayers.removeAll()
-        if let injectionsQuery = injectionsQuery, let node = parser.latestTree?.rootNode {
+        if let injectionsQuery = language.injectionsQuery, let node = tree?.rootNode {
             let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
             injectionsQueryCursor.execute()
             let captures = injectionsQueryCursor.allCaptures()
             for capture in captures {
                 if let childLanguageLayer = insertLanguageLayer(forInjectionCapture: capture) {
-                    if let capturedNode = childLanguageLayer.capturedNode {
-                        if let subtext = text.substring(with: capturedNode.byteRange) {
-                            childLanguageLayer.parse(subtext)
-                        }
-                    }
+                    childLanguageLayer.parse(text)
                 }
             }
         }
     }
 
     func apply(_ edit: TreeSitterInputEdit) -> LanguageModeTextChangeResult {
-        let oldTree = parser.latestTree
-        parser.apply(edit)
-        parser.parse()
-        var lineIndices: Set<Int> = []
-        if let oldTree = oldTree, let newTree = parser.latestTree {
+        let oldTree = tree
+        prepareParser()
+        tree?.apply(edit)
+        tree = parser.parse(oldTree: oldTree)
+        var lineIndices = applyEditToChildren(edit)
+        if let oldTree = oldTree, let newTree = tree {
             let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
             for changedRange in changedRanges {
                 for lineIndex in changedRange.startPoint.row ... changedRange.endPoint.row {
@@ -70,82 +57,50 @@ final class TreeSitterLanguageLayer {
                 }
             }
         }
-//        let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
-//        injectionsQueryCursor.execute()
-//        let captures = injectionsQueryCursor.allCaptures()
-//        for capture in captures {
-//            if let childLanguageLayer = insertLanguageLayer(forInjectionCapture: capture) {
-//                if let capturedNode = childLanguageLayer.capturedNode {
-//                    if let subtext = text.substring(with: capturedNode.byteRange) {
-//                        childLanguageLayer.parse(subtext)
-//                    }
-//                }
-//            }
-//        }
-
-        applyEditToChildren(edit)
         return LanguageModeTextChangeResult(changedLineIndices: lineIndices)
     }
 
     func captures(in range: ByteRange) -> [TreeSitterCapture] {
-        guard let tree = parser.latestTree else {
+        guard let tree = tree else {
             return []
         }
-        guard let query = highlightsQuery else {
+        guard let query = language.highlightsQuery else {
             return []
         }
-        let localRange = self.localRange(from: range)
-        let childCaptures = capturesInChildren(in: localRange)
+        let childCaptures = capturesInChildren(in: range)
         let captureQueryCursor = TreeSitterQueryCursor(query: query, node: tree.rootNode)
-        captureQueryCursor.setQueryRange(localRange)
+        captureQueryCursor.setQueryRange(range)
         captureQueryCursor.execute()
         let captures = captureQueryCursor.allCaptures()
         return captures + childCaptures
     }
-
-    private func localRange(from parentRange: ByteRange) -> ByteRange {
-        if let capturedNode = capturedNode {
-            let startByte = max(parentRange.location, capturedNode.startByte) - capturedNode.startByte
-            let length = min(parentRange.length, capturedNode.byteRange.length)
-            return ByteRange(location: startByte, length: length)
-        } else {
-            return parentRange
-        }
-    }
 }
 
 private extension TreeSitterLanguageLayer {
-    private func applyEditToChildren(_ edit: TreeSitterInputEdit) {
-        for childLanguageLayer in childLanguageLayers {
-            if let parentNode = childLanguageLayer.capturedNode {
-                let startByte = min(max(edit.startByte, parentNode.startByte), parentNode.endByte) - parentNode.startByte
-                let oldEndByte = min(max(edit.oldEndByte, parentNode.startByte), parentNode.endByte) - parentNode.startByte
-                let newEndByte = min(max(edit.newEndByte, parentNode.startByte), parentNode.endByte) - parentNode.startByte
-                let startLinePosition = delegate!.treeSitterLanguageLayer(self, linePositionAt: startByte)!
-                let oldEndLinePosition = delegate!.treeSitterLanguageLayer(self, linePositionAt: oldEndByte)!
-                let newEndLinePosition = delegate!.treeSitterLanguageLayer(self, linePositionAt: newEndByte)!
-                let childEdit = TreeSitterInputEdit(
-                    startByte: startByte,
-                    oldEndByte: oldEndByte,
-                    newEndByte: newEndByte,
-                    startPoint: TreeSitterTextPoint(startLinePosition),
-                    oldEndPoint: TreeSitterTextPoint(oldEndLinePosition),
-                    newEndPoint: TreeSitterTextPoint(newEndLinePosition))
-                print(childEdit)
-                _ = childLanguageLayer.apply(childEdit)
-            }
+    private func prepareParser() {
+        parser.language = language.languagePointer
+        if let node = node {
+            let range = TreeSitterTextRange(startPoint: node.startPoint, endPoint: node.endPoint, startByte: node.startByte, endByte: node.endByte)
+            parser.setIncludedRanges([range])
+        } else {
+            parser.removeAllIncludedRanges()
         }
+    }
+
+    private func applyEditToChildren(_ edit: TreeSitterInputEdit) -> Set<Int> {
+        var lineIndices: Set<Int> = []
+        for childLanguageLayer in childLanguageLayers {
+            let childResult = childLanguageLayer.apply(edit)
+            lineIndices.formUnion(childResult.changedLineIndices)
+        }
+        return lineIndices
     }
 
     private func capturesInChildren(in range: ByteRange) -> [TreeSitterCapture] {
         var captures: [TreeSitterCapture] = []
         for childLanguageLayer in childLanguageLayers {
-            if let parentNode = childLanguageLayer.capturedNode, range.overlaps(parentNode.byteRange) {
-                let childCaptures = childLanguageLayer.captures(in: range).map { capture in
-                    return capture.offsettingByteRange(by: parentNode.startByte)
-                }
-                captures.append(contentsOf: childCaptures)
-            }
+            let childCaptures = childLanguageLayer.captures(in: range)
+            captures.append(contentsOf: childCaptures)
         }
         return captures
     }
@@ -155,28 +110,17 @@ private extension TreeSitterLanguageLayer {
         guard let languageName = capture.properties["injection.language"] else {
             return nil
         }
-        guard let language = injectedLanguageProvider?.treeSitterLanguage(named: languageName) else {
+        guard let language = language.injectedLanguageProvider?.treeSitterLanguage(named: languageName) else {
             return nil
         }
-        let childLanguageLayer = TreeSitterLanguageLayer(language, capturedNode: capture.node)
-        childLanguageLayer.delegate = self
+        let childLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser, node: capture.node)
         childLanguageLayers.append(childLanguageLayer)
         return childLanguageLayer
     }
 }
 
-extension TreeSitterLanguageLayer: TreeSitterParserDelegate {
-    func parser(_ parser: TreeSitterParser, bytesAt byteIndex: ByteCount) -> [Int8]? {
-        return delegate?.treeSitterLanguageLayer(self, bytesAt: byteIndex)
-    }
-}
-
-extension TreeSitterLanguageLayer: TreeSitterLanguageLayerDelegate {
-    func treeSitterLanguageLayer(_ languageLayer: TreeSitterLanguageLayer, bytesAt byteIndex: ByteCount) -> [Int8]? {
-        return delegate?.treeSitterLanguageLayer(self, bytesAt: byteIndex)
-    }
-
-    func treeSitterLanguageLayer(_ languageLayer: TreeSitterLanguageLayer, linePositionAt byteOffset: ByteCount) -> LinePosition? {
-        return delegate?.treeSitterLanguageLayer(self, linePositionAt: byteOffset)
+extension TreeSitterLanguageLayer: CustomDebugStringConvertible {
+    var debugDescription: String {
+        return "[TreeSitterLanguageLayer node=\(node?.debugDescription ?? "") childLanguageLayers=\(childLanguageLayers)]"
     }
 }

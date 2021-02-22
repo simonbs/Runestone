@@ -16,40 +16,37 @@ final class TreeSitterParser {
     let encoding: TSInputEncoding
     var language: UnsafePointer<TSLanguage>? {
         didSet {
-            ts_parser_set_language(parser, language)
+            ts_parser_set_language(pointer, language)
         }
     }
     var canParse: Bool {
         return language != nil
     }
-    private(set) var latestTree: TreeSitterTree?
 
-    private var parser: OpaquePointer
+    private var pointer: OpaquePointer
 
     init(encoding: TSInputEncoding) {
         self.encoding = encoding
-        self.parser = ts_parser_new()
+        self.pointer = ts_parser_new()
     }
 
     deinit {
-        ts_parser_delete(parser)
+        ts_parser_delete(pointer)
     }
 
-    func reset() {
-        latestTree = nil
-    }
-
-    func parse(_ string: String) {
+    func parse(_ string: String, oldTree: TreeSitterTree? = nil) -> TreeSitterTree? {
         let byteCount = UInt32(string.byteCount.value)
         let newTreePointer = string.withCString { stringPointer in
-            return ts_parser_parse_string(parser, latestTree?.pointer, stringPointer, byteCount)
+            return ts_parser_parse_string(pointer, oldTree?.pointer, stringPointer, byteCount)
         }
         if let newTreePointer = newTreePointer {
-            latestTree = TreeSitterTree(newTreePointer)
+            return TreeSitterTree(newTreePointer)
+        } else {
+            return nil
         }
     }
 
-    func parse() {
+    func parse(oldTree: TreeSitterTree? = nil) -> TreeSitterTree? {
         let input = TreeSitterTextInput(encoding: encoding) { [weak self] byteIndex, _ in
             if let self = self, let bytes = self.delegate?.parser(self, bytesAt: byteIndex) {
                 return bytes
@@ -57,20 +54,24 @@ final class TreeSitterParser {
                 return []
             }
         }
-        let newTreePointer = ts_parser_parse(parser, latestTree?.pointer, input.rawInput)
+        let newTreePointer = ts_parser_parse(pointer, oldTree?.pointer, input.rawInput)
         input.deallocate()
         if let newTreePointer = newTreePointer {
-            latestTree = TreeSitterTree(newTreePointer)
+            return TreeSitterTree(newTreePointer)
+        } else {
+            return nil
         }
     }
 
     @discardableResult
-    func apply(_ inputEdit: TreeSitterInputEdit) -> Bool {
-        if let latestTree = latestTree {
-            latestTree.apply(inputEdit)
-            return true
-        } else {
-            return false
+    func setIncludedRanges(_ ranges: [TreeSitterTextRange]) -> Bool {
+        let rawRanges = ranges.map { $0.rawValue }
+        return rawRanges.withUnsafeBufferPointer { rangesPointer in
+            return ts_parser_set_included_ranges(pointer, rangesPointer.baseAddress, UInt32(rawRanges.count))
         }
+    }
+
+    func removeAllIncludedRanges() {
+        ts_parser_set_included_ranges(pointer, nil, 0)
     }
 }

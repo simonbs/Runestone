@@ -14,7 +14,7 @@ public enum TreeSitterTextEncoding {
 }
 
 public extension TreeSitterTextEncoding {
-    var tsEncoding: TSInputEncoding {
+    var treeSitterEncoding: TSInputEncoding {
         switch self {
         case .utf8:
             return TSInputEncodingUTF8

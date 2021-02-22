@@ -293,6 +293,7 @@ final class TextInputView: UIView, UITextInput {
     var gutterContainerView: UIView {
         return layoutManager.gutterContainerView
     }
+    private(set) var lineManager = LineManager()
 
     // MARK: - Private
     private var _string = NSMutableString()
@@ -307,7 +308,6 @@ final class TextInputView: UIView, UITextInput {
     }
     private let timedUndoManager = TimedUndoManager()
     private var markedRange: NSRange?
-    private var lineManager = LineManager()
     private let layoutManager: LayoutManager
     private var parsedLine: ParsedLine?
     private var floatingCaretView: FloatingCaretView?
@@ -845,12 +845,6 @@ extension TextInputView: TreeSitterLanguageModeDeleage {
             parsedLine = nil
             return nil
         }
-    }
-
-    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, linePositionAt byteOffset: ByteCount) -> LinePosition? {
-        let string = self.string as String
-        let location = string.location(from: byteOffset)
-        return linePosition(at: location)
     }
 
     private func bytes(at byteIndex: ByteCount, in parsedLine: ParsedLine) -> [Int8]? {
