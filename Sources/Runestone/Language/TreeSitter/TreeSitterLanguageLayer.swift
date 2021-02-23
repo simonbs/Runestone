@@ -19,6 +19,13 @@ final class TreeSitterLanguageLayer {
     private let parser: TreeSitterParser
     private var childLanguageLayers: [TreeSitterLanguageLayer] = []
     private var tree: TreeSitterTree?
+    private var isEmpty: Bool {
+        if let rootNode = rootNode {
+            return rootNode.endByte - rootNode.startByte <= ByteCount(0)
+        } else {
+            return true
+        }
+    }
 
     init(language: TreeSitterLanguage, parser: TreeSitterParser) {
         self.language = language
@@ -31,11 +38,14 @@ final class TreeSitterLanguageLayer {
     }
 
     func apply(_ edit: TreeSitterInputEdit) -> LanguageModeTextChangeResult {
+        // Apply edit to tree.
         let oldTree = tree
         tree?.apply(edit)
         prepareParserToParse(from: rootNode)
         tree = parser.parse(oldTree: tree)
+        // Apply edit to injected languages.
         var lineIndices = applyEditToChildren(edit)
+        // Gather changed line indices.
         if let oldTree = oldTree, let newTree = tree {
             let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
             for changedRange in changedRanges {
@@ -44,6 +54,7 @@ final class TreeSitterLanguageLayer {
                 }
             }
         }
+        updateChildLayers()
         return LanguageModeTextChangeResult(changedLineIndices: lineIndices)
     }
 
@@ -59,7 +70,12 @@ final class TreeSitterLanguageLayer {
         captureQueryCursor.setQueryRange(range)
         captureQueryCursor.execute()
         let captures = captureQueryCursor.allCaptures()
-        return captures + childCaptures
+        let allCaptures = (captures + childCaptures).sorted(by: TreeSitterCapture.locationAndLengthSorting)
+        // We ignore all captures with a predicate. We should handle these at some point.
+        let filteredCaptures = allCaptures.filter { capture in
+            return capture.predicates.isEmpty
+        }
+        return filteredCaptures
     }
 }
 
@@ -88,6 +104,45 @@ private extension TreeSitterLanguageLayer {
                 }
             }
         }
+    }
+
+    private func updateChildLayers() {
+        guard let injectionsQuery = language.injectionsQuery, let node = tree?.rootNode else {
+            childLanguageLayers.removeAll()
+            return
+        }
+        let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
+        injectionsQueryCursor.execute()
+        let captures = injectionsQueryCursor.allCaptures()
+        let injectionByteRanges = captures.map(\.byteRange)
+        // Remove language layers for ranges that no longer contain an injected language.
+        childLanguageLayers.removeAll(where: { childLanguageLayer in
+            if let rootNode = childLanguageLayer.rootNode {
+                return !injectionByteRanges.contains(rootNode.byteRange)
+            } else {
+                return true
+            }
+        })
+        // Insert language layers for new captures.
+        for capture in captures {
+            let childExists = childLanguageLayers.contains(where: { $0.rootNode?.byteRange == capture.node.byteRange })
+            if !childExists, let childLanguageLayer = insertLanguageLayer(forInjectionCapture: capture) {
+                childLanguageLayer.prepareParserToParse(from: capture.node)
+                childLanguageLayer.tree = parser.parse(oldTree: nil)
+            }
+        }
+        // Avoid having multiple layers span the same byte range.
+        var seenByteRanges: Set<ByteRange> = []
+        var resultingChildLanguageLayers: [TreeSitterLanguageLayer] = []
+        for childLanguageLayer in childLanguageLayers {
+            if let rootNode = childLanguageLayer.rootNode {
+                if !seenByteRanges.contains(rootNode.byteRange) {
+                    seenByteRanges.insert(rootNode.byteRange)
+                    resultingChildLanguageLayers.append(childLanguageLayer)
+                }
+            }
+        }
+        childLanguageLayers = resultingChildLanguageLayers
     }
 
     private func applyEditToChildren(_ edit: TreeSitterInputEdit) -> Set<Int> {
@@ -125,5 +180,17 @@ private extension TreeSitterLanguageLayer {
 extension TreeSitterLanguageLayer: CustomDebugStringConvertible {
     var debugDescription: String {
         return "[TreeSitterLanguageLayer node=\(rootNode?.debugDescription ?? "") childLanguageLayers=\(childLanguageLayers)]"
+    }
+}
+
+private extension TreeSitterCapture {
+    static func locationAndLengthSorting(_ lhs: TreeSitterCapture, _ rhs: TreeSitterCapture) -> Bool {
+        if lhs.byteRange.location < rhs.byteRange.location {
+            return true
+        } else if lhs.byteRange.location > rhs.byteRange.location {
+            return false
+        } else {
+            return lhs.byteRange.length > rhs.byteRange.length
+        }
     }
 }
