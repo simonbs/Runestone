@@ -35,6 +35,9 @@ final class TreeSitterParser {
     }
 
     func parse(_ string: String, oldTree: TreeSitterTree? = nil) -> TreeSitterTree? {
+        guard !string.isEmpty else {
+            return nil
+        }
         let byteCount = UInt32(string.byteCount.value)
         let newTreePointer = string.withCString { stringPointer in
             return ts_parser_parse_string(pointer, oldTree?.pointer, stringPointer, byteCount)
