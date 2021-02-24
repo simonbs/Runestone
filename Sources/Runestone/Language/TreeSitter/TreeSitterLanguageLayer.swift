@@ -23,6 +23,7 @@ final class TreeSitterLanguageLayer {
     private let language: TreeSitterLanguage
     private let parser: TreeSitterParser
     private var childLanguageLayers: [TreeSitterLanguageLayer] = []
+    private weak var parentLanguageLayer: TreeSitterLanguageLayer?
     private var tree: TreeSitterTree?
     private var isEmpty: Bool {
         if let rootNode = rootNode {
@@ -48,8 +49,12 @@ final class TreeSitterLanguageLayer {
         tree?.apply(edit)
         prepareParserToParse(from: rootNode)
         tree = parser.parse(oldTree: tree)
+        var lineIndices: Set<Int> = []
         // Apply edit to injected languages.
-        var lineIndices = applyEditToChildren(edit)
+        for childLanguageLayer in childLanguageLayers {
+            let childResult = childLanguageLayer.apply(edit)
+            lineIndices.formUnion(childResult.changedLineIndices)
+        }
         // Gather changed line indices.
         if let oldTree = oldTree, let newTree = tree {
             let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
@@ -89,7 +94,7 @@ private extension TreeSitterLanguageLayer {
 
     private func prepareParserToParse(from rootNode: TreeSitterNode?) {
         parser.language = language.languagePointer
-        if let node = rootNode {
+        if let node = rootNode, parentLanguageLayer != nil {
             let range = TreeSitterTextRange(startPoint: node.startPoint, endPoint: node.endPoint, startByte: node.startByte, endByte: node.endByte)
             parser.setIncludedRanges([range])
         } else {
@@ -152,15 +157,6 @@ private extension TreeSitterLanguageLayer {
         childLanguageLayers = resultingChildLanguageLayers
     }
 
-    private func applyEditToChildren(_ edit: TreeSitterInputEdit) -> Set<Int> {
-        var lineIndices: Set<Int> = []
-        for childLanguageLayer in childLanguageLayers {
-            let childResult = childLanguageLayer.apply(edit)
-            lineIndices.formUnion(childResult.changedLineIndices)
-        }
-        return lineIndices
-    }
-
     private func validCaptures(in matches: [TreeSitterQueryMatch]) -> [TreeSitterCapture] {
         var result: [TreeSitterCapture] = []
         for match in matches {
@@ -184,6 +180,7 @@ private extension TreeSitterLanguageLayer {
         }
         let childLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser)
         childLanguageLayer.delegate = self
+        childLanguageLayer.parentLanguageLayer = self
         childLanguageLayers.append(childLanguageLayer)
         return childLanguageLayer
     }
