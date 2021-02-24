@@ -583,7 +583,8 @@ private extension EditorTextView {
             let isBouncingAtLineEnd = contentOffset.x > contentSize.width - frame.size.width + contentInset.right
             let isBouncingHorizontally = isBouncingAtGutter || isBouncingAtLineEnd
             let isCriticalUpdate = contentOffset.y > contentSize.height - frame.height * 1.5
-            if !isBouncingHorizontally || isCriticalUpdate {
+            let isScrolling = isDragging || isDecelerating
+            if !isBouncingHorizontally || isCriticalUpdate || !isScrolling {
                 hasPendingContentSizeUpdate = false
                 contentSize = textInputView.contentSize
                 setNeedsLayout()
