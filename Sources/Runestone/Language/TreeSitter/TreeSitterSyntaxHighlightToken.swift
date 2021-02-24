@@ -1,5 +1,5 @@
 //
-//  SyntaxHighlightToken.swift
+//  TreeSitterSyntaxHighlightToken.swift
 //  
 //
 //  Created by Simon Støvring on 22/01/2021.
@@ -7,7 +7,7 @@
 
 import UIKit
 
-final class SyntaxHighlightToken {
+final class TreeSitterSyntaxHighlightToken {
     let range: ByteRange
     let textColor: UIColor?
     let font: UIFont?
@@ -24,14 +24,14 @@ final class SyntaxHighlightToken {
     }
 }
 
-extension SyntaxHighlightToken: Equatable {
-    static func == (lhs: SyntaxHighlightToken, rhs: SyntaxHighlightToken) -> Bool {
+extension TreeSitterSyntaxHighlightToken: Equatable {
+    static func == (lhs: TreeSitterSyntaxHighlightToken, rhs: TreeSitterSyntaxHighlightToken) -> Bool {
         return lhs.range == rhs.range && lhs.textColor == rhs.textColor && lhs.font == rhs.font
     }
 }
 
-extension SyntaxHighlightToken {
-    static func locationSort(_ lhs: SyntaxHighlightToken, _ rhs: SyntaxHighlightToken) -> Bool {
+extension TreeSitterSyntaxHighlightToken {
+    static func locationSort(_ lhs: TreeSitterSyntaxHighlightToken, _ rhs: TreeSitterSyntaxHighlightToken) -> Bool {
         if lhs.range.location != rhs.range.location {
             return lhs.range.location < rhs.range.location
         } else {
@@ -40,8 +40,8 @@ extension SyntaxHighlightToken {
     }
 }
 
-extension SyntaxHighlightToken: CustomDebugStringConvertible {
+extension TreeSitterSyntaxHighlightToken: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[SyntaxHighlightToken: \(range.location) - \(range.length)]"
+        return "[TreeSitterSyntaxHighlightToken: \(range.location) - \(range.length)]"
     }
 }

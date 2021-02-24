@@ -7,11 +7,11 @@
 
 import TreeSitter
 
-final class TextPoint {
-    public var row: CUnsignedInt {
+final class TreeSitterTextPoint {
+    var row: UInt32 {
         return rawValue.row
     }
-    var column: CUnsignedInt {
+    var column: UInt32 {
         return rawValue.column
     }
 
@@ -21,13 +21,13 @@ final class TextPoint {
         self.rawValue = point
     }
 
-    init(row: CUnsignedInt, column: CUnsignedInt) {
+    init(row: UInt32, column: UInt32) {
         self.rawValue = TSPoint(row: row, column: column)
     }
 }
 
-extension TextPoint: CustomDebugStringConvertible {
+extension TreeSitterTextPoint: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TextPoint row=\(row) column=\(column)]"
+        return "[TreeSitterTextPoint row=\(row) column=\(column)]"
     }
 }

@@ -90,7 +90,6 @@ final class TextInputView: UIView, UITextInput {
         didSet {
             lineManager.estimatedLineHeight = estimatedLineHeight
             layoutManager.theme = theme
-            syntaxHighlighter.theme = theme
         }
     }
     var showLineNumbers: Bool {
@@ -294,15 +293,21 @@ final class TextInputView: UIView, UITextInput {
     var gutterContainerView: UIView {
         return layoutManager.gutterContainerView
     }
+    private(set) var lineManager = LineManager()
 
     // MARK: - Private
     private var _string = NSMutableString()
-    private var _language: Language?
+    private var languageMode: LanguageMode = PlainTextLanguageMode() {
+        didSet {
+            if languageMode !== oldValue {
+                if let treeSitterLanguageMode = languageMode as? TreeSitterLanguageMode {
+                    treeSitterLanguageMode.delegate = self
+                }
+            }
+        }
+    }
     private let timedUndoManager = TimedUndoManager()
-    private let operationQueue = OperationQueue()
     private var markedRange: NSRange?
-    private var lineManager = LineManager()
-    private let syntaxHighlighter = SyntaxHighlighter()
     private let layoutManager: LayoutManager
     private var parsedLine: ParsedLine?
     private var floatingCaretView: FloatingCaretView?
@@ -317,20 +322,16 @@ final class TextInputView: UIView, UITextInput {
         }
         return nil
     }
-    private var latestEncoding: TextEncoding = .utf8
 
     // MARK: - Lifecycle
     init() {
-        operationQueue.name = "Runestone"
-        operationQueue.qualityOfService = .userInitiated
-        layoutManager = LayoutManager(lineManager: lineManager, syntaxHighlighter: syntaxHighlighter, operationQueue: operationQueue)
+        layoutManager = LayoutManager(lineManager: lineManager, languageMode: languageMode)
         super.init(frame: .zero)
         lineManager.delegate = self
         lineManager.estimatedLineHeight = estimatedLineHeight
         layoutManager.delegate = self
         layoutManager.textInputView = self
         layoutManager.theme = theme
-        syntaxHighlighter.theme = theme
     }
 
     required init?(coder: NSCoder) {
@@ -394,15 +395,14 @@ final class TextInputView: UIView, UITextInput {
     func setState(_ state: EditorState) {
         _string = NSMutableString(string: state.text)
         theme = state.theme
+        languageMode = state.languageMode
         lineManager = state.lineManager
         lineManager.delegate = self
         lineManager.estimatedLineHeight = estimatedLineHeight
-        syntaxHighlighter.parser = state.parser
-        syntaxHighlighter.parser?.delegate = self
+        layoutManager.languageMode = state.languageMode
         layoutManager.lineManager = state.lineManager
         layoutManager.invalidateContentSize()
         layoutManager.updateGutterWidth()
-        latestEncoding = state.parser?.encoding ?? .utf8
     }
 
     func moveCaret(to point: CGPoint) {
@@ -414,43 +414,22 @@ final class TextInputView: UIView, UITextInput {
         }
     }
 
-    func setLanguage(_ language: Language?, completion: ((Bool) -> Void)? = nil) {
-        setLanguage(language, using: latestEncoding, completion: completion)
-    }
-
-    func setLanguage(_ language: Language?, using encoding: TextEncoding, completion: ((Bool) -> Void)? = nil) {
-        operationQueue.cancelAllOperations()
-        _language = language
-        let operation = BlockOperation()
-        operation.addExecutionBlock { [weak operation, weak self] in
-            if let self = self, let operation = operation, !operation.isCancelled {
-                self.latestEncoding = encoding
-                self.parse(with: language, using: encoding)
-                DispatchQueue.main.sync {
-                    if !operation.isCancelled {
-                        self.layoutManager.invalidateLines()
-                        self.layoutManager.setNeedsLayout()
-                        self.setNeedsLayout()
-                        completion?(true)
-                    } else {
-                        completion?(false)
-                    }
-                }
-            } else {
-                DispatchQueue.main.sync {
-                    completion?(false)
-                }
+    func setLanguageMode(_ languageMode: LanguageMode?, completion: ((Bool) -> Void)? = nil) {
+        let newLanguageMode = languageMode ?? PlainTextLanguageMode()
+        self.languageMode = newLanguageMode
+        layoutManager.languageMode = newLanguageMode
+        newLanguageMode.parse(string as String) { [weak self] finished in
+            if finished {
+                self?.layoutManager.invalidateLines()
+                self?.layoutManager.setNeedsLayout()
+                self?.setNeedsLayout()
             }
+            completion?(finished)
         }
-        operationQueue.addOperation(operation)
     }
 
-    func node(at location: Int) -> Node? {
-        let parser = syntaxHighlighter.parser
-        let rootNode = parser?.latestTree?.rootNode
-        let byteOffset = (_string as String).byteOffset(at: location)
-        let byteRange = ByteRange(location: byteOffset, length: ByteCount(0))
-        return rootNode?.namedDescendant(in: byteRange)
+    func tokenType(at location: Int) -> String? {
+        return languageMode.tokenType(at: location)
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
@@ -460,21 +439,6 @@ final class TextInputView: UIView, UITextInput {
             timedUndoManager.endUndoGrouping()
         }
         return result
-    }
-}
-
-// MARK: - Language
-private extension TextInputView {
-    private func parse(with language: Language?, using encoding: TextEncoding) {
-        let parser = Parser(encoding: encoding)
-        parser.delegate = self
-        parser.reset()
-        parser.language = language
-        if language != nil {
-            parser.parse(string as String)
-        }
-        syntaxHighlighter.parser = parser
-        syntaxHighlighter.reset()
     }
 }
 
@@ -621,53 +585,32 @@ extension TextInputView {
         }
     }
 
-    private func replaceCharacters(in range: NSRange, with newString: NSString) {
+    private func replaceCharacters(in range: NSRange, with nsNewString: NSString) {
         inputDelegate?.textWillChange(self)
         let byteRange = self.byteRange(from: range)
-        let swiftNewString = newString as String
-        let bytesRemoved = byteRange.length
-        let bytesAdded = swiftNewString.byteCount
-        var editedLines: Set<DocumentLineNode> = []
+        let newString = nsNewString as String
         let oldEndLinePosition = lineManager.linePosition(at: range.location + range.length)!
-        string.replaceCharacters(in: range, with: swiftNewString)
+        string.replaceCharacters(in: range, with: newString)
+        var editedLines: Set<DocumentLineNode> = []
         lineManager.removeCharacters(in: range, editedLines: &editedLines)
-        lineManager.insert(newString, at: range.location, editedLines: &editedLines)
+        lineManager.insert(nsNewString, at: range.location, editedLines: &editedLines)
         let startLinePosition = lineManager.linePosition(at: range.location)!
-        let newEndLinePosition = lineManager.linePosition(at: range.location + newString.length)!
-        let edit = InputEdit(
-            startByte: byteRange.location,
-            oldEndByte: byteRange.location + bytesRemoved,
-            newEndByte: byteRange.location + bytesAdded,
-            startPoint: TextPoint(startLinePosition),
-            oldEndPoint: TextPoint(oldEndLinePosition),
-            newEndPoint: TextPoint(newEndLinePosition))
-        let parser = syntaxHighlighter.parser
-        let oldTree = parser?.latestTree
-        parser?.apply(edit)
-        parser?.parse()
-        // Find lines changed by Tree-sitter and make sure we rehighlight them
-        if let oldTree = oldTree, let newTree = parser?.latestTree {
-            let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
-            let changedLines = lines(in: changedRanges)
-            editedLines.formUnion(changedLines)
-        }
+        let newEndLinePosition = lineManager.linePosition(at: range.location + nsNewString.length)!
+        let textChange = LanguageModeTextChange(
+            byteRange: byteRange,
+            newString: newString,
+            oldEndLinePosition: oldEndLinePosition,
+            startLinePosition: startLinePosition,
+            newEndLinePosition: newEndLinePosition)
+        let result = languageMode.textDidChange(textChange)
+        let languageModeChangedLines = result.changedLineIndices.map { lineManager.line(atIndex: $0) }
+        editedLines.formUnion(languageModeChangedLines)
         layoutManager.typeset(editedLines)
         layoutManager.syntaxHighlight(editedLines)
         layoutManager.setNeedsLayout()
         setNeedsLayout()
         inputDelegate?.textDidChange(self)
         delegate?.textInputViewDidChange(self)
-    }
-
-    private func lines(in changedRanges: [TextRange]) -> Set<DocumentLineNode> {
-        var lines: Set<DocumentLineNode> = []
-        for changedRange in changedRanges {
-            for row in changedRange.startPoint.row ... changedRange.endPoint.row {
-                let line = lineManager.line(atIndex: Int(row))
-                lines.insert(line)
-            }
-        }
-        return lines
     }
 
     private func byteRange(from range: NSRange) -> ByteRange {
@@ -881,9 +824,13 @@ extension TextInputView: LineManagerDelegate {
     }
 }
 
-// MARK: - ParserDelegate
-extension TextInputView: ParserDelegate {
-    func parser(_ parser: Parser, bytesAt byteIndex: ByteCount) -> [Int8]? {
+// MARK: - TreeSitterLanguageModeDeleage
+extension TextInputView: TreeSitterLanguageModeDeleage {
+    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, byteOffsetAt location: Int) -> ByteCount {
+        return (_string as String).byteOffset(at: location)
+    }
+
+    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, bytesAt byteIndex: ByteCount) -> [Int8]? {
         // Speed up parsing by using the line we recently parsed bytes in when possible.
         if let parsedLine = parsedLine, byteIndex >= parsedLine.startByte && byteIndex < parsedLine.endByte {
             return bytes(at: byteIndex, in: parsedLine)
@@ -898,6 +845,10 @@ extension TextInputView: ParserDelegate {
             parsedLine = nil
             return nil
         }
+    }
+
+    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, stringIn byteRange: ByteRange) -> String {
+        return (_string as String).substring(with: byteRange)
     }
 
     private func bytes(at byteIndex: ByteCount, in parsedLine: ParsedLine) -> [Int8]? {

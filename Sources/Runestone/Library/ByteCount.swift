@@ -7,66 +7,66 @@
 
 import Foundation
 
-struct ByteCount: Hashable {
-    private(set) var value: Int
+public struct ByteCount: Hashable {
+    public private(set) var value: Int
 
-    init(_ value: Int) {
+    public init(_ value: Int) {
         self.value = value
     }
 
-    init(_ value: UInt32) {
+    public init(_ value: UInt32) {
         self.value = Int(value)
     }
 }
 
 extension ByteCount: Comparable {
-    static func < (lhs: ByteCount, rhs: ByteCount) -> Bool {
+    public static func < (lhs: ByteCount, rhs: ByteCount) -> Bool {
         return lhs.value < rhs.value
     }
     
-    static func <= (lhs: ByteCount, rhs: ByteCount) -> Bool {
+    public static func <= (lhs: ByteCount, rhs: ByteCount) -> Bool {
         return lhs.value <= rhs.value
     }
 
-    static func >= (lhs: ByteCount, rhs: ByteCount) -> Bool {
+    public static func >= (lhs: ByteCount, rhs: ByteCount) -> Bool {
         return lhs.value >= rhs.value
     }
 
-    static func > (lhs: ByteCount, rhs: ByteCount) -> Bool {
+    public static func > (lhs: ByteCount, rhs: ByteCount) -> Bool {
         return lhs.value > rhs.value
     }
 }
 
 extension ByteCount: AdditiveArithmetic {
-    static var zero: ByteCount {
+    public static var zero: ByteCount {
         return ByteCount(0)
     }
 
-    static func - (lhs: ByteCount, rhs: ByteCount) -> ByteCount {
+    public static func - (lhs: ByteCount, rhs: ByteCount) -> ByteCount {
         return ByteCount(lhs.value - rhs.value)
     }
 
-    static func -= (lhs: inout ByteCount, rhs: ByteCount) {
+    public static func -= (lhs: inout ByteCount, rhs: ByteCount) {
         lhs.value -= rhs.value
     }
 
-    static func + (lhs: ByteCount, rhs: ByteCount) -> ByteCount {
+    public static func + (lhs: ByteCount, rhs: ByteCount) -> ByteCount {
         return ByteCount(lhs.value + rhs.value)
     }
 
-    static func += (lhs: inout ByteCount, rhs: ByteCount) {
+    public static func += (lhs: inout ByteCount, rhs: ByteCount) {
         lhs.value += rhs.value
     }
 }
 
 extension ByteCount: CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "\(value)"
     }
 }
 
 extension ByteCount: CustomDebugStringConvertible {
-    var debugDescription: String {
+    public var debugDescription: String {
         return "\(value)"
     }
 }

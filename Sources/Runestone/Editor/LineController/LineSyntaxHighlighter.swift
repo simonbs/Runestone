@@ -7,41 +7,29 @@
 
 import Foundation
 
-enum LineSyntaxHighlighterError: LocalizedError {
-    case failedCreatingCaptures
-    case cancelled
-    case operationDeallocated
+final class LineSyntaxHighlighterInput {
+    let attributedString: NSMutableAttributedString
+    let byteRange: ByteRange
 
-    var errorDescription: String? {
-        switch self {
-        case .failedCreatingCaptures:
-            return "Failed creating captures"
-        case .cancelled:
-            return "Operation was cancelled"
-        case .operationDeallocated:
-            return "The operation was deallocated"
-        }
+    init(attributedString: NSMutableAttributedString, byteRange: ByteRange) {
+        self.attributedString = attributedString
+        self.byteRange = byteRange
     }
 }
 
-final class LineSyntaxHighlighter {
-    typealias AsyncCallback = (Result<Void, LineSyntaxHighlighterError>) -> Void
+protocol LineSyntaxHighlighter: AnyObject {
+    typealias AsyncCallback = (Result<Void, Error>) -> Void
+    var theme: EditorTheme { get set }
+    var canHighlight: Bool { get }
+    func setDefaultAttributes(on input: LineSyntaxHighlighterInput)
+    func syntaxHighlight(_ input: LineSyntaxHighlighterInput)
+    func syntaxHighlight(_ input: LineSyntaxHighlighterInput, completion: @escaping AsyncCallback)
+    func cancel()
+}
 
-    var theme: EditorTheme = DefaultEditorTheme()
-    var canHighlight: Bool {
-        return syntaxHighlighter.canHighlight
-    }
-
-    private let syntaxHighlighter: SyntaxHighlighter
-    private let queue: OperationQueue
-    private var currentOperation: Operation?
-
-    init(syntaxHighlighter: SyntaxHighlighter, queue: OperationQueue) {
-        self.syntaxHighlighter = syntaxHighlighter
-        self.queue = queue
-    }
-
-    func setDefaultAttributes(on attributedString: NSMutableAttributedString) {
+extension LineSyntaxHighlighter {
+    func setDefaultAttributes(on input: LineSyntaxHighlighterInput) {
+        let attributedString = input.attributedString
         let entireRange = NSRange(location: 0, length: attributedString.length)
         let attributes: [NSAttributedString.Key: Any] = [.foregroundColor: theme.textColor, .font: theme.font]
         attributedString.beginEditing()
@@ -49,80 +37,6 @@ final class LineSyntaxHighlighter {
         attributedString.removeAttribute(.font, range: entireRange)
         attributedString.removeAttribute(.foregroundColor, range: entireRange)
         attributedString.setAttributes(attributes, range: entireRange)
-        attributedString.endEditing()
-    }
-
-    func syntaxHighlight(_ attributedString: NSMutableAttributedString, documentByteRange: ByteRange) {
-        cancelHighlightOperation()
-        if case let .success(captures) = syntaxHighlighter.captures(in: documentByteRange) {
-            let tokens = syntaxHighlighter.tokens(for: captures, localTo: documentByteRange)
-            setAttributes(for: tokens, on: attributedString)
-        }
-    }
-
-    func syntaxHighlight(_ attributedString: NSMutableAttributedString, documentByteRange: ByteRange, completion: @escaping AsyncCallback) {
-        cancelHighlightOperation()
-        let operation = BlockOperation()
-        operation.addExecutionBlock { [weak operation, weak self] in
-            guard let operation = operation, let self = self else {
-                DispatchQueue.main.sync {
-                    completion(.failure(.operationDeallocated))
-                }
-                return
-            }
-            guard !operation.isCancelled else {
-                DispatchQueue.main.sync {
-                    completion(.failure(.cancelled))
-                }
-                return
-            }
-            if case let .success(captures) = self.syntaxHighlighter.captures(in: documentByteRange) {
-                if !operation.isCancelled {
-                    DispatchQueue.main.sync {
-                        if !operation.isCancelled {
-                            let tokens = self.syntaxHighlighter.tokens(for: captures, localTo: documentByteRange)
-                            self.setAttributes(for: tokens, on: attributedString)
-                            completion(.success(()))
-                        } else {
-                            completion(.failure(.cancelled))
-                        }
-                    }
-                } else {
-                    DispatchQueue.main.sync {
-                        completion(.failure(.cancelled))
-                    }
-                }
-            } else {
-                DispatchQueue.main.sync {
-                    completion(.failure(.failedCreatingCaptures))
-                }
-            }
-        }
-        currentOperation = operation
-        queue.addOperation(operation)
-    }
-
-    func cancelHighlightOperation() {
-        currentOperation?.cancel()
-        currentOperation = nil
-    }
-}
-
-private extension LineSyntaxHighlighter {
-    private func setAttributes(for tokens: [SyntaxHighlightToken], on attributedString: NSMutableAttributedString) {
-        attributedString.beginEditing()
-        let string = attributedString.string
-        for token in tokens {
-            let range = string.range(from: token.range)
-            var attributes: [NSAttributedString.Key: Any] = [
-                .foregroundColor: token.textColor ?? theme.textColor,
-                .font: token.font ?? theme.font
-            ]
-            if let shadow = token.shadow {
-                attributes[.shadow] = shadow
-            }
-            attributedString.setAttributes(attributes, range: range)
-        }
         attributedString.endEditing()
     }
 }

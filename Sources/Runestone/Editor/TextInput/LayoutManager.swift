@@ -47,6 +47,17 @@ final class LayoutManager {
     var contentSize: CGSize {
         return CGSize(width: contentWidth, height: contentHeight)
     }
+    var languageMode: LanguageMode {
+        didSet {
+            if languageMode !== oldValue {
+                for (_, lineController) in lineControllers {
+                    lineController.syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
+                    lineController.syntaxHighlighter?.theme = theme
+                    lineController.invalidate()
+                }
+            }
+        }
+    }
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
             if theme !== oldValue {
@@ -57,7 +68,11 @@ final class LayoutManager {
                 invisibleCharacterConfiguration.textColor = theme.invisibleCharactersColor
                 gutterSelectionBackgroundView.backgroundColor = theme.selectedLinesGutterBackgroundColor
                 lineSelectionBackgroundView.backgroundColor = theme.selectedLineBackgroundColor
-                invalidateLines()
+                for (_, lineController) in lineControllers {
+                    lineController.estimatedLineHeight = theme.font.lineHeight
+                    lineController.syntaxHighlighter?.theme = theme
+                    lineController.invalidate()
+                }
             }
         }
     }
@@ -207,8 +222,6 @@ final class LayoutManager {
     }
 
     // MARK: - Rendering
-    private let operationQueue: OperationQueue
-    private let syntaxHighlighter: SyntaxHighlighter
     private var lineControllers: [DocumentLineNodeID: LineController] = [:]
     private var needsLayout = false
     private var needsLayoutSelection = false
@@ -233,10 +246,9 @@ final class LayoutManager {
         }
     }
 
-    init(lineManager: LineManager, syntaxHighlighter: SyntaxHighlighter, operationQueue: OperationQueue) {
+    init(lineManager: LineManager, languageMode: LanguageMode) {
         self.lineManager = lineManager
-        self.syntaxHighlighter = syntaxHighlighter
-        self.operationQueue = operationQueue
+        self.languageMode = languageMode
         self.linesContainerView.isUserInteractionEnabled = false
         self.lineNumbersContainerView.isUserInteractionEnabled = false
         self.gutterContainerView.isUserInteractionEnabled = false
@@ -262,7 +274,6 @@ final class LayoutManager {
         needsLayout = false
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        syntaxHighlighter.prepare()
         layoutGutter()
         layoutSelection()
         updateLineNumberColors()
@@ -512,7 +523,7 @@ extension LayoutManager {
         // Setup the line
         let lineController = getLineController(for: line)
         lineController.lineView = lineView
-        lineController.theme = theme
+        lineController.estimatedLineHeight = theme.font.lineHeight
         lineController.lineHeightMultiplier = lineHeightMultiplier
         lineController.constrainingWidth = maximumLineWidth
         lineController.invisibleCharacterConfiguration = invisibleCharacterConfiguration
@@ -607,10 +618,12 @@ extension LayoutManager {
         if let cachedLineController = lineControllers[line.id] {
             return cachedLineController
         } else {
-            let lineController = LineController(syntaxHighlighter: syntaxHighlighter, syntaxHighlightQueue: operationQueue, line: line)
+            let lineController = LineController(line: line)
             lineController.delegate = self
-            lineController.theme = theme
+            lineController.estimatedLineHeight = theme.font.lineHeight
             lineController.lineHeightMultiplier = lineHeightMultiplier
+            lineController.syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
+            lineController.syntaxHighlighter?.theme = theme
             lineControllers[line.id] = lineController
             return lineController
         }

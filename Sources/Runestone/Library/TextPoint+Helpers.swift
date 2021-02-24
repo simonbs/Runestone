@@ -7,7 +7,7 @@
 
 import Foundation
 
-extension TextPoint {
+extension TreeSitterTextPoint {
     convenience init(_ linePosition: LinePosition) {
         self.init(row: UInt32(linePosition.lineNumber), column: UInt32(linePosition.column))
     }

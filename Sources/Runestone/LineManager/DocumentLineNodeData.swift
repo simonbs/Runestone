@@ -5,10 +5,10 @@
 //  Created by Simon Støvring on 09/01/2021.
 //
 
-import Foundation
 import CoreGraphics
+import Foundation
 
-final class DocumentLineNodeData {
+public final class DocumentLineNodeData {
     var delimiterLength = 0 {
         didSet {
             assert(delimiterLength >= 0 && delimiterLength <= 2)

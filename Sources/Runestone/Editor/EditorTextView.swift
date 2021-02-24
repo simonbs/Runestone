@@ -5,8 +5,8 @@
 //  Created by Simon Støvring on 04/01/2021.
 //
 
-import UIKit
 import CoreText
+import UIKit
 
 public protocol EditorTextViewDelegate: AnyObject {
     func editorTextViewShouldBeginEditing(_ textView: EditorTextView) -> Bool
@@ -61,7 +61,7 @@ public final class EditorTextView: UIScrollView {
         }
         set {
             textInputView.string = NSMutableString(string: newValue)
-            contentSize = preferredContentSize
+            contentSize = textInputView.contentSize
         }
     }
     /// Colors and fonts to be used by the editor.
@@ -357,12 +357,6 @@ public final class EditorTextView: UIScrollView {
         }
     }
     private var hasPendingContentSizeUpdate = false
-    private var preferredContentSize: CGSize {
-        // Ensure the content size is as minimum as big as the frame of the view.
-        let width = max(textInputView.contentSize.width, frame.width)
-        let height = max(textInputView.contentSize.height, frame.height)
-        return CGSize(width: width, height: height)
-    }
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -392,7 +386,7 @@ public final class EditorTextView: UIScrollView {
 
     public override func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
-        contentSize = preferredContentSize
+        contentSize = textInputView.contentSize
     }
 
     @discardableResult
@@ -430,7 +424,7 @@ public final class EditorTextView: UIScrollView {
     /// - Parameter state: The new state to be used by the editor.
     public func setState(_ state: EditorState) {
         textInputView.setState(state)
-        contentSize = preferredContentSize
+        contentSize = textInputView.contentSize
     }
 
     /// The line position at a location in the text. Common usages of this includes showing the line and column\
@@ -441,14 +435,18 @@ public final class EditorTextView: UIScrollView {
         return textInputView.linePosition(at: location)
     }
 
-    /// Sets the language used to highlight the content of the editor on a background thread.
-    /// This should generally be preferred over using the <code>language</code> setter.
+    /// Sets the language on a background thread.
     ///
     /// - Parameters:
-    ///   - language: The new language to be used by the parser.
+    ///   - language: The new language to be used by the editor.
     ///   - completion: Called when the content have been parsed or when parsing fails.
-    public func setLanguage(_ language: Language?, completion: ((Bool) -> Void)? = nil) {
-        textInputView.setLanguage(language, completion: completion)
+    public func setLanguage(_ language: TreeSitterLanguage?, completion: ((Bool) -> Void)? = nil) {
+        if let language = language {
+            let languageMode = TreeSitterLanguageMode(language: language)
+            textInputView.setLanguageMode(languageMode, completion: completion)
+        } else {
+            textInputView.setLanguageMode(nil, completion: completion)
+        }
     }
 
     /// Insets text at the location of the caret.
@@ -472,8 +470,7 @@ public final class EditorTextView: UIScrollView {
         return textInputView.text(in: range)
     }
 
-    /// Returns the node at the specified location in the document. This provides information about the type
-    /// of token at the location, e.g. if it's a string, a number, a keyword etc.
+    /// Returns the type of the token at the specified location in the document.
     ///
     /// This can be used with character pairs to determine if a pair should be inserted or not.
     /// For example, a character pair consisting of two quotes (") to surround a string, should probably not be
@@ -481,9 +478,9 @@ public final class EditorTextView: UIScrollView {
     ///
     /// This requires a language to be set on the editor.
     /// - Parameter location: A location in the document.
-    /// - Returns: The node at the location.
-    public func node(at location: Int) -> Node? {
-        return textInputView.node(at: location)
+    /// - Returns: The type of the token at the location.
+    public func tokenType(at location: Int) -> String? {
+        return textInputView.tokenType(at: location)
     }
 }
 
@@ -586,9 +583,10 @@ private extension EditorTextView {
             let isBouncingAtLineEnd = contentOffset.x > contentSize.width - frame.size.width + contentInset.right
             let isBouncingHorizontally = isBouncingAtGutter || isBouncingAtLineEnd
             let isCriticalUpdate = contentOffset.y > contentSize.height - frame.height * 1.5
-            if !isBouncingHorizontally || isCriticalUpdate {
+            let isScrolling = isDragging || isDecelerating
+            if !isBouncingHorizontally || isCriticalUpdate || !isScrolling {
                 hasPendingContentSizeUpdate = false
-                contentSize = preferredContentSize
+                contentSize = textInputView.contentSize
                 setNeedsLayout()
             }
         }

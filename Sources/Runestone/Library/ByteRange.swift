@@ -7,29 +7,41 @@
 
 import Foundation
 
-struct ByteRange: Hashable {
-    let location: ByteCount
-    let length: ByteCount
+public struct ByteRange: Hashable {
+    public let location: ByteCount
+    public let length: ByteCount
+    public var lowerBound: ByteCount {
+        return location
+    }
+    public var upperBound: ByteCount {
+        return location + length
+    }
 
-    init(location: ByteCount, length: ByteCount) {
+    public init(location: ByteCount, length: ByteCount) {
         self.location = location
         self.length = length
     }
 
-    init(from startByte: ByteCount, to endByte: ByteCount) {
+    public init(from startByte: ByteCount, to endByte: ByteCount) {
         self.location = startByte
         self.length = endByte - startByte
+    }
+
+    public func overlaps(_ otherRange: ByteRange) -> Bool {
+        let r1 = location ... location + length
+        let r2 = otherRange.location ... otherRange.location + otherRange.length
+        return r1.overlaps(r2)
     }
 }
 
 extension ByteRange: CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "{\(location), \(length)}"
     }
 }
 
 extension ByteRange: CustomDebugStringConvertible {
-    var debugDescription: String {
+    public var debugDescription: String {
         return "{\(location), \(length)}"
     }
 }

@@ -1,5 +1,5 @@
 //
-//  Node.swift
+//  TreeSitterNode.swift
 //  
 //
 //  Created by Simon Støvring on 05/12/2020.
@@ -7,7 +7,7 @@
 
 import TreeSitter
 
-public final class Node {
+final class TreeSitterNode {
     let rawValue: TSNode
     var expressionString: String? {
         if let str = ts_node_string(rawValue) {
@@ -18,7 +18,7 @@ public final class Node {
             return nil
         }
     }
-    public var type: String? {
+    var type: String? {
         if let str = ts_node_type(rawValue) {
             return String(cString: str)
         } else {
@@ -31,43 +31,40 @@ public final class Node {
     var endByte: ByteCount {
         return ByteCount(ts_node_end_byte(rawValue))
     }
-    var isNull: Bool {
-        return ts_node_is_null(rawValue)
+    var startPoint: TreeSitterTextPoint {
+        return TreeSitterTextPoint(ts_node_start_point(rawValue))
     }
-    var isNamed: Bool {
-        return ts_node_is_named(rawValue)
+    var endPoint: TreeSitterTextPoint {
+        return TreeSitterTextPoint(ts_node_end_point(rawValue))
     }
-    var isExtra: Bool {
-        return ts_node_is_extra(rawValue)
-    }
-    var isMissing: Bool {
-        return ts_node_is_missing(rawValue)
-    }
-    var hasError: Bool {
-        return ts_node_has_error(rawValue)
-    }
-    var childCount: uint {
-        return ts_node_child_count(rawValue)
+    var byteRange: ByteRange {
+        return ByteRange(from: startByte, to: endByte)
     }
 
     init(node: TSNode) {
         self.rawValue = node
     }
 
-    func namedDescendant(in byteRange: ByteRange) -> Node {
+    func namedDescendant(in byteRange: ByteRange) -> TreeSitterNode {
         let startOffset = UInt32(byteRange.location.value)
         let endOffset = UInt32((byteRange.location + byteRange.length).value)
         let descendantRawValue = ts_node_named_descendant_for_byte_range(rawValue, startOffset, endOffset)
-        return Node(node: descendantRawValue)
+        return TreeSitterNode(node: descendantRawValue)
     }
 }
 
-extension Node: Hashable {
-    public static func == (lhs: Node, rhs: Node) -> Bool {
+extension TreeSitterNode: Hashable {
+    static func == (lhs: TreeSitterNode, rhs: TreeSitterNode) -> Bool {
         return lhs.rawValue.id == rhs.rawValue.id
     }
 
-    public func hash(into hasher: inout Hasher) {
+    func hash(into hasher: inout Hasher) {
         hasher.combine(rawValue.id)
+    }
+}
+
+extension TreeSitterNode: CustomDebugStringConvertible {
+    var debugDescription: String {
+        return "[TreeSitterNode startByte=\(startByte) endByte=\(endByte) startPoint=\(startPoint) endPoint=\(endPoint)]"
     }
 }

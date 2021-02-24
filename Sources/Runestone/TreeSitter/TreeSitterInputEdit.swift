@@ -1,5 +1,5 @@
 //
-//  InputEdit.swift
+//  TreeSitterInputEdit.swift
 //  
 //
 //  Created by Simon Støvring on 17/12/2020.
@@ -7,21 +7,21 @@
 
 import TreeSitter
 
-final class InputEdit {
+final class TreeSitterInputEdit {
     let startByte: ByteCount
     let oldEndByte: ByteCount
     let newEndByte: ByteCount
-    let startPoint: TextPoint
-    let oldEndPoint: TextPoint
-    let newEndPoint: TextPoint
+    let startPoint: TreeSitterTextPoint
+    let oldEndPoint: TreeSitterTextPoint
+    let newEndPoint: TreeSitterTextPoint
 
     init(
         startByte: ByteCount,
         oldEndByte: ByteCount,
         newEndByte: ByteCount,
-        startPoint: TextPoint,
-        oldEndPoint: TextPoint,
-        newEndPoint: TextPoint) {
+        startPoint: TreeSitterTextPoint,
+        oldEndPoint: TreeSitterTextPoint,
+        newEndPoint: TreeSitterTextPoint) {
         self.startByte = startByte
         self.oldEndByte = oldEndByte
         self.newEndByte = newEndByte
@@ -41,9 +41,9 @@ final class InputEdit {
     }
 }
 
-extension InputEdit: CustomDebugStringConvertible {
+extension TreeSitterInputEdit: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[InputEdit startByte=\(startByte) oldEndByte=\(oldEndByte) newEndByte=\(newEndByte)"
+        return "[TreeSitterInputEdit startByte=\(startByte) oldEndByte=\(oldEndByte) newEndByte=\(newEndByte)"
             + " startPoint=\(startPoint) oldEndPoint=\(oldEndPoint) newEndPoint=\(newEndPoint)]"
     }
 }

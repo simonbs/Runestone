@@ -58,17 +58,19 @@ private extension LineRenderer {
         let lineString = string[stringRange]
         for (indexInLineFragment, substring) in lineString.enumerated() {
             let indexInLine = textRange.location + indexInLineFragment
-            let yPosition = typesetLine.yPosition + (typesetLine.scaledSize.height - typesetLine.baseSize.height) / 2
             if invisibleCharacterConfiguration.showSpaces && substring == Symbol.Character.space {
                 let xPosition = round(CTLineGetOffsetForStringIndex(typesetLine.line, indexInLine, nil))
+                let yPosition = typesetLine.yPosition + (typesetLine.scaledSize.height - typesetLine.baseSize.height) / 2
                 let point = CGPoint(x: CGFloat(xPosition), y: yPosition)
                 draw(invisibleCharacterConfiguration.spaceSymbol, at: point)
             } else if invisibleCharacterConfiguration.showTabs && substring == Symbol.Character.tab {
                 let xPosition = round(CTLineGetOffsetForStringIndex(typesetLine.line, indexInLine, nil))
+                let yPosition = typesetLine.yPosition + (typesetLine.scaledSize.height - typesetLine.baseSize.height) / 2
                 let point = CGPoint(x: CGFloat(xPosition), y: yPosition)
                 draw(invisibleCharacterConfiguration.tabSymbol, at: point)
             } else if invisibleCharacterConfiguration.showLineBreaks && substring == Symbol.Character.lineFeed || substring == Symbol.Character.carriageReturnLineFeed {
                 let xPosition = round(CTLineGetTypographicBounds(typesetLine.line, nil, nil, nil))
+                let yPosition = typesetLine.yPosition + (typesetLine.scaledSize.height - typesetLine.baseSize.height) / 2
                 let point = CGPoint(x: CGFloat(xPosition), y: yPosition)
                 draw(invisibleCharacterConfiguration.lineBreakSymbol, at: point)
             }
