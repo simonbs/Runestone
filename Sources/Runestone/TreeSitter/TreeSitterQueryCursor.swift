@@ -36,23 +36,26 @@ final class TreeSitterQueryCursor {
         }
     }
 
-    func allCaptures() -> [TreeSitterCapture] {
+    func allMatches() -> [TreeSitterQueryMatch] {
         guard haveExecuted else {
             fatalError("Cannot get captures of a query that has not been executed.")
         }
         let matchPointer = UnsafeMutablePointer<TSQueryMatch>.allocate(capacity: 1)
         let captureIndex = UnsafeMutablePointer<UInt32>.allocate(capacity: 1)
-        var result: [TreeSitterNode: TreeSitterCapture] = [:]
+        var result: [TreeSitterQueryMatch] = []
         while ts_query_cursor_next_capture(pointer, matchPointer, captureIndex) {
-            for i in 0 ..< matchPointer.pointee.capture_count {
-                let capture = matchPointer.pointee.captures[Int(i)]
+            let captureCount = Int(matchPointer.pointee.capture_count)
+            let captures: [TreeSitterCapture] = (0 ..< captureCount).map { i in
+                let capture = matchPointer.pointee.captures[i]
                 let patternIndex = matchPointer.pointee.pattern_index
                 let captureName = query.captureName(forId: capture.index)
                 let node = TreeSitterNode(node: capture.node)
                 let predicates = query.predicates(forPatternIndex: UInt32(patternIndex))
-                result[node] = TreeSitterCapture(node: node, name: captureName, predicates: predicates)
+                return TreeSitterCapture(node: node, index: capture.index, name: captureName, predicates: predicates)
             }
+            let match = TreeSitterQueryMatch(captures: captures)
+            result.append(match)
         }
-        return Array(result.values)
+        return result
     }
 }

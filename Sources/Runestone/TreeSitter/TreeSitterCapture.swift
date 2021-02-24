@@ -9,51 +9,29 @@ import Foundation
 
 final class TreeSitterCapture {
     let node: TreeSitterNode
+    let index: UInt32
     let name: String
-    let predicates: [TreeSitterPredicate]
-    let properties: [String: String]
     let byteRange: ByteRange
+    let properties: [String: String]
+    let textPredicates: [TreeSitterTextPredicate]
 
-    convenience init(node: TreeSitterNode, name: String, predicates: [TreeSitterPredicate]) {
-        let properties = Self.extractProperties(from: predicates)
-        self.init(node: node, name: name, predicates: predicates, properties: properties, byteRange: node.byteRange)
+    convenience init(node: TreeSitterNode, index: UInt32, name: String, predicates: [TreeSitterPredicate]) {
+        self.init(node: node, index: index, name: name, byteRange: node.byteRange, predicates: predicates)
     }
 
-    private init(node: TreeSitterNode, name: String, predicates: [TreeSitterPredicate], properties: [String: String], byteRange: ByteRange) {
+    private init(node: TreeSitterNode, index: UInt32, name: String, byteRange: ByteRange, predicates: [TreeSitterPredicate]) {
+        let predicateMapResult = TreeSitterPredicateMapper.map(predicates)
         self.node = node
+        self.index = index
         self.name = name
-        self.predicates = predicates
-        self.properties = properties
         self.byteRange = byteRange
-    }
-}
-
-private extension TreeSitterCapture {
-    private static func extractProperties(from predicates: [TreeSitterPredicate]) -> [String: String] {
-        var properties: [String: String] = [:]
-        for predicate in predicates {
-            if predicate.name == "set!", let setProperties = propertiesFromSetPredicate(predicate) {
-                properties[setProperties.name] = setProperties.value
-            }
-        }
-        return properties
-    }
-
-    private static func propertiesFromSetPredicate(_ predicate: TreeSitterPredicate) -> (name: String, value: String)? {
-        guard predicate.steps.count == 2 else {
-            return nil
-        }
-        switch (predicate.steps[0], predicate.steps[1]) {
-        case (.string(let name), .string(let value)):
-            return (name, value)
-        default:
-            return nil
-        }
+        self.properties = predicateMapResult.properties
+        self.textPredicates = predicateMapResult.textPredicates
     }
 }
 
 extension TreeSitterCapture: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TreeSitterCapture byteRange=\(byteRange.debugDescription) name=\(name) predicates=\(predicates)]"
+        return "[TreeSitterCapture byteRange=\(byteRange.debugDescription) name=\(name) properties=\(properties) textPredicates=\(textPredicates)]"
     }
 }

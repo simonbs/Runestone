@@ -7,7 +7,12 @@
 
 import Foundation
 
+protocol TreeSitterLanguageLayerDelegate: AnyObject {
+    func treeSitterLanguageLayer(_ languageLayer: TreeSitterLanguageLayer, stringIn byteRange: ByteRange) -> String
+}
+
 final class TreeSitterLanguageLayer {
+    weak var delegate: TreeSitterLanguageLayerDelegate?
     var rootNode: TreeSitterNode? {
         return tree?.rootNode
     }
@@ -65,17 +70,31 @@ final class TreeSitterLanguageLayer {
         guard let query = language.highlightsQuery else {
             return []
         }
-        let childCaptures = capturesInChildren(in: range)
-        let captureQueryCursor = TreeSitterQueryCursor(query: query, node: tree.rootNode)
-        captureQueryCursor.setQueryRange(range)
-        captureQueryCursor.execute()
-        let captures = captureQueryCursor.allCaptures()
-        let allCaptures = (captures + childCaptures).sorted(by: TreeSitterCapture.locationAndLengthSorting)
-        // We ignore all captures with a predicate. We should handle these at some point.
-        let filteredCaptures = allCaptures.filter { capture in
-            return capture.predicates.isEmpty
+        let queryCursor = TreeSitterQueryCursor(query: query, node: tree.rootNode)
+        queryCursor.setQueryRange(range)
+        queryCursor.execute()
+        let matches = matchesInChildren(in: range) + queryCursor.allMatches()
+        var validCaptures: [TreeSitterCapture] = []
+        for match in matches {
+            let predicateEvaluator = TreeSitterTextPredicatesEvaluator(match: match) { [weak self] byteRange in
+                if let self = self {
+                    return self.delegate?.treeSitterLanguageLayer(self, stringIn: byteRange)
+                } else {
+                    return nil
+                }
+            }
+            for capture in match.captures {
+                if predicateEvaluator.evaluatePredicates(in: capture) {
+                    validCaptures.append(capture)
+                }
+            }
         }
-        return filteredCaptures
+        let sortedCaptures = validCaptures.sorted(by: TreeSitterCapture.byteRangeSorting)
+        print("- - - - - - - - - - - - -")
+        for capture in sortedCaptures {
+            print(capture)
+        }
+        return sortedCaptures
     }
 }
 
@@ -154,13 +173,10 @@ private extension TreeSitterLanguageLayer {
         return lineIndices
     }
 
-    private func capturesInChildren(in range: ByteRange) -> [TreeSitterCapture] {
-        var captures: [TreeSitterCapture] = []
-        for childLanguageLayer in childLanguageLayers {
-            let childCaptures = childLanguageLayer.captures(in: range)
-            captures.append(contentsOf: childCaptures)
+    private func matchesInChildren(in range: ByteRange) -> [TreeSitterQueryMatch] {
+        return childLanguageLayers.reduce([]) { result, childLanguageLayer in
+            return result + childLanguageLayer.matchesInChildren(in: range)
         }
-        return captures
     }
 
     @discardableResult
@@ -172,8 +188,15 @@ private extension TreeSitterLanguageLayer {
             return nil
         }
         let childLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser)
+        childLanguageLayer.delegate = self
         childLanguageLayers.append(childLanguageLayer)
         return childLanguageLayer
+    }
+}
+
+extension TreeSitterLanguageLayer: TreeSitterLanguageLayerDelegate {
+    func treeSitterLanguageLayer(_ languageLayer: TreeSitterLanguageLayer, stringIn byteRange: ByteRange) -> String {
+        return delegate!.treeSitterLanguageLayer(self, stringIn: byteRange)
     }
 }
 
@@ -184,7 +207,7 @@ extension TreeSitterLanguageLayer: CustomDebugStringConvertible {
 }
 
 private extension TreeSitterCapture {
-    static func locationAndLengthSorting(_ lhs: TreeSitterCapture, _ rhs: TreeSitterCapture) -> Bool {
+    static func byteRangeSorting(_ lhs: TreeSitterCapture, _ rhs: TreeSitterCapture) -> Bool {
         if lhs.byteRange.location < rhs.byteRange.location {
             return true
         } else if lhs.byteRange.location > rhs.byteRange.location {
@@ -192,5 +215,11 @@ private extension TreeSitterCapture {
         } else {
             return lhs.byteRange.length > rhs.byteRange.length
         }
+    }
+}
+
+private extension TreeSitterQueryCursor {
+    func allCaptures() -> [TreeSitterCapture] {
+        return allMatches().reduce([]) { $0 + $1.captures }
     }
 }

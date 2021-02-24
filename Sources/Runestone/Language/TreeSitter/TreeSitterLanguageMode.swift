@@ -11,6 +11,7 @@ import TreeSitter
 protocol TreeSitterLanguageModeDeleage: AnyObject {
     func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, bytesAt byteIndex: ByteCount) -> [Int8]?
     func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, byteOffsetAt location: Int) -> ByteCount
+    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, stringIn byteRange: ByteRange) -> String
 }
 
 final class TreeSitterLanguageMode: LanguageMode {
@@ -28,6 +29,7 @@ final class TreeSitterLanguageMode: LanguageMode {
         operationQueue.qualityOfService = .userInitiated
         parser = TreeSitterParser(encoding: language.textEncoding.treeSitterEncoding)
         rootLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser)
+        rootLanguageLayer.delegate = self
         parser.delegate = self
     }
 
@@ -88,5 +90,11 @@ final class TreeSitterLanguageMode: LanguageMode {
 extension TreeSitterLanguageMode: TreeSitterParserDelegate {
     func parser(_ parser: TreeSitterParser, bytesAt byteIndex: ByteCount) -> [Int8]? {
         return delegate?.treeSitterLanguageMode(self, bytesAt: byteIndex)
+    }
+}
+
+extension TreeSitterLanguageMode: TreeSitterLanguageLayerDelegate {
+    func treeSitterLanguageLayer(_ languageLayer: TreeSitterLanguageLayer, stringIn byteRange: ByteRange) -> String {
+        return delegate!.treeSitterLanguageMode(self, stringIn: byteRange)
     }
 }

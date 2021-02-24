@@ -847,6 +847,10 @@ extension TextInputView: TreeSitterLanguageModeDeleage {
         }
     }
 
+    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, stringIn byteRange: ByteRange) -> String {
+        return (_string as String).substring(with: byteRange)
+    }
+
     private func bytes(at byteIndex: ByteCount, in parsedLine: ParsedLine) -> [Int8]? {
         let lineString = parsedLine.lineString
         let localByteIndex = byteIndex - parsedLine.startByte

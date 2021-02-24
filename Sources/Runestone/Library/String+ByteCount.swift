@@ -58,6 +58,13 @@ public extension String {
         let length = utf16View.distance(from: startUTF16Index, to: endUTF16Index)
         return NSRange(location: location, length: length)
     }
+
+    func substring(with byteRange: ByteRange) -> String {
+        let utf8View = utf8
+        let startUTF8Index = utf8View.index(utf8View.startIndex, offsetBy: byteRange.location.value, limitedBy: utf8View.endIndex) ?? utf8View.endIndex
+        let endUTF8Index = utf8View.index(startUTF8Index, offsetBy: byteRange.length.value, limitedBy: utf8View.endIndex) ?? utf8View.endIndex
+        return String(self[startUTF8Index ..< endUTF8Index])
+    }
 }
 
 extension String {
