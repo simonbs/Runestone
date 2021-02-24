@@ -64,7 +64,7 @@ final class TreeSitterLanguageLayer {
     }
 
     func captures(in range: ByteRange) -> [TreeSitterCapture] {
-        let matches = matches(in: range) + matchesInChildren(in: range)
+        let matches = matches(in: range)
         var captures = validCaptures(in: matches)
         captures.sort(by: TreeSitterCapture.captureLayerSorting)
         return captures
@@ -82,7 +82,9 @@ private extension TreeSitterLanguageLayer {
         let queryCursor = TreeSitterQueryCursor(query: query, node: tree.rootNode)
         queryCursor.setQueryRange(range)
         queryCursor.execute()
-        return queryCursor.allMatches()
+        let matches = queryCursor.allMatches()
+        let matchesInChildren = childLanguageLayers.reduce([]) { $0 + $1.matches(in: range) }
+        return matches + matchesInChildren
     }
 
     private func prepareParserToParse(from rootNode: TreeSitterNode?) {
@@ -157,12 +159,6 @@ private extension TreeSitterLanguageLayer {
             lineIndices.formUnion(childResult.changedLineIndices)
         }
         return lineIndices
-    }
-
-    private func matchesInChildren(in range: ByteRange) -> [TreeSitterQueryMatch] {
-        return childLanguageLayers.reduce([]) { result, childLanguageLayer in
-            return result + childLanguageLayer.matches(in: range)
-        }
     }
 
     private func validCaptures(in matches: [TreeSitterQueryMatch]) -> [TreeSitterCapture] {
