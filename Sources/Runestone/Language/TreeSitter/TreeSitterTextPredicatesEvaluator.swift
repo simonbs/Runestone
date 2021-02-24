@@ -7,15 +7,17 @@
 
 import Foundation
 
+protocol TreeSitterTextPredicatesEvaluatorDelegate: AnyObject {
+    func treeSitterTextPredicatesEvaluator(_ evaluator: TreeSitterTextPredicatesEvaluator, stringIn byteRange: ByteRange) -> String
+}
+
 final class TreeSitterTextPredicatesEvaluator {
-    typealias TextCallback = (ByteRange) -> String?
+    weak var delegate: TreeSitterTextPredicatesEvaluatorDelegate?
 
     private let match: TreeSitterQueryMatch
-    private let textCallback: TextCallback
 
-    init(match: TreeSitterQueryMatch, textCallback: @escaping TextCallback) {
+    init(match: TreeSitterQueryMatch) {
         self.match = match
-        self.textCallback = textCallback
     }
 
     func evaluatePredicates(in capture: TreeSitterCapture) -> Bool {
@@ -32,6 +34,10 @@ final class TreeSitterTextPredicatesEvaluator {
                 if !evaluate(using: parameters) {
                     return false
                 }
+            case .captureMatchesPattern(let parameters):
+                if !evaluate(using: parameters) {
+                    return false
+                }
             }
         }
         return true
@@ -43,7 +49,7 @@ private extension TreeSitterTextPredicatesEvaluator {
         guard let capture = match.capture(forIndex: parameters.captureIndex) else {
             return false
         }
-        guard let contentText = textCallback(capture.byteRange) else {
+        guard let contentText = string(in: capture.byteRange) else {
             return false
         }
         let comparisonResult = contentText == parameters.string
@@ -57,13 +63,29 @@ private extension TreeSitterTextPredicatesEvaluator {
         guard let rhsCapture = match.capture(forIndex: parameters.lhsCaptureIndex) else {
             return false
         }
-        guard let lhsContentText = textCallback(lhsCapture.byteRange) else {
+        guard let lhsContentText = string(in: lhsCapture.byteRange) else {
             return false
         }
-        guard let rhsContentText = textCallback(rhsCapture.byteRange) else {
+        guard let rhsContentText = string(in: rhsCapture.byteRange) else {
             return false
         }
         let comparisonResult = lhsContentText == rhsContentText
         return comparisonResult == parameters.isPositive
+    }
+
+    func evaluate(using parameters: TreeSitterTextPredicate.CaptureMatchesPatternParameters) -> Bool {
+        guard let capture = match.capture(forIndex: parameters.captureIndex) else {
+            return false
+        }
+        guard let contentText = string(in: capture.byteRange) else {
+            return false
+        }
+        let matchingRange = contentText.range(of: parameters.pattern, options: .regularExpression)
+        let isMatch = matchingRange != nil
+        return isMatch == parameters.isPositive
+    }
+
+    private func string(in byteRange: ByteRange) -> String? {
+        return delegate?.treeSitterTextPredicatesEvaluator(self, stringIn: byteRange)
     }
 }

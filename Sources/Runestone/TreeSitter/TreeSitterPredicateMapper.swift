@@ -7,35 +7,6 @@
 
 import Foundation
 
-enum TreeSitterTextPredicate {
-    final class CaptureEqualsStringParameters {
-        let captureIndex: UInt32
-        let string: String
-        let isPositive: Bool
-
-        init(captureIndex: UInt32, string: String, isPositive: Bool) {
-            self.captureIndex = captureIndex
-            self.string = string
-            self.isPositive = isPositive
-        }
-    }
-
-    struct CaptureEqualsCaptureParameters {
-        let lhsCaptureIndex: UInt32
-        let rhsCaptureIndex: UInt32
-        let isPositive: Bool
-
-        init(lhsCaptureIndex: UInt32, rhsCaptureIndex: UInt32, isPositive: Bool) {
-            self.lhsCaptureIndex = lhsCaptureIndex
-            self.rhsCaptureIndex = rhsCaptureIndex
-            self.isPositive = isPositive
-        }
-    }
-
-    case captureEqualsString(CaptureEqualsStringParameters)
-    case captureEqualsCapture(CaptureEqualsCaptureParameters)
-}
-
 final class TreeSitterPredicateMapper {
     struct MapResult  {
         let properties: [String: String]
@@ -51,11 +22,13 @@ final class TreeSitterPredicateMapper {
                 let setProperties = self.properties(fromSetSteps: predicate.steps)
                 properties[setProperties.name] = setProperties.value
             case "eq?":
-                let textPredicate = self.textPredicate(fromEqSteps: predicate.steps, isPositive: true)
-                textPredicates.append(textPredicate)
+                textPredicates.append(self.textPredicate(fromEqSteps: predicate.steps, isPositive: true))
             case "not-eq?":
-                let textPredicate = self.textPredicate(fromEqSteps: predicate.steps, isPositive: true)
-                textPredicates.append(textPredicate)
+                textPredicates.append(self.textPredicate(fromEqSteps: predicate.steps, isPositive: false))
+            case "match?":
+                textPredicates.append(self.textPredicate(fromMatchSteps: predicate.steps, isPositive: true))
+            case "not-match?":
+                textPredicates.append(textPredicate(fromMatchSteps: predicate.steps, isPositive: false))
             default:
                 break
             }
@@ -79,7 +52,7 @@ private extension TreeSitterPredicateMapper {
 
     private static func textPredicate(fromEqSteps steps: [TreeSitterPredicate.Step], isPositive: Bool) -> TreeSitterTextPredicate {
         guard steps.count == 2 else {
-            fatalError("eq? predicate must contain exactly stwo teps.")
+            fatalError("eq? and not-eq? predicates must contain exactly two teps.")
         }
         switch (steps[0], steps[1]) {
         case (.capture(let captureIndex), .string(let value)):
@@ -87,19 +60,19 @@ private extension TreeSitterPredicateMapper {
         case (.capture(let lhsCaptureIndex), .capture(let rhsCaptureIndex)):
             return .captureEqualsCapture(.init(lhsCaptureIndex: lhsCaptureIndex, rhsCaptureIndex: rhsCaptureIndex, isPositive: isPositive))
         default:
-            fatalError("eq? predicate contains invalid combination of steps.")
+            fatalError("Predicate contains invalid combination of steps.")
         }
     }
-}
 
-extension TreeSitterTextPredicate.CaptureEqualsStringParameters: CustomDebugStringConvertible {
-    var debugDescription: String {
-        return "[TreeSitterTextPredicate.CaptureEqualsStringParameters captureIndex=\(captureIndex) string=\(string) isPositive=\(isPositive)]"
-    }
-}
-
-extension TreeSitterTextPredicate.CaptureEqualsCaptureParameters: CustomDebugStringConvertible {
-    var debugDescription: String {
-        return "[TreeSitterTextPredicate.CaptureEqualsCaptureParameters lhsCaptureIndex=\(lhsCaptureIndex) rhsCaptureIndex=\(rhsCaptureIndex) isPositive=\(isPositive)]"
+    private static func textPredicate(fromMatchSteps steps: [TreeSitterPredicate.Step], isPositive: Bool) -> TreeSitterTextPredicate {
+        guard steps.count == 2 else {
+            fatalError("match? and not-match? predicates must contain exactly stwo teps.")
+        }
+        switch (steps[0], steps[1]) {
+        case (.capture(let captureIndex), .string(let value)):
+            return .captureMatchesPattern(.init(captureIndex: captureIndex, pattern: value, isPositive: isPositive))
+        default:
+            fatalError("Predicate contains invalid combination of steps.")
+        }
     }
 }

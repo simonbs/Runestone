@@ -64,6 +64,15 @@ final class TreeSitterLanguageLayer {
     }
 
     func captures(in range: ByteRange) -> [TreeSitterCapture] {
+        let matches = matches(in: range) + matchesInChildren(in: range)
+        var captures = validCaptures(in: matches)
+        captures.sort(by: TreeSitterCapture.captureLayerSorting)
+        return captures
+    }
+}
+
+private extension TreeSitterLanguageLayer {
+    private func matches(in range: ByteRange) -> [TreeSitterQueryMatch] {
         guard let tree = tree else {
             return []
         }
@@ -73,32 +82,9 @@ final class TreeSitterLanguageLayer {
         let queryCursor = TreeSitterQueryCursor(query: query, node: tree.rootNode)
         queryCursor.setQueryRange(range)
         queryCursor.execute()
-        let matches = matchesInChildren(in: range) + queryCursor.allMatches()
-        var validCaptures: [TreeSitterCapture] = []
-        for match in matches {
-            let predicateEvaluator = TreeSitterTextPredicatesEvaluator(match: match) { [weak self] byteRange in
-                if let self = self {
-                    return self.delegate?.treeSitterLanguageLayer(self, stringIn: byteRange)
-                } else {
-                    return nil
-                }
-            }
-            for capture in match.captures {
-                if predicateEvaluator.evaluatePredicates(in: capture) {
-                    validCaptures.append(capture)
-                }
-            }
-        }
-        let sortedCaptures = validCaptures.sorted(by: TreeSitterCapture.byteRangeSorting)
-        print("- - - - - - - - - - - - -")
-        for capture in sortedCaptures {
-            print(capture)
-        }
-        return sortedCaptures
+        return queryCursor.allMatches()
     }
-}
 
-private extension TreeSitterLanguageLayer {
     private func prepareParserToParse(from rootNode: TreeSitterNode?) {
         parser.language = language.languagePointer
         if let node = rootNode {
@@ -175,8 +161,21 @@ private extension TreeSitterLanguageLayer {
 
     private func matchesInChildren(in range: ByteRange) -> [TreeSitterQueryMatch] {
         return childLanguageLayers.reduce([]) { result, childLanguageLayer in
-            return result + childLanguageLayer.matchesInChildren(in: range)
+            return result + childLanguageLayer.matches(in: range)
         }
+    }
+
+    private func validCaptures(in matches: [TreeSitterQueryMatch]) -> [TreeSitterCapture] {
+        var result: [TreeSitterCapture] = []
+        for match in matches {
+            let predicateEvaluator = TreeSitterTextPredicatesEvaluator(match: match)
+            predicateEvaluator.delegate = self
+            let captures = match.captures.filter { capture in
+                return predicateEvaluator.evaluatePredicates(in: capture)
+            }
+            result.append(contentsOf: captures)
+        }
+        return result
     }
 
     @discardableResult
@@ -194,6 +193,12 @@ private extension TreeSitterLanguageLayer {
     }
 }
 
+extension TreeSitterLanguageLayer: TreeSitterTextPredicatesEvaluatorDelegate {
+    func treeSitterTextPredicatesEvaluator(_ evaluator: TreeSitterTextPredicatesEvaluator, stringIn byteRange: ByteRange) -> String {
+        return delegate!.treeSitterLanguageLayer(self, stringIn: byteRange)
+    }
+}
+
 extension TreeSitterLanguageLayer: TreeSitterLanguageLayerDelegate {
     func treeSitterLanguageLayer(_ languageLayer: TreeSitterLanguageLayer, stringIn byteRange: ByteRange) -> String {
         return delegate!.treeSitterLanguageLayer(self, stringIn: byteRange)
@@ -207,13 +212,21 @@ extension TreeSitterLanguageLayer: CustomDebugStringConvertible {
 }
 
 private extension TreeSitterCapture {
-    static func byteRangeSorting(_ lhs: TreeSitterCapture, _ rhs: TreeSitterCapture) -> Bool {
+    static func captureLayerSorting(_ lhs: TreeSitterCapture, _ rhs: TreeSitterCapture) -> Bool {
+        // We sort the captures by three parameters:
+        // 1. The location. Captures that are early in the text should be sorted first.
+        // 2. The length of the capture. If two captures start at the same location, then we sort the longest capture first.
+        //    Short captures that start at that location adds another "layer" of capturing on top of a previous capture.
+        // 3. The number of components in the name. E.g. "variable.builtin" is sorted after "variable" as the styling of "variable.builtin"
+        //    should be applied after applying the styling of "variable", since it's a specialization.
         if lhs.byteRange.location < rhs.byteRange.location {
             return true
         } else if lhs.byteRange.location > rhs.byteRange.location {
             return false
+        } else if lhs.byteRange.length > rhs.byteRange.length {
+            return true
         } else {
-            return lhs.byteRange.length > rhs.byteRange.length
+            return lhs.nameComponentCount < rhs.nameComponentCount
         }
     }
 }

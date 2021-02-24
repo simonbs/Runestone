@@ -14,6 +14,7 @@ final class TreeSitterCapture {
     let byteRange: ByteRange
     let properties: [String: String]
     let textPredicates: [TreeSitterTextPredicate]
+    let nameComponentCount: Int
 
     convenience init(node: TreeSitterNode, index: UInt32, name: String, predicates: [TreeSitterPredicate]) {
         self.init(node: node, index: index, name: name, byteRange: node.byteRange, predicates: predicates)
@@ -27,6 +28,7 @@ final class TreeSitterCapture {
         self.byteRange = byteRange
         self.properties = predicateMapResult.properties
         self.textPredicates = predicateMapResult.textPredicates
+        self.nameComponentCount = name.split(separator: ".").count
     }
 }
 
