@@ -61,7 +61,7 @@ public final class EditorTextView: UIScrollView {
         }
         set {
             textInputView.string = NSMutableString(string: newValue)
-            contentSize = preferredContentSize
+            contentSize = textInputView.contentSize
         }
     }
     /// Colors and fonts to be used by the editor.
@@ -357,12 +357,6 @@ public final class EditorTextView: UIScrollView {
         }
     }
     private var hasPendingContentSizeUpdate = false
-    private var preferredContentSize: CGSize {
-        // Ensure the content size is as minimum as big as the frame of the view.
-        let width = max(textInputView.contentSize.width, frame.width)
-        let height = max(textInputView.contentSize.height, frame.height)
-        return CGSize(width: width, height: height)
-    }
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -392,7 +386,7 @@ public final class EditorTextView: UIScrollView {
 
     public override func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
-        contentSize = preferredContentSize
+        contentSize = textInputView.contentSize
     }
 
     @discardableResult
@@ -430,7 +424,7 @@ public final class EditorTextView: UIScrollView {
     /// - Parameter state: The new state to be used by the editor.
     public func setState(_ state: EditorState) {
         textInputView.setState(state)
-        contentSize = preferredContentSize
+        contentSize = textInputView.contentSize
     }
 
     /// The line position at a location in the text. Common usages of this includes showing the line and column\
@@ -591,7 +585,7 @@ private extension EditorTextView {
             let isCriticalUpdate = contentOffset.y > contentSize.height - frame.height * 1.5
             if !isBouncingHorizontally || isCriticalUpdate {
                 hasPendingContentSizeUpdate = false
-                contentSize = preferredContentSize
+                contentSize = textInputView.contentSize
                 setNeedsLayout()
             }
         }
