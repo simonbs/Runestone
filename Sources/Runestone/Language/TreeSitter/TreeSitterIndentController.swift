@@ -7,34 +7,22 @@
 
 import Foundation
 
-protocol TreeSitterIndentControllerDelegate: AnyObject {
-    func treeSitterIndentController(_ controller: TreeSitterIndentController, stringIn range: NSRange) -> String
-}
-
 final class TreeSitterIndentController {
-    weak var delegate: TreeSitterIndentControllerDelegate?
     let indentationScopes: TreeSitterIndentationScopes
     let languageMode: TreeSitterLanguageMode
     let tabLength = 2
 
-    private var currentDelegate: TreeSitterIndentControllerDelegate {
-        if let delegate = delegate {
-            return delegate
-        } else {
-            fatalError("Delegate of \(type(of: self)) is unavailable")
-        }
-    }
+    private let stringView: StringView
 
-    init(languageMode: TreeSitterLanguageMode, indentationScopes: TreeSitterIndentationScopes) {
+    init(languageMode: TreeSitterLanguageMode, indentationScopes: TreeSitterIndentationScopes, stringView: StringView) {
         self.languageMode = languageMode
         self.indentationScopes = indentationScopes
+        self.stringView = stringView
     }
 
     func suggestedIndentLevel(for line: DocumentLineNode) -> Int {
         let range = NSRange(location: line.location, length: line.data.totalLength)
-        guard let string = delegate?.treeSitterIndentController(self, stringIn: range) else {
-            return 0
-        }
+        let string = stringView.substring(in: range)
 //        var indentation = walkTree(startingAt: node)
 //        if node.type == "comment" && node.startPoint.row < line.index && node.endPoint.row > line.index {
 //            indentation += 1

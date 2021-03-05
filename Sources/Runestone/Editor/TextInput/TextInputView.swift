@@ -234,11 +234,11 @@ final class TextInputView: UIView, UITextInput {
     weak var delegate: TextInputViewDelegate?
     var string: NSMutableString {
         get {
-            return _string
+            return stringView.string
         }
         set {
-            if _string != newValue {
-                _string = newValue
+            if newValue != stringView.string {
+                stringView.string = newValue
                 lineManager.rebuild(from: newValue)
                 layoutManager.invalidateContentSize()
                 layoutManager.updateGutterWidth()
@@ -293,10 +293,17 @@ final class TextInputView: UIView, UITextInput {
     var gutterContainerView: UIView {
         return layoutManager.gutterContainerView
     }
-    private(set) var lineManager = LineManager()
+    private(set) var lineManager: LineManager
 
     // MARK: - Private
-    private var _string = NSMutableString()
+    private var stringView = StringView() {
+        didSet {
+            if stringView !== oldValue {
+                lineManager.stringView = stringView
+                layoutManager.stringView = stringView
+            }
+        }
+    }
     private var languageMode: LanguageMode = PlainTextLanguageMode() {
         didSet {
             if languageMode !== oldValue {
@@ -325,7 +332,8 @@ final class TextInputView: UIView, UITextInput {
 
     // MARK: - Lifecycle
     init() {
-        layoutManager = LayoutManager(lineManager: lineManager, languageMode: languageMode)
+        lineManager = LineManager(stringView: stringView)
+        layoutManager = LayoutManager(lineManager: lineManager, languageMode: languageMode, stringView: stringView)
         super.init(frame: .zero)
         lineManager.delegate = self
         lineManager.estimatedLineHeight = estimatedLineHeight
@@ -393,7 +401,7 @@ final class TextInputView: UIView, UITextInput {
     }
 
     func setState(_ state: EditorState) {
-        _string = NSMutableString(string: state.text)
+        stringView = state.stringView
         theme = state.theme
         languageMode = state.languageMode
         lineManager = state.lineManager
@@ -414,8 +422,13 @@ final class TextInputView: UIView, UITextInput {
         }
     }
 
-    func setLanguageMode(_ languageMode: LanguageMode?, completion: ((Bool) -> Void)? = nil) {
-        let newLanguageMode = languageMode ?? PlainTextLanguageMode()
+    func setLanguage(_ language: TreeSitterLanguage?, completion: ((Bool) -> Void)? = nil) {
+        let newLanguageMode: LanguageMode
+        if let language = language {
+            newLanguageMode = TreeSitterLanguageMode(language: language, stringView: stringView)
+        } else {
+            newLanguageMode = PlainTextLanguageMode()
+        }
         self.languageMode = newLanguageMode
         layoutManager.languageMode = newLanguageMode
         newLanguageMode.parse(string as String) { [weak self] finished in
@@ -819,10 +832,6 @@ extension TextInputView {
 
 // MARK: - LineManagerDelegate
 extension TextInputView: LineManagerDelegate {
-    func lineManager(_ lineManager: LineManager, substringIn range: NSRange) -> String {
-        return string.substring(with: range)
-    }
-
     func lineManager(_ lineManager: LineManager, didInsert line: DocumentLineNode) {
         timedUndoManager.endUndoGrouping()
         layoutManager.invalidateContentSize()
@@ -840,11 +849,7 @@ extension TextInputView: LineManagerDelegate {
 }
 
 // MARK: - TreeSitterLanguageModeDeleage
-extension TextInputView: TreeSitterLanguageModeDeleage {
-    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, byteOffsetAt location: Int) -> ByteCount {
-        return (_string as String).byteOffset(at: location)
-    }
-
+extension TextInputView: TreeSitterLanguageModeDelegate {
     func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, bytesAt byteIndex: ByteCount) -> [Int8]? {
         // Speed up parsing by using the line we recently parsed bytes in when possible.
         if let parsedLine = parsedLine, byteIndex >= parsedLine.startByte && byteIndex < parsedLine.endByte {
@@ -860,14 +865,6 @@ extension TextInputView: TreeSitterLanguageModeDeleage {
             parsedLine = nil
             return nil
         }
-    }
-
-    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, stringIn byteRange: ByteRange) -> String {
-        return (_string as String).substring(with: byteRange)
-    }
-
-    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, stringIn range: NSRange) -> String {
-        return string.substring(with: range)
     }
 
     private func bytes(at byteIndex: ByteCount, in parsedLine: ParsedLine) -> [Int8]? {
@@ -886,10 +883,6 @@ extension TextInputView: TreeSitterLanguageModeDeleage {
 
 // MARK: - LayoutManagerDelegate
 extension TextInputView: LayoutManagerDelegate {
-    func layoutManager(_ layoutManager: LayoutManager, stringIn range: NSRange) -> String {
-        return string.substring(with: range)
-    }
-
     func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager) {
         delegate?.textInputViewDidInvalidateContentSize(self)
     }
@@ -900,9 +893,5 @@ extension TextInputView: LayoutManagerDelegate {
 
     func layoutManagerDidUpdateGutterWidth(_ layoutManager: LayoutManager) {
         delegate?.textInputViewDidUpdateGutterWidth(self)
-    }
-
-    func lengthOfString(in layoutManager: LayoutManager) -> Int {
-        return string.length
     }
 }

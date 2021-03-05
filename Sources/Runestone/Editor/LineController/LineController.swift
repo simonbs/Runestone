@@ -9,12 +9,7 @@ import CoreGraphics
 import CoreText
 import Foundation
 
-protocol LineControllerDelegate: AnyObject {
-    func string(in lineController: LineController) -> String
-}
-
 final class LineController {
-    weak var delegate: LineControllerDelegate?
     weak var lineView: LineView?
     let line: DocumentLineNode
     var lineHeightMultiplier: CGFloat = 1 {
@@ -66,6 +61,7 @@ final class LineController {
         }
     }
 
+    private let stringView: StringView
     private let typesetter = LineTypesetter()
     private let textInputProxy: LineTextInputProxy
     private let renderer: LineRenderer
@@ -75,8 +71,9 @@ final class LineController {
     private var isSyntaxHighlightingInvalid = true
     private var isTypesetterInvalid = true
 
-    init(line: DocumentLineNode) {
+    init(line: DocumentLineNode, stringView: StringView) {
         self.line = line
+        self.stringView = stringView
         self.textInputProxy = LineTextInputProxy(lineTypesetter: typesetter)
         self.textInputProxy.estimatedLineHeight = estimatedLineHeight
         self.renderer = LineRenderer(typesetter: typesetter)
@@ -128,7 +125,8 @@ final class LineController {
 private extension LineController {
     private func updateStringIfNecessary() {
         if isStringInvalid {
-            let string = delegate!.string(in: self)
+            let range = NSRange(location: line.location, length: line.data.totalLength)
+            let string = stringView.substring(in: range)
             attributedString = NSMutableAttributedString(string: string)
             isStringInvalid = false
         }

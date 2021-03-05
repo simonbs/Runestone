@@ -7,12 +7,7 @@
 
 import Foundation
 
-protocol TreeSitterLanguageLayerDelegate: AnyObject {
-    func treeSitterLanguageLayer(_ languageLayer: TreeSitterLanguageLayer, stringIn byteRange: ByteRange) -> String
-}
-
 final class TreeSitterLanguageLayer {
-    weak var delegate: TreeSitterLanguageLayerDelegate?
     var rootNode: TreeSitterNode? {
         return tree?.rootNode
     }
@@ -22,6 +17,7 @@ final class TreeSitterLanguageLayer {
 
     private let language: TreeSitterLanguage
     private let parser: TreeSitterParser
+    private let stringView: StringView
     private var childLanguageLayers: [TreeSitterLanguageLayer] = []
     private weak var parentLanguageLayer: TreeSitterLanguageLayer?
     private var tree: TreeSitterTree?
@@ -33,9 +29,10 @@ final class TreeSitterLanguageLayer {
         }
     }
 
-    init(language: TreeSitterLanguage, parser: TreeSitterParser) {
+    init(language: TreeSitterLanguage, parser: TreeSitterParser, stringView: StringView) {
         self.language = language
         self.parser = parser
+        self.stringView = stringView
     }
 
     func parse(_ text: String) {
@@ -173,8 +170,7 @@ private extension TreeSitterLanguageLayer {
     private func validCaptures(in matches: [TreeSitterQueryMatch]) -> [TreeSitterCapture] {
         var result: [TreeSitterCapture] = []
         for match in matches {
-            let predicateEvaluator = TreeSitterTextPredicatesEvaluator(match: match)
-            predicateEvaluator.delegate = self
+            let predicateEvaluator = TreeSitterTextPredicatesEvaluator(match: match, stringView: stringView)
             let captures = match.captures.filter { capture in
                 return predicateEvaluator.evaluatePredicates(in: capture)
             }
@@ -191,23 +187,10 @@ private extension TreeSitterLanguageLayer {
         guard let language = language.injectedLanguageProvider?.treeSitterLanguage(named: languageName) else {
             return nil
         }
-        let childLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser)
-        childLanguageLayer.delegate = self
+        let childLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser, stringView: stringView)
         childLanguageLayer.parentLanguageLayer = self
         childLanguageLayers.append(childLanguageLayer)
         return childLanguageLayer
-    }
-}
-
-extension TreeSitterLanguageLayer: TreeSitterTextPredicatesEvaluatorDelegate {
-    func treeSitterTextPredicatesEvaluator(_ evaluator: TreeSitterTextPredicatesEvaluator, stringIn byteRange: ByteRange) -> String {
-        return delegate!.treeSitterLanguageLayer(self, stringIn: byteRange)
-    }
-}
-
-extension TreeSitterLanguageLayer: TreeSitterLanguageLayerDelegate {
-    func treeSitterLanguageLayer(_ languageLayer: TreeSitterLanguageLayer, stringIn byteRange: ByteRange) -> String {
-        return delegate!.treeSitterLanguageLayer(self, stringIn: byteRange)
     }
 }
 

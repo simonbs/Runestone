@@ -8,31 +8,29 @@
 import Foundation
 import TreeSitter
 
-protocol TreeSitterLanguageModeDeleage: AnyObject {
+protocol TreeSitterLanguageModeDelegate: AnyObject {
     func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, bytesAt byteIndex: ByteCount) -> [Int8]?
-    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, byteOffsetAt location: Int) -> ByteCount
-    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, stringIn byteRange: ByteRange) -> String
-    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, stringIn range: NSRange) -> String
 }
 
 final class TreeSitterLanguageMode: LanguageMode {
-    weak var delegate: TreeSitterLanguageModeDeleage?
+    weak var delegate: TreeSitterLanguageModeDelegate?
     var canHighlight: Bool {
         return rootLanguageLayer.canHighlight
     }
 
+    private let stringView: StringView
     private let parser: TreeSitterParser
     private let indentationScopes: TreeSitterIndentationScopes?
     private let rootLanguageLayer: TreeSitterLanguageLayer
     private let operationQueue = OperationQueue()
 
-    init(language: TreeSitterLanguage) {
+    init(language: TreeSitterLanguage, stringView: StringView) {
+        self.stringView = stringView
         operationQueue.name = "TreeSitterLanguageMode"
         operationQueue.qualityOfService = .userInitiated
         parser = TreeSitterParser(encoding: language.textEncoding.treeSitterEncoding)
         indentationScopes = language.indentationScopes
-        rootLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser)
-        rootLanguageLayer.delegate = self
+        rootLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser, stringView: stringView)
         parser.delegate = self
     }
 
@@ -81,8 +79,7 @@ final class TreeSitterLanguageMode: LanguageMode {
 
     func suggestedIndentLevel(for line: DocumentLineNode) -> Int {
         if let indentationScopes = indentationScopes {
-            let indentController = TreeSitterIndentController(languageMode: self, indentationScopes: indentationScopes)
-            indentController.delegate = self
+            let indentController = TreeSitterIndentController(languageMode: self, indentationScopes: indentationScopes, stringView: stringView)
             return indentController.suggestedIndentLevel(for: line)
         } else {
             return 0
@@ -95,7 +92,7 @@ final class TreeSitterLanguageMode: LanguageMode {
         let location = line.location
         for i in 0 ..< line.data.totalLength {
             let range = NSRange(location: location + i, length: 1)
-            let str = delegate?.treeSitterLanguageMode(self, stringIn: range).first
+            let str = stringView.substring(in: range).first
             if str == Symbol.Character.tab {
                 indentLength += tabLength - (indentLength % tabLength)
             } else if str == Symbol.Character.space {
@@ -134,17 +131,5 @@ final class TreeSitterLanguageMode: LanguageMode {
 extension TreeSitterLanguageMode: TreeSitterParserDelegate {
     func parser(_ parser: TreeSitterParser, bytesAt byteIndex: ByteCount) -> [Int8]? {
         return delegate?.treeSitterLanguageMode(self, bytesAt: byteIndex)
-    }
-}
-
-extension TreeSitterLanguageMode: TreeSitterLanguageLayerDelegate {
-    func treeSitterLanguageLayer(_ languageLayer: TreeSitterLanguageLayer, stringIn byteRange: ByteRange) -> String {
-        return delegate!.treeSitterLanguageMode(self, stringIn: byteRange)
-    }
-}
-
-extension TreeSitterLanguageMode: TreeSitterIndentControllerDelegate {
-    func treeSitterIndentController(_ controller: TreeSitterIndentController, stringIn range: NSRange) -> String {
-        return delegate!.treeSitterLanguageMode(self, stringIn: range)
     }
 }

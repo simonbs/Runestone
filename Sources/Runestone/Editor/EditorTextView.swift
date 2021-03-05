@@ -441,12 +441,7 @@ public final class EditorTextView: UIScrollView {
     ///   - language: The new language to be used by the editor.
     ///   - completion: Called when the content have been parsed or when parsing fails.
     public func setLanguage(_ language: TreeSitterLanguage?, completion: ((Bool) -> Void)? = nil) {
-        if let language = language {
-            let languageMode = TreeSitterLanguageMode(language: language)
-            textInputView.setLanguageMode(languageMode, completion: completion)
-        } else {
-            textInputView.setLanguageMode(nil, completion: completion)
-        }
+        textInputView.setLanguage(language, completion: completion)
     }
 
     /// Insets text at the location of the caret.

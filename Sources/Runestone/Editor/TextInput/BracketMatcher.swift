@@ -8,7 +8,7 @@
 import Foundation
 
 final class BracketMatcher {
-    func hasMatchingBrackets(at linePosition: LinePosition) -> Bool {
+    func hasMatchingBrackets(at location: Int, in stringView: StringView) -> Bool {
         return false
     }
 }

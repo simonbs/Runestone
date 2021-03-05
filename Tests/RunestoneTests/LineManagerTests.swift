@@ -12,10 +12,6 @@ private final class LinePositionTestCase: LineManagerDelegate {
         var editedLines: Set<DocumentLineNode> = []
         lineManager.insert(string, at: 0, editedLines: &editedLines)
     }
-
-    func lineManager(_ lineManager: LineManager, substringIn range: NSRange) -> String {
-        return string.substring(with: range)
-    }
 }
 
 final class LineManagerTests: XCTestCase {

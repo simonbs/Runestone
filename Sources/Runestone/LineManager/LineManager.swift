@@ -8,7 +8,6 @@ import Foundation
 import CoreGraphics
 
 protocol LineManagerDelegate: AnyObject {
-    func lineManager(_ lineManager: LineManager, substringIn range: NSRange) -> String
     func lineManager(_ lineManager: LineManager, didInsert line: DocumentLineNode)
     func lineManager(_ lineManager: LineManager, didRemove line: DocumentLineNode)
 }
@@ -27,6 +26,7 @@ typealias DocumentLineNode = RedBlackTreeNode<DocumentLineNodeID, Int, DocumentL
 
 final class LineManager {
     weak var delegate: LineManagerDelegate?
+    var stringView: StringView
     var lineCount: Int {
         return documentLineTree.nodeTotalCount
     }
@@ -51,7 +51,8 @@ final class LineManager {
         }
     }
 
-    init() {
+    init(stringView: StringView) {
+        self.stringView = stringView
         let rootData = DocumentLineNodeData(frameHeight: estimatedLineHeight)
         documentLineTree = DocumentLineTree(minimumValue: 0, rootValue: 0, rootData: rootData)
         documentLineTree.childrenUpdater = DocumentLineChildrenUpdater()
@@ -237,7 +238,8 @@ private extension LineManager {
     @discardableResult
     private func setLength(of line: DocumentLineNode, to newTotalLength: Int, editedLines: inout Set<DocumentLineNode>) -> DocumentLineNode {
         editedLines.insert(line)
-        let substring = getString(in: NSRange(location: line.location, length: newTotalLength))
+        let range = NSRange(location: line.location, length: newTotalLength)
+        let substring = stringView.substring(in: range)
         let newByteCount = substring.byteCount
         if newTotalLength != line.value || newTotalLength != line.data.totalLength || newByteCount != line.data.byteCount {
             line.value = newTotalLength
@@ -274,7 +276,8 @@ private extension LineManager {
     private func insertLine(ofLength length: Int, after otherLine: DocumentLineNode) -> DocumentLineNode {
         let data = DocumentLineNodeData(frameHeight: estimatedLineHeight)
         let insertedLine = documentLineTree.insertNode(value: length, data: data, after: otherLine)
-        let substring = getString(in: NSRange(location: insertedLine.location, length: length))
+        let range = NSRange(location: insertedLine.location, length: length)
+        let substring = stringView.substring(in: range)
         let byteCount = substring.byteCount
         insertedLine.data.totalLength = length
         insertedLine.data.byteCount = byteCount
@@ -293,11 +296,7 @@ private extension LineManager {
 
     private func getCharacter(at location: Int) -> String {
         let range = NSRange(location: location, length: 1)
-        return currentDelegate.lineManager(self, substringIn: range)
-    }
-
-    private func getString(in range: NSRange) -> String {
-        return currentDelegate.lineManager(self, substringIn: range)
+        return stringView.substring(in: range)
     }
 }
 

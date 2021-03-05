@@ -8,11 +8,9 @@
 import UIKit
 
 protocol LayoutManagerDelegate: AnyObject {
-    func layoutManager(_ layoutManager: LayoutManager, stringIn range: NSRange) -> String
     func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager)
     func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
     func layoutManagerDidUpdateGutterWidth(_ layoutManager: LayoutManager)
-    func lengthOfString(in layoutManager: LayoutManager) -> Int
 }
 
 final class LayoutManager {
@@ -33,6 +31,7 @@ final class LayoutManager {
         }
     }
     var lineManager: LineManager
+    var stringView: StringView
     var scrollViewWidth: CGFloat = 0 {
         didSet {
             if scrollViewWidth != oldValue {
@@ -246,9 +245,10 @@ final class LayoutManager {
         }
     }
 
-    init(lineManager: LineManager, languageMode: LanguageMode) {
+    init(lineManager: LineManager, languageMode: LanguageMode, stringView: StringView) {
         self.lineManager = lineManager
         self.languageMode = languageMode
+        self.stringView = stringView
         self.linesContainerView.isUserInteractionEnabled = false
         self.lineNumbersContainerView.isUserInteractionEnabled = false
         self.gutterContainerView.isUserInteractionEnabled = false
@@ -462,7 +462,7 @@ extension LayoutManager {
             if adjustedPoint.y >= lastLine.yPosition, let textRenderer = lineControllers[lastLine.id] {
                 return closestIndex(to: adjustedPoint, in: textRenderer, showing: lastLine)
             } else {
-                return currentDelegate.lengthOfString(in: self)
+                return stringView.string.length
             }
         }
     }
@@ -618,8 +618,7 @@ extension LayoutManager {
         if let cachedLineController = lineControllers[line.id] {
             return cachedLineController
         } else {
-            let lineController = LineController(line: line)
-            lineController.delegate = self
+            let lineController = LineController(line: line, stringView: stringView)
             lineController.estimatedLineHeight = theme.font.lineHeight
             lineController.lineHeightMultiplier = lineHeightMultiplier
             lineController.syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
@@ -627,15 +626,6 @@ extension LayoutManager {
             lineControllers[line.id] = lineController
             return lineController
         }
-    }
-}
-
-// MARK: - LineControllerDelegate
-extension LayoutManager: LineControllerDelegate {
-    func string(in lineController: LineController) -> String {
-        let line = lineController.line
-        let range = NSRange(location: line.location, length: line.data.totalLength)
-        return currentDelegate.layoutManager(self, stringIn: range)
     }
 }
 
