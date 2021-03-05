@@ -15,7 +15,7 @@ final class PlainTextLanguageMode: LanguageMode {
     }
 
     func textDidChange(_ change: LanguageModeTextChange) -> LanguageModeTextChangeResult {
-        return LanguageModeTextChangeResult(changedLineIndices: [])
+        return LanguageModeTextChangeResult(changedRows: [])
     }
 
     func tokenType(at location: Int) -> String? {
@@ -24,5 +24,21 @@ final class PlainTextLanguageMode: LanguageMode {
 
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter {
         return PlainTextSyntaxHighlighter()
+    }
+
+    func highestSyntaxNode(at linePosition: LinePosition) -> SyntaxNode? {
+        return nil
+    }
+
+    func syntaxNode(at linePosition: LinePosition) -> SyntaxNode? {
+        return nil
+    }
+    
+    func suggestedIndentLevel(for line: DocumentLineNode) -> Int {
+        return 0
+    }
+
+    func indentLevel(for line: DocumentLineNode) -> Int {
+        return 0
     }
 }

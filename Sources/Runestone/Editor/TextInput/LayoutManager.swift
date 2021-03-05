@@ -288,7 +288,7 @@ final class LayoutManager {
             layoutViews(for: line, maxY: &maxY, contentOffsetAdjustment: &localContentOffsetAdjustmentY)
             contentOffsetAdjustmentY += localContentOffsetAdjustmentY
             if line.index < lineManager.lineCount - 1 {
-                nextLine = lineManager.line(atIndex: line.index + 1)
+                nextLine = lineManager.line(atRow: line.index + 1)
             } else {
                 nextLine = nil
             }
@@ -419,7 +419,7 @@ extension LayoutManager {
         let endLineIndex = endLine.index
         let lineIndexRange = startLineIndex ..< endLineIndex + 1
         for lineIndex in lineIndexRange {
-            let line = lineManager.line(atIndex: lineIndex)
+            let line = lineManager.line(atRow: lineIndex)
             let lineController = getLineController(for: line)
             let lineStartLocation = line.location
             let lineEndLocation = lineStartLocation + line.data.totalLength

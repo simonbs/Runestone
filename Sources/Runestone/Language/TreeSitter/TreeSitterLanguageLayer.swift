@@ -49,23 +49,23 @@ final class TreeSitterLanguageLayer {
         tree?.apply(edit)
         prepareParserToParse(from: rootNode)
         tree = parser.parse(oldTree: tree)
-        var lineIndices: Set<Int> = []
+        var rows: Set<Int> = []
         // Apply edit to injected languages.
         for childLanguageLayer in childLanguageLayers {
             let childResult = childLanguageLayer.apply(edit)
-            lineIndices.formUnion(childResult.changedLineIndices)
+            rows.formUnion(childResult.changedRows)
         }
         // Gather changed line indices.
         if let oldTree = oldTree, let newTree = tree {
             let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
             for changedRange in changedRanges {
-                for lineIndex in changedRange.startPoint.row ... changedRange.endPoint.row {
-                    lineIndices.insert(Int(lineIndex))
+                for row in changedRange.startPoint.row ... changedRange.endPoint.row {
+                    rows.insert(Int(row))
                 }
             }
         }
         updateChildLayers()
-        return LanguageModeTextChangeResult(changedLineIndices: lineIndices)
+        return LanguageModeTextChangeResult(changedRows: rows)
     }
 
     func captures(in range: ByteRange) -> [TreeSitterCapture] {
@@ -73,6 +73,19 @@ final class TreeSitterLanguageLayer {
         var captures = validCaptures(in: matches)
         captures.sort(by: TreeSitterCapture.captureLayerSorting)
         return captures
+    }
+
+    func node(at linePosition: LinePosition) -> TreeSitterNode? {
+        let point = TreeSitterTextPoint(linePosition)
+        guard var node = rootNode?.descendantForRange(from: point, to: point) else {
+            return nil
+        }
+        for childLanguageLayer in childLanguageLayers {
+            if let childNode = childLanguageLayer.node(at: linePosition), childNode.contains(point) {
+                node = childNode
+            }
+        }
+        return node
     }
 }
 
@@ -227,5 +240,12 @@ private extension TreeSitterCapture {
 private extension TreeSitterQueryCursor {
     func allCaptures() -> [TreeSitterCapture] {
         return allMatches().reduce([]) { $0 + $1.captures }
+    }
+}
+
+private extension TreeSitterNode {
+    func contains(_ point: TreeSitterTextPoint) -> Bool {
+        return point.row >= startPoint.row && point.column >= startPoint.column
+            && point.row <= endPoint.row && point.column <= endPoint.column
     }
 }

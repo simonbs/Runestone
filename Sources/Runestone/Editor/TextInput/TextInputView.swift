@@ -428,8 +428,12 @@ final class TextInputView: UIView, UITextInput {
         }
     }
 
-    func tokenType(at location: Int) -> String? {
-        return languageMode.tokenType(at: location)
+    func syntaxNode(at location: Int) -> SyntaxNode? {
+        if let linePosition = lineManager.linePosition(at: location) {
+            return languageMode.syntaxNode(at: linePosition)
+        } else {
+            return nil
+        }
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
@@ -504,11 +508,22 @@ extension TextInputView {
 extension TextInputView {
     func insertText(_ text: String) {
         if let selectedRange = selectedRange, shouldChangeText(in: selectedRange, replacementText: text) {
-            let nsText = text as NSString
             let currentText = self.text(in: selectedRange) ?? ""
-            let newRange = NSRange(location: selectedRange.location, length: nsText.length)
+            var remainingLines = text.components(separatedBy: Symbol.lineFeed)
+            let firstInsertedLine = remainingLines.removeFirst()
+
+            let allText: String
+            if !remainingLines.isEmpty {
+                allText = firstInsertedLine + Symbol.lineFeed + remainingLines.joined(separator: Symbol.lineFeed)
+            } else {
+                allText = firstInsertedLine
+            }
+
+            print(allText.replacingOccurrences(of: "\n", with: "\\n"))
+            let nsAllText = allText as NSString
+            let newRange = NSRange(location: selectedRange.location, length: nsAllText.length)
             addUndoOperation(replacing: newRange, withText: currentText)
-            replaceCharacters(in: selectedRange, with: nsText)
+            replaceCharacters(in: selectedRange, with: nsAllText)
             inputDelegate?.selectionWillChange(self)
             self.selectedRange = NSRange(location: newRange.location + newRange.length, length: 0)
             inputDelegate?.selectionDidChange(self)
@@ -603,12 +618,12 @@ extension TextInputView {
             startLinePosition: startLinePosition,
             newEndLinePosition: newEndLinePosition)
         let result = languageMode.textDidChange(textChange)
-        let languageModeChangedLines = result.changedLineIndices.map { lineManager.line(atIndex: $0) }
+        let languageModeChangedLines = result.changedRows.map { lineManager.line(atRow: $0) }
         editedLines.formUnion(languageModeChangedLines)
         layoutManager.typeset(editedLines)
         layoutManager.syntaxHighlight(editedLines)
         layoutManager.setNeedsLayout()
-        setNeedsLayout()
+//        setNeedsLayout()
         inputDelegate?.textDidChange(self)
         delegate?.textInputViewDidChange(self)
     }
@@ -786,8 +801,8 @@ extension TextInputView {
         guard let currentLinePosition = lineManager.linePosition(at: location) else {
             return location
         }
-        let targetLineNumber = min(max(currentLinePosition.lineNumber + lineOffset, 0), lineManager.lineCount - 1)
-        let targetLine = lineManager.line(atIndex: targetLineNumber)
+        let targetLineNumber = min(max(currentLinePosition.row + lineOffset, 0), lineManager.lineCount - 1)
+        let targetLine = lineManager.line(atRow: targetLineNumber)
         let localLineIndex = min(currentLinePosition.column, targetLine.data.length)
         return targetLine.location + localLineIndex
     }
@@ -849,6 +864,10 @@ extension TextInputView: TreeSitterLanguageModeDeleage {
 
     func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, stringIn byteRange: ByteRange) -> String {
         return (_string as String).substring(with: byteRange)
+    }
+
+    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, stringIn range: NSRange) -> String {
+        return string.substring(with: range)
     }
 
     private func bytes(at byteIndex: ByteCount, in parsedLine: ParsedLine) -> [Int8]? {

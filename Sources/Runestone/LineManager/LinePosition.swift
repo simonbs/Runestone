@@ -8,21 +8,21 @@
 import Foundation
 
 public final class LinePosition {
-    public let lineStartLocation: Int
-    public let lineNumber: Int
+    public let row: Int
     public let column: Int
-    public let totalLength: Int
 
-    init(lineStartLocation: Int, lineNumber: Int, column: Int, totalLength: Int) {
-        self.lineStartLocation = lineStartLocation
-        self.lineNumber = lineNumber
+    init(row: Int, column: Int) {
+        self.row = row
         self.column = column
-        self.totalLength = totalLength
+    }
+
+    convenience init(_ point: TreeSitterTextPoint) {
+        self.init(row: Int(point.row), column: Int(point.column))
     }
 }
 
 extension LinePosition: CustomDebugStringConvertible {
     public var debugDescription: String {
-        return "[LinePosition lineStartLocation=\(lineStartLocation) lineNumber=\(lineNumber) column=\(column) totalLength=\(totalLength)]"
+        return "[LinePosition row=\(row) column=\(column)]"
     }
 }

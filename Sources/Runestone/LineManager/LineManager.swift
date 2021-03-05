@@ -173,16 +173,17 @@ final class LineManager {
         }
     }
 
-    func linePosition(at location: Int) -> LinePosition? {
+    func lineDetails(at location: Int) -> LineDetails? {
         if let nodePosition = documentLineTree.nodePosition(at: location) {
-            return LinePosition(
-                lineStartLocation: nodePosition.nodeStartLocation,
-                lineNumber: nodePosition.index,
-                column: nodePosition.offset,
-                totalLength: nodePosition.value)
+            let linePosition = LinePosition(row: nodePosition.index, column: nodePosition.offset)
+            return LineDetails(startLocation: nodePosition.nodeStartLocation, totalLength: nodePosition.value, position: linePosition)
         } else {
             return nil
         }
+    }
+
+    func linePosition(at location: Int) -> LinePosition? {
+        return lineDetails(at: location)?.position
     }
 
     func line(containingCharacterAt location: Int) -> DocumentLineNode? {
@@ -209,8 +210,8 @@ final class LineManager {
             totalValueKeyPath: \.data.nodeTotalByteCount)
     }
 
-    func line(atIndex index: Int) -> DocumentLineNode {
-        return documentLineTree.node(atIndex: index)
+    func line(atRow row: Int) -> DocumentLineNode {
+        return documentLineTree.node(atIndex: row)
     }
 
     @discardableResult

@@ -470,7 +470,7 @@ public final class EditorTextView: UIScrollView {
         return textInputView.text(in: range)
     }
 
-    /// Returns the type of the token at the specified location in the document.
+    /// Returns the syntax node at the specified location in the document.
     ///
     /// This can be used with character pairs to determine if a pair should be inserted or not.
     /// For example, a character pair consisting of two quotes (") to surround a string, should probably not be
@@ -478,9 +478,9 @@ public final class EditorTextView: UIScrollView {
     ///
     /// This requires a language to be set on the editor.
     /// - Parameter location: A location in the document.
-    /// - Returns: The type of the token at the location.
-    public func tokenType(at location: Int) -> String? {
-        return textInputView.tokenType(at: location)
+    /// - Returns: The syntax node at the location.
+    public func syntaxNode(at location: Int) -> SyntaxNode? {
+        return textInputView.syntaxNode(at: location)
     }
 }
 

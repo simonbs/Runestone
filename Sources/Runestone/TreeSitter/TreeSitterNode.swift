@@ -40,6 +40,15 @@ final class TreeSitterNode {
     var byteRange: ByteRange {
         return ByteRange(from: startByte, to: endByte)
     }
+    var parent: TreeSitterNode? {
+        return getRelationship(using: ts_node_parent)
+    }
+    var previousSibling: TreeSitterNode? {
+        return getRelationship(using: ts_node_prev_sibling)
+    }
+    var nextSibling: TreeSitterNode? {
+        return getRelationship(using: ts_node_next_sibling)
+    }
 
     init(node: TSNode) {
         self.rawValue = node
@@ -50,6 +59,27 @@ final class TreeSitterNode {
         let endOffset = UInt32((byteRange.location + byteRange.length).value)
         let descendantRawValue = ts_node_named_descendant_for_byte_range(rawValue, startOffset, endOffset)
         return TreeSitterNode(node: descendantRawValue)
+    }
+
+    func descendantForRange(from startPoint: TreeSitterTextPoint, to endPoint: TreeSitterTextPoint) -> TreeSitterNode {
+        let node = ts_node_descendant_for_point_range(rawValue, startPoint.rawValue, endPoint.rawValue)
+        return TreeSitterNode(node: node)
+    }
+
+    func descendantForRange(from startByte: ByteCount, to endByte: ByteCount) -> TreeSitterNode {
+        let node = ts_node_descendant_for_byte_range(rawValue, UInt32(startByte.value), UInt32(endByte.value))
+        return TreeSitterNode(node: node)
+    }
+}
+
+private extension TreeSitterNode {
+    private func getRelationship(using f: (TSNode) -> TSNode) -> TreeSitterNode? {
+        let node = f(rawValue)
+        if ts_node_is_null(node) {
+            return nil
+        } else {
+            return TreeSitterNode(node: node)
+        }
     }
 }
 

@@ -16,13 +16,15 @@ struct LanguageModeTextChange {
 }
 
 struct LanguageModeTextChangeResult {
-    let changedLineIndices: Set<Int>
+    let changedRows: Set<Int>
 }
 
 protocol LanguageMode: AnyObject {
     func parse(_ text: String)
     func parse(_ text: String, completion: @escaping ((Bool) -> Void))
     func textDidChange(_ change: LanguageModeTextChange) -> LanguageModeTextChangeResult
-    func tokenType(at location: Int) -> String?
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter
+    func syntaxNode(at linePosition: LinePosition) -> SyntaxNode?
+    func suggestedIndentLevel(for line: DocumentLineNode) -> Int
+    func indentLevel(for line: DocumentLineNode) -> Int
 }

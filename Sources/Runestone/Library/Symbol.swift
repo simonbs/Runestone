@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  Symbol.swift
 //  
 //
 //  Created by Simon Støvring on 11/12/2020.
