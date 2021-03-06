@@ -321,4 +321,9 @@ extension DocumentLineNode {
     var yPosition: CGFloat {
         return tree.yPosition(of: self)
     }
+
+    var range: ClosedRange<Int> {
+        let _location = location
+        return _location ... _location + data.totalLength
+    }
 }

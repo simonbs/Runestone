@@ -214,7 +214,14 @@ public final class EditorTextView: UIScrollView {
         }
     }
     /// Character pairs are used by the editor to automatically insert a trailing character when the user types the leading character. Common usages of this includes the \" character to surround strings and { } to surround a scope.
-    public var characterPairs: [EditorCharacterPair] = []
+    public var characterPairs: [EditorCharacterPair] {
+        get {
+            return textInputView.characterPairs
+        }
+        set {
+            textInputView.characterPairs = newValue
+        }
+    }
     /// Enable to show line numbers in the gutter.
     public var showLineNumbers: Bool {
         get {
