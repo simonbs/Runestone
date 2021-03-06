@@ -622,8 +622,8 @@ extension TextInputView {
             startLinePosition: startLinePosition,
             newEndLinePosition: newEndLinePosition)
         let result = languageMode.textDidChange(textChange)
-        let languageModeChangedLines = result.changedRows.map { lineManager.line(atRow: $0) }
-        editedLines.formUnion(languageModeChangedLines)
+        let languageModeEditedLines = result.changedRows.map { lineManager.line(atRow: $0) }
+        editedLines.formUnion(languageModeEditedLines)
         layoutManager.typeset(editedLines)
         layoutManager.syntaxHighlight(editedLines)
         layoutManager.setNeedsLayout()
