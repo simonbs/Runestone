@@ -22,4 +22,9 @@ final class IndexedRange: UITextRange {
     init(range: NSRange) {
         self.range = range
     }
+
+    convenience init(location: Int, length: Int) {
+        let range = NSRange(location: location, length: 0)
+        self.init(range: range)
+    }
 }
