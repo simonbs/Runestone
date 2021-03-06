@@ -627,7 +627,7 @@ extension TextInputView {
         layoutManager.typeset(editedLines)
         layoutManager.syntaxHighlight(editedLines)
         layoutManager.setNeedsLayout()
-//        setNeedsLayout()
+        setNeedsLayout()
         inputDelegate?.textDidChange(self)
         delegate?.textInputViewDidChange(self)
     }
