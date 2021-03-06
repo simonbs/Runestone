@@ -14,6 +14,10 @@ final class StringView {
         self.string = string
     }
 
+    convenience init(string: String) {
+        self.init(string: NSMutableString(string: string))
+    }
+
     func byteOffset(at location: Int) -> ByteCount {
         return (string as String).byteOffset(at: location)
     }

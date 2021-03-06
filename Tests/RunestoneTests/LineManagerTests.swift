@@ -1,22 +1,7 @@
 import XCTest
 @testable import Runestone
 
-private final class LinePositionTestCase: LineManagerDelegate {
-    let lineManager = LineManager()
-
-    private let string: NSString
-
-    init(string: NSString) {
-        self.string = string
-        lineManager.delegate = self
-        var editedLines: Set<DocumentLineNode> = []
-        lineManager.insert(string, at: 0, editedLines: &editedLines)
-    }
-}
-
 final class LineManagerTests: XCTestCase {
-    private let linePositionTestCase1 = LinePositionTestCase(string: "hello\nworld\nwhat's up")
-
     func testLineLength() {
         let tree = DocumentLineTree(minimumValue: 0, rootValue: 0, rootData: .init(frameHeight: 0))
         let firstLine = tree.node(containingLocation: 0)
@@ -27,44 +12,55 @@ final class LineManagerTests: XCTestCase {
         XCTAssertEqual(firstLine.data.length, 4)
     }
 
-    func testLinePosition1() {
+    func testLineDetails1() {
+        let lineManager = createLineManager(containing: "hello\nworld\nwhat's up")
         // First line
-        let linePosition1 = linePositionTestCase1.lineManager.linePosition(at: 3)
-        XCTAssertEqual(linePosition1?.lineNumber, 0)
-        XCTAssertEqual(linePosition1?.column, 3)
-        XCTAssertEqual(linePosition1?.lineStartLocation, 0)
-        XCTAssertEqual(linePosition1?.totalLength, 6)
-        let linePosition2 = linePositionTestCase1.lineManager.linePosition(at: 5)
-        XCTAssertEqual(linePosition2?.lineNumber, 0)
-        XCTAssertEqual(linePosition2?.column, 5)
-        XCTAssertEqual(linePosition2?.lineStartLocation, 0)
-        XCTAssertEqual(linePosition2?.totalLength, 6)
+        let lineDetails1 = lineManager.lineDetails(at: 3)
+        XCTAssertEqual(lineDetails1?.position.row, 0)
+        XCTAssertEqual(lineDetails1?.position.column, 3)
+        XCTAssertEqual(lineDetails1?.startLocation, 0)
+        XCTAssertEqual(lineDetails1?.totalLength, 6)
+        let lineDetails2 = lineManager.lineDetails(at: 5)
+        XCTAssertEqual(lineDetails2?.position.row, 0)
+        XCTAssertEqual(lineDetails2?.position.column, 5)
+        XCTAssertEqual(lineDetails2?.startLocation, 0)
+        XCTAssertEqual(lineDetails2?.totalLength, 6)
         // Second line
-        let linePosition3 = linePositionTestCase1.lineManager.linePosition(at: 6)
-        XCTAssertEqual(linePosition3?.lineNumber, 1)
-        XCTAssertEqual(linePosition3?.column, 0)
-        XCTAssertEqual(linePosition3?.lineStartLocation, 6)
-        XCTAssertEqual(linePosition3?.totalLength, 6)
-        let linePosition4 = linePositionTestCase1.lineManager.linePosition(at: 7)
-        XCTAssertEqual(linePosition4?.lineNumber, 1)
-        XCTAssertEqual(linePosition4?.column, 1)
-        XCTAssertEqual(linePosition4?.lineStartLocation, 6)
-        XCTAssertEqual(linePosition4?.totalLength, 6)
+        let lineDetails3 = lineManager.lineDetails(at: 6)
+        XCTAssertEqual(lineDetails3?.position.row, 1)
+        XCTAssertEqual(lineDetails3?.position.column, 0)
+        XCTAssertEqual(lineDetails3?.startLocation, 6)
+        XCTAssertEqual(lineDetails3?.totalLength, 6)
+        let lineDetails4 = lineManager.lineDetails(at: 7)
+        XCTAssertEqual(lineDetails4?.position.row, 1)
+        XCTAssertEqual(lineDetails4?.position.column, 1)
+        XCTAssertEqual(lineDetails4?.startLocation, 6)
+        XCTAssertEqual(lineDetails4?.totalLength, 6)
         // Third line
-        let linePosition5 = linePositionTestCase1.lineManager.linePosition(at: 17)
-        XCTAssertEqual(linePosition5?.lineNumber, 2)
-        XCTAssertEqual(linePosition5?.column, 5)
-        XCTAssertEqual(linePosition5?.lineStartLocation, 12)
-        XCTAssertEqual(linePosition5?.totalLength, 9)
-        let linePosition6 = linePositionTestCase1.lineManager.linePosition(at: 21)
-        XCTAssertEqual(linePosition6?.lineNumber, 2)
-        XCTAssertEqual(linePosition6?.column, 9)
-        XCTAssertEqual(linePosition6?.lineStartLocation, 12)
-        XCTAssertEqual(linePosition6?.totalLength, 9)
+        let lineDetails5 = lineManager.lineDetails(at: 17)
+        XCTAssertEqual(lineDetails5?.position.row, 2)
+        XCTAssertEqual(lineDetails5?.position.column, 5)
+        XCTAssertEqual(lineDetails5?.startLocation, 12)
+        XCTAssertEqual(lineDetails5?.totalLength, 9)
+        let lineDetails6 = lineManager.lineDetails(at: 21)
+        XCTAssertEqual(lineDetails6?.position.row, 2)
+        XCTAssertEqual(lineDetails6?.position.column, 9)
+        XCTAssertEqual(lineDetails6?.startLocation, 12)
+        XCTAssertEqual(lineDetails6?.totalLength, 9)
         // Out of bounds
-        let linePosition7 = linePositionTestCase1.lineManager.linePosition(at: -1)
-        let linePosition8 = linePositionTestCase1.lineManager.linePosition(at: 22)
+        let linePosition7 = lineManager.lineDetails(at: -1)
+        let linePosition8 = lineManager.lineDetails(at: 22)
         XCTAssertNil(linePosition7)
         XCTAssertNil(linePosition8)
+    }
+}
+
+private extension LineManagerTests {
+    private func createLineManager(containing string: String) -> LineManager {
+        let stringView = StringView(string: string)
+        let lineManager = LineManager(stringView: stringView)
+        var editedLines: Set<DocumentLineNode> = []
+        lineManager.insert(string as NSString, at: 0, editedLines: &editedLines)
+        return lineManager
     }
 }
