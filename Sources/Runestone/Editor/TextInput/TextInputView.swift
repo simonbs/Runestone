@@ -522,7 +522,7 @@ extension TextInputView {
             if text == Symbol.lineFeed, let line = lineManager.line(containingCharacterAt: selectedRange.location) {
                 let bracketMatcher = BracketMatcher(characterPairs: characterPairs, stringView: stringView)
                 if bracketMatcher.hasMatchingBrackets(surrounding: selectedRange.lowerBound ... selectedRange.upperBound, in: line.range) {
-                    justInsert("\n\n", in: selectedRange)
+                    justInsert(Symbol.lineFeed + Symbol.lineFeed, in: selectedRange)
                     // Move cursor to end of line after first new line
                     let nextLine = lineManager.line(atRow: line.index + 1)
                     selectedTextRange = IndexedRange(location: nextLine.location + nextLine.data.length, length: 0)
