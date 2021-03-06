@@ -67,17 +67,21 @@ final class BracketMatcher {
     }
 
     func hasMatchingBrackets(at location: Int, in lineRange: ClosedRange<Int>) -> Bool {
+        return hasMatchingBrackets(surrounding: location ... location, in: lineRange)
+    }
+
+    func hasMatchingBrackets(surrounding range: ClosedRange<Int>, in lineRange: ClosedRange<Int>) -> Bool {
         // The max look around defines a maximum amount of characters to scan in each direction.
         // Increasing the number can cause worse performance but better results.
         // In most cases it shouldn't need to be large though.
         let maxLookAround = 200
         let lineStartLocation = lineRange.lowerBound
-        let lowerLocationBound = max(location - maxLookAround, lineStartLocation)
-        let upperLocationBound = min(location + maxLookAround, lineRange.upperBound)
+        let lowerLocationBound = max(range.lowerBound - maxLookAround, lineStartLocation)
+        let upperLocationBound = min(range.upperBound + maxLookAround, lineRange.upperBound)
         let limitingBounds = lowerLocationBound ... upperLocationBound
-        let leadingCountResult = countLeadingPairs(startingAt: location, limitedTo: limitingBounds)
+        let leadingCountResult = countLeadingPairs(startingAt: range.lowerBound, limitedTo: limitingBounds)
         if leadingCountResult.containsOpenBracket {
-            let trailingCountResult = countTrailingPairs(startingAt: location, limitedTo: limitingBounds)
+            let trailingCountResult = countTrailingPairs(startingAt: range.upperBound, limitedTo: limitingBounds)
             return leadingCountResult.containsBracket(matchedBy: trailingCountResult)
         } else {
             return false

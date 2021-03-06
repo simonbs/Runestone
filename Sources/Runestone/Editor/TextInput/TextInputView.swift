@@ -519,23 +519,23 @@ extension TextInputView {
 extension TextInputView {
     func insertText(_ text: String) {
         if let selectedRange = selectedRange, shouldChangeText(in: selectedRange, replacementText: text) {
-            if selectedRange.length == 0, text == Symbol.lineFeed, let line = lineManager.line(containingCharacterAt: selectedRange.location) {
+            if text == Symbol.lineFeed, let line = lineManager.line(containingCharacterAt: selectedRange.location) {
                 let bracketMatcher = BracketMatcher(characterPairs: characterPairs, stringView: stringView)
-                if bracketMatcher.hasMatchingBrackets(at: selectedRange.location, in: line.range) {
-                    justInsertText("\n\n", in: selectedRange)
+                if bracketMatcher.hasMatchingBrackets(surrounding: selectedRange.lowerBound ... selectedRange.upperBound, in: line.range) {
+                    justInsert("\n\n", in: selectedRange)
                     // Move cursor to end of line after first new line
                     let nextLine = lineManager.line(atRow: line.index + 1)
                     selectedTextRange = IndexedRange(location: nextLine.location + nextLine.data.length, length: 0)
                 } else {
-                    justInsertText(text, in: selectedRange)
+                    justInsert(text, in: selectedRange)
                 }
             } else {
-                justInsertText(text, in: selectedRange)
+                justInsert(text, in: selectedRange)
             }
         }
     }
 
-    private func justInsertText(_ text: String, in range: NSRange) {
+    private func justInsert(_ text: String, in range: NSRange) {
         let nsText = text as NSString
         let currentText = self.text(in: range) ?? ""
         let newRange = NSRange(location: range.location, length: nsText.length)
