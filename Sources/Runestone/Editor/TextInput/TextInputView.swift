@@ -226,6 +226,7 @@ final class TextInputView: UIView, UITextInput {
             layoutIfNeeded()
         }
     }
+    var characterPairs: [EditorCharacterPair] = []
     private var estimatedLineHeight: CGFloat {
         return theme.font.lineHeight * lineHeightMultiplier
     }
@@ -415,10 +416,7 @@ final class TextInputView: UIView, UITextInput {
 
     func moveCaret(to point: CGPoint) {
         if let index = layoutManager.closestIndex(to: point) {
-            inputDelegate?.selectionWillChange(self)
-            selectedRange = NSRange(location: index, length: 0)
-            inputDelegate?.selectionDidChange(self)
-            delegate?.textInputViewDidChangeSelection(self)
+            selectedTextRange = IndexedRange(location: index, length: 0)
         }
     }
 
@@ -521,27 +519,29 @@ extension TextInputView {
 extension TextInputView {
     func insertText(_ text: String) {
         if let selectedRange = selectedRange, shouldChangeText(in: selectedRange, replacementText: text) {
-            let currentText = self.text(in: selectedRange) ?? ""
-            var remainingLines = text.components(separatedBy: Symbol.lineFeed)
-            let firstInsertedLine = remainingLines.removeFirst()
-
-            let allText: String
-            if !remainingLines.isEmpty {
-                allText = firstInsertedLine + Symbol.lineFeed + remainingLines.joined(separator: Symbol.lineFeed)
+            if selectedRange.length == 0, text == Symbol.lineFeed, let line = lineManager.line(containingCharacterAt: selectedRange.location) {
+                let bracketMatcher = BracketMatcher(characterPairs: characterPairs, stringView: stringView)
+                if bracketMatcher.hasMatchingBrackets(at: selectedRange.location, in: line.range) {
+                    justInsertText("\n\n", in: selectedRange)
+                    // Move cursor to end of line after first new line
+                    let nextLine = lineManager.line(atRow: line.index + 1)
+                    selectedTextRange = IndexedRange(location: nextLine.location + nextLine.data.length, length: 0)
+                } else {
+                    justInsertText(text, in: selectedRange)
+                }
             } else {
-                allText = firstInsertedLine
+                justInsertText(text, in: selectedRange)
             }
-
-            print(allText.replacingOccurrences(of: "\n", with: "\\n"))
-            let nsAllText = allText as NSString
-            let newRange = NSRange(location: selectedRange.location, length: nsAllText.length)
-            addUndoOperation(replacing: newRange, withText: currentText)
-            replaceCharacters(in: selectedRange, with: nsAllText)
-            inputDelegate?.selectionWillChange(self)
-            self.selectedRange = NSRange(location: newRange.location + newRange.length, length: 0)
-            inputDelegate?.selectionDidChange(self)
-            delegate?.textInputViewDidChangeSelection(self)
         }
+    }
+
+    private func justInsertText(_ text: String, in range: NSRange) {
+        let nsText = text as NSString
+        let currentText = self.text(in: range) ?? ""
+        let newRange = NSRange(location: range.location, length: nsText.length)
+        addUndoOperation(replacing: newRange, withText: currentText)
+        replaceCharacters(in: range, with: nsText)
+        selectedTextRange = IndexedRange(location: newRange.upperBound, length: 0)
     }
 
     func deleteBackward() {
@@ -555,10 +555,7 @@ extension TextInputView {
                     addUndoOperation(replacing: undoRange, withText: currentText)
                 }
                 replaceCharacters(in: selectedRange, with: "")
-                inputDelegate?.selectionWillChange(self)
-                self.selectedRange = NSRange(location: selectedRange.location, length: 0)
-                inputDelegate?.selectionDidChange(self)
-                delegate?.textInputViewDidChangeSelection(self)
+                selectedTextRange = IndexedRange(location: selectedRange.location, length: 0)
             }
         } else if selectedRange.location > 0 {
             if shouldChangeText(in: selectedRange, replacementText: "") {
@@ -567,10 +564,7 @@ extension TextInputView {
                     addUndoOperation(replacing: deleteRange, withText: currentText)
                 }
                 replaceCharacters(in: deleteRange, with: "")
-                inputDelegate?.selectionWillChange(self)
-                self.selectedRange = NSRange(location: selectedRange.location, length: 0)
-                inputDelegate?.selectionDidChange(self)
-                delegate?.textInputViewDidChangeSelection(self)
+                selectedTextRange = IndexedRange(location: selectedRange.location, length: 0)
             }
         }
     }
@@ -606,10 +600,7 @@ extension TextInputView {
             let newRange = NSRange(location: indexedRange.range.location, length: nsText.length)
             addUndoOperation(replacing: newRange, withText: currentText)
             replaceCharacters(in: indexedRange.range, with: nsText)
-            inputDelegate?.selectionWillChange(self)
-            selectedRange = NSRange(location: newRange.location + newRange.length, length: 0)
-            inputDelegate?.selectionDidChange(self)
-            delegate?.textInputViewDidChangeSelection(self)
+            selectedTextRange = IndexedRange(location: newRange.location + newRange.length, length: 0)
         }
     }
 
@@ -674,10 +665,7 @@ extension TextInputView {
             // If we're replacing a range of more than one character with a text of more than one character then we select the new text.
             let textLength = text.utf16.count
             if range.length > 0 && textLength > 0 {
-                textInputView.inputDelegate?.selectionWillChange(self)
-                textInputView.selectedRange = NSRange(location: range.location, length: textLength)
-                textInputView.inputDelegate?.selectionDidChange(self)
-                textInputView.delegate?.textInputViewDidChangeSelection(self)
+                self.selectedTextRange = IndexedRange(location: range.location, length: textLength)
             }
         }
     }
