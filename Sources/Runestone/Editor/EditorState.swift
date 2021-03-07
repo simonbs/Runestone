@@ -20,7 +20,7 @@ public final class EditorState {
         self.stringView = StringView(string: NSMutableString(string: text))
         self.lineManager = LineManager(stringView: stringView)
         if let language = language {
-            self.languageMode = TreeSitterLanguageMode(language: language, stringView: stringView)
+            self.languageMode = TreeSitterLanguageMode(language: language, stringView: stringView, lineManager: lineManager)
         } else {
             self.languageMode = PlainTextLanguageMode()
         }

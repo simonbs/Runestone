@@ -12,11 +12,13 @@ final class TreeSitterIndentController {
     let languageLayer: TreeSitterLanguageLayer
 
     private let stringView: StringView
+    private let lineManager: LineManager
 
-    init(languageLayer: TreeSitterLanguageLayer, indentationScopes: TreeSitterIndentationScopes, stringView: StringView) {
+    init(languageLayer: TreeSitterLanguageLayer, indentationScopes: TreeSitterIndentationScopes, stringView: StringView, lineManager: LineManager) {
         self.languageLayer = languageLayer
         self.indentationScopes = indentationScopes
         self.stringView = stringView
+        self.lineManager = lineManager
     }
 
     func indentLevel(in line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
@@ -37,19 +39,36 @@ final class TreeSitterIndentController {
         return indentLength / tabLength
     }
 
-    func suggestedIndentLevel(for line: DocumentLineNode) -> Int {
+    func suggestedIndentLevel(for line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
         let range = NSRange(location: line.location, length: line.data.totalLength)
         let string = stringView.substring(in: range)
         let linePosition = startingLinePosition(ofRow: line.index, in: string)
-        return suggestedIndentLevel(at: linePosition.column, in: line)
+        return suggestedIndentLevel(at: linePosition, using: indentBehavior)
     }
 
-    func suggestedIndentLevel(at location: Int, in line: DocumentLineNode) -> Int {
-        let linePosition = LinePosition(row: line.index, column: location)
-        if let node = languageLayer.highestNode(at: linePosition) {
-            return indentationLevel(at: node)
-        } else {
+    func suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
+        guard linePosition.row > 0 else {
             return 0
+        }
+        guard let node = languageLayer.highestNode(at: linePosition) else {
+            return 0
+        }
+        guard let indentingNode = firstNodeAddingIndentLevel(from: node) else {
+            return 0
+        }
+        if indentingNode.startPoint.row == linePosition.row {
+            return indentLevel(at: node)
+        } else if indentingNode.endPoint.row == linePosition.row {
+            // If the indentation level ends at the inputted line then we'll subtract one from the indentation level.
+            // This is the case when placing the cursor as shown below and adding a new line.
+            //   if (foo) {
+            //     // ...
+            //   |}
+            return max(indentLevel(at: node) - 1, 0)
+        } else {
+            // Keep the same indentation as the previous line.
+            let line = lineManager.line(atRow: linePosition.row)
+            return indentLevel(in: line, using: indentBehavior)
         }
     }
 
@@ -63,17 +82,6 @@ final class TreeSitterIndentController {
        }
        return nil
     }
-
-    func firstNodeAddingIndentLevel(from node: TreeSitterNode) -> TreeSitterNode? {
-       var workingNode: TreeSitterNode? = node
-       while let node = workingNode {
-           if let type = node.type, indentationScopes.indent.contains(type) {
-               return node
-           }
-           workingNode = node.parent
-       }
-       return nil
-   }
 }
 
 private extension TreeSitterIndentController {
@@ -90,41 +98,32 @@ private extension TreeSitterIndentController {
         return LinePosition(row: row, column: currentColumn)
     }
 
-    private func indentationLevel(at node: TreeSitterNode, previousScopeNode: TreeSitterNode? = nil) -> Int {
-        guard let nodeType = node.type, let parentNode = node.parent, let parentType = parentNode.type else {
+    private func indentLevel(at node: TreeSitterNode) -> Int {
+        guard let nodeType = node.type else {
             return 0
         }
         var increment = 0
-        let isScope = indentationScopes.indent.contains(parentType)
-        if isScope {
+        if indentationScopes.indent.contains(nodeType) {
             increment += 1
         }
-        let isScope2 = indentationScopes.indentExceptFirst.contains(parentType)
-        if increment == 0 && isScope2 && node.previousSibling != nil {
-            increment += 1
+        if increment > 0 && indentationScopes.outdent.contains(nodeType) {
+            increment -= 1
         }
-        let isScope3 = indentationScopes.indentExceptFirstOrBlock.contains(parentType)
-        if increment == 0 && isScope3 && node.previousSibling != nil {
-            increment += 1
-        }
-        var typeDent = 0
-        if indentationScopes.types.indent.contains(nodeType) {
-            typeDent += 1
-        }
-        if indentationScopes.types.outdent.contains(nodeType) && increment > 0 {
-            typeDent -= 1
-        }
-        increment += typeDent
-        if let previousScopeNode = previousScopeNode, increment > 0 &&
-            ((parentNode.startPoint.row == previousScopeNode.startPoint.row &&
-                parentNode.endByte <= previousScopeNode.endByte + ByteCount(1)) ||
-                (isScope3 && previousScopeNode.endByte == node.endByte)) {
-            increment = 0
-        }
-        if isScope || isScope2 {
-            return indentationLevel(at: parentNode, previousScopeNode: parentNode) + increment
+        if let parentNode = node.parent {
+            return indentLevel(at: parentNode) + increment
         } else {
-            return indentationLevel(at: parentNode, previousScopeNode: previousScopeNode) + increment
+            return increment
         }
     }
+
+    private func firstNodeAddingIndentLevel(from node: TreeSitterNode) -> TreeSitterNode? {
+       var workingNode: TreeSitterNode? = node
+       while let node = workingNode {
+           if let type = node.type, indentationScopes.indent.contains(type) {
+               return node
+           }
+           workingNode = node.parent
+       }
+       return nil
+   }
 }

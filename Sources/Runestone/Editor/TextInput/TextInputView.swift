@@ -424,7 +424,7 @@ final class TextInputView: UIView, UITextInput {
     func setLanguage(_ language: TreeSitterLanguage?, completion: ((Bool) -> Void)? = nil) {
         let newLanguageMode: LanguageMode
         if let language = language {
-            newLanguageMode = TreeSitterLanguageMode(language: language, stringView: stringView)
+            newLanguageMode = TreeSitterLanguageMode(language: language, stringView: stringView, lineManager: lineManager)
         } else {
             newLanguageMode = PlainTextLanguageMode()
         }
@@ -559,16 +559,10 @@ extension TextInputView {
         } else if let line = lineManager.line(containingCharacterAt: range.location) {
             // Indent the new line.
             let localLocation = range.location - line.location
-            let currentIndentLevel = languageMode.indentLevel(in: line, using: indentBehavior)
-            let suggestedIndentLevel = languageMode.suggestedIndentLevel(at: localLocation, in: line)
-            if suggestedIndentLevel < currentIndentLevel {
-                // The line have been indented more than the language suggests, so we preserve the current indentation.
-                let indentedText = Symbol.lineFeed + indentBehavior.string(indentLevel: currentIndentLevel)
-                justInsert(indentedText, in: range)
-            } else {
-                let indentedText = Symbol.lineFeed + indentBehavior.string(indentLevel: suggestedIndentLevel)
-                justInsert(indentedText, in: range)
-            }
+            let linePosition = LinePosition(row: line.index, column: localLocation)
+            let suggestedIndentLevel = languageMode.suggestedIndentLevel(at: linePosition, using: indentBehavior)
+            let indentedText = Symbol.lineFeed + indentBehavior.string(indentLevel: suggestedIndentLevel)
+            justInsert(indentedText, in: range)
         } else {
             justInsert(Symbol.lineFeed, in: range)
         }
@@ -614,7 +608,7 @@ extension TextInputView {
     func indent() {
         if let selectedRange = selectedRange, let line = lineManager.line(containingCharacterAt: selectedRange.location) {
             let currentIndentLevel = languageMode.indentLevel(in: line, using: indentBehavior)
-            let suggestedIndentLevel = languageMode.suggestedIndentLevel(for: line)
+            let suggestedIndentLevel = languageMode.suggestedIndentLevel(for: line, using: indentBehavior)
             if currentIndentLevel < suggestedIndentLevel {
                 let startLocation = line.location
                 let endLocation = locationOfFirstNonWhitespaceCharacter(in: line)

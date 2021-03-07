@@ -37,12 +37,12 @@ final class PlainTextLanguageMode: LanguageMode {
     func shouldInsertDoubleLineBreak(replacingRangeFrom startLinePosition: LinePosition, to endLinePosition: LinePosition) -> Bool {
         return false
     }
-    
-    func suggestedIndentLevel(for line: DocumentLineNode) -> Int {
+
+    func suggestedIndentLevel(for line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
         return 0
     }
 
-    func suggestedIndentLevel(at location: Int, in line: DocumentLineNode) -> Int {
+    func suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
         return 0
     }
 

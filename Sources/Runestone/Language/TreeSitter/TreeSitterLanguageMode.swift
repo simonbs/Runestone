@@ -20,15 +20,17 @@ final class TreeSitterLanguageMode: LanguageMode {
 
     private let stringView: StringView
     private let parser: TreeSitterParser
+    private let lineManager: LineManager
     private let rootLanguageLayer: TreeSitterLanguageLayer
     private let operationQueue = OperationQueue()
 
-    init(language: TreeSitterLanguage, stringView: StringView) {
+    init(language: TreeSitterLanguage, stringView: StringView, lineManager: LineManager) {
         self.stringView = stringView
+        self.lineManager = lineManager
         operationQueue.name = "TreeSitterLanguageMode"
         operationQueue.qualityOfService = .userInitiated
         parser = TreeSitterParser(encoding: language.textEncoding.treeSitterEncoding)
-        rootLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser, stringView: stringView)
+        rootLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser, stringView: stringView, lineManager: lineManager)
         parser.delegate = self
     }
 
@@ -79,12 +81,12 @@ final class TreeSitterLanguageMode: LanguageMode {
         return rootLanguageLayer.shouldInsertDoubleLineBreak(replacingRangeFrom: startLinePosition, to: endLinePosition)
     }
 
-    func suggestedIndentLevel(for line: DocumentLineNode) -> Int {
-        return rootLanguageLayer.suggestedIndentLevel(for: line)
+    func suggestedIndentLevel(for line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+        return rootLanguageLayer.suggestedIndentLevel(for: line, using: indentBehavior)
     }
 
-    func suggestedIndentLevel(at location: Int, in line: DocumentLineNode) -> Int {
-        return rootLanguageLayer.suggestedIndentLevel(at: location, in: line)
+    func suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
+        return rootLanguageLayer.suggestedIndentLevel(at: linePosition, using: indentBehavior)
     }
 
     func indentLevel(in line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {

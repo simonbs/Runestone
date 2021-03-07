@@ -15,6 +15,7 @@ final class TreeSitterLanguageLayer {
         return parser.language != nil && tree != nil
     }
 
+    private let lineManager: LineManager
     private let language: TreeSitterLanguage
     private let indentationScopes: TreeSitterIndentationScopes?
     private let parser: TreeSitterParser
@@ -30,11 +31,12 @@ final class TreeSitterLanguageLayer {
         }
     }
 
-    init(language: TreeSitterLanguage, parser: TreeSitterParser, stringView: StringView) {
+    init(language: TreeSitterLanguage, parser: TreeSitterParser, stringView: StringView, lineManager: LineManager) {
         self.language = language
         self.indentationScopes = language.indentationScopes
         self.parser = parser
         self.stringView = stringView
+        self.lineManager = lineManager
     }
 
     func parse(_ text: String) {
@@ -101,10 +103,9 @@ final class TreeSitterLanguageLayer {
     }
 
     func shouldInsertDoubleLineBreak(replacingRangeFrom startLinePosition: LinePosition, to endLinePosition: LinePosition) -> Bool {
-        guard let indentationScopes = indentationScopes else {
+        guard let indentationController = createIndentController() else {
             return false
         }
-        let indentationController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView)
         guard let startNode = node(at: startLinePosition), let startIndentingNode = indentationController.firstNodeAddingAdditionalLineBreak(from: startNode) else {
             return false
         }
@@ -124,28 +125,24 @@ final class TreeSitterLanguageLayer {
     }
 
     func indentLevel(in line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
-        if let indentationScopes = indentationScopes {
-            let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView)
-            return indentController.indentLevel(in: line, using: indentBehavior)
-        } else {
+        guard let indentController = createIndentController() else {
             return 0
         }
+        return indentController.indentLevel(in: line, using: indentBehavior)
     }
 
-    func suggestedIndentLevel(for line: DocumentLineNode) -> Int {
-        guard let indentationScopes = indentationScopes else {
+    func suggestedIndentLevel(for line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+        guard let indentController = createIndentController() else {
             return 0
         }
-        let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView)
-        return indentController.suggestedIndentLevel(for: line)
+        return indentController.suggestedIndentLevel(for: line, using: indentBehavior)
     }
 
-    func suggestedIndentLevel(at location: Int, in line: DocumentLineNode) -> Int {
-        guard let indentationScopes = indentationScopes else {
+    func suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
+        guard let indentController = createIndentController() else {
             return 0
         }
-        let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView)
-        return indentController.suggestedIndentLevel(at: location, in: line)
+        return indentController.suggestedIndentLevel(at: linePosition, using: indentBehavior)
     }
 }
 
@@ -250,10 +247,21 @@ private extension TreeSitterLanguageLayer {
         guard let language = language.injectedLanguageProvider?.treeSitterLanguage(named: languageName) else {
             return nil
         }
-        let childLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser, stringView: stringView)
+        let childLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser, stringView: stringView, lineManager: lineManager)
         childLanguageLayer.parentLanguageLayer = self
         childLanguageLayers.append(childLanguageLayer)
         return childLanguageLayer
+    }
+
+    private func createIndentController() -> TreeSitterIndentController? {
+        guard let indentationScopes = indentationScopes else {
+            return nil
+        }
+        return TreeSitterIndentController(
+            languageLayer: self,
+            indentationScopes: indentationScopes,
+            stringView: stringView,
+            lineManager: lineManager)
     }
 }
 
