@@ -549,8 +549,7 @@ extension TextInputView {
            let line = lineManager.line(containingCharacterAt: range.lowerBound),
            languageMode.shouldInsertDoubleLineBreak(replacingRangeFrom: startLinePosition, to: endLinePosition) {
             // Cursor is placed between two brackets. Inserting a line break enters a new indentation level.
-            // We insert an additional line break to move the closing bracket to a new line and place the
-            // cursor in the new block.
+            // We insert an additional line break to move the closing bracket to a new line and place the cursor in the new block.
             let currentIndentLevel = languageMode.indentLevel(in: line, using: indentBehavior)
             let firstLineText = Symbol.lineFeed + indentBehavior.string(indentLevel: currentIndentLevel + 1)
             let secondLineText = Symbol.lineFeed + indentBehavior.string(indentLevel: currentIndentLevel)
