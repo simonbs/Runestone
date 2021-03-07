@@ -20,7 +20,6 @@ final class TreeSitterLanguageMode: LanguageMode {
 
     private let stringView: StringView
     private let parser: TreeSitterParser
-    private let indentationScopes: TreeSitterIndentationScopes?
     private let rootLanguageLayer: TreeSitterLanguageLayer
     private let operationQueue = OperationQueue()
 
@@ -29,7 +28,6 @@ final class TreeSitterLanguageMode: LanguageMode {
         operationQueue.name = "TreeSitterLanguageMode"
         operationQueue.qualityOfService = .userInitiated
         parser = TreeSitterParser(encoding: language.textEncoding.treeSitterEncoding)
-        indentationScopes = language.indentationScopes
         rootLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser, stringView: stringView)
         parser.delegate = self
     }
@@ -77,31 +75,20 @@ final class TreeSitterLanguageMode: LanguageMode {
         return TreeSitterSyntaxHighlighter(languageMode: self, operationQueue: operationQueue)
     }
 
-    func suggestedIndentLevel(for line: DocumentLineNode) -> Int {
-        if let indentationScopes = indentationScopes {
-            let indentController = TreeSitterIndentController(languageMode: self, indentationScopes: indentationScopes, stringView: stringView)
-            return indentController.suggestedIndentLevel(for: line)
-        } else {
-            return 0
-        }
+    func shouldInsertDoubleLineBreak(replacingRangeFrom startLinePosition: LinePosition, to endLinePosition: LinePosition) -> Bool {
+        return rootLanguageLayer.shouldInsertDoubleLineBreak(replacingRangeFrom: startLinePosition, to: endLinePosition)
     }
 
-    func indentLevel(for line: DocumentLineNode) -> Int {
-        var indentLength = 0
-        let tabLength = 2
-        let location = line.location
-        for i in 0 ..< line.data.totalLength {
-            let range = NSRange(location: location + i, length: 1)
-            let str = stringView.substring(in: range).first
-            if str == Symbol.Character.tab {
-                indentLength += tabLength - (indentLength % tabLength)
-            } else if str == Symbol.Character.space {
-                indentLength += 1
-            } else {
-                break
-            }
-        }
-        return indentLength / tabLength
+    func suggestedIndentLevel(for line: DocumentLineNode) -> Int {
+        return rootLanguageLayer.suggestedIndentLevel(for: line)
+    }
+
+    func suggestedIndentLevel(at location: Int, in line: DocumentLineNode) -> Int {
+        return rootLanguageLayer.suggestedIndentLevel(at: location, in: line)
+    }
+
+    func indentLevel(in line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+        return rootLanguageLayer.indentLevel(in: line, using: indentBehavior)
     }
 
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode? {
@@ -115,16 +102,7 @@ final class TreeSitterLanguageMode: LanguageMode {
     }
 
     func highestNode(at linePosition: LinePosition) -> TreeSitterNode? {
-        guard var node = rootLanguageLayer.node(at: linePosition) else {
-            return nil
-        }
-        while let parent = node.parent,
-              parent.startPoint.row == node.startPoint.row
-                && parent.endPoint.row == node.endPoint.row
-                && parent.startPoint.column == node.startPoint.column {
-            node = parent
-        }
-        return node
+        return rootLanguageLayer.highestNode(at: linePosition)
     }
 }
 

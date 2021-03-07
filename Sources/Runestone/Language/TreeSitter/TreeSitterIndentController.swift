@@ -9,31 +9,71 @@ import Foundation
 
 final class TreeSitterIndentController {
     let indentationScopes: TreeSitterIndentationScopes
-    let languageMode: TreeSitterLanguageMode
-    let tabLength = 2
+    let languageLayer: TreeSitterLanguageLayer
 
     private let stringView: StringView
 
-    init(languageMode: TreeSitterLanguageMode, indentationScopes: TreeSitterIndentationScopes, stringView: StringView) {
-        self.languageMode = languageMode
+    init(languageLayer: TreeSitterLanguageLayer, indentationScopes: TreeSitterIndentationScopes, stringView: StringView) {
+        self.languageLayer = languageLayer
         self.indentationScopes = indentationScopes
         self.stringView = stringView
+    }
+
+    func indentLevel(in line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+        var indentLength = 0
+        let tabLength = indentBehavior.tabLength
+        let location = line.location
+        for i in 0 ..< line.data.totalLength {
+            let range = NSRange(location: location + i, length: 1)
+            let str = stringView.substring(in: range).first
+            if str == Symbol.Character.tab {
+                indentLength += tabLength - (indentLength % tabLength)
+            } else if str == Symbol.Character.space {
+                indentLength += 1
+            } else {
+                break
+            }
+        }
+        return indentLength / tabLength
     }
 
     func suggestedIndentLevel(for line: DocumentLineNode) -> Int {
         let range = NSRange(location: line.location, length: line.data.totalLength)
         let string = stringView.substring(in: range)
-//        var indentation = walkTree(startingAt: node)
-//        if node.type == "comment" && node.startPoint.row < line.index && node.endPoint.row > line.index {
-//            indentation += 1
-//        }
         let linePosition = startingLinePosition(ofRow: line.index, in: string)
-        if let node = languageMode.highestNode(at: linePosition) {
-            return walkTree(startingAt: node)
+        return suggestedIndentLevel(at: linePosition.column, in: line)
+    }
+
+    func suggestedIndentLevel(at location: Int, in line: DocumentLineNode) -> Int {
+        let linePosition = LinePosition(row: line.index, column: location)
+        if let node = languageLayer.highestNode(at: linePosition) {
+            return indentationLevel(at: node)
         } else {
             return 0
         }
     }
+
+    func firstNodeAddingAdditionalLineBreak(from node: TreeSitterNode) -> TreeSitterNode? {
+       var workingNode: TreeSitterNode? = node
+       while let node = workingNode {
+           if let type = node.type, indentationScopes.indentsAddingAdditionalLineBreak.contains(type) {
+               return node
+           }
+           workingNode = node.parent
+       }
+       return nil
+    }
+
+    func firstNodeAddingIndentLevel(from node: TreeSitterNode) -> TreeSitterNode? {
+       var workingNode: TreeSitterNode? = node
+       while let node = workingNode {
+           if let type = node.type, indentationScopes.indent.contains(type) {
+               return node
+           }
+           workingNode = node.parent
+       }
+       return nil
+   }
 }
 
 private extension TreeSitterIndentController {
@@ -50,62 +90,41 @@ private extension TreeSitterIndentController {
         return LinePosition(row: row, column: currentColumn)
     }
 
-    private func walkTree(startingAt node: TreeSitterNode) -> Int {
-        guard let nodeType = node.type else {
+    private func indentationLevel(at node: TreeSitterNode, previousScopeNode: TreeSitterNode? = nil) -> Int {
+        guard let nodeType = node.type, let parentNode = node.parent, let parentType = parentNode.type else {
             return 0
         }
         var increment = 0
-        if indentationScopes.indent.contains(nodeType) {
+        let isScope = indentationScopes.indent.contains(parentType)
+        if isScope {
             increment += 1
         }
-        print(nodeType)
-        print("  P: \(node.previousSibling?.type ?? "")")
-        print("  N: \(node.nextSibling?.type ?? "")")
-        if indentationScopes.outdent.contains(nodeType) {
-            increment -= 1
+        let isScope2 = indentationScopes.indentExceptFirst.contains(parentType)
+        if increment == 0 && isScope2 && node.previousSibling != nil {
+            increment += 1
         }
-
-        if let parentNode = node.parent {
-            return walkTree(startingAt: parentNode) + increment
+        let isScope3 = indentationScopes.indentExceptFirstOrBlock.contains(parentType)
+        if increment == 0 && isScope3 && node.previousSibling != nil {
+            increment += 1
+        }
+        var typeDent = 0
+        if indentationScopes.types.indent.contains(nodeType) {
+            typeDent += 1
+        }
+        if indentationScopes.types.outdent.contains(nodeType) && increment > 0 {
+            typeDent -= 1
+        }
+        increment += typeDent
+        if let previousScopeNode = previousScopeNode, increment > 0 &&
+            ((parentNode.startPoint.row == previousScopeNode.startPoint.row &&
+                parentNode.endByte <= previousScopeNode.endByte + ByteCount(1)) ||
+                (isScope3 && previousScopeNode.endByte == node.endByte)) {
+            increment = 0
+        }
+        if isScope || isScope2 {
+            return indentationLevel(at: parentNode, previousScopeNode: parentNode) + increment
         } else {
-            return increment
+            return indentationLevel(at: parentNode, previousScopeNode: previousScopeNode) + increment
         }
-
-//        guard let nodeType = node.type, let parentNode = node.parent, let parentType = parentNode.type else {
-//            return 0
-//        }
-//        var increment = 0
-//        let notFirstOrLastSibling = node.previousSibling != nil && node.nextSibling != nil
-//        let isScope = indentationScopes.indent.contains(parentType)
-//        if notFirstOrLastSibling && isScope {
-//            increment += 1
-//        }
-//        let isScope2 = indentationScopes.indentExceptFirst.contains(parentType)
-//        if increment == 0 && isScope2 && node.previousSibling != nil {
-//            increment += 1
-//        }
-//        let isScope3 = indentationScopes.indentExceptFirstOrBlock.contains(parentType)
-//        if increment == 0 && isScope3 && node.previousSibling != nil {
-//            increment += 1
-//        }
-//        var typeDent = 0
-//        if indentationScopes.types.indent.contains(nodeType) {
-//            typeDent += 1
-//        }
-//        if indentationScopes.types.outdent.contains(nodeType) && increment > 0 {
-//            typeDent -= 1
-//        }
-//        increment += typeDent
-//        if let previousScopeNode = previousScopeNode, increment > 0 &&
-//            ((parentNode.startPoint.row == previousScopeNode.startPoint.row &&
-//                parentNode.endByte <= previousScopeNode.endByte + ByteCount(1)) ||
-//                (isScope3 && previousScopeNode.endByte == node.endByte)) {
-//            increment = 0
-//        }
-//        if isScope || isScope2 {
-//            return walkTree(startingAt: parentNode, previousScopeNode: parentNode) + increment
-//        } else {
-//            return walkTree(startingAt: parentNode, previousScopeNode: previousScopeNode) + increment
-//        }
     }
 }

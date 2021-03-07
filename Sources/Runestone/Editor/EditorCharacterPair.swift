@@ -10,5 +10,4 @@ import Foundation
 public protocol EditorCharacterPair {
     var leading: String { get }
     var trailing: String { get }
-    var insertAdditionalNewLine: Bool { get }
 }

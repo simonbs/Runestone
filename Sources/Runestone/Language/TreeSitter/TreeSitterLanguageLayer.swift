@@ -16,6 +16,7 @@ final class TreeSitterLanguageLayer {
     }
 
     private let language: TreeSitterLanguage
+    private let indentationScopes: TreeSitterIndentationScopes?
     private let parser: TreeSitterParser
     private let stringView: StringView
     private var childLanguageLayers: [TreeSitterLanguageLayer] = []
@@ -31,6 +32,7 @@ final class TreeSitterLanguageLayer {
 
     init(language: TreeSitterLanguage, parser: TreeSitterParser, stringView: StringView) {
         self.language = language
+        self.indentationScopes = language.indentationScopes
         self.parser = parser
         self.stringView = stringView
     }
@@ -83,6 +85,67 @@ final class TreeSitterLanguageLayer {
             }
         }
         return node
+    }
+
+    func highestNode(at linePosition: LinePosition) -> TreeSitterNode? {
+        guard var node = node(at: linePosition) else {
+            return nil
+        }
+        while let parent = node.parent,
+              parent.startPoint.row == node.startPoint.row
+                && parent.endPoint.row == node.endPoint.row
+                && parent.startPoint.column == node.startPoint.column {
+            node = parent
+        }
+        return node
+    }
+
+    func shouldInsertDoubleLineBreak(replacingRangeFrom startLinePosition: LinePosition, to endLinePosition: LinePosition) -> Bool {
+        guard let indentationScopes = indentationScopes else {
+            return false
+        }
+        let indentationController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView)
+        guard let startNode = node(at: startLinePosition), let startIndentingNode = indentationController.firstNodeAddingAdditionalLineBreak(from: startNode) else {
+            return false
+        }
+        // Selected range must start within the range of the indenting now.
+        guard startIndentingNode.startPoint.row == startLinePosition.row && startLinePosition.column >= startIndentingNode.startPoint.column else {
+            return false
+        }
+        guard let endNode = node(at: startLinePosition), let endIndentingNode = indentationController.firstNodeAddingAdditionalLineBreak(from: endNode) else {
+            return false
+        }
+        // Note at the end of the selection must be the same note as at the start of the selection.
+        guard startIndentingNode == endIndentingNode else {
+            return false
+        }
+        // Selected range must end within the range of the indenting now.
+        return endIndentingNode.endPoint.row == endLinePosition.row && endLinePosition.column < endIndentingNode.endPoint.column
+    }
+
+    func indentLevel(in line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+        if let indentationScopes = indentationScopes {
+            let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView)
+            return indentController.indentLevel(in: line, using: indentBehavior)
+        } else {
+            return 0
+        }
+    }
+
+    func suggestedIndentLevel(for line: DocumentLineNode) -> Int {
+        guard let indentationScopes = indentationScopes else {
+            return 0
+        }
+        let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView)
+        return indentController.suggestedIndentLevel(for: line)
+    }
+
+    func suggestedIndentLevel(at location: Int, in line: DocumentLineNode) -> Int {
+        guard let indentationScopes = indentationScopes else {
+            return 0
+        }
+        let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView)
+        return indentController.suggestedIndentLevel(at: location, in: line)
     }
 }
 

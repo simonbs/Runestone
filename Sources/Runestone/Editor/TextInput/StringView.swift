@@ -29,4 +29,8 @@ final class StringView {
     func substring(in range: NSRange) -> String {
         return string.substring(with: range)
     }
+
+    func character(at location: Int) -> Character {
+        return Character(Unicode.Scalar(string.character(at: location))!)
+    }
 }

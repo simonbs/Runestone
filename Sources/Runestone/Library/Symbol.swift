@@ -10,11 +10,12 @@ import Foundation
 enum Symbol {
     enum Character {
         static let lineFeed: Swift.Character = "\n"
+        static let carriageReturn: Swift.Character = "\r"
         static let carriageReturnLineFeed: Swift.Character = "\r\n"
         static let tab: Swift.Character = "\t"
         static let space: Swift.Character = " "
     }
 
-    static let lineFeed = "\n"
-    static let carriageReturn = "\r"
+    static let lineFeed = String(Symbol.Character.lineFeed)
+    static let carriageReturn = String(Symbol.Character.carriageReturn)
 }

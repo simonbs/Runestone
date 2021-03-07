@@ -176,6 +176,7 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
+    var indentBehavior: EditorIndentBehavior = .tab
     var gutterLeadingPadding: CGFloat {
         get {
             return layoutManager.gutterLeadingPadding
@@ -447,6 +448,19 @@ final class TextInputView: UIView, UITextInput {
         }
     }
 
+    func isIndentation(at location: Int) -> Bool {
+        guard let line = lineManager.line(containingCharacterAt: location) else {
+            return false
+        }
+        let localLocation = location - line.location
+        guard localLocation >= 0 else {
+            return false
+        }
+        let indentLevel = languageMode.indentLevel(in: line, using: indentBehavior)
+        let indentString = indentBehavior.string(indentLevel: indentLevel)
+        return localLocation <= indentString.utf16.count
+    }
+
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         // We end our current undo group when the user touches the view.
         let result = super.hitTest(point, with: event)
@@ -517,21 +531,47 @@ extension TextInputView {
 
 // MARK: - Editing
 extension TextInputView {
-    func insertText(_ text: String) {
+    func insertText(_ text: String){
         if let selectedRange = selectedRange, shouldChangeText(in: selectedRange, replacementText: text) {
-            if text == Symbol.lineFeed, let line = lineManager.line(containingCharacterAt: selectedRange.location) {
-                let bracketMatcher = BracketMatcher(characterPairs: characterPairs, stringView: stringView)
-                if bracketMatcher.hasMatchingBrackets(surrounding: selectedRange.lowerBound ... selectedRange.upperBound, in: line.range) {
-                    justInsert(Symbol.lineFeed + Symbol.lineFeed, in: selectedRange)
-                    // Move cursor to end of line after first new line
-                    let nextLine = lineManager.line(atRow: line.index + 1)
-                    selectedTextRange = IndexedRange(location: nextLine.location + nextLine.data.length, length: 0)
-                } else {
-                    justInsert(text, in: selectedRange)
-                }
+            if text == Symbol.lineFeed {
+                justInsertLineBreak(in: selectedRange)
+                layoutIfNeeded()
             } else {
                 justInsert(text, in: selectedRange)
+                layoutIfNeeded()
             }
+        }
+    }
+
+    private func justInsertLineBreak(in range: NSRange) {
+        if let startLinePosition = lineManager.linePosition(at: range.lowerBound),
+           let endLinePosition = lineManager.linePosition(at: range.upperBound),
+           let line = lineManager.line(containingCharacterAt: range.lowerBound),
+           languageMode.shouldInsertDoubleLineBreak(replacingRangeFrom: startLinePosition, to: endLinePosition) {
+            // Cursor is placed between two brackets. Inserting a line break enters a new indentation level.
+            // We insert an additional line break to move the closing bracket to a new line and place the
+            // cursor in the new block.
+            let currentIndentLevel = languageMode.indentLevel(in: line, using: indentBehavior)
+            let firstLineText = Symbol.lineFeed + indentBehavior.string(indentLevel: currentIndentLevel + 1)
+            let secondLineText = Symbol.lineFeed + indentBehavior.string(indentLevel: currentIndentLevel)
+            let indentedText = firstLineText + secondLineText
+            justInsert(indentedText, in: range)
+            selectedTextRange = IndexedRange(location: range.location + firstLineText.utf16.count, length: 0)
+        } else if let line = lineManager.line(containingCharacterAt: range.location) {
+            // Indent the new line.
+            let localLocation = range.location - line.location
+            let currentIndentLevel = languageMode.indentLevel(in: line, using: indentBehavior)
+            let suggestedIndentLevel = languageMode.suggestedIndentLevel(at: localLocation, in: line)
+            if suggestedIndentLevel < currentIndentLevel {
+                // The line have been indented more than the language suggests, so we preserve the current indentation.
+                let indentedText = Symbol.lineFeed + indentBehavior.string(indentLevel: currentIndentLevel)
+                justInsert(indentedText, in: range)
+            } else {
+                let indentedText = Symbol.lineFeed + indentBehavior.string(indentLevel: suggestedIndentLevel)
+                justInsert(indentedText, in: range)
+            }
+        } else {
+            justInsert(Symbol.lineFeed, in: range)
         }
     }
 
@@ -545,34 +585,65 @@ extension TextInputView {
     }
 
     func deleteBackward() {
-        guard let selectedRange = selectedRange else {
+        guard let selectedRange = selectedRange, selectedRange.length > 0 else {
             return
         }
-        if selectedRange.length > 0 {
-            if shouldChangeText(in: selectedRange, replacementText: "") {
-                if let currentText = text(in: selectedRange) {
-                    let undoRange = NSRange(location: selectedRange.location, length: 0)
-                    addUndoOperation(replacing: undoRange, withText: currentText)
-                }
-                replaceCharacters(in: selectedRange, with: "")
-                selectedTextRange = IndexedRange(location: selectedRange.location, length: 0)
+        let deleteRange: NSRange
+        if selectedRange.length == 1, let indentRange = indentRangeInfrontOfLocation(selectedRange.upperBound) {
+            deleteRange = indentRange
+        } else {
+            deleteRange = selectedRange
+        }
+        if shouldChangeText(in: deleteRange, replacementText: "") {
+            if let currentText = text(in: deleteRange) {
+                let undoRange = NSRange(location: deleteRange.location, length: 0)
+                addUndoOperation(replacing: undoRange, withText: currentText)
             }
-        } else if selectedRange.location > 0 {
-            if shouldChangeText(in: selectedRange, replacementText: "") {
-                let deleteRange = NSRange(location: selectedRange.location - 1, length: 1)
-                if let currentText = text(in: deleteRange) {
-                    addUndoOperation(replacing: deleteRange, withText: currentText)
-                }
-                replaceCharacters(in: deleteRange, with: "")
-                selectedTextRange = IndexedRange(location: selectedRange.location, length: 0)
-            }
+            replaceCharacters(in: deleteRange, with: "")
+            selectedTextRange = IndexedRange(location: deleteRange.location, length: 0)
+            layoutIfNeeded()
         }
     }
 
     func replace(_ range: UITextRange, withText text: String) {
         if let indexedRange = range as? IndexedRange, shouldChangeText(in: indexedRange.range, replacementText: text) {
-            justReplace(range, withText: text)
+            justInsert(text, in: indexedRange.range)
+            layoutIfNeeded()
         }
+    }
+
+    func indent() {
+        if let selectedRange = selectedRange, let line = lineManager.line(containingCharacterAt: selectedRange.location) {
+            let currentIndentLevel = languageMode.indentLevel(in: line, using: indentBehavior)
+            let suggestedIndentLevel = languageMode.suggestedIndentLevel(for: line)
+            if currentIndentLevel < suggestedIndentLevel {
+                let startLocation = line.location
+                let endLocation = locationOfFirstNonWhitespaceCharacter(in: line)
+                let range = NSRange(location: startLocation, length: endLocation - startLocation)
+                let indentString = indentBehavior.string(indentLevel: suggestedIndentLevel)
+                justInsert(indentString, in: range)
+            } else {
+                let indentString = indentBehavior.string(indentLevel: 1)
+                let startLocation = locationOfFirstNonWhitespaceCharacter(in: line)
+                let range = NSRange(location: startLocation, length: 0)
+                justInsert(indentString, in: range)
+            }
+        }
+    }
+
+    private func locationOfFirstNonWhitespaceCharacter(in line: DocumentLineNode) -> Int {
+        var location = line.location
+        let endLocation = location + line.data.length
+        let whitespaceCharacters: Set<Character> = [Symbol.Character.space, Symbol.Character.tab]
+        while location < endLocation {
+            let c = stringView.character(at: location)
+            if !whitespaceCharacters.contains(c) {
+                break
+            } else {
+                location += 1
+            }
+        }
+        return location
     }
 
     func text(in range: UITextRange) -> String? {
@@ -591,26 +662,22 @@ extension TextInputView {
         }
     }
 
-    // This function skips the shouldChangeText(in:replacementText:) callback and thus skips inserting character pairs.
-    // That is useful when performing undo/redo operations.
-    private func justReplace(_ range: UITextRange, withText text: String) {
-        if let indexedRange = range as? IndexedRange {
-            let nsText = text as NSString
-            let currentText = self.text(in: indexedRange.range) ?? ""
-            let newRange = NSRange(location: indexedRange.range.location, length: nsText.length)
-            addUndoOperation(replacing: newRange, withText: currentText)
-            replaceCharacters(in: indexedRange.range, with: nsText)
-            selectedTextRange = IndexedRange(location: newRange.location + newRange.length, length: 0)
-        }
+    private func replaceCharacters(in range: NSRange, with newString: NSString) {
+        inputDelegate?.textWillChange(self)
+        var editedLines: Set<DocumentLineNode> = []
+        justReplaceCharacters(in: range, with: newString, editedLines: &editedLines)
+        layoutManager.typeset(editedLines)
+        layoutManager.syntaxHighlight(editedLines)
+        layoutManager.setNeedsLayout()
+        inputDelegate?.textDidChange(self)
+        delegate?.textInputViewDidChange(self)
     }
 
-    private func replaceCharacters(in range: NSRange, with nsNewString: NSString) {
-        inputDelegate?.textWillChange(self)
+    private func justReplaceCharacters(in range: NSRange, with nsNewString: NSString, editedLines: inout Set<DocumentLineNode>) {
         let byteRange = self.byteRange(from: range)
         let newString = nsNewString as String
         let oldEndLinePosition = lineManager.linePosition(at: range.location + range.length)!
         string.replaceCharacters(in: range, with: newString)
-        var editedLines: Set<DocumentLineNode> = []
         lineManager.removeCharacters(in: range, editedLines: &editedLines)
         lineManager.insert(nsNewString, at: range.location, editedLines: &editedLines)
         let startLinePosition = lineManager.linePosition(at: range.location)!
@@ -624,12 +691,6 @@ extension TextInputView {
         let result = languageMode.textDidChange(textChange)
         let languageModeEditedLines = result.changedRows.map { lineManager.line(atRow: $0) }
         editedLines.formUnion(languageModeEditedLines)
-        layoutManager.typeset(editedLines)
-        layoutManager.syntaxHighlight(editedLines)
-        layoutManager.setNeedsLayout()
-        setNeedsLayout()
-        inputDelegate?.textDidChange(self)
-        delegate?.textInputViewDidChange(self)
     }
 
     private func byteRange(from range: NSRange) -> ByteRange {
@@ -661,12 +722,13 @@ extension TextInputView {
         timedUndoManager.setActionName(L10n.Undo.ActionName.typing)
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
             let indexedRange = IndexedRange(range: range)
-            textInputView.justReplace(indexedRange, withText: text)
+            textInputView.justInsert(text, in: indexedRange.range)
             // If we're replacing a range of more than one character with a text of more than one character then we select the new text.
             let textLength = text.utf16.count
             if range.length > 0 && textLength > 0 {
                 self.selectedTextRange = IndexedRange(location: range.location, length: textLength)
             }
+            self.layoutIfNeeded()
         }
     }
 }
@@ -806,6 +868,28 @@ extension TextInputView {
         let targetLine = lineManager.line(atRow: targetLineNumber)
         let localLineIndex = min(currentLinePosition.column, targetLine.data.length)
         return targetLine.location + localLineIndex
+    }
+
+    // Returns the range of an indentation text if the cursor is placed after an indentation.
+    // This can be used when doing a deleteBackward operation to delete an indent level.
+    private func indentRangeInfrontOfLocation(_ location: Int) -> NSRange? {
+        guard let line = lineManager.line(containingCharacterAt: location) else {
+            return nil
+        }
+        let tabLength = indentBehavior.tabLength
+        let localLocation = location - line.location
+        guard localLocation >= tabLength else {
+            return nil
+        }
+        let indentLevel = languageMode.indentLevel(in: line, using: indentBehavior)
+        let indentString = indentBehavior.string(indentLevel: indentLevel)
+        guard localLocation <= indentString.utf16.count else {
+            return nil
+        }
+        guard localLocation % tabLength == 0 else {
+            return nil
+        }
+        return NSRange(location: location - tabLength, length: tabLength)
     }
 }
 

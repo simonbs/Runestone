@@ -294,6 +294,15 @@ public final class EditorTextView: UIScrollView {
             textInputView.lineBreakSymbol = newValue
         }
     }
+    /// The behavior used when indenting text.
+    public var indentBehavior: EditorIndentBehavior {
+        get {
+            return textInputView.indentBehavior
+        }
+        set {
+            textInputView.indentBehavior = newValue
+        }
+    }
     /// The amount of padding before the line numbers inside the gutter.
     public var gutterLeadingPadding: CGFloat {
         get {
@@ -483,6 +492,19 @@ public final class EditorTextView: UIScrollView {
     /// - Returns: The syntax node at the location.
     public func syntaxNode(at location: Int) -> SyntaxNode? {
         return textInputView.syntaxNode(at: location)
+    }
+
+    /// Checks if the specified locations is within the indentation of the line.
+    ///
+    /// - Parameter location: A location in the document.
+    /// - Returns: True if the location is within the indentation of the line, otherwise false.
+    public func isIndentation(at location: Int) -> Bool {
+        return textInputView.isIndentation(at: location)
+    }
+
+    /// Indents the selected lines.
+    public func indent() {
+        textInputView.indent()
     }
 }
 

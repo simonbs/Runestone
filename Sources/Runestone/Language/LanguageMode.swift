@@ -25,6 +25,8 @@ protocol LanguageMode: AnyObject {
     func textDidChange(_ change: LanguageModeTextChange) -> LanguageModeTextChangeResult
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode?
+    func shouldInsertDoubleLineBreak(replacingRangeFrom startLinePosition: LinePosition, to endLinePosition: LinePosition) -> Bool
     func suggestedIndentLevel(for line: DocumentLineNode) -> Int
-    func indentLevel(for line: DocumentLineNode) -> Int
+    func suggestedIndentLevel(at location: Int, in line: DocumentLineNode) -> Int
+    func indentLevel(in line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int
 }

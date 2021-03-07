@@ -33,12 +33,20 @@ final class PlainTextLanguageMode: LanguageMode {
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode? {
         return nil
     }
+
+    func shouldInsertDoubleLineBreak(replacingRangeFrom startLinePosition: LinePosition, to endLinePosition: LinePosition) -> Bool {
+        return false
+    }
     
     func suggestedIndentLevel(for line: DocumentLineNode) -> Int {
         return 0
     }
 
-    func indentLevel(for line: DocumentLineNode) -> Int {
+    func suggestedIndentLevel(at location: Int, in line: DocumentLineNode) -> Int {
+        return 0
+    }
+
+    func indentLevel(in line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
         return 0
     }
 }
