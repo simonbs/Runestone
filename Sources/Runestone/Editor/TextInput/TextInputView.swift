@@ -456,7 +456,7 @@ final class TextInputView: UIView, UITextInput {
         guard localLocation >= 0 else {
             return false
         }
-        let indentLevel = languageMode.indentLevel(in: line, using: indentBehavior)
+        let indentLevel = languageMode.currentIndentLevel(of: line, using: indentBehavior)
         let indentString = indentBehavior.string(indentLevel: indentLevel)
         return localLocation <= indentString.utf16.count
     }
@@ -535,36 +535,9 @@ extension TextInputView {
         if let selectedRange = selectedRange, shouldChangeText(in: selectedRange, replacementText: text) {
             if text == Symbol.lineFeed {
                 justInsertLineBreak(in: selectedRange)
-                layoutIfNeeded()
             } else {
                 justInsert(text, in: selectedRange)
-                layoutIfNeeded()
             }
-        }
-    }
-
-    private func justInsertLineBreak(in range: NSRange) {
-        if let startLinePosition = lineManager.linePosition(at: range.lowerBound),
-           let endLinePosition = lineManager.linePosition(at: range.upperBound),
-           let line = lineManager.line(containingCharacterAt: range.lowerBound),
-           languageMode.shouldInsertDoubleLineBreak(replacingRangeFrom: startLinePosition, to: endLinePosition) {
-            // Cursor is placed between two brackets. Inserting a line break enters a new indentation level.
-            // We insert an additional line break to move the closing bracket to a new line and place the cursor in the new block.
-            let currentIndentLevel = languageMode.indentLevel(in: line, using: indentBehavior)
-            let firstLineText = Symbol.lineFeed + indentBehavior.string(indentLevel: currentIndentLevel + 1)
-            let secondLineText = Symbol.lineFeed + indentBehavior.string(indentLevel: currentIndentLevel)
-            let indentedText = firstLineText + secondLineText
-            justInsert(indentedText, in: range)
-            selectedTextRange = IndexedRange(location: range.location + firstLineText.utf16.count, length: 0)
-        } else if let line = lineManager.line(containingCharacterAt: range.location) {
-            // Indent the new line.
-            let localLocation = range.location - line.location
-            let linePosition = LinePosition(row: line.index, column: localLocation)
-            let suggestedIndentLevel = languageMode.suggestedIndentLevel(at: linePosition, using: indentBehavior)
-            let indentedText = Symbol.lineFeed + indentBehavior.string(indentLevel: suggestedIndentLevel)
-            justInsert(indentedText, in: range)
-        } else {
-            justInsert(Symbol.lineFeed, in: range)
         }
     }
 
@@ -594,7 +567,6 @@ extension TextInputView {
             }
             replaceCharacters(in: deleteRange, with: "")
             selectedTextRange = IndexedRange(location: deleteRange.location, length: 0)
-            layoutIfNeeded()
         }
     }
 
@@ -603,40 +575,6 @@ extension TextInputView {
             justInsert(text, in: indexedRange.range)
             layoutIfNeeded()
         }
-    }
-
-    func indent() {
-        if let selectedRange = selectedRange, let line = lineManager.line(containingCharacterAt: selectedRange.location) {
-            let currentIndentLevel = languageMode.indentLevel(in: line, using: indentBehavior)
-            let suggestedIndentLevel = languageMode.suggestedIndentLevel(for: line, using: indentBehavior)
-            if currentIndentLevel < suggestedIndentLevel {
-                let startLocation = line.location
-                let endLocation = locationOfFirstNonWhitespaceCharacter(in: line)
-                let range = NSRange(location: startLocation, length: endLocation - startLocation)
-                let indentString = indentBehavior.string(indentLevel: suggestedIndentLevel)
-                justInsert(indentString, in: range)
-            } else {
-                let indentString = indentBehavior.string(indentLevel: 1)
-                let startLocation = locationOfFirstNonWhitespaceCharacter(in: line)
-                let range = NSRange(location: startLocation, length: 0)
-                justInsert(indentString, in: range)
-            }
-        }
-    }
-
-    private func locationOfFirstNonWhitespaceCharacter(in line: DocumentLineNode) -> Int {
-        var location = line.location
-        let endLocation = location + line.data.length
-        let whitespaceCharacters: Set<Character> = [Symbol.Character.space, Symbol.Character.tab]
-        while location < endLocation {
-            let c = stringView.character(at: location)
-            if !whitespaceCharacters.contains(c) {
-                break
-            } else {
-                location += 1
-            }
-        }
-        return location
     }
 
     func text(in range: UITextRange) -> String? {
@@ -734,6 +672,124 @@ extension TextInputView {
         } else {
             return []
         }
+    }
+}
+
+// MARK: - Indent
+extension TextInputView {
+    func indent() {
+        guard let selectedRange = selectedRange else {
+            return
+        }
+        let lines = lineManager.lines(in: selectedRange)
+        // If any line is below the suggested indent level then we move all lines to the suggested indent level.
+        // If all lines are at the suggested indent level or greater then we increment the indent level of all lines.
+        let anyLineBelowSuggestedIndentLevel = lines.contains { line in
+            let currentIndentLevel = languageMode.currentIndentLevel(of: line, using: indentBehavior)
+            let suggestedIndentLevel = languageMode.suggestedIndentLevel(of: line, using: indentBehavior)
+            return currentIndentLevel < suggestedIndentLevel
+        }
+        var newSelectedRange = selectedRange
+        for (lineIndex, line) in lines.enumerated() {
+            let changeInLength: Int
+            if anyLineBelowSuggestedIndentLevel {
+                changeInLength = indentToSuggestedIndentLevel(line)
+            } else {
+                changeInLength = indent(line)
+            }
+            if lineIndex == 0 {
+                newSelectedRange.location += changeInLength
+            } else {
+                newSelectedRange.length += changeInLength
+            }
+        }
+        selectedTextRange = IndexedRange(range: newSelectedRange)
+    }
+
+    @discardableResult
+    private func indentToSuggestedIndentLevel(_ line: DocumentLineNode) -> Int {
+        let oldLength = line.data.totalLength
+        let startLocation = line.location
+        let endLocation = locationOfFirstNonWhitespaceCharacter(in: line)
+        let range = NSRange(location: startLocation, length: endLocation - startLocation)
+        let suggestedIndentLevel = languageMode.suggestedIndentLevel(of: line, using: indentBehavior)
+        let indentString = indentBehavior.string(indentLevel: suggestedIndentLevel)
+        justInsert(indentString, in: range)
+        return line.data.totalLength - oldLength
+    }
+
+    @discardableResult
+    private func indent(_ line: DocumentLineNode) -> Int {
+        let oldLength = line.data.totalLength
+        let indentString = indentBehavior.string(indentLevel: 1)
+        let startLocation = locationOfFirstNonWhitespaceCharacter(in: line)
+        let range = NSRange(location: startLocation, length: 0)
+        justInsert(indentString, in: range)
+        return line.data.totalLength - oldLength
+    }
+
+    private func locationOfFirstNonWhitespaceCharacter(in line: DocumentLineNode) -> Int {
+        var location = line.location
+        let endLocation = location + line.data.length
+        let whitespaceCharacters: Set<Character> = [Symbol.Character.space, Symbol.Character.tab]
+        while location < endLocation {
+            let character = stringView.character(at: location)
+            if !whitespaceCharacters.contains(character) {
+                break
+            } else {
+                location += 1
+            }
+        }
+        return location
+    }
+
+    private func justInsertLineBreak(in range: NSRange) {
+        if let startLinePosition = lineManager.linePosition(at: range.lowerBound),
+           let endLinePosition = lineManager.linePosition(at: range.upperBound),
+           let line = lineManager.line(containingCharacterAt: range.lowerBound),
+           languageMode.shouldInsertDoubleLineBreak(replacingRangeFrom: startLinePosition, to: endLinePosition) {
+            // Cursor is placed between two brackets. Inserting a line break enters a new indentation level.
+            // We insert an additional line break to move the closing bracket to a new line and place the cursor in the new block.
+            let currentIndentLevel = languageMode.currentIndentLevel(of: line, using: indentBehavior)
+            let firstLineText = Symbol.lineFeed + indentBehavior.string(indentLevel: currentIndentLevel + 1)
+            let secondLineText = Symbol.lineFeed + indentBehavior.string(indentLevel: currentIndentLevel)
+            let indentedText = firstLineText + secondLineText
+            justInsert(indentedText, in: range)
+            selectedTextRange = IndexedRange(location: range.location + firstLineText.utf16.count, length: 0)
+            layoutIfNeeded()
+        } else if let line = lineManager.line(containingCharacterAt: range.location) {
+            // Indent the new line.
+            let localLocation = range.location - line.location
+            let linePosition = LinePosition(row: line.index, column: localLocation)
+            let indentLevel = languageMode.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
+            let indentedText = Symbol.lineFeed + indentBehavior.string(indentLevel: indentLevel)
+            justInsert(indentedText, in: range)
+            layoutIfNeeded()
+        } else {
+            justInsert(Symbol.lineFeed, in: range)
+        }
+    }
+
+    // Returns the range of an indentation text if the cursor is placed after an indentation.
+    // This can be used when doing a deleteBackward operation to delete an indent level.
+    private func indentRangeInfrontOfLocation(_ location: Int) -> NSRange? {
+        guard let line = lineManager.line(containingCharacterAt: location) else {
+            return nil
+        }
+        let tabLength = indentBehavior.tabLength
+        let localLocation = location - line.location
+        guard localLocation >= tabLength else {
+            return nil
+        }
+        let indentLevel = languageMode.currentIndentLevel(of: line, using: indentBehavior)
+        let indentString = indentBehavior.string(indentLevel: indentLevel)
+        guard localLocation <= indentString.utf16.count else {
+            return nil
+        }
+        guard localLocation % tabLength == 0 else {
+            return nil
+        }
+        return NSRange(location: location - tabLength, length: tabLength)
     }
 }
 
@@ -861,28 +917,6 @@ extension TextInputView {
         let targetLine = lineManager.line(atRow: targetLineNumber)
         let localLineIndex = min(currentLinePosition.column, targetLine.data.length)
         return targetLine.location + localLineIndex
-    }
-
-    // Returns the range of an indentation text if the cursor is placed after an indentation.
-    // This can be used when doing a deleteBackward operation to delete an indent level.
-    private func indentRangeInfrontOfLocation(_ location: Int) -> NSRange? {
-        guard let line = lineManager.line(containingCharacterAt: location) else {
-            return nil
-        }
-        let tabLength = indentBehavior.tabLength
-        let localLocation = location - line.location
-        guard localLocation >= tabLength else {
-            return nil
-        }
-        let indentLevel = languageMode.indentLevel(in: line, using: indentBehavior)
-        let indentString = indentBehavior.string(indentLevel: indentLevel)
-        guard localLocation <= indentString.utf16.count else {
-            return nil
-        }
-        guard localLocation % tabLength == 0 else {
-            return nil
-        }
-        return NSRange(location: location - tabLength, length: tabLength)
     }
 }
 

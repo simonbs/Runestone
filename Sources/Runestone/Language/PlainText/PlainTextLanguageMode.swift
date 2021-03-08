@@ -38,7 +38,7 @@ final class PlainTextLanguageMode: LanguageMode {
         return false
     }
 
-    func suggestedIndentLevel(for line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+    func suggestedIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
         return 0
     }
 
@@ -46,7 +46,11 @@ final class PlainTextLanguageMode: LanguageMode {
         return 0
     }
 
-    func indentLevel(in line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+    func indentLevelForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
+        return 0
+    }
+
+    func currentIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
         return 0
     }
 }

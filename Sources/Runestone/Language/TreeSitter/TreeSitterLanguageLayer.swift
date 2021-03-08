@@ -124,18 +124,18 @@ final class TreeSitterLanguageLayer {
         return endIndentingNode.endPoint.row == endLinePosition.row && endLinePosition.column < endIndentingNode.endPoint.column
     }
 
-    func indentLevel(in line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+    func currentIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
         guard let indentController = createIndentController() else {
             return 0
         }
-        return indentController.indentLevel(in: line, using: indentBehavior)
+        return indentController.currentIndentLevel(of: line, using: indentBehavior)
     }
 
-    func suggestedIndentLevel(for line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+    func suggestedIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
         guard let indentController = createIndentController() else {
             return 0
         }
-        return indentController.suggestedIndentLevel(for: line, using: indentBehavior)
+        return indentController.suggestedIndentLevel(of: line, using: indentBehavior)
     }
 
     func suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
@@ -143,6 +143,13 @@ final class TreeSitterLanguageLayer {
             return 0
         }
         return indentController.suggestedIndentLevel(at: linePosition, using: indentBehavior)
+    }
+
+    func indentLevelForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
+        guard let indentController = createIndentController() else {
+            return 0
+        }
+        return indentController.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
     }
 }
 

@@ -232,6 +232,22 @@ final class LineManager {
             return match.node
         }
     }
+
+    func lines(in range: NSRange) -> [DocumentLineNode] {
+        guard let firstLine = line(containingCharacterAt: range.location) else {
+            return []
+        }
+        var lines: [DocumentLineNode] = [firstLine]
+        if range.length > 0, let lastLine = line(containingCharacterAt: range.location + range.length), lastLine != firstLine {
+            let startLineIndex = firstLine.index + 1 // Skip the first line since we already have it
+            let endLineIndex = lastLine.index - 1 // Skip the last line since we already have it
+            if startLineIndex <= endLineIndex {
+                lines += (startLineIndex ... endLineIndex).map(line(atRow:))
+            }
+            lines.append(lastLine)
+        }
+        return lines
+    }
 }
 
 private extension LineManager {

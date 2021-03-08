@@ -21,7 +21,7 @@ final class TreeSitterIndentController {
         self.lineManager = lineManager
     }
 
-    func indentLevel(in line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+    func currentIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
         var indentLength = 0
         let tabLength = indentBehavior.tabLength
         let location = line.location
@@ -39,37 +39,19 @@ final class TreeSitterIndentController {
         return indentLength / tabLength
     }
 
-    func suggestedIndentLevel(for line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+    func suggestedIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
         let range = NSRange(location: line.location, length: line.data.totalLength)
         let string = stringView.substring(in: range)
         let linePosition = startingLinePosition(ofRow: line.index, in: string)
-        return suggestedIndentLevel(at: linePosition, using: indentBehavior)
+        return indentLevel(at: linePosition, using: indentBehavior, alwaysUseSuggestion: true)
     }
 
     func suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
-        guard linePosition.row > 0 else {
-            return 0
-        }
-        guard let node = languageLayer.highestNode(at: linePosition) else {
-            return 0
-        }
-        guard let indentingNode = firstNodeAddingIndentLevel(from: node) else {
-            return 0
-        }
-        if indentingNode.startPoint.row == linePosition.row {
-            return indentLevel(at: node)
-        } else if indentingNode.endPoint.row == linePosition.row {
-            // If the indentation level ends at the inputted line then we'll subtract one from the indentation level.
-            // This is the case when placing the cursor as shown below and adding a new line.
-            //   if (foo) {
-            //     // ...
-            //   |}
-            return max(indentLevel(at: node) - 1, 0)
-        } else {
-            // Keep the same indentation as the previous line.
-            let line = lineManager.line(atRow: linePosition.row)
-            return indentLevel(in: line, using: indentBehavior)
-        }
+        return indentLevel(at: linePosition, using: indentBehavior, alwaysUseSuggestion: true)
+    }
+
+    func indentLevelForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
+        return indentLevel(at: linePosition, using: indentBehavior, alwaysUseSuggestion: false)
     }
 
     func firstNodeAddingAdditionalLineBreak(from node: TreeSitterNode) -> TreeSitterNode? {
@@ -96,6 +78,34 @@ private extension TreeSitterIndentController {
             }
         }
         return LinePosition(row: row, column: currentColumn)
+    }
+
+    private func indentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior, alwaysUseSuggestion: Bool) -> Int {
+        guard linePosition.row >= 0 else {
+            return 0
+        }
+        guard let node = languageLayer.highestNode(at: linePosition) else {
+            return 0
+        }
+        guard let indentingNode = firstNodeAddingIndentLevel(from: node) else {
+            return 0
+        }
+        if indentingNode.startPoint.row == linePosition.row {
+            return indentLevel(at: node)
+        } else if indentingNode.endPoint.row == linePosition.row {
+            // If the indentation level ends at the inputted line then we'll subtract one from the indentation level.
+            // This is the case when placing the cursor as shown below and adding a new line.
+            //   if (foo) {
+            //     // ...
+            //   |}
+            return max(indentLevel(at: node) - 1, 0)
+        } else if alwaysUseSuggestion {
+            return indentLevel(at: node)
+        } else {
+            // Keep the same indentation as the current line.
+            let line = lineManager.line(atRow: linePosition.row)
+            return currentIndentLevel(of: line, using: indentBehavior)
+        }
     }
 
     private func indentLevel(at node: TreeSitterNode) -> Int {

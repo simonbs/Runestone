@@ -81,16 +81,20 @@ final class TreeSitterLanguageMode: LanguageMode {
         return rootLanguageLayer.shouldInsertDoubleLineBreak(replacingRangeFrom: startLinePosition, to: endLinePosition)
     }
 
-    func suggestedIndentLevel(for line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
-        return rootLanguageLayer.suggestedIndentLevel(for: line, using: indentBehavior)
+    func suggestedIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+        return rootLanguageLayer.suggestedIndentLevel(of: line, using: indentBehavior)
     }
 
     func suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
         return rootLanguageLayer.suggestedIndentLevel(at: linePosition, using: indentBehavior)
     }
 
-    func indentLevel(in line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
-        return rootLanguageLayer.indentLevel(in: line, using: indentBehavior)
+    func indentLevelForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
+        return rootLanguageLayer.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
+    }
+
+    func currentIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+        return rootLanguageLayer.currentIndentLevel(of: line, using: indentBehavior)
     }
 
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode? {
