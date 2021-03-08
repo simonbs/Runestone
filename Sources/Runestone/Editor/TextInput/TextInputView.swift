@@ -734,10 +734,10 @@ extension TextInputView {
         let whitespaceCharacters: Set<Character> = [Symbol.Character.space, Symbol.Character.tab]
         while location < endLocation {
             let character = stringView.character(at: location)
-            if !whitespaceCharacters.contains(character) {
-                break
-            } else {
+            if whitespaceCharacters.contains(character) {
                 location += 1
+            } else {
+                break
             }
         }
         return location
