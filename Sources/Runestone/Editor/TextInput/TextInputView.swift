@@ -675,9 +675,36 @@ extension TextInputView {
     }
 }
 
-// MARK: - Indent
+// MARK: - Indent and Outdent
 extension TextInputView {
-    func indent() {
+    func shiftLeft() {
+        guard let selectedRange = selectedRange else {
+            return
+        }
+        let lines = lineManager.lines(in: selectedRange)
+        var newSelectedRange = selectedRange
+        let minimumLocation = lines[0].location
+        for (lineIndex, line) in lines.enumerated() {
+            let changeInLength = shiftLineRight(line)
+            if lineIndex == 0 {
+                // We don't want the selection to move to the previous line when we can't shift left anymore.
+                // Therefore we keep it to the minimum location, which is the location the line starts on.
+                // If we try to exceed that, we need to adjust the length of the selected range.
+                let preferredLocation = newSelectedRange.location + changeInLength
+                let newLocation = max(preferredLocation, minimumLocation)
+                newSelectedRange.location = newLocation
+                if newLocation > preferredLocation {
+                    let preferredLength = newSelectedRange.length - (newLocation - preferredLocation)
+                    newSelectedRange.length = max(preferredLength, 0)
+                }
+            } else {
+                newSelectedRange.length += changeInLength
+            }
+        }
+        selectedTextRange = IndexedRange(range: newSelectedRange)
+    }
+
+    func shiftRight() {
         guard let selectedRange = selectedRange else {
             return
         }
@@ -693,9 +720,9 @@ extension TextInputView {
         for (lineIndex, line) in lines.enumerated() {
             let changeInLength: Int
             if anyLineBelowSuggestedIndentLevel {
-                changeInLength = indentToSuggestedIndentLevel(line)
+                changeInLength = shiftLineToSuggestedIndentLevel(line)
             } else {
-                changeInLength = indent(line)
+                changeInLength = shiftLineLeft(line)
             }
             if lineIndex == 0 {
                 newSelectedRange.location += changeInLength
@@ -707,7 +734,7 @@ extension TextInputView {
     }
 
     @discardableResult
-    private func indentToSuggestedIndentLevel(_ line: DocumentLineNode) -> Int {
+    private func shiftLineToSuggestedIndentLevel(_ line: DocumentLineNode) -> Int {
         let oldLength = line.data.totalLength
         let startLocation = line.location
         let endLocation = locationOfFirstNonWhitespaceCharacter(in: line)
@@ -719,12 +746,28 @@ extension TextInputView {
     }
 
     @discardableResult
-    private func indent(_ line: DocumentLineNode) -> Int {
+    private func shiftLineLeft(_ line: DocumentLineNode) -> Int {
         let oldLength = line.data.totalLength
         let indentString = indentBehavior.string(indentLevel: 1)
         let startLocation = locationOfFirstNonWhitespaceCharacter(in: line)
         let range = NSRange(location: startLocation, length: 0)
         justInsert(indentString, in: range)
+        return line.data.totalLength - oldLength
+    }
+
+    @discardableResult
+    private func shiftLineRight(_ line: DocumentLineNode) -> Int {
+        let oldLength = line.data.totalLength
+        let indentString = indentBehavior.string(indentLevel: 1)
+        let indentUTF16Count = indentString.utf16.count
+        guard line.data.length >= indentUTF16Count else {
+            return 0
+        }
+        let indentRange = NSRange(location: line.location, length: indentUTF16Count)
+        guard stringView.substring(in: indentRange) == indentString else {
+            return 0
+        }
+        justInsert("", in: indentRange)
         return line.data.totalLength - oldLength
     }
 

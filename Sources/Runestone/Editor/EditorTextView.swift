@@ -502,9 +502,14 @@ public final class EditorTextView: UIScrollView {
         return textInputView.isIndentation(at: location)
     }
 
-    /// Indents the selected lines.
-    public func indent() {
-        textInputView.indent()
+    /// Decreases the indentation level of the selected lines.
+    public func shiftLeft() {
+        textInputView.shiftLeft()
+    }
+
+    /// Increases the indentation level of the selected lines.
+    public func shiftRight() {
+        textInputView.shiftRight()
     }
 }
 
