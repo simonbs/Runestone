@@ -139,7 +139,13 @@ final class IndentController {
         guard let line = lineManager.line(containingCharacterAt: location) else {
             return nil
         }
-        let tabLength = indentBehavior.tabLength
+        let tabLength: Int
+        switch indentBehavior {
+        case .tab:
+            tabLength = 1
+        case .space(let length):
+            tabLength = length
+        }
         let localLocation = location - line.location
         guard localLocation >= tabLength else {
             return nil
