@@ -89,7 +89,9 @@ final class TextInputView: UIView, UITextInput {
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
             lineManager.estimatedLineHeight = estimatedLineHeight
+            indentController.indentFont = theme.font
             layoutManager.theme = theme
+            layoutManager.tabWidth = indentController.tabWidth
         }
     }
     var showLineNumbers: Bool {
@@ -176,10 +178,14 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
-    var indentBehavior: EditorIndentBehavior = .tab {
+    var indentBehavior: EditorIndentBehavior = .tab(length: 2) {
         didSet {
             if indentBehavior != oldValue {
                 indentController.indentBehavior = indentBehavior
+                layoutManager.tabWidth = indentController.tabWidth
+                layoutManager.setNeedsLayout()
+                setNeedsLayout()
+                layoutIfNeeded()
             }
         }
     }
@@ -351,14 +357,15 @@ final class TextInputView: UIView, UITextInput {
     init() {
         lineManager = LineManager(stringView: stringView)
         layoutManager = LayoutManager(lineManager: lineManager, languageMode: languageMode, stringView: stringView)
-        indentController = IndentController(stringView: stringView, lineManager: lineManager, languageMode: languageMode, indentBehavior: indentBehavior)
+        indentController = IndentController(stringView: stringView, lineManager: lineManager, languageMode: languageMode, indentBehavior: indentBehavior, indentFont: theme.font)
         super.init(frame: .zero)
         lineManager.delegate = self
         lineManager.estimatedLineHeight = estimatedLineHeight
+        indentController.delegate = self
         layoutManager.delegate = self
         layoutManager.textInputView = self
         layoutManager.theme = theme
-        indentController.delegate = self
+        layoutManager.tabWidth = indentController.tabWidth
     }
 
     required init?(coder: NSCoder) {

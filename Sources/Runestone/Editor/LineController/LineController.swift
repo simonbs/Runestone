@@ -7,7 +7,7 @@
 
 import CoreGraphics
 import CoreText
-import Foundation
+import UIKit
 
 final class LineController {
     weak var lineView: LineView?
@@ -36,6 +36,7 @@ final class LineController {
             renderer.invisibleCharacterConfiguration = newValue
         }
     }
+    var tabWidth: CGFloat = 10
     var constrainingWidth: CGFloat? {
         get {
             return typesetter.constrainingWidth
@@ -134,10 +135,21 @@ private extension LineController {
 
     private func updateDefaultAttributesIfNecessary() {
         if isDefaultAttributesInvalid {
+            updateParagraphStyle()
             if let input = createLineSyntaxHighlightInput() {
                 syntaxHighlighter?.setDefaultAttributes(on: input)
             }
             isDefaultAttributesInvalid = false
+        }
+    }
+
+    private func updateParagraphStyle() {
+        if let attributedString = attributedString {
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.tabStops = []
+            paragraphStyle.defaultTabInterval = tabWidth
+            let range = NSRange(location: 0, length: attributedString.length)
+            attributedString.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
         }
     }
 

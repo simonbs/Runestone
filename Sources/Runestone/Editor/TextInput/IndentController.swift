@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 protocol IndentControllerDelegate: AnyObject {
     func indentController(_ controller: IndentController, shouldInsert text: String, in range: NSRange)
@@ -17,13 +18,43 @@ final class IndentController {
     var stringView: StringView
     var lineManager: LineManager
     var languageMode: LanguageMode
-    var indentBehavior: EditorIndentBehavior
+    var indentFont: UIFont {
+        didSet {
+            if indentFont != oldValue {
+                _tabWidth = nil
+            }
+        }
+    }
+    var indentBehavior: EditorIndentBehavior {
+        didSet {
+            if indentBehavior != oldValue {
+                _tabWidth = nil
+            }
+        }
+    }
+    var tabWidth: CGFloat {
+        if let tabWidth = _tabWidth {
+            return tabWidth
+        } else {
+            let str = String(repeating: " ", count: indentBehavior.tabLength)
+            let maxSize = CGSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude)
+            let options: NSStringDrawingOptions = [.usesFontLeading, .usesLineFragmentOrigin]
+            let attributes: [NSAttributedString.Key: Any] = [.font: indentFont]
+            let bounds = str.boundingRect(with: maxSize, options: options, attributes: attributes, context: nil)
+            let tabWidth = round(bounds.size.width)
+            _tabWidth = tabWidth
+            return tabWidth
+        }
+    }
 
-    init(stringView: StringView, lineManager: LineManager, languageMode: LanguageMode, indentBehavior: EditorIndentBehavior) {
+    private var _tabWidth: CGFloat?
+
+    init(stringView: StringView, lineManager: LineManager, languageMode: LanguageMode, indentBehavior: EditorIndentBehavior, indentFont: UIFont) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.languageMode = languageMode
         self.indentBehavior = indentBehavior
+        self.indentFont = indentFont
     }
 
     func shiftLeft(in range: NSRange) {

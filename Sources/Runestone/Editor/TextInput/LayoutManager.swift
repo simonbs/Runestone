@@ -101,6 +101,14 @@ final class LayoutManager {
         }
     }
     var invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
+    var tabWidth: CGFloat = 10 {
+        didSet {
+            if tabWidth != oldValue {
+                invalidateContentSize()
+                invalidateLines()
+            }
+        }
+    }
     var isLineWrappingEnabled = true {
         didSet {
             if isLineWrappingEnabled != oldValue {
@@ -380,6 +388,7 @@ final class LayoutManager {
     
     func invalidateLines() {
         for (_, lineController) in lineControllers {
+            lineController.tabWidth = tabWidth
             lineController.invalidate()
         }
     }
@@ -621,6 +630,7 @@ extension LayoutManager {
             let lineController = LineController(line: line, stringView: stringView)
             lineController.estimatedLineHeight = theme.font.lineHeight
             lineController.lineHeightMultiplier = lineHeightMultiplier
+            lineController.tabWidth = tabWidth
             lineController.syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
             lineController.syntaxHighlighter?.theme = theme
             lineControllers[line.id] = lineController

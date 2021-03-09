@@ -8,15 +8,15 @@
 import Foundation
 
 public enum EditorIndentBehavior: Equatable {
-    case tab
+    case tab(length: Int)
     case space(length: Int)
 }
 
 extension EditorIndentBehavior {
     var tabLength: Int {
         switch self {
-        case .tab:
-            return 1
+        case .tab(let length):
+            return length
         case .space(let length):
             return length
         }
