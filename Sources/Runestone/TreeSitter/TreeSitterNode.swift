@@ -54,20 +54,8 @@ final class TreeSitterNode {
         self.rawValue = node
     }
 
-    func namedDescendant(in byteRange: ByteRange) -> TreeSitterNode {
-        let startOffset = UInt32(byteRange.location.value)
-        let endOffset = UInt32((byteRange.location + byteRange.length).value)
-        let descendantRawValue = ts_node_named_descendant_for_byte_range(rawValue, startOffset, endOffset)
-        return TreeSitterNode(node: descendantRawValue)
-    }
-
     func descendantForRange(from startPoint: TreeSitterTextPoint, to endPoint: TreeSitterTextPoint) -> TreeSitterNode {
         let node = ts_node_descendant_for_point_range(rawValue, startPoint.rawValue, endPoint.rawValue)
-        return TreeSitterNode(node: node)
-    }
-
-    func descendantForRange(from startByte: ByteCount, to endByte: ByteCount) -> TreeSitterNode {
-        let node = ts_node_descendant_for_byte_range(rawValue, UInt32(startByte.value), UInt32(endByte.value))
         return TreeSitterNode(node: node)
     }
 }
