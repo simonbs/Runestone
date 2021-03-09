@@ -97,7 +97,10 @@ private extension TreeSitterSyntaxHighlighter {
             if let shadow = token.shadow {
                 attributes[.shadow] = shadow
             }
-            attributedString.setAttributes(attributes, range: range)
+            attributedString.removeAttribute(.foregroundColor, range: range)
+            attributedString.removeAttribute(.font, range: range)
+            attributedString.removeAttribute(.shadow, range: range)
+            attributedString.addAttributes(attributes, range: range)
         }
         attributedString.endEditing()
     }

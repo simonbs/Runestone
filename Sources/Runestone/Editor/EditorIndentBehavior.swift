@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum EditorIndentBehavior {
+public enum EditorIndentBehavior: Equatable {
     case tab
     case space(length: Int)
 }

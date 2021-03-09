@@ -36,7 +36,7 @@ extension LineSyntaxHighlighter {
         attributedString.removeAttribute(.shadow, range: entireRange)
         attributedString.removeAttribute(.font, range: entireRange)
         attributedString.removeAttribute(.foregroundColor, range: entireRange)
-        attributedString.setAttributes(attributes, range: entireRange)
+        attributedString.addAttributes(attributes, range: entireRange)
         attributedString.endEditing()
     }
 }
