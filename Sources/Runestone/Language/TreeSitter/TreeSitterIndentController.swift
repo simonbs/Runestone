@@ -39,13 +39,6 @@ final class TreeSitterIndentController {
         return indentLength / tabLength
     }
 
-    func suggestedIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
-        let range = NSRange(location: line.location, length: line.data.totalLength)
-        let string = stringView.substring(in: range)
-        let linePosition = startingLinePosition(ofRow: line.index, in: string)
-        return indentLevel(at: linePosition, using: indentBehavior, alwaysUseSuggestion: true)
-    }
-
     func suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
         return indentLevel(at: linePosition, using: indentBehavior, alwaysUseSuggestion: true)
     }
@@ -67,24 +60,11 @@ final class TreeSitterIndentController {
 }
 
 private extension TreeSitterIndentController {
-    private func startingLinePosition(ofRow row: Int, in string: String) -> LinePosition {
-        // Find the first character that is not a whitespace
-        var currentColumn = 0
-        let whitespaceCharacters = Set([Symbol.Character.space, Symbol.Character.tab])
-        if let stringIndex = string.firstIndex(where: { !whitespaceCharacters.contains($0) }) {
-            let utf16View = string.utf16
-            if let utf16Index = stringIndex.samePosition(in: string.utf16) {
-                currentColumn = utf16View.distance(from: utf16View.startIndex, to: utf16Index)
-            }
-        }
-        return LinePosition(row: row, column: currentColumn)
-    }
-
     private func indentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior, alwaysUseSuggestion: Bool) -> Int {
         guard linePosition.row >= 0 else {
             return indentLevelOfLine(beforeLineAt: linePosition, indentBehavior: indentBehavior)
         }
-        guard let node = languageLayer.highestNode(at: linePosition) else {
+        guard let node = languageLayer.node(at: linePosition) else {
             return indentLevelOfLine(beforeLineAt: linePosition, indentBehavior: indentBehavior)
         }
         guard let indentingNode = firstNodeAddingIndentLevel(from: node) else {

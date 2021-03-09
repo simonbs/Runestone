@@ -106,10 +106,6 @@ final class TreeSitterLanguageMode: LanguageMode {
             return nil
         }
     }
-
-    func highestNode(at linePosition: LinePosition) -> TreeSitterNode? {
-        return rootLanguageLayer.highestNode(at: linePosition)
-    }
 }
 
 extension TreeSitterLanguageMode: TreeSitterParserDelegate {

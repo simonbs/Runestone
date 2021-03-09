@@ -89,19 +89,6 @@ final class TreeSitterLanguageLayer {
         return node
     }
 
-    func highestNode(at linePosition: LinePosition) -> TreeSitterNode? {
-        guard var node = node(at: linePosition) else {
-            return nil
-        }
-        while let parent = node.parent,
-              parent.startPoint.row == node.startPoint.row
-                && parent.endPoint.row == node.endPoint.row
-                && parent.startPoint.column == node.startPoint.column {
-            node = parent
-        }
-        return node
-    }
-
     func shouldInsertDoubleLineBreak(replacingRangeFrom startLinePosition: LinePosition, to endLinePosition: LinePosition) -> Bool {
         guard let indentationController = createIndentController() else {
             return false
@@ -135,21 +122,34 @@ final class TreeSitterLanguageLayer {
         guard let indentController = createIndentController() else {
             return 0
         }
-        return indentController.suggestedIndentLevel(of: line, using: indentBehavior)
+        let linePosition = startingLinePosition(of: line)
+        return indentController.suggestedIndentLevel(at: linePosition, using: indentBehavior)
     }
 
     func suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
         guard let indentController = createIndentController() else {
             return 0
         }
-        return indentController.suggestedIndentLevel(at: linePosition, using: indentBehavior)
+        if let indentationScopes = indentationScopes, indentationScopes.indentIsDeterminedByLineStart {
+            let line = lineManager.line(atRow: linePosition.row)
+            let linePosition = startingLinePosition(of: line)
+            return indentController.suggestedIndentLevel(at: linePosition, using: indentBehavior)
+        } else {
+            return indentController.suggestedIndentLevel(at: linePosition, using: indentBehavior)
+        }
     }
 
     func indentLevelForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
         guard let indentController = createIndentController() else {
             return 0
         }
-        return indentController.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
+        if let indentationScopes = indentationScopes, indentationScopes.indentIsDeterminedByLineStart {
+            let line = lineManager.line(atRow: linePosition.row)
+            let linePosition = startingLinePosition(of: line)
+            return indentController.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
+        } else {
+            return indentController.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
+        }
     }
 }
 
@@ -269,6 +269,21 @@ private extension TreeSitterLanguageLayer {
             indentationScopes: indentationScopes,
             stringView: stringView,
             lineManager: lineManager)
+    }
+
+    private func startingLinePosition(of line: DocumentLineNode) -> LinePosition {
+        // Find the first character that is not a whitespace
+        let range = NSRange(location: line.location, length: line.data.totalLength)
+        let string = stringView.substring(in: range)
+        var currentColumn = 0
+        let whitespaceCharacters = Set([Symbol.Character.space, Symbol.Character.tab])
+        if let stringIndex = string.firstIndex(where: { !whitespaceCharacters.contains($0) }) {
+            let utf16View = string.utf16
+            if let utf16Index = stringIndex.samePosition(in: string.utf16) {
+                currentColumn = utf16View.distance(from: utf16View.startIndex, to: utf16Index)
+            }
+        }
+        return LinePosition(row: line.index, column: currentColumn)
     }
 }
 
