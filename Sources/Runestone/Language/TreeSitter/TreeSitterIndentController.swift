@@ -86,19 +86,30 @@ private extension TreeSitterIndentController {
         }
     }
 
-    private func indentLevel(at node: TreeSitterNode) -> Int {
+    private func indentLevel(at node: TreeSitterNode, previousIndentingNode: TreeSitterNode? = nil) -> Int {
         guard let nodeType = node.type else {
             return 0
         }
+        // If we have already incremented the indentation level for a node that starts at the row
+        // then we skip adjusting the indentation level further. This solves a case where the second
+        // line in the JSON below would have an indent level of 2 instead of 1 since both the array
+        // and the object would add to the indent level.
+        //   [{
+        //     "foo": "bar"
+        //   ]}
+        let alreadyDidIndentOnRow = previousIndentingNode?.startPoint.row == node.startPoint.row
         var increment = 0
-        if indentationScopes.indent.contains(nodeType) {
-            increment += 1
+        if !alreadyDidIndentOnRow {
+            if indentationScopes.indent.contains(nodeType) {
+                increment += 1
+            }
+            if increment > 0 && indentationScopes.outdent.contains(nodeType) {
+                increment -= 1
+            }
         }
-        if increment > 0 && indentationScopes.outdent.contains(nodeType) {
-            increment -= 1
-        }
+        let newPreviousIndentingNode = increment > 0 ? node : previousIndentingNode
         if let parentNode = node.parent {
-            return indentLevel(at: parentNode) + increment
+            return increment + indentLevel(at: parentNode, previousIndentingNode: newPreviousIndentingNode)
         } else {
             return increment
         }
