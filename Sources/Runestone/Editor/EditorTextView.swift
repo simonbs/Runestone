@@ -380,7 +380,6 @@ public final class EditorTextView: UIScrollView {
         textInputView.delegate = self
         textInputView.editorView = self
         editingTextInteraction.textInput = textInputView
-        contentInsetAdjustmentBehavior = .never
         addSubview(textInputView)
         tapGestureRecognizer.delegate = self
         tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))

@@ -176,11 +176,11 @@ final class LayoutManager {
         if isLineWrappingEnabled {
             return scrollViewWidth
         } else {
-            return textContentWidth + leadingLineSpacing + textContainerInset.right + safeAreaInsets.right
+            return textContentWidth + leadingLineSpacing + textContainerInset.right
         }
     }
     private var contentHeight: CGFloat {
-        return textContentHeight + textContainerInset.top + textContainerInset.bottom + safeAreaInsets.top + safeAreaInsets.bottom
+        return textContentHeight + textContainerInset.top + textContainerInset.bottom
     }
     private var textContentWidth: CGFloat {
         if let textContentWidth = _textContentWidth {
@@ -403,7 +403,7 @@ extension LayoutManager {
         let localCaretRect = lineController.caretRect(atIndex: localLocation)
         let globalYPosition = line.yPosition + localCaretRect.minY
         let globalRect = CGRect(x: localCaretRect.minX, y: globalYPosition, width: localCaretRect.width, height: localCaretRect.height)
-        return globalRect.offsetBy(dx: leadingLineSpacing, dy: safeAreaInsets.top + textContainerInset.top)
+        return globalRect.offsetBy(dx: leadingLineSpacing, dy: textContainerInset.top)
     }
 
     func firstRect(for range: NSRange) -> CGRect {
@@ -413,7 +413,7 @@ extension LayoutManager {
         let lineController = lineControllers[line.id]!
         let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
         let firstRect = lineController.firstRect(for: localRange)
-        return firstRect.offsetBy(dx: leadingLineSpacing, dy: safeAreaInsets.top + textContainerInset.top)
+        return firstRect.offsetBy(dx: leadingLineSpacing, dy: textContainerInset.top)
     }
 
     func selectionRects(in range: NSRange) -> [TextSelectionRect] {
@@ -441,7 +441,7 @@ extension LayoutManager {
                 let containsEnd = lineIndex == endLineIndex
                 var screenRect = rendererSelectionRect.rect
                 screenRect.origin.x += leadingLineSpacing
-                screenRect.origin.y = safeAreaInsets.top + textContainerInset.top + line.yPosition + rendererSelectionRect.rect.minY
+                screenRect.origin.y = textContainerInset.top + line.yPosition + rendererSelectionRect.rect.minY
                 if !containsEnd {
                     // If the following lines are selected, we make sure that the selections extends the entire line.
                     screenRect.size.width = max(contentWidth, scrollViewWidth) - screenRect.minX
@@ -455,7 +455,7 @@ extension LayoutManager {
 
     func closestIndex(to point: CGPoint) -> Int? {
         let adjustedXPosition = point.x - leadingLineSpacing
-        let adjustedYPosition = point.y - safeAreaInsets.top - textContainerInset.top
+        let adjustedYPosition = point.y - textContainerInset.top
         let adjustedPoint = CGPoint(x: adjustedXPosition, y: adjustedYPosition)
         if let line = lineManager.line(containingYOffset: adjustedPoint.y), let lineController = lineControllers[line.id] {
             return closestIndex(to: adjustedPoint, in: lineController, showing: line)
@@ -538,7 +538,7 @@ extension LayoutManager {
         lineController.invisibleCharacterConfiguration = invisibleCharacterConfiguration
         lineController.willDisplay()
         let lineSize = lineController.preferredSize
-        let lineYPosition = safeAreaInsets.top + textContainerInset.top + line.yPosition
+        let lineYPosition = textContainerInset.top + line.yPosition
         let lineViewFrame = CGRect(x: leadingLineSpacing, y: lineYPosition, width: lineSize.width, height: lineSize.height)
         lineController.lineViewFrame = lineViewFrame
         // Setup the line number
@@ -616,7 +616,7 @@ extension LayoutManager {
             // This happens when layout information above the content offset is invalidated and the user is scrolling upwards, e.g. after
             // changing the line height. To accommodate this change and reduce the "jump", we ask the scroll view to adjust the content offset
             // by the amount that the line height has changed. The solution is borrowed from https://github.com/airbnb/MagazineLayout/pull/11
-            let isSizingElementAboveTopEdge = newLineFrame.minY < viewport.minY + safeAreaInsets.top + textContainerInset.top
+            let isSizingElementAboveTopEdge = newLineFrame.minY < viewport.minY + textContainerInset.top
             if isSizingElementAboveTopEdge {
                 contentOffsetAdjustment = newLineFrame.height - oldLineHeight
             }
