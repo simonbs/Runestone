@@ -528,6 +528,7 @@ private extension EditorTextView {
     }
 
     private func scroll(to textPosition: UITextPosition) {
+        let scrollMargin = UIEdgeInsets(top: 10, left: 5, bottom: 10, right: 5)
         let gutterWidth = textInputView.gutterWidth
         let caretRect = textInputView.caretRect(for: textPosition)
         var newXOffset = contentOffset.x
@@ -536,16 +537,18 @@ private extension EditorTextView {
         visibleBounds.origin.y += adjustedContentInset.top
         visibleBounds.size.height -= adjustedContentInset.top + adjustedContentInset.bottom
         if caretRect.minX - gutterWidth < visibleBounds.minX {
-            newXOffset = caretRect.minX - gutterWidth
+            newXOffset = caretRect.minX - gutterWidth - scrollMargin.left
         } else if caretRect.maxX > visibleBounds.maxX {
-            newXOffset = caretRect.maxX - frame.width
+            newXOffset = caretRect.maxX - frame.width + scrollMargin.right
         }
         if caretRect.minY < visibleBounds.minY {
-            newYOffset = caretRect.minY - adjustedContentInset.top
+            newYOffset = caretRect.minY - adjustedContentInset.top - scrollMargin.top
         } else if caretRect.maxY > visibleBounds.maxY {
-            newYOffset = caretRect.maxY - visibleBounds.height - adjustedContentInset.top
+            newYOffset = caretRect.maxY - visibleBounds.height - adjustedContentInset.top + scrollMargin.bottom
         }
-        let newContentOffset = CGPoint(x: newXOffset, y: newYOffset)
+        let cappedNewXOffset = min(max(newXOffset, 0), contentSize.width - frame.width + adjustedContentInset.left + adjustedContentInset.right)
+        let cappedNewYOffset = min(max(newYOffset, 0), contentSize.height - frame.height + adjustedContentInset.top + adjustedContentInset.bottom)
+        let newContentOffset = CGPoint(x: cappedNewXOffset, y: cappedNewYOffset)
         if newContentOffset != contentOffset {
             contentOffset = newContentOffset
         }
