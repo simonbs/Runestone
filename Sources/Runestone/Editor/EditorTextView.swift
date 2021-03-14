@@ -188,7 +188,11 @@ public final class EditorTextView: UIScrollView {
     }
     public override var inputAccessoryView: UIView? {
         get {
-            return _inputAccessoryView
+            if isInputAccessoryViewEnabled {
+                return _inputAccessoryView
+            } else {
+                return nil
+            }
         }
         set {
             _inputAccessoryView = newValue
@@ -355,8 +359,9 @@ public final class EditorTextView: UIScrollView {
     }
 
     private let textInputView = TextInputView()
-    private let editingTextInteraction = UITextInteraction(for: .editable)
-    private let tapGestureRecognizer = UITapGestureRecognizer()
+    private let editableTextInteraction = UITextInteraction(for: .editable)
+    private let nonEditableTextInteraction = UITextInteraction(for: .nonEditable)
+    private let tapGestureRecognizer = QuickTapGestureRecognizer()
     private var _inputAccessoryView: UIView?
     private var shouldBeginEditing: Bool {
         if let editorDelegate = editorDelegate {
@@ -373,17 +378,20 @@ public final class EditorTextView: UIScrollView {
         }
     }
     private var hasPendingContentSizeUpdate = false
+    private var isInputAccessoryViewEnabled = false
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .white
         textInputView.delegate = self
         textInputView.editorView = self
-        editingTextInteraction.textInput = textInputView
+        editableTextInteraction.textInput = textInputView
+        nonEditableTextInteraction.textInput = textInputView
         addSubview(textInputView)
         tapGestureRecognizer.delegate = self
         tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
         addGestureRecognizer(tapGestureRecognizer)
+        installNonEditableInteraction()
     }
 
     required init?(coder: NSCoder) {
@@ -406,9 +414,11 @@ public final class EditorTextView: UIScrollView {
 
     @discardableResult
     public override func becomeFirstResponder() -> Bool {
-        if !textInputView.isFirstResponder && shouldBeginEditing && textInputView.becomeFirstResponder()  {
+        if shouldBeginEditing {
             isEditing = true
-            addInteraction(editingTextInteraction)
+            installEditableInteraction()
+            textInputView.resignFirstResponder()
+            textInputView.becomeFirstResponder()
             editorDelegate?.editorTextViewDidBeginEditing(self)
             return true
         } else {
@@ -420,7 +430,7 @@ public final class EditorTextView: UIScrollView {
     public override func resignFirstResponder() -> Bool {
         if shouldEndEditing {
             isEditing = false
-            removeInteraction(editingTextInteraction)
+            installNonEditableInteraction()
             editorDelegate?.editorTextViewDidEndEditing(self)
             return textInputView.resignFirstResponder()
         } else {
@@ -546,8 +556,10 @@ private extension EditorTextView {
         } else if caretRect.maxY > visibleBounds.maxY {
             newYOffset = caretRect.maxY - visibleBounds.height - adjustedContentInset.top + scrollMargin.bottom
         }
-        let cappedNewXOffset = min(max(newXOffset, 0), contentSize.width - frame.width + adjustedContentInset.left + adjustedContentInset.right)
-        let cappedNewYOffset = min(max(newYOffset, 0), contentSize.height - frame.height + adjustedContentInset.top + adjustedContentInset.bottom)
+        let scrollableWidth = contentSize.width - min(frame.width, contentSize.width) + adjustedContentInset.left + adjustedContentInset.right
+        let scrollableHeight = contentSize.height - min(frame.height, contentSize.height) + adjustedContentInset.top + adjustedContentInset.bottom
+        let cappedNewXOffset = min(max(newXOffset, adjustedContentInset.left * -1), scrollableWidth)
+        let cappedNewYOffset = min(max(newYOffset, adjustedContentInset.top * -1), scrollableHeight)
         let newContentOffset = CGPoint(x: cappedNewXOffset, y: cappedNewYOffset)
         if newContentOffset != contentOffset {
             contentOffset = newContentOffset
@@ -622,6 +634,21 @@ private extension EditorTextView {
             }
         }
     }
+
+    private func installEditableInteraction() {
+        isInputAccessoryViewEnabled = true
+        removeInteraction(nonEditableTextInteraction)
+        addInteraction(editableTextInteraction)
+    }
+
+    private func installNonEditableInteraction() {
+        isInputAccessoryViewEnabled = false
+        removeInteraction(editableTextInteraction)
+        addInteraction(nonEditableTextInteraction)
+        for gestureRecognizer in nonEditableTextInteraction.gesturesForFailureRequirements {
+            gestureRecognizer.require(toFail: tapGestureRecognizer)
+        }
+    }
 }
 
 // MARK: - TextInputViewDelegate
@@ -668,7 +695,7 @@ extension EditorTextView: TextInputViewDelegate {
 extension EditorTextView: UIGestureRecognizerDelegate {
     public override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         if gestureRecognizer === tapGestureRecognizer {
-            return shouldBeginEditing && !isFirstResponder && !textInputView.isFirstResponder
+            return !isEditing && shouldBeginEditing
         } else {
             return true
         }
