@@ -428,7 +428,7 @@ public final class EditorTextView: UIScrollView {
 
     @discardableResult
     public override func resignFirstResponder() -> Bool {
-        if shouldEndEditing {
+        if isEditing && shouldEndEditing {
             isEditing = false
             installNonEditableInteraction()
             editorDelegate?.editorTextViewDidEndEditing(self)
