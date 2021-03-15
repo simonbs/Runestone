@@ -430,6 +430,7 @@ public final class EditorTextView: UIScrollView {
     public override func resignFirstResponder() -> Bool {
         if isEditing && shouldEndEditing {
             isEditing = false
+            textInputView.selectedTextRange = nil
             installNonEditableInteraction()
             editorDelegate?.editorTextViewDidEndEditing(self)
             return textInputView.resignFirstResponder()
