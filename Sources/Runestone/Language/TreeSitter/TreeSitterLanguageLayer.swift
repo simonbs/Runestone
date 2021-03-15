@@ -38,7 +38,10 @@ final class TreeSitterLanguageLayer {
         self.stringView = stringView
         self.lineManager = lineManager
     }
+}
 
+// MARK: - Parsing
+extension TreeSitterLanguageLayer {
     func parse(_ text: String) {
         prepareParserToParse(from: rootNode)
         parseAndUpdateChildLayers(text: text)
@@ -69,13 +72,6 @@ final class TreeSitterLanguageLayer {
         return LanguageModeTextChangeResult(changedRows: rows)
     }
 
-    func captures(in range: ByteRange) -> [TreeSitterCapture] {
-        let matches = matches(in: range)
-        var captures = validCaptures(in: matches)
-        captures.sort(by: TreeSitterCapture.captureLayerSorting)
-        return captures
-    }
-
     func node(at linePosition: LinePosition) -> TreeSitterNode? {
         let point = TreeSitterTextPoint(linePosition)
         guard var node = rootNode?.descendantForRange(from: point, to: point) else {
@@ -87,86 +83,6 @@ final class TreeSitterLanguageLayer {
             }
         }
         return node
-    }
-
-    func shouldInsertDoubleLineBreak(replacingRangeFrom startLinePosition: LinePosition, to endLinePosition: LinePosition) -> Bool {
-        guard let indentationController = createIndentController() else {
-            return false
-        }
-        guard let startNode = node(at: startLinePosition), let startIndentingNode = indentationController.firstNodeAddingAdditionalLineBreak(from: startNode) else {
-            return false
-        }
-        // Selected range must start within the range of the indenting now.
-        guard startIndentingNode.startPoint.row == startLinePosition.row && startLinePosition.column >= startIndentingNode.startPoint.column else {
-            return false
-        }
-        guard let endNode = node(at: startLinePosition), let endIndentingNode = indentationController.firstNodeAddingAdditionalLineBreak(from: endNode) else {
-            return false
-        }
-        // Note at the end of the selection must be the same note as at the start of the selection.
-        guard startIndentingNode == endIndentingNode else {
-            return false
-        }
-        // Selected range must end within the range of the indenting now.
-        return endIndentingNode.endPoint.row == endLinePosition.row && endLinePosition.column < endIndentingNode.endPoint.column
-    }
-
-    func currentIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
-        guard let indentController = createIndentController() else {
-            return 0
-        }
-        return indentController.currentIndentLevel(of: line, using: indentBehavior)
-    }
-
-    func suggestedIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
-        guard let indentController = createIndentController() else {
-            return 0
-        }
-        let linePosition = startingLinePosition(of: line)
-        return indentController.suggestedIndentLevel(at: linePosition, using: indentBehavior)
-    }
-
-    func suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
-        guard let indentController = createIndentController() else {
-            return 0
-        }
-        if let indentationScopes = indentationScopes, indentationScopes.indentIsDeterminedByLineStart {
-            let line = lineManager.line(atRow: linePosition.row)
-            let linePosition = startingLinePosition(of: line)
-            return indentController.suggestedIndentLevel(at: linePosition, using: indentBehavior)
-        } else {
-            return indentController.suggestedIndentLevel(at: linePosition, using: indentBehavior)
-        }
-    }
-
-    func indentLevelForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
-        guard let indentController = createIndentController() else {
-            return 0
-        }
-        if let indentationScopes = indentationScopes, indentationScopes.indentIsDeterminedByLineStart {
-            let line = lineManager.line(atRow: linePosition.row)
-            let linePosition = startingLinePosition(of: line)
-            return indentController.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
-        } else {
-            return indentController.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
-        }
-    }
-}
-
-private extension TreeSitterLanguageLayer {
-    private func matches(in range: ByteRange) -> [TreeSitterQueryMatch] {
-        guard let tree = tree else {
-            return []
-        }
-        guard let query = language.highlightsQuery else {
-            return []
-        }
-        let queryCursor = TreeSitterQueryCursor(query: query, node: tree.rootNode)
-        queryCursor.setQueryRange(range)
-        queryCursor.execute()
-        let matches = queryCursor.allMatches()
-        let matchesInChildren = childLanguageLayers.reduce([]) { $0 + $1.matches(in: range) }
-        return matches + matchesInChildren
     }
 
     private func prepareParserToParse(from rootNode: TreeSitterNode?) {
@@ -193,6 +109,60 @@ private extension TreeSitterLanguageLayer {
                 }
             }
         }
+    }
+}
+
+// MARK: - Syntax Highlighting
+extension TreeSitterLanguageLayer {
+    func captures(in range: ByteRange) -> [TreeSitterCapture] {
+        let matches = matches(in: range)
+        var captures = validCaptures(in: matches)
+        captures.sort(by: TreeSitterCapture.captureLayerSorting)
+        return captures
+    }
+
+    private func matches(in range: ByteRange) -> [TreeSitterQueryMatch] {
+        guard let tree = tree else {
+            return []
+        }
+        guard let query = language.highlightsQuery else {
+            return []
+        }
+        let queryCursor = TreeSitterQueryCursor(query: query, node: tree.rootNode)
+        queryCursor.setQueryRange(range)
+        queryCursor.execute()
+        let matches = queryCursor.allMatches()
+        let matchesInChildren = childLanguageLayers.reduce([]) { $0 + $1.matches(in: range) }
+        return matches + matchesInChildren
+    }
+
+    private func validCaptures(in matches: [TreeSitterQueryMatch]) -> [TreeSitterCapture] {
+        var result: [TreeSitterCapture] = []
+        for match in matches {
+            let predicateEvaluator = TreeSitterTextPredicatesEvaluator(match: match, stringView: stringView)
+            let captures = match.captures.filter { capture in
+                return predicateEvaluator.evaluatePredicates(in: capture)
+            }
+            result.append(contentsOf: captures)
+        }
+        return result
+    }
+}
+
+// MARK: - Child Language Layers
+private extension TreeSitterLanguageLayer {
+    @discardableResult
+    private func insertLanguageLayer(forInjectionCapture capture: TreeSitterCapture) -> TreeSitterLanguageLayer? {
+        guard let languageName = capture.properties["injection.language"] else {
+            return nil
+        }
+        guard let language = language.injectedLanguageProvider?.treeSitterLanguage(named: languageName) else {
+            return nil
+        }
+        let childLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser, stringView: stringView, lineManager: lineManager)
+        childLanguageLayer.parentLanguageLayer = self
+        childLanguageLayers.append(childLanguageLayer)
+        return childLanguageLayer
     }
 
     private func updateChildLayers() {
@@ -233,44 +203,93 @@ private extension TreeSitterLanguageLayer {
         }
         childLanguageLayers = resultingChildLanguageLayers
     }
+}
 
-    private func validCaptures(in matches: [TreeSitterQueryMatch]) -> [TreeSitterCapture] {
-        var result: [TreeSitterCapture] = []
-        for match in matches {
-            let predicateEvaluator = TreeSitterTextPredicatesEvaluator(match: match, stringView: stringView)
-            let captures = match.captures.filter { capture in
-                return predicateEvaluator.evaluatePredicates(in: capture)
-            }
-            result.append(contentsOf: captures)
-        }
-        return result
+// MARK: - Indentation
+extension TreeSitterLanguageLayer {
+    func shouldInsertDoubleLineBreak(replacingRangeFrom startLinePosition: LinePosition, to endLinePosition: LinePosition) -> Bool {
+        let languageLayer = lowestLayer(containing: startLinePosition)
+        return languageLayer._shouldInsertDoubleLineBreak(replacingRangeFrom: startLinePosition, to: endLinePosition)
     }
 
-    @discardableResult
-    private func insertLanguageLayer(forInjectionCapture capture: TreeSitterCapture) -> TreeSitterLanguageLayer? {
-        guard let languageName = capture.properties["injection.language"] else {
-            return nil
-        }
-        guard let language = language.injectedLanguageProvider?.treeSitterLanguage(named: languageName) else {
-            return nil
-        }
-        let childLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser, stringView: stringView, lineManager: lineManager)
-        childLanguageLayer.parentLanguageLayer = self
-        childLanguageLayers.append(childLanguageLayer)
-        return childLanguageLayer
+    func currentIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+        let linePosition = LinePosition(row: line.index, column: 0)
+        let languageLayer = lowestLayer(containing: linePosition)
+        return languageLayer._currentIndentLevel(of: line, using: indentBehavior)
     }
 
-    private func createIndentController() -> TreeSitterIndentController? {
-        guard let indentationScopes = indentationScopes else {
-            return nil
-        }
-        return TreeSitterIndentController(
-            languageLayer: self,
-            indentationScopes: indentationScopes,
-            stringView: stringView,
-            lineManager: lineManager)
+    func suggestedIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+        let linePosition = LinePosition(row: line.index, column: 0)
+        let languageLayer = lowestLayer(containing: linePosition)
+        return languageLayer._suggestedIndentLevel(of: line, using: indentBehavior)
     }
 
+    func suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
+        let languageLayer = lowestLayer(containing: linePosition)
+        return languageLayer._suggestedIndentLevel(at: linePosition, using: indentBehavior)
+    }
+
+    func indentLevelForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
+        let languageLayer = lowestLayer(containing: linePosition)
+        return languageLayer._indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
+    }
+
+    private func _shouldInsertDoubleLineBreak(replacingRangeFrom startLinePosition: LinePosition, to endLinePosition: LinePosition) -> Bool {
+        let indentationController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
+        guard let startNode = node(at: startLinePosition), let startIndentingNode = indentationController.firstNodeAddingAdditionalLineBreak(from: startNode) else {
+            return false
+        }
+        // Selected range must start within the range of the indenting now.
+        guard startIndentingNode.startPoint.row == startLinePosition.row && startLinePosition.column >= startIndentingNode.startPoint.column else {
+            return false
+        }
+        guard let endNode = node(at: startLinePosition), let endIndentingNode = indentationController.firstNodeAddingAdditionalLineBreak(from: endNode) else {
+            return false
+        }
+        // Note at the end of the selection must be the same note as at the start of the selection.
+        guard startIndentingNode == endIndentingNode else {
+            return false
+        }
+        // Selected range must end within the range of the indenting now.
+        return endIndentingNode.endPoint.row == endLinePosition.row && endLinePosition.column < endIndentingNode.endPoint.column
+    }
+
+    private func _currentIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+        let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
+        return indentController.currentIndentLevel(of: line, using: indentBehavior)
+    }
+
+    private func _suggestedIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+        let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
+        let linePosition = startingLinePosition(of: line)
+        return indentController.suggestedIndentLevel(at: linePosition, using: indentBehavior)
+    }
+
+    private func _suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
+        let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
+        if let indentationScopes = indentationScopes, indentationScopes.indentIsDeterminedByLineStart {
+            let line = lineManager.line(atRow: linePosition.row)
+            let linePosition = startingLinePosition(of: line)
+            return indentController.suggestedIndentLevel(at: linePosition, using: indentBehavior)
+        } else {
+            return indentController.suggestedIndentLevel(at: linePosition, using: indentBehavior)
+        }
+    }
+
+    private func _indentLevelForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
+        let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
+        if let indentationScopes = indentationScopes, indentationScopes.indentIsDeterminedByLineStart {
+            let line = lineManager.line(atRow: linePosition.row)
+            let linePosition = startingLinePosition(of: line)
+            return indentController.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
+        } else {
+            return indentController.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
+        }
+    }
+}
+
+// MARK: - Misc
+private extension TreeSitterLanguageLayer {
     private func startingLinePosition(of line: DocumentLineNode) -> LinePosition {
         // Find the first character that is not a whitespace
         let range = NSRange(location: line.location, length: line.data.totalLength)
@@ -284,6 +303,18 @@ private extension TreeSitterLanguageLayer {
             }
         }
         return LinePosition(row: line.index, column: currentColumn)
+    }
+
+    private func lowestLayer(containing linePosition: LinePosition) -> TreeSitterLanguageLayer {
+        let textPoint = TreeSitterTextPoint(linePosition)
+        for childLanguageLayer in childLanguageLayers {
+            if let tree = childLanguageLayer.tree {
+                if tree.rootNode.contains(textPoint) {
+                    return childLanguageLayer.lowestLayer(containing: linePosition)
+                }
+            }
+        }
+        return self
     }
 }
 
@@ -321,7 +352,8 @@ private extension TreeSitterQueryCursor {
 
 private extension TreeSitterNode {
     func contains(_ point: TreeSitterTextPoint) -> Bool {
-        return point.row >= startPoint.row && point.column >= startPoint.column
-            && point.row <= endPoint.row && point.column <= endPoint.column
+        let containsStart = point.row > startPoint.row || (point.row == startPoint.row && point.column >= startPoint.column)
+        let containsEnd = point.row < endPoint.row || (point.row == endPoint.row && point.column <= endPoint.column)
+        return containsStart && containsEnd
     }
 }
