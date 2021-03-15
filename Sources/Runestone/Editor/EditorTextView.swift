@@ -414,7 +414,7 @@ public final class EditorTextView: UIScrollView {
 
     @discardableResult
     public override func becomeFirstResponder() -> Bool {
-        if shouldBeginEditing {
+        if !isEditing && shouldBeginEditing {
             isEditing = true
             installEditableInteraction()
             textInputView.resignFirstResponder()
