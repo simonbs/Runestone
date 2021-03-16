@@ -126,8 +126,24 @@ private extension TreeSitterIndentController {
         }
         var workingNode: TreeSitterNode? = node
         while let node = workingNode {
-            if let type = node.type, indentationScopes.indent.contains(type) {
-                return node
+            if let type = node.type {
+                // A node adds an indent level if it's type fulfills one of two:
+                // 1. It indents. These nodes adds an indent level on their own.
+                // 2. It inherits indenting. These node are branches that inherit the indenting level from a parent node.
+                //    An example of this includes the "elsif" and "else" nodes in Ruby.
+                //      if myBool
+                //         # ...
+                //      elseif myBool2|
+                //         # ...
+                //      else|
+                //         # ...
+                //      end
+                //    Inserting a line break where on of the pipes (|) are placed shouldn't increase the indent level but
+                //    instead keep the indent level starting at the "if" node. This is needed because "elseif" and "else"
+                //    are children of the "if" node.
+                if indentationScopes.indent.contains(type) || indentationScopes.inheritIndent.contains(type) {
+                    return node
+                }
             }
             workingNode = node.parent
         }
