@@ -412,8 +412,9 @@ extension LayoutManager {
         }
         let lineController = getLineController(for: line)
         let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
-        let firstRect = lineController.firstRect(for: localRange)
-        return firstRect.offsetBy(dx: leadingLineSpacing, dy: textContainerInset.top)
+        let localRect = lineController.firstRect(for: localRange)
+        let globalYPosition = line.yPosition + localRect.minY
+        return CGRect(x: localRect.minX, y: globalYPosition, width: localRect.width, height: localRect.height)
     }
 
     func selectionRects(in range: NSRange) -> [TextSelectionRect] {
