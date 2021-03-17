@@ -532,16 +532,10 @@ private extension EditorTextView {
         }
     }
 
-    private func scrollToCaret() {
-        if let textPosition = textInputView.selectedTextRange?.end {
-            scroll(to: textPosition)
-        }
-    }
-
-    private func scroll(to textPosition: UITextPosition) {
+    private func scroll(to location: Int, animated: Bool = false) {
         let scrollMargin = UIEdgeInsets(top: 10, left: 5, bottom: 10, right: 5)
         let gutterWidth = textInputView.gutterWidth
-        let caretRect = textInputView.caretRect(for: textPosition)
+        let caretRect = textInputView.caretRect(at: location)
         var newXOffset = contentOffset.x
         var newYOffset = contentOffset.y
         var visibleBounds = bounds
@@ -563,7 +557,7 @@ private extension EditorTextView {
         let cappedNewYOffset = min(max(newYOffset, adjustedContentInset.top * -1), scrollableHeight)
         let newContentOffset = CGPoint(x: cappedNewXOffset, y: cappedNewYOffset)
         if newContentOffset != contentOffset {
-            contentOffset = newContentOffset
+            setContentOffset(newContentOffset, animated: animated)
         }
     }
 
@@ -659,7 +653,9 @@ extension EditorTextView: TextInputViewDelegate {
     }
 
     func textInputViewDidChangeSelection(_ view: TextInputView) {
-        scrollToCaret()
+        if let newRange = textInputView.selectedRange, newRange.length == 0 {
+            scroll(to: newRange.location, animated: true)
+        }
         editorDelegate?.editorTextViewDidChangeSelection(self)
     }
 

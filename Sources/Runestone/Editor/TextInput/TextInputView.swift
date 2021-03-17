@@ -542,7 +542,11 @@ extension TextInputView {
         guard let indexedPosition = position as? IndexedPosition else {
             fatalError("Expected position to be of type \(IndexedPosition.self)")
         }
-        return layoutManager.caretRect(at: indexedPosition.index)
+        return caretRect(at: indexedPosition.index)
+    }
+
+    func caretRect(at location: Int) -> CGRect {
+        return layoutManager.caretRect(at: location)
     }
 
     func firstRect(for range: UITextRange) -> CGRect {
