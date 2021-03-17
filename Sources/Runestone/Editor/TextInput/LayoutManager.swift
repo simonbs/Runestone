@@ -410,7 +410,7 @@ extension LayoutManager {
         guard let line = lineManager.line(containingCharacterAt: range.location) else {
             fatalError("Cannot find first rect.")
         }
-        let lineController = lineControllers[line.id]!
+        let lineController = getLineController(for: line)
         let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
         let firstRect = lineController.firstRect(for: localRange)
         return firstRect.offsetBy(dx: leadingLineSpacing, dy: textContainerInset.top)
