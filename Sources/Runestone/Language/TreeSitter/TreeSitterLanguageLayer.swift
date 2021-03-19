@@ -38,42 +38,6 @@ final class TreeSitterLanguageLayer {
         self.stringView = stringView
         self.lineManager = lineManager
     }
-
-    func languageHierarchy() -> String {
-        var str = ""
-        if let rootNode = tree?.rootNode {
-            str += "⬤: \(rootNode.byteRange.lowerBound.value) - \(rootNode.byteRange.upperBound.value)"
-        } else {
-            str += "⬤"
-        }
-        if !childLanguageLayers.isEmpty {
-            str += "\n"
-            str += childLanguageHierarchy(indent: 1)
-        }
-        return str
-    }
-
-    private func childLanguageHierarchy(indent: Int) -> String {
-        var str = ""
-        let languageNames = childLanguageLayers.keys
-        for (idx, languageName) in languageNames.enumerated() {
-            let indentStr = String(repeating: "  ", count: indent)
-            let childLanguageLayer = childLanguageLayers[languageName]!
-            if let rootNode = childLanguageLayer.tree?.rootNode {
-                str += indentStr + "\(languageName): \(rootNode.byteRange.lowerBound.value) - \(rootNode.byteRange.upperBound.value)"
-            } else {
-                str += indentStr + "\(languageName)"
-            }
-            if !childLanguageLayer.childLanguageLayers.isEmpty {
-                str += "\n"
-                str += childLanguageLayer.childLanguageHierarchy(indent: indent + 1)
-            }
-            if idx < languageNames.count - 1 {
-                str += indentStr + "\n"
-            }
-        }
-        return str
-    }
 }
 
 // MARK: - Parsing
@@ -237,9 +201,6 @@ private extension TreeSitterLanguageLayer {
                 childLanguageLayer.tree = childLanguageLayer.parser.parse(oldTree: childLanguageLayer.tree)
             }
         }
-        if parentLanguageLayer == nil {
-            print(languageHierarchy())
-        }
     }
 }
 
@@ -353,6 +314,45 @@ private extension TreeSitterLanguageLayer {
             }
         }
         return self
+    }
+}
+
+// MARK: - Debugging Language Layers
+extension TreeSitterLanguageLayer {
+    func languageHierarchy() -> String {
+        var str = ""
+        if let rootNode = tree?.rootNode {
+            str += "● [\(rootNode.byteRange.lowerBound.value) - \(rootNode.byteRange.upperBound.value)]"
+        } else {
+            str += "●"
+        }
+        if !childLanguageLayers.isEmpty {
+            str += "\n"
+            str += childLanguageHierarchy(indent: 1)
+        }
+        return str
+    }
+
+    private func childLanguageHierarchy(indent: Int) -> String {
+        var str = ""
+        let languageNames = childLanguageLayers.keys
+        for (idx, languageName) in languageNames.enumerated() {
+            let indentStr = String(repeating: "  ", count: indent)
+            let childLanguageLayer = childLanguageLayers[languageName]!
+            if let rootNode = childLanguageLayer.tree?.rootNode {
+                str += indentStr + "\(languageName) [\(rootNode.byteRange.lowerBound.value) - \(rootNode.byteRange.upperBound.value)]"
+            } else {
+                str += indentStr + "\(languageName)"
+            }
+            if !childLanguageLayer.childLanguageLayers.isEmpty {
+                str += "\n"
+                str += childLanguageLayer.childLanguageHierarchy(indent: indent + 1)
+            }
+            if idx < languageNames.count - 1 {
+                str += indentStr + "\n"
+            }
+        }
+        return str
     }
 }
 
