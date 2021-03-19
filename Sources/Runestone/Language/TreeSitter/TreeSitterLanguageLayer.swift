@@ -314,7 +314,7 @@ private extension TreeSitterLanguageLayer {
 
 // MARK: - Debugging Language Layers
 extension TreeSitterLanguageLayer {
-    func languageHierarchy() -> String {
+    func languageHierarchyStringRepresentation() -> String {
         var str = ""
         if let rootNode = tree?.rootNode {
             str += "● [\(rootNode.byteRange.lowerBound.value) - \(rootNode.byteRange.upperBound.value)]"
