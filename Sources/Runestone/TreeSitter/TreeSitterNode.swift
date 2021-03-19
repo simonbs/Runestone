@@ -49,6 +49,9 @@ final class TreeSitterNode {
     var nextSibling: TreeSitterNode? {
         return getRelationship(using: ts_node_next_sibling)
     }
+    var textRange: TreeSitterTextRange {
+        return TreeSitterTextRange(startPoint: startPoint, endPoint: endPoint, startByte: startByte, endByte: endByte)
+    }
 
     init(node: TSNode) {
         self.rawValue = node
