@@ -176,16 +176,20 @@ private extension TreeSitterLanguageLayer {
         let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
         injectionsQueryCursor.execute()
         let captures = injectionsQueryCursor.allCaptures()
-        // Remove layers that no longer has any content
-        let keysToBeRemoved: [String] = childLanguageLayers.compactMap { key, childLanguageLayer in
-            if let rootNode = childLanguageLayer.rootNode {
+        let capturedLanguageNames = Set(captures.compactMap { $0.injectionLanguage })
+        let keysToBeRemoved: [String] = childLanguageLayers.compactMap { languageName, childLanguageLayer in
+            if !capturedLanguageNames.contains(languageName) {
+                // Remove languages that we no longer have any captures for.
+                return languageName
+            } else if let rootNode = childLanguageLayer.rootNode {
+                // Remove layers that no longer has any content.
                 if rootNode.byteRange.length <= ByteCount(0) {
-                    return key
+                    return languageName
                 } else {
                     return nil
                 }
             } else {
-                return key
+                return languageName
             }
         }
         for keyToBeRemoved in keysToBeRemoved {
