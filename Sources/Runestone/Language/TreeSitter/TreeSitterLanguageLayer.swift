@@ -103,7 +103,6 @@ extension TreeSitterLanguageLayer {
             let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
             injectionsQueryCursor.execute()
             let captures = injectionsQueryCursor.allCaptures()
-            // Create language layers for each group of captures.
             let groups = Dictionary(compactGrouping: captures) { $0.injectionLanguage }
             for (languageName, captures) in groups {
                 if let childLanguageLayer = childLanguageLayer(named: languageName) {
