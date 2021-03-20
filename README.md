@@ -27,6 +27,7 @@ When judging the performance of Runestone, it is key to build the app in the rel
 ## Acknowledgments
 
 - [Tree-sitter](https://tree-sitter.github.io/tree-sitter) is used to parse code incrementally.
-- Line management is translated to Swift from [AvalonEdit](https://github.com/icsharpcode/AvalonEdit). Also thanks to [Alexander Blach](https://twitter.com/Lextar) (developer of [Textastic](https://www.textasticapp.com)) for pointing me in the right direction.
+- Line management is translated to Swift from [AvalonEdit](https://github.com/icsharpcode/AvalonEdit).
 - [swift-tree-sitter](https://github.com/viktorstrate/swift-tree-sitter) which Runestone's Swift bindings for Tree-sitter is heavily inspired by.
 - The [Tomorrow](https://github.com/chriskempson/tomorrow-theme), [Solarized](https://ethanschoonover.com/solarized/), [Gruvbox](https://github.com/morhetz/gruvbox) and [Sundell's Colors](https://github.com/JohnSundell/XcodeTheme) themes included in the example project.
+- And last (but not least!), thanks a ton to [Alexander Blach](https://twitter.com/Lextar) (developer of [Textastic](https://www.textasticapp.com)) for pointing me in the right direction when I got stuck.
