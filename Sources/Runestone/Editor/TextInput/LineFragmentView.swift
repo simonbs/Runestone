@@ -7,16 +7,18 @@
 
 import UIKit
 
-protocol LineFragmentViewDelegate: AnyObject {
-    func lineFragmentView(_ lineFragmentView: LineFragmentView, shouldDrawTo context: CGContext)
-}
-
 final class LineFragmentView: UIView {
-    weak var delegate: LineFragmentViewDelegate?
+    var renderer: LineFragmentRenderer? {
+        didSet {
+            if renderer !== oldValue {
+                setNeedsDisplay()
+            }
+        }
+    }
 
     override var frame: CGRect {
         didSet {
-            if frame != oldValue {
+            if frame.size != oldValue.size {
                 setNeedsDisplay()
             }
         }
@@ -35,7 +37,7 @@ final class LineFragmentView: UIView {
     override func draw(_ rect: CGRect) {
         super.draw(rect)
         if let context = UIGraphicsGetCurrentContext() {
-            delegate?.lineFragmentView(self, shouldDrawTo: context)
+            renderer?.draw(to: context)
         }
     }
 }

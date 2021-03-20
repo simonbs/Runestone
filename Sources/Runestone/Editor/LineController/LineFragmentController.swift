@@ -12,7 +12,6 @@ protocol LineFragmentControllerDelegate: AnyObject {
 }
 
 final class LineFragmentController {
-    let line: DocumentLineNode
     var lineFragment: LineFragment {
         didSet {
             if lineFragment !== oldValue {
@@ -24,37 +23,24 @@ final class LineFragmentController {
     weak var delegate: LineFragmentControllerDelegate?
     weak var lineFragmentView: LineFragmentView? {
         didSet {
-            if lineFragmentView != oldValue {
-                lineFragmentView?.delegate = self
+            if lineFragmentView !== oldValue || lineFragmentView?.renderer !== renderer {
+                lineFragmentView?.renderer = renderer
             }
         }
     }
 
     private let renderer: LineFragmentRenderer
 
-    init(line: DocumentLineNode, lineFragment: LineFragment) {
-        self.line = line
+    init(lineFragment: LineFragment) {
         self.lineFragment = lineFragment
         self.renderer = LineFragmentRenderer(lineFragment: lineFragment)
         self.renderer.delegate = self
     }
-
-//    func didEndDisplaying() {
-//        lineFragmentView?.delegate = nil
-//        lineFragmentView = nil
-//    }
 }
 
-// MARK: - LineFragme ntRendererDelegate
+// MARK: - LineFragmentRendererDelegate
 extension LineFragmentController: LineFragmentRendererDelegate {
     func string(in lineFragmentRenderer: LineFragmentRenderer) -> String? {
         return delegate?.string(in: self)
-    }
-}
-
-// MARK: - LineViewDelegate
-extension LineFragmentController: LineFragmentViewDelegate {
-    func lineFragmentView(_ lineFragmentView: LineFragmentView, shouldDrawTo context: CGContext) {
-        renderer.draw(to: context)
     }
 }

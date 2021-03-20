@@ -459,46 +459,58 @@ extension LayoutManager {
         layoutGutter()
         layoutSelection()
         updateLineNumberColors()
-//        let oldVisibleLineIds = visibleLineIDs
+        let oldVisibleLineIDs = visibleLineIDs
+        let oldVisibleLineFragmentIDs = Set(lineFragmentViewReuseQueue.visibleViews.keys)
+        // Layout lines until we have filled the viewport.
         var nextLine = lineManager.line(containingYOffset: viewport.minY)
         var appearedLineIDs: Set<DocumentLineNodeID> = []
+        var appearedLineFragmentIDs: Set<LineFragmentID> = []
         var maxY = viewport.minY
         var contentOffsetAdjustmentY: CGFloat = 0
         while let line = nextLine, maxY < viewport.maxY {
             appearedLineIDs.insert(line.id)
+            // Prepare to line controller to display text.
             let lineController = lineController(for: line)
             lineController.estimatedLineFragmentHeight = theme.font.lineHeight
             lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
             lineController.constrainingWidth = maximumLineWidth
             lineController.willDisplay()
+            // Layout the line number.
+            layoutLineNumberView(for: line)
+            // Layout line fragments ("sublines") in the line until we have filled the viewport.
+            let lineYPosition = line.yPosition
             let lineFragmentControllers = lineController.lineFragmentControllers(in: viewport)
             for lineFragmentController in lineFragmentControllers {
+                let lineFragment = lineFragmentController.lineFragment
+                appearedLineFragmentIDs.insert(lineFragment.id)
                 var localContentOffsetAdjustmentY: CGFloat = 0
-                layoutView(for: lineFragmentController, maxY: &maxY, contentOffsetAdjustment: &localContentOffsetAdjustmentY)
+                layoutLineFragmentView(for: lineFragmentController, lineYPosition: lineYPosition, maxY: &maxY, contentOffsetAdjustment: &localContentOffsetAdjustmentY)
                 contentOffsetAdjustmentY += localContentOffsetAdjustmentY
             }
-
             if lineManager.setHeight(of: line, to: lineController.lineHeight) {
                 _textContentHeight = nil
             }
-
-
             if line.index < lineManager.lineCount - 1 {
                 nextLine = lineManager.line(atRow: line.index + 1)
             } else {
                 nextLine = nil
             }
         }
-//        let disappearedLineIDs = oldVisibleLineIds.subtracting(appearedLineIDs)
-//        for disapparedLineID in disappearedLineIDs {
-//            let lineController = lineControllers[disapparedLineID]
-//            lineController?.didEndDisplaying()
-//        }
-//        lineFragmentViewReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
-//        lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
+        // Update the visible lines and line fragments. Clean up everything that is not in the viewport anymore.
+        visibleLineIDs = appearedLineIDs
+        let disappearedLineIDs = oldVisibleLineIDs.subtracting(appearedLineIDs)
+        let disappearedLineFragmentIDs = oldVisibleLineFragmentIDs.subtracting(appearedLineFragmentIDs)
+        for disapparedLineID in disappearedLineIDs {
+            let lineController = lineControllers[disapparedLineID]
+            lineController?.didEndDisplaying()
+        }
+        lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
+        lineFragmentViewReuseQueue.enqueueViews(withKeys: disappearedLineFragmentIDs)
+        // Update the content size.
         if _textContentWidth == nil || _textContentHeight == nil {
             delegate?.layoutManagerDidInvalidateContentSize(self)
         }
+        // Adjust the content offset on the Y-axis if necessary.
         if contentOffsetAdjustmentY != 0 {
             let contentOffsetAdjustment = CGPoint(x: 0, y: contentOffsetAdjustmentY)
             delegate?.layoutManager(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
@@ -552,14 +564,33 @@ extension LayoutManager {
 //        lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: scrollViewWidth - gutterWidth, height: selectedRect.height)
     }
 
-    private func layoutView(for lineFragmentController: LineFragmentController, maxY: inout CGFloat, contentOffsetAdjustment: inout CGFloat) {
+    private func layoutLineNumberView(for line: DocumentLineNode) {
+        let lineNumberView = lineNumberLabelReuseQueue.dequeueView(forKey: line.id)
+        if lineNumberView.superview == nil {
+            lineNumbersContainerView.addSubview(lineNumberView)
+        }
+        let lineHeight = theme.font.lineHeight
+        let scaledLineHeight = lineHeight * lineHeightMultiplier
+        let yOffset = (scaledLineHeight - lineHeight) / 2
+        let origin = CGPoint(x: safeAreaInsets.left + gutterLeadingPadding, y: textContainerInset.top + line.yPosition + yOffset)
+        let size = CGSize(width: lineNumberWidth, height: scaledLineHeight)
+        lineNumberView.text = "\(line.index + 1)"
+        lineNumberView.font = theme.font
+        lineNumberView.textColor = theme.lineNumberColor
+        lineNumberView.frame = CGRect(origin: origin, size: size)
+    }
+
+    private func layoutLineFragmentView(
+        for lineFragmentController: LineFragmentController,
+        lineYPosition: CGFloat,
+        maxY: inout CGFloat,
+        contentOffsetAdjustment: inout CGFloat) {
         let lineFragment = lineFragmentController.lineFragment
         let lineFragmentView = lineFragmentViewReuseQueue.dequeueView(forKey: lineFragment.id)
         if lineFragmentView.superview == nil {
             linesContainerView.addSubview(lineFragmentView)
         }
         lineFragmentController.lineFragmentView = lineFragmentView
-        let lineYPosition = lineFragmentController.line.yPosition
         let lineFragmentOrigin = CGPoint(x: leadingLineSpacing, y: textContainerInset.top + lineYPosition + lineFragment.yPosition)
         let lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragment.scaledSize)
         lineFragmentView.frame = lineFragmentFrame

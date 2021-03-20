@@ -102,18 +102,14 @@ final class LineController {
         updateDefaultAttributesIfNecessary()
         updateTypesetterIfNecessary()
         updateSyntaxHighlightingIfNecessary(async: true)
-//        lineView?.delegate = self
-//        lineView?.frame = lineViewFrame
         if needsDisplay {
             setNeedsDisplayOnLineFragmentViews()
         }
     }
 
-//    func didEndDisplaying() {
-//        lineView?.delegate = nil
-//        lineView = nil
-//        syntaxHighlighter?.cancel()
-//    }
+    func didEndDisplaying() {
+        syntaxHighlighter?.cancel()
+    }
 
     func invalidate() {
         isTypesetterInvalid = true
@@ -224,7 +220,7 @@ private extension LineController {
             lineFragmentController.lineFragment = lineFragment
             return lineFragmentController
         } else {
-            let lineFragmentController = LineFragmentController(line: line, lineFragment: lineFragment)
+            let lineFragmentController = LineFragmentController(lineFragment: lineFragment)
             lineFragmentController.delegate = self
             lineFragmentControllers[lineFragment.id] = lineFragmentController
             return lineFragmentController
@@ -264,7 +260,12 @@ private extension LineController {
     }
 
     private func updateLineHeight() {
-        lineHeight = typesetter.lineFragments.reduce(0) { $0 + $1.scaledSize.height }
+        if typesetter.lineFragments.isEmpty {
+            // This is an empty line. Possibly at the end of the file.
+            lineHeight = estimatedLineFragmentHeight
+        } else {
+            lineHeight = typesetter.lineFragments.reduce(0) { $0 + $1.scaledSize.height }
+        }
     }
 }
 
