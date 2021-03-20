@@ -532,35 +532,6 @@ private extension EditorTextView {
         }
     }
 
-    private func scroll(to location: Int, animated: Bool = false) {
-        let scrollMargin = UIEdgeInsets(top: 10, left: 5, bottom: 10, right: 5)
-        let gutterWidth = textInputView.gutterWidth
-        let caretRect = textInputView.caretRect(at: location)
-        var newXOffset = contentOffset.x
-        var newYOffset = contentOffset.y
-        var visibleBounds = bounds
-        visibleBounds.origin.y += adjustedContentInset.top
-        visibleBounds.size.height -= adjustedContentInset.top + adjustedContentInset.bottom
-        if caretRect.minX - gutterWidth < visibleBounds.minX {
-            newXOffset = caretRect.minX - gutterWidth - scrollMargin.left
-        } else if caretRect.maxX > visibleBounds.maxX {
-            newXOffset = caretRect.maxX - frame.width + scrollMargin.right
-        }
-        if caretRect.minY < visibleBounds.minY {
-            newYOffset = caretRect.minY - adjustedContentInset.top - scrollMargin.top
-        } else if caretRect.maxY > visibleBounds.maxY {
-            newYOffset = caretRect.maxY - visibleBounds.height - adjustedContentInset.top + scrollMargin.bottom
-        }
-        let scrollableWidth = contentSize.width - min(frame.width, contentSize.width) + adjustedContentInset.left + adjustedContentInset.right
-        let scrollableHeight = contentSize.height - min(frame.height, contentSize.height) + adjustedContentInset.top + adjustedContentInset.bottom
-        let cappedNewXOffset = min(max(newXOffset, adjustedContentInset.left * -1), scrollableWidth)
-        let cappedNewYOffset = min(max(newYOffset, adjustedContentInset.top * -1), scrollableHeight)
-        let newContentOffset = CGPoint(x: cappedNewXOffset, y: cappedNewYOffset)
-        if newContentOffset != contentOffset {
-            setContentOffset(newContentOffset, animated: animated)
-        }
-    }
-
     private func insertLeadingComponent(of characterPair: EditorCharacterPair, in range: NSRange) -> Bool {
         let shouldInsertCharacterPair = editorDelegate?.editorTextView(self, shouldInsert: characterPair, in: range) ?? true
         guard shouldInsertCharacterPair else {
@@ -653,9 +624,6 @@ extension EditorTextView: TextInputViewDelegate {
     }
 
     func textInputViewDidChangeSelection(_ view: TextInputView) {
-        if let newRange = textInputView.selectedRange, newRange.length == 0 {
-            scroll(to: newRange.location, animated: true)
-        }
         editorDelegate?.editorTextViewDidChangeSelection(self)
     }
 
