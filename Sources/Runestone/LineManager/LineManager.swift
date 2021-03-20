@@ -19,6 +19,15 @@ extension LineManagerDelegate {
 
 struct DocumentLineNodeID: RedBlackTreeNodeID, Hashable {
     let id = UUID()
+    var rawValue: String {
+        return id.uuidString
+    }
+}
+
+extension DocumentLineNodeID: CustomDebugStringConvertible {
+    var debugDescription: String {
+        return rawValue
+    }
 }
 
 typealias DocumentLineTree = RedBlackTree<DocumentLineNodeID, Int, DocumentLineNodeData>
@@ -225,14 +234,7 @@ final class LineManager {
             return true
         }
     }
-
-    func visibleLines(in rect: CGRect) -> [DocumentLineNode] {
-        let query = DocumentLinesInBoundsSearchQuery(bounds: rect)
-        return documentLineTree.search(using: query).compactMap { match in
-            return match.node
-        }
-    }
-
+    
     func lines(in range: NSRange) -> [DocumentLineNode] {
         guard let firstLine = line(containingCharacterAt: range.location) else {
             return []
