@@ -90,6 +90,7 @@ final class TextInputView: UIView, UITextInput {
         didSet {
             lineManager.estimatedLineHeight = estimatedLineHeight
             indentController.indentFont = theme.font
+            pageGuideController.font = theme.font
             pageGuideController.guideView.hairlineWidth = theme.pageGuideHairlineWidth
             pageGuideController.guideView.hairlineColor = theme.pageGuideHairlineColor
             pageGuideController.guideView.backgroundColor = theme.pageGuideBackgroundColor
