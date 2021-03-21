@@ -9,6 +9,13 @@ import CoreGraphics
 import CoreText
 import UIKit
 
+struct LineFragmentNodeID: RedBlackTreeNodeID {
+    let id = UUID()
+}
+
+typealias LineFragmentTree = RedBlackTree<LineFragmentNodeID, Int, Void>
+typealias LineFragmentNode = RedBlackTreeNode<LineFragmentNodeID, Int, Void>
+
 final class LineController {
     let line: DocumentLineNode
     var lineFragmentHeightMultiplier: CGFloat = 1 {
@@ -53,6 +60,9 @@ final class LineController {
             return lineHeight
         }
     }
+    var numberOfLineFragments: Int {
+        return typesetter.lineFragments.count
+    }
 
     private let stringView: StringView
     private let typesetter: LineTypesetter
@@ -64,6 +74,7 @@ final class LineController {
     private var isSyntaxHighlightingInvalid = true
     private var isTypesetterInvalid = true
     private var _lineHeight: CGFloat?
+    private var lineFragmentTree = LineFragmentTree(minimumValue: 0, rootValue: 0)
 
     init(line: DocumentLineNode, stringView: StringView) {
         self.line = line
@@ -127,6 +138,23 @@ final class LineController {
             }
         }
         return result
+    }
+
+    func lineFragmentController(containingCharacterAt location: Int) -> LineFragmentController? {
+        if let node = lineFragmentTree.nodePosition(at: location) {
+            let lineFragment = typesetter.lineFragments[node.index]
+            return lineFragmentController(for: lineFragment)
+        } else {
+            return nil
+        }
+    }
+
+    func lineFragmentNode(containingCharacterAt location: Int) -> LineFragmentNode {
+        return lineFragmentTree.node(containingLocation: location)
+    }
+
+    func lineFragmentNode(atIndex index: Int) -> LineFragmentNode {
+        return lineFragmentTree.node(atIndex: index)
     }
 }
 
@@ -228,6 +256,21 @@ private extension LineController {
         cleanUpLineFragmentControllers()
         reapplyLineFragmentToLineFragmentControllers()
         setNeedsDisplayOnLineFragmentViews()
+        rebuildLineFragmentTree()
+    }
+
+    private func rebuildLineFragmentTree() {
+        lineFragmentTree.reset(rootValue: 0)
+        if !typesetter.lineFragments.isEmpty {
+            let nodes: [LineFragmentNode] = typesetter.lineFragments.map { lineFragment in
+                let range = CTLineGetStringRange(lineFragment.line)
+                return LineFragmentNode(tree: lineFragmentTree, value: range.length)
+            }
+            lineFragmentTree.rebuild(from: nodes)
+        } else {
+            let node = LineFragmentNode(tree: lineFragmentTree, value: 0)
+            lineFragmentTree.rebuild(from: [node])
+        }
     }
 
     private func cleanUpLineFragmentControllers() {
