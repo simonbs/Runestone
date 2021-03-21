@@ -245,15 +245,6 @@ final class LayoutManager {
         }
     }
 
-    // MARK: - Helpers
-    private var currentDelegate: LayoutManagerDelegate {
-        if let delegate = delegate {
-            return delegate
-        } else {
-            fatalError("Delegate unavailable")
-        }
-    }
-
     init(lineManager: LineManager, languageMode: LanguageMode, stringView: StringView) {
         self.lineManager = lineManager
         self.languageMode = languageMode
