@@ -27,15 +27,7 @@ final class LineController {
             }
         }
     }
-//    var invisibleCharacterConfiguration: InvisibleCharacterConfiguration {
-//        get {
-//            return renderer.invisibleCharacterConfiguration
-//        }
-//        set {
-//            renderer.invisibleCharacterConfiguration = newValue
-//        }
-//    }
-    private(set) var lineHeight: CGFloat = 0
+    var invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
     var tabWidth: CGFloat = 10
     var constrainingWidth: CGFloat? {
         get {
@@ -45,22 +37,22 @@ final class LineController {
             typesetter.constrainingWidth = newValue
         }
     }
-//    var lineViewFrame: CGRect = .zero {
-//        didSet {
-//            if lineViewFrame != oldValue {
-//                lineView?.frame = lineViewFrame
-//                renderer.lineViewFrame = lineViewFrame
-//            }
-//        }
-//    }
-//    var preferredSize: CGSize {
-//        if let preferredSize = typesetter.preferredSize {
-//            let lineBreakSymbolWidth = invisibleCharacterConfiguration.lineBreakSymbolSize.width
-//            return CGSize(width: preferredSize.width + lineBreakSymbolWidth, height: preferredSize.height)
-//        } else {
-//            return CGSize(width: 0, height: estimatedLineHeight * lineHeightMultiplier)
-//        }
-//    }
+    var lineWidth: CGFloat {
+        return typesetter.maximumLineWidth
+    }
+    var lineHeight: CGFloat {
+        if let lineHeight = _lineHeight {
+            return lineHeight
+        } else if typesetter.lineFragments.isEmpty {
+            let lineHeight = estimatedLineFragmentHeight * lineFragmentHeightMultiplier
+            _lineHeight = lineHeight
+            return lineHeight
+        } else {
+            let lineHeight = typesetter.lineFragments.reduce(0) { $0 + $1.scaledSize.height }
+            _lineHeight = lineHeight
+            return lineHeight
+        }
+    }
 
     private let stringView: StringView
     private let typesetter: LineTypesetter
@@ -71,6 +63,7 @@ final class LineController {
     private var isDefaultAttributesInvalid = true
     private var isSyntaxHighlightingInvalid = true
     private var isTypesetterInvalid = true
+    private var _lineHeight: CGFloat?
 
     init(line: DocumentLineNode, stringView: StringView) {
         self.line = line
@@ -83,6 +76,7 @@ final class LineController {
         isStringInvalid = true
         isDefaultAttributesInvalid = true
         isTypesetterInvalid = true
+        _lineHeight = nil
         updateStringIfNecessary()
         updateDefaultAttributesIfNecessary()
         updateTypesetterIfNecessary()
@@ -115,6 +109,7 @@ final class LineController {
         isTypesetterInvalid = true
         isDefaultAttributesInvalid = true
         isSyntaxHighlightingInvalid = true
+        _lineHeight = nil
     }
 
     func lineFragmentControllers(in rect: CGRect) -> [LineFragmentController] {
@@ -233,7 +228,6 @@ private extension LineController {
         cleanUpLineFragmentControllers()
         reapplyLineFragmentToLineFragmentControllers()
         setNeedsDisplayOnLineFragmentViews()
-        updateLineHeight()
     }
 
     private func cleanUpLineFragmentControllers() {
@@ -256,15 +250,6 @@ private extension LineController {
     private func setNeedsDisplayOnLineFragmentViews() {
         for (_, lineFragmentController) in lineFragmentControllers {
             lineFragmentController.lineFragmentView?.setNeedsDisplay()
-        }
-    }
-
-    private func updateLineHeight() {
-        if typesetter.lineFragments.isEmpty {
-            // This is an empty line. Possibly at the end of the file.
-            lineHeight = estimatedLineFragmentHeight
-        } else {
-            lineHeight = typesetter.lineFragments.reduce(0) { $0 + $1.scaledSize.height }
         }
     }
 }

@@ -41,7 +41,7 @@ final class LineManager {
     }
     var contentHeight: CGFloat {
         let rightMost = documentLineTree.root.rightMost
-        return rightMost.yPosition + rightMost.data.frameHeight
+        return rightMost.yPosition + rightMost.data.lineHeight
     }
     var estimatedLineHeight: CGFloat = 12
     var firstLine: DocumentLineNode {
@@ -62,7 +62,7 @@ final class LineManager {
 
     init(stringView: StringView) {
         self.stringView = stringView
-        let rootData = DocumentLineNodeData(frameHeight: estimatedLineHeight)
+        let rootData = DocumentLineNodeData(lineHeight: estimatedLineHeight)
         documentLineTree = DocumentLineTree(minimumValue: 0, rootValue: 0, rootData: rootData)
         documentLineTree.childrenUpdater = DocumentLineChildrenUpdater()
         rootData.node = documentLineTree.root
@@ -70,7 +70,7 @@ final class LineManager {
 
     func rebuild(from string: NSString) {
         // Reset the tree so we only have a single line.
-        let rootData = DocumentLineNodeData(frameHeight: estimatedLineHeight)
+        let rootData = DocumentLineNodeData(lineHeight: estimatedLineHeight)
         documentLineTree.reset(rootValue: 0, rootData: rootData)
         rootData.node = documentLineTree.root
         // Iterate over lines in the string.
@@ -78,23 +78,23 @@ final class LineManager {
         var workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: 0)
         var lines: [DocumentLineNode] = []
         var lastDelimiterEnd = 0
-        var totalFrameHeight: CGFloat = 0
+        var totalLineHeight: CGFloat = 0
         while let newLineRange = workingNewLineRange {
             let totalLength = newLineRange.location + newLineRange.length - lastDelimiterEnd
             let substring = string.substring(with: NSRange(location: lastDelimiterEnd, length: totalLength))
             line.value = totalLength
             line.data.totalLength = totalLength
             line.data.delimiterLength = newLineRange.length
-            line.data.frameHeight = estimatedLineHeight
-            line.data.totalFrameHeight = totalFrameHeight
+            line.data.lineHeight = estimatedLineHeight
+            line.data.totalLineHeight = totalLineHeight
             line.data.byteCount = substring.byteCount
             lastDelimiterEnd = newLineRange.location + newLineRange.length
             lines.append(line)
-            let data = DocumentLineNodeData(frameHeight: estimatedLineHeight)
+            let data = DocumentLineNodeData(lineHeight: estimatedLineHeight)
             line = DocumentLineNode(tree: documentLineTree, value: 0, data: data)
             data.node = line
             workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: lastDelimiterEnd)
-            totalFrameHeight += estimatedLineHeight
+            totalLineHeight += estimatedLineHeight
         }
         let totalLength = string.length - lastDelimiterEnd
         let substring = string.substring(with: NSRange(location: lastDelimiterEnd, length: totalLength))
@@ -208,8 +208,8 @@ final class LineManager {
         return documentLineTree.node(
             containingLocation: yOffset,
             minimumValue: 0,
-            valueKeyPath: \.data.frameHeight,
-            totalValueKeyPath: \.data.totalFrameHeight)
+            valueKeyPath: \.data.lineHeight,
+            totalValueKeyPath: \.data.totalLineHeight)
     }
 
     func line(containingByteAt byteIndex: ByteCount) -> DocumentLineNode? {
@@ -226,10 +226,10 @@ final class LineManager {
 
     @discardableResult
     func setHeight(of line: DocumentLineNode, to newHeight: CGFloat) -> Bool {
-        if abs(newHeight - line.data.frameHeight) < CGFloat.ulpOfOne {
+        if abs(newHeight - line.data.lineHeight) < CGFloat.ulpOfOne {
             return false
         } else {
-            line.data.frameHeight = newHeight
+            line.data.lineHeight = newHeight
             documentLineTree.updateAfterChangingChildren(of: line)
             return true
         }
@@ -292,7 +292,7 @@ private extension LineManager {
 
     @discardableResult
     private func insertLine(ofLength length: Int, after otherLine: DocumentLineNode) -> DocumentLineNode {
-        let data = DocumentLineNodeData(frameHeight: estimatedLineHeight)
+        let data = DocumentLineNodeData(lineHeight: estimatedLineHeight)
         let insertedLine = documentLineTree.insertNode(value: length, data: data, after: otherLine)
         let range = NSRange(location: insertedLine.location, length: length)
         let substring = stringView.substring(in: range)
@@ -320,14 +320,14 @@ private extension LineManager {
 
 extension DocumentLineTree {
     func yPosition(of node: DocumentLineNode) -> CGFloat {
-        var yPosition = node.left?.data.totalFrameHeight ?? 0
+        var yPosition = node.left?.data.totalLineHeight ?? 0
         var workingNode = node
         while let parentNode = workingNode.parent {
             if workingNode === workingNode.parent?.right {
                 if let leftNode = workingNode.parent?.left {
-                    yPosition += leftNode.data.totalFrameHeight
+                    yPosition += leftNode.data.totalLineHeight
                 }
-                yPosition += parentNode.data.frameHeight
+                yPosition += parentNode.data.lineHeight
             }
             workingNode = parentNode
         }

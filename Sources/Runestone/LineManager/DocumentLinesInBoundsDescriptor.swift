@@ -21,12 +21,12 @@ final class DocumentLinesInBoundsSearchQuery: RedBlackTreeSearchQuery {
     }
 
     func shouldTraverseRightChildren(of node: DocumentLineNode) -> Bool {
-        return yPosition(of: node) + node.data.frameHeight < bounds.maxY
+        return yPosition(of: node) + node.data.lineHeight < bounds.maxY
     }
 
     func shouldInclude(_ node: DocumentLineNode) -> Bool {
         let nodeLowerBound = yPosition(of: node)
-        let nodeUpperBound = nodeLowerBound + node.data.frameHeight
+        let nodeUpperBound = nodeLowerBound + node.data.lineHeight
         return nodeLowerBound <= bounds.maxY && bounds.minY <= nodeUpperBound
     }
 }

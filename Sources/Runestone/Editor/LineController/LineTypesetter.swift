@@ -24,7 +24,7 @@ private final class TypesetResult {
 final class LineTypesetter {
     var constrainingWidth: CGFloat?
     var lineFragmentHeightMultiplier: CGFloat = 1
-    private(set) var preferredSize: CGSize?
+    private(set) var maximumLineWidth: CGFloat = 0
     private(set) var lineFragments: [LineFragment] = []
 
     private let lineID: String
@@ -35,15 +35,12 @@ final class LineTypesetter {
     }
 
     func typeset(_ attributedString: CFAttributedString) {
-        reset()
         let stringLength = CFAttributedStringGetLength(attributedString)
         let typesetter = CTTypesetterCreateWithAttributedString(attributedString)
         let typesetResult = self.lineFragments(in: typesetter, stringLength: stringLength)
-        if let typesetResult = typesetResult, let lastLine = typesetResult.lineFragments.last {
-            lineFragments = typesetResult.lineFragments
-            lineFragmentsMap = typesetResult.lineFragmentsMap
-            preferredSize = CGSize(width: typesetResult.maximumLineWidth, height: lastLine.yPosition + lastLine.scaledSize.height)
-        }
+        lineFragments = typesetResult?.lineFragments ?? []
+        lineFragmentsMap = typesetResult?.lineFragmentsMap ?? [:]
+        maximumLineWidth = typesetResult?.maximumLineWidth ?? 0
     }
 
     func lineFragment(withID lineFragmentID: LineFragmentID) -> LineFragment? {
@@ -56,11 +53,6 @@ final class LineTypesetter {
 }
 
 private extension LineTypesetter {
-    private func reset() {
-        lineFragments = []
-        preferredSize = nil
-    }
-
     private func createAttributedString(from string: String) -> CFAttributedString? {
         if let attributedString = CFAttributedStringCreateMutable(kCFAllocatorDefault, string.utf16.count) {
             CFAttributedStringReplaceString(attributedString, CFRangeMake(0, 0), string as CFString)

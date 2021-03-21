@@ -186,21 +186,25 @@ final class LayoutManager {
     private var textContentWidth: CGFloat {
         if let textContentWidth = _textContentWidth {
             return textContentWidth
+        } else if let lineIDTrackingWidth = lineIDTrackingWidth, let lineWidth = lineWidths[lineIDTrackingWidth] {
+            let textContentWidth = lineWidth
+            _textContentWidth = textContentWidth
+            return textContentWidth
         } else {
             lineIDTrackingWidth = nil
-            var currentMaximumWidth: CGFloat?
+            var maximumWidth: CGFloat?
             for (lineID, lineWidth) in lineWidths {
-                if let _currentMaximumWidth = currentMaximumWidth {
-                    if lineWidth > _currentMaximumWidth {
+                if let _maximumWidth = maximumWidth {
+                    if lineWidth > _maximumWidth {
                         lineIDTrackingWidth = lineID
-                        currentMaximumWidth = lineWidth
+                        maximumWidth = lineWidth
                     }
                 } else {
                     lineIDTrackingWidth = lineID
-                    currentMaximumWidth = lineWidth
+                    maximumWidth = lineWidth
                 }
             }
-            let textContentWidth = currentMaximumWidth ?? scrollViewWidth
+            let textContentWidth = maximumWidth ?? scrollViewWidth
             _textContentWidth = textContentWidth
             return textContentWidth
         }
@@ -269,13 +273,13 @@ final class LayoutManager {
     }
 
     func removeLine(withID lineID: DocumentLineNodeID) {
+        lineWidths.removeValue(forKey: lineID)
+        lineControllers.removeValue(forKey: lineID)
         if lineID == lineIDTrackingWidth {
             lineIDTrackingWidth = nil
             _textContentWidth = nil
             delegate?.layoutManagerDidInvalidateContentSize(self)
         }
-        lineWidths.removeValue(forKey: lineID)
-        lineControllers.removeValue(forKey: lineID)
     }
 
     func updateGutterWidth() {
@@ -317,6 +321,7 @@ final class LayoutManager {
     
     func invalidateLines() {
         for (_, lineController) in lineControllers {
+            lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
             lineController.tabWidth = tabWidth
             lineController.invalidate()
         }
@@ -525,13 +530,11 @@ extension LayoutManager {
             for lineFragmentController in lineFragmentControllers {
                 let lineFragment = lineFragmentController.lineFragment
                 appearedLineFragmentIDs.insert(lineFragment.id)
-                var localContentOffsetAdjustmentY: CGFloat = 0
-                layoutLineFragmentView(for: lineFragmentController, lineYPosition: lineYPosition, maxY: &maxY, contentOffsetAdjustment: &localContentOffsetAdjustmentY)
-                contentOffsetAdjustmentY += localContentOffsetAdjustmentY
+                layoutLineFragmentView(for: lineFragmentController, lineYPosition: lineYPosition, maxY: &maxY)
             }
-            if lineManager.setHeight(of: line, to: lineController.lineHeight) {
-                _textContentHeight = nil
-            }
+            var localContentOffsetAdjustmentY: CGFloat = 0
+            updateSize(of: lineController, contentOffsetAdjustmentY: &localContentOffsetAdjustmentY)
+            contentOffsetAdjustmentY += localContentOffsetAdjustmentY
             if line.index < lineManager.lineCount - 1 {
                 nextLine = lineManager.line(atRow: line.index + 1)
             } else {
@@ -575,11 +578,7 @@ extension LayoutManager {
         lineNumberView.frame = CGRect(origin: origin, size: size)
     }
 
-    private func layoutLineFragmentView(
-        for lineFragmentController: LineFragmentController,
-        lineYPosition: CGFloat,
-        maxY: inout CGFloat,
-        contentOffsetAdjustment: inout CGFloat) {
+    private func layoutLineFragmentView(for lineFragmentController: LineFragmentController, lineYPosition: CGFloat, maxY: inout CGFloat) {
         let lineFragment = lineFragmentController.lineFragment
         let lineFragmentView = lineFragmentViewReuseQueue.dequeueView(forKey: lineFragment.id)
         if lineFragmentView.superview == nil {
@@ -590,6 +589,37 @@ extension LayoutManager {
         let lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragment.scaledSize)
         lineFragmentView.frame = lineFragmentFrame
         maxY = lineFragmentFrame.maxY
+    }
+
+    private func updateSize(of lineController: LineController, contentOffsetAdjustmentY: inout CGFloat) {
+        let line = lineController.line
+        let lineWidth = lineController.lineWidth
+        if lineWidths[line.id] != lineWidth {
+            lineWidths[line.id] = lineWidth
+            if let lineIDTrackingWidth = lineIDTrackingWidth {
+                let maximumLineWidth = lineWidths[lineIDTrackingWidth] ?? 0
+                if line.id == lineIDTrackingWidth || lineWidth > maximumLineWidth {
+                    self.lineIDTrackingWidth = line.id
+                    _textContentWidth = nil
+                }
+            } else if !isLineWrappingEnabled {
+                _textContentWidth = nil
+            }
+        }
+        let oldLineHeight = line.data.lineHeight
+        let newLineHeight = lineController.lineHeight
+        let didUpdateHeight = lineManager.setHeight(of: line, to: newLineHeight)
+        if didUpdateHeight {
+            _textContentHeight = nil
+            // Updating the height of a line that's above the current content offset will cause the content below it to move up or down.
+            // This happens when layout information above the content offset is invalidated and the user is scrolling upwards, e.g. after
+            // changing the line height. To accommodate this change and reduce the "jump", we ask the scroll view to adjust the content offset
+            // by the amount that the line height has changed. The solution is borrowed from https://github.com/airbnb/MagazineLayout/pull/11
+            let isSizingElementAboveTopEdge = line.yPosition < viewport.minY + textContainerInset.top
+            if isSizingElementAboveTopEdge {
+                contentOffsetAdjustmentY = newLineHeight - oldLineHeight
+            }
+        }
     }
 
     private func updateLineNumberColors() {
@@ -631,33 +661,6 @@ extension LayoutManager {
         gutterSelectionBackgroundView.isHidden = !showSelectedLines || !showLineNumbers || !isEditing
         lineSelectionBackgroundView.isHidden = !showSelectedLines || !isEditing || selectedLength > 0
     }
-
-//    private func updateSize(of line: DocumentLineNode, newLineFrame: CGRect, contentOffsetAdjustment: inout CGFloat) {
-//        let oldLineHeight = line.data.frameHeight
-//        let didUpdateHeight = lineManager.setHeight(of: line, to: newLineFrame.height)
-//        if lineWidths[line.id] != newLineFrame.width {
-//            lineWidths[line.id] = newLineFrame.width
-//            if let lineIDTrackingWidth = lineIDTrackingWidth {
-//                let maximumLineWidth = lineWidths[lineIDTrackingWidth] ?? 0
-//                if line.id == lineIDTrackingWidth || newLineFrame.width > maximumLineWidth {
-//                    _textContentWidth = nil
-//                }
-//            } else if !isLineWrappingEnabled {
-//                _textContentWidth = nil
-//            }
-//        }
-//        if didUpdateHeight {
-//            _textContentHeight = nil
-//            // Updating the height of a line that's above the current content offset will cause the content below it to move up or down.
-//            // This happens when layout information above the content offset is invalidated and the user is scrolling upwards, e.g. after
-//            // changing the line height. To accommodate this change and reduce the "jump", we ask the scroll view to adjust the content offset
-//            // by the amount that the line height has changed. The solution is borrowed from https://github.com/airbnb/MagazineLayout/pull/11
-//            let isSizingElementAboveTopEdge = newLineFrame.minY < viewport.minY + textContainerInset.top
-//            if isSizingElementAboveTopEdge {
-//                contentOffsetAdjustment = newLineFrame.height - oldLineHeight
-//            }
-//        }
-//    }
 
     private func lineController(for line: DocumentLineNode) -> LineController {
         if let cachedLineController = lineControllers[line.id] {

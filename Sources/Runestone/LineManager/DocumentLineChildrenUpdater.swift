@@ -10,18 +10,18 @@ import CoreGraphics
 
 final class DocumentLineChildrenUpdater: RedBlackTreeChildrenUpdater<DocumentLineNodeID, Int, DocumentLineNodeData> {
     override func updateAfterChangingChildren(of node: Node) -> Bool {
-        var totalFrameHeight = node.data.frameHeight
+        var totalLineHeight = node.data.lineHeight
         var totalByteCount = node.data.byteCount
         if let leftNode = node.left {
-            totalFrameHeight += leftNode.data.totalFrameHeight
+            totalLineHeight += leftNode.data.totalLineHeight
             totalByteCount += leftNode.data.nodeTotalByteCount
         }
         if let rightNode = node.right {
-            totalFrameHeight += rightNode.data.totalFrameHeight
+            totalLineHeight += rightNode.data.totalLineHeight
             totalByteCount += rightNode.data.nodeTotalByteCount
         }
-        if totalFrameHeight != node.data.totalFrameHeight || totalByteCount != node.data.nodeTotalByteCount {
-            node.data.totalFrameHeight = totalFrameHeight
+        if totalLineHeight != node.data.totalLineHeight || totalByteCount != node.data.nodeTotalByteCount {
+            node.data.totalLineHeight = totalLineHeight
             node.data.nodeTotalByteCount = totalByteCount
             return true
         } else {
