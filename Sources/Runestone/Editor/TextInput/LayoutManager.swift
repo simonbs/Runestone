@@ -458,63 +458,8 @@ extension LayoutManager {
         CATransaction.setDisableActions(true)
         layoutGutter()
         layoutSelection()
+        layoutLines()
         updateLineNumberColors()
-        let oldVisibleLineIDs = visibleLineIDs
-        let oldVisibleLineFragmentIDs = Set(lineFragmentViewReuseQueue.visibleViews.keys)
-        // Layout lines until we have filled the viewport.
-        var nextLine = lineManager.line(containingYOffset: viewport.minY)
-        var appearedLineIDs: Set<DocumentLineNodeID> = []
-        var appearedLineFragmentIDs: Set<LineFragmentID> = []
-        var maxY = viewport.minY
-        var contentOffsetAdjustmentY: CGFloat = 0
-        while let line = nextLine, maxY < viewport.maxY {
-            appearedLineIDs.insert(line.id)
-            // Prepare to line controller to display text.
-            let lineController = lineController(for: line)
-            lineController.estimatedLineFragmentHeight = theme.font.lineHeight
-            lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
-            lineController.constrainingWidth = maximumLineWidth
-            lineController.willDisplay()
-            // Layout the line number.
-            layoutLineNumberView(for: line)
-            // Layout line fragments ("sublines") in the line until we have filled the viewport.
-            let lineYPosition = line.yPosition
-            let lineFragmentControllers = lineController.lineFragmentControllers(in: viewport)
-            for lineFragmentController in lineFragmentControllers {
-                let lineFragment = lineFragmentController.lineFragment
-                appearedLineFragmentIDs.insert(lineFragment.id)
-                var localContentOffsetAdjustmentY: CGFloat = 0
-                layoutLineFragmentView(for: lineFragmentController, lineYPosition: lineYPosition, maxY: &maxY, contentOffsetAdjustment: &localContentOffsetAdjustmentY)
-                contentOffsetAdjustmentY += localContentOffsetAdjustmentY
-            }
-            if lineManager.setHeight(of: line, to: lineController.lineHeight) {
-                _textContentHeight = nil
-            }
-            if line.index < lineManager.lineCount - 1 {
-                nextLine = lineManager.line(atRow: line.index + 1)
-            } else {
-                nextLine = nil
-            }
-        }
-        // Update the visible lines and line fragments. Clean up everything that is not in the viewport anymore.
-        visibleLineIDs = appearedLineIDs
-        let disappearedLineIDs = oldVisibleLineIDs.subtracting(appearedLineIDs)
-        let disappearedLineFragmentIDs = oldVisibleLineFragmentIDs.subtracting(appearedLineFragmentIDs)
-        for disapparedLineID in disappearedLineIDs {
-            let lineController = lineControllers[disapparedLineID]
-            lineController?.didEndDisplaying()
-        }
-        lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
-        lineFragmentViewReuseQueue.enqueueViews(withKeys: disappearedLineFragmentIDs)
-        // Update the content size.
-        if _textContentWidth == nil || _textContentHeight == nil {
-            delegate?.layoutManagerDidInvalidateContentSize(self)
-        }
-        // Adjust the content offset on the Y-axis if necessary.
-        if contentOffsetAdjustmentY != 0 {
-            let contentOffsetAdjustment = CGPoint(x: 0, y: contentOffsetAdjustmentY)
-            delegate?.layoutManager(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
-        }
         CATransaction.commit()
     }
 
@@ -564,6 +509,65 @@ extension LayoutManager {
 //        lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: scrollViewWidth - gutterWidth, height: selectedRect.height)
     }
 
+    private func layoutLines() {
+        let oldVisibleLineIDs = visibleLineIDs
+        let oldVisibleLineFragmentIDs = Set(lineFragmentViewReuseQueue.visibleViews.keys)
+        // Layout lines until we have filled the viewport.
+        var nextLine = lineManager.line(containingYOffset: viewport.minY)
+        var appearedLineIDs: Set<DocumentLineNodeID> = []
+        var appearedLineFragmentIDs: Set<LineFragmentID> = []
+        var maxY = viewport.minY
+        var contentOffsetAdjustmentY: CGFloat = 0
+        while let line = nextLine, maxY < viewport.maxY {
+            appearedLineIDs.insert(line.id)
+            // Prepare to line controller to display text.
+            let lineController = lineController(for: line)
+            lineController.estimatedLineFragmentHeight = theme.font.lineHeight
+            lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
+            lineController.constrainingWidth = maximumLineWidth
+            lineController.willDisplay()
+            // Layout the line number.
+            layoutLineNumberView(for: line)
+            // Layout line fragments ("sublines") in the line until we have filled the viewport.
+            let lineYPosition = line.yPosition
+            let lineFragmentControllers = lineController.lineFragmentControllers(in: viewport)
+            for lineFragmentController in lineFragmentControllers {
+                let lineFragment = lineFragmentController.lineFragment
+                appearedLineFragmentIDs.insert(lineFragment.id)
+                var localContentOffsetAdjustmentY: CGFloat = 0
+                layoutLineFragmentView(for: lineFragmentController, lineYPosition: lineYPosition, maxY: &maxY, contentOffsetAdjustment: &localContentOffsetAdjustmentY)
+                contentOffsetAdjustmentY += localContentOffsetAdjustmentY
+            }
+            if lineManager.setHeight(of: line, to: lineController.lineHeight) {
+                _textContentHeight = nil
+            }
+            if line.index < lineManager.lineCount - 1 {
+                nextLine = lineManager.line(atRow: line.index + 1)
+            } else {
+                nextLine = nil
+            }
+        }
+        // Update the visible lines and line fragments. Clean up everything that is not in the viewport anymore.
+        visibleLineIDs = appearedLineIDs
+        let disappearedLineIDs = oldVisibleLineIDs.subtracting(appearedLineIDs)
+        let disappearedLineFragmentIDs = oldVisibleLineFragmentIDs.subtracting(appearedLineFragmentIDs)
+        for disapparedLineID in disappearedLineIDs {
+            let lineController = lineControllers[disapparedLineID]
+            lineController?.didEndDisplaying()
+        }
+        lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
+        lineFragmentViewReuseQueue.enqueueViews(withKeys: disappearedLineFragmentIDs)
+        // Update content size if necessary.
+        if _textContentWidth == nil || _textContentHeight == nil {
+            delegate?.layoutManagerDidInvalidateContentSize(self)
+        }
+        // Adjust the content offset on the Y-axis if necessary.
+        if contentOffsetAdjustmentY != 0 {
+            let contentOffsetAdjustment = CGPoint(x: 0, y: contentOffsetAdjustmentY)
+            delegate?.layoutManager(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
+        }
+    }
+
     private func layoutLineNumberView(for line: DocumentLineNode) {
         let lineNumberView = lineNumberLabelReuseQueue.dequeueView(forKey: line.id)
         if lineNumberView.superview == nil {
@@ -596,43 +600,6 @@ extension LayoutManager {
         lineFragmentView.frame = lineFragmentFrame
         maxY = lineFragmentFrame.maxY
     }
-
-//    private func layoutViews(for line: DocumentLineNode, maxY: inout CGFloat, contentOffsetAdjustment: inout CGFloat) {
-//        // Ensure views are added to the view hiearchy
-//        let lineView = lineFragmentViewReuseQueue.dequeueView(forKey: line.id)
-//        let lineNumberView = lineNumberLabelReuseQueue.dequeueView(forKey: line.id)
-//        if lineView.superview == nil {
-//            linesContainerView.addSubview(lineView)
-//        }
-//        if lineNumberView.superview == nil {
-//            lineNumbersContainerView.addSubview(lineNumberView)
-//        }
-//        // Setup the line
-//        let lineController = getLineController(for: line)
-//        lineController.lineView = lineView
-//        lineController.estimatedLineHeight = theme.font.lineHeight
-//        lineController.lineHeightMultiplier = lineHeightMultiplier
-//        lineController.constrainingWidth = maximumLineWidth
-//        lineController.invisibleCharacterConfiguration = invisibleCharacterConfiguration
-//        lineController.willDisplay()
-//        let lineSize = lineController.preferredSize
-//        let lineYPosition = textContainerInset.top + line.yPosition
-//        let lineViewFrame = CGRect(x: leadingLineSpacing, y: lineYPosition, width: lineSize.width, height: lineSize.height)
-//        lineController.lineViewFrame = lineViewFrame
-//        // Setup the line number
-//        let baseLineHeight = theme.font.lineHeight
-//        let scaledLineHeight = baseLineHeight * lineHeightMultiplier
-//        let lineNumberYOffset = (scaledLineHeight - baseLineHeight) / 2
-//        let lineNumberXPosition = safeAreaInsets.left + gutterLeadingPadding
-//        let lineNumberYPosition = lineViewFrame.minY + lineNumberYOffset
-//        lineNumberView.text = "\(line.index + 1)"
-//        lineNumberView.font = theme.font
-//        lineNumberView.textColor = theme.lineNumberColor
-//        lineNumberView.frame = CGRect(x: lineNumberXPosition, y: lineNumberYPosition, width: lineNumberWidth, height: lineViewFrame.height)
-//        // Pass back the maximum Y position so the caller can determine if it needs to show more lines.
-//        maxY = lineView.frame.maxY
-//        updateSize(of: line, newLineFrame: lineViewFrame, contentOffsetAdjustment: &contentOffsetAdjustment)
-//    }
 
     private func updateLineNumberColors() {
         let visibleViews = lineNumberLabelReuseQueue.visibleViews
