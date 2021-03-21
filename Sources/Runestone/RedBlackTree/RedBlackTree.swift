@@ -532,3 +532,18 @@ extension RedBlackTree: CustomDebugStringConvertible {
         return result
     }
 }
+
+extension RedBlackTree where NodeData == Void {
+    convenience init(minimumValue: NodeValue, rootValue: NodeValue) {
+        self.init(minimumValue: minimumValue, rootValue: rootValue, rootData: ())
+    }
+
+    func reset(rootValue: NodeValue) {
+        reset(rootValue: rootValue, rootData: ())
+    }
+
+    @discardableResult
+    func insertNode(value: NodeValue, after existingNode: Node) -> Node {
+        return insertNode(value: value, data: (), after: existingNode)
+    }
+}

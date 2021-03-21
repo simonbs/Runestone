@@ -103,6 +103,12 @@ extension RedBlackTreeNode: Hashable {
     }
 }
 
+extension RedBlackTreeNode where NodeData == Void {
+    convenience init(tree: Tree, value: NodeValue) {
+        self.init(tree: tree, value: value, data: ())
+    }
+}
+
 extension RedBlackTreeNode: CustomDebugStringConvertible {
     var debugDescription: String {
         return "[RedBlackTreeNode index=\(index) location=\(location) nodeTotalCount=\(nodeTotalCount)]"
