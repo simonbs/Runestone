@@ -38,9 +38,9 @@ final class LineTypesetter {
         let stringLength = CFAttributedStringGetLength(attributedString)
         let typesetter = CTTypesetterCreateWithAttributedString(attributedString)
         let typesetResult = self.lineFragments(in: typesetter, stringLength: stringLength)
-        lineFragments = typesetResult?.lineFragments ?? []
-        lineFragmentsMap = typesetResult?.lineFragmentsMap ?? [:]
-        maximumLineWidth = typesetResult?.maximumLineWidth ?? 0
+        lineFragments = typesetResult.lineFragments
+        lineFragmentsMap = typesetResult.lineFragmentsMap
+        maximumLineWidth = typesetResult.maximumLineWidth
     }
 
     func lineFragment(withID lineFragmentID: LineFragmentID) -> LineFragment? {
@@ -62,10 +62,7 @@ private extension LineTypesetter {
         }
     }
 
-    private func lineFragments(in typesetter: CTTypesetter, stringLength: Int) -> TypesetResult? {
-        guard stringLength > 0 else {
-            return nil
-        }
+    private func lineFragments(in typesetter: CTTypesetter, stringLength: Int) -> TypesetResult {
         if let constrainingWidth = constrainingWidth {
             return typesetWrappingLines(in: typesetter, stringLength: stringLength, constrainingWidth: constrainingWidth)
         } else {
