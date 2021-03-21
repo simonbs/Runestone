@@ -482,27 +482,25 @@ extension LayoutManager {
     }
 
     private func layoutSelection() {
-//        guard showSelectedLines, let selectedRange = selectedRange else {
-//            return
-//        }
-//        let startLocation = selectedRange.location
-//        let endLocation = selectedRange.location + selectedRange.length
-//        let selectedRect: CGRect
-//        if selectedRange.length > 0 {
-//            let startLine = lineManager.line(containingCharacterAt: startLocation)!
-//            let endLine = lineManager.line(containingCharacterAt: endLocation)!
-//            let startLineController = getLineController(for: startLine)
-//            let endLineController = getLineController(for: endLine)
-//            let yPos = startLineController.lineViewFrame.minY
-//            let height = endLineController.lineViewFrame.maxY - startLineController.lineViewFrame.minY
-//            selectedRect = CGRect(x: 0, y: yPos, width: scrollViewWidth, height: height)
-//        } else {
-//            let line = lineManager.line(containingCharacterAt: startLocation)!
-//            let lineController = getLineController(for: line)
-//            selectedRect = CGRect(x: 0, y: lineController.lineViewFrame.minY, width: scrollViewWidth, height: lineController.preferredSize.height)
-//        }
-//        gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: gutterWidth, height: selectedRect.height)
-//        lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: scrollViewWidth - gutterWidth, height: selectedRect.height)
+        guard showSelectedLines, let selectedRange = selectedRange else {
+            return
+        }
+        let startLocation = selectedRange.location
+        let endLocation = selectedRange.location + selectedRange.length
+        let selectedRect: CGRect
+        if selectedRange.length > 0 {
+            let startLine = lineManager.line(containingCharacterAt: startLocation)!
+            let endLine = lineManager.line(containingCharacterAt: endLocation)!
+            let startLineMinYPosition = textContainerInset.top + startLine.yPosition
+            let endLineMaxYPosition = textContainerInset.top + endLine.yPosition + endLine.data.lineHeight
+            let height = endLineMaxYPosition - startLineMinYPosition
+            selectedRect = CGRect(x: 0, y: startLineMinYPosition, width: scrollViewWidth, height: height)
+        } else {
+            let line = lineManager.line(containingCharacterAt: startLocation)!
+            selectedRect = CGRect(x: 0, y: textContainerInset.top + line.yPosition, width: scrollViewWidth, height: line.data.lineHeight)
+        }
+        gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: gutterWidth, height: selectedRect.height)
+        lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: scrollViewWidth - gutterWidth, height: selectedRect.height)
     }
 
     private func layoutLines() {
