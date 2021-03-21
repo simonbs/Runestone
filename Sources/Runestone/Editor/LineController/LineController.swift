@@ -139,16 +139,7 @@ final class LineController {
         }
         return result
     }
-
-    func lineFragmentController(containingCharacterAt location: Int) -> LineFragmentController? {
-        if let node = lineFragmentTree.nodePosition(at: location) {
-            let lineFragment = typesetter.lineFragments[node.index]
-            return lineFragmentController(for: lineFragment)
-        } else {
-            return nil
-        }
-    }
-
+    
     func lineFragmentNode(containingCharacterAt location: Int) -> LineFragmentNode {
         return lineFragmentTree.node(containingLocation: location)
     }
