@@ -86,10 +86,13 @@ final class TextInputView: UIView, UITextInput {
     }
 
     // MARK: - Appearance
-    var theme: EditorTheme = DefaultEditorTheme() {
+    var theme: EditorTheme {
         didSet {
             lineManager.estimatedLineHeight = estimatedLineHeight
             indentController.indentFont = theme.font
+            pageGuideController.guideView.hairlineWidth = theme.pageGuideHairlineWidth
+            pageGuideController.guideView.hairlineColor = theme.pageGuideHairlineColor
+            pageGuideController.guideView.backgroundColor = theme.pageGuideBackgroundColor
             layoutManager.theme = theme
             layoutManager.tabWidth = indentController.tabWidth
         }
@@ -240,6 +243,27 @@ final class TextInputView: UIView, UITextInput {
         }
     }
     var characterPairs: [EditorCharacterPair] = []
+    var showPageGuide = false {
+        didSet {
+            if showPageGuide != oldValue {
+                if showPageGuide {
+                    addSubview(pageGuideController.guideView)
+                    sendSubviewToBack(pageGuideController.guideView)
+                    setNeedsLayout()
+                } else {
+                    pageGuideController.guideView.removeFromSuperview()
+                }
+            }
+        }
+    }
+    var pageGuideColumn: Int {
+        get {
+            return pageGuideController.column
+        }
+        set {
+            pageGuideController.column = newValue
+        }
+    }
     private var estimatedLineHeight: CGFloat {
         return theme.font.lineHeight * lineHeightMultiplier
     }
@@ -341,6 +365,7 @@ final class TextInputView: UIView, UITextInput {
     private let timedUndoManager = TimedUndoManager()
     private let indentController: IndentController
     private let lineMovementController: LineMovementController
+    private let pageGuideController = PageGuideController()
     private var markedRange: NSRange?
     private var parsedLine: ParsedLine?
     private var floatingCaretView: FloatingCaretView?
@@ -357,7 +382,8 @@ final class TextInputView: UIView, UITextInput {
     }
 
     // MARK: - Lifecycle
-    init() {
+    init(theme: EditorTheme) {
+        self.theme = theme
         lineManager = LineManager(stringView: stringView)
         layoutManager = LayoutManager(lineManager: lineManager, languageMode: languageMode, stringView: stringView)
         indentController = IndentController(stringView: stringView, lineManager: lineManager, languageMode: languageMode, indentBehavior: indentBehavior, indentFont: theme.font)
@@ -381,6 +407,7 @@ final class TextInputView: UIView, UITextInput {
         super.layoutSubviews()
         layoutManager.layoutIfNeeded()
         layoutManager.layoutSelectionIfNeeded()
+        layoutPageGuideIfNeeded()
     }
 
     override func copy(_ sender: Any?) {
@@ -497,6 +524,26 @@ final class TextInputView: UIView, UITextInput {
             timedUndoManager.endUndoGrouping()
         }
         return result
+    }
+}
+
+// MARK: - Layout
+private extension TextInputView {
+    private func layoutPageGuideIfNeeded() {
+        if showPageGuide {
+            // The width extension is used to make the page guide look "attached" to the right hand side,
+            // even when the scroll view bouncing on the right side.
+            let maxContentOffsetX = layoutManager.contentSize.width - viewport.width
+            let widthExtension = max(ceil(viewport.minX - maxContentOffsetX), 0)
+            let pageGuideXPosition = layoutManager.gutterWidth + pageGuideController.columnOffset
+            let pageGuideOrigin = CGPoint(x: pageGuideXPosition, y: viewport.minY)
+            let pageGuideSize = CGSize(width: bounds.width - pageGuideXPosition + widthExtension, height: viewport.height)
+            if pageGuideSize.width > 0 {
+                pageGuideController.guideView.frame = CGRect(origin: pageGuideOrigin, size: pageGuideSize)
+            } else {
+                pageGuideController.guideView.frame = .zero
+            }
+        }
     }
 }
 

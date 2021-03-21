@@ -37,6 +37,9 @@ final class DefaultEditorTheme: EditorTheme {
 
     let invisibleCharactersColor: UIColor = .tertiaryLabel
 
+    let pageGuideBackgroundColor: UIColor = .secondarySystemBackground
+    var pageGuideHairlineColor: UIColor = .opaqueSeparator
+
     func textColorForCaptureSequence(_ captureSequence: String) -> UIColor? {
         guard let captureName = CaptureName(sequence: captureSequence) else {
             return nil

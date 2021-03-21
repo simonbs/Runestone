@@ -357,8 +357,26 @@ public final class EditorTextView: UIScrollView {
             textInputView.lineHeightMultiplier = newValue
         }
     }
+    /// The text view shows a page guide when enabled. Use `pageGuideColumn` to specify the location of the page guide.
+    public var showPageGuide: Bool {
+        get {
+            return textInputView.showPageGuide
+        }
+        set {
+            textInputView.showPageGuide = newValue
+        }
+    }
+    /// Specifies the location of the page guide. Use `showPageGuide` to specify if the page guide should be shown.
+    public var pageGuideColumn: Int {
+        get {
+            return textInputView.pageGuideColumn
+        }
+        set {
+            textInputView.pageGuideColumn = newValue
+        }
+    }
 
-    private let textInputView = TextInputView()
+    private let textInputView: TextInputView
     private let editableTextInteraction = UITextInteraction(for: .editable)
     private let nonEditableTextInteraction = UITextInteraction(for: .nonEditable)
     private let tapGestureRecognizer = QuickTapGestureRecognizer()
@@ -381,6 +399,7 @@ public final class EditorTextView: UIScrollView {
     private var isInputAccessoryViewEnabled = false
 
     public override init(frame: CGRect) {
+        textInputView = TextInputView(theme: DefaultEditorTheme())
         super.init(frame: frame)
         backgroundColor = .white
         textInputView.delegate = self

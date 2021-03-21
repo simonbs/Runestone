@@ -19,6 +19,8 @@ public protocol EditorTheme: AnyObject {
     var selectedLinesLineNumberColor: UIColor { get }
     var selectedLinesGutterBackgroundColor: UIColor { get }
     var invisibleCharactersColor: UIColor { get }
+    var pageGuideHairlineColor: UIColor { get }
+    var pageGuideBackgroundColor: UIColor { get }
     func textColorForCaptureSequence(_ captureSequence: String) -> UIColor?
     func fontForCaptureSequence(_ captureSequence: String) -> UIFont?
     func shadowForCaptureSequence(_ captureSequence: String) -> NSShadow?
@@ -26,6 +28,10 @@ public protocol EditorTheme: AnyObject {
 
 public extension EditorTheme {
     var gutterHairlineWidth: CGFloat {
+        return 1 / UIScreen.main.scale
+    }
+
+    var pageGuideHairlineWidth: CGFloat {
         return 1 / UIScreen.main.scale
     }
 
