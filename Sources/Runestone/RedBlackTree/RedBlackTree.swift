@@ -32,8 +32,9 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNode
     }
 
     func rebuild(from nodes: [Node]) {
+        assert(!nodes.isEmpty, "Cannot rebuild tree from empty set of nodes")
         let height = getTreeHeight(nodeCount: nodes.count)
-        root = buildTree(from: nodes, start: 0, end: nodes.count, subtreeHeight: height)!
+        root = buildTree(from: nodes, start: 0, end: nodes.count, subtreeHeight: height)
         root.color = .black
     }
 
@@ -529,5 +530,20 @@ extension RedBlackTree: CustomDebugStringConvertible {
             result = append(rightNode, to: result, indent: indent + 2)
         }
         return result
+    }
+}
+
+extension RedBlackTree where NodeData == Void {
+    convenience init(minimumValue: NodeValue, rootValue: NodeValue) {
+        self.init(minimumValue: minimumValue, rootValue: rootValue, rootData: ())
+    }
+
+    func reset(rootValue: NodeValue) {
+        reset(rootValue: rootValue, rootData: ())
+    }
+
+    @discardableResult
+    func insertNode(value: NodeValue, after existingNode: Node) -> Node {
+        return insertNode(value: value, data: (), after: existingNode)
     }
 }

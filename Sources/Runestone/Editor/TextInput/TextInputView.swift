@@ -311,6 +311,7 @@ final class TextInputView: UIView, UITextInput {
         didSet {
             if lineManager !== oldValue {
                 indentController.lineManager = lineManager
+                lineMovementController.lineManager = lineManager
             }
         }
     }
@@ -322,6 +323,7 @@ final class TextInputView: UIView, UITextInput {
                 lineManager.stringView = stringView
                 layoutManager.stringView = stringView
                 indentController.stringView = stringView
+                lineMovementController.stringView = stringView
             }
         }
     }
@@ -338,6 +340,7 @@ final class TextInputView: UIView, UITextInput {
     private let layoutManager: LayoutManager
     private let timedUndoManager = TimedUndoManager()
     private let indentController: IndentController
+    private let lineMovementController: LineMovementController
     private var markedRange: NSRange?
     private var parsedLine: ParsedLine?
     private var floatingCaretView: FloatingCaretView?
@@ -358,10 +361,12 @@ final class TextInputView: UIView, UITextInput {
         lineManager = LineManager(stringView: stringView)
         layoutManager = LayoutManager(lineManager: lineManager, languageMode: languageMode, stringView: stringView)
         indentController = IndentController(stringView: stringView, lineManager: lineManager, languageMode: languageMode, indentBehavior: indentBehavior, indentFont: theme.font)
+        lineMovementController = LineMovementController(lineManager: lineManager, stringView: stringView)
         super.init(frame: .zero)
         lineManager.delegate = self
         lineManager.estimatedLineHeight = estimatedLineHeight
         indentController.delegate = self
+        lineMovementController.delegate = self
         layoutManager.delegate = self
         layoutManager.textInputView = self
         layoutManager.theme = theme
@@ -736,24 +741,10 @@ extension TextInputView {
         guard let indexedPosition = position as? IndexedPosition else {
             return nil
         }
-        var newPosition = indexedPosition.index
-        switch direction {
-        case .left:
-            newPosition = targetPositionForMoving(fromLocation: indexedPosition.index, by: offset * -1)
-        case .right:
-            newPosition = targetPositionForMoving(fromLocation: indexedPosition.index, by: offset)
-        case .up:
-            newPosition = targetPositionForMovingFromLine(containingCharacterAt: indexedPosition.index, lineOffset: offset * -1)
-        case .down:
-            newPosition = targetPositionForMovingFromLine(containingCharacterAt: indexedPosition.index, lineOffset: offset)
-        @unknown default:
-            break
-        }
-        if newPosition >= 0 && newPosition <= string.length {
-            return IndexedPosition(index: newPosition)
-        } else {
+        guard let location = lineMovementController.location(from: indexedPosition.index, in: direction, offset: offset) else {
             return nil
         }
+        return IndexedPosition(index: location)
     }
 
     func characterRange(byExtending position: UITextPosition, in direction: UITextLayoutDirection) -> UITextRange? {
@@ -814,35 +805,6 @@ extension TextInputView {
         } else {
             return 0
         }
-    }
-
-    private func targetPositionForMoving(fromLocation location: Int, by offset: Int) -> Int {
-        let naiveNewLocation = location + offset
-        guard naiveNewLocation >= 0 && naiveNewLocation <= string.length else {
-            return location
-        }
-        guard naiveNewLocation > 0 && naiveNewLocation < string.length else {
-            return naiveNewLocation
-        }
-        let range = string.rangeOfComposedCharacterSequence(at: naiveNewLocation)
-        guard naiveNewLocation > range.location && naiveNewLocation < range.location + range.length else {
-            return naiveNewLocation
-        }
-        if offset < 0 {
-            return location - range.length
-        } else {
-            return location + range.length
-        }
-    }
-
-    private func targetPositionForMovingFromLine(containingCharacterAt location: Int, lineOffset: Int) -> Int {
-        guard let currentLinePosition = lineManager.linePosition(at: location) else {
-            return location
-        }
-        let targetLineNumber = min(max(currentLinePosition.row + lineOffset, 0), lineManager.lineCount - 1)
-        let targetLine = lineManager.line(atRow: targetLineNumber)
-        let localLineIndex = min(currentLinePosition.column, targetLine.data.length)
-        return targetLine.location + localLineIndex
     }
 }
 
@@ -931,5 +893,20 @@ extension TextInputView: IndentControllerDelegate {
         if range != selectedRange {
             selectedTextRange = IndexedRange(range: range)
         }
+    }
+}
+
+// MARK: - LineMovementControllerDelegate
+extension TextInputView: LineMovementControllerDelegate {
+    func lineMovementController(_ controller: LineMovementController, numberOfLineFragmentsIn line: DocumentLineNode) -> Int {
+        return layoutManager.numberOfLineFragments(in: line)
+    }
+
+    func lineMovementController(_ controller: LineMovementController, lineFragmentNodeAtIndex index: Int, in line: DocumentLineNode) -> LineFragmentNode {
+        return layoutManager.lineFragmentNode(atIndex: index, in: line)
+    }
+
+    func lineMovementController(_ controller: LineMovementController, lineFragmentNodeContainingCharacterAt location: Int, in line: DocumentLineNode) -> LineFragmentNode {
+        return layoutManager.lineFragmentNode(containingCharacterAt: location, in: line)
     }
 }

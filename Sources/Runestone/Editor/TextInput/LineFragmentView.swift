@@ -1,5 +1,5 @@
 //
-//  LineView.swift
+//  LineFragmentView.swift
 //  
 //
 //  Created by Simon Støvring on 18/01/2021.
@@ -7,16 +7,18 @@
 
 import UIKit
 
-protocol LineViewDelegate: AnyObject {
-    func lineView(_ lineView: LineView, shouldDrawTo context: CGContext)
-}
-
-final class LineView: UIView {
-    weak var delegate: LineViewDelegate?
+final class LineFragmentView: UIView {
+    var renderer: LineFragmentRenderer? {
+        didSet {
+            if renderer !== oldValue {
+                setNeedsDisplay()
+            }
+        }
+    }
 
     override var frame: CGRect {
         didSet {
-            if frame != oldValue {
+            if frame.size != oldValue.size {
                 setNeedsDisplay()
             }
         }
@@ -35,7 +37,7 @@ final class LineView: UIView {
     override func draw(_ rect: CGRect) {
         super.draw(rect)
         if let context = UIGraphicsGetCurrentContext() {
-            delegate?.lineView(self, shouldDrawTo: context)
+            renderer?.draw(to: context)
         }
     }
 }

@@ -18,8 +18,8 @@ public final class DocumentLineNodeData {
     var length: Int {
         return totalLength - delimiterLength
     }
-    var frameHeight: CGFloat
-    var totalFrameHeight: CGFloat = 0
+    var lineHeight: CGFloat
+    var totalLineHeight: CGFloat = 0
     var nodeTotalByteCount = ByteCount(0)
     var startByte: ByteCount {
         return node!.tree.startByte(of: node!)
@@ -34,8 +34,8 @@ public final class DocumentLineNodeData {
 
     weak var node: DocumentLineNode?
 
-    init(frameHeight: CGFloat) {
-        self.frameHeight = frameHeight
+    init(lineHeight: CGFloat) {
+        self.lineHeight = lineHeight
     }
 }
 

@@ -1,5 +1,5 @@
 //
-//  TypesetLineSelectionRect.swift
+//  LineFragmentSelectionRect.swift
 //  
 //
 //  Created by Simon Støvring on 02/02/2021.
@@ -8,7 +8,7 @@
 import CoreGraphics
 import Foundation
 
-struct TypesetLineSelectionRect {
+struct LineFragmentSelectionRect {
     let rect: CGRect
     let range: NSRange
 

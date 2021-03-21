@@ -68,7 +68,7 @@ final class LayoutManager {
                 gutterSelectionBackgroundView.backgroundColor = theme.selectedLinesGutterBackgroundColor
                 lineSelectionBackgroundView.backgroundColor = theme.selectedLineBackgroundColor
                 for (_, lineController) in lineControllers {
-                    lineController.estimatedLineHeight = theme.font.lineHeight
+                    lineController.estimatedLineFragmentHeight = theme.font.lineHeight
                     lineController.syntaxHighlighter?.theme = theme
                     lineController.invalidate()
                 }
@@ -163,8 +163,9 @@ final class LayoutManager {
 
     // MARK: - Views
     let gutterContainerView = UIView()
-    private var lineViewReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineView>()
+    private var lineFragmentViewReuseQueue = ViewReuseQueue<LineFragmentID, LineFragmentView>()
     private var lineNumberLabelReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineNumberView>()
+    private var visibleLineIDs: Set<DocumentLineNodeID> = []
     private let linesContainerView = UIView()
     private let gutterBackgroundView = GutterBackgroundView()
     private let lineNumbersContainerView = UIView()
@@ -185,21 +186,25 @@ final class LayoutManager {
     private var textContentWidth: CGFloat {
         if let textContentWidth = _textContentWidth {
             return textContentWidth
+        } else if let lineIDTrackingWidth = lineIDTrackingWidth, let lineWidth = lineWidths[lineIDTrackingWidth] {
+            let textContentWidth = lineWidth
+            _textContentWidth = textContentWidth
+            return textContentWidth
         } else {
             lineIDTrackingWidth = nil
-            var currentMaximumWidth: CGFloat?
+            var maximumWidth: CGFloat?
             for (lineID, lineWidth) in lineWidths {
-                if let _currentMaximumWidth = currentMaximumWidth {
-                    if lineWidth > _currentMaximumWidth {
+                if let _maximumWidth = maximumWidth {
+                    if lineWidth > _maximumWidth {
                         lineIDTrackingWidth = lineID
-                        currentMaximumWidth = lineWidth
+                        maximumWidth = lineWidth
                     }
                 } else {
                     lineIDTrackingWidth = lineID
-                    currentMaximumWidth = lineWidth
+                    maximumWidth = lineWidth
                 }
             }
-            let textContentWidth = currentMaximumWidth ?? scrollViewWidth
+            let textContentWidth = maximumWidth ?? scrollViewWidth
             _textContentWidth = textContentWidth
             return textContentWidth
         }
@@ -244,15 +249,6 @@ final class LayoutManager {
         }
     }
 
-    // MARK: - Helpers
-    private var currentDelegate: LayoutManagerDelegate {
-        if let delegate = delegate {
-            return delegate
-        } else {
-            fatalError("Delegate unavailable")
-        }
-    }
-
     init(lineManager: LineManager, languageMode: LanguageMode, stringView: StringView) {
         self.lineManager = lineManager
         self.languageMode = languageMode
@@ -271,82 +267,19 @@ final class LayoutManager {
             object: nil)
     }
 
-    func setNeedsLayout() {
-        needsLayout = true
-    }
-
-    func layoutIfNeeded() {
-        guard needsLayout else {
-            return
-        }
-        needsLayout = false
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        layoutGutter()
-        layoutSelection()
-        updateLineNumberColors()
-        let oldVisibleLineIds = Set(lineViewReuseQueue.visibleViews.keys)
-        var nextLine = lineManager.line(containingYOffset: viewport.minY)
-        var appearedLineIDs: Set<DocumentLineNodeID> = []
-        var maxY = viewport.minY
-        var contentOffsetAdjustmentY: CGFloat = 0
-        while let line = nextLine, maxY < viewport.maxY {
-            appearedLineIDs.insert(line.id)
-            var localContentOffsetAdjustmentY: CGFloat = 0
-            layoutViews(for: line, maxY: &maxY, contentOffsetAdjustment: &localContentOffsetAdjustmentY)
-            contentOffsetAdjustmentY += localContentOffsetAdjustmentY
-            if line.index < lineManager.lineCount - 1 {
-                nextLine = lineManager.line(atRow: line.index + 1)
-            } else {
-                nextLine = nil
-            }
-        }
-        let disappearedLineIDs = oldVisibleLineIds.subtracting(appearedLineIDs)
-        for disapparedLineID in disappearedLineIDs {
-            let lineController = lineControllers[disapparedLineID]
-            lineController?.didEndDisplaying()
-        }
-        lineViewReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
-        lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
-        if _textContentWidth == nil || _textContentHeight == nil {
-            delegate?.layoutManagerDidInvalidateContentSize(self)
-        }
-        if contentOffsetAdjustmentY != 0 {
-            let contentOffsetAdjustment = CGPoint(x: 0, y: contentOffsetAdjustmentY)
-            delegate?.layoutManager(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
-        }
-        CATransaction.commit()
-    }
-
-    func setNeedsLayoutSelection() {
-        needsLayoutSelection = true
-    }
-
-    func layoutSelectionIfNeeded() {
-        guard needsLayoutSelection else {
-            return
-        }
-        needsLayoutSelection = true
-        CATransaction.begin()
-        CATransaction.setDisableActions(false)
-        layoutSelection()
-        updateLineNumberColors()
-        CATransaction.commit()
-    }
-
     func invalidateContentSize() {
         _textContentWidth = nil
         _textContentHeight = nil
     }
 
     func removeLine(withID lineID: DocumentLineNodeID) {
+        lineWidths.removeValue(forKey: lineID)
+        lineControllers.removeValue(forKey: lineID)
         if lineID == lineIDTrackingWidth {
             lineIDTrackingWidth = nil
             _textContentWidth = nil
             delegate?.layoutManagerDidInvalidateContentSize(self)
         }
-        lineWidths.removeValue(forKey: lineID)
-        lineControllers.removeValue(forKey: lineID)
     }
 
     func updateGutterWidth() {
@@ -388,6 +321,7 @@ final class LayoutManager {
     
     func invalidateLines() {
         for (_, lineController) in lineControllers {
+            lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
             lineController.tabWidth = tabWidth
             lineController.invalidate()
         }
@@ -398,7 +332,7 @@ final class LayoutManager {
 extension LayoutManager {
     func caretRect(at location: Int) -> CGRect {
         let line = lineManager.line(containingCharacterAt: location)!
-        let lineController = getLineController(for: line)
+        let lineController = lineController(for: line)
         let localLocation = location - line.location
         let localCaretRect = lineController.caretRect(atIndex: localLocation)
         let globalYPosition = line.yPosition + localCaretRect.minY
@@ -410,7 +344,7 @@ extension LayoutManager {
         guard let line = lineManager.line(containingCharacterAt: range.location) else {
             fatalError("Cannot find first rect.")
         }
-        let lineController = getLineController(for: line)
+        let lineController = lineController(for: line)
         let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
         let lineContentsRect = lineController.firstRect(for: localRange)
         let globalLineContentsYPosition = line.yPosition + lineContentsRect.minY
@@ -447,7 +381,7 @@ extension LayoutManager {
         let lineIndexRange = startLineIndex ..< endLineIndex + 1
         for lineIndex in lineIndexRange {
             let line = lineManager.line(atRow: lineIndex)
-            let lineController = getLineController(for: line)
+            let lineController = lineController(for: line)
             let lineStartLocation = line.location
             let lineEndLocation = lineStartLocation + line.data.totalLength
             let localRangeLocation = max(range.location, lineStartLocation) - lineStartLocation
@@ -507,6 +441,40 @@ extension LayoutManager {
 
 // MARK: - Layout
 extension LayoutManager {
+    func setNeedsLayout() {
+        needsLayout = true
+    }
+
+    func layoutIfNeeded() {
+        guard needsLayout else {
+            return
+        }
+        needsLayout = false
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        layoutGutter()
+        layoutSelection()
+        layoutLines()
+        updateLineNumberColors()
+        CATransaction.commit()
+    }
+
+    func setNeedsLayoutSelection() {
+        needsLayoutSelection = true
+    }
+
+    func layoutSelectionIfNeeded() {
+        guard needsLayoutSelection else {
+            return
+        }
+        needsLayoutSelection = true
+        CATransaction.begin()
+        CATransaction.setDisableActions(false)
+        layoutSelection()
+        updateLineNumberColors()
+        CATransaction.commit()
+    }
+
     private func layoutGutter() {
         gutterContainerView.frame = CGRect(x: viewport.minX, y: 0, width: gutterWidth, height: contentSize.height)
         gutterBackgroundView.frame = CGRect(x: 0, y: viewport.minY, width: gutterWidth, height: viewport.height)
@@ -523,55 +491,133 @@ extension LayoutManager {
         if selectedRange.length > 0 {
             let startLine = lineManager.line(containingCharacterAt: startLocation)!
             let endLine = lineManager.line(containingCharacterAt: endLocation)!
-            let startLineController = getLineController(for: startLine)
-            let endLineController = getLineController(for: endLine)
-            let yPos = startLineController.lineViewFrame.minY
-            let height = endLineController.lineViewFrame.maxY - startLineController.lineViewFrame.minY
-            selectedRect = CGRect(x: 0, y: yPos, width: scrollViewWidth, height: height)
+            let startLineMinYPosition = textContainerInset.top + startLine.yPosition
+            let endLineMaxYPosition = textContainerInset.top + endLine.yPosition + endLine.data.lineHeight
+            let height = endLineMaxYPosition - startLineMinYPosition
+            selectedRect = CGRect(x: 0, y: startLineMinYPosition, width: scrollViewWidth, height: height)
         } else {
             let line = lineManager.line(containingCharacterAt: startLocation)!
-            let lineController = getLineController(for: line)
-            selectedRect = CGRect(x: 0, y: lineController.lineViewFrame.minY, width: scrollViewWidth, height: lineController.preferredSize.height)
+            selectedRect = CGRect(x: 0, y: textContainerInset.top + line.yPosition, width: scrollViewWidth, height: line.data.lineHeight)
         }
         gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: gutterWidth, height: selectedRect.height)
         lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: scrollViewWidth - gutterWidth, height: selectedRect.height)
     }
 
-    private func layoutViews(for line: DocumentLineNode, maxY: inout CGFloat, contentOffsetAdjustment: inout CGFloat) {
-        // Ensure views are added to the view hiearchy
-        let lineView = lineViewReuseQueue.dequeueView(forKey: line.id)
-        let lineNumberView = lineNumberLabelReuseQueue.dequeueView(forKey: line.id)
-        if lineView.superview == nil {
-            linesContainerView.addSubview(lineView)
+    private func layoutLines() {
+        let oldVisibleLineIDs = visibleLineIDs
+        let oldVisibleLineFragmentIDs = Set(lineFragmentViewReuseQueue.visibleViews.keys)
+        // Layout lines until we have filled the viewport.
+        var nextLine = lineManager.line(containingYOffset: viewport.minY)
+        var appearedLineIDs: Set<DocumentLineNodeID> = []
+        var appearedLineFragmentIDs: Set<LineFragmentID> = []
+        var maxY = viewport.minY
+        var contentOffsetAdjustmentY: CGFloat = 0
+        while let line = nextLine, maxY < viewport.maxY {
+            appearedLineIDs.insert(line.id)
+            // Prepare to line controller to display text.
+            let lineController = lineController(for: line)
+            lineController.estimatedLineFragmentHeight = theme.font.lineHeight
+            lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
+            lineController.constrainingWidth = maximumLineWidth
+            lineController.willDisplay()
+            // Layout the line number.
+            layoutLineNumberView(for: line)
+            // Layout line fragments ("sublines") in the line until we have filled the viewport.
+            let lineYPosition = line.yPosition
+            let lineFragmentControllers = lineController.lineFragmentControllers(in: viewport)
+            for lineFragmentController in lineFragmentControllers {
+                let lineFragment = lineFragmentController.lineFragment
+                appearedLineFragmentIDs.insert(lineFragment.id)
+                layoutLineFragmentView(for: lineFragmentController, lineYPosition: lineYPosition, maxY: &maxY)
+            }
+            var localContentOffsetAdjustmentY: CGFloat = 0
+            updateSize(of: lineController, contentOffsetAdjustmentY: &localContentOffsetAdjustmentY)
+            contentOffsetAdjustmentY += localContentOffsetAdjustmentY
+            if line.index < lineManager.lineCount - 1 {
+                nextLine = lineManager.line(atRow: line.index + 1)
+            } else {
+                nextLine = nil
+            }
         }
+        // Update the visible lines and line fragments. Clean up everything that is not in the viewport anymore.
+        visibleLineIDs = appearedLineIDs
+        let disappearedLineIDs = oldVisibleLineIDs.subtracting(appearedLineIDs)
+        let disappearedLineFragmentIDs = oldVisibleLineFragmentIDs.subtracting(appearedLineFragmentIDs)
+        for disapparedLineID in disappearedLineIDs {
+            let lineController = lineControllers[disapparedLineID]
+            lineController?.didEndDisplaying()
+        }
+        lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
+        lineFragmentViewReuseQueue.enqueueViews(withKeys: disappearedLineFragmentIDs)
+        // Update content size if necessary.
+        if _textContentWidth == nil || _textContentHeight == nil {
+            delegate?.layoutManagerDidInvalidateContentSize(self)
+        }
+        // Adjust the content offset on the Y-axis if necessary.
+        if contentOffsetAdjustmentY != 0 {
+            let contentOffsetAdjustment = CGPoint(x: 0, y: contentOffsetAdjustmentY)
+            delegate?.layoutManager(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
+        }
+    }
+
+    private func layoutLineNumberView(for line: DocumentLineNode) {
+        let lineNumberView = lineNumberLabelReuseQueue.dequeueView(forKey: line.id)
         if lineNumberView.superview == nil {
             lineNumbersContainerView.addSubview(lineNumberView)
         }
-        // Setup the line
-        let lineController = getLineController(for: line)
-        lineController.lineView = lineView
-        lineController.estimatedLineHeight = theme.font.lineHeight
-        lineController.lineHeightMultiplier = lineHeightMultiplier
-        lineController.constrainingWidth = maximumLineWidth
-        lineController.invisibleCharacterConfiguration = invisibleCharacterConfiguration
-        lineController.willDisplay()
-        let lineSize = lineController.preferredSize
-        let lineYPosition = textContainerInset.top + line.yPosition
-        let lineViewFrame = CGRect(x: leadingLineSpacing, y: lineYPosition, width: lineSize.width, height: lineSize.height)
-        lineController.lineViewFrame = lineViewFrame
-        // Setup the line number
-        let baseLineHeight = theme.font.lineHeight
-        let scaledLineHeight = baseLineHeight * lineHeightMultiplier
-        let lineNumberYOffset = (scaledLineHeight - baseLineHeight) / 2
-        let lineNumberXPosition = safeAreaInsets.left + gutterLeadingPadding
-        let lineNumberYPosition = lineViewFrame.minY + lineNumberYOffset
+        let lineHeight = theme.font.lineHeight
+        let scaledLineHeight = lineHeight * lineHeightMultiplier
+        let yOffset = (scaledLineHeight - lineHeight) / 2
+        let origin = CGPoint(x: safeAreaInsets.left + gutterLeadingPadding, y: textContainerInset.top + line.yPosition + yOffset)
+        let size = CGSize(width: lineNumberWidth, height: scaledLineHeight)
         lineNumberView.text = "\(line.index + 1)"
         lineNumberView.font = theme.font
         lineNumberView.textColor = theme.lineNumberColor
-        lineNumberView.frame = CGRect(x: lineNumberXPosition, y: lineNumberYPosition, width: lineNumberWidth, height: lineViewFrame.height)
-        // Pass back the maximum Y position so the caller can determine if it needs to show more lines.
-        maxY = lineView.frame.maxY
-        updateSize(of: line, newLineFrame: lineViewFrame, contentOffsetAdjustment: &contentOffsetAdjustment)
+        lineNumberView.frame = CGRect(origin: origin, size: size)
+    }
+
+    private func layoutLineFragmentView(for lineFragmentController: LineFragmentController, lineYPosition: CGFloat, maxY: inout CGFloat) {
+        let lineFragment = lineFragmentController.lineFragment
+        let lineFragmentView = lineFragmentViewReuseQueue.dequeueView(forKey: lineFragment.id)
+        if lineFragmentView.superview == nil {
+            linesContainerView.addSubview(lineFragmentView)
+        }
+        lineFragmentController.lineFragmentView = lineFragmentView
+        let lineFragmentOrigin = CGPoint(x: leadingLineSpacing, y: textContainerInset.top + lineYPosition + lineFragment.yPosition)
+        let lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragment.scaledSize)
+        lineFragmentView.frame = lineFragmentFrame
+        maxY = lineFragmentFrame.maxY
+    }
+
+    private func updateSize(of lineController: LineController, contentOffsetAdjustmentY: inout CGFloat) {
+        let line = lineController.line
+        let lineWidth = lineController.lineWidth
+        if lineWidths[line.id] != lineWidth {
+            lineWidths[line.id] = lineWidth
+            if let lineIDTrackingWidth = lineIDTrackingWidth {
+                let maximumLineWidth = lineWidths[lineIDTrackingWidth] ?? 0
+                if line.id == lineIDTrackingWidth || lineWidth > maximumLineWidth {
+                    self.lineIDTrackingWidth = line.id
+                    _textContentWidth = nil
+                }
+            } else if !isLineWrappingEnabled {
+                _textContentWidth = nil
+            }
+        }
+        let oldLineHeight = line.data.lineHeight
+        let newLineHeight = lineController.lineHeight
+        let didUpdateHeight = lineManager.setHeight(of: line, to: newLineHeight)
+        if didUpdateHeight {
+            _textContentHeight = nil
+            // Updating the height of a line that's above the current content offset will cause the content below it to move up or down.
+            // This happens when layout information above the content offset is invalidated and the user is scrolling upwards, e.g. after
+            // changing the line height. To accommodate this change and reduce the "jump", we ask the scroll view to adjust the content offset
+            // by the amount that the line height has changed. The solution is borrowed from https://github.com/airbnb/MagazineLayout/pull/11
+            let isSizingElementAboveTopEdge = line.yPosition < viewport.minY + textContainerInset.top
+            if isSizingElementAboveTopEdge {
+                contentOffsetAdjustmentY = newLineHeight - oldLineHeight
+            }
+        }
     }
 
     private func updateLineNumberColors() {
@@ -595,8 +641,8 @@ extension LayoutManager {
         lineNumbersContainerView.removeFromSuperview()
         gutterSelectionBackgroundView.removeFromSuperview()
         lineSelectionBackgroundView.removeFromSuperview()
-        let allLineNumberKeys = lineViewReuseQueue.visibleViews.keys
-        lineViewReuseQueue.enqueueViews(withKeys: Set(allLineNumberKeys))
+        let allLineNumberKeys = lineFragmentViewReuseQueue.visibleViews.keys
+        lineFragmentViewReuseQueue.enqueueViews(withKeys: Set(allLineNumberKeys))
         // Add views to view hierarchy
         textInputView?.addSubview(lineSelectionBackgroundView)
         textInputView?.addSubview(linesContainerView)
@@ -614,40 +660,13 @@ extension LayoutManager {
         lineSelectionBackgroundView.isHidden = !showSelectedLines || !isEditing || selectedLength > 0
     }
 
-    private func updateSize(of line: DocumentLineNode, newLineFrame: CGRect, contentOffsetAdjustment: inout CGFloat) {
-        let oldLineHeight = line.data.frameHeight
-        let didUpdateHeight = lineManager.setHeight(of: line, to: newLineFrame.height)
-        if lineWidths[line.id] != newLineFrame.width {
-            lineWidths[line.id] = newLineFrame.width
-            if let lineIDTrackingWidth = lineIDTrackingWidth {
-                let maximumLineWidth = lineWidths[lineIDTrackingWidth] ?? 0
-                if line.id == lineIDTrackingWidth || newLineFrame.width > maximumLineWidth {
-                    _textContentWidth = nil
-                }
-            } else if !isLineWrappingEnabled {
-                _textContentWidth = nil
-            }
-        }
-        if didUpdateHeight {
-            _textContentHeight = nil
-            // Updating the height of a line that's above the current content offset will cause the content below it to move up or down.
-            // This happens when layout information above the content offset is invalidated and the user is scrolling upwards, e.g. after
-            // changing the line height. To accommodate this change and reduce the "jump", we ask the scroll view to adjust the content offset
-            // by the amount that the line height has changed. The solution is borrowed from https://github.com/airbnb/MagazineLayout/pull/11
-            let isSizingElementAboveTopEdge = newLineFrame.minY < viewport.minY + textContainerInset.top
-            if isSizingElementAboveTopEdge {
-                contentOffsetAdjustment = newLineFrame.height - oldLineHeight
-            }
-        }
-    }
-
-    private func getLineController(for line: DocumentLineNode) -> LineController {
+    private func lineController(for line: DocumentLineNode) -> LineController {
         if let cachedLineController = lineControllers[line.id] {
             return cachedLineController
         } else {
             let lineController = LineController(line: line, stringView: stringView)
-            lineController.estimatedLineHeight = theme.font.lineHeight
-            lineController.lineHeightMultiplier = lineHeightMultiplier
+            lineController.estimatedLineFragmentHeight = theme.font.lineHeight
+            lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
             lineController.tabWidth = tabWidth
             lineController.syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
             lineController.syntaxHighlighter?.theme = theme
@@ -657,11 +676,25 @@ extension LayoutManager {
     }
 }
 
+// MARK: - Line Movement
+extension LayoutManager {
+    func numberOfLineFragments(in line: DocumentLineNode) -> Int {
+        return lineController(for: line).numberOfLineFragments
+    }
+
+    func lineFragmentNode(atIndex index: Int, in line: DocumentLineNode) -> LineFragmentNode {
+        return lineController(for: line).lineFragmentNode(atIndex: index)
+    }
+
+    func lineFragmentNode(containingCharacterAt location: Int, in line: DocumentLineNode) -> LineFragmentNode {
+        return lineController(for: line).lineFragmentNode(containingCharacterAt: location)
+    }
+}
+
 // MARK: - Memory Management
 private extension LayoutManager {
     @objc private func didReceiveMemoryWarning(_ notification: Notification) {
         let allLineIDs = Set(lineControllers.keys)
-        let visibleLineIDs = Set(lineViewReuseQueue.visibleViews.keys)
         let lineIDsToRelease = allLineIDs.subtracting(visibleLineIDs)
         for lineID in lineIDsToRelease {
             lineControllers.removeValue(forKey: lineID)
