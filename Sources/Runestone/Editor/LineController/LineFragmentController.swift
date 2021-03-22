@@ -28,6 +28,14 @@ final class LineFragmentController {
             }
         }
     }
+    var invisibleCharacterConfiguration: InvisibleCharacterConfiguration {
+        get {
+            return renderer.invisibleCharacterConfiguration
+        }
+        set {
+            renderer.invisibleCharacterConfiguration = newValue
+        }
+    }
 
     private let renderer: LineFragmentRenderer
 

@@ -34,7 +34,6 @@ final class LineController {
             }
         }
     }
-    var invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
     var tabWidth: CGFloat = 10
     var constrainingWidth: CGFloat? {
         get {

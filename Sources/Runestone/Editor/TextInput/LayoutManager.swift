@@ -183,7 +183,7 @@ final class LayoutManager {
         if isLineWrappingEnabled {
             return scrollViewWidth
         } else {
-            return textContentWidth + leadingLineSpacing + textContainerInset.right
+            return textContentWidth + leadingLineSpacing + textContainerInset.right + lineBreakInvisibleSymbolWidth
         }
     }
     private var contentHeight: CGFloat {
@@ -255,6 +255,13 @@ final class LayoutManager {
             // Rendering multiple very long lines is very expensive. In order to let the editor remain useable,
             // we set a very high maximum line width when line wrapping is disabled.
             return 10000
+        }
+    }
+    private var lineBreakInvisibleSymbolWidth: CGFloat {
+        if invisibleCharacterConfiguration.showLineBreaks {
+            return invisibleCharacterConfiguration.lineBreakSymbolSize.width
+        } else {
+            return 0
         }
     }
 
@@ -588,9 +595,11 @@ extension LayoutManager {
         if lineFragmentView.superview == nil {
             linesContainerView.addSubview(lineFragmentView)
         }
+        lineFragmentController.invisibleCharacterConfiguration = invisibleCharacterConfiguration
         lineFragmentController.lineFragmentView = lineFragmentView
         let lineFragmentOrigin = CGPoint(x: leadingLineSpacing, y: textContainerInset.top + lineYPosition + lineFragment.yPosition)
-        let lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragment.scaledSize)
+        let lineFragmentSize = CGSize(width: lineFragment.scaledSize.width + lineBreakInvisibleSymbolWidth, height: lineFragment.scaledSize.height)
+        let lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragmentSize)
         lineFragmentView.frame = lineFragmentFrame
         maxY = lineFragmentFrame.maxY
     }
@@ -693,10 +702,10 @@ extension LayoutManager {
             lineController = LineController(line: line, stringView: stringView)
             lineControllers[line.id] = lineController
         }
+        lineController.constrainingWidth = maximumLineWidth
         lineController.estimatedLineFragmentHeight = theme.font.lineHeight
         lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
         lineController.tabWidth = tabWidth
-        lineController.constrainingWidth = maximumLineWidth
         lineController.syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
         lineController.syntaxHighlighter?.theme = theme
         return lineController
