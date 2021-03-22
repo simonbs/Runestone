@@ -50,6 +50,10 @@ final class LineManager {
     var lastLine: DocumentLineNode {
         return documentLineTree.root.rightMost
     }
+    // When rebuilding, and only when rebuilding, the tree we keep track of the longest line.
+    // This helps the text editor to determine the width of the content. The "initial" in the name implies
+    // that the reference does not necessarily point to the longest line as the document is edited.
+    private(set) weak var initialLongestLine: DocumentLineNode?
 
     private let documentLineTree: DocumentLineTree
     private var currentDelegate: LineManagerDelegate {
@@ -73,12 +77,14 @@ final class LineManager {
         let rootData = DocumentLineNodeData(lineHeight: estimatedLineHeight)
         documentLineTree.reset(rootValue: 0, rootData: rootData)
         rootData.node = documentLineTree.root
+        initialLongestLine = nil
         // Iterate over lines in the string.
         var line = documentLineTree.node(atIndex: 0)
         var workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: 0)
         var lines: [DocumentLineNode] = []
         var lastDelimiterEnd = 0
         var totalLineHeight: CGFloat = 0
+        var longestLineLength: Int = 0
         while let newLineRange = workingNewLineRange {
             let totalLength = newLineRange.location + newLineRange.length - lastDelimiterEnd
             let substring = string.substring(with: NSRange(location: lastDelimiterEnd, length: totalLength))
@@ -90,6 +96,10 @@ final class LineManager {
             line.data.byteCount = substring.byteCount
             lastDelimiterEnd = newLineRange.location + newLineRange.length
             lines.append(line)
+            if totalLength > longestLineLength {
+                longestLineLength = totalLength
+                initialLongestLine = line
+            }
             let data = DocumentLineNodeData(lineHeight: estimatedLineHeight)
             line = DocumentLineNode(tree: documentLineTree, value: 0, data: data)
             data.node = line
@@ -102,6 +112,10 @@ final class LineManager {
         line.data.totalLength = totalLength
         line.data.byteCount = substring.byteCount
         lines.append(line)
+        if totalLength > longestLineLength {
+            longestLineLength = totalLength
+            initialLongestLine = line
+        }
         documentLineTree.rebuild(from: lines)
     }
 

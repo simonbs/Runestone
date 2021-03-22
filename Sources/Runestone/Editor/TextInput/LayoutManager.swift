@@ -30,7 +30,13 @@ final class LayoutManager {
             }
         }
     }
-    var lineManager: LineManager
+    var lineManager: LineManager {
+        didSet {
+            if lineManager !== oldValue {
+                shouldResetLineWidths = true
+            }
+        }
+    }
     var stringView: StringView
     var scrollViewWidth: CGFloat = 0 {
         didSet {
@@ -232,6 +238,9 @@ final class LayoutManager {
             return textContainerInset.left
         }
     }
+    // Reset the line widths when changing the line manager to measure the
+    // longest line and use it to determine the content width.
+    private var shouldResetLineWidths = true
 
     // MARK: - Rendering
     private var lineControllers: [DocumentLineNodeID: LineController] = [:]
@@ -446,17 +455,17 @@ extension LayoutManager {
     }
 
     func layoutIfNeeded() {
-        guard needsLayout else {
-            return
+        if needsLayout {
+            needsLayout = false
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            resetLineWidthsIfNecessary()
+            layoutGutter()
+            layoutSelection()
+            layoutLines()
+            updateLineNumberColors()
+            CATransaction.commit()
         }
-        needsLayout = false
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        layoutGutter()
-        layoutSelection()
-        layoutLines()
-        updateLineNumberColors()
-        CATransaction.commit()
     }
 
     func setNeedsLayoutSelection() {
@@ -464,15 +473,14 @@ extension LayoutManager {
     }
 
     func layoutSelectionIfNeeded() {
-        guard needsLayoutSelection else {
-            return
+        if needsLayoutSelection {
+            needsLayoutSelection = true
+            CATransaction.begin()
+            CATransaction.setDisableActions(false)
+            layoutSelection()
+            updateLineNumberColors()
+            CATransaction.commit()
         }
-        needsLayoutSelection = true
-        CATransaction.begin()
-        CATransaction.setDisableActions(false)
-        layoutSelection()
-        updateLineNumberColors()
-        CATransaction.commit()
     }
 
     private func layoutGutter() {
@@ -516,8 +524,6 @@ extension LayoutManager {
             appearedLineIDs.insert(line.id)
             // Prepare to line controller to display text.
             let lineController = lineController(for: line)
-            lineController.estimatedLineFragmentHeight = theme.font.lineHeight
-            lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
             lineController.constrainingWidth = maximumLineWidth
             lineController.willDisplay()
             // Layout the line number.
@@ -660,19 +666,40 @@ extension LayoutManager {
         lineSelectionBackgroundView.isHidden = !showSelectedLines || !isEditing || selectedLength > 0
     }
 
-    private func lineController(for line: DocumentLineNode) -> LineController {
-        if let cachedLineController = lineControllers[line.id] {
-            return cachedLineController
-        } else {
-            let lineController = LineController(line: line, stringView: stringView)
-            lineController.estimatedLineFragmentHeight = theme.font.lineHeight
-            lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
-            lineController.tabWidth = tabWidth
-            lineController.syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
-            lineController.syntaxHighlighter?.theme = theme
-            lineControllers[line.id] = lineController
-            return lineController
+    // Resetting the line widths clears all recorded line widths, asks the line manager for the longest line,
+    // measures the width of the line and uses it to determine the width of content.
+    // This is used when first opening the text editor to make a fairly accurate guess of the content width.
+    private func resetLineWidthsIfNecessary() {
+        if shouldResetLineWidths {
+            shouldResetLineWidths = false
+            lineWidths = [:]
+            if let longestLine = lineManager.initialLongestLine {
+                lineIDTrackingWidth = longestLine.id
+                let lineController = lineController(for: longestLine)
+                lineController.typeset()
+                lineWidths[longestLine.id] = lineController.lineWidth
+                if !isLineWrappingEnabled {
+                    _textContentWidth = nil
+                }
+            }
         }
+    }
+
+    private func lineController(for line: DocumentLineNode) -> LineController {
+        let lineController: LineController
+        if let cachedLineController = lineControllers[line.id] {
+            lineController = cachedLineController
+        } else {
+            lineController = LineController(line: line, stringView: stringView)
+            lineControllers[line.id] = lineController
+        }
+        lineController.estimatedLineFragmentHeight = theme.font.lineHeight
+        lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
+        lineController.tabWidth = tabWidth
+        lineController.constrainingWidth = maximumLineWidth
+        lineController.syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
+        lineController.syntaxHighlighter?.theme = theme
+        return lineController
     }
 }
 
