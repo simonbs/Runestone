@@ -85,10 +85,6 @@ final class TreeSitterLanguageMode: LanguageMode {
         return rootLanguageLayer.suggestedIndentLevel(of: line, using: indentBehavior)
     }
 
-    func suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
-        return rootLanguageLayer.suggestedIndentLevel(at: linePosition, using: indentBehavior)
-    }
-
     func indentLevelForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
         return rootLanguageLayer.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
     }

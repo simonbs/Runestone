@@ -83,8 +83,8 @@ final class IndentController {
 
     func shiftRight(in range: NSRange) {
         let lines = lineManager.lines(in: range)
-        // If any line is below the suggested indent level then we move all lines to the suggested indent level.
-        // If all lines are at the suggested indent level or greater then we increment the indent level of all lines.
+        // If any line is below the suggested indent level, then we move all lines to the suggested indent level.
+        // If all lines are at the suggested indent level or greater, then we increment the indent level of all lines.
         let anyLineBelowSuggestedIndentLevel = lines.contains { line in
             let currentIndentLevel = languageMode.currentIndentLevel(of: line, using: indentBehavior)
             let suggestedIndentLevel = languageMode.suggestedIndentLevel(of: line, using: indentBehavior)

@@ -218,11 +218,6 @@ extension TreeSitterLanguageLayer {
         return languageLayer._suggestedIndentLevel(of: line, using: indentBehavior)
     }
 
-    func suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
-        let languageLayer = lowestLayer(containing: linePosition)
-        return languageLayer._suggestedIndentLevel(at: linePosition, using: indentBehavior)
-    }
-
     func indentLevelForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
         let languageLayer = lowestLayer(containing: linePosition)
         return languageLayer._indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
@@ -255,50 +250,17 @@ extension TreeSitterLanguageLayer {
 
     private func _suggestedIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
         let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
-        let linePosition = startingLinePosition(of: line)
-        return indentController.suggestedIndentLevel(at: linePosition, using: indentBehavior)
-    }
-
-    private func _suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
-        let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
-        if let indentationScopes = indentationScopes, indentationScopes.indentIsDeterminedByLineStart {
-            let line = lineManager.line(atRow: linePosition.row)
-            let linePosition = startingLinePosition(of: line)
-            return indentController.suggestedIndentLevel(at: linePosition, using: indentBehavior)
-        } else {
-            return indentController.suggestedIndentLevel(at: linePosition, using: indentBehavior)
-        }
+        return indentController.suggestedIndentLevel(of: line, using: indentBehavior)
     }
 
     private func _indentLevelForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
         let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
-        if let indentationScopes = indentationScopes, indentationScopes.indentIsDeterminedByLineStart {
-            let line = lineManager.line(atRow: linePosition.row)
-            let linePosition = startingLinePosition(of: line)
-            return indentController.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
-        } else {
-            return indentController.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
-        }
+        return indentController.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
     }
 }
 
 // MARK: - Misc
 private extension TreeSitterLanguageLayer {
-    private func startingLinePosition(of line: DocumentLineNode) -> LinePosition {
-        // Find the first character that is not a whitespace
-        let range = NSRange(location: line.location, length: line.data.totalLength)
-        let string = stringView.substring(in: range)
-        var currentColumn = 0
-        let whitespaceCharacters = Set([Symbol.Character.space, Symbol.Character.tab])
-        if let stringIndex = string.firstIndex(where: { !whitespaceCharacters.contains($0) }) {
-            let utf16View = string.utf16
-            if let utf16Index = stringIndex.samePosition(in: string.utf16) {
-                currentColumn = utf16View.distance(from: utf16View.startIndex, to: utf16Index)
-            }
-        }
-        return LinePosition(row: line.index, column: currentColumn)
-    }
-
     private func lowestLayer(containing linePosition: LinePosition) -> TreeSitterLanguageLayer {
         let textPoint = TreeSitterTextPoint(linePosition)
         for (_, childLanguageLayer) in childLanguageLayers {
