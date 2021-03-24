@@ -25,7 +25,7 @@ final class IndentController {
             }
         }
     }
-    var indentStrategy: EditorIndentStrategy {
+    var indentStrategy: IndentStrategy {
         didSet {
             if indentStrategy != oldValue {
                 _tabWidth = nil
@@ -49,7 +49,7 @@ final class IndentController {
 
     private var _tabWidth: CGFloat?
 
-    init(stringView: StringView, lineManager: LineManager, languageMode: LanguageMode, indentStrategy: EditorIndentStrategy, indentFont: UIFont) {
+    init(stringView: StringView, lineManager: LineManager, languageMode: LanguageMode, indentStrategy: IndentStrategy, indentFont: UIFont) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.languageMode = languageMode

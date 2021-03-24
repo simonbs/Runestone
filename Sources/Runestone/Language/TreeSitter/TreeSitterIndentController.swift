@@ -20,7 +20,7 @@ final class TreeSitterIndentController {
         self.lineManager = lineManager
     }
 
-    func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int {
+    func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
         var indentLength = 0
         let tabLength = indentStrategy.tabLength
         let location = line.location
@@ -38,7 +38,7 @@ final class TreeSitterIndentController {
         return indentLength / tabLength
     }
 
-    func suggestedIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int {
+    func suggestedIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
         let lineIndex = line.index
         if lineIndex > 0 {
             // We can get the suggested indent level for the input line by asking for the indent level that we
@@ -52,7 +52,7 @@ final class TreeSitterIndentController {
         }
     }
 
-    func strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: EditorIndentStrategy) -> InsertLineBreakIndentStrategy {
+    func strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
         var indentAdjustment = 0
         var outdentAdjustment = 0
         var outdentingNode: TreeSitterNode?
@@ -177,7 +177,7 @@ private extension TreeSitterIndentController {
         return nil
     }
     
-    private func indentLevelOfLine(atRow row: Int, indentStrategy: EditorIndentStrategy) -> Int {
+    private func indentLevelOfLine(atRow row: Int, indentStrategy: IndentStrategy) -> Int {
         // Get indentation level of line before the supplied line position.
         let line = lineManager.line(atRow: row)
         return currentIndentLevel(of: line, using: indentStrategy)

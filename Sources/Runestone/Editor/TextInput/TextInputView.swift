@@ -182,7 +182,7 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
-    var indentStrategy: EditorIndentStrategy = .tab(length: 2) {
+    var indentStrategy: IndentStrategy = .tab(length: 2) {
         didSet {
             if indentStrategy != oldValue {
                 indentController.indentStrategy = indentStrategy
@@ -243,7 +243,7 @@ final class TextInputView: UIView, UITextInput {
             layoutIfNeeded()
         }
     }
-    var characterPairs: [EditorCharacterPair] = []
+    var characterPairs: [CharacterPair] = []
     var showPageGuide = false {
         didSet {
             if showPageGuide != oldValue {
@@ -516,6 +516,10 @@ final class TextInputView: UIView, UITextInput {
         let indentLevel = languageMode.currentIndentLevel(of: line, using: indentStrategy)
         let indentString = indentStrategy.string(indentLevel: indentLevel)
         return localLocation <= indentString.utf16.count
+    }
+
+    func detectIndentStrategy() -> DetectedIndentStrategy {
+        return languageMode.detectIndentStrategy()
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {

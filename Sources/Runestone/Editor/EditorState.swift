@@ -14,6 +14,8 @@ public final class EditorState {
     let lineManager: LineManager
     let languageMode: LanguageMode
 
+    public private(set) var detectedIndentStrategy: DetectedIndentStrategy = .unknown
+
     public init(text: String, theme: EditorTheme, language: TreeSitterLanguage? = nil) {
         self.text = text
         self.theme = theme
@@ -33,5 +35,6 @@ private extension EditorState {
         lineManager.estimatedLineHeight = theme.font.lineHeight
         lineManager.rebuild(from: text as NSString)
         languageMode.parse(text)
+        detectedIndentStrategy = languageMode.detectIndentStrategy()
     }
 }

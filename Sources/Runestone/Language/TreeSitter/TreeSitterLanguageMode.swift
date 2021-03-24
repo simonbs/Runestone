@@ -77,15 +77,15 @@ final class TreeSitterLanguageMode: LanguageMode {
         return TreeSitterSyntaxHighlighter(languageMode: self, operationQueue: operationQueue)
     }
 
-    func suggestedIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int {
+    func suggestedIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
         return rootLanguageLayer.suggestedIndentLevel(of: line, using: indentStrategy)
     }
 
-    func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int {
+    func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
         return rootLanguageLayer.currentIndentLevel(of: line, using: indentStrategy)
     }
 
-    func strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: EditorIndentStrategy) -> InsertLineBreakIndentStrategy {
+    func strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
         return rootLanguageLayer.strategyForInsertingLineBreak(at: linePosition, using: indentStrategy)
     }
 
@@ -96,6 +96,15 @@ final class TreeSitterLanguageMode: LanguageMode {
             return SyntaxNode(type: type, startPosition: startPosition, endPosition: endPosition)
         } else {
             return nil
+        }
+    }
+
+    func detectIndentStrategy() -> DetectedIndentStrategy {
+        if let tree = rootLanguageLayer.tree {
+            let detector = TreeSitterIndentStrategyDetector(lineManager: lineManager, tree: tree, stringView: stringView)
+            return detector.detect()
+        } else {
+            return .unknown
         }
     }
 }

@@ -8,9 +8,7 @@
 import Foundation
 
 final class TreeSitterLanguageLayer {
-    var rootNode: TreeSitterNode? {
-        return tree?.rootNode
-    }
+    private(set) var tree: TreeSitterTree?
     var canHighlight: Bool {
         return parser.language != nil && tree != nil
     }
@@ -22,9 +20,8 @@ final class TreeSitterLanguageLayer {
     private let stringView: StringView
     private var childLanguageLayers: [String: TreeSitterLanguageLayer] = [:]
     private weak var parentLanguageLayer: TreeSitterLanguageLayer?
-    private var tree: TreeSitterTree?
     private var isEmpty: Bool {
-        if let rootNode = rootNode {
+        if let rootNode = tree?.rootNode {
             return rootNode.endByte - rootNode.startByte <= ByteCount(0)
         } else {
             return true
@@ -43,7 +40,7 @@ final class TreeSitterLanguageLayer {
 // MARK: - Parsing
 extension TreeSitterLanguageLayer {
     func parse(_ text: String) {
-        let ranges = [rootNode?.textRange].compactMap { $0 }
+        let ranges = [tree?.rootNode.textRange].compactMap { $0 }
         prepareParser(toParse: ranges)
         parseAndUpdateChildLayers(text: text)
     }
@@ -52,7 +49,7 @@ extension TreeSitterLanguageLayer {
         // Apply edit to tree.
         let oldTree = tree
         tree?.apply(edit)
-        let ranges = [rootNode?.textRange].compactMap { $0 }
+        let ranges = [tree?.rootNode.textRange].compactMap { $0 }
         prepareParser(toParse: ranges)
         tree = parser.parse(oldTree: tree)
         var rows: Set<Int> = []
@@ -76,7 +73,7 @@ extension TreeSitterLanguageLayer {
 
     func node(at linePosition: LinePosition) -> TreeSitterNode? {
         let point = TreeSitterTextPoint(linePosition)
-        guard var node = rootNode?.descendantForRange(from: point, to: point) else {
+        guard var node = tree?.rootNode.descendantForRange(from: point, to: point) else {
             return nil
         }
         for (_, childLanguageLayer) in childLanguageLayers {
@@ -182,7 +179,7 @@ private extension TreeSitterLanguageLayer {
             if !capturedLanguageNames.contains(languageName) {
                 // Remove languages that we no longer have any captures for.
                 childLanguageLayers.removeValue(forKey: languageName)
-            } else if let rootNode = childLanguageLayers[languageName]?.rootNode, rootNode.byteRange.length <= ByteCount(0) {
+            } else if let rootNode = childLanguageLayers[languageName]?.tree?.rootNode, rootNode.byteRange.length <= ByteCount(0) {
                 // Remove layers that no longer has any content.
                 childLanguageLayers.removeValue(forKey: languageName)
             }
@@ -201,34 +198,34 @@ private extension TreeSitterLanguageLayer {
 
 // MARK: - Indentation
 extension TreeSitterLanguageLayer {
-    func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int {
+    func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
         let linePosition = LinePosition(row: line.index, column: 0)
         let languageLayer = lowestLayer(containing: linePosition)
         return languageLayer._currentIndentLevel(of: line, using: indentStrategy)
     }
 
-    func suggestedIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int {
+    func suggestedIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
         let linePosition = LinePosition(row: line.index, column: 0)
         let languageLayer = lowestLayer(containing: linePosition)
         return languageLayer._suggestedIndentLevel(of: line, using: indentStrategy)
     }
 
-    func strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: EditorIndentStrategy) -> InsertLineBreakIndentStrategy {
+    func strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
         let languageLayer = lowestLayer(containing: linePosition)
         return languageLayer._strategyForInsertingLineBreak(at: linePosition, using: indentStrategy)
     }
     
-    private func _currentIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int {
+    private func _currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
         let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
         return indentController.currentIndentLevel(of: line, using: indentStrategy)
     }
 
-    private func _suggestedIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int {
+    private func _suggestedIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
         let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
         return indentController.suggestedIndentLevel(of: line, using: indentStrategy)
     }
 
-    private func _strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: EditorIndentStrategy) -> InsertLineBreakIndentStrategy {
+    private func _strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
         let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
         return indentController.strategyForInsertingLineBreak(at: linePosition, using: indentStrategy)
     }
@@ -290,7 +287,7 @@ extension TreeSitterLanguageLayer {
 
 extension TreeSitterLanguageLayer: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TreeSitterLanguageLayer node=\(rootNode?.debugDescription ?? "") childLanguageLayers=\(childLanguageLayers)]"
+        return "[TreeSitterLanguageLayer node=\(tree?.rootNode.debugDescription ?? "") childLanguageLayers=\(childLanguageLayers)]"
     }
 }
 

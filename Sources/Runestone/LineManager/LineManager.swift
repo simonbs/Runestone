@@ -264,6 +264,10 @@ final class LineManager {
         }
         return lines
     }
+
+    func createLineIterator() -> RedBlackTreeIterator<DocumentLineNodeID, Int, DocumentLineNodeData> {
+        return RedBlackTreeIterator(tree: documentLineTree)
+    }
 }
 
 private extension LineManager {

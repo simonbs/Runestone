@@ -16,8 +16,8 @@ public protocol EditorTextViewDelegate: AnyObject {
     func editorTextViewDidChange(_ textView: EditorTextView)
     func editorTextViewDidChangeSelection(_ textView: EditorTextView)
     func editorTextView(_ textView: EditorTextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
-    func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: EditorCharacterPair, in range: NSRange) -> Bool
-    func editorTextView(_ textView: EditorTextView, shouldSkipTrailingComponentOf characterPair: EditorCharacterPair, in range: NSRange) -> Bool
+    func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: CharacterPair, in range: NSRange) -> Bool
+    func editorTextView(_ textView: EditorTextView, shouldSkipTrailingComponentOf characterPair: CharacterPair, in range: NSRange) -> Bool
     func editorTextViewDidUpdateGutterWidth(_ textView: EditorTextView)
 }
 
@@ -35,10 +35,10 @@ public extension EditorTextViewDelegate {
     func editorTextView(_ textView: EditorTextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
         return true
     }
-    func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: EditorCharacterPair, in range: NSRange) -> Bool {
+    func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: CharacterPair, in range: NSRange) -> Bool {
         return true
     }
-    func editorTextView(_ textView: EditorTextView, shouldSkipTrailingComponentOf characterPair: EditorCharacterPair, in range: NSRange) -> Bool {
+    func editorTextView(_ textView: EditorTextView, shouldSkipTrailingComponentOf characterPair: CharacterPair, in range: NSRange) -> Bool {
         return true
     }
     func editorTextViewDidUpdateGutterWidth(_ textView: EditorTextView) {}
@@ -218,7 +218,7 @@ public final class EditorTextView: UIScrollView {
         }
     }
     /// Character pairs are used by the editor to automatically insert a trailing character when the user types the leading character. Common usages of this includes the \" character to surround strings and { } to surround a scope.
-    public var characterPairs: [EditorCharacterPair] {
+    public var characterPairs: [CharacterPair] {
         get {
             return textInputView.characterPairs
         }
@@ -299,7 +299,7 @@ public final class EditorTextView: UIScrollView {
         }
     }
     /// The strategy used when indenting text.
-    public var indentStrategy: EditorIndentStrategy {
+    public var indentStrategy: IndentStrategy {
         get {
             return textInputView.indentStrategy
         }
@@ -540,6 +540,12 @@ public final class EditorTextView: UIScrollView {
     public func shiftRight() {
         textInputView.shiftRight()
     }
+
+    /// Attempts to detect the indent strategy used in the document. This may return an unknown strategy even
+    /// when the document contains indentation.
+    public func detectIndentStrategy() -> DetectedIndentStrategy {
+        return textInputView.detectIndentStrategy()
+    }
 }
 
 private extension EditorTextView {
@@ -551,7 +557,7 @@ private extension EditorTextView {
         }
     }
 
-    private func insertLeadingComponent(of characterPair: EditorCharacterPair, in range: NSRange) -> Bool {
+    private func insertLeadingComponent(of characterPair: CharacterPair, in range: NSRange) -> Bool {
         let shouldInsertCharacterPair = editorDelegate?.editorTextView(self, shouldInsert: characterPair, in: range) ?? true
         guard shouldInsertCharacterPair else {
             return false
@@ -576,7 +582,7 @@ private extension EditorTextView {
         }
     }
 
-    private func skipInsertingTrailingComponent(of characterPair: EditorCharacterPair, in range: NSRange) -> Bool {
+    private func skipInsertingTrailingComponent(of characterPair: CharacterPair, in range: NSRange) -> Bool {
         // If the user is typing the trailing component of a character pair, e.g. ) or } and the cursor is just in front
         // of that character, then we give the delegate the option to skip inserting the character. In that case we
         // move the caret to after the character in front of it instead.
