@@ -19,14 +19,18 @@ struct LanguageModeTextChangeResult {
     let changedRows: Set<Int>
 }
 
+struct LanguageModeLineBreakIndentBehavior {
+    let indentLevel: Int
+    let insertExtraLineBreak: Bool
+}
+
 protocol LanguageMode: AnyObject {
     func parse(_ text: String)
     func parse(_ text: String, completion: @escaping ((Bool) -> Void))
     func textDidChange(_ change: LanguageModeTextChange) -> LanguageModeTextChangeResult
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode?
-    func shouldInsertDoubleLineBreak(replacingRangeFrom startLinePosition: LinePosition, to endLinePosition: LinePosition) -> Bool
     func suggestedIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int
-    func indentLevelForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int
     func currentIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int
+    func behaviorForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> LanguageModeLineBreakIndentBehavior
 }

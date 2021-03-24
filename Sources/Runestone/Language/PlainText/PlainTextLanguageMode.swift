@@ -34,23 +34,15 @@ final class PlainTextLanguageMode: LanguageMode {
         return nil
     }
 
-    func shouldInsertDoubleLineBreak(replacingRangeFrom startLinePosition: LinePosition, to endLinePosition: LinePosition) -> Bool {
-        return false
-    }
-
     func suggestedIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
-        return 0
-    }
-
-    func suggestedIndentLevel(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
-        return 0
-    }
-
-    func indentLevelForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
         return 0
     }
 
     func currentIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
         return 0
+    }
+
+    func behaviorForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> LanguageModeLineBreakIndentBehavior {
+        return LanguageModeLineBreakIndentBehavior(indentLevel: 0, insertExtraLineBreak: false)
     }
 }

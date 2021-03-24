@@ -201,11 +201,6 @@ private extension TreeSitterLanguageLayer {
 
 // MARK: - Indentation
 extension TreeSitterLanguageLayer {
-    func shouldInsertDoubleLineBreak(replacingRangeFrom startLinePosition: LinePosition, to endLinePosition: LinePosition) -> Bool {
-        let languageLayer = lowestLayer(containing: startLinePosition)
-        return languageLayer._shouldInsertDoubleLineBreak(replacingRangeFrom: startLinePosition, to: endLinePosition)
-    }
-
     func currentIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
         let linePosition = LinePosition(row: line.index, column: 0)
         let languageLayer = lowestLayer(containing: linePosition)
@@ -218,31 +213,11 @@ extension TreeSitterLanguageLayer {
         return languageLayer._suggestedIndentLevel(of: line, using: indentBehavior)
     }
 
-    func indentLevelForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
+    func behaviorForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> LanguageModeLineBreakIndentBehavior {
         let languageLayer = lowestLayer(containing: linePosition)
-        return languageLayer._indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
+        return languageLayer._behaviorForInsertingLineBreak(at: linePosition, using: indentBehavior)
     }
-
-    private func _shouldInsertDoubleLineBreak(replacingRangeFrom startLinePosition: LinePosition, to endLinePosition: LinePosition) -> Bool {
-        let indentationController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
-        guard let startNode = node(at: startLinePosition), let startIndentingNode = indentationController.firstNodeAddingAdditionalLineBreak(from: startNode) else {
-            return false
-        }
-        // Selected range must start within the range of the indenting now.
-        guard startIndentingNode.startPoint.row == startLinePosition.row && startLinePosition.column >= startIndentingNode.startPoint.column else {
-            return false
-        }
-        guard let endNode = node(at: startLinePosition), let endIndentingNode = indentationController.firstNodeAddingAdditionalLineBreak(from: endNode) else {
-            return false
-        }
-        // Note at the end of the selection must be the same note as at the start of the selection.
-        guard startIndentingNode == endIndentingNode else {
-            return false
-        }
-        // Selected range must end within the range of the indenting now.
-        return endIndentingNode.endPoint.row == endLinePosition.row && endLinePosition.column < endIndentingNode.endPoint.column
-    }
-
+    
     private func _currentIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
         let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
         return indentController.currentIndentLevel(of: line, using: indentBehavior)
@@ -253,9 +228,9 @@ extension TreeSitterLanguageLayer {
         return indentController.suggestedIndentLevel(of: line, using: indentBehavior)
     }
 
-    private func _indentLevelForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> Int {
+    private func _behaviorForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> LanguageModeLineBreakIndentBehavior {
         let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
-        return indentController.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
+        return indentController.behaviorForInsertingLineBreak(at: linePosition, using: indentBehavior)
     }
 }
 

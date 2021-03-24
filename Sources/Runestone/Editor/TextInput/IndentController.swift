@@ -108,26 +108,21 @@ final class IndentController {
     }
 
     func insertLineBreak(in range: NSRange) {
-        if let startLinePosition = lineManager.linePosition(at: range.lowerBound),
-           let endLinePosition = lineManager.linePosition(at: range.upperBound),
-           let line = lineManager.line(containingCharacterAt: range.lowerBound),
-           languageMode.shouldInsertDoubleLineBreak(replacingRangeFrom: startLinePosition, to: endLinePosition) {
-            // Cursor is placed between two brackets. Inserting a line break enters a new indentation level.
-            // We insert an additional line break to move the closing bracket to a new line and place the cursor in the new block.
-            let currentIndentLevel = languageMode.currentIndentLevel(of: line, using: indentBehavior)
-            let firstLineText = Symbol.lineFeed + indentBehavior.string(indentLevel: currentIndentLevel + 1)
-            let secondLineText = Symbol.lineFeed + indentBehavior.string(indentLevel: currentIndentLevel)
-            let indentedText = firstLineText + secondLineText
-            delegate?.indentController(self, shouldInsert: indentedText, in: range)
-            let newSelectedRange = NSRange(location: range.location + firstLineText.utf16.count, length: 0)
-            delegate?.indentController(self, shouldSelect: newSelectedRange)
-        } else if let line = lineManager.line(containingCharacterAt: range.location) {
-            // Indent the new line.
-            let localLocation = range.location - line.location
-            let linePosition = LinePosition(row: line.index, column: localLocation)
-            let indentLevel = languageMode.indentLevelForInsertingLineBreak(at: linePosition, using: indentBehavior)
-            let indentedText = Symbol.lineFeed + indentBehavior.string(indentLevel: indentLevel)
-            delegate?.indentController(self, shouldInsert: indentedText, in: range)
+        if let startLinePosition = lineManager.linePosition(at: range.lowerBound) {
+            let behavior = languageMode.behaviorForInsertingLineBreak(at: startLinePosition, using: indentBehavior)
+            if behavior.insertExtraLineBreak {
+                // Inserting a line break enters a new indentation level.
+                // We insert an additional line break and place the cursor in the new block.
+                let firstLineText = Symbol.lineFeed + indentBehavior.string(indentLevel: behavior.indentLevel)
+                let secondLineText = Symbol.lineFeed + indentBehavior.string(indentLevel: behavior.indentLevel - 1)
+                let indentedText = firstLineText + secondLineText
+                delegate?.indentController(self, shouldInsert: indentedText, in: range)
+                let newSelectedRange = NSRange(location: range.location + firstLineText.utf16.count, length: 0)
+                delegate?.indentController(self, shouldSelect: newSelectedRange)
+            } else {
+                let indentedText = Symbol.lineFeed + indentBehavior.string(indentLevel: behavior.indentLevel)
+                delegate?.indentController(self, shouldInsert: indentedText, in: range)
+            }
         } else {
             delegate?.indentController(self, shouldInsert: Symbol.lineFeed, in: range)
         }
