@@ -701,20 +701,19 @@ extension LayoutManager {
     }
 
     private func lineController(for line: DocumentLineNode) -> LineController {
-        let lineController: LineController
         if let cachedLineController = lineControllers[line.id] {
-            lineController = cachedLineController
+            return cachedLineController
         } else {
-            lineController = LineController(line: line, stringView: stringView)
+            let lineController = LineController(line: line, stringView: stringView)
+            lineController.constrainingWidth = maximumLineWidth
+            lineController.estimatedLineFragmentHeight = theme.font.lineHeight
+            lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
+            lineController.tabWidth = tabWidth
+            lineController.syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
+            lineController.syntaxHighlighter?.theme = theme
             lineControllers[line.id] = lineController
+            return lineController
         }
-        lineController.constrainingWidth = maximumLineWidth
-        lineController.estimatedLineFragmentHeight = theme.font.lineHeight
-        lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
-        lineController.tabWidth = tabWidth
-        lineController.syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
-        lineController.syntaxHighlighter?.theme = theme
-        return lineController
     }
 }
 
