@@ -66,6 +66,7 @@ final class LayoutManager {
     var theme: EditorTheme = DefaultEditorTheme() {
         didSet {
             if theme !== oldValue {
+                updateLineNumberWidth()
                 gutterBackgroundView.backgroundColor = theme.gutterBackgroundColor
                 gutterBackgroundView.hairlineColor = theme.gutterHairlineColor
                 gutterBackgroundView.hairlineWidth = theme.gutterHairlineWidth
@@ -227,7 +228,8 @@ final class LayoutManager {
     private var _textContentWidth: CGFloat?
     private var _textContentHeight: CGFloat?
     private var lineNumberWidth: CGFloat = 0
-    private var previousGutterWidthUpdateLineCount: Int?
+    private var previousLineNumberWidthUpdateLineCount: Int?
+    private var previousLineNumberWidthUpdateFont: UIFont?
     private var safeAreaInsets: UIEdgeInsets {
         return editorView?.safeAreaInsets ?? .zero
     }
@@ -303,8 +305,11 @@ final class LayoutManager {
             return
         }
         let lineCount = lineManager.lineCount
-        if lineCount != previousGutterWidthUpdateLineCount {
-            previousGutterWidthUpdateLineCount = lineCount
+        let hasLineCountChanged = lineCount != previousLineNumberWidthUpdateLineCount
+        let hasFontChanged = theme.lineNumberFont != previousLineNumberWidthUpdateFont
+        if hasLineCountChanged || hasFontChanged {
+            previousLineNumberWidthUpdateLineCount = lineCount
+            previousLineNumberWidthUpdateFont = theme.lineNumberFont
             let characterCount = "\(lineCount)".count
             let wideLineNumberString = String(repeating: "8", count: characterCount)
             let wideLineNumberNSString = wideLineNumberString as NSString
