@@ -25,9 +25,9 @@ final class IndentController {
             }
         }
     }
-    var indentBehavior: EditorIndentBehavior {
+    var indentStrategy: EditorIndentStrategy {
         didSet {
-            if indentBehavior != oldValue {
+            if indentStrategy != oldValue {
                 _tabWidth = nil
             }
         }
@@ -36,7 +36,7 @@ final class IndentController {
         if let tabWidth = _tabWidth {
             return tabWidth
         } else {
-            let str = String(repeating: " ", count: indentBehavior.tabLength)
+            let str = String(repeating: " ", count: indentStrategy.tabLength)
             let maxSize = CGSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude)
             let options: NSStringDrawingOptions = [.usesFontLeading, .usesLineFragmentOrigin]
             let attributes: [NSAttributedString.Key: Any] = [.font: indentFont]
@@ -49,11 +49,11 @@ final class IndentController {
 
     private var _tabWidth: CGFloat?
 
-    init(stringView: StringView, lineManager: LineManager, languageMode: LanguageMode, indentBehavior: EditorIndentBehavior, indentFont: UIFont) {
+    init(stringView: StringView, lineManager: LineManager, languageMode: LanguageMode, indentStrategy: EditorIndentStrategy, indentFont: UIFont) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.languageMode = languageMode
-        self.indentBehavior = indentBehavior
+        self.indentStrategy = indentStrategy
         self.indentFont = indentFont
     }
 
@@ -86,8 +86,8 @@ final class IndentController {
         // If any line is below the suggested indent level, then we move all lines to the suggested indent level.
         // If all lines are at the suggested indent level or greater, then we increment the indent level of all lines.
         let anyLineBelowSuggestedIndentLevel = lines.contains { line in
-            let currentIndentLevel = languageMode.currentIndentLevel(of: line, using: indentBehavior)
-            let suggestedIndentLevel = languageMode.suggestedIndentLevel(of: line, using: indentBehavior)
+            let currentIndentLevel = languageMode.currentIndentLevel(of: line, using: indentStrategy)
+            let suggestedIndentLevel = languageMode.suggestedIndentLevel(of: line, using: indentStrategy)
             return currentIndentLevel < suggestedIndentLevel
         }
         var newSelectedRange = range
@@ -109,18 +109,18 @@ final class IndentController {
 
     func insertLineBreak(in range: NSRange) {
         if let startLinePosition = lineManager.linePosition(at: range.lowerBound) {
-            let behavior = languageMode.behaviorForInsertingLineBreak(at: startLinePosition, using: indentBehavior)
-            if behavior.insertExtraLineBreak {
+            let strategy = languageMode.strategyForInsertingLineBreak(at: startLinePosition, using: indentStrategy)
+            if strategy.insertExtraLineBreak {
                 // Inserting a line break enters a new indentation level.
                 // We insert an additional line break and place the cursor in the new block.
-                let firstLineText = Symbol.lineFeed + indentBehavior.string(indentLevel: behavior.indentLevel)
-                let secondLineText = Symbol.lineFeed + indentBehavior.string(indentLevel: behavior.indentLevel - 1)
+                let firstLineText = Symbol.lineFeed + indentStrategy.string(indentLevel: strategy.indentLevel)
+                let secondLineText = Symbol.lineFeed + indentStrategy.string(indentLevel: strategy.indentLevel - 1)
                 let indentedText = firstLineText + secondLineText
                 delegate?.indentController(self, shouldInsert: indentedText, in: range)
                 let newSelectedRange = NSRange(location: range.location + firstLineText.utf16.count, length: 0)
                 delegate?.indentController(self, shouldSelect: newSelectedRange)
             } else {
-                let indentedText = Symbol.lineFeed + indentBehavior.string(indentLevel: behavior.indentLevel)
+                let indentedText = Symbol.lineFeed + indentStrategy.string(indentLevel: strategy.indentLevel)
                 delegate?.indentController(self, shouldInsert: indentedText, in: range)
             }
         } else {
@@ -135,7 +135,7 @@ final class IndentController {
             return nil
         }
         let tabLength: Int
-        switch indentBehavior {
+        switch indentStrategy {
         case .tab:
             tabLength = 1
         case .space(let length):
@@ -145,8 +145,8 @@ final class IndentController {
         guard localLocation >= tabLength else {
             return nil
         }
-        let indentLevel = languageMode.currentIndentLevel(of: line, using: indentBehavior)
-        let indentString = indentBehavior.string(indentLevel: indentLevel)
+        let indentLevel = languageMode.currentIndentLevel(of: line, using: indentStrategy)
+        let indentString = indentStrategy.string(indentLevel: indentLevel)
         guard localLocation <= indentString.utf16.count else {
             return nil
         }
@@ -164,8 +164,8 @@ extension IndentController {
         let startLocation = line.location
         let endLocation = locationOfFirstNonWhitespaceCharacter(in: line)
         let range = NSRange(location: startLocation, length: endLocation - startLocation)
-        let suggestedIndentLevel = languageMode.suggestedIndentLevel(of: line, using: indentBehavior)
-        let indentString = indentBehavior.string(indentLevel: suggestedIndentLevel)
+        let suggestedIndentLevel = languageMode.suggestedIndentLevel(of: line, using: indentStrategy)
+        let indentString = indentStrategy.string(indentLevel: suggestedIndentLevel)
         delegate?.indentController(self, shouldInsert: indentString, in: range)
         return line.data.totalLength - oldLength
     }
@@ -173,7 +173,7 @@ extension IndentController {
     @discardableResult
     private func shiftLineLeft(_ line: DocumentLineNode) -> Int {
         let oldLength = line.data.totalLength
-        let indentString = indentBehavior.string(indentLevel: 1)
+        let indentString = indentStrategy.string(indentLevel: 1)
         let startLocation = locationOfFirstNonWhitespaceCharacter(in: line)
         let range = NSRange(location: startLocation, length: 0)
         delegate?.indentController(self, shouldInsert: indentString, in: range)
@@ -183,7 +183,7 @@ extension IndentController {
     @discardableResult
     private func shiftLineRight(_ line: DocumentLineNode) -> Int {
         let oldLength = line.data.totalLength
-        let indentString = indentBehavior.string(indentLevel: 1)
+        let indentString = indentStrategy.string(indentLevel: 1)
         let indentUTF16Count = indentString.utf16.count
         guard line.data.length >= indentUTF16Count else {
             return 0

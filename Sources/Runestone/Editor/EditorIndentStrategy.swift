@@ -1,5 +1,5 @@
 //
-//  EditorIndentBehavior.swift
+//  EditorIndentStrategy.swift
 //  
 //
 //  Created by Simon Støvring on 07/03/2021.
@@ -7,12 +7,12 @@
 
 import Foundation
 
-public enum EditorIndentBehavior: Equatable {
+public enum EditorIndentStrategy: Equatable {
     case tab(length: Int)
     case space(length: Int)
 }
 
-extension EditorIndentBehavior {
+extension EditorIndentStrategy {
     var tabLength: Int {
         switch self {
         case .tab(let length):

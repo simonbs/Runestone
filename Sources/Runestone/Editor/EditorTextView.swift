@@ -298,13 +298,13 @@ public final class EditorTextView: UIScrollView {
             textInputView.lineBreakSymbol = newValue
         }
     }
-    /// The behavior used when indenting text.
-    public var indentBehavior: EditorIndentBehavior {
+    /// The strategy used when indenting text.
+    public var indentStrategy: EditorIndentStrategy {
         get {
-            return textInputView.indentBehavior
+            return textInputView.indentStrategy
         }
         set {
-            textInputView.indentBehavior = newValue
+            textInputView.indentStrategy = newValue
         }
     }
     /// The amount of padding before the line numbers inside the gutter.

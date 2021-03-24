@@ -19,7 +19,7 @@ struct LanguageModeTextChangeResult {
     let changedRows: Set<Int>
 }
 
-struct LanguageModeLineBreakIndentBehavior {
+struct InsertLineBreakIndentStrategy {
     let indentLevel: Int
     let insertExtraLineBreak: Bool
 }
@@ -30,7 +30,7 @@ protocol LanguageMode: AnyObject {
     func textDidChange(_ change: LanguageModeTextChange) -> LanguageModeTextChangeResult
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode?
-    func suggestedIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int
-    func currentIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int
-    func behaviorForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> LanguageModeLineBreakIndentBehavior
+    func suggestedIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int
+    func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int
+    func strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: EditorIndentStrategy) -> InsertLineBreakIndentStrategy
 }

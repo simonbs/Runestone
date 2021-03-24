@@ -201,36 +201,36 @@ private extension TreeSitterLanguageLayer {
 
 // MARK: - Indentation
 extension TreeSitterLanguageLayer {
-    func currentIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+    func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int {
         let linePosition = LinePosition(row: line.index, column: 0)
         let languageLayer = lowestLayer(containing: linePosition)
-        return languageLayer._currentIndentLevel(of: line, using: indentBehavior)
+        return languageLayer._currentIndentLevel(of: line, using: indentStrategy)
     }
 
-    func suggestedIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+    func suggestedIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int {
         let linePosition = LinePosition(row: line.index, column: 0)
         let languageLayer = lowestLayer(containing: linePosition)
-        return languageLayer._suggestedIndentLevel(of: line, using: indentBehavior)
+        return languageLayer._suggestedIndentLevel(of: line, using: indentStrategy)
     }
 
-    func behaviorForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> LanguageModeLineBreakIndentBehavior {
+    func strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: EditorIndentStrategy) -> InsertLineBreakIndentStrategy {
         let languageLayer = lowestLayer(containing: linePosition)
-        return languageLayer._behaviorForInsertingLineBreak(at: linePosition, using: indentBehavior)
+        return languageLayer._strategyForInsertingLineBreak(at: linePosition, using: indentStrategy)
     }
     
-    private func _currentIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+    private func _currentIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int {
         let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
-        return indentController.currentIndentLevel(of: line, using: indentBehavior)
+        return indentController.currentIndentLevel(of: line, using: indentStrategy)
     }
 
-    private func _suggestedIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
+    private func _suggestedIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int {
         let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
-        return indentController.suggestedIndentLevel(of: line, using: indentBehavior)
+        return indentController.suggestedIndentLevel(of: line, using: indentStrategy)
     }
 
-    private func _behaviorForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> LanguageModeLineBreakIndentBehavior {
+    private func _strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: EditorIndentStrategy) -> InsertLineBreakIndentStrategy {
         let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
-        return indentController.behaviorForInsertingLineBreak(at: linePosition, using: indentBehavior)
+        return indentController.strategyForInsertingLineBreak(at: linePosition, using: indentStrategy)
     }
 }
 

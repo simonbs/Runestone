@@ -182,10 +182,10 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
-    var indentBehavior: EditorIndentBehavior = .tab(length: 2) {
+    var indentStrategy: EditorIndentStrategy = .tab(length: 2) {
         didSet {
-            if indentBehavior != oldValue {
-                indentController.indentBehavior = indentBehavior
+            if indentStrategy != oldValue {
+                indentController.indentStrategy = indentStrategy
                 layoutManager.tabWidth = indentController.tabWidth
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
@@ -387,7 +387,7 @@ final class TextInputView: UIView, UITextInput {
         self.theme = theme
         lineManager = LineManager(stringView: stringView)
         layoutManager = LayoutManager(lineManager: lineManager, languageMode: languageMode, stringView: stringView)
-        indentController = IndentController(stringView: stringView, lineManager: lineManager, languageMode: languageMode, indentBehavior: indentBehavior, indentFont: theme.font)
+        indentController = IndentController(stringView: stringView, lineManager: lineManager, languageMode: languageMode, indentStrategy: indentStrategy, indentFont: theme.font)
         lineMovementController = LineMovementController(lineManager: lineManager, stringView: stringView)
         super.init(frame: .zero)
         lineManager.delegate = self
@@ -513,8 +513,8 @@ final class TextInputView: UIView, UITextInput {
         guard localLocation >= 0 else {
             return false
         }
-        let indentLevel = languageMode.currentIndentLevel(of: line, using: indentBehavior)
-        let indentString = indentBehavior.string(indentLevel: indentLevel)
+        let indentLevel = languageMode.currentIndentLevel(of: line, using: indentStrategy)
+        let indentString = indentStrategy.string(indentLevel: indentLevel)
         return localLocation <= indentString.utf16.count
     }
 

@@ -77,16 +77,16 @@ final class TreeSitterLanguageMode: LanguageMode {
         return TreeSitterSyntaxHighlighter(languageMode: self, operationQueue: operationQueue)
     }
 
-    func suggestedIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
-        return rootLanguageLayer.suggestedIndentLevel(of: line, using: indentBehavior)
+    func suggestedIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int {
+        return rootLanguageLayer.suggestedIndentLevel(of: line, using: indentStrategy)
     }
 
-    func currentIndentLevel(of line: DocumentLineNode, using indentBehavior: EditorIndentBehavior) -> Int {
-        return rootLanguageLayer.currentIndentLevel(of: line, using: indentBehavior)
+    func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: EditorIndentStrategy) -> Int {
+        return rootLanguageLayer.currentIndentLevel(of: line, using: indentStrategy)
     }
 
-    func behaviorForInsertingLineBreak(at linePosition: LinePosition, using indentBehavior: EditorIndentBehavior) -> LanguageModeLineBreakIndentBehavior {
-        return rootLanguageLayer.behaviorForInsertingLineBreak(at: linePosition, using: indentBehavior)
+    func strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: EditorIndentStrategy) -> InsertLineBreakIndentStrategy {
+        return rootLanguageLayer.strategyForInsertingLineBreak(at: linePosition, using: indentStrategy)
     }
 
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode? {
