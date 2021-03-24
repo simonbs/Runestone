@@ -578,15 +578,21 @@ extension LayoutManager {
         if lineNumberView.superview == nil {
             lineNumbersContainerView.addSubview(lineNumberView)
         }
-        let lineHeight = theme.font.lineHeight
-        let scaledLineHeight = lineHeight * lineHeightMultiplier
-        let yOffset = (scaledLineHeight - lineHeight) / 2
-        let origin = CGPoint(x: safeAreaInsets.left + gutterLeadingPadding, y: textContainerInset.top + line.yPosition + yOffset)
-        let size = CGSize(width: lineNumberWidth, height: scaledLineHeight)
+        let lineController = lineController(for: line)
+        let fontLineHeight = theme.font.lineHeight
+        let xPosition = safeAreaInsets.left + gutterLeadingPadding
+        var yPosition = textContainerInset.top + line.yPosition
+        if lineController.numberOfLineFragments > 1 {
+            // There are more than one line fragments, so we align the line number number at the top.
+            yPosition += (fontLineHeight * lineHeightMultiplier - fontLineHeight) / 2
+        } else {
+            // There's a single line fragment, so we center the line number in the height of the line.
+            yPosition += (lineController.lineHeight - fontLineHeight) / 2
+        }
         lineNumberView.text = "\(line.index + 1)"
         lineNumberView.font = theme.font
         lineNumberView.textColor = theme.lineNumberColor
-        lineNumberView.frame = CGRect(origin: origin, size: size)
+        lineNumberView.frame = CGRect(x: xPosition, y: yPosition, width: lineNumberWidth, height: fontLineHeight)
     }
 
     private func layoutLineFragmentView(for lineFragmentController: LineFragmentController, lineYPosition: CGFloat, maxY: inout CGFloat) {
