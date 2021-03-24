@@ -92,7 +92,7 @@ private extension LineMovementController {
             // lineOffset is 0 so we shouldn't change the line
             let destinationLineFragmentNode = currentDelegate.lineMovementController(self, lineFragmentNodeAtIndex: lineFragmentIndex, in: line)
             let globalLineFragmentLocation = line.location + destinationLineFragmentNode.location
-            let localLineFragmentLocation = min(location, destinationLineFragmentNode.value - 1)
+            let localLineFragmentLocation = min(location, destinationLineFragmentNode.value)
             return globalLineFragmentLocation + localLineFragmentLocation
         }
     }
