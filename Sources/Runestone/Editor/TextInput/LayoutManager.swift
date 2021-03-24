@@ -94,7 +94,7 @@ final class LayoutManager {
             if showLineNumbers != oldValue {
                 updateShownViews()
                 if showLineNumbers {
-                    updateGutterWidth()
+                    updateLineNumberWidth()
                 }
             }
         }
@@ -298,7 +298,7 @@ final class LayoutManager {
         }
     }
 
-    func updateGutterWidth() {
+    func updateLineNumberWidth() {
         guard showLineNumbers else {
             return
         }

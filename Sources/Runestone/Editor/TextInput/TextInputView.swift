@@ -280,7 +280,7 @@ final class TextInputView: UIView, UITextInput {
                 stringView.string = newValue
                 lineManager.rebuild(from: newValue)
                 layoutManager.invalidateContentSize()
-                layoutManager.updateGutterWidth()
+                layoutManager.updateLineNumberWidth()
             }
         }
     }
@@ -469,7 +469,7 @@ final class TextInputView: UIView, UITextInput {
         layoutManager.languageMode = state.languageMode
         layoutManager.lineManager = state.lineManager
         layoutManager.invalidateContentSize()
-        layoutManager.updateGutterWidth()
+        layoutManager.updateLineNumberWidth()
     }
 
     func moveCaret(to point: CGPoint) {
@@ -870,7 +870,7 @@ extension TextInputView: LineManagerDelegate {
     func lineManager(_ lineManager: LineManager, didInsert line: DocumentLineNode) {
         timedUndoManager.endUndoGrouping()
         layoutManager.invalidateContentSize()
-        layoutManager.updateGutterWidth()
+        layoutManager.updateLineNumberWidth()
         delegate?.textInputViewDidInvalidateContentSize(self)
     }
 
@@ -878,7 +878,7 @@ extension TextInputView: LineManagerDelegate {
         timedUndoManager.endUndoGrouping()
         layoutManager.invalidateContentSize()
         layoutManager.removeLine(withID: line.id)
-        layoutManager.updateGutterWidth()
+        layoutManager.updateLineNumberWidth()
         delegate?.textInputViewDidInvalidateContentSize(self)
     }
 }
@@ -927,6 +927,15 @@ extension TextInputView: LayoutManagerDelegate {
     }
 
     func layoutManagerDidUpdateGutterWidth(_ layoutManager: LayoutManager) {
+        // Typeset lines again when the line number width changes. Changing line number width may increase or reduce
+        // the number of line fragments in a line.
+        inputDelegate?.selectionWillChange(self)
+        layoutManager.invalidateLines()
+        layoutManager.setNeedsLayout()
+        inputDelegate?.selectionDidChange(self)
+        // Do a layout pass to ensure the position of the caret is correct.
+        setNeedsLayout()
+        layoutIfNeeded()
         delegate?.textInputViewDidUpdateGutterWidth(self)
     }
 }
