@@ -77,7 +77,7 @@ private extension LineMovementController {
         guard let line = lineManager.line(containingCharacterAt: location) else {
             return location
         }
-        let lineLocalLocation = max(min(location - line.location, 0), line.data.totalLength - 1)
+        let lineLocalLocation = min(max(location - line.location, 0), line.data.totalLength - 1)
         let lineFragmentNode = currentDelegate.lineMovementController(self, lineFragmentNodeContainingCharacterAt: lineLocalLocation, in: line)
         let lineFragmentLocalLocation = lineLocalLocation - lineFragmentNode.location
         return locationForMoving(lineOffset: lineOffset, fromLocation: lineFragmentLocalLocation, inLineFragmentAt: lineFragmentNode.index, of: line)
@@ -91,9 +91,10 @@ private extension LineMovementController {
         } else {
             // lineOffset is 0 so we shouldn't change the line
             let destinationLineFragmentNode = currentDelegate.lineMovementController(self, lineFragmentNodeAtIndex: lineFragmentIndex, in: line)
-            let globalLineFragmentLocation = line.location + destinationLineFragmentNode.location
-            let localLineFragmentLocation = min(location, destinationLineFragmentNode.value)
-            return globalLineFragmentLocation + localLineFragmentLocation
+            let lineLocation = line.location
+            let preferredLocation = lineLocation + destinationLineFragmentNode.location + location
+            let maximumLocation = lineLocation + line.data.length
+            return min(preferredLocation, maximumLocation)
         }
     }
 
