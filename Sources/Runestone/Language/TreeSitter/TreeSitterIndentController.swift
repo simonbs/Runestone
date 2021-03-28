@@ -42,7 +42,8 @@ final class TreeSitterIndentController {
         var indentAdjustment = 0
         var outdentAdjustment = 0
         var outdentingNode: TreeSitterNode?
-        let indentIncreaseTargetLinePosition = indentIncreaseScanTargetLinePosition(from: linePosition)
+        let line = lineManager.line(atRow: linePosition.row)
+        let indentIncreaseTargetLinePosition = indentIncreaseScanTargetLinePosition(from: linePosition, in: line)
         if let node = languageLayer.node(at: indentIncreaseTargetLinePosition) {
             if let indentingNode = nodeIncreasingIndentLevel(from: node, targetLinePosition: linePosition) {
                 indentAdjustment = max(indentLevelAdjustment(from: indentingNode), 0) + 1
@@ -169,15 +170,17 @@ private extension TreeSitterIndentController {
         return currentIndentLevel(of: line, using: indentStrategy)
     }
 
-    private func indentIncreaseScanTargetLinePosition(from linePosition: LinePosition) -> LinePosition {
+    private func indentIncreaseScanTargetLinePosition(from linePosition: LinePosition, in line: DocumentLineNode) -> LinePosition {
         if let indentationScopes = indentationScopes, indentationScopes.indentScanLocation == .lineStart {
             let line = lineManager.line(atRow: linePosition.row)
             return startingLinePosition(of: line)
-        } else {
+        } else if linePosition.column < line.data.length - 1 {
             // We start the scanning for nodes that increase the indent level at one character prior to
             // the input character. This is to avoid scanning from the same character from which we scan
             // for nodes that decrease the indent level, which starts from the column on input position.
             return LinePosition(row: linePosition.row, column: max(linePosition.column - 1, 0))
+        } else {
+            return linePosition
         }
     }
 

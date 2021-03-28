@@ -79,6 +79,9 @@ final class LayoutManager {
                     lineController.syntaxHighlighter?.theme = theme
                     lineController.invalidate()
                 }
+                if theme.font != oldValue.font {
+                    invalidateContentSize()
+                }
             }
         }
     }
