@@ -38,7 +38,10 @@ final class PlainTextLanguageMode: LanguageMode {
         return 0
     }
 
-    func strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
+    func strategyForInsertingLineBreak(
+        from startLinePosition: LinePosition,
+        to endLinePosition: LinePosition,
+        using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
         return InsertLineBreakIndentStrategy(indentLevel: 0, insertExtraLineBreak: false)
     }
 

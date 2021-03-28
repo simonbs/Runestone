@@ -201,22 +201,25 @@ extension TreeSitterLanguageLayer {
     func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
         let linePosition = LinePosition(row: line.index, column: 0)
         let languageLayer = lowestLayer(containing: linePosition)
-        return languageLayer._currentIndentLevel(of: line, using: indentStrategy)
-    }
-
-    func strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
-        let languageLayer = lowestLayer(containing: linePosition)
-        return languageLayer._strategyForInsertingLineBreak(at: linePosition, using: indentStrategy)
-    }
-    
-    private func _currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
-        let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
+        let indentController = TreeSitterIndentController(
+            languageLayer: languageLayer,
+            indentationScopes: languageLayer.indentationScopes,
+            stringView: languageLayer.stringView,
+            lineManager: languageLayer.lineManager)
         return indentController.currentIndentLevel(of: line, using: indentStrategy)
     }
 
-    private func _strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
-        let indentController = TreeSitterIndentController(languageLayer: self, indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager)
-        return indentController.strategyForInsertingLineBreak(at: linePosition, using: indentStrategy)
+    func strategyForInsertingLineBreak(
+        from startLinePosition: LinePosition,
+        to endLinePosition: LinePosition,
+        using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
+        let languageLayer = lowestLayer(containing: startLinePosition)
+        let indentController = TreeSitterIndentController(
+            languageLayer: languageLayer,
+            indentationScopes: languageLayer.indentationScopes,
+            stringView: languageLayer.stringView,
+            lineManager: languageLayer.lineManager)
+        return indentController.strategyForInsertingLineBreak(from: startLinePosition, to: endLinePosition, using: indentStrategy)
     }
 }
 

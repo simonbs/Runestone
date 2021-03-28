@@ -81,8 +81,11 @@ final class TreeSitterLanguageMode: LanguageMode {
         return rootLanguageLayer.currentIndentLevel(of: line, using: indentStrategy)
     }
 
-    func strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
-        return rootLanguageLayer.strategyForInsertingLineBreak(at: linePosition, using: indentStrategy)
+    func strategyForInsertingLineBreak(
+        from startLinePosition: LinePosition,
+        to endLinePosition: LinePosition,
+        using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
+        return rootLanguageLayer.strategyForInsertingLineBreak(from: startLinePosition, to: endLinePosition, using: indentStrategy)
     }
 
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode? {
