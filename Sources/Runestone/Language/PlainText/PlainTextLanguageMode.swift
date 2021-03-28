@@ -34,10 +34,6 @@ final class PlainTextLanguageMode: LanguageMode {
         return nil
     }
 
-    func suggestedIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
-        return 0
-    }
-
     func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
         return 0
     }

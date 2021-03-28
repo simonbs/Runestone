@@ -30,7 +30,6 @@ protocol LanguageMode: AnyObject {
     func textDidChange(_ change: LanguageModeTextChange) -> LanguageModeTextChangeResult
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode?
-    func suggestedIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int
     func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int
     func strategyForInsertingLineBreak(at linePosition: LinePosition, using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy
     func detectIndentStrategy() -> DetectedIndentStrategy

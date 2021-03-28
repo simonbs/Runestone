@@ -77,10 +77,6 @@ final class TreeSitterLanguageMode: LanguageMode {
         return TreeSitterSyntaxHighlighter(languageMode: self, operationQueue: operationQueue)
     }
 
-    func suggestedIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
-        return rootLanguageLayer.suggestedIndentLevel(of: line, using: indentStrategy)
-    }
-
     func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
         return rootLanguageLayer.currentIndentLevel(of: line, using: indentStrategy)
     }

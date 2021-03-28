@@ -83,21 +83,9 @@ final class IndentController {
 
     func shiftRight(in range: NSRange) {
         let lines = lineManager.lines(in: range)
-        // If any line is below the suggested indent level, then we move all lines to the suggested indent level.
-        // If all lines are at the suggested indent level or greater, then we increment the indent level of all lines.
-        let anyLineBelowSuggestedIndentLevel = lines.contains { line in
-            let currentIndentLevel = languageMode.currentIndentLevel(of: line, using: indentStrategy)
-            let suggestedIndentLevel = languageMode.suggestedIndentLevel(of: line, using: indentStrategy)
-            return currentIndentLevel < suggestedIndentLevel
-        }
         var newSelectedRange = range
         for (lineIndex, line) in lines.enumerated() {
-            let changeInLength: Int
-            if anyLineBelowSuggestedIndentLevel {
-                changeInLength = shiftLineToSuggestedIndentLevel(line)
-            } else {
-                changeInLength = shiftLineLeft(line)
-            }
+            let changeInLength = shiftLineLeft(line)
             if lineIndex == 0 {
                 newSelectedRange.location += changeInLength
             } else {
@@ -158,18 +146,6 @@ final class IndentController {
 }
 
 extension IndentController {
-    @discardableResult
-    private func shiftLineToSuggestedIndentLevel(_ line: DocumentLineNode) -> Int {
-        let oldLength = line.data.totalLength
-        let startLocation = line.location
-        let endLocation = locationOfFirstNonWhitespaceCharacter(in: line)
-        let range = NSRange(location: startLocation, length: endLocation - startLocation)
-        let suggestedIndentLevel = languageMode.suggestedIndentLevel(of: line, using: indentStrategy)
-        let indentString = indentStrategy.string(indentLevel: suggestedIndentLevel)
-        delegate?.indentController(self, shouldInsert: indentString, in: range)
-        return line.data.totalLength - oldLength
-    }
-
     @discardableResult
     private func shiftLineLeft(_ line: DocumentLineNode) -> Int {
         let oldLength = line.data.totalLength
