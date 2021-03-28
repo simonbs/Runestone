@@ -116,12 +116,8 @@ private extension TreeSitterIndentController {
         guard let indentationScopes = indentationScopes else {
             return nil
         }
-        // We loop at the column to only consider nodes that start before the line position. It is a given that inserting
-        // a line break _before_ a node that increases the indent level shouldn't actually cause the indent level to be
-        // increased. One exception is when the indentation scopes asks us to scan a line from the beginning in which
-        // case we're passed a linePosition that's at the start of the line.
         var workingNode: TreeSitterNode? = node
-        while let node = workingNode, node.startPoint.row == targetLinePosition.row, node.startPoint.column < targetLinePosition.column {
+        while let node = workingNode, node.startPoint.row == targetLinePosition.row, node.startPoint.column <= targetLinePosition.column {
             if let type = node.type {
                 // A node adds an indent level if it's type fulfills one of two:
                 // 1. It indents. These nodes adds an indent level on their own.
@@ -137,7 +133,9 @@ private extension TreeSitterIndentController {
                 //    Inserting a line break where on of the pipes (|) are placed shouldn't increase the indent level but
                 //    instead keep the indent level starting at the "if" node. This is needed because "elseif" and "else"
                 //    are children of the "if" node.
-                if indentationScopes.indent.contains(type) || indentationScopes.inheritIndent.contains(type) {
+                let shouldNodeIndent = indentationScopes.indent.contains(type) || indentationScopes.inheritIndent.contains(type)
+                let isNodeBeforeTargetPosition = node.startPoint.column < targetLinePosition.column
+                if shouldNodeIndent && isNodeBeforeTargetPosition {
                     return node
                 }
             }
@@ -174,11 +172,6 @@ private extension TreeSitterIndentController {
         if let indentationScopes = indentationScopes, indentationScopes.indentScanLocation == .lineStart {
             let line = lineManager.line(atRow: linePosition.row)
             return startingLinePosition(of: line)
-        } else if linePosition.column < line.data.length - 1 {
-            // We start the scanning for nodes that increase the indent level at one character prior to
-            // the input character. This is to avoid scanning from the same character from which we scan
-            // for nodes that decrease the indent level, which starts from the column on input position.
-            return LinePosition(row: linePosition.row, column: max(linePosition.column - 1, 0))
         } else {
             return linePosition
         }
