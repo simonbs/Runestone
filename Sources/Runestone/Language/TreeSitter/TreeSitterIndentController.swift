@@ -152,10 +152,8 @@ private extension TreeSitterIndentController {
         }
         var workingNode: TreeSitterNode? = node
         while let node = workingNode, node.startPoint.row == targetLinePosition.row, node.startPoint.column >= targetLinePosition.column {
-            if let type = node.type {
-                if indentationScopes.outdent.contains(type) {
-                    return node
-                }
+            if let type = node.type, indentationScopes.outdent.contains(type) {
+                return node
             }
             workingNode = node.parent
         }
