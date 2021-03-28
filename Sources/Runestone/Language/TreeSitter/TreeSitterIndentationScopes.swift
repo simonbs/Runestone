@@ -29,3 +29,20 @@ public final class TreeSitterIndentationScopes {
         self.indentScanLocation = indentScanLocation
     }
 }
+
+extension TreeSitterIndentationScopes: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        return "[TreeSitterIndentationScopes indent=\(indent) inheritIndent=\(inheritIndent) outdent=\(outdent) indentScanLocation=\(indentScanLocation)]"
+    }
+}
+
+extension TreeSitterIndentationScopes.IndentScanLocation: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        switch self {
+        case .caret:
+            return "caret"
+        case .lineStart:
+            return "lineStart"
+        }
+    }
+}

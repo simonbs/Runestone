@@ -78,18 +78,28 @@ final class TreeSitterLanguageMode: LanguageMode {
     }
 
     func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
-        return rootLanguageLayer.currentIndentLevel(of: line, using: indentStrategy)
+        let measurer = IndentLevelMeasurer(stringView: stringView)
+        return measurer.indentLevel(of: line, tabLength: indentStrategy.tabLength)
     }
 
     func strategyForInsertingLineBreak(
         from startLinePosition: LinePosition,
         to endLinePosition: LinePosition,
         using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
-        return rootLanguageLayer.strategyForInsertingLineBreak(from: startLinePosition, to: endLinePosition, using: indentStrategy)
+        let startLayerAndNode = rootLanguageLayer.layerAndNode(at: startLinePosition)
+        let endLayerAndNode = rootLanguageLayer.layerAndNode(at: endLinePosition)
+        if let indentationScopes = startLayerAndNode?.layer.language.indentationScopes ?? endLayerAndNode?.layer.language.indentationScopes {
+            let indentController = TreeSitterIndentController(indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager, tabLength: indentStrategy.tabLength)
+            let startNode = startLayerAndNode?.node
+            let endNode = endLayerAndNode?.node
+            return indentController.strategyForInsertingLineBreak(between: startNode, and: endNode, caretStartPosition: startLinePosition, caretEndPosition: endLinePosition)
+        } else {
+            return InsertLineBreakIndentStrategy(indentLevel: 0, insertExtraLineBreak: false)
+        }
     }
 
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode? {
-        if let node = rootLanguageLayer.node(at: linePosition), let type = node.type {
+        if let node = rootLanguageLayer.layerAndNode(at: linePosition)?.node, let type = node.type {
             let startPosition = LinePosition(node.startPoint)
             let endPosition = LinePosition(node.endPoint)
             return SyntaxNode(type: type, startPosition: startPosition, endPosition: endPosition)
@@ -111,5 +121,16 @@ final class TreeSitterLanguageMode: LanguageMode {
 extension TreeSitterLanguageMode: TreeSitterParserDelegate {
     func parser(_ parser: TreeSitterParser, bytesAt byteIndex: ByteCount) -> [Int8]? {
         return delegate?.treeSitterLanguageMode(self, bytesAt: byteIndex)
+    }
+}
+
+private extension TreeSitterIndentationScopes.IndentScanLocation {
+    func startPosition(from linePosition: LinePosition) -> LinePosition {
+        switch self {
+        case .caret:
+            return linePosition
+        case .lineStart:
+            return LinePosition(row: linePosition.row, column: 0)
+        }
     }
 }

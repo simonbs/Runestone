@@ -8,14 +8,13 @@
 import Foundation
 
 final class TreeSitterLanguageLayer {
+    let language: TreeSitterLanguage
     private(set) var tree: TreeSitterTree?
     var canHighlight: Bool {
         return parser.language != nil && tree != nil
     }
 
     private let lineManager: LineManager
-    private let language: TreeSitterLanguage
-    private let indentationScopes: TreeSitterIndentationScopes?
     private let parser: TreeSitterParser
     private let stringView: StringView
     private var childLanguageLayers: [String: TreeSitterLanguageLayer] = [:]
@@ -30,7 +29,6 @@ final class TreeSitterLanguageLayer {
 
     init(language: TreeSitterLanguage, parser: TreeSitterParser, stringView: StringView, lineManager: LineManager) {
         self.language = language
-        self.indentationScopes = language.indentationScopes
         self.parser = parser
         self.stringView = stringView
         self.lineManager = lineManager
@@ -52,36 +50,42 @@ extension TreeSitterLanguageLayer {
         let ranges = [tree?.rootNode.textRange].compactMap { $0 }
         prepareParser(toParse: ranges)
         tree = parser.parse(oldTree: tree)
-        var rows: Set<Int> = []
-        // Apply edit to injected languages.
-        for (_, childLanguageLayer) in childLanguageLayers {
-            let childResult = childLanguageLayer.apply(edit)
-            rows.formUnion(childResult.changedRows)
-        }
         // Gather changed line indices.
+        var changedRows: Set<Int> = []
         if let oldTree = oldTree, let newTree = tree {
             let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
             for changedRange in changedRanges {
                 for row in changedRange.startPoint.row ... changedRange.endPoint.row {
-                    rows.insert(Int(row))
+                    changedRows.insert(Int(row))
                 }
             }
         }
-        updateChildLayers()
-        return LanguageModeTextChangeResult(changedRows: rows)
+        let childChangedRows = updateChildLayers(applying: edit)
+        changedRows.formUnion(childChangedRows)
+        return LanguageModeTextChangeResult(changedRows: changedRows)
     }
 
-    func node(at linePosition: LinePosition) -> TreeSitterNode? {
-        let point = TreeSitterTextPoint(linePosition)
-        guard var node = tree?.rootNode.descendantForRange(from: point, to: point) else {
+    func layerAndNode(at linePosition: LinePosition) -> (layer: TreeSitterLanguageLayer, node: TreeSitterNode)? {
+        let point: TreeSitterTextPoint
+        if language.indentationScopes?.indentScanLocation == .lineStart {
+            point = TreeSitterTextPoint(row: UInt32(linePosition.row), column: 0)
+        } else {
+            point = TreeSitterTextPoint(linePosition)
+        }
+        guard let node = tree?.rootNode.descendantForRange(from: point, to: point) else {
             return nil
         }
+        var result = (layer: self, node: node)
         for (_, childLanguageLayer) in childLanguageLayers {
-            if let childNode = childLanguageLayer.node(at: linePosition), childNode.contains(point) {
-                node = childNode
+            if let childRootNode = childLanguageLayer.tree?.rootNode, childRootNode.contains(point) {
+                if let childResult = childLanguageLayer.layerAndNode(at: linePosition) {
+                    if childResult.node.byteRange.length < result.node.byteRange.length {
+                        result = childResult
+                    }
+                }
             }
         }
-        return node
+        return result
     }
 
     private func prepareParser(toParse ranges: [TreeSitterTextRange]) {
@@ -165,10 +169,10 @@ private extension TreeSitterLanguageLayer {
         }
     }
 
-    private func updateChildLayers() {
+    private func updateChildLayers(applying edit: TreeSitterInputEdit) -> Set<Int> {
         guard let injectionsQuery = language.injectionsQuery, let node = tree?.rootNode else {
             childLanguageLayers.removeAll()
-            return
+            return []
         }
         let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
         injectionsQueryCursor.execute()
@@ -185,58 +189,62 @@ private extension TreeSitterLanguageLayer {
             }
         }
         // Update layers for current captures
+        var changedRows: Set<Int> = []
         let groups = Dictionary(compactGrouping: captures) { $0.injectionLanguage }
         for (languageName, captures) in groups {
             if let childLanguageLayer = childLanguageLayer(named: languageName) {
                 let ranges = captures.map { $0.node.textRange }
                 childLanguageLayer.prepareParser(toParse: ranges)
+                let applyEditResult = childLanguageLayer.apply(edit)
                 childLanguageLayer.tree = childLanguageLayer.parser.parse(oldTree: childLanguageLayer.tree)
+                changedRows.formUnion(applyEditResult.changedRows)
             }
         }
+        return changedRows
     }
 }
 
 // MARK: - Indentation
 extension TreeSitterLanguageLayer {
-    func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
-        let linePosition = LinePosition(row: line.index, column: 0)
-        let languageLayer = lowestLayer(containing: linePosition)
-        let indentController = TreeSitterIndentController(
-            languageLayer: languageLayer,
-            indentationScopes: languageLayer.indentationScopes,
-            stringView: languageLayer.stringView,
-            lineManager: languageLayer.lineManager)
-        return indentController.currentIndentLevel(of: line, using: indentStrategy)
-    }
+//    func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
+//        let linePosition = LinePosition(row: line.index, column: 0)
+//        let languageLayer = lowestLayer(containing: linePosition)
+//        let indentController = TreeSitterIndentController(
+//            languageLayer: languageLayer,
+//            indentationScopes: languageLayer.indentationScopes,
+//            stringView: languageLayer.stringView,
+//            lineManager: languageLayer.lineManager)
+//        return indentController.currentIndentLevel(of: line, using: indentStrategy)
+//    }
 
-    func strategyForInsertingLineBreak(
-        from startLinePosition: LinePosition,
-        to endLinePosition: LinePosition,
-        using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
-        let languageLayer = lowestLayer(containing: startLinePosition)
-        let indentController = TreeSitterIndentController(
-            languageLayer: languageLayer,
-            indentationScopes: languageLayer.indentationScopes,
-            stringView: languageLayer.stringView,
-            lineManager: languageLayer.lineManager)
-        return indentController.strategyForInsertingLineBreak(from: startLinePosition, to: endLinePosition, using: indentStrategy)
-    }
+//    func strategyForInsertingLineBreak(
+//        from startLinePosition: LinePosition,
+//        to endLinePosition: LinePosition,
+//        using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
+////        let languageLayer = lowestLayer(containing: startLinePosition)
+//        let indentController = TreeSitterIndentController(
+//            languageLayer: self,
+//            indentationScopes: indentationScopes,
+//            stringView: stringView,
+//            lineManager: lineManager)
+//        return indentController.strategyForInsertingLineBreak(from: startLinePosition, to: endLinePosition, using: indentStrategy)
+//    }
 }
 
 // MARK: - Misc
-private extension TreeSitterLanguageLayer {
-    private func lowestLayer(containing linePosition: LinePosition) -> TreeSitterLanguageLayer {
-        let textPoint = TreeSitterTextPoint(linePosition)
-        for (_, childLanguageLayer) in childLanguageLayers {
-            if let tree = childLanguageLayer.tree {
-                if tree.rootNode.contains(textPoint) {
-                    return childLanguageLayer.lowestLayer(containing: linePosition)
-                }
-            }
-        }
-        return self
-    }
-}
+//private extension TreeSitterLanguageLayer {
+//    private func lowestLayer(containing linePosition: LinePosition) -> TreeSitterLanguageLayer {
+//        let textPoint = TreeSitterTextPoint(linePosition)
+//        for (_, childLanguageLayer) in childLanguageLayers {
+//            if let tree = childLanguageLayer.tree {
+//                if tree.rootNode.contains(textPoint) {
+//                    return childLanguageLayer.lowestLayer(containing: linePosition)
+//                }
+//            }
+//        }
+//        return self
+//    }
+//}
 
 // MARK: - Debugging Language Layers
 extension TreeSitterLanguageLayer {
