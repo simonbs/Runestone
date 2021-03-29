@@ -94,15 +94,33 @@ private extension TreeSitterSyntaxHighlighter {
             if let foregroundColor = token.textColor {
                 attributes[.foregroundColor] = foregroundColor
             }
-            if let font = token.font {
-                attributes[.font] = font
-            }
             if let shadow = token.shadow {
                 attributes[.shadow] = shadow
             }
-//            attributedString.removeAttribute(.foregroundColor, range: range)
-//            attributedString.removeAttribute(.font, range: range)
-//            attributedString.removeAttribute(.shadow, range: range)
+            if token.fontTraits.contains(.bold) {
+                attributedString.addAttribute(.isBold, value: true, range: range)
+            }
+            if token.fontTraits.contains(.italic) {
+                attributedString.addAttribute(.isItalic, value: true, range: range)
+            }
+            var symbolicTraits: UIFontDescriptor.SymbolicTraits = []
+            if let isBold = attributedString.attribute(.isBold, at: range.location, effectiveRange: nil) as? Bool, isBold {
+                symbolicTraits.insert(.traitBold)
+            }
+            if let isItalic = attributedString.attribute(.isItalic, at: range.location, effectiveRange: nil) as? Bool, isItalic {
+                symbolicTraits.insert(.traitItalic)
+            }
+            let currentFont = attributedString.attribute(.font, at: range.location, effectiveRange: nil) as? UIFont
+            let newFont: UIFont
+            if !symbolicTraits.isEmpty {
+                let font = token.font ?? currentFont ?? theme.font
+                newFont = font.withSymbolicTraits(symbolicTraits) ?? font
+            } else {
+                newFont = token.font ?? theme.font
+            }
+            if newFont != currentFont {
+                attributes[.font] = newFont
+            }
             if !attributes.isEmpty {
                 attributedString.addAttributes(attributes, range: range)
             }
@@ -133,8 +151,19 @@ private extension TreeSitterSyntaxHighlighter {
 private extension TreeSitterSyntaxHighlighter {
     private func attributes(for capture: TreeSitterCapture, in range: ByteRange) -> TreeSitterSyntaxHighlightToken {
         let textColor = theme.textColorForCaptureSequence(capture.name)
-        let font = theme.fontForCaptureSequence(capture.name)
         let shadow = theme.shadowForCaptureSequence(capture.name)
-        return TreeSitterSyntaxHighlightToken(range: range, textColor: textColor, font: font, shadow: shadow)
+        let font = theme.fontForCaptureSequence(capture.name)
+        let fontTraits = theme.fontTraitsForCaptureSequence(capture.name)
+        return TreeSitterSyntaxHighlightToken(range: range, textColor: textColor, shadow: shadow, font: font, fontTraits: fontTraits)
+    }
+}
+
+private extension UIFont {
+    func withSymbolicTraits(_ symbolicTraits: UIFontDescriptor.SymbolicTraits) -> UIFont? {
+        if let fontDescriptor = UIFontDescriptor(name: familyName, size: pointSize).withSymbolicTraits(symbolicTraits) {
+            return UIFont(descriptor: fontDescriptor, size: pointSize)
+        } else {
+            return nil
+        }
     }
 }

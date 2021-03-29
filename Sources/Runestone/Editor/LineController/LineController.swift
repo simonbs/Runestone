@@ -44,7 +44,7 @@ final class LineController {
         }
     }
     var lineWidth: CGFloat {
-        return typesetter.maximumLineWidth
+        return ceil(typesetter.maximumLineWidth)
     }
     var lineHeight: CGFloat {
         if let lineHeight = _lineHeight {
@@ -97,15 +97,15 @@ final class LineController {
         // the CTTypesetter needs to generate new instances of CTLine with the new attributes.
         isTypesetterInvalid = true
         isSyntaxHighlightingInvalid = true
-        updateSyntaxHighlightingIfNecessary(async: false)
+        updateSyntaxHighlightingIfNecessary(async: false) { _ in }
     }
 
-    func willDisplay() {
+    func willDisplay(completion: @escaping (Bool) -> Void) {
         let needsDisplay = isStringInvalid || isTypesetterInvalid || isDefaultAttributesInvalid || isSyntaxHighlightingInvalid
         updateStringIfNecessary()
         updateDefaultAttributesIfNecessary()
         updateTypesetterIfNecessary()
-        updateSyntaxHighlightingIfNecessary(async: true)
+        updateSyntaxHighlightingIfNecessary(async: true, completion: completion)
         if needsDisplay {
             setNeedsDisplayOnLineFragmentViews()
         }
@@ -178,7 +178,7 @@ private extension LineController {
         }
     }
 
-    private func updateSyntaxHighlightingIfNecessary(async: Bool) {
+    private func updateSyntaxHighlightingIfNecessary(async: Bool, completion: @escaping (Bool) -> Void) {
         guard isSyntaxHighlightingInvalid else {
             return
         }
@@ -196,28 +196,33 @@ private extension LineController {
         if async {
             syntaxHighlighter.cancel()
             syntaxHighlighter.syntaxHighlight(input) { [weak self] result in
-                if case .success = result {
-                    self?.typeset(input.attributedString)
-                    self?.isSyntaxHighlightingInvalid = false
-                    self?.isTypesetterInvalid = false
+                if case .success = result, let self = self {
+                    let isSizingInvalid = self.typeset(input.attributedString)
+                    self.isSyntaxHighlightingInvalid = false
+                    self.isTypesetterInvalid = false
+                    completion(isSizingInvalid)
                 }
             }
         } else {
             syntaxHighlighter.cancel()
             syntaxHighlighter.syntaxHighlight(input)
-            typeset(input.attributedString)
+            let isSizingInvalid = typeset(input.attributedString)
             isSyntaxHighlightingInvalid = false
+            completion(isSizingInvalid)
         }
     }
 
-    private func updateTypesetterIfNecessary() {
+    @discardableResult
+    private func updateTypesetterIfNecessary() -> Bool {
+        var isSizingInvalid = false
         if isTypesetterInvalid {
             lineFragmentControllers.removeAll(keepingCapacity: true)
             if let attributedString = attributedString {
-                typeset(attributedString)
+                isSizingInvalid = typeset(attributedString)
             }
             isTypesetterInvalid = false
         }
+        return isSizingInvalid
     }
 
     private func createLineSyntaxHighlightInput() -> LineSyntaxHighlighterInput? {
@@ -240,13 +245,16 @@ private extension LineController {
         }
     }
 
-    private func typeset(_ attributedString: NSAttributedString) {
+    private func typeset(_ attributedString: NSAttributedString) -> Bool {
+        let oldWidth = lineWidth
+        _lineHeight = nil
         typesetter.typeset(attributedString)
         textInputProxy.lineFragments = typesetter.lineFragments
         cleanUpLineFragmentControllers()
         reapplyLineFragmentToLineFragmentControllers()
         setNeedsDisplayOnLineFragmentViews()
         rebuildLineFragmentTree()
+        return abs(lineWidth - oldWidth) > CGFloat.ulpOfOne
     }
 
     private func rebuildLineFragmentTree() {
