@@ -204,48 +204,6 @@ private extension TreeSitterLanguageLayer {
     }
 }
 
-// MARK: - Indentation
-extension TreeSitterLanguageLayer {
-//    func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
-//        let linePosition = LinePosition(row: line.index, column: 0)
-//        let languageLayer = lowestLayer(containing: linePosition)
-//        let indentController = TreeSitterIndentController(
-//            languageLayer: languageLayer,
-//            indentationScopes: languageLayer.indentationScopes,
-//            stringView: languageLayer.stringView,
-//            lineManager: languageLayer.lineManager)
-//        return indentController.currentIndentLevel(of: line, using: indentStrategy)
-//    }
-
-//    func strategyForInsertingLineBreak(
-//        from startLinePosition: LinePosition,
-//        to endLinePosition: LinePosition,
-//        using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
-////        let languageLayer = lowestLayer(containing: startLinePosition)
-//        let indentController = TreeSitterIndentController(
-//            languageLayer: self,
-//            indentationScopes: indentationScopes,
-//            stringView: stringView,
-//            lineManager: lineManager)
-//        return indentController.strategyForInsertingLineBreak(from: startLinePosition, to: endLinePosition, using: indentStrategy)
-//    }
-}
-
-// MARK: - Misc
-//private extension TreeSitterLanguageLayer {
-//    private func lowestLayer(containing linePosition: LinePosition) -> TreeSitterLanguageLayer {
-//        let textPoint = TreeSitterTextPoint(linePosition)
-//        for (_, childLanguageLayer) in childLanguageLayers {
-//            if let tree = childLanguageLayer.tree {
-//                if tree.rootNode.contains(textPoint) {
-//                    return childLanguageLayer.lowestLayer(containing: linePosition)
-//                }
-//            }
-//        }
-//        return self
-//    }
-//}
-
 // MARK: - Debugging Language Layers
 extension TreeSitterLanguageLayer {
     func languageHierarchyStringRepresentation() -> String {
