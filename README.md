@@ -11,6 +11,11 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 - Show invisible characters (tabs, spaces and line breaks).
 - Insertion of character pairs, e.g. inserting the trailing quotation mark when inserting the leading.
 - Customization of colors and fonts using the [EditorTheme protocol](https://github.com/simonbs/Runestone/blob/main/Sources/Runestone/Editor/EditorTheme.swift).
+- Toggle line wrapping on and of.
+- Adjust line heights.
+- Uses native font picker.
+- Add a page guide.
+- Automatically detects if a file is using spaces or tabs for indentation.
 
 ### Wishlist
 
