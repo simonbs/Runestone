@@ -39,30 +39,12 @@ final class TreeSitterLanguageLayer {
 extension TreeSitterLanguageLayer {
     func parse(_ text: String) {
         let ranges = [tree?.rootNode.textRange].compactMap { $0 }
-        prepareParser(toParse: ranges)
-        parseAndUpdateChildLayers(text: text)
+        parse(ranges, from: text)
     }
 
     func apply(_ edit: TreeSitterInputEdit) -> LanguageModeTextChangeResult {
-        // Apply edit to tree.
-        let oldTree = tree
-        tree?.apply(edit)
         let ranges = [tree?.rootNode.textRange].compactMap { $0 }
-        prepareParser(toParse: ranges)
-        tree = parser.parse(oldTree: tree)
-        // Gather changed line indices.
-        var changedRows: Set<Int> = []
-        if let oldTree = oldTree, let newTree = tree {
-            let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
-            for changedRange in changedRanges {
-                for row in changedRange.startPoint.row ... changedRange.endPoint.row {
-                    changedRows.insert(Int(row))
-                }
-            }
-        }
-        let childChangedRows = updateChildLayers(applying: edit)
-        changedRows.formUnion(childChangedRows)
-        return LanguageModeTextChangeResult(changedRows: changedRows)
+        return apply(edit, parsing: ranges)
     }
 
     func layerAndNode(at linePosition: LinePosition) -> (layer: TreeSitterLanguageLayer, node: TreeSitterNode)? {
@@ -88,6 +70,27 @@ extension TreeSitterLanguageLayer {
         return result
     }
 
+    private func apply(_ edit: TreeSitterInputEdit, parsing ranges: [TreeSitterTextRange] = []) -> LanguageModeTextChangeResult {
+        // Apply edit to tree.
+        let oldTree = tree
+        tree?.apply(edit)
+        prepareParser(toParse: ranges)
+        tree = parser.parse(oldTree: tree)
+        // Gather changed line indices.
+        var changedRows: Set<Int> = []
+        if let oldTree = oldTree, let newTree = tree {
+            let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
+            for changedRange in changedRanges {
+                let startRow = Int(changedRange.startPoint.row)
+                let endRow = Int(changedRange.endPoint.row)
+                changedRows.formUnion(startRow ... endRow)
+            }
+        }
+        let childChangedRows = updateChildLayers(applying: edit)
+        changedRows.formUnion(childChangedRows)
+        return LanguageModeTextChangeResult(changedRows: changedRows)
+    }
+
     private func prepareParser(toParse ranges: [TreeSitterTextRange]) {
         parser.language = language.languagePointer
         if !ranges.isEmpty && parentLanguageLayer != nil {
@@ -97,7 +100,8 @@ extension TreeSitterLanguageLayer {
         }
     }
 
-    private func parseAndUpdateChildLayers(text: String) {
+    private func parse(_ ranges: [TreeSitterTextRange], from text: String) {
+        prepareParser(toParse: ranges)
         tree = parser.parse(text)
         childLanguageLayers.removeAll()
         if let injectionsQuery = language.injectionsQuery, let node = tree?.rootNode {
@@ -108,8 +112,7 @@ extension TreeSitterLanguageLayer {
             for (languageName, captures) in groups {
                 if let childLanguageLayer = childLanguageLayer(named: languageName) {
                     let ranges = captures.map { $0.node.textRange }
-                    childLanguageLayer.prepareParser(toParse: ranges)
-                    childLanguageLayer.parseAndUpdateChildLayers(text: text)
+                    childLanguageLayer.parse(ranges, from: text)
                 }
             }
         }
@@ -194,9 +197,7 @@ private extension TreeSitterLanguageLayer {
         for (languageName, captures) in groups {
             if let childLanguageLayer = childLanguageLayer(named: languageName) {
                 let ranges = captures.map { $0.node.textRange }
-                childLanguageLayer.prepareParser(toParse: ranges)
-                let applyEditResult = childLanguageLayer.apply(edit)
-                childLanguageLayer.tree = childLanguageLayer.parser.parse(oldTree: childLanguageLayer.tree)
+                let applyEditResult = childLanguageLayer.apply(edit, parsing: ranges)
                 changedRows.formUnion(applyEditResult.changedRows)
             }
         }
