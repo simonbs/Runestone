@@ -2,23 +2,7 @@ import XCTest
 @testable import Runestone
 import TestTreeSitterLanguages
 
-final class LanguageModeTests: XCTestCase {
-//    func testCurretIndent() {
-//        // if (foo == "bar") {
-//        //   if (hello == "world") {
-//        //     console.log("Hi")
-//        //   }
-//        // }
-//        let text = "if (foo == \"bar\") {\n   if (hello == \"world\") {\n     console.log(\"Hi\")\n  }\n}"
-//        let language = TreeSitterLanguage(tree_sitter_javascript(), textEncoding: .utf8)
-//        let stringView = StringView(string: text)
-//        let lineManager = LineManager(stringView: stringView)
-//        lineManager.rebuild(from: text as NSString)
-//        let languageMode = TreeSitterLanguageMode(language: language, stringView: stringView, lineManager: lineManager)
-//        let line = lineManager.line(atRow: 1)
-//        languageMode.currentIndentLevel(of: <#T##DocumentLineNode#>, using: <#T##IndentStrategy#>)
-//    }
-}
+final class LanguageModeTests: XCTestCase {}
 
 extension LanguageModeTests {
     func javaScriptLanguageMode(text: String) -> TreeSitterLanguageMode {
