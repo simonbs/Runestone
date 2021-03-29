@@ -12,7 +12,7 @@ let package = Package(
     products: [
         .library(
             name: "Runestone",
-            targets: ["Runestone"]),
+            targets: ["Runestone"])
     ],
     targets: [
         .target(
@@ -26,8 +26,9 @@ let package = Package(
                 "unicode/LICENSE",
                 "unicode/README.md"
             ]),
+        .target(name: "TestTreeSitterLanguages"),
         .testTarget(
             name: "RunestoneTests",
-            dependencies: ["Runestone"]),
+            dependencies: ["Runestone", "TestTreeSitterLanguages"]),
     ]
 )

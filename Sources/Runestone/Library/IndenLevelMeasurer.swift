@@ -14,11 +14,10 @@ final class IndentLevelMeasurer {
         self.stringView = stringView
     }
 
-    func indentLevel(of line: DocumentLineNode, tabLength: Int) -> Int {
+    func indentLevel(lineStartLocation: Int, lineTotalLength: Int, tabLength: Int) -> Int {
         var indentLength = 0
-        let location = line.location
-        for i in 0 ..< line.data.totalLength {
-            let range = NSRange(location: location + i, length: 1)
+        for i in 0 ..< lineTotalLength {
+            let range = NSRange(location: lineStartLocation + i, length: 1)
             let str = stringView.substring(in: range).first
             if str == Symbol.Character.tab {
                 indentLength += tabLength - (indentLength % tabLength)

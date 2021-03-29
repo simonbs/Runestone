@@ -141,6 +141,6 @@ private extension TreeSitterIndentController {
         // Get indentation level of line before the supplied line position.
         let line = lineManager.line(atRow: row)
         let measurer = IndentLevelMeasurer(stringView: stringView)
-        return measurer.indentLevel(of: line, tabLength: tabLength)
+        return measurer.indentLevel(lineStartLocation: line.location, lineTotalLength: line.data.totalLength, tabLength: tabLength)
     }
 }

@@ -79,7 +79,7 @@ final class TreeSitterLanguageMode: LanguageMode {
 
     func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
         let measurer = IndentLevelMeasurer(stringView: stringView)
-        return measurer.indentLevel(of: line, tabLength: indentStrategy.tabLength)
+        return measurer.indentLevel(lineStartLocation: line.location, lineTotalLength: line.data.totalLength, tabLength: indentStrategy.tabLength)
     }
 
     func strategyForInsertingLineBreak(
