@@ -90,17 +90,22 @@ private extension TreeSitterSyntaxHighlighter {
         let string = attributedString.string
         for token in tokens {
             let range = string.range(from: token.range)
-            var attributes: [NSAttributedString.Key: Any] = [
-                .foregroundColor: token.textColor ?? theme.textColor,
-                .font: token.font ?? theme.font
-            ]
+            var attributes: [NSAttributedString.Key: Any] = [:]
+            if let foregroundColor = token.textColor {
+                attributes[.foregroundColor] = foregroundColor
+            }
+            if let font = token.font {
+                attributes[.font] = font
+            }
             if let shadow = token.shadow {
                 attributes[.shadow] = shadow
             }
-            attributedString.removeAttribute(.foregroundColor, range: range)
-            attributedString.removeAttribute(.font, range: range)
-            attributedString.removeAttribute(.shadow, range: range)
-            attributedString.addAttributes(attributes, range: range)
+//            attributedString.removeAttribute(.foregroundColor, range: range)
+//            attributedString.removeAttribute(.font, range: range)
+//            attributedString.removeAttribute(.shadow, range: range)
+            if !attributes.isEmpty {
+                attributedString.addAttributes(attributes, range: range)
+            }
         }
         attributedString.endEditing()
     }
