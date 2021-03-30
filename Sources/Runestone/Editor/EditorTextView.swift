@@ -596,7 +596,7 @@ private extension EditorTextView {
             moveCaret(byOffset: characterPair.trailing.count)
             return true
         } else {
-            return editorDelegate?.editorTextView(self, shouldChangeTextIn: range, replacementText: text) ?? true
+            return false
         }
     }
 
