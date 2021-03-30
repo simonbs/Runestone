@@ -488,10 +488,12 @@ final class TextInputView: UIView, UITextInput {
         self.languageMode = newLanguageMode
         layoutManager.languageMode = newLanguageMode
         newLanguageMode.parse(string as String) { [weak self] finished in
-            if finished {
-                self?.layoutManager.invalidateLines()
-                self?.layoutManager.setNeedsLayout()
-                self?.setNeedsLayout()
+            if let self = self, finished {
+                self.inputDelegate?.selectionWillChange(self)
+                self.layoutManager.invalidateLines()
+                self.layoutManager.setNeedsLayout()
+                self.layoutManager.layoutIfNeeded()
+                self.inputDelegate?.selectionDidChange(self)
             }
             completion?(finished)
         }
@@ -931,16 +933,22 @@ extension TextInputView: LayoutManagerDelegate {
     }
 
     func layoutManagerDidUpdateGutterWidth(_ layoutManager: LayoutManager) {
-        // Typeset lines again when the line number width changes. Changing line number width may increase or reduce
-        // the number of line fragments in a line.
+        // Typeset lines again when the line number width changes. Changing line number width may increase
+        // or reduce the number of line fragments in a line.
         inputDelegate?.selectionWillChange(self)
         layoutManager.invalidateLines()
         layoutManager.setNeedsLayout()
+        layoutManager.layoutIfNeeded()
         inputDelegate?.selectionDidChange(self)
-        // Do a layout pass to ensure the position of the caret is correct.
-        setNeedsLayout()
-        layoutIfNeeded()
         delegate?.textInputViewDidUpdateGutterWidth(self)
+    }
+
+    func layoutManagerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ layoutManager: LayoutManager) {
+        // Sizing may be invalidated when doing async syntax highlighting, in which case we need to do another layout pass.
+        inputDelegate?.selectionWillChange(self)
+        layoutManager.setNeedsLayout()
+        layoutManager.layoutIfNeeded()
+        inputDelegate?.selectionDidChange(self)
     }
 }
 

@@ -11,6 +11,7 @@ protocol LayoutManagerDelegate: AnyObject {
     func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager)
     func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
     func layoutManagerDidUpdateGutterWidth(_ layoutManager: LayoutManager)
+    func layoutManagerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ layoutManager: LayoutManager)
 }
 
 final class LayoutManager {
@@ -755,8 +756,6 @@ private extension LayoutManager {
 // MARK: - LineControllerDelegate
 extension LayoutManager: LineControllerDelegate {
     func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController) {
-        // Sizing may be invalidated when doing async syntax highlighting,
-        // in which case we need to do another layout pass.
-        setNeedsLayout()
+        delegate?.layoutManagerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(self)
     }
 }
