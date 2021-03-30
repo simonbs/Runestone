@@ -540,14 +540,7 @@ extension LayoutManager {
             // Prepare to line controller to display text.
             let lineController = lineController(for: line)
             lineController.constrainingWidth = maximumLineWidth
-            lineController.willDisplay(completion: { [weak self] isSizingInvalidated in
-                if isSizingInvalidated {
-                    // Sizing may be invalidated when doing async syntax highlighting,
-                    // in which case we need to do another layout pass.
-                    self?.setNeedsLayout()
-                    self?.layoutIfNeeded()
-                }
-            })
+            lineController.willDisplay()
             // Layout the line number.
             layoutLineNumberView(for: line)
             // Layout line fragments ("sublines") in the line until we have filled the viewport.
@@ -720,6 +713,7 @@ extension LayoutManager {
             return cachedLineController
         } else {
             let lineController = LineController(line: line, stringView: stringView)
+            lineController.delegate = self
             lineController.constrainingWidth = maximumLineWidth
             lineController.estimatedLineFragmentHeight = theme.font.lineHeight
             lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
@@ -755,5 +749,14 @@ private extension LayoutManager {
         for lineID in lineIDsToRelease {
             lineControllers.removeValue(forKey: lineID)
         }
+    }
+}
+
+// MARK: - LineControllerDelegate
+extension LayoutManager: LineControllerDelegate {
+    func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController) {
+        // Sizing may be invalidated when doing async syntax highlighting,
+        // in which case we need to do another layout pass.
+        setNeedsLayout()
     }
 }
