@@ -188,11 +188,11 @@ final class LayoutManager {
         if isLineWrappingEnabled {
             return scrollViewWidth
         } else {
-            return textContentWidth + leadingLineSpacing + textContainerInset.right + lineBreakInvisibleSymbolWidth
+            return ceil(textContentWidth + leadingLineSpacing + textContainerInset.right + lineBreakInvisibleSymbolWidth)
         }
     }
     private var contentHeight: CGFloat {
-        return textContentHeight + textContainerInset.top + textContainerInset.bottom
+        return ceil(textContentHeight + textContainerInset.top + textContainerInset.bottom)
     }
     private var textContentWidth: CGFloat {
         if let textContentWidth = _textContentWidth {
