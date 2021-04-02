@@ -620,7 +620,9 @@ private extension EditorTextView {
             let isScrolling = isDragging || isDecelerating
             if !isBouncingHorizontally || isCriticalUpdate || !isScrolling {
                 hasPendingContentSizeUpdate = false
+                let oldContentOffset = contentOffset
                 contentSize = textInputView.contentSize
+                contentOffset = oldContentOffset
                 setNeedsLayout()
             }
         }
