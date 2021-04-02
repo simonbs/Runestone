@@ -205,7 +205,6 @@ private extension LineController {
                     let oldWidth = self.lineWidth
                     self.typeset(input.attributedString)
                     self.isSyntaxHighlightingInvalid = false
-                    self.isTypesetterInvalid = false
                     if abs(self.lineWidth - oldWidth) > CGFloat.ulpOfOne {
                         self.delegate?.lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(self)
                     }
@@ -256,6 +255,7 @@ private extension LineController {
         reapplyLineFragmentToLineFragmentControllers()
         setNeedsDisplayOnLineFragmentViews()
         rebuildLineFragmentTree()
+        isTypesetterInvalid = false
     }
 
     private func rebuildLineFragmentTree() {
