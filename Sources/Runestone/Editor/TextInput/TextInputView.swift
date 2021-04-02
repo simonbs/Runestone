@@ -390,7 +390,6 @@ final class TextInputView: UIView, UITextInput {
         indentController = IndentController(stringView: stringView, lineManager: lineManager, languageMode: languageMode, indentStrategy: indentStrategy, indentFont: theme.font)
         lineMovementController = LineMovementController(lineManager: lineManager, stringView: stringView)
         super.init(frame: .zero)
-        lineManager.delegate = self
         lineManager.estimatedLineHeight = estimatedLineHeight
         indentController.delegate = self
         lineMovementController.delegate = self
@@ -464,7 +463,6 @@ final class TextInputView: UIView, UITextInput {
         theme = state.theme
         languageMode = state.languageMode
         lineManager = state.lineManager
-        lineManager.delegate = self
         lineManager.estimatedLineHeight = estimatedLineHeight
         layoutManager.languageMode = state.languageMode
         layoutManager.lineManager = state.lineManager
@@ -683,22 +681,35 @@ extension TextInputView {
 
     private func replaceCharacters(in range: NSRange, with newString: NSString) {
         inputDelegate?.textWillChange(self)
-        var editedLines: Set<DocumentLineNode> = []
-        justReplaceCharacters(in: range, with: newString, editedLines: &editedLines)
-        layoutManager.typeset(editedLines)
-        layoutManager.syntaxHighlight(editedLines)
+        let changeSet = justReplaceCharacters(in: range, with: newString)
+        let didAddOrRemoveLines = !changeSet.insertedLines.isEmpty || !changeSet.removedLines.isEmpty
+        if didAddOrRemoveLines {
+            layoutManager.invalidateContentSize()
+            for removedLine in changeSet.removedLines {
+                layoutManager.removeLine(withID: removedLine.id)
+            }
+            layoutManager.updateLineNumberWidth()
+        }
+        layoutManager.typeset(changeSet.editedLines)
+        layoutManager.syntaxHighlight(changeSet.editedLines)
         layoutManager.setNeedsLayout()
         inputDelegate?.textDidChange(self)
         delegate?.textInputViewDidChange(self)
+        if didAddOrRemoveLines {
+            delegate?.textInputViewDidInvalidateContentSize(self)
+        }
     }
 
-    private func justReplaceCharacters(in range: NSRange, with nsNewString: NSString, editedLines: inout Set<DocumentLineNode>) {
+    private func justReplaceCharacters(in range: NSRange, with nsNewString: NSString) -> LineChangeSet {
         let byteRange = self.byteRange(from: range)
         let newString = nsNewString as String
         let oldEndLinePosition = lineManager.linePosition(at: range.location + range.length)!
         string.replaceCharacters(in: range, with: newString)
-        lineManager.removeCharacters(in: range, editedLines: &editedLines)
-        lineManager.insert(nsNewString, at: range.location, editedLines: &editedLines)
+        let changeSet = LineChangeSet()
+        let newChangeSetA = lineManager.removeCharacters(in: range)
+        changeSet.union(with: newChangeSetA)
+        let newChangeSetB = lineManager.insert(nsNewString, at: range.location)
+        changeSet.union(with: newChangeSetB)
         let startLinePosition = lineManager.linePosition(at: range.location)!
         let newEndLinePosition = lineManager.linePosition(at: range.location + nsNewString.length)!
         let textChange = LanguageModeTextChange(
@@ -709,7 +720,10 @@ extension TextInputView {
             newEndLinePosition: newEndLinePosition)
         let result = languageMode.textDidChange(textChange)
         let languageModeEditedLines = result.changedRows.map { lineManager.line(atRow: $0) }
-        editedLines.formUnion(languageModeEditedLines)
+        for editedLine in languageModeEditedLines {
+            changeSet.markLineEdited(editedLine)
+        }
+        return changeSet
     }
 
     private func byteRange(from range: NSRange) -> ByteRange {
@@ -869,24 +883,6 @@ extension TextInputView {
     }
 
     func setBaseWritingDirection(_ writingDirection: NSWritingDirection, for range: UITextRange) {}
-}
-
-// MARK: - LineManagerDelegate
-extension TextInputView: LineManagerDelegate {
-    func lineManager(_ lineManager: LineManager, didInsert line: DocumentLineNode) {
-        timedUndoManager.endUndoGrouping()
-        layoutManager.invalidateContentSize()
-        layoutManager.updateLineNumberWidth()
-        delegate?.textInputViewDidInvalidateContentSize(self)
-    }
-
-    func lineManager(_ lineManager: LineManager, didRemove line: DocumentLineNode) {
-        timedUndoManager.endUndoGrouping()
-        layoutManager.invalidateContentSize()
-        layoutManager.removeLine(withID: line.id)
-        layoutManager.updateLineNumberWidth()
-        delegate?.textInputViewDidInvalidateContentSize(self)
-    }
 }
 
 // MARK: - TreeSitterLanguageModeDeleage

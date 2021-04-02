@@ -59,8 +59,7 @@ private extension LineManagerTests {
     private func createLineManager(containing string: String) -> LineManager {
         let stringView = StringView(string: string)
         let lineManager = LineManager(stringView: stringView)
-        var editedLines: Set<DocumentLineNode> = []
-        lineManager.insert(string as NSString, at: 0, editedLines: &editedLines)
+        lineManager.insert(string as NSString, at: 0)
         return lineManager
     }
 }
