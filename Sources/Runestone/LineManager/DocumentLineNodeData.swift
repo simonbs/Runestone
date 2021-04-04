@@ -14,7 +14,7 @@ public final class DocumentLineNodeData {
             assert(delimiterLength >= 0 && delimiterLength <= 2)
         }
     }
-    var totalLength: Int = 0
+    var totalLength = 0
     var length: Int {
         return totalLength - delimiterLength
     }
