@@ -632,8 +632,11 @@ extension TextInputView {
         let currentText = self.text(in: range) ?? ""
         let newRange = NSRange(location: range.location, length: nsText.length)
         addUndoOperation(replacing: newRange, withText: currentText)
-        selectedTextRange = IndexedRange(location: newRange.upperBound, length: 0)
+        inputDelegate?.selectionWillChange(self)
+        selectedRange = NSRange(location: newRange.upperBound, length: 0)
         replaceCharacters(in: range, with: nsText)
+        inputDelegate?.selectionDidChange(self)
+        delegate?.textInputViewDidChangeSelection(self)
     }
 
     func deleteBackward() {
@@ -651,8 +654,11 @@ extension TextInputView {
                 let undoRange = NSRange(location: deleteRange.location, length: 0)
                 addUndoOperation(replacing: undoRange, withText: currentText)
             }
-            selectedTextRange = IndexedRange(location: deleteRange.location, length: 0)
+            inputDelegate?.selectionWillChange(self)
+            self.selectedRange = NSRange(location: deleteRange.location, length: 0)
             replaceCharacters(in: deleteRange, with: "")
+            inputDelegate?.selectionDidChange(self)
+            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
