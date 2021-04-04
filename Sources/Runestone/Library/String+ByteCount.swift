@@ -52,8 +52,8 @@ public extension String {
         let utf16View = utf16
         let startUTF8Index = utf8View.index(utf8View.startIndex, offsetBy: byteRange.location.value, limitedBy: utf8View.endIndex) ?? utf8View.endIndex
         let endUTF8Index = utf8View.index(startUTF8Index, offsetBy: byteRange.length.value, limitedBy: utf8View.endIndex) ?? utf8View.endIndex
-        let startUTF16Index = startUTF8Index.samePosition(in: utf16View)!
-        let endUTF16Index = endUTF8Index.samePosition(in: utf16View)!
+        let startUTF16Index = startUTF8Index.samePosition(in: utf16View) ?? utf16View.startIndex
+        let endUTF16Index = endUTF8Index.samePosition(in: utf16View) ?? utf16View.endIndex
         let location = utf16View.distance(from: utf16View.startIndex, to: startUTF16Index)
         let length = utf16View.distance(from: startUTF16Index, to: endUTF16Index)
         return NSRange(location: location, length: length)
