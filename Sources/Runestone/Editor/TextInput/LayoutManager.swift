@@ -241,7 +241,7 @@ final class LayoutManager {
         if showLineNumbers {
             return gutterWidth + textContainerInset.left
         } else {
-            return textContainerInset.left
+            return safeAreaInsets.left + textContainerInset.left
         }
     }
     // Reset the line widths when changing the line manager to measure the
@@ -256,7 +256,7 @@ final class LayoutManager {
     private var lineIDTrackingWidth: DocumentLineNodeID?
     private var maximumLineWidth: CGFloat {
         if isLineWrappingEnabled {
-            return scrollViewWidth - leadingLineSpacing - textContainerInset.right
+            return scrollViewWidth - leadingLineSpacing - safeAreaInsets.right - textContainerInset.right
         } else {
             // Rendering multiple very long lines is very expensive. In order to let the editor remain useable,
             // we set a very high maximum line width when line wrapping is disabled.
