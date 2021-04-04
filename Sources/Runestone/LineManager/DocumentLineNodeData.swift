@@ -44,3 +44,9 @@ private extension DocumentLineTree {
         return offset(of: node, valueKeyPath: \.data.byteCount, totalValueKeyPath: \.data.nodeTotalByteCount, minimumValue: ByteCount(0))
     }
 }
+
+extension DocumentLineNodeData: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        return "[DocumentLineNodeData length=\(length) delimiterLength=\(delimiterLength) totalLength=\(totalLength)]"
+    }
+}
