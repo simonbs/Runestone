@@ -1,6 +1,6 @@
 //
 //  json.h
-//  Example
+//  RunestoneEditor
 //
 //  Created by Simon Støvring on 30/12/2020.
 //
