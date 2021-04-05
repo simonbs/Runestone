@@ -28,6 +28,8 @@ final class PageGuideView: UIView {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
+        isUserInteractionEnabled = false
+        hairlineView.isUserInteractionEnabled = false
         addSubview(hairlineView)
     }
 
