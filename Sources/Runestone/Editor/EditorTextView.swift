@@ -375,6 +375,10 @@ public final class EditorTextView: UIScrollView {
             textInputView.pageGuideColumn = newValue
         }
     }
+    /// Automatically scrolls the text view to show the caret when typing or moving the caret.
+    public var isAutomaticScrollEnabled = true
+    /// Adjustment applied to the content offset when automatically scrolling the text view to show the caret.
+    public var automaticScrollContentOffsetAdjustment: UIEdgeInsets = .zero
 
     private let textInputView: TextInputView
     private let editableTextInteraction = UITextInteraction(for: .editable)
@@ -642,15 +646,57 @@ private extension EditorTextView {
             gestureRecognizer.require(toFail: tapGestureRecognizer)
         }
     }
+
+    private func scroll(to location: Int, animated: Bool = false) {
+        let gutterWidth = textInputView.gutterWidth
+        let caretRect = textInputView.caretRect(at: location)
+        var newXOffset = contentOffset.x
+        var newYOffset = contentOffset.y
+        var visibleBounds = bounds
+        visibleBounds.origin.y += adjustedContentInset.top
+        visibleBounds.origin.x += adjustedContentInset.left
+        visibleBounds.size.height -= adjustedContentInset.top + adjustedContentInset.bottom
+        visibleBounds.size.width -= adjustedContentInset.left + adjustedContentInset.right
+        if caretRect.minX - gutterWidth < visibleBounds.minX {
+            newXOffset = caretRect.minX - gutterWidth
+            newXOffset -= automaticScrollContentOffsetAdjustment.left
+        } else if caretRect.maxX > visibleBounds.maxX {
+            newXOffset = caretRect.maxX - frame.width
+            newXOffset += automaticScrollContentOffsetAdjustment.right
+        }
+        if caretRect.minY < visibleBounds.minY {
+            newYOffset = caretRect.minY - adjustedContentInset.top
+            newYOffset -= automaticScrollContentOffsetAdjustment.top
+        } else if caretRect.maxY > visibleBounds.maxY {
+            newYOffset = caretRect.maxY - visibleBounds.height - adjustedContentInset.top
+            newYOffset += automaticScrollContentOffsetAdjustment.bottom
+        }
+        let viewportWidth = frame.width - adjustedContentInset.left - adjustedContentInset.right
+        let viewportHeight = frame.height - adjustedContentInset.top - adjustedContentInset.bottom
+        let maximumContentOffsetX = max(contentSize.width - viewportWidth, 0)
+        let maximumContentOffsetY = max(contentSize.height - viewportHeight, 0)
+        let cappedNewXOffset = min(max(newXOffset, adjustedContentInset.left * -1), maximumContentOffsetX)
+        let cappedNewYOffset = min(max(newYOffset, adjustedContentInset.top * -1), maximumContentOffsetY)
+        let newContentOffset = CGPoint(x: cappedNewXOffset, y: cappedNewYOffset)
+        if newContentOffset != contentOffset {
+            setContentOffset(newContentOffset, animated: animated)
+        }
+    }
 }
 
 // MARK: - TextInputViewDelegate
 extension EditorTextView: TextInputViewDelegate {
     func textInputViewDidChange(_ view: TextInputView) {
+        if isAutomaticScrollEnabled, let newRange = textInputView.selectedRange, newRange.length == 0 {
+            scroll(to: newRange.location)
+        }
         editorDelegate?.editorTextViewDidChange(self)
     }
 
     func textInputViewDidChangeSelection(_ view: TextInputView) {
+        if isAutomaticScrollEnabled, let newRange = textInputView.selectedRange, newRange.length == 0 {
+            scroll(to: newRange.location)
+        }
         editorDelegate?.editorTextViewDidChangeSelection(self)
     }
 
