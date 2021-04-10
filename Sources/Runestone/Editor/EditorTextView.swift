@@ -19,6 +19,10 @@ public protocol EditorTextViewDelegate: AnyObject {
     func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: CharacterPair, in range: NSRange) -> Bool
     func editorTextView(_ textView: EditorTextView, shouldSkipTrailingComponentOf characterPair: CharacterPair, in range: NSRange) -> Bool
     func editorTextViewDidUpdateGutterWidth(_ textView: EditorTextView)
+    func editorTextViewDidBeginFloatingCursor(_ view: EditorTextView)
+    func editorTextViewDidEndFloatingCursor(_ view: EditorTextView)
+    func editorTextViewDidBeginDraggingCursor(_ view: EditorTextView)
+    func editorTextViewDidEndDraggingCursor(_ view: EditorTextView)
 }
 
 public extension EditorTextViewDelegate {
@@ -42,6 +46,10 @@ public extension EditorTextViewDelegate {
         return true
     }
     func editorTextViewDidUpdateGutterWidth(_ textView: EditorTextView) {}
+    func editorTextViewDidBeginFloatingCursor(_ view: EditorTextView) {}
+    func editorTextViewDidEndFloatingCursor(_ view: EditorTextView) {}
+    func editorTextViewDidBeginDraggingCursor(_ view: EditorTextView) {}
+    func editorTextViewDidEndDraggingCursor(_ view: EditorTextView) {}
 }
 
 public final class EditorTextView: UIScrollView {
@@ -401,6 +409,7 @@ public final class EditorTextView: UIScrollView {
     }
     private var hasPendingContentSizeUpdate = false
     private var isInputAccessoryViewEnabled = false
+    private var isAdjustingCursor = false
 
     public override init(frame: CGRect) {
         textInputView = TextInputView(theme: DefaultEditorTheme())
@@ -632,21 +641,6 @@ private extension EditorTextView {
         }
     }
 
-    private func installEditableInteraction() {
-        isInputAccessoryViewEnabled = true
-        removeInteraction(nonEditableTextInteraction)
-        addInteraction(editableTextInteraction)
-    }
-
-    private func installNonEditableInteraction() {
-        isInputAccessoryViewEnabled = false
-        removeInteraction(editableTextInteraction)
-        addInteraction(nonEditableTextInteraction)
-        for gestureRecognizer in nonEditableTextInteraction.gesturesForFailureRequirements {
-            gestureRecognizer.require(toFail: tapGestureRecognizer)
-        }
-    }
-
     private func scroll(to location: Int, animated: Bool = false) {
         let gutterWidth = textInputView.gutterWidth
         let caretRect = textInputView.caretRect(at: location)
@@ -682,19 +676,62 @@ private extension EditorTextView {
             setContentOffset(newContentOffset, animated: animated)
         }
     }
+
+    private func installEditableInteraction() {
+        isInputAccessoryViewEnabled = true
+        uninstallListenersForGestureRecognizers(attachedTo: nonEditableTextInteraction)
+        removeInteraction(nonEditableTextInteraction)
+        addInteraction(editableTextInteraction)
+        installListenersForGestureRecognizers(attachedTo: editableTextInteraction)
+    }
+
+    private func installNonEditableInteraction() {
+        isInputAccessoryViewEnabled = false
+        removeInteraction(editableTextInteraction)
+        addInteraction(nonEditableTextInteraction)
+        for gestureRecognizer in nonEditableTextInteraction.gesturesForFailureRequirements {
+            gestureRecognizer.require(toFail: tapGestureRecognizer)
+        }
+    }
+
+    private func installListenersForGestureRecognizers(attachedTo textInteraction: UITextInteraction) {
+        for gestureRecognizer in editableTextInteraction.gesturesForFailureRequirements {
+            if gestureRecognizer is UILongPressGestureRecognizer {
+                gestureRecognizer.addTarget(self, action: #selector(handleLoupeGesture(from:)))
+            }
+        }
+    }
+
+    private func uninstallListenersForGestureRecognizers(attachedTo textInteraction: UITextInteraction) {
+        for gestureRecognizer in editableTextInteraction.gesturesForFailureRequirements {
+            if gestureRecognizer is UILongPressGestureRecognizer {
+                gestureRecognizer.removeTarget(self, action: #selector(handleLoupeGesture(from:)))
+            }
+        }
+    }
+
+    @objc private func handleLoupeGesture(from gestureRecognizer: UILongPressGestureRecognizer) {
+        if gestureRecognizer.state == .began {
+            isAdjustingCursor = true
+            editorDelegate?.editorTextViewDidBeginDraggingCursor(self)
+        } else {
+            isAdjustingCursor = false
+            editorDelegate?.editorTextViewDidEndDraggingCursor(self)
+        }
+    }
 }
 
 // MARK: - TextInputViewDelegate
 extension EditorTextView: TextInputViewDelegate {
     func textInputViewDidChange(_ view: TextInputView) {
-        if isAutomaticScrollEnabled, let newRange = textInputView.selectedRange, newRange.length == 0 {
+        if isAutomaticScrollEnabled, !isAdjustingCursor, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scroll(to: newRange.location)
         }
         editorDelegate?.editorTextViewDidChange(self)
     }
 
     func textInputViewDidChangeSelection(_ view: TextInputView) {
-        if isAutomaticScrollEnabled, let newRange = textInputView.selectedRange, newRange.length == 0 {
+        if isAutomaticScrollEnabled, !isAdjustingCursor, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scroll(to: newRange.location)
         }
         editorDelegate?.editorTextViewDidChangeSelection(self)
@@ -726,6 +763,14 @@ extension EditorTextView: TextInputViewDelegate {
 
     func textInputViewDidUpdateGutterWidth(_ view: TextInputView) {
         editorDelegate?.editorTextViewDidUpdateGutterWidth(self)
+    }
+
+    func textInputViewDidBeginFloatingCursor(_ view: TextInputView) {
+        editorDelegate?.editorTextViewDidBeginFloatingCursor(self)
+    }
+
+    func textInputViewDidEndFloatingCursor(_ view: TextInputView) {
+        editorDelegate?.editorTextViewDidEndFloatingCursor(self)
     }
 }
 
