@@ -14,6 +14,8 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidInvalidateContentSize(_ view: TextInputView)
     func textInputView(_ view: TextInputView, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
     func textInputViewDidUpdateGutterWidth(_ view: TextInputView)
+    func textInputViewDidBeginFloatingCursor(_ view: TextInputView)
+    func textInputViewDidEndFloatingCursor(_ view: TextInputView)
 }
 
 final class TextInputView: UIView, UITextInput {
@@ -566,6 +568,7 @@ extension TextInputView {
             floatingCaretView.frame = CGRect(origin: caretOrigin, size: caretRect.size)
             addSubview(floatingCaretView)
             self.floatingCaretView = floatingCaretView
+            delegate?.textInputViewDidBeginFloatingCursor(self)
         }
     }
 
@@ -582,6 +585,7 @@ extension TextInputView {
         updateCaretColor()
         floatingCaretView?.removeFromSuperview()
         floatingCaretView = nil
+        delegate?.textInputViewDidEndFloatingCursor(self)
     }
 
     private func updateCaretColor() {
