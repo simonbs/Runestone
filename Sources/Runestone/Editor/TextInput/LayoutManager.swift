@@ -17,7 +17,7 @@ protocol LayoutManagerDelegate: AnyObject {
 final class LayoutManager {
     // MARK: - Public
     weak var delegate: LayoutManagerDelegate?
-    weak var editorView: UIView? {
+    weak var editorView: UIScrollView? {
         didSet {
             if editorView != oldValue {
                 setupViewHierarchy()
@@ -158,7 +158,7 @@ final class LayoutManager {
     }
     var gutterWidth: CGFloat {
         if showLineNumbers {
-            return lineNumberWidth + gutterLeadingPadding + gutterTrailingPadding + safeAreaInsets.left
+            return lineNumberWidth + gutterLeadingPadding + gutterTrailingPadding
         } else {
             return 0
         }
@@ -234,35 +234,52 @@ final class LayoutManager {
     private var lineNumberWidth: CGFloat = 0
     private var previousLineNumberWidthUpdateLineCount: Int?
     private var previousLineNumberWidthUpdateFont: UIFont?
-    private var safeAreaInsets: UIEdgeInsets {
-        return editorView?.safeAreaInsets ?? .zero
-    }
     private var leadingLineSpacing: CGFloat {
         if showLineNumbers {
             return gutterWidth + textContainerInset.left
         } else {
-            return safeAreaInsets.left + textContainerInset.left
+            return textContainerInset.left
         }
     }
     // Reset the line widths when changing the line manager to measure the
     // longest line and use it to determine the content width.
     private var shouldResetLineWidths = true
-
-    // MARK: - Rendering
-    private var lineControllers: [DocumentLineNodeID: LineController] = [:]
-    private var needsLayout = false
-    private var needsLayoutSelection = false
     private var lineWidths: [DocumentLineNodeID: CGFloat] = [:]
     private var lineIDTrackingWidth: DocumentLineNodeID?
     private var maximumLineWidth: CGFloat {
         if isLineWrappingEnabled {
-            return scrollViewWidth - leadingLineSpacing - safeAreaInsets.right - textContainerInset.right
+            return scrollViewWidth - leadingLineSpacing - textContainerInset.right
         } else {
             // Rendering multiple very long lines is very expensive. In order to let the editor remain useable,
             // we set a very high maximum line width when line wrapping is disabled.
             return 10000
         }
     }
+    private var insetViewport: CGRect {
+        let x = viewport.minX - textContainerInset.left
+        let y = viewport.minY - textContainerInset.top
+        let width = viewport.width + textContainerInset.left + textContainerInset.right
+        let height = viewport.height + textContainerInset.top + textContainerInset.bottom
+        return CGRect(x: x, y: y, width: width, height: height)
+    }
+    private var additionalInset: UIEdgeInsets {
+        if let editorView = editorView {
+            let adjustContentInset = editorView.adjustedContentInset
+            let contentInset = editorView.contentInset
+            return UIEdgeInsets(
+                top: adjustContentInset.top - contentInset.top,
+                left: adjustContentInset.left - contentInset.left,
+                bottom: adjustContentInset.bottom - contentInset.bottom,
+                right: adjustContentInset.right - contentInset.right)
+        } else {
+            return .zero
+        }
+    }
+
+    // MARK: - Rendering
+    private var lineControllers: [DocumentLineNodeID: LineController] = [:]
+    private var needsLayout = false
+    private var needsLayoutSelection = false
     private var lineBreakInvisibleSymbolWidth: CGFloat {
         if invisibleCharacterConfiguration.showLineBreaks {
             return invisibleCharacterConfiguration.lineBreakSymbolSize.width
@@ -500,9 +517,10 @@ extension LayoutManager {
     }
 
     private func layoutGutter() {
-        gutterContainerView.frame = CGRect(x: viewport.minX, y: 0, width: gutterWidth, height: contentSize.height)
-        gutterBackgroundView.frame = CGRect(x: 0, y: viewport.minY, width: gutterWidth, height: viewport.height)
-        lineNumbersContainerView.frame = CGRect(x: 0, y: 0, width: gutterWidth, height: contentSize.height)
+        let totalGutterWidth = additionalInset.left + gutterWidth
+        gutterContainerView.frame = CGRect(x: viewport.minX, y: 0, width: totalGutterWidth, height: contentSize.height)
+        gutterBackgroundView.frame = CGRect(x: 0, y: viewport.minY, width: totalGutterWidth, height: viewport.height)
+        lineNumbersContainerView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: contentSize.height)
     }
 
     private func layoutSelection() {
@@ -523,20 +541,21 @@ extension LayoutManager {
             let line = lineManager.line(containingCharacterAt: startLocation)!
             selectedRect = CGRect(x: 0, y: textContainerInset.top + line.yPosition, width: scrollViewWidth, height: line.data.lineHeight)
         }
-        gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: gutterWidth, height: selectedRect.height)
-        lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + gutterWidth, y: selectedRect.minY, width: scrollViewWidth - gutterWidth, height: selectedRect.height)
+        let totalGutterWidth = additionalInset.left + gutterWidth
+        gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: totalGutterWidth, height: selectedRect.height)
+        lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + totalGutterWidth, y: selectedRect.minY, width: scrollViewWidth - gutterWidth, height: selectedRect.height)
     }
 
     private func layoutLines() {
         let oldVisibleLineIDs = visibleLineIDs
         let oldVisibleLineFragmentIDs = Set(lineFragmentViewReuseQueue.visibleViews.keys)
         // Layout lines until we have filled the viewport.
-        var nextLine = lineManager.line(containingYOffset: viewport.minY)
+        var nextLine = lineManager.line(containingYOffset: insetViewport.minY)
         var appearedLineIDs: Set<DocumentLineNodeID> = []
         var appearedLineFragmentIDs: Set<LineFragmentID> = []
-        var maxY = viewport.minY
+        var maxY = insetViewport.minY
         var contentOffsetAdjustmentY: CGFloat = 0
-        while let line = nextLine, maxY < viewport.maxY {
+        while let line = nextLine, maxY < insetViewport.maxY {
             appearedLineIDs.insert(line.id)
             // Prepare to line controller to display text.
             let lineController = lineController(for: line)
@@ -546,7 +565,7 @@ extension LayoutManager {
             layoutLineNumberView(for: line)
             // Layout line fragments ("sublines") in the line until we have filled the viewport.
             let lineYPosition = line.yPosition
-            let lineFragmentControllers = lineController.lineFragmentControllers(in: viewport)
+            let lineFragmentControllers = lineController.lineFragmentControllers(in: insetViewport)
             for lineFragmentController in lineFragmentControllers {
                 let lineFragment = lineFragmentController.lineFragment
                 appearedLineFragmentIDs.insert(lineFragment.id)
@@ -589,7 +608,7 @@ extension LayoutManager {
         }
         let lineController = lineController(for: line)
         let fontLineHeight = theme.font.lineHeight
-        let xPosition = safeAreaInsets.left + gutterLeadingPadding
+        let xPosition = additionalInset.left + gutterLeadingPadding
         var yPosition = textContainerInset.top + line.yPosition
         if lineController.numberOfLineFragments > 1 {
             // There are more than one line fragments, so we align the line number number at the top.
@@ -643,7 +662,7 @@ extension LayoutManager {
             // This happens when layout information above the content offset is invalidated and the user is scrolling upwards, e.g. after
             // changing the line height. To accommodate this change and reduce the "jump", we ask the scroll view to adjust the content offset
             // by the amount that the line height has changed. The solution is borrowed from https://github.com/airbnb/MagazineLayout/pull/11
-            let isSizingElementAboveTopEdge = line.yPosition < viewport.minY + textContainerInset.top
+            let isSizingElementAboveTopEdge = line.yPosition < insetViewport.minY + textContainerInset.top
             if isSizingElementAboveTopEdge {
                 contentOffsetAdjustmentY = newLineHeight - oldLineHeight
             }

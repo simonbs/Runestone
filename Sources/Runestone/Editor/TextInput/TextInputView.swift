@@ -323,7 +323,7 @@ final class TextInputView: UIView, UITextInput {
     override var canBecomeFirstResponder: Bool {
         return true
     }
-    weak var editorView: UIView? {
+    weak var editorView: UIScrollView? {
         get {
             return layoutManager.editorView
         }
