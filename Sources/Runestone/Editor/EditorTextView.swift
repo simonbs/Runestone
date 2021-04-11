@@ -206,6 +206,9 @@ public final class EditorTextView: UIScrollView {
             _inputAccessoryView = newValue
         }
     }
+    public override var inputAssistantItem: UITextInputAssistantItem {
+        return textInputView.inputAssistantItem
+    }
     public override var canBecomeFirstResponder: Bool {
         return !textInputView.isFirstResponder
     }
@@ -393,6 +396,7 @@ public final class EditorTextView: UIScrollView {
     private let nonEditableTextInteraction = UITextInteraction(for: .nonEditable)
     private let tapGestureRecognizer = QuickTapGestureRecognizer()
     private var _inputAccessoryView: UIView?
+    private let _inputAssistantItem = UITextInputAssistantItem()
     private var shouldBeginEditing: Bool {
         if let editorDelegate = editorDelegate {
             return editorDelegate.editorTextViewShouldBeginEditing(self)
