@@ -714,7 +714,7 @@ private extension EditorTextView {
         if gestureRecognizer.state == .began {
             isAdjustingCursor = true
             editorDelegate?.editorTextViewDidBeginDraggingCursor(self)
-        } else {
+        } else if gestureRecognizer.state == .ended {
             isAdjustingCursor = false
             editorDelegate?.editorTextViewDidEndDraggingCursor(self)
         }
