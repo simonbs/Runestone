@@ -303,11 +303,9 @@ final class TextInputView: UIView, UITextInput {
         }
         set {
             if newValue != layoutManager.viewport {
-                inputDelegate?.selectionWillChange(self)
                 layoutManager.viewport = newValue
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
-                inputDelegate?.selectionDidChange(self)
             }
         }
     }
@@ -431,9 +429,7 @@ final class TextInputView: UIView, UITextInput {
 
     override func paste(_ sender: Any?) {
         if let selectedTextRange = selectedTextRange, let string = UIPasteboard.general.string {
-            inputDelegate?.selectionWillChange(self)
             replace(selectedTextRange, withText: string)
-            inputDelegate?.selectionDidChange(self)
         }
     }
 
@@ -647,10 +643,8 @@ extension TextInputView {
         let currentText = self.text(in: range) ?? ""
         let newRange = NSRange(location: range.location, length: nsText.length)
         addUndoOperation(replacing: newRange, withText: currentText)
-        inputDelegate?.selectionWillChange(self)
         selectedRange = NSRange(location: newRange.upperBound, length: 0)
         replaceCharacters(in: range, with: nsText)
-        inputDelegate?.selectionDidChange(self)
         delegate?.textInputViewDidChangeSelection(self)
     }
 
@@ -669,10 +663,8 @@ extension TextInputView {
                 let undoRange = NSRange(location: deleteRange.location, length: 0)
                 addUndoOperation(replacing: undoRange, withText: currentText)
             }
-            inputDelegate?.selectionWillChange(self)
             self.selectedRange = NSRange(location: deleteRange.location, length: 0)
             replaceCharacters(in: deleteRange, with: "")
-            inputDelegate?.selectionDidChange(self)
             delegate?.textInputViewDidChangeSelection(self)
         }
     }
@@ -701,7 +693,6 @@ extension TextInputView {
     }
 
     private func replaceCharacters(in range: NSRange, with newString: NSString) {
-        inputDelegate?.textWillChange(self)
         let changeSet = justReplaceCharacters(in: range, with: newString)
         let didAddOrRemoveLines = !changeSet.insertedLines.isEmpty || !changeSet.removedLines.isEmpty
         if didAddOrRemoveLines {
@@ -714,7 +705,6 @@ extension TextInputView {
         layoutManager.typeset(changeSet.editedLines)
         layoutManager.syntaxHighlight(changeSet.editedLines)
         layoutManager.setNeedsLayout()
-        inputDelegate?.textDidChange(self)
         delegate?.textInputViewDidChange(self)
         if didAddOrRemoveLines {
             delegate?.textInputViewDidInvalidateContentSize(self)
@@ -952,20 +942,16 @@ extension TextInputView: LayoutManagerDelegate {
     func layoutManagerDidUpdateGutterWidth(_ layoutManager: LayoutManager) {
         // Typeset lines again when the line number width changes. Changing line number width may increase
         // or reduce the number of line fragments in a line.
-        inputDelegate?.selectionWillChange(self)
         layoutManager.invalidateLines()
         layoutManager.setNeedsLayout()
         layoutManager.layoutIfNeeded()
-        inputDelegate?.selectionDidChange(self)
         delegate?.textInputViewDidUpdateGutterWidth(self)
     }
 
     func layoutManagerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ layoutManager: LayoutManager) {
         // Sizing may be invalidated when doing async syntax highlighting, in which case we need to do another layout pass.
-        inputDelegate?.selectionWillChange(self)
         layoutManager.setNeedsLayout()
         layoutManager.layoutIfNeeded()
-        inputDelegate?.selectionDidChange(self)
     }
 }
 
