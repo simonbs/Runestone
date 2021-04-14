@@ -280,9 +280,20 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != stringView.string {
                 stringView.string = newValue
+                languageMode.parse(newValue as String)
                 lineManager.rebuild(from: newValue)
+                inputDelegate?.selectionWillChange(self)
+                if let selectedRange = selectedRange {
+                    let cappedLocation = min(max(selectedRange.location, 0), stringView.string.length)
+                    let cappedLength = min(max(selectedRange.length, 0), stringView.string.length - cappedLocation)
+                    self.selectedRange = NSRange(location: cappedLocation, length: cappedLength)
+                }
                 layoutManager.invalidateContentSize()
                 layoutManager.updateLineNumberWidth()
+                layoutManager.invalidateLines()
+                layoutManager.setNeedsLayout()
+                layoutManager.layoutIfNeeded()
+                inputDelegate?.selectionDidChange(self)
             }
         }
     }
