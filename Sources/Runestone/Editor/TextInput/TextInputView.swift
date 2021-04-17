@@ -807,13 +807,9 @@ extension TextInputView {
 
 // MARK: - Marking
 extension TextInputView {
-    func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
-        print("Mark \(selectedRange)")
-    }
+    func setMarkedText(_ markedText: String?, selectedRange: NSRange) {}
 
-    func unmarkText() {
-        print("Unmark")
-    }
+    func unmarkText() {}
 }
 
 // MARK: - Ranges and Positions
