@@ -451,7 +451,7 @@ final class TextInputView: UIView, UITextInput {
 
     /// When autocorrection is enabled and the user tap on a misspelled word, UITextInteraction will present
     /// a UIMenuController with suggestions for the correct spelling of the word. Selecting a suggestion will
-    /// cause UITexTInteraction to call the non-existing -replace(_:) function and pass an instance of the private
+    /// cause UITextInteraction to call the non-existing -replace(_:) function and pass an instance of the private
     /// UITextReplacement type as parameter. We can't make autocorrection work properly without using private API.
     @objc func replace(_ obj: NSObject) {
         if let replacementText = obj.value(forKey: "_repl" + "Ttnemeca".reversed() + "ext") as? String {
