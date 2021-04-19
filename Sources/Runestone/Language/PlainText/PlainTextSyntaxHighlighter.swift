@@ -8,7 +8,7 @@
 import Foundation
 
 final class PlainTextSyntaxHighlighter: LineSyntaxHighlighter {
-    var theme: EditorTheme = DefaultEditorTheme()
+    var theme: Theme = DefaultTheme()
     var canHighlight: Bool {
         return false
     }

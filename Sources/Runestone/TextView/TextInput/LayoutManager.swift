@@ -64,7 +64,7 @@ final class LayoutManager {
             }
         }
     }
-    var theme: EditorTheme = DefaultEditorTheme() {
+    var theme: Theme = DefaultTheme() {
         didSet {
             if theme !== oldValue {
                 updateLineNumberWidth()

@@ -22,7 +22,7 @@ enum TreeSitterSyntaxHighlighterError: LocalizedError {
 }
 
 final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
-    var theme: EditorTheme = DefaultEditorTheme()
+    var theme: Theme = DefaultTheme()
     var canHighlight: Bool {
         return languageMode.canHighlight
     }
@@ -150,10 +150,10 @@ private extension TreeSitterSyntaxHighlighter {
 
 private extension TreeSitterSyntaxHighlighter {
     private func attributes(for capture: TreeSitterCapture, in range: ByteRange) -> TreeSitterSyntaxHighlightToken {
-        let textColor = theme.textColorForCaptureSequence(capture.name)
-        let shadow = theme.shadowForCaptureSequence(capture.name)
-        let font = theme.fontForCaptureSequence(capture.name)
-        let fontTraits = theme.fontTraitsForCaptureSequence(capture.name)
+        let textColor = theme.textColor(for: capture.name)
+        let shadow = theme.shadow(for: capture.name)
+        let font = theme.font(for: capture.name)
+        let fontTraits = theme.fontTraits(for: capture.name)
         return TreeSitterSyntaxHighlightToken(range: range, textColor: textColor, shadow: shadow, font: font, fontTraits: fontTraits)
     }
 }

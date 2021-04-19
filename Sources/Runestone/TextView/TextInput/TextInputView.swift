@@ -88,7 +88,7 @@ final class TextInputView: UIView, UITextInput {
     }
 
     // MARK: - Appearance
-    var theme: EditorTheme {
+    var theme: Theme {
         didSet {
             lineManager.estimatedLineHeight = estimatedLineHeight
             indentController.indentFont = theme.font
@@ -394,7 +394,7 @@ final class TextInputView: UIView, UITextInput {
     }
 
     // MARK: - Lifecycle
-    init(theme: EditorTheme) {
+    init(theme: Theme) {
         self.theme = theme
         lineManager = LineManager(stringView: stringView)
         layoutManager = LayoutManager(lineManager: lineManager, languageMode: languageMode, stringView: stringView)
@@ -485,7 +485,7 @@ final class TextInputView: UIView, UITextInput {
         return lineManager.linePosition(at: location)
     }
 
-    func setState(_ state: EditorState) {
+    func setState(_ state: TextViewState) {
         stringView = state.stringView
         theme = state.theme
         languageMode = state.languageMode

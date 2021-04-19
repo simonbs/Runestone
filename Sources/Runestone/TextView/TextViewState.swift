@@ -1,5 +1,5 @@
 //
-//  EditorState.swift
+//  TextViewState.swift
 //  
 //
 //  Created by Simon Støvring on 16/01/2021.
@@ -7,16 +7,16 @@
 
 import Foundation
 
-public final class EditorState {
+public final class TextViewState {
     let text: String
     let stringView: StringView
-    let theme: EditorTheme
+    let theme: Theme
     let lineManager: LineManager
     let languageMode: LanguageMode
 
     public private(set) var detectedIndentStrategy: DetectedIndentStrategy = .unknown
 
-    public init(text: String, theme: EditorTheme, language: TreeSitterLanguage? = nil) {
+    public init(text: String, theme: Theme, language: TreeSitterLanguage? = nil) {
         self.text = text
         self.theme = theme
         self.stringView = StringView(string: NSMutableString(string: text))
@@ -30,7 +30,7 @@ public final class EditorState {
     }
 }
 
-private extension EditorState {
+private extension TextViewState {
     private func prepare() {
         lineManager.estimatedLineHeight = theme.font.lineHeight
         lineManager.rebuild(from: text as NSString)

@@ -18,7 +18,7 @@ public struct FontTraits: OptionSet {
     }
 }
 
-public protocol EditorTheme: AnyObject {
+public protocol Theme: AnyObject {
     var font: UIFont { get }
     var textColor: UIColor { get }
     var gutterBackgroundColor: UIColor { get }
@@ -32,13 +32,13 @@ public protocol EditorTheme: AnyObject {
     var invisibleCharactersColor: UIColor { get }
     var pageGuideHairlineColor: UIColor { get }
     var pageGuideBackgroundColor: UIColor { get }
-    func textColorForCaptureSequence(_ captureSequence: String) -> UIColor?
-    func fontForCaptureSequence(_ captureSequence: String) -> UIFont?
-    func fontTraitsForCaptureSequence(_ captureSequence: String) -> FontTraits
-    func shadowForCaptureSequence(_ captureSequence: String) -> NSShadow?
+    func textColor(for captureSequence: String) -> UIColor?
+    func font(for captureSequence: String) -> UIFont?
+    func fontTraits(for captureSequence: String) -> FontTraits
+    func shadow(for captureSequence: String) -> NSShadow?
 }
 
-public extension EditorTheme {
+public extension Theme {
     var gutterHairlineWidth: CGFloat {
         return 1 / UIScreen.main.scale
     }
@@ -47,15 +47,15 @@ public extension EditorTheme {
         return 1 / UIScreen.main.scale
     }
 
-    func fontForCaptureSequence(_ captureSequence: String) -> UIFont? {
+    func font(for captureSequence: String) -> UIFont? {
         return nil
     }
 
-    func fontTraitsForCaptureSequence(_ captureSequence: String) -> FontTraits {
+    func fontTraits(for captureSequence: String) -> FontTraits {
         return []
     }
 
-    func shadowForCaptureSequence(_ captureSequence: String) -> NSShadow? {
+    func shadow(for captureSequence: String) -> NSShadow? {
         return nil
     }
 }

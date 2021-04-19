@@ -1,5 +1,5 @@
 //
-//  EditorTextView.swift
+//  TextView.swift
 //  
 //
 //  Created by Simon Støvring on 04/01/2021.
@@ -8,53 +8,53 @@
 import CoreText
 import UIKit
 
-public protocol EditorTextViewDelegate: AnyObject {
-    func editorTextViewShouldBeginEditing(_ textView: EditorTextView) -> Bool
-    func editorTextViewShouldEndEditing(_ textView: EditorTextView) -> Bool
-    func editorTextViewDidBeginEditing(_ textView: EditorTextView)
-    func editorTextViewDidEndEditing(_ textView: EditorTextView)
-    func editorTextViewDidChange(_ textView: EditorTextView)
-    func editorTextViewDidChangeSelection(_ textView: EditorTextView)
-    func editorTextView(_ textView: EditorTextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
-    func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: CharacterPair, in range: NSRange) -> Bool
-    func editorTextView(_ textView: EditorTextView, shouldSkipTrailingComponentOf characterPair: CharacterPair, in range: NSRange) -> Bool
-    func editorTextViewDidUpdateGutterWidth(_ textView: EditorTextView)
-    func editorTextViewDidBeginFloatingCursor(_ view: EditorTextView)
-    func editorTextViewDidEndFloatingCursor(_ view: EditorTextView)
-    func editorTextViewDidBeginDraggingCursor(_ view: EditorTextView)
-    func editorTextViewDidEndDraggingCursor(_ view: EditorTextView)
+public protocol TextViewDelegate: AnyObject {
+    func textViewShouldBeginEditing(_ textView: TextView) -> Bool
+    func textViewShouldEndEditing(_ textView: TextView) -> Bool
+    func textViewDidBeginEditing(_ textView: TextView)
+    func textViewDidEndEditing(_ textView: TextView)
+    func textViewDidChange(_ textView: TextView)
+    func textViewDidChangeSelection(_ textView: TextView)
+    func textView(_ textView: TextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
+    func textView(_ textView: TextView, shouldInsert characterPair: CharacterPair, in range: NSRange) -> Bool
+    func textView(_ textView: TextView, shouldSkipTrailingComponentOf characterPair: CharacterPair, in range: NSRange) -> Bool
+    func textViewDidUpdateGutterWidth(_ textView: TextView)
+    func textViewDidBeginFloatingCursor(_ view: TextView)
+    func textViewDidEndFloatingCursor(_ view: TextView)
+    func textViewDidBeginDraggingCursor(_ view: TextView)
+    func textViewDidEndDraggingCursor(_ view: TextView)
 }
 
-public extension EditorTextViewDelegate {
-    func editorTextViewShouldBeginEditing(_ textView: EditorTextView) -> Bool {
+public extension TextViewDelegate {
+    func textViewShouldBeginEditing(_ textView: TextView) -> Bool {
         return true
     }
-    func editorTextViewShouldEndEditing(_ textView: EditorTextView) -> Bool {
+    func textViewShouldEndEditing(_ textView: TextView) -> Bool {
         return true
     }
-    func editorTextViewDidBeginEditing(_ textView: EditorTextView) {}
-    func editorTextViewDidEndEditing(_ textView: EditorTextView) {}
-    func editorTextViewDidChange(_ textView: EditorTextView) {}
-    func editorTextViewDidChangeSelection(_ textView: EditorTextView) {}
-    func editorTextView(_ textView: EditorTextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+    func textViewDidBeginEditing(_ textView: TextView) {}
+    func textViewDidEndEditing(_ textView: TextView) {}
+    func textViewDidChange(_ textView: TextView) {}
+    func textViewDidChangeSelection(_ textView: TextView) {}
+    func textView(_ textView: TextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
         return true
     }
-    func editorTextView(_ textView: EditorTextView, shouldInsert characterPair: CharacterPair, in range: NSRange) -> Bool {
+    func textView(_ textView: TextView, shouldInsert characterPair: CharacterPair, in range: NSRange) -> Bool {
         return true
     }
-    func editorTextView(_ textView: EditorTextView, shouldSkipTrailingComponentOf characterPair: CharacterPair, in range: NSRange) -> Bool {
+    func textView(_ textView: TextView, shouldSkipTrailingComponentOf characterPair: CharacterPair, in range: NSRange) -> Bool {
         return true
     }
-    func editorTextViewDidUpdateGutterWidth(_ textView: EditorTextView) {}
-    func editorTextViewDidBeginFloatingCursor(_ view: EditorTextView) {}
-    func editorTextViewDidEndFloatingCursor(_ view: EditorTextView) {}
-    func editorTextViewDidBeginDraggingCursor(_ view: EditorTextView) {}
-    func editorTextViewDidEndDraggingCursor(_ view: EditorTextView) {}
+    func textViewDidUpdateGutterWidth(_ textView: TextView) {}
+    func textViewDidBeginFloatingCursor(_ view: TextView) {}
+    func textViewDidEndFloatingCursor(_ view: TextView) {}
+    func textViewDidBeginDraggingCursor(_ view: TextView) {}
+    func textViewDidEndDraggingCursor(_ view: TextView) {}
 }
 
-public final class EditorTextView: UIScrollView {
+public final class TextView: UIScrollView {
     /// Delegate to receive callbacks for events triggered by the editor.
-    public weak var editorDelegate: EditorTextViewDelegate?
+    public weak var editorDelegate: TextViewDelegate?
     /// Whether the text view is in a state where the contents can be edited.
     public private(set) var isEditing = false {
         didSet {
@@ -73,7 +73,7 @@ public final class EditorTextView: UIScrollView {
         }
     }
     /// Colors and fonts to be used by the editor.
-    public var theme: EditorTheme {
+    public var theme: Theme {
         get {
             return textInputView.theme
         }
@@ -399,14 +399,14 @@ public final class EditorTextView: UIScrollView {
     private let _inputAssistantItem = UITextInputAssistantItem()
     private var shouldBeginEditing: Bool {
         if let editorDelegate = editorDelegate {
-            return editorDelegate.editorTextViewShouldBeginEditing(self)
+            return editorDelegate.textViewShouldBeginEditing(self)
         } else {
             return true
         }
     }
     private var shouldEndEditing: Bool {
         if let editorDelegate = editorDelegate {
-            return editorDelegate.editorTextViewShouldEndEditing(self)
+            return editorDelegate.textViewShouldEndEditing(self)
         } else {
             return true
         }
@@ -416,7 +416,7 @@ public final class EditorTextView: UIScrollView {
     private var isAdjustingCursor = false
 
     public override init(frame: CGRect) {
-        textInputView = TextInputView(theme: DefaultEditorTheme())
+        textInputView = TextInputView(theme: DefaultTheme())
         super.init(frame: frame)
         backgroundColor = .white
         textInputView.delegate = self
@@ -455,7 +455,7 @@ public final class EditorTextView: UIScrollView {
             installEditableInteraction()
             textInputView.resignFirstResponder()
             textInputView.becomeFirstResponder()
-            editorDelegate?.editorTextViewDidBeginEditing(self)
+            editorDelegate?.textViewDidBeginEditing(self)
             return true
         } else {
             return false
@@ -468,7 +468,7 @@ public final class EditorTextView: UIScrollView {
             isEditing = false
             textInputView.selectedTextRange = nil
             installNonEditableInteraction()
-            editorDelegate?.editorTextViewDidEndEditing(self)
+            editorDelegate?.textViewDidEndEditing(self)
             return textInputView.resignFirstResponder()
         } else {
             return false
@@ -478,13 +478,13 @@ public final class EditorTextView: UIScrollView {
     /// Sets the current _state_ of the editor. The state contains the text to be displayed by the editor and
     /// various additional information about the text that the editor needs to show the text.
     ///
-    /// It is safe to create an instance of <code>EditorState</code> in the background, and as such it can be
+    /// It is safe to create an instance of <code>TextViewState</code> in the background, and as such it can be
     /// created before presenting the editor to the user, e.g. when opening the document from an instance of
     /// <code>UIDocumentBrowserViewController</code>.
     ///
-    /// This is the preferred way to initially set the text, language and theme on the <code>EditorTextView</code>.
+    /// This is the preferred way to initially set the text, language and theme on the <code>TextView</code>.
     /// - Parameter state: The new state to be used by the editor.
-    public func setState(_ state: EditorState) {
+    public func setState(_ state: TextViewState) {
         textInputView.setState(state)
         contentSize = textInputView.contentSize
     }
@@ -565,7 +565,7 @@ public final class EditorTextView: UIScrollView {
     }
 }
 
-private extension EditorTextView {
+private extension TextView {
     @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
         if tapGestureRecognizer.state == .ended {
             let point = gestureRecognizer.location(in: textInputView)
@@ -575,7 +575,7 @@ private extension EditorTextView {
     }
 
     private func insertLeadingComponent(of characterPair: CharacterPair, in range: NSRange) -> Bool {
-        let shouldInsertCharacterPair = editorDelegate?.editorTextView(self, shouldInsert: characterPair, in: range) ?? true
+        let shouldInsertCharacterPair = editorDelegate?.textView(self, shouldInsert: characterPair, in: range) ?? true
         guard shouldInsertCharacterPair else {
             return false
         }
@@ -608,7 +608,7 @@ private extension EditorTextView {
         guard followingText == characterPair.trailing else {
             return false
         }
-        let shouldSkip = editorDelegate?.editorTextView(self, shouldSkipTrailingComponentOf: characterPair, in: range) ?? true
+        let shouldSkip = editorDelegate?.textView(self, shouldSkipTrailingComponentOf: characterPair, in: range) ?? true
         if shouldSkip {
             moveCaret(byOffset: characterPair.trailing.count)
             return true
@@ -717,28 +717,28 @@ private extension EditorTextView {
     @objc private func handleLoupeGesture(from gestureRecognizer: UILongPressGestureRecognizer) {
         if gestureRecognizer.state == .began {
             isAdjustingCursor = true
-            editorDelegate?.editorTextViewDidBeginDraggingCursor(self)
+            editorDelegate?.textViewDidBeginDraggingCursor(self)
         } else if gestureRecognizer.state == .ended {
             isAdjustingCursor = false
-            editorDelegate?.editorTextViewDidEndDraggingCursor(self)
+            editorDelegate?.textViewDidEndDraggingCursor(self)
         }
     }
 }
 
 // MARK: - TextInputViewDelegate
-extension EditorTextView: TextInputViewDelegate {
+extension TextView: TextInputViewDelegate {
     func textInputViewDidChange(_ view: TextInputView) {
         if isAutomaticScrollEnabled, !isAdjustingCursor, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scroll(to: newRange.location)
         }
-        editorDelegate?.editorTextViewDidChange(self)
+        editorDelegate?.textViewDidChange(self)
     }
 
     func textInputViewDidChangeSelection(_ view: TextInputView) {
         if isAutomaticScrollEnabled, !isAdjustingCursor, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scroll(to: newRange.location)
         }
-        editorDelegate?.editorTextViewDidChangeSelection(self)
+        editorDelegate?.textViewDidChangeSelection(self)
     }
 
     func textInputViewDidInvalidateContentSize(_ view: TextInputView) {
@@ -761,25 +761,25 @@ extension EditorTextView: TextInputViewDelegate {
         } else if let characterPair = characterPairs.first(where: { $0.leading == text }), insertLeadingComponent(of: characterPair, in: range) {
             return false
         } else {
-            return editorDelegate?.editorTextView(self, shouldChangeTextIn: range, replacementText: text) ?? true
+            return editorDelegate?.textView(self, shouldChangeTextIn: range, replacementText: text) ?? true
         }
     }
 
     func textInputViewDidUpdateGutterWidth(_ view: TextInputView) {
-        editorDelegate?.editorTextViewDidUpdateGutterWidth(self)
+        editorDelegate?.textViewDidUpdateGutterWidth(self)
     }
 
     func textInputViewDidBeginFloatingCursor(_ view: TextInputView) {
-        editorDelegate?.editorTextViewDidBeginFloatingCursor(self)
+        editorDelegate?.textViewDidBeginFloatingCursor(self)
     }
 
     func textInputViewDidEndFloatingCursor(_ view: TextInputView) {
-        editorDelegate?.editorTextViewDidEndFloatingCursor(self)
+        editorDelegate?.textViewDidEndFloatingCursor(self)
     }
 }
 
 // MARK: - UIGestureRecognizerDelegate
-extension EditorTextView: UIGestureRecognizerDelegate {
+extension TextView: UIGestureRecognizerDelegate {
     public override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         if gestureRecognizer === tapGestureRecognizer {
             return !isEditing && shouldBeginEditing

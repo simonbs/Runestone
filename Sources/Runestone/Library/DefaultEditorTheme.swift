@@ -7,7 +7,7 @@
 
 import UIKit
 
-final class DefaultEditorTheme: EditorTheme {
+final class DefaultTheme: Theme {
     fileprivate enum CaptureName: String {
         case `operator` = "operator"
         case keyword = "keyword"
@@ -40,7 +40,7 @@ final class DefaultEditorTheme: EditorTheme {
     let pageGuideBackgroundColor: UIColor = .secondarySystemBackground
     var pageGuideHairlineColor: UIColor = .opaqueSeparator
 
-    func textColorForCaptureSequence(_ captureSequence: String) -> UIColor? {
+    func textColor(for captureSequence: String) -> UIColor? {
         guard let captureName = CaptureName(sequence: captureSequence) else {
             return nil
         }
@@ -66,7 +66,7 @@ final class DefaultEditorTheme: EditorTheme {
         }
     }
 
-    func fontForCaptureSequence(_ captureSequence: String) -> UIFont? {
+    func font(for captureSequence: String) -> UIFont? {
         guard let captureName = CaptureName(sequence: captureSequence) else {
             return nil
         }
@@ -79,7 +79,7 @@ final class DefaultEditorTheme: EditorTheme {
     }
 }
 
-private extension DefaultEditorTheme.CaptureName {
+private extension DefaultTheme.CaptureName {
     init?(sequence: String) {
         // From the Tree-sitter documentation:
         //
