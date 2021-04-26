@@ -557,6 +557,14 @@ final class TextInputView: UIView, UITextInput {
         }
         return result
     }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+            layoutManager.invalidateLines()
+            layoutManager.setNeedsLayout()
+        }
+    }
 }
 
 // MARK: - Layout
