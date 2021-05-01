@@ -73,9 +73,27 @@ final class TextInputView: UIView, UITextInput {
     var keyboardType: UIKeyboardType = .default
     var keyboardAppearance: UIKeyboardAppearance = .default
     var returnKeyType: UIReturnKeyType = .default
-    @objc var insertionPointColor: UIColor = .black
-    @objc var selectionBarColor: UIColor = .black
-    @objc var selectionHighlightColor: UIColor = .black
+    @objc var insertionPointColor: UIColor = .black {
+        didSet {
+            if insertionPointColor != oldValue {
+                updateCaretColor()
+            }
+        }
+    }
+    @objc var selectionBarColor: UIColor = .black {
+        didSet {
+            if selectionBarColor != oldValue {
+                updateCaretColor()
+            }
+        }
+    }
+    @objc var selectionHighlightColor: UIColor = .black {
+        didSet {
+            if selectionHighlightColor != oldValue {
+                updateCaretColor()
+            }
+        }
+    }
     var isEditing = false {
         didSet {
             if isEditing != oldValue {
