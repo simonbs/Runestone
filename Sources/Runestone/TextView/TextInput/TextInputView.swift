@@ -123,9 +123,12 @@ final class TextInputView: UIView, UITextInput {
             return layoutManager.showLineNumbers
         }
         set {
-            layoutManager.showLineNumbers = newValue
-            layoutManager.setNeedsLayout()
-            setNeedsLayout()
+            if newValue != layoutManager.showLineNumbers {
+                layoutManager.showLineNumbers = newValue
+                layoutManager.setNeedsLayout()
+                setNeedsLayout()
+                layoutIfNeeded()
+            }
         }
     }
     var showSelectedLines: Bool {
@@ -143,7 +146,9 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.showTabs {
                 layoutManager.invisibleCharacterConfiguration.showTabs = newValue
-                setNeedsLayout()
+                layoutManager.invalidateLines()
+                layoutManager.setNeedsLayout()
+                layoutManager.layoutIfNeeded()
             }
         }
     }
@@ -154,7 +159,9 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.showSpaces {
                 layoutManager.invisibleCharacterConfiguration.showSpaces = newValue
-                setNeedsLayout()
+                layoutManager.invalidateLines()
+                layoutManager.setNeedsLayout()
+                layoutManager.layoutIfNeeded()
             }
         }
     }
@@ -165,7 +172,10 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.showLineBreaks {
                 layoutManager.invisibleCharacterConfiguration.showLineBreaks = newValue
+                layoutManager.invalidateLines()
+                layoutManager.setNeedsLayout()
                 setNeedsLayout()
+                layoutIfNeeded()
             }
         }
     }
@@ -176,7 +186,10 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.tabSymbol {
                 layoutManager.invisibleCharacterConfiguration.tabSymbol = newValue
+                layoutManager.invalidateLines()
+                layoutManager.setNeedsLayout()
                 setNeedsLayout()
+                layoutIfNeeded()
             }
         }
     }
@@ -187,7 +200,10 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.spaceSymbol {
                 layoutManager.invisibleCharacterConfiguration.spaceSymbol = newValue
+                layoutManager.invalidateLines()
+                layoutManager.setNeedsLayout()
                 setNeedsLayout()
+                layoutIfNeeded()
             }
         }
     }
@@ -198,7 +214,10 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.lineBreakSymbol {
                 layoutManager.invisibleCharacterConfiguration.lineBreakSymbol = newValue
+                layoutManager.invalidateLines()
+                layoutManager.setNeedsLayout()
                 setNeedsLayout()
+                layoutIfNeeded()
             }
         }
     }
@@ -218,7 +237,12 @@ final class TextInputView: UIView, UITextInput {
             return layoutManager.gutterLeadingPadding
         }
         set {
-            layoutManager.gutterLeadingPadding = newValue
+            if newValue != layoutManager.gutterLeadingPadding {
+                layoutManager.gutterLeadingPadding = newValue
+                layoutManager.setNeedsLayout()
+                setNeedsLayout()
+                layoutIfNeeded()
+            }
         }
     }
     var gutterTrailingPadding: CGFloat {
@@ -226,7 +250,12 @@ final class TextInputView: UIView, UITextInput {
             return layoutManager.gutterTrailingPadding
         }
         set {
-            layoutManager.gutterTrailingPadding = newValue
+            if newValue != layoutManager.gutterTrailingPadding {
+                layoutManager.gutterTrailingPadding = newValue
+                layoutManager.setNeedsLayout()
+                setNeedsLayout()
+                layoutIfNeeded()
+            }
         }
     }
     var textContainerInset: UIEdgeInsets {
@@ -234,7 +263,12 @@ final class TextInputView: UIView, UITextInput {
             return layoutManager.textContainerInset
         }
         set {
-            layoutManager.textContainerInset = newValue
+            if newValue != layoutManager.textContainerInset {
+                layoutManager.textContainerInset = newValue
+                layoutManager.setNeedsLayout()
+                setNeedsLayout()
+                layoutIfNeeded()
+            }
         }
     }
     var isLineWrappingEnabled: Bool {
@@ -242,7 +276,13 @@ final class TextInputView: UIView, UITextInput {
             return layoutManager.isLineWrappingEnabled
         }
         set {
-            layoutManager.isLineWrappingEnabled = newValue
+            if newValue != layoutManager.isLineWrappingEnabled {
+                layoutManager.isLineWrappingEnabled = newValue
+                layoutManager.invalidateLines()
+                layoutManager.setNeedsLayout()
+                setNeedsLayout()
+                layoutIfNeeded()
+            }
         }
     }
     var gutterWidth: CGFloat {
@@ -253,14 +293,17 @@ final class TextInputView: UIView, UITextInput {
             return layoutManager.lineHeightMultiplier
         }
         set {
-            // Notify the delegate that the selection may change as the position of the caret will change when we adjust the height of lines.
-            inputDelegate?.selectionWillChange(self)
-            layoutManager.lineHeightMultiplier = newValue
-            lineManager.estimatedLineHeight = estimatedLineHeight
-            inputDelegate?.selectionDidChange(self)
-            // Do a layout pass to ensure the position of the caret is correct.
-            setNeedsLayout()
-            layoutIfNeeded()
+            if newValue != layoutManager.lineHeightMultiplier {
+                // Notify the delegate that the selection may change as the position of the caret will change when we adjust the height of lines.
+                inputDelegate?.selectionWillChange(self)
+                layoutManager.lineHeightMultiplier = newValue
+                lineManager.estimatedLineHeight = estimatedLineHeight
+                layoutManager.setNeedsLayout()
+                inputDelegate?.selectionDidChange(self)
+                // Do a layout pass to ensure the position of the caret is correct.
+                setNeedsLayout()
+                layoutIfNeeded()
+            }
         }
     }
     var characterPairs: [CharacterPair] = []
@@ -273,6 +316,7 @@ final class TextInputView: UIView, UITextInput {
                     setNeedsLayout()
                 } else {
                     pageGuideController.guideView.removeFromSuperview()
+                    setNeedsLayout()
                 }
             }
         }
@@ -282,7 +326,11 @@ final class TextInputView: UIView, UITextInput {
             return pageGuideController.column
         }
         set {
-            pageGuideController.column = newValue
+            if newValue != pageGuideController.column {
+                pageGuideController.column = newValue
+                setNeedsLayout()
+                layoutIfNeeded()
+            }
         }
     }
     private var estimatedLineHeight: CGFloat {

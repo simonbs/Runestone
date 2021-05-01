@@ -83,6 +83,9 @@ final class LayoutManager {
                 if theme.font != oldValue.font {
                     invalidateContentSize()
                 }
+                setNeedsLayout()
+                setNeedsLayoutSelection()
+                layoutIfNeeded()
             }
         }
     }
