@@ -865,12 +865,14 @@ extension TextInputView {
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
             let indexedRange = IndexedRange(range: range)
             textInputView.justInsert(text, in: indexedRange.range)
-            // If we're replacing a range of more than one character with a text of more than one character then we select the new text.
             let textLength = text.utf16.count
             if range.length > 0 && textLength > 0 {
-                self.selectedTextRange = IndexedRange(location: range.location, length: textLength)
+                self.selectedRange = NSRange(location: range.location, length: textLength)
             }
+            self.inputDelegate?.selectionWillChange(self)
             self.layoutIfNeeded()
+            self.inputDelegate?.selectionDidChange(self)
+            self.delegate?.textInputViewDidChangeSelection(self)
         }
     }
 }
