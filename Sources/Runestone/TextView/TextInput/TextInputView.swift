@@ -294,7 +294,8 @@ final class TextInputView: UIView, UITextInput {
         }
         set {
             if newValue != layoutManager.lineHeightMultiplier {
-                // Notify the delegate that the selection may change as the position of the caret will change when we adjust the height of lines.
+                // Notify the delegate that the selection may changeas the position
+                // of the caret will change when we adjust the height of lines.
                 inputDelegate?.selectionWillChange(self)
                 layoutManager.lineHeightMultiplier = newValue
                 lineManager.estimatedLineHeight = estimatedLineHeight
@@ -464,7 +465,12 @@ final class TextInputView: UIView, UITextInput {
         self.theme = theme
         lineManager = LineManager(stringView: stringView)
         layoutManager = LayoutManager(lineManager: lineManager, languageMode: languageMode, stringView: stringView)
-        indentController = IndentController(stringView: stringView, lineManager: lineManager, languageMode: languageMode, indentStrategy: indentStrategy, indentFont: theme.font)
+        indentController = IndentController(
+            stringView: stringView,
+            lineManager: lineManager,
+            languageMode: languageMode,
+            indentStrategy: indentStrategy,
+            indentFont: theme.font)
         lineMovementController = LineMovementController(lineManager: lineManager, stringView: stringView)
         super.init(frame: .zero)
         lineManager.estimatedLineHeight = estimatedLineHeight
