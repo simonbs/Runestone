@@ -510,7 +510,9 @@ final class TextInputView: UIView, UITextInput {
     override func cut(_ sender: Any?) {
         if let selectedTextRange = selectedTextRange, let text = text(in: selectedTextRange) {
             UIPasteboard.general.string = text
+            inputDelegate?.selectionWillChange(self)
             replace(selectedTextRange, withText: "")
+            inputDelegate?.selectionDidChange(self)
         }
     }
 
