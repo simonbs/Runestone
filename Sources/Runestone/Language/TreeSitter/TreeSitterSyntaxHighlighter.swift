@@ -46,20 +46,20 @@ final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
         let operation = BlockOperation()
         operation.addExecutionBlock { [weak operation, weak self] in
             guard let operation = operation, let self = self else {
-                DispatchQueue.main.sync {
+                DispatchQueue.main.async {
                     completion(.failure(TreeSitterSyntaxHighlighterError.operationDeallocated))
                 }
                 return
             }
             guard !operation.isCancelled else {
-                DispatchQueue.main.sync {
+                DispatchQueue.main.async {
                     completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
                 }
                 return
             }
             let captures = self.languageMode.captures(in: input.byteRange)
             if !operation.isCancelled {
-                DispatchQueue.main.sync {
+                DispatchQueue.main.async {
                     if !operation.isCancelled {
                         let tokens = self.tokens(for: captures, localTo: input.byteRange)
                         self.setAttributes(for: tokens, on: input.attributedString)
@@ -69,7 +69,7 @@ final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
                     }
                 }
             } else {
-                DispatchQueue.main.sync {
+                DispatchQueue.main.async {
                     completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
                 }
             }

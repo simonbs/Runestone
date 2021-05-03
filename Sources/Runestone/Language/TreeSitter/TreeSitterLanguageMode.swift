@@ -44,11 +44,11 @@ final class TreeSitterLanguageMode: LanguageMode {
         operation.addExecutionBlock { [weak operation, weak self] in
             if let self = self, let operation = operation, !operation.isCancelled {
                 self.parse(text)
-                DispatchQueue.main.sync {
+                DispatchQueue.main.async {
                     completion(!operation.isCancelled)
                 }
             } else {
-                DispatchQueue.main.sync {
+                DispatchQueue.main.async {
                     completion(false)
                 }
             }
