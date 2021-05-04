@@ -7,6 +7,12 @@
 
 import UIKit
 
+public enum GoToLineSelection {
+    case beginning
+    case end
+    case line
+}
+
 protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidChange(_ view: TextInputView)
     func textInputViewDidChangeSelection(_ view: TextInputView)

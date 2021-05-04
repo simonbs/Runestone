@@ -563,6 +563,35 @@ public final class TextView: UIScrollView {
     public func detectIndentStrategy() -> DetectedIndentStrategy {
         return textInputView.detectIndentStrategy()
     }
+
+    /// Go to the beginning of the line at the specified index.
+    ///
+    /// - Parameter lineIndex: Index of line to navigate to.
+    /// - Parameter selection: The placement of the caret on the line.
+    /// - Returns: True if the text view could navigate to the specified line index, otherwise false.
+    @discardableResult
+    public func goToLine(_ lineIndex: Int, select selection: GoToLineSelection = .beginning) -> Bool {
+        guard lineIndex >= 0 && lineIndex < textInputView.lineManager.lineCount else {
+            return false
+        }
+        // I'm not exactly sure why this is necessary but if the text view is the first responder as we jump
+        // to the line and we don't resign the first responder first, the caret will disappear after we have
+        // jumped to the specified line.
+        resignFirstResponder()
+        becomeFirstResponder()
+        let line = textInputView.lineManager.line(atRow: lineIndex)
+        scroll(to: line.location)
+        layoutIfNeeded()
+        switch selection {
+        case .beginning:
+            textInputView.selectedTextRange = IndexedRange(location: line.location, length: 0)
+        case .end:
+            textInputView.selectedTextRange = IndexedRange(location: line.data.length, length: 0)
+        case .line:
+            textInputView.selectedTextRange = IndexedRange(location: line.location, length: line.data.length)
+        }
+        return true
+    }
 }
 
 private extension TextView {
