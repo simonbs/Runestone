@@ -730,10 +730,16 @@ extension TextInputView {
     func insertText(_ text: String) {
         if let selectedRange = selectedRange, shouldChangeText(in: selectedRange, replacementText: text) {
             if text == Symbol.lineFeed {
+                inputDelegate?.selectionWillChange(self)
                 indentController.insertLineBreak(in: selectedRange)
                 layoutIfNeeded()
+                inputDelegate?.selectionDidChange(self)
+                delegate?.textInputViewDidChangeSelection(self)
             } else {
+                inputDelegate?.selectionWillChange(self)
                 justInsert(text, in: selectedRange)
+                inputDelegate?.selectionDidChange(self)
+                delegate?.textInputViewDidChangeSelection(self)
             }
         }
     }
@@ -745,7 +751,6 @@ extension TextInputView {
         addUndoOperation(replacing: newRange, withText: currentText)
         selectedRange = NSRange(location: newRange.upperBound, length: 0)
         replaceCharacters(in: range, with: nsText)
-        delegate?.textInputViewDidChangeSelection(self)
     }
 
     func deleteBackward() {
@@ -763,16 +768,21 @@ extension TextInputView {
                 let undoRange = NSRange(location: deleteRange.location, length: 0)
                 addUndoOperation(replacing: undoRange, withText: currentText)
             }
+            inputDelegate?.selectionWillChange(self)
             self.selectedRange = NSRange(location: deleteRange.location, length: 0)
             replaceCharacters(in: deleteRange, with: "")
+            inputDelegate?.selectionDidChange(self)
             delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
     func replace(_ range: UITextRange, withText text: String) {
         if let indexedRange = range as? IndexedRange, shouldChangeText(in: indexedRange.range, replacementText: text) {
+            inputDelegate?.selectionWillChange(self)
             justInsert(text, in: indexedRange.range)
             layoutIfNeeded()
+            inputDelegate?.selectionDidChange(self)
+            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
