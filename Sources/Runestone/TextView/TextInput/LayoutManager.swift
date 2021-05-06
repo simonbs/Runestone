@@ -558,7 +558,8 @@ extension LayoutManager {
         var appearedLineFragmentIDs: Set<LineFragmentID> = []
         var maxY = insetViewport.minY
         var contentOffsetAdjustmentY: CGFloat = 0
-        while let line = nextLine, maxY < insetViewport.maxY {
+        var stoppedGeneratingLineFragments = false
+        while let line = nextLine, maxY < insetViewport.maxY, !stoppedGeneratingLineFragments, maximumLineWidth > 0 {
             appearedLineIDs.insert(line.id)
             // Prepare to line controller to display text.
             let lineController = lineController(for: line)
@@ -574,6 +575,7 @@ extension LayoutManager {
                 appearedLineFragmentIDs.insert(lineFragment.id)
                 layoutLineFragmentView(for: lineFragmentController, lineYPosition: lineYPosition, maxY: &maxY)
             }
+            stoppedGeneratingLineFragments = lineFragmentControllers.isEmpty
             var localContentOffsetAdjustmentY: CGFloat = 0
             updateSize(of: lineController, contentOffsetAdjustmentY: &localContentOffsetAdjustmentY)
             contentOffsetAdjustmentY += localContentOffsetAdjustmentY
