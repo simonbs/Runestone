@@ -46,7 +46,11 @@ final class TreeSitterIndentStrategyDetector {
             } else if character == Symbol.space {
                 // Count how many spaces the line starts with.
                 var spaceCount = 0
-                while spaceCount < line.data.totalLength && character == Symbol.space && spaceCount < lowestSpaceCount {
+                let stringLength = stringView.string.length
+                while spaceCount < line.data.totalLength
+                        && character == Symbol.space
+                        && spaceCount < lowestSpaceCount
+                        && range.location < stringLength - 1 {
                     spaceCount += 1
                     range = NSRange(location: range.location + 1, length: 1)
                     character = stringView.substring(in: range)
