@@ -910,13 +910,23 @@ extension TextInputView {
 extension TextInputView {
     func shiftLeft() {
         if let selectedRange = selectedRange {
+            inputDelegate?.selectionWillChange(self)
+            inputDelegate?.textWillChange(self)
             indentController.shiftLeft(in: selectedRange)
+            inputDelegate?.textDidChange(self)
+            inputDelegate?.selectionDidChange(self)
+            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
     func shiftRight() {
         if let selectedRange = selectedRange {
+            inputDelegate?.selectionWillChange(self)
+            inputDelegate?.textWillChange(self)
             indentController.shiftRight(in: selectedRange)
+            inputDelegate?.textDidChange(self)
+            inputDelegate?.selectionDidChange(self)
+            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 }
