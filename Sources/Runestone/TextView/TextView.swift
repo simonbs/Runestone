@@ -446,6 +446,7 @@ public final class TextView: UIScrollView {
     public override func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
         contentSize = textInputView.contentSize
+        layoutIfNeeded()
     }
 
     @discardableResult
