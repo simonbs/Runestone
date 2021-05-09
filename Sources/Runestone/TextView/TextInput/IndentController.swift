@@ -177,8 +177,11 @@ extension IndentController {
         let endLocation = location + line.data.length
         let whitespaceCharacters: Set<Character> = [Symbol.Character.space, Symbol.Character.tab]
         while location < endLocation {
-            let character = stringView.character(at: location)
-            if whitespaceCharacters.contains(character) {
+            // If stringView.character(at:) return nil then the character at the location is in fact
+            // a character sequence composed of multiple characters. Examples of this include emojis.
+            // We only check for whitespace characters that take up a single character so if we're
+            // getting a character sequence, then we assume that it isn't whitespace.
+            if let character = stringView.character(at: location), whitespaceCharacters.contains(character) {
                 location += 1
             } else {
                 break

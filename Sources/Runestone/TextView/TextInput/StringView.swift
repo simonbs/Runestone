@@ -30,7 +30,11 @@ final class StringView {
         return string.substring(with: range)
     }
 
-    func character(at location: Int) -> Character {
-        return Character(Unicode.Scalar(string.character(at: location))!)
+    func character(at location: Int) -> Character? {
+        if let scalar = Unicode.Scalar(string.character(at: location)) {
+            return Character(scalar)
+        } else {
+            return nil
+        }
     }
 }
