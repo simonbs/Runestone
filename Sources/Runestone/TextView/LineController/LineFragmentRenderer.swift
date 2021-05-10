@@ -13,6 +13,11 @@ protocol LineFragmentRendererDelegate: AnyObject {
 }
 
 final class LineFragmentRenderer {
+    private enum HorizontalPosition {
+        case character(Int)
+        case endOfLine
+    }
+
     weak var delegate: LineFragmentRendererDelegate?
     var lineFragment: LineFragment
     var invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
@@ -58,31 +63,33 @@ private extension LineFragmentRenderer {
         for (indexInLineFragment, substring) in string.enumerated() {
             let indexInLine = textRange.location + indexInLineFragment
             if invisibleCharacterConfiguration.showSpaces && substring == Symbol.Character.space {
-                let xPosition = CGFloat(round(CTLineGetOffsetForStringIndex(lineFragment.line, indexInLine, nil)))
-                let yPosition = (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
-                let point = CGPoint(x: xPosition, y: yPosition)
-                draw(invisibleCharacterConfiguration.spaceSymbol, at: point)
+                draw(invisibleCharacterConfiguration.spaceSymbol, at: .character(indexInLine))
             } else if invisibleCharacterConfiguration.showTabs && substring == Symbol.Character.tab {
-                let xPosition = CGFloat(round(CTLineGetOffsetForStringIndex(lineFragment.line, indexInLine, nil)))
-                let yPosition = (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
-                let point = CGPoint(x: xPosition, y: yPosition)
-                draw(invisibleCharacterConfiguration.tabSymbol, at: point)
+                draw(invisibleCharacterConfiguration.tabSymbol, at: .character(indexInLine))
             } else if invisibleCharacterConfiguration.showLineBreaks && substring == Symbol.Character.lineFeed || substring == Symbol.Character.carriageReturnLineFeed {
-                let xPosition = CGFloat(round(CTLineGetTypographicBounds(lineFragment.line, nil, nil, nil)))
-                let yPosition = (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
-                let point = CGPoint(x: xPosition, y: yPosition)
-                draw(invisibleCharacterConfiguration.lineBreakSymbol, at: point)
+                draw(invisibleCharacterConfiguration.lineBreakSymbol, at: .endOfLine)
             }
         }
     }
 
-    private func draw(_ symbol: String, at point: CGPoint) {
+    private func draw(_ symbol: String, at horizontalPosition: HorizontalPosition) {
         let attrs: [NSAttributedString.Key: Any] = [
             .foregroundColor: invisibleCharacterConfiguration.textColor,
             .font: invisibleCharacterConfiguration.font
         ]
         let size = symbol.size(withAttributes: attrs)
-        let rect = CGRect(x: point.x, y: point.y, width: size.width, height: size.height)
+        let xPosition = xPosition(for: horizontalPosition)
+        let yPosition = (lineFragment.scaledSize.height - size.height) / 2
+        let rect = CGRect(x: xPosition, y: yPosition, width: size.width, height: size.height)
         symbol.draw(in: rect, withAttributes: attrs)
+    }
+
+    private func xPosition(for horizontalPosition: HorizontalPosition) -> CGFloat {
+        switch horizontalPosition {
+        case .character(let index):
+            return round(CTLineGetOffsetForStringIndex(lineFragment.line, index, nil))
+        case .endOfLine:
+            return CGFloat(round(CTLineGetTypographicBounds(lineFragment.line, nil, nil, nil)))
+        }
     }
 }
