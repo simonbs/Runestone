@@ -456,6 +456,9 @@ public final class TextView: UIScrollView {
             installEditableInteraction()
             textInputView.resignFirstResponder()
             textInputView.becomeFirstResponder()
+            if textInputView.selectedTextRange == nil {
+                textInputView.selectedTextRange = IndexedRange(location: 0, length: 0)
+            }
             editorDelegate?.textViewDidBeginEditing(self)
             return true
         } else {
