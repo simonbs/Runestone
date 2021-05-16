@@ -22,7 +22,7 @@ private final class TypesetResult {
 }
 
 final class LineTypesetter {
-    var constrainingWidth: CGFloat?
+    var constrainingWidth: CGFloat = 0
     var lineFragmentHeightMultiplier: CGFloat = 1
     private(set) var maximumLineWidth: CGFloat = 0
     private(set) var lineFragments: [LineFragment] = []
@@ -63,14 +63,9 @@ private extension LineTypesetter {
     }
 
     private func lineFragments(in typesetter: CTTypesetter, stringLength: Int) -> TypesetResult {
-        if let constrainingWidth = constrainingWidth {
-            return typesetWrappingLines(in: typesetter, stringLength: stringLength, constrainingWidth: constrainingWidth)
-        } else {
-            return typesetNonWrappingLine(in: typesetter, stringLength: stringLength)
+        guard constrainingWidth > 0 else {
+            return TypesetResult(lineFragments: [], lineFragmentsMap: [:], maximumLineWidth: 0)
         }
-    }
-
-    private func typesetWrappingLines(in typesetter: CTTypesetter, stringLength: Int, constrainingWidth: CGFloat) -> TypesetResult {
         var nextYPosition: CGFloat = 0
         var startOffset = 0
         var maximumLineWidth: CGFloat = 0
@@ -91,13 +86,6 @@ private extension LineTypesetter {
             lineFragmentIndex += 1
         }
         return TypesetResult(lineFragments: lineFragments, lineFragmentsMap: lineFragmentsMap, maximumLineWidth: maximumLineWidth)
-    }
-
-    private func typesetNonWrappingLine(in typesetter: CTTypesetter, stringLength: Int) -> TypesetResult {
-        let range = CFRangeMake(0, stringLength)
-        let lineFragment = createLineFragment(for: range, in: typesetter, yPosition: 0, lineFragmentIndex: 0)
-        let lineFragmentsMap: [LineFragmentID: Int] = [lineFragment.id: 0]
-        return TypesetResult(lineFragments: [lineFragment], lineFragmentsMap: lineFragmentsMap, maximumLineWidth: lineFragment.scaledSize.width)
     }
 
     private func createLineFragment(for range: CFRange, in typesetter: CTTypesetter, yPosition: CGFloat, lineFragmentIndex: Int) -> LineFragment {

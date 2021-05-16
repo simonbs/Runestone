@@ -40,7 +40,7 @@ final class LineController {
         }
     }
     var tabWidth: CGFloat = 10
-    var constrainingWidth: CGFloat? {
+    var constrainingWidth: CGFloat {
         get {
             return typesetter.constrainingWidth
         }
