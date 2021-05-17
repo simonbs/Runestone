@@ -34,6 +34,10 @@ final class TreeSitterLanguageMode: LanguageMode {
         parser.delegate = self
     }
 
+    deinit {
+        operationQueue.cancelAllOperations()
+    }
+
     func parse(_ text: String) {
         rootLanguageLayer.parse(text)
     }
