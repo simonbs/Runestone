@@ -61,8 +61,10 @@ public extension String {
 
     func substring(with byteRange: ByteRange) -> String {
         let utf8View = utf8
-        let startUTF8Index = utf8View.index(utf8View.startIndex, offsetBy: byteRange.location.value, limitedBy: utf8View.endIndex) ?? utf8View.endIndex
-        let endUTF8Index = utf8View.index(startUTF8Index, offsetBy: byteRange.length.value, limitedBy: utf8View.endIndex) ?? utf8View.endIndex
+        let startIndex = utf8View.startIndex
+        let endIndex = utf8View.endIndex
+        let startUTF8Index = utf8View.index(startIndex, offsetBy: byteRange.location.value, limitedBy: endIndex) ?? endIndex
+        let endUTF8Index = utf8View.index(startUTF8Index, offsetBy: byteRange.length.value, limitedBy: endIndex) ?? endIndex
         return String(self[startUTF8Index ..< endUTF8Index])
     }
 }
