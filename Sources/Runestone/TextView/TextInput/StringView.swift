@@ -8,7 +8,24 @@
 import Foundation
 
 final class StringView {
-    var string: NSMutableString
+    var string: NSMutableString {
+        didSet {
+            if string != oldValue {
+                _swiftString = nil
+            }
+        }
+    }
+    private var swiftString: String {
+        if let swiftString = _swiftString {
+            return swiftString
+        } else {
+            let swiftString = string as String
+            _swiftString = swiftString
+            return swiftString
+        }
+    }
+
+    private var _swiftString: String?
 
     init(string: NSMutableString = NSMutableString()) {
         self.string = string
@@ -19,11 +36,11 @@ final class StringView {
     }
 
     func byteOffset(at location: Int) -> ByteCount {
-        return (string as String).byteOffset(at: location)
+        return swiftString.byteOffset(at: location)
     }
 
     func substring(in byteRange: ByteRange) -> String {
-        return (string as String).substring(with: byteRange)
+        return swiftString.substring(with: byteRange)
     }
 
     func substring(in range: NSRange) -> String {
