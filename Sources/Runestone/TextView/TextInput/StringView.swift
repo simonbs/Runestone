@@ -8,10 +8,18 @@
 import Foundation
 
 final class StringView {
-    var string: NSMutableString {
+    var string: NSString {
+        get {
+            return internalString
+        }
+        set {
+            internalString = NSMutableString(string: newValue)
+        }
+    }
+    private var internalString: NSMutableString {
         didSet {
-            if string != oldValue {
-                _swiftString = nil
+            if internalString != oldValue {
+                invalidate()
             }
         }
     }
@@ -19,16 +27,26 @@ final class StringView {
         if let swiftString = _swiftString {
             return swiftString
         } else {
-            let swiftString = string as String
+            let swiftString = internalString as String
             _swiftString = swiftString
             return swiftString
         }
     }
+    private var data: Data? {
+        if let data = _data {
+            return data
+        } else {
+            let data = internalString.data(using: String.Encoding.utf8.rawValue)
+            _data = data
+            return data
+        }
+    }
 
     private var _swiftString: String?
+    private var _data: Data?
 
     init(string: NSMutableString = NSMutableString()) {
-        self.string = string
+        self.internalString = string
     }
 
     convenience init(string: String) {
@@ -39,19 +57,35 @@ final class StringView {
         return swiftString.byteOffset(at: location)
     }
 
-    func substring(in byteRange: ByteRange) -> String {
-        return swiftString.substring(with: byteRange)
+    func substring(in byteRange: ByteRange) -> String? {
+        if let subdata = data?[byteRange.lowerBound.value ..< byteRange.upperBound.value] {
+            return String(data: subdata, encoding: .utf8)
+        } else {
+            return nil
+        }
     }
 
     func substring(in range: NSRange) -> String {
-        return string.substring(with: range)
+        return internalString.substring(with: range)
     }
 
     func character(at location: Int) -> Character? {
-        if let scalar = Unicode.Scalar(string.character(at: location)) {
+        if let scalar = Unicode.Scalar(internalString.character(at: location)) {
             return Character(scalar)
         } else {
             return nil
         }
+    }
+
+    func replaceCharacters(in range: NSRange, with string: String) {
+        internalString.replaceCharacters(in: range, with: string)
+        invalidate()
+    }
+}
+
+private extension StringView {
+    private func invalidate() {
+        _swiftString = nil
+        _data = nil
     }
 }

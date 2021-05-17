@@ -67,7 +67,9 @@ private extension TreeSitterTextPredicatesEvaluator {
         guard let capture = match.capture(forIndex: parameters.captureIndex) else {
             return false
         }
-        let contentText = stringView.substring(in: capture.byteRange)
+        guard let contentText = stringView.substring(in: capture.byteRange) else {
+            return false
+        }
         let matchingRange = contentText.range(of: parameters.pattern, options: .regularExpression)
         let isMatch = matchingRange != nil
         return isMatch == parameters.isPositive

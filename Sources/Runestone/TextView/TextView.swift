@@ -68,7 +68,7 @@ public final class TextView: UIScrollView {
             return textInputView.string as String
         }
         set {
-            textInputView.string = NSMutableString(string: newValue)
+            textInputView.string = newValue as NSString
             contentSize = textInputView.contentSize
         }
     }

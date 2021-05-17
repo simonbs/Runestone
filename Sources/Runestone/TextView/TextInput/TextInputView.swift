@@ -346,7 +346,7 @@ final class TextInputView: UIView, UITextInput {
 
     // MARK: - Contents
     weak var delegate: TextInputViewDelegate?
-    var string: NSMutableString {
+    var string: NSString {
         get {
             return stringView.string
         }
@@ -831,7 +831,7 @@ extension TextInputView {
         let byteRange = self.byteRange(from: range)
         let newString = nsNewString as String
         let oldEndLinePosition = lineManager.linePosition(at: range.location + range.length)!
-        string.replaceCharacters(in: range, with: newString)
+        stringView.replaceCharacters(in: range, with: newString)
         let changeSet = LineChangeSet()
         let newChangeSetA = lineManager.removeCharacters(in: range)
         changeSet.union(with: newChangeSetA)
