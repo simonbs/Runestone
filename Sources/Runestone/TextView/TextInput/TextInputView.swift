@@ -767,7 +767,7 @@ extension TextInputView {
         if selectedRange.length == 1, let indentRange = indentController.indentRangeInfrontOfLocation(selectedRange.upperBound) {
             deleteRange = indentRange
         } else {
-            deleteRange = selectedRange
+            deleteRange = string.rangeOfComposedCharacterSequences(for: selectedRange)
         }
         if shouldChangeText(in: deleteRange, replacementText: "") {
             if let currentText = text(in: deleteRange) {
