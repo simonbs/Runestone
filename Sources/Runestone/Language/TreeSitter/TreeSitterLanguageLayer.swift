@@ -122,6 +122,9 @@ extension TreeSitterLanguageLayer {
 // MARK: - Syntax Highlighting
 extension TreeSitterLanguageLayer {
     func captures(in range: ByteRange) -> [TreeSitterCapture] {
+        guard !range.isEmpty else {
+            return []
+        }
         let matches = matches(in: range)
         var captures = validCaptures(in: matches)
         captures.sort(by: TreeSitterCapture.captureLayerSorting)

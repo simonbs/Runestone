@@ -16,6 +16,9 @@ public struct ByteRange: Hashable {
     public var upperBound: ByteCount {
         return location + length
     }
+    public var isEmpty: Bool {
+        return length.value == 0
+    }
 
     public init(location: ByteCount, length: ByteCount) {
         self.location = location
