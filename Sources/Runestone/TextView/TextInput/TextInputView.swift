@@ -837,10 +837,10 @@ extension TextInputView {
         let oldEndLinePosition = lineManager.linePosition(at: range.location + range.length)!
         stringView.replaceCharacters(in: range, with: newString)
         let changeSet = LineChangeSet()
-        let newChangeSetA = lineManager.removeCharacters(in: range)
-        changeSet.union(with: newChangeSetA)
-        let newChangeSetB = lineManager.insert(nsNewString, at: range.location)
-        changeSet.union(with: newChangeSetB)
+        let changeSetFromRemovingCharacters = lineManager.removeCharacters(in: range)
+        changeSet.union(with: changeSetFromRemovingCharacters)
+        let changeSetFromInsertingCharacters = lineManager.insert(nsNewString, at: range.location)
+        changeSet.union(with: changeSetFromInsertingCharacters)
         let startLinePosition = lineManager.linePosition(at: range.location)!
         let newEndLinePosition = lineManager.linePosition(at: range.location + nsNewString.length)!
         let textChange = LanguageModeTextChange(
