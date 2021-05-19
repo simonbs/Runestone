@@ -841,6 +841,7 @@ extension TextInputView {
         changeSet.union(with: changeSetFromRemovingCharacters)
         let changeSetFromInsertingCharacters = lineManager.insert(nsNewString, at: range.location)
         changeSet.union(with: changeSetFromInsertingCharacters)
+        // Tell the language mode that the text have changed so it can prepare for syntax highlighting.
         let startLinePosition = lineManager.linePosition(at: range.location)!
         let newEndLinePosition = lineManager.linePosition(at: range.location + nsNewString.length)!
         let textChange = LanguageModeTextChange(
@@ -850,6 +851,7 @@ extension TextInputView {
             startLinePosition: startLinePosition,
             newEndLinePosition: newEndLinePosition)
         let result = languageMode.textDidChange(textChange)
+        // Update the change set with changes performed by the language mode.
         let languageModeEditedLines = result.changedRows.map { lineManager.line(atRow: $0) }
         for editedLine in languageModeEditedLines {
             changeSet.markLineEdited(editedLine)
