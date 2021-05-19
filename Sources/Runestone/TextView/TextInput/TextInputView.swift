@@ -830,6 +830,10 @@ extension TextInputView {
     private func justReplaceCharacters(in range: NSRange, with nsNewString: NSString) -> LineChangeSet {
         let byteRange = self.byteRange(from: range)
         let newString = nsNewString as String
+        // If the line cached from a recent parse was edited, then we clear the cache.
+        if let parsedLine = parsedLine, ByteRange(from: parsedLine.startByte, to: parsedLine.endByte).overlaps(byteRange) {
+            self.parsedLine = nil
+        }
         let oldEndLinePosition = lineManager.linePosition(at: range.location + range.length)!
         stringView.replaceCharacters(in: range, with: newString)
         let changeSet = LineChangeSet()
