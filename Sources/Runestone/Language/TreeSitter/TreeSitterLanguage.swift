@@ -30,7 +30,6 @@ public protocol TreeSitterLanguageProvider: AnyObject {
 
 public final class TreeSitterLanguage {
     let languagePointer: UnsafePointer<TSLanguage>
-    let textEncoding: TreeSitterTextEncoding
     let highlightsQuery: TreeSitterQuery?
     let injectionsQuery: TreeSitterQuery?
     let indentationScopes: TreeSitterIndentationScopes?
@@ -38,13 +37,11 @@ public final class TreeSitterLanguage {
 
     public init(
         _ language: UnsafePointer<TSLanguage>,
-        textEncoding: TreeSitterTextEncoding,
         highlightsQuery: Query? = nil,
         injectionsQuery: Query? = nil,
         indentationScopes: TreeSitterIndentationScopes? = nil,
         injectedLanguageProvider: TreeSitterLanguageProvider? = nil) {
         self.languagePointer = language
-        self.textEncoding = textEncoding
         self.highlightsQuery = highlightsQuery?.createQuery(with: language)
         self.injectionsQuery = injectionsQuery?.createQuery(with: language)
         self.indentationScopes = indentationScopes

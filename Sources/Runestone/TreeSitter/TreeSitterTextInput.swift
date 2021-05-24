@@ -7,7 +7,12 @@
 
 import TreeSitter
 
-typealias TreeSitterTextProviderCallback = (_ byteIndex: ByteCount, _ position: TreeSitterTextPoint) -> [Int8]
+struct TreeSitterTextProviderResult {
+    let bytes: UnsafePointer<Int8>
+    let length: UInt32
+}
+
+typealias TreeSitterTextProviderCallback = (_ byteIndex: ByteCount, _ position: TreeSitterTextPoint) -> TreeSitterTextProviderResult?
 private typealias TextInputRead = @convention(c) (UnsafeMutableRawPointer?, UInt32, TSPoint, UnsafeMutablePointer<UInt32>?) -> UnsafePointer<Int8>?
 
 final class TreeSitterTextInput {
@@ -25,19 +30,17 @@ final class TreeSitterTextInput {
         let read: TextInputRead = { payload, byteIndex, position, bytesRead in
             var payload = payload!.assumingMemoryBound(to: Payload.self).pointee
             let point = TreeSitterTextPoint(position)
-            let bytes = payload.callback(ByteCount(byteIndex), point)
-            assert(!(bytes.count > 1 && bytes.last == 0), "Parser callback bytes should not be null terminated")
-            bytesRead!.initialize(to: UInt32(bytes.count))
-            // Allocate pointer and copy bytes
-            let resultBytesPointer = UnsafeMutablePointer<Int8>.allocate(capacity: bytes.count)
-            for i in 0 ..< bytes.count {
-                (resultBytesPointer + i).initialize(to: bytes[i])
+            if let result = payload.callback(ByteCount(byteIndex), point) {
+                bytesRead?.initialize(to: result.length)
+                payload.bytePointers.append(result.bytes)
+                return result.bytes
+            } else {
+                bytesRead?.initialize(to: 0)
+                return nil
             }
-            payload.bytePointers.append(resultBytesPointer)
-            return UnsafePointer(resultBytesPointer)
         }
-        rawInput = withUnsafeMutableBytes(of: &payload) {
-            TSInput(payload: $0.baseAddress, read: read, encoding: encoding)
+        rawInput = withUnsafeMutableBytes(of: &payload) { pointer in
+            return TSInput(payload: pointer.baseAddress, read: read, encoding: encoding)
         }
     }
 

@@ -330,14 +330,8 @@ private extension LineManager {
         insertedLine.data.node = insertedLine
         // Call updateAfterChangingChildren(of:) to update the values of nodeTotalByteCount.
         documentLineTree.updateAfterChangingChildren(of: insertedLine)
-//        delegate?.lineManager(self, didInsert: insertedLine)
         return insertedLine
     }
-
-//    private func remove(_ line: DocumentLineNode) {
-//        documentLineTree.remove(line)
-//        delegate?.lineManager(self, didRemove: line)
-//    }
 
     private func getCharacter(at location: Int) -> String {
         let range = NSRange(location: location, length: 1)

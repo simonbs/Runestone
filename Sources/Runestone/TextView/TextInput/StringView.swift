@@ -7,6 +7,11 @@
 
 import Foundation
 
+struct StringViewBytesResult {
+    let bytes: UnsafePointer<Int8>
+    let length: Int
+}
+
 final class StringView {
     var string: NSString {
         get {
@@ -32,18 +37,8 @@ final class StringView {
             return swiftString
         }
     }
-    private var data: Data? {
-        if let data = _data {
-            return data
-        } else {
-            let data = internalString.data(using: String.Encoding.utf8.rawValue)
-            _data = data
-            return data
-        }
-    }
 
     private var _swiftString: String?
-    private var _data: Data?
 
     init(string: NSMutableString = NSMutableString()) {
         self.internalString = string
@@ -52,19 +47,7 @@ final class StringView {
     convenience init(string: String) {
         self.init(string: NSMutableString(string: string))
     }
-
-    func byteOffset(at location: Int) -> ByteCount {
-        return swiftString.byteOffset(at: location)
-    }
-
-    func substring(in byteRange: ByteRange) -> String? {
-        if let subdata = data?[byteRange.lowerBound.value ..< byteRange.upperBound.value] {
-            return String(data: subdata, encoding: .utf8)
-        } else {
-            return nil
-        }
-    }
-
+    
     func substring(in range: NSRange) -> String {
         return internalString.substring(with: range)
     }
@@ -81,11 +64,42 @@ final class StringView {
         internalString.replaceCharacters(in: range, with: string)
         invalidate()
     }
+
+    func bytes(at byteIndex: ByteCount) -> StringViewBytesResult? {
+        let location = byteIndex.value / 2
+        return bytes(at: location)
+    }
+
+    func bytes(at location: Int) -> StringViewBytesResult? {
+        guard location < string.length else {
+            return nil
+        }
+        let range = string.rangeOfComposedCharacterSequence(at: location)
+        let byteCount = range.length * 2
+        let mutableBuffer = UnsafeMutablePointer<Int8>.allocate(capacity: byteCount)
+        let encoding: String.Encoding = .utf16
+        var bufferLength = 0
+        let success = string.getBytes(
+            mutableBuffer,
+            maxLength: byteCount,
+            usedLength: &bufferLength,
+            encoding: encoding.rawValue,
+            options: [],
+            range: range,
+            remaining: nil)
+        if success {
+            let buffer = UnsafePointer(mutableBuffer)
+            mutableBuffer.deallocate()
+            return StringViewBytesResult(bytes: buffer, length: bufferLength)
+        } else {
+            mutableBuffer.deallocate()
+            return nil
+        }
+    }
 }
 
 private extension StringView {
     private func invalidate() {
         _swiftString = nil
-        _data = nil
     }
 }

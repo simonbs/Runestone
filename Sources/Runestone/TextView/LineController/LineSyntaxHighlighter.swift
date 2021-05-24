@@ -30,15 +30,14 @@ protocol LineSyntaxHighlighter: AnyObject {
     typealias AsyncCallback = (Result<Void, Error>) -> Void
     var theme: Theme { get set }
     var canHighlight: Bool { get }
-    func setDefaultAttributes(on input: LineSyntaxHighlighterInput)
+    func setDefaultAttributes(on attributedString: NSMutableAttributedString)
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput)
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput, completion: @escaping AsyncCallback)
     func cancel()
 }
 
 extension LineSyntaxHighlighter {
-    func setDefaultAttributes(on input: LineSyntaxHighlighterInput) {
-        let attributedString = input.attributedString
+    func setDefaultAttributes(on attributedString: NSMutableAttributedString) {
         let entireRange = NSRange(location: 0, length: attributedString.length)
         let attributes: [NSAttributedString.Key: Any] = [.foregroundColor: theme.textColor, .font: theme.font]
         attributedString.beginEditing()

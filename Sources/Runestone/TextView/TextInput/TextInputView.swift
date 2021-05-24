@@ -25,16 +25,6 @@ protocol TextInputViewDelegate: AnyObject {
 }
 
 final class TextInputView: UIView, UITextInput {
-    private struct ParsedLine {
-        let startByte: ByteCount
-        let byteCount: ByteCount
-        var endByte: ByteCount {
-            return startByte + byteCount
-        }
-        let lineRange: NSRange
-        let lineString: String
-    }
-
     // MARK: - UITextInput
     var selectedTextRange: UITextRange? {
         get {
@@ -452,7 +442,6 @@ final class TextInputView: UIView, UITextInput {
     private let lineMovementController: LineMovementController
     private let pageGuideController = PageGuideController()
     private var markedRange: NSRange?
-    private var parsedLine: ParsedLine?
     private var floatingCaretView: FloatingCaretView?
     private var insertionPointColorBeforeFloatingBegan: UIColor = .black
     private var textSelectionView: UIView? {
@@ -802,7 +791,7 @@ extension TextInputView {
 
     func text(in range: NSRange) -> String? {
         if range.location >= 0 && range.location + range.length <= string.length {
-            return string.substring(with: range)
+            return stringView.substring(in: range)
         } else {
             return nil
         }
@@ -828,12 +817,8 @@ extension TextInputView {
     }
 
     private func justReplaceCharacters(in range: NSRange, with nsNewString: NSString) -> LineChangeSet {
-        let byteRange = self.byteRange(from: range)
+        let byteRange = ByteRange(location: ByteOrderMark.byteCount + ByteCount(range.location * 2), length: ByteCount(range.length * 2))
         let newString = nsNewString as String
-        // If the line cached from a recent parse was edited, then we clear the cache.
-        if let parsedLine = parsedLine, ByteRange(from: parsedLine.startByte, to: parsedLine.endByte).overlaps(byteRange) {
-            self.parsedLine = nil
-        }
         let oldEndLinePosition = lineManager.linePosition(at: range.location + range.length)!
         stringView.replaceCharacters(in: range, with: newString)
         let changeSet = LineChangeSet()
@@ -850,6 +835,7 @@ extension TextInputView {
             oldEndLinePosition: oldEndLinePosition,
             startLinePosition: startLinePosition,
             newEndLinePosition: newEndLinePosition)
+//        print(textChange)
         let result = languageMode.textDidChange(textChange)
         // Update the change set with changes performed by the language mode.
         let languageModeEditedLines = result.changedRows.map { lineManager.line(atRow: $0) }
@@ -857,26 +843,6 @@ extension TextInputView {
             changeSet.markLineEdited(editedLine)
         }
         return changeSet
-    }
-
-    private func byteRange(from range: NSRange) -> ByteRange {
-        if range.length == 0 {
-            let byteOffset = byteOffsetForCharacter(at: range.location)
-            return ByteRange(location: byteOffset, length: ByteCount(0))
-        } else {
-            let startByteOffset = byteOffsetForCharacter(at: range.location)
-            let endByteOffset = byteOffsetForCharacter(at: range.location + range.length)
-            return ByteRange(from: startByteOffset, to: endByteOffset)
-        }
-    }
-
-    private func byteOffsetForCharacter(at location: Int) -> ByteCount {
-        let line = lineManager.line(containingCharacterAt: location)!
-        let lineGlobalRange = NSRange(location: line.location, length: line.value)
-        let lineLocalLocation = location - lineGlobalRange.location
-        let lineString = string.substring(with: lineGlobalRange)
-        let localByteOffset = lineString.byteOffset(at: lineLocalLocation)
-        return line.data.startByte + localByteOffset
     }
 
     private func shouldChangeText(in range: NSRange, replacementText text: String) -> Bool {
@@ -1032,34 +998,13 @@ extension TextInputView {
 
 // MARK: - TreeSitterLanguageModeDeleage
 extension TextInputView: TreeSitterLanguageModeDelegate {
-    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, bytesAt byteIndex: ByteCount) -> [Int8]? {
-        // Speed up parsing by using the line we recently parsed bytes in when possible.
-        if let parsedLine = parsedLine, byteIndex >= parsedLine.startByte && byteIndex < parsedLine.endByte {
-            return bytes(at: byteIndex, in: parsedLine)
-        } else if let line = lineManager.line(containingByteAt: byteIndex) {
-            let startByte = line.data.startByte
-            let lineRange = NSRange(location: line.location, length: line.data.totalLength)
-            let lineString = string.substring(with: lineRange)
-            let parsedLine = ParsedLine(startByte: startByte, byteCount: line.data.byteCount, lineRange: lineRange, lineString: lineString)
-            self.parsedLine = parsedLine
-            return bytes(at: byteIndex, in: parsedLine)
+    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult? {
+        if let result = stringView.bytes(at: byteIndex) {
+            print("Get \(byteIndex)")
+            return TreeSitterTextProviderResult(bytes: result.bytes, length: UInt32(result.length))
         } else {
-            parsedLine = nil
             return nil
         }
-    }
-
-    private func bytes(at byteIndex: ByteCount, in parsedLine: ParsedLine) -> [Int8]? {
-        let lineString = parsedLine.lineString
-        let localByteIndex = byteIndex - parsedLine.startByte
-        let localLocation = lineString.location(from: localByteIndex)
-        let globalLocation = parsedLine.lineRange.location + localLocation
-        guard globalLocation < string.length else {
-            return nil
-        }
-        let range = string.rangeOfComposedCharacterSequence(at: globalLocation)
-        let substring = string.substring(with: range)
-        return substring.cString(using: .utf8)?.dropLast()
     }
 }
 

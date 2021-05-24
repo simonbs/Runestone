@@ -27,11 +27,13 @@ final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
         return languageMode.canHighlight
     }
 
+    private let stringView: StringView
     private let languageMode: TreeSitterLanguageMode
     private let operationQueue: OperationQueue
     private var currentOperation: Operation?
 
-    init(languageMode: TreeSitterLanguageMode, operationQueue: OperationQueue) {
+    init(stringView: StringView, languageMode: TreeSitterLanguageMode, operationQueue: OperationQueue) {
+        self.stringView = stringView
         self.languageMode = languageMode
         self.operationQueue = operationQueue
     }
@@ -87,9 +89,7 @@ final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
 private extension TreeSitterSyntaxHighlighter {
     private func setAttributes(for tokens: [TreeSitterSyntaxHighlightToken], on attributedString: NSMutableAttributedString) {
         attributedString.beginEditing()
-        let string = attributedString.string
         for token in tokens {
-            let range = string.range(from: token.range)
             var attributes: [NSAttributedString.Key: Any] = [:]
             if let foregroundColor = token.textColor {
                 attributes[.foregroundColor] = foregroundColor
@@ -98,19 +98,19 @@ private extension TreeSitterSyntaxHighlighter {
                 attributes[.shadow] = shadow
             }
             if token.fontTraits.contains(.bold) {
-                attributedString.addAttribute(.isBold, value: true, range: range)
+                attributedString.addAttribute(.isBold, value: true, range: token.range)
             }
             if token.fontTraits.contains(.italic) {
-                attributedString.addAttribute(.isItalic, value: true, range: range)
+                attributedString.addAttribute(.isItalic, value: true, range: token.range)
             }
             var symbolicTraits: UIFontDescriptor.SymbolicTraits = []
-            if let isBold = attributedString.attribute(.isBold, at: range.location, effectiveRange: nil) as? Bool, isBold {
+            if let isBold = attributedString.attribute(.isBold, at: token.range.location, effectiveRange: nil) as? Bool, isBold {
                 symbolicTraits.insert(.traitBold)
             }
-            if let isItalic = attributedString.attribute(.isItalic, at: range.location, effectiveRange: nil) as? Bool, isItalic {
+            if let isItalic = attributedString.attribute(.isItalic, at: token.range.location, effectiveRange: nil) as? Bool, isItalic {
                 symbolicTraits.insert(.traitItalic)
             }
-            let currentFont = attributedString.attribute(.font, at: range.location, effectiveRange: nil) as? UIFont
+            let currentFont = attributedString.attribute(.font, at: token.range.location, effectiveRange: nil) as? UIFont
             let newFont: UIFont
             if !symbolicTraits.isEmpty {
                 let font = token.font ?? currentFont ?? theme.font
@@ -122,23 +122,24 @@ private extension TreeSitterSyntaxHighlighter {
                 attributes[.font] = newFont
             }
             if !attributes.isEmpty {
-                attributedString.addAttributes(attributes, range: range)
+                attributedString.addAttributes(attributes, range: token.range)
             }
         }
         attributedString.endEditing()
     }
 
-    private func tokens(for captures: [TreeSitterCapture], localTo range: ByteRange) -> [TreeSitterSyntaxHighlightToken] {
+    private func tokens(for captures: [TreeSitterCapture], localTo localRange: ByteRange) -> [TreeSitterSyntaxHighlightToken] {
         var tokens: [TreeSitterSyntaxHighlightToken] = []
         for capture in captures {
-            // We highlight each line separately but a capture may extend beyond a line, e.g. an unterminated string,
-            // so we need to cap the start and end location to ensure it's within the line.
-            let cappedStartByte = max(capture.byteRange.location, range.location)
-            let cappedEndByte = min(capture.byteRange.location + capture.byteRange.length, range.location + range.length)
+            // We highlight each line separately but a capture may extend beyond a line,
+            // e.g. an unterminated string, so we need to cap the start and end location
+            // to ensure it's within the line.
+            let cappedStartByte = max(capture.byteRange.lowerBound, localRange.lowerBound)
+            let cappedEndByte = min(capture.byteRange.upperBound, localRange.upperBound)
             let length = cappedEndByte - cappedStartByte
-            if length > ByteCount(0) {
-                let cappedRange = ByteRange(location: cappedStartByte - range.location, length: length)
-                let attrs = attributes(for: capture, in: cappedRange)
+            let cappedRange = ByteRange(location: cappedStartByte - localRange.lowerBound, length: length)
+            if !cappedRange.isEmpty {
+                let attrs = token(from: capture, in: cappedRange)
                 if !attrs.isEmpty {
                     tokens.append(attrs)
                 }
@@ -149,7 +150,8 @@ private extension TreeSitterSyntaxHighlighter {
 }
 
 private extension TreeSitterSyntaxHighlighter {
-    private func attributes(for capture: TreeSitterCapture, in range: ByteRange) -> TreeSitterSyntaxHighlightToken {
+    private func token(from capture: TreeSitterCapture, in byteRange: ByteRange) -> TreeSitterSyntaxHighlightToken {
+        let range = NSRange(location: byteRange.location.value / 2, length: byteRange.length.value / 2)
         let textColor = theme.textColor(for: capture.name)
         let shadow = theme.shadow(for: capture.name)
         let font = theme.font(for: capture.name)

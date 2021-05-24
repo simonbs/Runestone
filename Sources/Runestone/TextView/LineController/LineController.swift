@@ -167,7 +167,7 @@ private extension LineController {
         if isDefaultAttributesInvalid {
             updateParagraphStyle()
             if let input = createLineSyntaxHighlightInput() {
-                syntaxHighlighter?.setDefaultAttributes(on: input)
+                syntaxHighlighter?.setDefaultAttributes(on: input.attributedString)
             }
             isDefaultAttributesInvalid = false
         }
@@ -229,7 +229,8 @@ private extension LineController {
 
     private func createLineSyntaxHighlightInput() -> LineSyntaxHighlighterInput? {
         if let attributedString = attributedString {
-            return LineSyntaxHighlighterInput(attributedString: attributedString, byteRange: line.data.byteRange)
+            let byteRange = line.data.totalByteRange
+            return LineSyntaxHighlighterInput(attributedString: attributedString, byteRange: byteRange)
         } else {
             return nil
         }

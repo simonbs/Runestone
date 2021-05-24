@@ -1,5 +1,5 @@
 //
-//  Parser.swift
+//  TreeSitterParser.swift
 //  
 //
 //  Created by Simon Støvring on 05/12/2020.
@@ -8,7 +8,7 @@
 import TreeSitter
 
 protocol TreeSitterParserDelegate: AnyObject {
-    func parser(_ parser: TreeSitterParser, bytesAt byteIndex: ByteCount) -> [Int8]?
+    func parser(_ parser: TreeSitterParser, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult?
 }
 
 final class TreeSitterParser {
@@ -38,11 +38,16 @@ final class TreeSitterParser {
         guard !string.isEmpty else {
             return nil
         }
-        let byteCount = UInt32(string.byteCount.value)
-        let newTreePointer = string.withCString { stringPointer in
-            return ts_parser_parse_string(pointer, oldTree?.pointer, stringPointer, byteCount)
+        guard let stringEncoding = encoding.stringEncoding else {
+            return nil
         }
-        if let newTreePointer = newTreePointer {
+        guard let data = string.data(using: stringEncoding) else {
+            return nil
+        }
+        let bytesPointer = data.withUnsafeBytes { pointer in
+            return pointer.bindMemory(to: Int8.self).baseAddress
+        }
+        if let newTreePointer = ts_parser_parse_string_encoding(pointer, oldTree?.pointer, bytesPointer, UInt32(data.count), encoding) {
             return TreeSitterTree(newTreePointer)
         } else {
             return nil
@@ -51,10 +56,10 @@ final class TreeSitterParser {
 
     func parse(oldTree: TreeSitterTree? = nil) -> TreeSitterTree? {
         let input = TreeSitterTextInput(encoding: encoding) { [weak self] byteIndex, _ in
-            if let self = self, let bytes = self.delegate?.parser(self, bytesAt: byteIndex) {
-                return bytes
+            if let self = self {
+                return self.delegate?.parser(self, bytesAt: byteIndex)
             } else {
-                return []
+                return nil
             }
         }
         let newTreePointer = ts_parser_parse(pointer, oldTree?.pointer, input.rawInput)
@@ -76,5 +81,18 @@ final class TreeSitterParser {
 
     func removeAllIncludedRanges() {
         ts_parser_set_included_ranges(pointer, nil, 0)
+    }
+}
+
+private extension TSInputEncoding {
+    var stringEncoding: String.Encoding? {
+        switch self {
+        case TSInputEncodingUTF8:
+            return .utf8
+        case TSInputEncodingUTF16:
+            return .utf16LittleEndian
+        default:
+            return nil
+        }
     }
 }

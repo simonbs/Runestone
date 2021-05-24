@@ -9,7 +9,7 @@ import Foundation
 import TreeSitter
 
 protocol TreeSitterLanguageModeDelegate: AnyObject {
-    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, bytesAt byteIndex: ByteCount) -> [Int8]?
+    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult?
 }
 
 final class TreeSitterLanguageMode: LanguageMode {
@@ -29,7 +29,7 @@ final class TreeSitterLanguageMode: LanguageMode {
         self.lineManager = lineManager
         operationQueue.name = "TreeSitterLanguageMode"
         operationQueue.qualityOfService = .userInitiated
-        parser = TreeSitterParser(encoding: language.textEncoding.treeSitterEncoding)
+        parser = TreeSitterParser(encoding: TSInputEncodingUTF16)
         rootLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser, stringView: stringView, lineManager: lineManager)
         parser.delegate = self
     }
@@ -78,7 +78,7 @@ final class TreeSitterLanguageMode: LanguageMode {
     }
     
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter {
-        return TreeSitterSyntaxHighlighter(languageMode: self, operationQueue: operationQueue)
+        return TreeSitterSyntaxHighlighter(stringView: stringView, languageMode: self, operationQueue: operationQueue)
     }
 
     func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
@@ -123,7 +123,7 @@ final class TreeSitterLanguageMode: LanguageMode {
 }
 
 extension TreeSitterLanguageMode: TreeSitterParserDelegate {
-    func parser(_ parser: TreeSitterParser, bytesAt byteIndex: ByteCount) -> [Int8]? {
+    func parser(_ parser: TreeSitterParser, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult? {
         return delegate?.treeSitterLanguageMode(self, bytesAt: byteIndex)
     }
 }

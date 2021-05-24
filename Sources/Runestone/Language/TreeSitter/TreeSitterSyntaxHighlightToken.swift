@@ -8,16 +8,16 @@
 import UIKit
 
 final class TreeSitterSyntaxHighlightToken {
-    let range: ByteRange
+    let range: NSRange
     let textColor: UIColor?
     let shadow: NSShadow?
     let font: UIFont?
     let fontTraits: FontTraits
     var isEmpty: Bool {
-        return range.length == ByteCount(0) || (textColor == nil && font == nil && shadow == nil)
+        return range.length == 0 || (textColor == nil && font == nil && shadow == nil)
     }
 
-    init(range: ByteRange, textColor: UIColor?, shadow: NSShadow?, font: UIFont?, fontTraits: FontTraits) {
+    init(range: NSRange, textColor: UIColor?, shadow: NSShadow?, font: UIFont?, fontTraits: FontTraits) {
         self.range = range
         self.textColor = textColor
         self.shadow = shadow

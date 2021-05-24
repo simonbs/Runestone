@@ -213,7 +213,7 @@ extension TreeSitterLanguageLayer {
     func languageHierarchyStringRepresentation() -> String {
         var str = ""
         if let rootNode = tree?.rootNode {
-            str += "● [\(rootNode.byteRange.lowerBound.value) - \(rootNode.byteRange.upperBound.value)]"
+            str += "● [\(rootNode.byteRange.lowerBound) - \(rootNode.byteRange.upperBound)]"
         } else {
             str += "●"
         }
@@ -231,7 +231,7 @@ extension TreeSitterLanguageLayer {
             let indentStr = String(repeating: "  ", count: indent)
             let childLanguageLayer = childLanguageLayers[languageName]!
             if let rootNode = childLanguageLayer.tree?.rootNode {
-                str += indentStr + "\(languageName) [\(rootNode.byteRange.lowerBound.value) - \(rootNode.byteRange.upperBound.value)]"
+                str += indentStr + "\(languageName) [\(rootNode.byteRange.lowerBound) - \(rootNode.byteRange.upperBound)]"
             } else {
                 str += indentStr + "\(languageName)"
             }
