@@ -835,7 +835,6 @@ extension TextInputView {
             oldEndLinePosition: oldEndLinePosition,
             startLinePosition: startLinePosition,
             newEndLinePosition: newEndLinePosition)
-//        print(textChange)
         let result = languageMode.textDidChange(textChange)
         // Update the change set with changes performed by the language mode.
         let languageModeEditedLines = result.changedRows.map { lineManager.line(atRow: $0) }
@@ -1000,7 +999,6 @@ extension TextInputView {
 extension TextInputView: TreeSitterLanguageModeDelegate {
     func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult? {
         if let result = stringView.bytes(at: byteIndex) {
-            print("Get \(byteIndex)")
             return TreeSitterTextProviderResult(bytes: result.bytes, length: UInt32(result.length))
         } else {
             return nil
