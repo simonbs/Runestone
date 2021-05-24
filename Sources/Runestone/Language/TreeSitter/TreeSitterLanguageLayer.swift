@@ -189,7 +189,7 @@ private extension TreeSitterLanguageLayer {
             if !capturedLanguageNames.contains(languageName) {
                 // Remove languages that we no longer have any captures for.
                 childLanguageLayers.removeValue(forKey: languageName)
-            } else if let rootNode = childLanguageLayers[languageName]?.tree?.rootNode, rootNode.byteRange.length <= ByteCount(0) {
+            } else if let rootNode = childLanguageLayers[languageName]?.tree?.rootNode, rootNode.byteRange.length <= 0 {
                 // Remove layers that no longer has any content.
                 childLanguageLayers.removeValue(forKey: languageName)
             }
