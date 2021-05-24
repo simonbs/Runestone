@@ -282,7 +282,7 @@ private extension LineManager {
         changeSet.markLineEdited(line)
         let range = NSRange(location: line.location, length: newTotalLength)
         let substring = stringView.substring(in: range)
-        let newByteCount = substring.byteCount
+        let newByteCount = substring?.byteCount ?? 0
         if newTotalLength != line.value || newTotalLength != line.data.totalLength || newByteCount != line.data.byteCount {
             line.value = newTotalLength
             line.data.totalLength = newTotalLength
@@ -323,7 +323,7 @@ private extension LineManager {
         let insertedLine = documentLineTree.insertNode(value: length, data: data, after: otherLine)
         let range = NSRange(location: insertedLine.location, length: length)
         let substring = stringView.substring(in: range)
-        let byteCount = substring.byteCount
+        let byteCount = substring?.byteCount ?? 0
         insertedLine.data.totalLength = length
         insertedLine.data.byteCount = byteCount
         insertedLine.data.nodeTotalByteCount = byteCount
@@ -333,7 +333,7 @@ private extension LineManager {
         return insertedLine
     }
 
-    private func getCharacter(at location: Int) -> String {
+    private func getCharacter(at location: Int) -> String? {
         let range = NSRange(location: location, length: 1)
         return stringView.substring(in: range)
     }

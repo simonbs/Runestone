@@ -157,8 +157,11 @@ private extension LineController {
     private func updateStringIfNecessary() {
         if isStringInvalid {
             let range = NSRange(location: line.location, length: line.data.totalLength)
-            let string = stringView.substring(in: range)
-            attributedString = NSMutableAttributedString(string: string)
+            if let string = stringView.substring(in: range) {
+                attributedString = NSMutableAttributedString(string: string)
+            } else {
+                attributedString = nil
+            }
             isStringInvalid = false
         }
     }

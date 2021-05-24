@@ -75,7 +75,9 @@ private extension TreeSitterTextPredicatesEvaluator {
         }
         let byteRange = capture.byteRange
         let range = NSRange(location: byteRange.location.value / 2, length: byteRange.length.value / 2)
-        let contentText = stringView.substring(in: range)
+        guard let contentText = stringView.substring(in: range) else {
+            return false
+        }
         let matchingRange = contentText.range(of: parameters.pattern, options: .regularExpression)
         let isMatch = matchingRange != nil
         return isMatch == parameters.isPositive

@@ -48,8 +48,12 @@ final class StringView {
         self.init(string: NSMutableString(string: string))
     }
     
-    func substring(in range: NSRange) -> String {
-        return internalString.substring(with: range)
+    func substring(in range: NSRange) -> String? {
+        if range.upperBound <= internalString.length {
+            return internalString.substring(with: range)
+        } else {
+            return nil
+        }
     }
 
     func character(at location: Int) -> Character? {

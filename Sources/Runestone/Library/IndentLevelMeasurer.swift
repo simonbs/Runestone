@@ -18,13 +18,14 @@ final class IndentLevelMeasurer {
         var indentLength = 0
         for i in 0 ..< lineTotalLength {
             let range = NSRange(location: lineStartLocation + i, length: 1)
-            let str = stringView.substring(in: range).first
-            if str == Symbol.Character.tab {
-                indentLength += tabLength - (indentLength % tabLength)
-            } else if str == Symbol.Character.space {
-                indentLength += 1
-            } else {
-                break
+            if let str = stringView.substring(in: range)?.first {
+                if str == Symbol.Character.tab {
+                    indentLength += tabLength - (indentLength % tabLength)
+                } else if str == Symbol.Character.space {
+                    indentLength += 1
+                } else {
+                    break
+                }
             }
         }
         return indentLength / tabLength

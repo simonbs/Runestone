@@ -790,11 +790,7 @@ extension TextInputView {
     }
 
     func text(in range: NSRange) -> String? {
-        if range.location >= 0 && range.location + range.length <= string.length {
-            return stringView.substring(in: range)
-        } else {
-            return nil
-        }
+        return stringView.substring(in: range)
     }
 
     private func replaceCharacters(in range: NSRange, with newString: NSString) {
