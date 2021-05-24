@@ -801,10 +801,12 @@ extension TextInputView {
             for removedLine in changeSet.removedLines {
                 layoutManager.removeLine(withID: removedLine.id)
             }
-            layoutManager.updateLineNumberWidth()
         }
         layoutManager.typeset(changeSet.editedLines)
         layoutManager.syntaxHighlight(changeSet.editedLines)
+        if didAddOrRemoveLines {
+            layoutManager.updateLineNumberWidth()
+        }
         layoutManager.setNeedsLayout()
         delegate?.textInputViewDidChange(self)
         if didAddOrRemoveLines {
