@@ -1013,8 +1013,8 @@ extension TextInputView: LayoutManagerDelegate {
     }
 
     func layoutManagerDidUpdateGutterWidth(_ layoutManager: LayoutManager) {
-        // Typeset lines again when the line number width changes. Changing line number width may increase
-        // or reduce the number of line fragments in a line.
+        // Typeset lines again when the line number width changes.
+        // Changing line number width may increase or reduce the number of line fragments in a line.
         layoutManager.invalidateLines()
         layoutManager.setNeedsLayout()
         layoutManager.layoutIfNeeded()
