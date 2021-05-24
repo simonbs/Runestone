@@ -575,7 +575,11 @@ extension LayoutManager {
                 appearedLineFragmentIDs.insert(lineFragment.id)
                 layoutLineFragmentView(for: lineFragmentController, lineYPosition: lineYPosition, maxY: &maxY)
             }
-            stoppedGeneratingLineFragments = lineFragmentControllers.isEmpty
+            // If we found at least one line to be shown and now aren't getting any line fragments within the viewport
+            // then there's no more line fragments to be shown in the viewport and we stop generating line fragments.
+            if !appearedLineFragmentIDs.isEmpty {
+                stoppedGeneratingLineFragments = lineFragmentControllers.isEmpty
+            }
             var localContentOffsetAdjustmentY: CGFloat = 0
             updateSize(of: lineController, contentOffsetAdjustmentY: &localContentOffsetAdjustmentY)
             contentOffsetAdjustmentY += localContentOffsetAdjustmentY
