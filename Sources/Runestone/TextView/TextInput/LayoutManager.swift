@@ -550,6 +550,8 @@ extension LayoutManager {
     }
 
     private func layoutLines() {
+        let oldTextContentWidth = _textContentWidth
+        let oldTextContentHeight = _textContentHeight
         let oldVisibleLineIDs = visibleLineIDs
         let oldVisibleLineFragmentIDs = Set(lineFragmentViewReuseQueue.visibleViews.keys)
         // Layout lines until we have filled the viewport.
@@ -601,7 +603,7 @@ extension LayoutManager {
         lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
         lineFragmentViewReuseQueue.enqueueViews(withKeys: disappearedLineFragmentIDs)
         // Update content size if necessary.
-        if _textContentWidth == nil || _textContentHeight == nil {
+        if _textContentWidth != oldTextContentWidth || _textContentHeight != oldTextContentHeight {
             delegate?.layoutManagerDidInvalidateContentSize(self)
         }
         // Adjust the content offset on the Y-axis if necessary.
@@ -733,6 +735,7 @@ extension LayoutManager {
                 lineWidths[longestLine.id] = lineController.lineWidth
                 if !isLineWrappingEnabled {
                     _textContentWidth = nil
+                    delegate?.layoutManagerDidInvalidateContentSize(self)
                 }
             }
         }
