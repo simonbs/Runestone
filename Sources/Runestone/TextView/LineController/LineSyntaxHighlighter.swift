@@ -41,12 +41,7 @@ extension LineSyntaxHighlighter {
         let entireRange = NSRange(location: 0, length: attributedString.length)
         let attributes: [NSAttributedString.Key: Any] = [.foregroundColor: theme.textColor, .font: theme.font]
         attributedString.beginEditing()
-        attributedString.removeAttribute(.shadow, range: entireRange)
-        attributedString.removeAttribute(.font, range: entireRange)
-        attributedString.removeAttribute(.foregroundColor, range: entireRange)
-        attributedString.removeAttribute(.isBold, range: entireRange)
-        attributedString.removeAttribute(.isItalic, range: entireRange)
-        attributedString.addAttributes(attributes, range: entireRange)
+        attributedString.setAttributes(attributes, range: entireRange)
         attributedString.endEditing()
     }
 }
