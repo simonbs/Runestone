@@ -111,12 +111,12 @@ private extension TreeSitterSyntaxHighlighter {
                 symbolicTraits.insert(.traitItalic)
             }
             let currentFont = attributedString.attribute(.font, at: token.range.location, effectiveRange: nil) as? UIFont
+            let baseFont = token.font ?? theme.font
             let newFont: UIFont
             if !symbolicTraits.isEmpty {
-                let font = token.font ?? currentFont ?? theme.font
-                newFont = font.withSymbolicTraits(symbolicTraits) ?? font
+                newFont = baseFont.withSymbolicTraits(symbolicTraits) ?? baseFont
             } else {
-                newFont = token.font ?? theme.font
+                newFont = baseFont
             }
             if newFont != currentFont {
                 attributes[.font] = newFont
