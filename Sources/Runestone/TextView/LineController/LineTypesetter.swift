@@ -24,23 +24,59 @@ private final class TypesetResult {
 final class LineTypesetter {
     var constrainingWidth: CGFloat = 0
     var lineFragmentHeightMultiplier: CGFloat = 1
-    private(set) var maximumLineWidth: CGFloat = 0
     private(set) var lineFragments: [LineFragment] = []
+    private(set) var maximumLineWidth: CGFloat = 0
+    var bestGuessNumberOfLineFragments: Int {
+        if startOffset >= stringLength {
+            return lineFragments.count
+        } else {
+            let charactersPerLineFragment = Double(startOffset) / Double(lineFragments.count)
+            let charactersRemaining = stringLength - startOffset
+            let remainingNumberOfLineFragments = Int(ceil(Double(charactersRemaining) / charactersPerLineFragment))
+            return lineFragments.count + remainingNumberOfLineFragments
+        }
+    }
+    var isFinishedTypesetting: Bool {
+        return startOffset >= stringLength
+    }
 
     private let lineID: String
+    private var stringLength = 0
+    private var typesetter: CTTypesetter?
     private var lineFragmentsMap: [LineFragmentID: Int] = [:]
+    private var startOffset = 0
+    private var nextYPosition: CGFloat = 0
+    private var lineFragmentIndex = 0
 
     init(lineID: String) {
         self.lineID = lineID
     }
 
-    func typeset(_ attributedString: CFAttributedString) {
-        let stringLength = CFAttributedStringGetLength(attributedString)
-        let typesetter = CTTypesetterCreateWithAttributedString(attributedString)
-        let typesetResult = self.lineFragments(in: typesetter, stringLength: stringLength)
-        lineFragments = typesetResult.lineFragments
-        lineFragmentsMap = typesetResult.lineFragmentsMap
-        maximumLineWidth = typesetResult.maximumLineWidth
+    func reset() {
+        lineFragments = []
+        maximumLineWidth = 0
+        stringLength = 0
+        typesetter = nil
+        lineFragmentsMap = [:]
+        startOffset = 0
+        nextYPosition = 0
+        lineFragmentIndex = 0
+    }
+
+    func prepareToTypeset(_ attributedString: CFAttributedString) {
+        stringLength = CFAttributedStringGetLength(attributedString)
+        typesetter = CTTypesetterCreateWithAttributedString(attributedString)
+    }
+
+    @discardableResult
+    func typesetLineFragments(in rect: CGRect) -> [LineFragment] {
+        if let typesetter = typesetter {
+            let typesetResult = self.typesetLineFragments(in: rect, using: typesetter, stringLength: stringLength)
+            updateState(from: typesetResult)
+            return typesetResult.lineFragments
+        } else {
+            return []
+        }
     }
 
     func lineFragment(withID lineFragmentID: LineFragmentID) -> LineFragment? {
@@ -53,6 +89,14 @@ final class LineTypesetter {
 }
 
 private extension LineTypesetter {
+    private func updateState(from typesetResult: TypesetResult) {
+        lineFragments.append(contentsOf: typesetResult.lineFragments)
+        for (id, index) in typesetResult.lineFragmentsMap {
+            lineFragmentsMap[id] = index
+        }
+        maximumLineWidth = max(maximumLineWidth, typesetResult.maximumLineWidth)
+    }
+
     private func createAttributedString(from string: String) -> CFAttributedString? {
         if let attributedString = CFAttributedStringCreateMutable(kCFAllocatorDefault, string.utf16.count) {
             CFAttributedStringReplaceString(attributedString, CFRangeMake(0, 0), string as CFString)
@@ -62,20 +106,17 @@ private extension LineTypesetter {
         }
     }
 
-    private func lineFragments(in typesetter: CTTypesetter, stringLength: Int) -> TypesetResult {
+    private func typesetLineFragments(in rect: CGRect, using typesetter: CTTypesetter, stringLength: Int) -> TypesetResult {
         guard constrainingWidth > 0 else {
             return TypesetResult(lineFragments: [], lineFragmentsMap: [:], maximumLineWidth: 0)
         }
-        var nextYPosition: CGFloat = 0
-        var startOffset = 0
         var maximumLineWidth: CGFloat = 0
         var lineFragments: [LineFragment] = []
         var lineFragmentsMap: [LineFragmentID: Int] = [:]
-        var lineFragmentIndex = 0
-        while startOffset < stringLength {
+        while startOffset < stringLength && nextYPosition < rect.maxY {
             let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingWidth))
             let range = CFRangeMake(startOffset, length)
-            let lineFragment = createLineFragment(for: range, in: typesetter, yPosition: nextYPosition, lineFragmentIndex: lineFragmentIndex)
+            let lineFragment = makeLineFragment(for: range, in: typesetter, lineFragmentIndex: lineFragmentIndex, yPosition: nextYPosition)
             lineFragments.append(lineFragment)
             nextYPosition += lineFragment.scaledSize.height
             startOffset += length
@@ -88,7 +129,7 @@ private extension LineTypesetter {
         return TypesetResult(lineFragments: lineFragments, lineFragmentsMap: lineFragmentsMap, maximumLineWidth: maximumLineWidth)
     }
 
-    private func createLineFragment(for range: CFRange, in typesetter: CTTypesetter, yPosition: CGFloat, lineFragmentIndex: Int) -> LineFragment {
+    private func makeLineFragment(for range: CFRange, in typesetter: CTTypesetter, lineFragmentIndex: Int, yPosition: CGFloat) -> LineFragment {
         let line = CTTypesetterCreateLine(typesetter, range)
         var ascent: CGFloat = 0
         var descent: CGFloat = 0
@@ -98,6 +139,15 @@ private extension LineTypesetter {
         let baseSize = CGSize(width: width, height: height)
         let scaledSize = CGSize(width: width, height: height * lineFragmentHeightMultiplier)
         let id = LineFragmentID(lineId: lineID, lineFragmentIndex: lineFragmentIndex)
-        return LineFragment(id: id, line: line, descent: descent, baseSize: baseSize, scaledSize: scaledSize, yPosition: yPosition)
+        let nsRange = NSRange(location: range.location, length: range.length)
+        return LineFragment(
+            id: id,
+            index: lineFragmentIndex,
+            range: nsRange,
+            line: line,
+            descent: descent,
+            baseSize: baseSize,
+            scaledSize: scaledSize,
+            yPosition: yPosition)
     }
 }

@@ -123,7 +123,6 @@ final class TextInputView: UIView, UITextInput {
                 layoutManager.showLineNumbers = newValue
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
-                layoutIfNeeded()
             }
         }
     }
@@ -142,9 +141,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.showTabs {
                 layoutManager.invisibleCharacterConfiguration.showTabs = newValue
-                layoutManager.invalidateLines()
-                layoutManager.setNeedsLayout()
-                layoutManager.layoutIfNeeded()
+                layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
@@ -155,9 +152,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.showSpaces {
                 layoutManager.invisibleCharacterConfiguration.showSpaces = newValue
-                layoutManager.invalidateLines()
-                layoutManager.setNeedsLayout()
-                layoutManager.layoutIfNeeded()
+                layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
@@ -170,8 +165,8 @@ final class TextInputView: UIView, UITextInput {
                 layoutManager.invisibleCharacterConfiguration.showLineBreaks = newValue
                 layoutManager.invalidateLines()
                 layoutManager.setNeedsLayout()
+                layoutManager.setNeedsDisplayOnLines()
                 setNeedsLayout()
-                layoutIfNeeded()
             }
         }
     }
@@ -182,10 +177,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.tabSymbol {
                 layoutManager.invisibleCharacterConfiguration.tabSymbol = newValue
-                layoutManager.invalidateLines()
-                layoutManager.setNeedsLayout()
-                setNeedsLayout()
-                layoutIfNeeded()
+                layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
@@ -196,10 +188,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.spaceSymbol {
                 layoutManager.invisibleCharacterConfiguration.spaceSymbol = newValue
-                layoutManager.invalidateLines()
-                layoutManager.setNeedsLayout()
-                setNeedsLayout()
-                layoutIfNeeded()
+                layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
@@ -210,10 +199,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.lineBreakSymbol {
                 layoutManager.invisibleCharacterConfiguration.lineBreakSymbol = newValue
-                layoutManager.invalidateLines()
-                layoutManager.setNeedsLayout()
-                setNeedsLayout()
-                layoutIfNeeded()
+                layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
@@ -224,7 +210,6 @@ final class TextInputView: UIView, UITextInput {
                 layoutManager.tabWidth = indentController.tabWidth
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
-                layoutIfNeeded()
             }
         }
     }
@@ -237,7 +222,6 @@ final class TextInputView: UIView, UITextInput {
                 layoutManager.gutterLeadingPadding = newValue
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
-                layoutIfNeeded()
             }
         }
     }
@@ -250,7 +234,6 @@ final class TextInputView: UIView, UITextInput {
                 layoutManager.gutterTrailingPadding = newValue
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
-                layoutIfNeeded()
             }
         }
     }
@@ -263,7 +246,6 @@ final class TextInputView: UIView, UITextInput {
                 layoutManager.textContainerInset = newValue
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
-                layoutIfNeeded()
             }
         }
     }
@@ -277,7 +259,6 @@ final class TextInputView: UIView, UITextInput {
                 layoutManager.invalidateLines()
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
-                layoutIfNeeded()
             }
         }
     }
@@ -299,7 +280,6 @@ final class TextInputView: UIView, UITextInput {
                 inputDelegate?.selectionDidChange(self)
                 // Do a layout pass to ensure the position of the caret is correct.
                 setNeedsLayout()
-                layoutIfNeeded()
             }
         }
     }
@@ -326,7 +306,6 @@ final class TextInputView: UIView, UITextInput {
             if newValue != pageGuideController.column {
                 pageGuideController.column = newValue
                 setNeedsLayout()
-                layoutIfNeeded()
             }
         }
     }
@@ -802,12 +781,12 @@ extension TextInputView {
                 layoutManager.removeLine(withID: removedLine.id)
             }
         }
-        layoutManager.typeset(changeSet.editedLines)
-        layoutManager.syntaxHighlight(changeSet.editedLines)
+        layoutManager.redisplay(changeSet.editedLines)
         if didAddOrRemoveLines {
             layoutManager.updateLineNumberWidth()
         }
         layoutManager.setNeedsLayout()
+        layoutManager.layoutIfNeeded()
         delegate?.textInputViewDidChange(self)
         if didAddOrRemoveLines {
             delegate?.textInputViewDidInvalidateContentSize(self)
@@ -1022,11 +1001,10 @@ extension TextInputView: LayoutManagerDelegate {
         layoutManager.layoutIfNeeded()
         delegate?.textInputViewDidUpdateGutterWidth(self)
     }
-
+    
     func layoutManagerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ layoutManager: LayoutManager) {
-        // Sizing may be invalidated when doing async syntax highlighting, in which case we need to do another layout pass.
+        setNeedsLayout()
         layoutManager.setNeedsLayout()
-        layoutManager.layoutIfNeeded()
     }
 }
 
