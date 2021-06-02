@@ -59,7 +59,7 @@ final class LayoutManager {
                 for (_, lineController) in lineControllers {
                     lineController.syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
                     lineController.syntaxHighlighter?.theme = theme
-                    lineController.invalidate()
+                    lineController.invalidateSyntaxHighlighting()
                 }
             }
         }
@@ -67,7 +67,6 @@ final class LayoutManager {
     var theme: Theme = DefaultTheme() {
         didSet {
             if theme !== oldValue {
-                updateLineNumberWidth()
                 gutterBackgroundView.backgroundColor = theme.gutterBackgroundColor
                 gutterBackgroundView.hairlineColor = theme.gutterHairlineColor
                 gutterBackgroundView.hairlineWidth = theme.gutterHairlineWidth
@@ -78,14 +77,14 @@ final class LayoutManager {
                 for (_, lineController) in lineControllers {
                     lineController.estimatedLineFragmentHeight = theme.font.lineHeight
                     lineController.syntaxHighlighter?.theme = theme
-                    lineController.invalidate()
+                    lineController.invalidateSyntaxHighlighting()
                 }
+                updateLineNumberWidth()
                 if theme.font != oldValue.font {
                     invalidateContentSize()
                 }
                 setNeedsLayout()
                 setNeedsLayoutSelection()
-                layoutIfNeeded()
             }
         }
     }
@@ -348,27 +347,28 @@ final class LayoutManager {
         }
     }
 
-    func typeset(_ lines: Set<DocumentLineNode>) {
-        for line in lines {
-            if let lineController = lineControllers[line.id] {
-                lineController.typeset()
-            }
-        }
-    }
-
-    func syntaxHighlight(_ lines: Set<DocumentLineNode>) {
-        for line in lines {
-            if let lineController = lineControllers[line.id] {
-                lineController.syntaxHighlight()
-            }
-        }
-    }
-    
     func invalidateLines() {
         for (_, lineController) in lineControllers {
             lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
             lineController.tabWidth = tabWidth
-            lineController.invalidate()
+            lineController.invalidateSyntaxHighlighting()
+        }
+    }
+
+    func redisplay(_ lines: Set<DocumentLineNode>) {
+        for line in lines {
+            if let lineController = lineControllers[line.id] {
+                let lineYPosition = line.yPosition
+                let lineLocalViewport = CGRect(x: 0, y: lineYPosition, width: insetViewport.width, height: insetViewport.maxY - lineYPosition)
+                lineController.invalidateEverything()
+                lineController.willDisplay(in: lineLocalViewport, syntaxHighlightAsynchronously: false)
+            }
+        }
+    }
+
+    func setNeedsDisplayOnLines() {
+        for (_, lineController) in lineControllers {
+            lineController.setNeedsDisplayOnLineFragmentViews()
         }
     }
 }
@@ -560,13 +560,14 @@ extension LayoutManager {
         var appearedLineFragmentIDs: Set<LineFragmentID> = []
         var maxY = insetViewport.minY
         var contentOffsetAdjustmentY: CGFloat = 0
-        var stoppedGeneratingLineFragments = false
-        while let line = nextLine, maxY < insetViewport.maxY, !stoppedGeneratingLineFragments, maximumLineWidth > 0 {
+        while let line = nextLine, maxY < insetViewport.maxY, maximumLineWidth > 0 {
             appearedLineIDs.insert(line.id)
             // Prepare to line controller to display text.
+            let lineLocalViewport = CGRect(x: 0, y: maxY, width: insetViewport.width, height: insetViewport.maxY - maxY)
             let lineController = lineController(for: line)
+            let oldLineHeight = lineController.lineHeight
             lineController.constrainingWidth = maximumLineWidth
-            lineController.willDisplay()
+            lineController.willDisplay(in: lineLocalViewport, syntaxHighlightAsynchronously: true)
             // Layout the line number.
             layoutLineNumberView(for: line)
             // Layout line fragments ("sublines") in the line until we have filled the viewport.
@@ -574,18 +575,24 @@ extension LayoutManager {
             let lineFragmentControllers = lineController.lineFragmentControllers(in: insetViewport)
             for lineFragmentController in lineFragmentControllers {
                 let lineFragment = lineFragmentController.lineFragment
+                var lineFragmentFrame: CGRect = .zero
                 appearedLineFragmentIDs.insert(lineFragment.id)
-                layoutLineFragmentView(for: lineFragmentController, lineYPosition: lineYPosition, maxY: &maxY)
+                layoutLineFragmentView(for: lineFragmentController, lineYPosition: lineYPosition, lineFragmentFrame: &lineFragmentFrame)
+                maxY = lineFragmentFrame.maxY
             }
             // If we found at least one line to be shown and now aren't getting any line fragments within the viewport
             // then there's no more line fragments to be shown in the viewport and we stop generating line fragments.
+            var stoppedGeneratingLineFragments = false
             if !appearedLineFragmentIDs.isEmpty {
                 stoppedGeneratingLineFragments = lineFragmentControllers.isEmpty
             }
-            var localContentOffsetAdjustmentY: CGFloat = 0
-            updateSize(of: lineController, contentOffsetAdjustmentY: &localContentOffsetAdjustmentY)
-            contentOffsetAdjustmentY += localContentOffsetAdjustmentY
-            if line.index < lineManager.lineCount - 1 {
+            let lineSize = CGSize(width: lineController.lineWidth, height: lineController.lineHeight)
+            setSize(of: lineController.line, to: lineSize)
+            let isSizingLineAboveTopEdge = line.yPosition < insetViewport.minY + textContainerInset.top
+            if isSizingLineAboveTopEdge && lineController.isFinishedTypesetting {
+                contentOffsetAdjustmentY += lineController.lineHeight - oldLineHeight
+            }
+            if !stoppedGeneratingLineFragments && line.index < lineManager.lineCount - 1 {
                 nextLine = lineManager.line(atRow: line.index + 1)
             } else {
                 nextLine = nil
@@ -635,7 +642,7 @@ extension LayoutManager {
         lineNumberView.frame = CGRect(x: xPosition, y: yPosition, width: lineNumberWidth, height: fontLineHeight)
     }
 
-    private func layoutLineFragmentView(for lineFragmentController: LineFragmentController, lineYPosition: CGFloat, maxY: inout CGFloat) {
+    private func layoutLineFragmentView(for lineFragmentController: LineFragmentController, lineYPosition: CGFloat, lineFragmentFrame: inout CGRect) {
         let lineFragment = lineFragmentController.lineFragment
         let lineFragmentView = lineFragmentViewReuseQueue.dequeueView(forKey: lineFragment.id)
         if lineFragmentView.superview == nil {
@@ -645,14 +652,12 @@ extension LayoutManager {
         lineFragmentController.lineFragmentView = lineFragmentView
         let lineFragmentOrigin = CGPoint(x: leadingLineSpacing, y: textContainerInset.top + lineYPosition + lineFragment.yPosition)
         let lineFragmentSize = CGSize(width: lineFragment.scaledSize.width + lineBreakInvisibleSymbolWidth, height: lineFragment.scaledSize.height)
-        let lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragmentSize)
+        lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragmentSize)
         lineFragmentView.frame = lineFragmentFrame
-        maxY = lineFragmentFrame.maxY
     }
 
-    private func updateSize(of lineController: LineController, contentOffsetAdjustmentY: inout CGFloat) {
-        let line = lineController.line
-        let lineWidth = lineController.lineWidth
+    private func setSize(of line: DocumentLineNode, to newSize: CGSize) {
+        let lineWidth = newSize.width
         if lineWidths[line.id] != lineWidth {
             lineWidths[line.id] = lineWidth
             if let lineIDTrackingWidth = lineIDTrackingWidth {
@@ -665,19 +670,9 @@ extension LayoutManager {
                 _textContentWidth = nil
             }
         }
-        let oldLineHeight = line.data.lineHeight
-        let newLineHeight = lineController.lineHeight
-        let didUpdateHeight = lineManager.setHeight(of: line, to: newLineHeight)
+        let didUpdateHeight = lineManager.setHeight(of: line, to: newSize.height)
         if didUpdateHeight {
             _textContentHeight = nil
-            // Updating the height of a line that's above the current content offset will cause the content below it to move up or down.
-            // This happens when layout information above the content offset is invalidated and the user is scrolling upwards, e.g. after
-            // changing the line height. To accommodate this change and reduce the "jump", we ask the scroll view to adjust the content offset
-            // by the amount that the line height has changed. The solution is borrowed from https://github.com/airbnb/MagazineLayout/pull/11
-            let isSizingElementAboveTopEdge = line.yPosition < insetViewport.minY + textContainerInset.top
-            if isSizingElementAboveTopEdge {
-                contentOffsetAdjustmentY = newLineHeight - oldLineHeight
-            }
         }
     }
 
@@ -731,7 +726,7 @@ extension LayoutManager {
             if let longestLine = lineManager.initialLongestLine {
                 lineIDTrackingWidth = longestLine.id
                 let lineController = lineController(for: longestLine)
-                lineController.typeset()
+                lineController.invalidateEverything()
                 lineWidths[longestLine.id] = lineController.lineWidth
                 if !isLineWrappingEnabled {
                     _textContentWidth = nil

@@ -9,12 +9,7 @@ import CoreGraphics
 import CoreText
 import UIKit
 
-struct LineFragmentNodeID: RedBlackTreeNodeID {
-    let id = UUID()
-}
-
-typealias LineFragmentTree = RedBlackTree<LineFragmentNodeID, Int, Void>
-typealias LineFragmentNode = RedBlackTreeNode<LineFragmentNodeID, Int, Void>
+typealias LineFragmentTree = RedBlackTree<LineFragmentNodeID, Int, LineFragmentNodeData>
 
 protocol LineControllerDelegate: AnyObject {
     func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController)
@@ -59,7 +54,11 @@ final class LineController {
             _lineHeight = lineHeight
             return lineHeight
         } else {
-            let lineHeight = typesetter.lineFragments.reduce(0) { $0 + $1.scaledSize.height }
+            let knownLineFragmentHeight = typesetter.lineFragments.reduce(0) { $0 + $1.scaledSize.height }
+            let remainingNumberOfLineFragments = typesetter.bestGuessNumberOfLineFragments - typesetter.lineFragments.count
+            let lineFragmentHeight = estimatedLineFragmentHeight * lineFragmentHeightMultiplier
+            let remainingLineFragmentHeight = CGFloat(remainingNumberOfLineFragments) * lineFragmentHeight
+            let lineHeight = knownLineFragmentHeight + remainingLineFragmentHeight
             _lineHeight = lineHeight
             return lineHeight
         }
@@ -67,60 +66,58 @@ final class LineController {
     var numberOfLineFragments: Int {
         return typesetter.lineFragments.count
     }
+    var isFinishedTypesetting: Bool {
+        return typesetter.isFinishedTypesetting
+    }
 
     private let stringView: StringView
     private let typesetter: LineTypesetter
     private let textInputProxy = LineTextInputProxy()
     private var attributedString: NSMutableAttributedString?
     private var lineFragmentControllers: [LineFragmentID: LineFragmentController] = [:]
+    private var isLineFragmentCacheInvalid = true
     private var isStringInvalid = true
     private var isDefaultAttributesInvalid = true
     private var isSyntaxHighlightingInvalid = true
     private var isTypesetterInvalid = true
     private var _lineHeight: CGFloat?
-    private var lineFragmentTree = LineFragmentTree(minimumValue: 0, rootValue: 0)
+    private var lineFragmentTree: LineFragmentTree
+    private var visibleRect: CGRect?
 
     init(line: DocumentLineNode, stringView: StringView) {
         self.line = line
         self.stringView = stringView
         self.typesetter = LineTypesetter(lineID: line.id.rawValue)
         self.textInputProxy.estimatedLineFragmentHeight = estimatedLineFragmentHeight
+        let rootLineFragmentNodeData = LineFragmentNodeData(lineFragment: nil)
+        self.lineFragmentTree = LineFragmentTree(minimumValue: 0, rootValue: 0, rootData: rootLineFragmentNodeData)
     }
 
-    func typeset() {
-        isStringInvalid = true
-        isDefaultAttributesInvalid = true
-        isTypesetterInvalid = true
-        _lineHeight = nil
+    func willDisplay(in rect: CGRect, syntaxHighlightAsynchronously: Bool) {
+        visibleRect = rect
+        clearLineFragmentControllersIfNecessary()
         updateStringIfNecessary()
         updateDefaultAttributesIfNecessary()
+        updateSyntaxHighlightingIfNecessary(async: syntaxHighlightAsynchronously)
         updateTypesetterIfNecessary()
-    }
-
-    func syntaxHighlight() {
-        // We need to invalidate the typesetter when invalidating the syntax highlighting because
-        // the CTTypesetter needs to generate new instances of CTLine with the new attributes.
-        isTypesetterInvalid = true
-        isSyntaxHighlightingInvalid = true
-        updateSyntaxHighlightingIfNecessary(async: false)
-    }
-
-    func willDisplay() {
-        let needsDisplay = isStringInvalid || isTypesetterInvalid || isDefaultAttributesInvalid || isSyntaxHighlightingInvalid
-        updateStringIfNecessary()
-        updateDefaultAttributesIfNecessary()
-        updateTypesetterIfNecessary()
-        updateSyntaxHighlightingIfNecessary(async: true)
-        if needsDisplay {
-            setNeedsDisplayOnLineFragmentViews()
-        }
+        typesetLineFragments(in: rect)
     }
 
     func didEndDisplaying() {
+        visibleRect = nil
         syntaxHighlighter?.cancel()
     }
 
-    func invalidate() {
+    func invalidateEverything() {
+        isLineFragmentCacheInvalid = true
+        isStringInvalid = true
+        isTypesetterInvalid = true
+        isDefaultAttributesInvalid = true
+        isSyntaxHighlightingInvalid = true
+        _lineHeight = nil
+    }
+
+    func invalidateSyntaxHighlighting() {
         isTypesetterInvalid = true
         isDefaultAttributesInvalid = true
         isSyntaxHighlightingInvalid = true
@@ -128,20 +125,18 @@ final class LineController {
     }
 
     func lineFragmentControllers(in rect: CGRect) -> [LineFragmentController] {
-        var result: [LineFragmentController] = []
         let lineYPosition = line.yPosition
-        for lineFragment in typesetter.lineFragments {
-            let lineFragmentMinY = lineYPosition + lineFragment.yPosition
-            let lineFragmentMaxY = lineFragmentMinY + lineFragment.scaledSize.height
-            if lineFragmentMinY > rect.maxY {
-                // We're past the bottom of the rect. There are no more line fragments within the rect.
-                break
-            } else if lineFragmentMaxY > rect.minY {
-                let lineFragmentController = lineFragmentController(for: lineFragment)
-                result.append(lineFragmentController)
+        let localMinY = rect.minY - lineYPosition
+        let localMaxY = rect.maxY - lineYPosition
+        let query = LineFragmentFrameQuery(range: localMinY ... localMaxY)
+        let queryResult = lineFragmentTree.search(using: query)
+        return queryResult.compactMap { match in
+            if let lineFragment = match.node.data.lineFragment {
+                return lineFragmentController(for: lineFragment)
+            } else {
+                return nil
             }
         }
-        return result
     }
     
     func lineFragmentNode(containingCharacterAt location: Int) -> LineFragmentNode {
@@ -151,18 +146,42 @@ final class LineController {
     func lineFragmentNode(atIndex index: Int) -> LineFragmentNode {
         return lineFragmentTree.node(atIndex: index)
     }
+
+    func setNeedsDisplayOnLineFragmentViews() {
+        for (_, lineFragmentController) in lineFragmentControllers {
+            lineFragmentController.lineFragmentView?.setNeedsDisplay()
+        }
+    }
 }
 
 private extension LineController {
+    private func clearLineFragmentControllersIfNecessary() {
+        if isLineFragmentCacheInvalid {
+            lineFragmentControllers.removeAll(keepingCapacity: true)
+            isLineFragmentCacheInvalid = false
+        }
+    }
+
     private func updateStringIfNecessary() {
         if isStringInvalid {
             let range = NSRange(location: line.location, length: line.data.totalLength)
             if let string = stringView.substring(in: range) {
-                attributedString = NSMutableAttributedString(string: string)
+                self.attributedString = NSMutableAttributedString(string: string)
             } else {
                 attributedString = nil
             }
             isStringInvalid = false
+        }
+    }
+
+    private func updateTypesetterIfNecessary() {
+        if isTypesetterInvalid {
+            lineFragmentTree.reset(rootValue: 0, rootData: LineFragmentNodeData(lineFragment: nil))
+            typesetter.reset()
+            if let attributedString = attributedString {
+                typesetter.prepareToTypeset(attributedString)
+            }
+            isTypesetterInvalid = false
         }
     }
 
@@ -206,8 +225,9 @@ private extension LineController {
             syntaxHighlighter.syntaxHighlight(input) { [weak self] result in
                 if case .success = result, let self = self {
                     let oldWidth = self.lineWidth
-                    self.typeset(input.attributedString)
                     self.isSyntaxHighlightingInvalid = false
+                    self.isTypesetterInvalid = true
+                    self.redisplayLineFragmentsInVisibleRect()
                     if abs(self.lineWidth - oldWidth) > CGFloat.ulpOfOne {
                         self.delegate?.lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(self)
                     }
@@ -216,18 +236,42 @@ private extension LineController {
         } else {
             syntaxHighlighter.cancel()
             syntaxHighlighter.syntaxHighlight(input)
-            typeset(input.attributedString)
             isSyntaxHighlightingInvalid = false
+            isTypesetterInvalid = true
         }
     }
 
-    private func updateTypesetterIfNecessary() {
-        if isTypesetterInvalid {
-            lineFragmentControllers.removeAll(keepingCapacity: true)
-            if let attributedString = attributedString {
-                typeset(attributedString)
+    private func typesetLineFragments(in rect: CGRect) {
+        let newLineFragments = typesetter.typesetLineFragments(in: rect)
+        var previousNode: LineFragmentNode?
+        for lineFragment in newLineFragments {
+            let length = lineFragment.range.length
+            let data = LineFragmentNodeData(lineFragment: lineFragment)
+            if lineFragment.index < lineFragmentTree.nodeTotalCount {
+                let node = lineFragmentTree.node(atIndex: lineFragment.index)
+                let heightDifference = abs(lineFragment.baseSize.height - node.data.lineFragmentHeight)
+                if heightDifference > CGFloat.ulpOfOne {
+                    _lineHeight = nil
+                }
+                node.value = length
+                node.data.lineFragment = lineFragment
+                node.updateTotalLineFragmentHeight()
+                lineFragmentTree.updateAfterChangingChildren(of: node)
+                previousNode = node
+            } else if let thisPreviousNode = previousNode {
+                let newNode = lineFragmentTree.insertNode(value: length, data: data, after: thisPreviousNode)
+                newNode.updateTotalLineFragmentHeight()
+                previousNode = newNode
+                _lineHeight = nil
+            } else {
+                let thisPreviousNode = lineFragmentTree.node(atIndex: lineFragment.index - 1)
+                let newNode = lineFragmentTree.insertNode(value: length, data: data, after: thisPreviousNode)
+                newNode.updateTotalLineFragmentHeight()
+                previousNode = newNode
+                _lineHeight = nil
             }
         }
+        textInputProxy.lineFragments = typesetter.lineFragments
     }
 
     private func createLineSyntaxHighlightInput() -> LineSyntaxHighlighterInput? {
@@ -251,51 +295,22 @@ private extension LineController {
         }
     }
 
-    private func typeset(_ attributedString: NSAttributedString) {
-        _lineHeight = nil
-        typesetter.typeset(attributedString)
-        textInputProxy.lineFragments = typesetter.lineFragments
-        cleanUpLineFragmentControllers()
-        reapplyLineFragmentToLineFragmentControllers()
-        setNeedsDisplayOnLineFragmentViews()
-        rebuildLineFragmentTree()
-        isTypesetterInvalid = false
-    }
-
-    private func rebuildLineFragmentTree() {
-        lineFragmentTree.reset(rootValue: 0)
-        if !typesetter.lineFragments.isEmpty {
-            let nodes: [LineFragmentNode] = typesetter.lineFragments.map { lineFragment in
-                let range = CTLineGetStringRange(lineFragment.line)
-                return LineFragmentNode(tree: lineFragmentTree, value: range.length)
-            }
-            lineFragmentTree.rebuild(from: nodes)
-        } else {
-            let node = LineFragmentNode(tree: lineFragmentTree, value: 0)
-            lineFragmentTree.rebuild(from: [node])
+    private func redisplayLineFragmentsInVisibleRect() {
+        if let visibleRect = visibleRect {
+            _lineHeight = nil
+            updateTypesetterIfNecessary()
+            typesetLineFragments(in: visibleRect)
+            reapplyLineFragmentToLineFragmentControllers()
+            setNeedsDisplayOnLineFragmentViews()
         }
     }
-
-    private func cleanUpLineFragmentControllers() {
-        let lineFragmentIDs = Set(typesetter.lineFragments.map(\.id))
-        let currentControllerIDs = Set(lineFragmentControllers.keys)
-        let controllerIDsToRemove = currentControllerIDs.subtracting(lineFragmentIDs)
-        for controllerID in controllerIDsToRemove {
-            lineFragmentControllers.removeValue(forKey: controllerID)
-        }
-    }
-
+    
     private func reapplyLineFragmentToLineFragmentControllers() {
-        for (lineFragmentID, lineFragmentController) in lineFragmentControllers {
+        for (_, lineFragmentController) in lineFragmentControllers {
+            let lineFragmentID = lineFragmentController.lineFragment.id
             if let lineFragment = typesetter.lineFragment(withID: lineFragmentID) {
                 lineFragmentController.lineFragment = lineFragment
             }
-        }
-    }
-
-    private func setNeedsDisplayOnLineFragmentViews() {
-        for (_, lineFragmentController) in lineFragmentControllers {
-            lineFragmentController.lineFragmentView?.setNeedsDisplay()
         }
     }
 }

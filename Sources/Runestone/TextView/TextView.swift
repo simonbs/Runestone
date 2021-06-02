@@ -390,6 +390,12 @@ public final class TextView: UIScrollView {
     public var isAutomaticScrollEnabled = true
     /// Adjustment applied to the content offset when automatically scrolling the text view to show the caret.
     public var automaticScrollContentOffsetAdjustment: UIEdgeInsets = .zero
+    /// The length of the line that was longest when opening the document. This will return nil if the line is no longer available.
+    /// The value will not be kept updated as the text is changed. The value can be used to determine if a document contains
+    /// a very long line in which case the performance may be degraded when editing the line.
+    public var lengthOfInitallyLongestLine: Int? {
+        return textInputView.lineManager.initialLongestLine?.data.totalLength
+    }
 
     private let textInputView: TextInputView
     private let editableTextInteraction = UITextInteraction(for: .editable)

@@ -74,11 +74,15 @@ final class StringView {
         return bytes(at: location)
     }
 
-    func bytes(at location: Int) -> StringViewBytesResult? {
-        guard location < string.length else {
+    func bytes(at startLocation: Int) -> StringViewBytesResult? {
+        guard startLocation < string.length else {
             return nil
         }
-        let range = string.rangeOfComposedCharacterSequence(at: location)
+        let targetCharacterCount = 4 * 1024
+        let endLocation = min(startLocation + targetCharacterCount, string.length - 1)
+        let startRange = string.rangeOfComposedCharacterSequence(at: startLocation)
+        let endRange = string.rangeOfComposedCharacterSequence(at: endLocation)
+        let range = NSRange(location: startRange.lowerBound, length: endRange.upperBound - startRange.lowerBound)
         let byteCount = range.length * 2
         let mutableBuffer = UnsafeMutablePointer<Int8>.allocate(capacity: byteCount)
         let encoding: String.Encoding = .utf16

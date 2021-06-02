@@ -93,7 +93,9 @@ private extension LineMovementController {
             let destinationLineFragmentNode = currentDelegate.lineMovementController(self, lineFragmentNodeAtIndex: lineFragmentIndex, in: line)
             let lineLocation = line.location
             let preferredLocation = lineLocation + destinationLineFragmentNode.location + location
-            let maximumLocation = lineLocation + line.data.length
+            let lineFragmentMaximumLocation = lineLocation + destinationLineFragmentNode.location + destinationLineFragmentNode.value
+            let lineMaximumLocation = lineLocation + line.data.length
+            let maximumLocation = min(lineFragmentMaximumLocation, lineMaximumLocation)
             return min(preferredLocation, maximumLocation)
         }
     }
