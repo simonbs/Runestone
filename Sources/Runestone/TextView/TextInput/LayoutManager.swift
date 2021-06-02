@@ -67,7 +67,6 @@ final class LayoutManager {
     var theme: Theme = DefaultTheme() {
         didSet {
             if theme !== oldValue {
-                updateLineNumberWidth()
                 gutterBackgroundView.backgroundColor = theme.gutterBackgroundColor
                 gutterBackgroundView.hairlineColor = theme.gutterHairlineColor
                 gutterBackgroundView.hairlineWidth = theme.gutterHairlineWidth
@@ -80,6 +79,7 @@ final class LayoutManager {
                     lineController.syntaxHighlighter?.theme = theme
                     lineController.invalidate()
                 }
+                updateLineNumberWidth()
                 if theme.font != oldValue.font {
                     invalidateContentSize()
                 }
