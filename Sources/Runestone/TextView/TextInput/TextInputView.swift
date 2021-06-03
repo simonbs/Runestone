@@ -126,12 +126,12 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
-    var showSelectedLines: Bool {
+    var lineSelectionDisplayType: LineSelectionDisplayType {
         get {
-            return layoutManager.showSelectedLines
+            return layoutManager.lineSelectionDisplayType
         }
         set {
-            layoutManager.showSelectedLines = newValue
+            layoutManager.lineSelectionDisplayType = newValue
         }
     }
     var showTabs: Bool {

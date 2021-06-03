@@ -247,12 +247,12 @@ public final class TextView: UIScrollView {
         }
     }
     /// Enable to show highlight the selected lines. The selection is only shown in the gutter when multiple lines are selected.
-    public var showSelectedLines: Bool {
+    public var lineSelectionDisplayType: LineSelectionDisplayType {
         get {
-            return textInputView.showSelectedLines
+            return textInputView.lineSelectionDisplayType
         }
         set {
-            textInputView.showSelectedLines = newValue
+            textInputView.lineSelectionDisplayType = newValue
         }
     }
     /// The text view renders invisible tabs when enabled. The `tabsSymbol` is used to render tabs.

@@ -106,9 +106,11 @@ final class LayoutManager {
             }
         }
     }
-    var showSelectedLines = false {
+    var lineSelectionDisplayType: LineSelectionDisplayType = .none {
         didSet {
-            if showSelectedLines != oldValue {
+            if lineSelectionDisplayType != oldValue {
+                setNeedsLayoutSelection()
+                layoutSelectionIfNeeded()
                 updateShownViews()
             }
         }
@@ -527,26 +529,39 @@ extension LayoutManager {
     }
 
     private func layoutSelection() {
-        guard showSelectedLines, let selectedRange = selectedRange else {
+        guard lineSelectionDisplayType.shouldShowLineSelection, let selectedRange = selectedRange else {
             return
         }
         let startLocation = selectedRange.location
         let endLocation = selectedRange.location + selectedRange.length
         let selectedRect: CGRect
         if selectedRange.length > 0 {
-            let startLine = lineManager.line(containingCharacterAt: startLocation)!
-            let endLine = lineManager.line(containingCharacterAt: endLocation)!
-            let startLineMinYPosition = textContainerInset.top + startLine.yPosition
-            let endLineMaxYPosition = textContainerInset.top + endLine.yPosition + endLine.data.lineHeight
-            let height = endLineMaxYPosition - startLineMinYPosition
-            selectedRect = CGRect(x: 0, y: startLineMinYPosition, width: scrollViewWidth, height: height)
+            let startSelectionRect = selectionRectangleForLineFragment(containingCharacterAt: startLocation)
+            let endSelectionRect = selectionRectangleForLineFragment(containingCharacterAt: endLocation)
+            let height = endSelectionRect.maxY - startSelectionRect.minY
+            selectedRect = CGRect(x: 0, y: startSelectionRect.minY, width: scrollViewWidth, height: height)
         } else {
-            let line = lineManager.line(containingCharacterAt: startLocation)!
-            selectedRect = CGRect(x: 0, y: textContainerInset.top + line.yPosition, width: scrollViewWidth, height: line.data.lineHeight)
+            let selectionRect = selectionRectangleForLineFragment(containingCharacterAt: startLocation)
+            selectedRect = CGRect(x: 0, y: selectionRect.minY, width: scrollViewWidth, height: selectionRect.height)
         }
         let totalGutterWidth = additionalInset.left + gutterWidth
         gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: totalGutterWidth, height: selectedRect.height)
         lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + totalGutterWidth, y: selectedRect.minY, width: scrollViewWidth - gutterWidth, height: selectedRect.height)
+    }
+
+    private func selectionRectangleForLineFragment(containingCharacterAt location: Int) -> CGRect {
+        switch lineSelectionDisplayType {
+        case .none:
+            return .null
+        case .line:
+            let line = lineManager.line(containingCharacterAt: location)!
+            return CGRect(x: 0, y: textContainerInset.top + line.yPosition, width: scrollViewWidth, height: line.data.lineHeight)
+        case .lineFragment:
+            let caretRect = caretRect(at: location)
+            let lineFragmentHeight = caretRect.height * lineHeightMultiplier
+            let lineFragmentYPosition = caretRect.minY + (caretRect.height - lineFragmentHeight) / 2
+            return CGRect(x: 0, y: lineFragmentYPosition, width: scrollViewWidth, height: lineFragmentHeight)
+        }
     }
 
     private func layoutLines() {
@@ -712,8 +727,8 @@ extension LayoutManager {
         let selectedLength = selectedRange?.length ?? 0
         gutterBackgroundView.isHidden = !showLineNumbers
         lineNumbersContainerView.isHidden = !showLineNumbers
-        gutterSelectionBackgroundView.isHidden = !showSelectedLines || !showLineNumbers || !isEditing
-        lineSelectionBackgroundView.isHidden = !showSelectedLines || !isEditing || selectedLength > 0
+        gutterSelectionBackgroundView.isHidden = !lineSelectionDisplayType.shouldShowLineSelection || !showLineNumbers || !isEditing
+        lineSelectionBackgroundView.isHidden = !lineSelectionDisplayType.shouldShowLineSelection || !isEditing || selectedLength > 0
     }
 
     // Resetting the line widths clears all recorded line widths, asks the line manager for the longest line,
