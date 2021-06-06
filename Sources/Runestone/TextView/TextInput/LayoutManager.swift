@@ -450,7 +450,7 @@ extension LayoutManager {
                 selectionRects += [
                     TextSelectionRect(
                         rect: screenRect,
-                        writingDirection: .leftToRight,
+                        writingDirection: .natural,
                         containsStart: containsStart,
                         containsEnd: containsEnd)
                 ]
