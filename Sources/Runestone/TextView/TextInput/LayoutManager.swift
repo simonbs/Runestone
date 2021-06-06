@@ -434,20 +434,27 @@ extension LayoutManager {
             let localRangeLocation = max(range.location, lineStartLocation) - lineStartLocation
             let localRangeLength = min(range.location + range.length, lineEndLocation) - lineStartLocation - localRangeLocation
             let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
-            let rendererSelectionRects = lineController.selectionRects(in: localRange)
-            let textSelectionRects: [TextSelectionRect] = rendererSelectionRects.map { rendererSelectionRect in
-                let containsStart = lineIndex == startLineIndex
-                let containsEnd = lineIndex == endLineIndex
-                var screenRect = rendererSelectionRect.rect
+            let lineFragmentSelectionRects = lineController.selectionRects(in: localRange)
+            for (lineFragmentSelectionRectIdx, lineFragmentSelectionRect) in lineFragmentSelectionRects.enumerated() {
+                // Determining containsStart and containsEnd based on indices assumes that the text selection rects are
+                // iterated in order. This means that `-selectionRects(in:)` on LineController should return them in order.
+                let containsStart = lineIndex == lineIndexRange.lowerBound && lineFragmentSelectionRectIdx == 0
+                let containsEnd = lineIndex == lineIndexRange.upperBound - 1 && lineFragmentSelectionRectIdx == lineFragmentSelectionRects.count - 1
+                var screenRect = lineFragmentSelectionRect.rect
                 screenRect.origin.x += leadingLineSpacing
-                screenRect.origin.y = textContainerInset.top + line.yPosition + rendererSelectionRect.rect.minY
+                screenRect.origin.y = textContainerInset.top + line.yPosition + lineFragmentSelectionRect.rect.minY
                 if !containsEnd {
                     // If the following lines are selected, we make sure that the selections extends the entire line.
                     screenRect.size.width = max(contentWidth, scrollViewWidth) - screenRect.minX
                 }
-                return TextSelectionRect(rect: screenRect, writingDirection: .leftToRight, containsStart: containsStart, containsEnd: containsEnd)
+                selectionRects += [
+                    TextSelectionRect(
+                        rect: screenRect,
+                        writingDirection: .leftToRight,
+                        containsStart: containsStart,
+                        containsEnd: containsEnd)
+                ]
             }
-            selectionRects.append(contentsOf: textSelectionRects)
         }
         return selectionRects.ensuringYAxisAlignment()
     }
