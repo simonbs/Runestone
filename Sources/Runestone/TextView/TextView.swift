@@ -388,11 +388,10 @@ public final class TextView: UIScrollView {
     }
     /// Automatically scrolls the text view to show the caret when typing or moving the caret.
     public var isAutomaticScrollEnabled = true
-    /// Adjustment applied to the content offset when automatically scrolling the text view to show the caret.
-    public var automaticScrollContentOffsetAdjustment: UIEdgeInsets = .zero
+    /// When automatic scrolling is enabled and the caret leaves the viewport, the text view will automatically scroll the content. The `automaticScrollInset` is applied to the viewport before scrolling. The inset can be used to adjust when the text view should scroll the content. For example it can be used to account for views overlaying the content. The text view will automatically account for the keyboard but will not account for the status bar.
+    public var automaticScrollInset: UIEdgeInsets = .zero
     /// The length of the line that was longest when opening the document. This will return nil if the line is no longer available.
-    /// The value will not be kept updated as the text is changed. The value can be used to determine if a document contains
-    /// a very long line in which case the performance may be degraded when editing the line.
+    /// The value will not be kept updated as the text is changed. The value can be used to determine if a document contains a very long line in which case the performance may be degraded when editing the line.
     public var lengthOfInitallyLongestLine: Int? {
         return textInputView.lineManager.initialLongestLine?.data.totalLength
     }
@@ -420,6 +419,7 @@ public final class TextView: UIScrollView {
     private var hasPendingContentSizeUpdate = false
     private var isInputAccessoryViewEnabled = false
     private var isAdjustingCursor = false
+    private let keyboardObserver = KeyboardObserver()
 
     public override init(frame: CGRect) {
         textInputView = TextInputView(theme: DefaultTheme())
@@ -434,6 +434,7 @@ public final class TextView: UIScrollView {
         tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
         addGestureRecognizer(tapGestureRecognizer)
         installNonEditableInteraction()
+        keyboardObserver.delegate = self
     }
 
     required init?(coder: NSCoder) {
@@ -608,8 +609,13 @@ private extension TextView {
     @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
         if tapGestureRecognizer.state == .ended {
             let point = gestureRecognizer.location(in: textInputView)
-            becomeFirstResponder()
+            let oldSelectedTextRange = selectedTextRange
             textInputView.moveCaret(to: point)
+            if selectedTextRange != oldSelectedTextRange {
+                layoutIfNeeded()
+                editorDelegate?.textViewDidChangeSelection(self)
+            }
+            becomeFirstResponder()
         }
     }
 
@@ -685,36 +691,31 @@ private extension TextView {
     }
 
     private func scroll(to location: Int, animated: Bool = false) {
-        let gutterWidth = textInputView.gutterWidth
         let caretRect = textInputView.caretRect(at: location)
-        var newXOffset = contentOffset.x
-        var newYOffset = contentOffset.y
-        var visibleBounds = bounds
-        visibleBounds.origin.y += adjustedContentInset.top
-        visibleBounds.origin.x += adjustedContentInset.left
-        visibleBounds.size.height -= adjustedContentInset.top + adjustedContentInset.bottom
-        visibleBounds.size.width -= adjustedContentInset.left + adjustedContentInset.right
-        if caretRect.minX - gutterWidth < visibleBounds.minX {
-            newXOffset = caretRect.minX - gutterWidth
-            newXOffset -= automaticScrollContentOffsetAdjustment.left
-        } else if caretRect.maxX > visibleBounds.maxX {
-            newXOffset = caretRect.maxX - frame.width
-            newXOffset += automaticScrollContentOffsetAdjustment.right
+        let viewportMinX = contentOffset.x + automaticScrollInset.left + gutterWidth
+        let viewportMinY = contentOffset.y + automaticScrollInset.top
+        let viwportHeight = frame.height
+            - keyboardObserver.keyboardHeight
+            - automaticScrollInset.top
+            - automaticScrollInset.bottom
+        let viewportWidth = frame.width
+            - gutterWidth
+            - automaticScrollInset.left
+            - automaticScrollInset.right
+        let viewport = CGRect(x: viewportMinX, y: viewportMinY, width: viewportWidth, height: viwportHeight)
+        var newContentOffset = contentOffset
+        if caretRect.minX < viewport.minX {
+            newContentOffset.x = caretRect.minX - gutterWidth - automaticScrollInset.left
         }
-        if caretRect.minY < visibleBounds.minY {
-            newYOffset = caretRect.minY - adjustedContentInset.top
-            newYOffset -= automaticScrollContentOffsetAdjustment.top
-        } else if caretRect.maxY > visibleBounds.maxY {
-            newYOffset = caretRect.maxY - visibleBounds.height - adjustedContentInset.top
-            newYOffset += automaticScrollContentOffsetAdjustment.bottom
+        if caretRect.maxX > viewport.maxX {
+            newContentOffset.x = caretRect.minX - viewport.width - gutterWidth + automaticScrollInset.right
         }
-        let viewportWidth = frame.width - adjustedContentInset.left - adjustedContentInset.right
-        let viewportHeight = frame.height - adjustedContentInset.top - adjustedContentInset.bottom
-        let maximumContentOffsetX = max(contentSize.width - viewportWidth, 0)
-        let maximumContentOffsetY = max(contentSize.height - viewportHeight, 0)
-        let cappedNewXOffset = min(max(newXOffset, adjustedContentInset.left * -1), maximumContentOffsetX)
-        let cappedNewYOffset = min(max(newYOffset, adjustedContentInset.top * -1), maximumContentOffsetY)
-        let newContentOffset = CGPoint(x: cappedNewXOffset, y: cappedNewYOffset)
+        if caretRect.minY < viewport.minY {
+            newContentOffset.y = caretRect.minY - automaticScrollInset.top
+        }
+        if caretRect.maxY > viewport.maxY {
+            newContentOffset.y = caretRect.maxY - viewport.height - automaticScrollInset.top
+        }
         if newContentOffset != contentOffset {
             setContentOffset(newContentOffset, animated: animated)
         }
@@ -824,6 +825,15 @@ extension TextView: UIGestureRecognizerDelegate {
             return !isEditing && shouldBeginEditing
         } else {
             return true
+        }
+    }
+}
+
+// MARK: - KeyboardObserverDelegate
+extension TextView: KeyboardObserverDelegate {
+    func keyboardObserver(_ keyboardObserver: KeyboardObserver, keyboardWillShowWithHeight keyboardHeight: CGFloat, animation: KeyboardObserver.Animation?) {
+        if isAutomaticScrollEnabled, !isAdjustingCursor, let newRange = textInputView.selectedRange, newRange.length == 0 {
+            scroll(to: newRange.location)
         }
     }
 }
