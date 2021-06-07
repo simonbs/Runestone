@@ -794,7 +794,7 @@ extension TextInputView {
     }
 
     private func justReplaceCharacters(in range: NSRange, with nsNewString: NSString) -> LineChangeSet {
-        let byteRange = ByteRange(location: ByteOrderMark.byteCount + ByteCount(range.location * 2), length: ByteCount(range.length * 2))
+        let byteRange = ByteRange(location: ByteCount(range.location * 2), length: ByteCount(range.length * 2))
         let newString = nsNewString as String
         let oldEndLinePosition = lineManager.linePosition(at: range.location + range.length)!
         stringView.replaceCharacters(in: range, with: newString)
