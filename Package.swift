@@ -20,12 +20,7 @@ let package = Package(
             dependencies: ["TreeSitter"]),
         .target(
             name: "TreeSitter",
-            exclude: [
-                "src",
-                "unicode/ICU_SHA",
-                "unicode/LICENSE",
-                "unicode/README.md"
-            ]),
+            exclude: ["src"]),
         .target(name: "TestTreeSitterLanguages"),
         .testTarget(
             name: "RunestoneTests",
