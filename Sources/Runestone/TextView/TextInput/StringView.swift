@@ -69,38 +69,14 @@ final class StringView {
         invalidate()
     }
 
-    func bytes(at byteIndex: ByteCount) -> StringViewBytesResult? {
-        let location = byteIndex.value / 2
-        return bytes(at: location)
-    }
-
-    func bytes(at startLocation: Int) -> StringViewBytesResult? {
-        guard startLocation < string.length else {
+    func bytes(in range: ByteRange) -> StringViewBytesResult? {
+        guard range.lowerBound.value >= 0 && range.upperBound.value <= string.length * 2 else {
             return nil
         }
-        let targetCharacterCount = 4 * 1024
-        let endLocation = min(startLocation + targetCharacterCount, string.length - 1)
-        let startRange = string.rangeOfComposedCharacterSequence(at: startLocation)
-        let endRange = string.rangeOfComposedCharacterSequence(at: endLocation)
-        let range = NSRange(location: startRange.lowerBound, length: endRange.upperBound - startRange.lowerBound)
-        let byteCount = range.length * 2
-        let mutableBuffer = UnsafeMutablePointer<Int8>.allocate(capacity: byteCount)
-        let encoding: String.Encoding = .utf16
-        var bufferLength = 0
-        let success = string.getBytes(
-            mutableBuffer,
-            maxLength: byteCount,
-            usedLength: &bufferLength,
-            encoding: encoding.rawValue,
-            options: [],
-            range: range,
-            remaining: nil)
-        if success {
-            let buffer = UnsafePointer(mutableBuffer)
-            mutableBuffer.deallocate()
-            return StringViewBytesResult(bytes: buffer, length: bufferLength)
+        if let cString = string.cString(using: String.Encoding.utf16LittleEndian.rawValue) {
+            let offsetCString = cString.advanced(by: range.location.value)
+            return StringViewBytesResult(bytes: offsetCString, length: range.length.value)
         } else {
-            mutableBuffer.deallocate()
             return nil
         }
     }
