@@ -17,7 +17,9 @@ public final class LinePosition {
     }
 
     convenience init(_ point: TreeSitterTextPoint) {
-        self.init(row: Int(point.row), column: Int(point.column))
+        let row = Int(point.row)
+        let column = Int(point.column / 2)
+        self.init(row: row, column: column)
     }
 }
 

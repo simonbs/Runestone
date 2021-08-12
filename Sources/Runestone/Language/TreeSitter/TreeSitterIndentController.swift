@@ -112,7 +112,7 @@ private extension TreeSitterIndentController {
                 //    instead keep the indent level starting at the "if" node. This is needed because "elseif" and "else"
                 //    are children of the "if" node.
                 let shouldNodeIndent = indentationScopes.indent.contains(type) || indentationScopes.inheritIndent.contains(type)
-                let isNodeBeforeTargetPosition = node.startPoint.column < caretPosition.column
+                let isNodeBeforeTargetPosition = LinePosition(node.startPoint).column < caretPosition.column
                 if shouldNodeIndent && isNodeBeforeTargetPosition {
                     return node
                 }
