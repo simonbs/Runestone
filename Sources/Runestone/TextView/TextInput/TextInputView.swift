@@ -794,7 +794,7 @@ extension TextInputView {
     }
 
     private func justReplaceCharacters(in range: NSRange, with nsNewString: NSString) -> LineChangeSet {
-        let byteRange = ByteRange(location: ByteCount(range.location * 2), length: ByteCount(range.length * 2))
+        let byteRange = ByteRange(utf16Range: range)
         let newString = nsNewString as String
         let oldEndLinePosition = lineManager.linePosition(at: range.location + range.length)!
         stringView.replaceCharacters(in: range, with: newString)
@@ -975,19 +975,19 @@ extension TextInputView {
 // MARK: - TreeSitterLanguageModeDeleage
 extension TextInputView: TreeSitterLanguageModeDelegate {
     func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult? {
-        guard byteIndex.value >= 0 && byteIndex.value / 2 < stringView.string.length else {
+        guard byteIndex.value >= 0 && byteIndex < stringView.string.byteCount else {
             return nil
         }
         let targetCharacterCount = 4 * 1024
-        let startLocation = byteIndex.value / 2
+        let startLocation = byteIndex.utf16Length
         let endLocation = min(startLocation + targetCharacterCount, stringView.string.length - 1)
         let startRange = string.rangeOfComposedCharacterSequence(at: startLocation)
         let endRange = string.rangeOfComposedCharacterSequence(at: endLocation)
-        let byteLocation = ByteCount(startRange.location * 2)
-        let byteLength = ByteCount((endRange.upperBound - startRange.lowerBound) * 2)
+        let byteLocation = ByteCount(utf16Length: startRange.location)
+        let byteLength = ByteCount(utf16Length: endRange.upperBound - startRange.lowerBound)
         let byteRange = ByteRange(location: byteLocation, length: byteLength)
         if let result = stringView.bytes(in: byteRange) {
-            return TreeSitterTextProviderResult(bytes: result.bytes, length: UInt32(result.length))
+            return TreeSitterTextProviderResult(bytes: result.bytes, length: UInt32(result.length.value))
         } else {
             return nil
         }

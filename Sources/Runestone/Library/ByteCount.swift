@@ -9,6 +9,9 @@ import Foundation
 
 struct ByteCount: Hashable {
     private(set) var value: Int
+    var utf16Length: Int {
+        return value / 2
+    }
 
     init(_ value: Int) {
         self.value = value
@@ -16,6 +19,10 @@ struct ByteCount: Hashable {
 
     init(_ value: UInt32) {
         self.value = Int(value)
+    }
+
+    init(utf16Length: Int) {
+        self.value = utf16Length * 2
     }
 }
 

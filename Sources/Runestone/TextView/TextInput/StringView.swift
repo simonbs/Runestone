@@ -9,7 +9,7 @@ import Foundation
 
 struct StringViewBytesResult {
     let bytes: UnsafePointer<Int8>
-    let length: Int
+    let length: ByteCount
 }
 
 final class StringView {
@@ -70,12 +70,13 @@ final class StringView {
     }
 
     func bytes(in range: ByteRange) -> StringViewBytesResult? {
-        guard range.lowerBound.value >= 0 && range.upperBound.value <= string.length * 2 else {
+        guard range.lowerBound.value >= 0 && range.upperBound <= string.byteCount else {
             return nil
         }
-        if let cString = string.cString(using: String.Encoding.utf16LittleEndian.rawValue) {
-            let offsetCString = cString.advanced(by: range.location.value)
-            return StringViewBytesResult(bytes: offsetCString, length: range.length.value)
+        let encoding = String.Encoding.utf16LittleEndian.rawValue
+        if let buffer = string.cString(using: encoding) {
+            let offsetBuffer = buffer.advanced(by: range.location.value)
+            return StringViewBytesResult(bytes: offsetBuffer, length: range.length)
         } else {
             return nil
         }

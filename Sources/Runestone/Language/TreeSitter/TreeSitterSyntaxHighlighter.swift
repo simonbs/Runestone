@@ -151,7 +151,7 @@ private extension TreeSitterSyntaxHighlighter {
 
 private extension TreeSitterSyntaxHighlighter {
     private func token(from capture: TreeSitterCapture, in byteRange: ByteRange) -> TreeSitterSyntaxHighlightToken {
-        let range = NSRange(location: byteRange.location.value / 2, length: byteRange.length.value / 2)
+        let range = NSRange(byteRange)
         let textColor = theme.textColor(for: capture.name)
         let shadow = theme.shadow(for: capture.name)
         let font = theme.font(for: capture.name)

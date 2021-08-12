@@ -46,7 +46,7 @@ private extension TreeSitterTextPredicatesEvaluator {
             return false
         }
         let byteRange = capture.byteRange
-        let range = NSRange(location: byteRange.location.value / 2, length: byteRange.length.value / 2)
+        let range = NSRange(byteRange)
         let contentText = stringView.substring(in: range)
         let comparisonResult = contentText == parameters.string
         return comparisonResult == parameters.isPositive
@@ -61,8 +61,8 @@ private extension TreeSitterTextPredicatesEvaluator {
         }
         let lhsByteRange = lhsCapture.byteRange
         let rhsByteRange = rhsCapture.byteRange
-        let lhsRange = NSRange(location: lhsByteRange.location.value / 2, length: rhsByteRange.length.value / 2)
-        let rhsRange = NSRange(location: lhsByteRange.location.value / 2, length: rhsByteRange.length.value / 2)
+        let lhsRange = NSRange(lhsByteRange)
+        let rhsRange = NSRange(rhsByteRange)
         let lhsContentText = stringView.substring(in: lhsRange)
         let rhsContentText = stringView.substring(in: rhsRange)
         let comparisonResult = lhsContentText == rhsContentText
