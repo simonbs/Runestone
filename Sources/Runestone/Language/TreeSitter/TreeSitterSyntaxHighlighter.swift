@@ -139,9 +139,9 @@ private extension TreeSitterSyntaxHighlighter {
             let length = cappedEndByte - cappedStartByte
             let cappedRange = ByteRange(location: cappedStartByte - localRange.lowerBound, length: length)
             if !cappedRange.isEmpty {
-                let attrs = token(from: capture, in: cappedRange)
-                if !attrs.isEmpty {
-                    tokens.append(attrs)
+                let token = token(from: capture, in: cappedRange)
+                if !token.isEmpty {
+                    tokens.append(token)
                 }
             }
         }
