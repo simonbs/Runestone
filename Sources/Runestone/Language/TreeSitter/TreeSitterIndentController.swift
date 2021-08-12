@@ -50,7 +50,7 @@ final class TreeSitterIndentController {
             let currentIndentLevel = indentLevelOfLine(atRow: startLinePosition.row)
             return InsertLineBreakIndentStrategy(indentLevel: currentIndentLevel + 1, insertExtraLineBreak: false)
         } else if outdentAdjustment < 0, let outdentingNode = outdentingNode {
-            // Find the starting node
+            // Find the starting node.
             var startingNode = outdentingNode
             while startingNode.startPoint.row == outdentingNode.startPoint.row, let parent = startingNode.parent {
                 startingNode = parent
