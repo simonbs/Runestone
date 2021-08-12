@@ -130,7 +130,7 @@ private extension TreeSitterSyntaxHighlighter {
 
     private func tokens(for captures: [TreeSitterCapture], localTo localRange: ByteRange) -> [TreeSitterSyntaxHighlightToken] {
         var tokens: [TreeSitterSyntaxHighlightToken] = []
-        for capture in captures {
+        for capture in captures where capture.byteRange.overlaps(localRange) {
             // We highlight each line separately but a capture may extend beyond a line,
             // e.g. an unterminated string, so we need to cap the start and end location
             // to ensure it's within the line.
