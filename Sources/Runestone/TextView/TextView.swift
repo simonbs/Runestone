@@ -486,6 +486,10 @@ public final class TextView: UIScrollView {
         }
     }
 
+    public override func reloadInputViews() {
+        textInputView.reloadInputViews()
+    }
+
     /// Sets the current _state_ of the editor. The state contains the text to be displayed by the editor and
     /// various additional information about the text that the editor needs to show the text.
     ///
