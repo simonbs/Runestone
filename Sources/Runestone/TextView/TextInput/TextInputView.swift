@@ -14,6 +14,8 @@ public enum GoToLineSelection {
 }
 
 protocol TextInputViewDelegate: AnyObject {
+    func textInputViewDidBeginEditing(_ view: TextInputView)
+    func textInputViewDidEndEditing(_ view: TextInputView)
     func textInputViewDidChange(_ view: TextInputView)
     func textInputViewDidChangeSelection(_ view: TextInputView)
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
@@ -454,6 +456,22 @@ final class TextInputView: UIView, UITextInput {
         layoutManager.textInputView = self
         layoutManager.theme = theme
         layoutManager.tabWidth = indentController.tabWidth
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let didBecomeFirstResponder = super.becomeFirstResponder()
+        if didBecomeFirstResponder {
+            delegate?.textInputViewDidBeginEditing(self)
+        }
+        return didBecomeFirstResponder
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let didResignFirstResponder = super.resignFirstResponder()
+        if didResignFirstResponder {
+            delegate?.textInputViewDidEndEditing(self)
+        }
+        return didResignFirstResponder
     }
 
     required init?(coder: NSCoder) {

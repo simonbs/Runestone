@@ -459,14 +459,8 @@ public final class TextView: UIScrollView {
     @discardableResult
     public override func becomeFirstResponder() -> Bool {
         if !isEditing && shouldBeginEditing {
-            isEditing = true
-            installEditableInteraction()
-            textInputView.resignFirstResponder()
-            textInputView.becomeFirstResponder()
-            if textInputView.selectedTextRange == nil {
-                textInputView.selectedTextRange = IndexedRange(location: 0, length: 0)
-            }
-            editorDelegate?.textViewDidBeginEditing(self)
+            _ = textInputView.resignFirstResponder()
+            _ = textInputView.becomeFirstResponder()
             return true
         } else {
             return false
@@ -476,10 +470,6 @@ public final class TextView: UIScrollView {
     @discardableResult
     public override func resignFirstResponder() -> Bool {
         if isEditing && shouldEndEditing {
-            isEditing = false
-            textInputView.selectedTextRange = nil
-            installNonEditableInteraction()
-            editorDelegate?.textViewDidEndEditing(self)
             return textInputView.resignFirstResponder()
         } else {
             return false
@@ -619,6 +609,7 @@ private extension TextView {
                 layoutIfNeeded()
                 editorDelegate?.textViewDidChangeSelection(self)
             }
+            installEditableInteraction()
             becomeFirstResponder()
         }
     }
@@ -726,19 +717,23 @@ private extension TextView {
     }
 
     private func installEditableInteraction() {
-        isInputAccessoryViewEnabled = true
-        uninstallListenersForGestureRecognizers(attachedTo: nonEditableTextInteraction)
-        removeInteraction(nonEditableTextInteraction)
-        addInteraction(editableTextInteraction)
-        installListenersForGestureRecognizers(attachedTo: editableTextInteraction)
+        if editableTextInteraction.view == nil {
+            isInputAccessoryViewEnabled = true
+            uninstallListenersForGestureRecognizers(attachedTo: nonEditableTextInteraction)
+            removeInteraction(nonEditableTextInteraction)
+            addInteraction(editableTextInteraction)
+            installListenersForGestureRecognizers(attachedTo: editableTextInteraction)
+        }
     }
 
     private func installNonEditableInteraction() {
-        isInputAccessoryViewEnabled = false
-        removeInteraction(editableTextInteraction)
-        addInteraction(nonEditableTextInteraction)
-        for gestureRecognizer in nonEditableTextInteraction.gesturesForFailureRequirements {
-            gestureRecognizer.require(toFail: tapGestureRecognizer)
+        if nonEditableTextInteraction.view == nil {
+            isInputAccessoryViewEnabled = false
+            removeInteraction(editableTextInteraction)
+            addInteraction(nonEditableTextInteraction)
+            for gestureRecognizer in nonEditableTextInteraction.gesturesForFailureRequirements {
+                gestureRecognizer.require(toFail: tapGestureRecognizer)
+            }
         }
     }
 
@@ -771,6 +766,22 @@ private extension TextView {
 
 // MARK: - TextInputViewDelegate
 extension TextView: TextInputViewDelegate {
+    func textInputViewDidBeginEditing(_ view: TextInputView) {
+        isEditing = true
+        if textInputView.selectedTextRange == nil {
+            textInputView.selectedTextRange = IndexedRange(location: 0, length: 0)
+        }
+        installEditableInteraction()
+        editorDelegate?.textViewDidBeginEditing(self)
+    }
+
+    func textInputViewDidEndEditing(_ view: TextInputView) {
+        isEditing = false
+        textInputView.selectedTextRange = nil
+        installNonEditableInteraction()
+        editorDelegate?.textViewDidEndEditing(self)
+    }
+
     func textInputViewDidChange(_ view: TextInputView) {
         if isAutomaticScrollEnabled, !isAdjustingCursor, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scroll(to: newRange.location)
