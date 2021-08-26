@@ -597,6 +597,23 @@ public final class TextView: UIScrollView {
         }
         return true
     }
+
+    public func search(for query: SearchQuery) -> [SearchResult] {
+        guard !query.text.isEmpty else {
+            return []
+        }
+        do {
+            let regex = try query.makeRegularExpression()
+            let range = NSRange(location: 0, length: textInputView.string.length)
+            let matches = regex.matches(in: text, options: [], range: range)
+            return matches.map { textCheckingResult in
+                return SearchResult(range: textCheckingResult.range)
+            }
+        } catch {
+            print(error)
+            return []
+        }
+    }
 }
 
 private extension TextView {
