@@ -606,13 +606,56 @@ public final class TextView: UIScrollView {
             let regex = try query.makeRegularExpression()
             let range = NSRange(location: 0, length: textInputView.string.length)
             let matches = regex.matches(in: text, options: [], range: range)
-            return matches.map { textCheckingResult in
-                return SearchResult(range: textCheckingResult.range)
-            }
+            return matches.compactMap(searchResult(from:))
         } catch {
             print(error)
             return []
         }
+    }
+
+    public func previewText(in range: NSRange, peekBehindLength: Int = 30, peekAheadLength: Int = 30) -> String? {
+        let string = textInputView.string
+        guard range.lowerBound >= 0 && range.upperBound < string.length else {
+            return nil
+        }
+        guard let startLine = textInputView.lineManager.line(containingCharacterAt: range.lowerBound) else {
+            return nil
+        }
+        guard let endLine = textInputView.lineManager.line(containingCharacterAt: range.upperBound) else {
+            return nil
+        }
+        let minimumLocation = startLine.location
+        let maximumLength = (endLine.location + endLine.value) - minimumLocation
+        let preferredLocation = range.location - peekBehindLength
+        let preferredLength = preferredLocation + range.length + peekAheadLength
+        let location = max(preferredLocation, minimumLocation)
+        let length = min(preferredLength, maximumLength)
+        let adjustedRange = NSRange(location: location, length: length)
+        let previewText = string.substring(with: adjustedRange)
+        // Find the first non-whitspace character at the beginning of the string.
+        let whitespaceCharacters = [
+            Symbol.Character.space,
+            Symbol.Character.tab,
+            Symbol.Character.carriageReturn,
+            Symbol.Character.carriageReturnLineFeed
+        ]
+        var newStartIndex = previewText.startIndex
+        while newStartIndex < previewText.endIndex && whitespaceCharacters.contains(previewText[newStartIndex]) {
+            newStartIndex = previewText.index(after: newStartIndex)
+        }
+        // If the string starts with whitespace, we'll remove it from the preview and extend the end of the string instead.
+        let finalPreviewText: String
+        if newStartIndex != previewText.startIndex {
+            // Remove white space from the start of the string.
+            let removedLength = previewText.distance(from: previewText.startIndex, to: newStartIndex)
+            let newLocation = location + removedLength
+            let newLength = min(length + removedLength, maximumLength)
+            let newRange = NSRange(location: newLocation, length: newLength)
+            finalPreviewText = string.substring(with: newRange)
+        } else {
+            finalPreviewText = previewText
+        }
+        return finalPreviewText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
@@ -778,6 +821,18 @@ private extension TextView {
             isAdjustingCursor = false
             editorDelegate?.textViewDidEndDraggingCursor(self)
         }
+    }
+
+    private func searchResult(from textCheckingResult: NSTextCheckingResult) -> SearchResult? {
+        let range = textCheckingResult.range
+        let lineManager = textInputView.lineManager
+        guard let startLinePosition = lineManager.linePosition(at: range.lowerBound) else {
+            return nil
+        }
+        guard let endLinePosition = lineManager.linePosition(at: range.upperBound) else {
+            return nil
+        }
+        return SearchResult(range: range, startLinePosition: startLinePosition, endLinePosition: endLinePosition)
     }
 }
 
