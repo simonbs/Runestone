@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct SearchQuery {
+public struct SearchQuery: Hashable, Equatable {
     public enum Option {
         case regularExpression
         case caseSensitive
