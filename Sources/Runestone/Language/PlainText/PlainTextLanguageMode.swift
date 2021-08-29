@@ -8,9 +8,9 @@
 import Foundation
 
 final class PlainTextLanguageMode: LanguageMode {
-    func parse(_ text: String) {}
+    func parse(_ text: NSString) {}
 
-    func parse(_ text: String, completion: @escaping ((Bool) -> Void)) {
+    func parse(_ text: NSString, completion: @escaping ((Bool) -> Void)) {
         completion(true)
     }
 

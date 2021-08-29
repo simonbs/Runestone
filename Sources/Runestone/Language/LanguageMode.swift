@@ -25,8 +25,8 @@ struct InsertLineBreakIndentStrategy {
 }
 
 protocol LanguageMode: AnyObject {
-    func parse(_ text: String)
-    func parse(_ text: String, completion: @escaping ((Bool) -> Void))
+    func parse(_ text: NSString)
+    func parse(_ text: NSString, completion: @escaping ((Bool) -> Void))
     func textDidChange(_ change: LanguageModeTextChange) -> LanguageModeTextChangeResult
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode?

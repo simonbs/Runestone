@@ -5,6 +5,7 @@
 //  Created by Simon Støvring on 05/12/2020.
 //
 
+import Foundation
 import TreeSitter
 
 protocol TreeSitterParserDelegate: AnyObject {
@@ -34,20 +35,16 @@ final class TreeSitterParser {
         ts_parser_delete(pointer)
     }
 
-    func parse(_ string: String, oldTree: TreeSitterTree? = nil) -> TreeSitterTree? {
-        guard !string.isEmpty else {
+    func parse(_ string: NSString, oldTree: TreeSitterTree? = nil) -> TreeSitterTree? {
+        guard string.length > 0 else {
             return nil
         }
         guard let stringEncoding = encoding.stringEncoding else {
             return nil
         }
-        guard let data = string.data(using: stringEncoding) else {
-            return nil
-        }
-        let bytesPointer = data.withUnsafeBytes { pointer in
-            return pointer.bindMemory(to: Int8.self).baseAddress
-        }
-        if let newTreePointer = ts_parser_parse_string_encoding(pointer, oldTree?.pointer, bytesPointer, UInt32(data.count), encoding) {
+        let bytesPointer = string.cString(using: stringEncoding.rawValue)
+        let bytesCount = UInt32(string.byteCount.value)
+        if let newTreePointer = ts_parser_parse_string_encoding(pointer, oldTree?.pointer, bytesPointer, bytesCount, encoding) {
             return TreeSitterTree(newTreePointer)
         } else {
             return nil

@@ -37,7 +37,7 @@ final class TreeSitterLanguageLayer {
 
 // MARK: - Parsing
 extension TreeSitterLanguageLayer {
-    func parse(_ text: String) {
+    func parse(_ text: NSString) {
         let ranges = [tree?.rootNode.textRange].compactMap { $0 }
         parse(ranges, from: text)
     }
@@ -100,7 +100,7 @@ extension TreeSitterLanguageLayer {
         }
     }
 
-    private func parse(_ ranges: [TreeSitterTextRange], from text: String) {
+    private func parse(_ ranges: [TreeSitterTextRange], from text: NSString) {
         prepareParser(toParse: ranges)
         tree = parser.parse(text)
         childLanguageLayers.removeAll()

@@ -324,7 +324,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != stringView.string {
                 stringView.string = newValue
-                languageMode.parse(newValue as String)
+                languageMode.parse(newValue)
                 lineManager.rebuild(from: newValue)
                 inputDelegate?.selectionWillChange(self)
                 if let selectedRange = selectedRange {
@@ -578,7 +578,7 @@ final class TextInputView: UIView, UITextInput {
         }
         self.languageMode = newLanguageMode
         layoutManager.languageMode = newLanguageMode
-        newLanguageMode.parse(string as String) { [weak self] finished in
+        newLanguageMode.parse(string) { [weak self] finished in
             if let self = self, finished {
                 self.inputDelegate?.selectionWillChange(self)
                 self.layoutManager.invalidateLines()

@@ -38,11 +38,11 @@ final class TreeSitterLanguageMode: LanguageMode {
         operationQueue.cancelAllOperations()
     }
 
-    func parse(_ text: String) {
+    func parse(_ text: NSString) {
         rootLanguageLayer.parse(text)
     }
 
-    func parse(_ text: String, completion: @escaping ((Bool) -> Void)) {
+    func parse(_ text: NSString, completion: @escaping ((Bool) -> Void)) {
         operationQueue.cancelAllOperations()
         let operation = BlockOperation()
         operation.addExecutionBlock { [weak operation, weak self] in
