@@ -76,7 +76,7 @@ final class StringView {
         let encoding = String.Encoding.utf16LittleEndian.rawValue
         if let buffer = string.cString(using: encoding) {
             let offsetBuffer = buffer.advanced(by: range.location.value)
-            return StringViewBytesResult(bytes: offsetBuffer, length: range.length)
+            return StringViewBytesResult(bytes: offsetBuffer, length: range.length * 2)
         } else {
             return nil
         }
