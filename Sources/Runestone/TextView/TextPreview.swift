@@ -9,6 +9,7 @@ import Foundation
 
 public struct TextPreview {
     public let string: String
+    public let localRange: NSRange
     public let isStartTruncated: Bool
     public let isEndTruncated: Bool
 }

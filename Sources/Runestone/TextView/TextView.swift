@@ -644,24 +644,29 @@ public final class TextView: UIScrollView {
             newStartIndex = previewText.index(after: newStartIndex)
         }
         // If the string starts with whitespace, we'll remove it from the preview and extend the end of the string instead.
-        var isStartTruncated = location > minimumLocation
-        var isEndTruncated = length < maximumLength
+        let isStartTruncated: Bool
+        let isEndTruncated: Bool
         let finalPreviewText: String
+        let localRange: NSRange
         if newStartIndex != previewText.startIndex {
             // Remove white space from the start of the string.
             let removedLength = previewText.distance(from: previewText.startIndex, to: newStartIndex)
             let newLocation = location + removedLength
+            let newMinimumLocation = minimumLocation + removedLength
             let newMaximumLength = (endLine.location + endLine.data.length) - newLocation
             let newLength = min(length + removedLength, newMaximumLength)
             let newRange = NSRange(location: newLocation, length: newLength)
             finalPreviewText = string.substring(with: newRange)
-            isStartTruncated = newLocation > minimumLocation
+            isStartTruncated = newLocation > newMinimumLocation
             isEndTruncated = newLength < newMaximumLength
+            localRange = NSRange(location: range.location - newLocation, length: range.length)
         } else {
             finalPreviewText = previewText
+            isStartTruncated = location > minimumLocation
+            isEndTruncated = length < maximumLength
+            localRange = NSRange(location: range.location - location, length: range.length)
         }
-        let previewString = finalPreviewText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return TextPreview(string: previewString, isStartTruncated: isStartTruncated, isEndTruncated: isEndTruncated)
+        return TextPreview(string: finalPreviewText, localRange: localRange, isStartTruncated: isStartTruncated, isEndTruncated: isEndTruncated)
     }
 }
 
