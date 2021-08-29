@@ -57,7 +57,7 @@ final class StringView {
     }
 
     func character(at location: Int) -> Character? {
-        if let scalar = Unicode.Scalar(internalString.character(at: location)) {
+        if location >= 0 && location < string.length, let scalar = Unicode.Scalar(internalString.character(at: location)) {
             return Character(scalar)
         } else {
             return nil
