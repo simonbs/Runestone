@@ -613,7 +613,7 @@ public final class TextView: UIScrollView {
         }
     }
 
-    public func previewText(in range: NSRange, peekBehindLength: Int = 30, peekAheadLength: Int = 30) -> String? {
+    public func textPreview(in range: NSRange, peekBehindLength: Int = 30, peekAheadLength: Int = 30) -> TextPreview? {
         let string = textInputView.string
         guard range.lowerBound >= 0 && range.upperBound < string.length else {
             return nil
@@ -625,10 +625,10 @@ public final class TextView: UIScrollView {
             return nil
         }
         let minimumLocation = startLine.location
-        let maximumLength = (endLine.location + endLine.value) - minimumLocation
         let preferredLocation = range.location - peekBehindLength
-        let preferredLength = preferredLocation + range.length + peekAheadLength
+        let preferredLength = range.length + peekBehindLength + peekAheadLength
         let location = max(preferredLocation, minimumLocation)
+        let maximumLength = (endLine.location + endLine.data.length) - location
         let length = min(preferredLength, maximumLength)
         let adjustedRange = NSRange(location: location, length: length)
         let previewText = string.substring(with: adjustedRange)
@@ -644,18 +644,24 @@ public final class TextView: UIScrollView {
             newStartIndex = previewText.index(after: newStartIndex)
         }
         // If the string starts with whitespace, we'll remove it from the preview and extend the end of the string instead.
+        var isStartTruncated = location > minimumLocation
+        var isEndTruncated = length < maximumLength
         let finalPreviewText: String
         if newStartIndex != previewText.startIndex {
             // Remove white space from the start of the string.
             let removedLength = previewText.distance(from: previewText.startIndex, to: newStartIndex)
             let newLocation = location + removedLength
-            let newLength = min(length + removedLength, maximumLength)
+            let newMaximumLength = (endLine.location + endLine.data.length) - newLocation
+            let newLength = min(length + removedLength, newMaximumLength)
             let newRange = NSRange(location: newLocation, length: newLength)
             finalPreviewText = string.substring(with: newRange)
+            isStartTruncated = newLocation > minimumLocation
+            isEndTruncated = newLength < newMaximumLength
         } else {
             finalPreviewText = previewText
         }
-        return finalPreviewText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let previewString = finalPreviewText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return TextPreview(string: previewString, isStartTruncated: isStartTruncated, isEndTruncated: isEndTruncated)
     }
 }
 
