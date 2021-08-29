@@ -24,25 +24,25 @@ extension LanguageModeTests {
                 "}",
                 "]"
             ])
-        let language = TreeSitterLanguage(tree_sitter_javascript(), textEncoding: .utf8, indentationScopes: indentationScopes)
+        let language = TreeSitterLanguage(tree_sitter_javascript(), indentationScopes: indentationScopes)
         let languageMode = languageMode(language: language, text: text)
-        languageMode.parse(text)
+        languageMode.parse(text as NSString)
         return languageMode
     }
 
     func jsonLanguageMode(text: String) -> TreeSitterLanguageMode {
         let indentationScopes = TreeSitterIndentationScopes(indent: ["object", "array"], outdent: ["}", "]"])
-        let language = TreeSitterLanguage(tree_sitter_json(), textEncoding: .utf8, indentationScopes: indentationScopes)
+        let language = TreeSitterLanguage(tree_sitter_json(), indentationScopes: indentationScopes)
         let languageMode = languageMode(language: language, text: text)
-        languageMode.parse(text)
+        languageMode.parse(text as NSString)
         return languageMode
     }
 
     func htmlLanguageMode(text: String) -> TreeSitterLanguageMode {
         let indentationScopes = TreeSitterIndentationScopes(indent: ["start_tag", "element"], outdent: ["end_tag"])
-        let language = TreeSitterLanguage(tree_sitter_html(), textEncoding: .utf8, indentationScopes: indentationScopes)
+        let language = TreeSitterLanguage(tree_sitter_html(), indentationScopes: indentationScopes)
         let languageMode = languageMode(language: language, text: text)
-        languageMode.parse(text)
+        languageMode.parse(text as NSString)
         return languageMode
     }
 
@@ -60,9 +60,9 @@ extension LanguageModeTests {
                 "try_statement"
             ],
             indentScanLocation: .lineStart)
-        let language = TreeSitterLanguage(tree_sitter_python(), textEncoding: .utf8, indentationScopes: indentationScopes)
+        let language = TreeSitterLanguage(tree_sitter_python(), indentationScopes: indentationScopes)
         let languageMode = languageMode(language: language, text: text)
-        languageMode.parse(text)
+        languageMode.parse(text as NSString)
         return languageMode
     }
 
