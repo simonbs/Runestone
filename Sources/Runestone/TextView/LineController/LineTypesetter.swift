@@ -22,6 +22,20 @@ private final class TypesetResult {
 }
 
 final class LineTypesetter {
+    private enum TypesetEndCondition {
+        case yPosition(_ targetYPosition: CGFloat)
+        case characterIndex(_ targetCharacterIndex: Int)
+
+        func shouldKeepTypesetting(currentYPosition: CGFloat, currentCharacterIndex: Int) -> Bool {
+            switch self {
+            case .yPosition(let targetYPosition):
+                return currentYPosition < targetYPosition
+            case .characterIndex(let targetCharacterIndex):
+                return currentCharacterIndex < targetCharacterIndex
+            }
+        }
+    }
+
     var constrainingWidth: CGFloat = 0
     var lineFragmentHeightMultiplier: CGFloat = 1
     private(set) var lineFragments: [LineFragment] = []
@@ -70,13 +84,11 @@ final class LineTypesetter {
 
     @discardableResult
     func typesetLineFragments(in rect: CGRect) -> [LineFragment] {
-        if let typesetter = typesetter {
-            let typesetResult = self.typesetLineFragments(in: rect, using: typesetter, stringLength: stringLength)
-            updateState(from: typesetResult)
-            return typesetResult.lineFragments
-        } else {
-            return []
-        }
+        return typesetLineFragments(until: .yPosition(rect.maxY))
+    }
+
+    func typesetLineFragments(toLocation location: Int) -> [LineFragment] {
+        return typesetLineFragments(until: .characterIndex(location))
     }
 
     func lineFragment(withID lineFragmentID: LineFragmentID) -> LineFragment? {
@@ -106,14 +118,24 @@ private extension LineTypesetter {
         }
     }
 
-    private func typesetLineFragments(in rect: CGRect, using typesetter: CTTypesetter, stringLength: Int) -> TypesetResult {
+    private func typesetLineFragments(until condition: TypesetEndCondition) -> [LineFragment] {
+        if let typesetter = typesetter {
+            let typesetResult = self.typesetLineFragments(until: condition, using: typesetter, stringLength: stringLength)
+            updateState(from: typesetResult)
+            return typesetResult.lineFragments
+        } else {
+            return []
+        }
+    }
+
+    private func typesetLineFragments(until condition: TypesetEndCondition, using typesetter: CTTypesetter, stringLength: Int) -> TypesetResult {
         guard constrainingWidth > 0 else {
             return TypesetResult(lineFragments: [], lineFragmentsMap: [:], maximumLineWidth: 0)
         }
         var maximumLineWidth: CGFloat = 0
         var lineFragments: [LineFragment] = []
         var lineFragmentsMap: [LineFragmentID: Int] = [:]
-        while startOffset < stringLength && nextYPosition < rect.maxY {
+        while startOffset < stringLength && condition.shouldKeepTypesetting(currentYPosition: nextYPosition, currentCharacterIndex: startOffset) {
             let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingWidth))
             let range = CFRangeMake(startOffset, length)
             let lineFragment = makeLineFragment(for: range, in: typesetter, lineFragmentIndex: lineFragmentIndex, yPosition: nextYPosition)

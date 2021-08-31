@@ -373,6 +373,16 @@ final class LayoutManager {
             lineController.setNeedsDisplayOnLineFragmentViews()
         }
     }
+
+    func attributedStringProvider(forRow row: Int) -> AttributedStringProvider? {
+        if row >= 0 && row < lineManager.lineCount {
+            let line = lineManager.line(atRow: row)
+            let lineController = lineController(for: line)
+            return AttributedStringProvider(lineController: lineController)
+        } else {
+            return nil
+        }
+    }
 }
 
 // MARK: - UITextInput

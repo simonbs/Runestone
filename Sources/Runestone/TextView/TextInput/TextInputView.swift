@@ -615,6 +615,10 @@ final class TextInputView: UIView, UITextInput {
         return languageMode.detectIndentStrategy()
     }
 
+    func attributedStringProvider(forRow row: Int) -> AttributedStringProvider? {
+        return layoutManager.attributedStringProvider(forRow: row)
+    }
+
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         // We end our current undo group when the user touches the view.
         let result = super.hitTest(point, with: event)

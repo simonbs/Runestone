@@ -613,60 +613,8 @@ public final class TextView: UIScrollView {
         }
     }
 
-    public func textPreview(in range: NSRange, peekBehindLength: Int = 30, peekAheadLength: Int = 30) -> TextPreview? {
-        let string = textInputView.string
-        guard range.lowerBound >= 0 && range.upperBound < string.length else {
-            return nil
-        }
-        guard let startLine = textInputView.lineManager.line(containingCharacterAt: range.lowerBound) else {
-            return nil
-        }
-        guard let endLine = textInputView.lineManager.line(containingCharacterAt: range.upperBound) else {
-            return nil
-        }
-        let minimumLocation = startLine.location
-        let preferredLocation = range.location - peekBehindLength
-        let preferredLength = range.length + peekBehindLength + peekAheadLength
-        let location = max(preferredLocation, minimumLocation)
-        let maximumLength = (endLine.location + endLine.data.length) - location
-        let length = min(preferredLength, maximumLength)
-        let adjustedRange = NSRange(location: location, length: length)
-        let previewText = string.substring(with: adjustedRange)
-        // Find the first non-whitspace character at the beginning of the string.
-        let whitespaceCharacters = [
-            Symbol.Character.space,
-            Symbol.Character.tab,
-            Symbol.Character.carriageReturn,
-            Symbol.Character.carriageReturnLineFeed
-        ]
-        var newStartIndex = previewText.startIndex
-        while newStartIndex < previewText.endIndex && whitespaceCharacters.contains(previewText[newStartIndex]) {
-            newStartIndex = previewText.index(after: newStartIndex)
-        }
-        // If the string starts with whitespace, we'll remove it from the preview and extend the end of the string instead.
-        let isStartTruncated: Bool
-        let isEndTruncated: Bool
-        let finalPreviewText: String
-        let localRange: NSRange
-        if newStartIndex != previewText.startIndex {
-            // Remove white space from the start of the string.
-            let removedLength = previewText.distance(from: previewText.startIndex, to: newStartIndex)
-            let newLocation = location + removedLength
-            let newMinimumLocation = minimumLocation + removedLength
-            let newMaximumLength = (endLine.location + endLine.data.length) - newLocation
-            let newLength = min(length + removedLength, newMaximumLength)
-            let newRange = NSRange(location: newLocation, length: newLength)
-            finalPreviewText = string.substring(with: newRange)
-            isStartTruncated = newLocation > newMinimumLocation
-            isEndTruncated = newLength < newMaximumLength
-            localRange = NSRange(location: range.location - newLocation, length: range.length)
-        } else {
-            finalPreviewText = previewText
-            isStartTruncated = location > minimumLocation
-            isEndTruncated = length < maximumLength
-            localRange = NSRange(location: range.location - location, length: range.length)
-        }
-        return TextPreview(string: finalPreviewText, localRange: localRange, isStartTruncated: isStartTruncated, isEndTruncated: isEndTruncated)
+    public func attributedStringProvider(forRow row: Int) -> AttributedStringProvider? {
+        return textInputView.attributedStringProvider(forRow: row)
     }
 }
 
@@ -843,7 +791,11 @@ private extension TextView {
         guard let endLinePosition = lineManager.linePosition(at: range.upperBound) else {
             return nil
         }
-        return SearchResult(range: range, startLinePosition: startLinePosition, endLinePosition: endLinePosition)
+        let firstLine = lineManager.line(atRow: startLinePosition.row)
+        let firstLineLocalLocation = range.location - firstLine.location
+        let firstLineLocalLength = min(range.length, firstLine.data.length - firstLineLocalLocation)
+        let firstLineLocalRange = NSRange(location: firstLineLocalLocation, length: firstLineLocalLength)
+        return SearchResult(range: range, firstLineLocalRange: firstLineLocalRange, startLinePosition: startLinePosition, endLinePosition: endLinePosition)
     }
 }
 
