@@ -28,6 +28,11 @@ final class LineController {
         }
     }
 
+    private enum StringDisplayPreparationAmount {
+        case inRect(CGRect)
+        case toLocation(Int)
+    }
+
     weak var delegate: LineControllerDelegate?
     let line: DocumentLineNode
     var lineFragmentHeightMultiplier: CGFloat = 1 {
@@ -100,7 +105,6 @@ final class LineController {
     private var isTypesetterInvalid = true
     private var _lineHeight: CGFloat?
     private var lineFragmentTree: LineFragmentTree
-    private var visibleRect: CGRect?
     private var attributedStringObservers: [ObjectIdentifier: WeakObserver] = [:]
 
     init(line: DocumentLineNode, stringView: StringView) {
@@ -116,23 +120,15 @@ final class LineController {
         attributedStringObservers = [:]
     }
 
-    func willDisplay(in rect: CGRect, syntaxHighlightAsynchronously: Bool) {
-        visibleRect = rect
-        prepareString(syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
-        let newLineFragments = typesetter.typesetLineFragments(in: rect)
-        updateLineHeight(for: newLineFragments)
-        textInputProxy.lineFragments = typesetter.lineFragments
+    func prepareToDisplayString(in rect: CGRect, syntaxHighlightAsynchronously: Bool) {
+        prepareToDisplayString(.inRect(rect), syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
     }
 
-    func willDisplay(toLocation location: Int, syntaxHighlightAsynchronously: Bool) {
-        prepareString(syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
-        let newLineFragments = typesetter.typesetLineFragments(toLocation: location)
-        updateLineHeight(for: newLineFragments)
-        textInputProxy.lineFragments = typesetter.lineFragments
+    func prepareToDisplayString(toLocation location: Int, syntaxHighlightAsynchronously: Bool) {
+        prepareToDisplayString(.toLocation(location), syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
     }
 
-    func didEndDisplaying() {
-        visibleRect = nil
+    func cancelSyntaxHighlighting() {
         syntaxHighlighter?.cancel()
     }
 
@@ -188,6 +184,20 @@ final class LineController {
 }
 
 private extension LineController {
+    private func prepareToDisplayString(_ preparationAmount: StringDisplayPreparationAmount, syntaxHighlightAsynchronously: Bool) {
+        prepareString(syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
+        let newLineFragments: [LineFragment]
+        switch preparationAmount {
+        case .inRect(let rect):
+            newLineFragments = typesetter.typesetLineFragments(in: rect)
+        case .toLocation(let location):
+            // When typesetting to a location we'll typeset an additional line fragment to ensure that we can display the text surrounding that location.
+            newLineFragments = typesetter.typesetLineFragments(toLocation: location, additionalLineFragmentCount: 1)
+        }
+        updateLineHeight(for: newLineFragments)
+        textInputProxy.lineFragments = typesetter.lineFragments
+    }
+
     private func prepareString(syntaxHighlightAsynchronously: Bool) {
         clearLineFragmentControllersIfNecessary()
         updateStringIfNecessary()
@@ -268,7 +278,7 @@ private extension LineController {
                     let oldWidth = self.lineWidth
                     self.isSyntaxHighlightingInvalid = false
                     self.isTypesetterInvalid = true
-                    self.redisplayLineFragmentsInVisibleRect()
+                    self.redisplayLineFragments()
                     self.invokeEachAttributedStringObserver { $0.lineControllerDidUpdateAttributedString(self) }
                     if abs(self.lineWidth - oldWidth) > CGFloat.ulpOfOne {
                         self.delegate?.lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(self)
@@ -336,16 +346,15 @@ private extension LineController {
         }
     }
 
-    private func redisplayLineFragmentsInVisibleRect() {
-        if let visibleRect = visibleRect {
-            _lineHeight = nil
-            updateTypesetterIfNecessary()
-            let newLineFragments = typesetter.typesetLineFragments(in: visibleRect)
-            updateLineHeight(for: newLineFragments)
-            textInputProxy.lineFragments = typesetter.lineFragments
-            reapplyLineFragmentToLineFragmentControllers()
-            setNeedsDisplayOnLineFragmentViews()
-        }
+    private func redisplayLineFragments() {
+        let typesetLength = typesetter.typesetLength
+        _lineHeight = nil
+        updateTypesetterIfNecessary()
+        let newLineFragments = typesetter.typesetLineFragments(toLocation: typesetLength)
+        updateLineHeight(for: newLineFragments)
+        textInputProxy.lineFragments = typesetter.lineFragments
+        reapplyLineFragmentToLineFragmentControllers()
+        setNeedsDisplayOnLineFragmentViews()
     }
     
     private func reapplyLineFragmentToLineFragmentControllers() {

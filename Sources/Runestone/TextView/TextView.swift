@@ -613,8 +613,8 @@ public final class TextView: UIScrollView {
         }
     }
 
-    public func attributedStringProvider(forRow row: Int) -> AttributedStringProvider? {
-        return textInputView.attributedStringProvider(forRow: row)
+    public func attributedStringProvider(containingCharacterAt location: Int) -> AttributedStringProvider? {
+        return textInputView.attributedStringProvider(containingCharacterAt: location)
     }
 }
 
@@ -791,11 +791,7 @@ private extension TextView {
         guard let endLinePosition = lineManager.linePosition(at: range.upperBound) else {
             return nil
         }
-        let firstLine = lineManager.line(atRow: startLinePosition.row)
-        let firstLineLocalLocation = range.location - firstLine.location
-        let firstLineLocalLength = min(range.length, firstLine.data.length - firstLineLocalLocation)
-        let firstLineLocalRange = NSRange(location: firstLineLocalLocation, length: firstLineLocalLength)
-        return SearchResult(range: range, firstLineLocalRange: firstLineLocalRange, startLinePosition: startLinePosition, endLinePosition: endLinePosition)
+        return SearchResult(range: range, startLinePosition: startLinePosition, endLinePosition: endLinePosition)
     }
 }
 

@@ -363,7 +363,7 @@ final class LayoutManager {
                 let lineYPosition = line.yPosition
                 let lineLocalViewport = CGRect(x: 0, y: lineYPosition, width: insetViewport.width, height: insetViewport.maxY - lineYPosition)
                 lineController.invalidateEverything()
-                lineController.willDisplay(in: lineLocalViewport, syntaxHighlightAsynchronously: false)
+                lineController.prepareToDisplayString(in: lineLocalViewport, syntaxHighlightAsynchronously: false)
             }
         }
     }
@@ -374,11 +374,11 @@ final class LayoutManager {
         }
     }
 
-    func attributedStringProvider(forRow row: Int) -> AttributedStringProvider? {
-        if row >= 0 && row < lineManager.lineCount {
-            let line = lineManager.line(atRow: row)
+    func attributedStringProvider(containingCharacterAt location: Int) -> AttributedStringProvider? {
+        if let line = lineManager.line(containingCharacterAt: location) {
             let lineController = lineController(for: line)
-            return AttributedStringProvider(lineController: lineController)
+            let locationInLine = location - line.location
+            return AttributedStringProvider(lineController: lineController, locationInLine: locationInLine)
         } else {
             return nil
         }
@@ -599,7 +599,7 @@ extension LayoutManager {
             let lineController = lineController(for: line)
             let oldLineHeight = lineController.lineHeight
             lineController.constrainingWidth = maximumLineWidth
-            lineController.willDisplay(in: lineLocalViewport, syntaxHighlightAsynchronously: true)
+            lineController.prepareToDisplayString(in: lineLocalViewport, syntaxHighlightAsynchronously: true)
             // Layout the line number.
             layoutLineNumberView(for: line)
             // Layout line fragments ("sublines") in the line until we have filled the viewport.
@@ -637,7 +637,7 @@ extension LayoutManager {
         let disappearedLineFragmentIDs = oldVisibleLineFragmentIDs.subtracting(appearedLineFragmentIDs)
         for disapparedLineID in disappearedLineIDs {
             let lineController = lineControllers[disapparedLineID]
-            lineController?.didEndDisplaying()
+            lineController?.cancelSyntaxHighlighting()
         }
         lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
         lineFragmentViewReuseQueue.enqueueViews(withKeys: disappearedLineFragmentIDs)

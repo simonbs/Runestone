@@ -53,6 +53,9 @@ final class LineTypesetter {
     var isFinishedTypesetting: Bool {
         return startOffset >= stringLength
     }
+    var typesetLength: Int {
+        return startOffset
+    }
 
     private let lineID: String
     private var stringLength = 0
@@ -87,8 +90,14 @@ final class LineTypesetter {
         return typesetLineFragments(until: .yPosition(rect.maxY))
     }
 
-    func typesetLineFragments(toLocation location: Int) -> [LineFragment] {
-        return typesetLineFragments(until: .characterIndex(location))
+    @discardableResult
+    func typesetLineFragments(toLocation location: Int, additionalLineFragmentCount: Int = 0) -> [LineFragment] {
+        return typesetLineFragments(until: .characterIndex(location), additionalLineFragmentCount: additionalLineFragmentCount)
+    }
+
+    @discardableResult
+    func retypeset() -> [LineFragment] {
+        return typesetLineFragments(until: .characterIndex(startOffset))
     }
 
     func lineFragment(withID lineFragmentID: LineFragmentID) -> LineFragment? {
@@ -118,9 +127,13 @@ private extension LineTypesetter {
         }
     }
 
-    private func typesetLineFragments(until condition: TypesetEndCondition) -> [LineFragment] {
+    private func typesetLineFragments(until condition: TypesetEndCondition, additionalLineFragmentCount: Int = 0) -> [LineFragment] {
         if let typesetter = typesetter {
-            let typesetResult = self.typesetLineFragments(until: condition, using: typesetter, stringLength: stringLength)
+            let typesetResult = self.typesetLineFragments(
+                until: condition,
+                additionalLineFragmentCount: additionalLineFragmentCount,
+                using: typesetter,
+                stringLength: stringLength)
             updateState(from: typesetResult)
             return typesetResult.lineFragments
         } else {
@@ -128,14 +141,21 @@ private extension LineTypesetter {
         }
     }
 
-    private func typesetLineFragments(until condition: TypesetEndCondition, using typesetter: CTTypesetter, stringLength: Int) -> TypesetResult {
+    private func typesetLineFragments(
+        until condition: TypesetEndCondition,
+        additionalLineFragmentCount: Int = 0,
+        using typesetter: CTTypesetter,
+        stringLength: Int) -> TypesetResult {
         guard constrainingWidth > 0 else {
             return TypesetResult(lineFragments: [], lineFragmentsMap: [:], maximumLineWidth: 0)
         }
         var maximumLineWidth: CGFloat = 0
         var lineFragments: [LineFragment] = []
         var lineFragmentsMap: [LineFragmentID: Int] = [:]
-        while startOffset < stringLength && condition.shouldKeepTypesetting(currentYPosition: nextYPosition, currentCharacterIndex: startOffset) {
+        var remainingAdditionalLineFragmentCount = additionalLineFragmentCount
+        var shouldKeepTypesetting = condition.shouldKeepTypesetting(currentYPosition: nextYPosition, currentCharacterIndex: startOffset)
+            || remainingAdditionalLineFragmentCount > 0
+        while startOffset < stringLength && shouldKeepTypesetting {
             let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingWidth))
             let range = CFRangeMake(startOffset, length)
             let lineFragment = makeLineFragment(for: range, in: typesetter, lineFragmentIndex: lineFragmentIndex, yPosition: nextYPosition)
@@ -147,6 +167,14 @@ private extension LineTypesetter {
             }
             lineFragmentsMap[lineFragment.id] = lineFragmentIndex
             lineFragmentIndex += 1
+            if condition.shouldKeepTypesetting(currentYPosition: nextYPosition, currentCharacterIndex: startOffset) {
+                shouldKeepTypesetting = true
+            } else if remainingAdditionalLineFragmentCount > 0 {
+                shouldKeepTypesetting = true
+                remainingAdditionalLineFragmentCount -= 1
+            } else {
+                shouldKeepTypesetting = false
+            }
         }
         return TypesetResult(lineFragments: lineFragments, lineFragmentsMap: lineFragmentsMap, maximumLineWidth: maximumLineWidth)
     }

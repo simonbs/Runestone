@@ -615,8 +615,8 @@ final class TextInputView: UIView, UITextInput {
         return languageMode.detectIndentStrategy()
     }
 
-    func attributedStringProvider(forRow row: Int) -> AttributedStringProvider? {
-        return layoutManager.attributedStringProvider(forRow: row)
+    func attributedStringProvider(containingCharacterAt location: Int) -> AttributedStringProvider? {
+        return layoutManager.attributedStringProvider(containingCharacterAt: location)
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
