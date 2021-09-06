@@ -1,5 +1,5 @@
 //
-//  AttributedStringProvider.swift
+//  TextPreview.swift
 //  
 //
 //  Created by Simon on 31/08/2021.
@@ -7,46 +7,22 @@
 
 import Foundation
 
-public protocol AttributedStringObserver: AnyObject {
-    func attributedStringProviderDidUpdateAttributedString(_ provider: AttributedStringProvider)
+public protocol TextPreviewDelegate: AnyObject {
+    func textPreviewDidUpdateAttributedString(_ provider: TextPreview)
 }
 
-public final class AttributedStringProvider {
-    private final class WeakObserver {
-        private(set) weak var observer: AttributedStringObserver?
-
-        init(_ observer: AttributedStringObserver) {
-            self.observer = observer
-        }
-    }
-
+public final class TextPreview {
+    public weak var delegate: TextPreviewDelegate?
     public private(set) var attributedString: NSAttributedString?
     public private(set) var localLocation: Int?
 
     private let lineController: LineController
     private let locationInLine: Int
-    private var observers: [ObjectIdentifier: WeakObserver] = [:]
 
     init(lineController: LineController, locationInLine: Int) {
         self.lineController = lineController
         self.locationInLine = locationInLine
         lineController.addObserver(self)
-    }
-
-    deinit {
-        observers = [:]
-    }
-
-    public func addObserver(_ observer: AttributedStringObserver) {
-        let identifier = ObjectIdentifier(observer)
-        observers[identifier] = WeakObserver(observer)
-        cleanUpObservers()
-    }
-
-    public func removeObserver(_ observer: AttributedStringObserver) {
-        let identifier = ObjectIdentifier(observer)
-        observers.removeValue(forKey: identifier)
-        cleanUpObservers()
     }
 
     public func prepare() {
@@ -58,19 +34,7 @@ public final class AttributedStringProvider {
     }
 }
 
-private extension AttributedStringProvider {
-    private func invokeEachObserver(_ handler: (AttributedStringObserver) -> ()) {
-        for (_, value) in observers {
-            if let observer = value.observer {
-                handler(observer)
-            }
-        }
-    }
-
-    private func cleanUpObservers() {
-        observers = observers.filter { $0.value.observer != nil }
-    }
-
+private extension TextPreview {
     private func updateAttributedString() {
         lineController.prepareToDisplayString(toLocation: locationInLine, syntaxHighlightAsynchronously: true)
         let range = rangeOfLineFragmentNodes(surroundingCharacterAt: locationInLine)
@@ -103,9 +67,9 @@ private extension AttributedStringProvider {
     }
 }
 
-extension AttributedStringProvider: LineControllerAttributedStringObserver {
+extension TextPreview: LineControllerAttributedStringObserver {
     func lineControllerDidUpdateAttributedString(_ lineController: LineController) {
         updateAttributedString()
-        invokeEachObserver { $0.attributedStringProviderDidUpdateAttributedString(self) }
+        delegate?.textPreviewDidUpdateAttributedString(self)
     }
 }

@@ -374,11 +374,11 @@ final class LayoutManager {
         }
     }
 
-    func attributedStringProvider(containingCharacterAt location: Int) -> AttributedStringProvider? {
+    func textPreview(containingCharacterAt location: Int) -> TextPreview? {
         if let line = lineManager.line(containingCharacterAt: location) {
             let lineController = lineController(for: line)
             let locationInLine = location - line.location
-            return AttributedStringProvider(lineController: lineController, locationInLine: locationInLine)
+            return TextPreview(lineController: lineController, locationInLine: locationInLine)
         } else {
             return nil
         }
