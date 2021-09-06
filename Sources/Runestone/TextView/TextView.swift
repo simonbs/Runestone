@@ -613,8 +613,8 @@ public final class TextView: UIScrollView {
         }
     }
 
-    public func textPreview(containingCharacterAt location: Int) -> TextPreview? {
-        return textInputView.textPreview(containingCharacterAt: location)
+    public func textPreview(containing range: NSRange) -> TextPreview? {
+        return textInputView.textPreview(containing: range)
     }
 }
 
