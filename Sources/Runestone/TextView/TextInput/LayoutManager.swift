@@ -49,6 +49,16 @@ final class LayoutManager {
             }
         }
     }
+    var scrollViewSafeAreaInsets: UIEdgeInsets = .zero {
+        didSet {
+            if scrollViewSafeAreaInsets != oldValue {
+                if isLineWrappingEnabled {
+                    invalidateContentSize()
+                    invalidateLines()
+                }
+            }
+        }
+    }
     var viewport: CGRect = .zero
     var contentSize: CGSize {
         return CGSize(width: contentWidth, height: contentHeight)
@@ -190,7 +200,7 @@ final class LayoutManager {
     // MARK: - Sizing
     private var contentWidth: CGFloat {
         if isLineWrappingEnabled {
-            return scrollViewWidth
+            return scrollViewWidth - scrollViewSafeAreaInsets.left - scrollViewSafeAreaInsets.right
         } else {
             return ceil(textContentWidth + leadingLineSpacing + textContainerInset.right + lineBreakInvisibleSymbolWidth)
         }
@@ -252,7 +262,7 @@ final class LayoutManager {
     private var lineIDTrackingWidth: DocumentLineNodeID?
     private var maximumLineWidth: CGFloat {
         if isLineWrappingEnabled {
-            return scrollViewWidth - leadingLineSpacing - textContainerInset.right
+            return scrollViewWidth - leadingLineSpacing - textContainerInset.right - scrollViewSafeAreaInsets.left - scrollViewSafeAreaInsets.right
         } else {
             // Rendering multiple very long lines is very expensive. In order to let the editor remain useable,
             // we set a very high maximum line width when line wrapping is disabled.
