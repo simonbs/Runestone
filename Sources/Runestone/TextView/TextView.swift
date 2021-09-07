@@ -608,7 +608,13 @@ public final class TextView: UIScrollView {
             let regex = try query.makeRegularExpression()
             let range = NSRange(location: 0, length: textInputView.string.length)
             let matches = regex.matches(in: text, options: [], range: range)
-            return matches.compactMap(searchResult(from:))
+            var searchResults: [SearchResult] = []
+            for match in matches where match.range.length > 0 {
+                if let searchResult = searchResult(from: match) {
+                    searchResults.append(searchResult)
+                }
+            }
+            return searchResults
         } catch {
             print(error)
             return []
