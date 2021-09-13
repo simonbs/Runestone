@@ -73,7 +73,7 @@ final class StringView {
         guard range.lowerBound.value >= 0 && range.upperBound <= string.byteCount else {
             return nil
         }
-        let encoding = String.Encoding.utf16.rawValue
+        let encoding = String.Encoding.utf16LittleEndian.rawValue
         let maxByteCount = range.length.utf16Length
         var usedLength: Int = 0
         let stringRange = NSRange(range)
