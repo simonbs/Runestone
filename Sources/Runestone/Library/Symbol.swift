@@ -18,6 +18,7 @@ enum Symbol {
 
     static let lineFeed = String(Symbol.Character.lineFeed)
     static let carriageReturn = String(Symbol.Character.carriageReturn)
+    static let carriageReturnLineFeed = String(Symbol.Character.carriageReturnLineFeed)
     static let tab = String(Symbol.Character.tab)
     static let space = String(Symbol.Character.space)
 }

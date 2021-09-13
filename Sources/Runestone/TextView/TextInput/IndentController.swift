@@ -14,6 +14,30 @@ protocol IndentControllerDelegate: AnyObject {
 }
 
 final class IndentController {
+    enum LineBreak: String {
+        case lineFeed
+        case carriageReturnLineFeed
+
+        var rawValue: String {
+            switch self {
+            case .lineFeed:
+                return Symbol.lineFeed
+            case .carriageReturnLineFeed:
+                return Symbol.carriageReturnLineFeed
+            }
+        }
+
+        init?(rawValue: String) {
+            if rawValue == Symbol.lineFeed {
+                self = .lineFeed
+            } else if rawValue == Symbol.carriageReturnLineFeed {
+                self = .carriageReturnLineFeed
+            } else {
+                return nil
+            }
+        }
+    }
+
     weak var delegate: IndentControllerDelegate?
     var stringView: StringView
     var lineManager: LineManager
@@ -95,24 +119,25 @@ final class IndentController {
         delegate?.indentController(self, shouldSelect: newSelectedRange)
     }
 
-    func insertLineBreak(in range: NSRange) {
+    func insertLineBreak(in range: NSRange, using lineBreak: LineBreak) {
+        let symbol = lineBreak.rawValue
         if let startLinePosition = lineManager.linePosition(at: range.lowerBound), let endLinePosition = lineManager.linePosition(at: range.upperBound) {
             let strategy = languageMode.strategyForInsertingLineBreak(from: startLinePosition, to: endLinePosition, using: indentStrategy)
             if strategy.insertExtraLineBreak {
                 // Inserting a line break enters a new indentation level.
                 // We insert an additional line break and place the cursor in the new block.
-                let firstLineText = Symbol.lineFeed + indentStrategy.string(indentLevel: strategy.indentLevel)
-                let secondLineText = Symbol.lineFeed + indentStrategy.string(indentLevel: strategy.indentLevel - 1)
+                let firstLineText = symbol + indentStrategy.string(indentLevel: strategy.indentLevel)
+                let secondLineText = symbol + indentStrategy.string(indentLevel: strategy.indentLevel - 1)
                 let indentedText = firstLineText + secondLineText
                 delegate?.indentController(self, shouldInsert: indentedText, in: range)
                 let newSelectedRange = NSRange(location: range.location + firstLineText.utf16.count, length: 0)
                 delegate?.indentController(self, shouldSelect: newSelectedRange)
             } else {
-                let indentedText = Symbol.lineFeed + indentStrategy.string(indentLevel: strategy.indentLevel)
+                let indentedText = symbol + indentStrategy.string(indentLevel: strategy.indentLevel)
                 delegate?.indentController(self, shouldInsert: indentedText, in: range)
             }
         } else {
-            delegate?.indentController(self, shouldInsert: Symbol.lineFeed, in: range)
+            delegate?.indentController(self, shouldInsert: symbol, in: range)
         }
     }
 

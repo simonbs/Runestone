@@ -733,9 +733,9 @@ extension TextInputView {
 extension TextInputView {
     func insertText(_ text: String) {
         if let selectedRange = selectedRange, shouldChangeText(in: selectedRange, replacementText: text) {
-            if text == Symbol.lineFeed {
+            if let lineBreak = IndentController.LineBreak(rawValue: text) {
                 inputDelegate?.selectionWillChange(self)
-                indentController.insertLineBreak(in: selectedRange)
+                indentController.insertLineBreak(in: selectedRange, using: lineBreak)
                 layoutIfNeeded()
                 inputDelegate?.selectionDidChange(self)
                 delegate?.textInputViewDidChangeSelection(self)
