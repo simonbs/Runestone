@@ -74,7 +74,7 @@ final class StringView {
             return nil
         }
         let encoding = String.Encoding.utf16LittleEndian.rawValue
-        let maxByteCount = range.length.utf16Length
+        let maxByteCount = range.length.value
         var usedLength: Int = 0
         let stringRange = NSRange(range)
         let buffer = UnsafeMutablePointer<CChar>.allocate(capacity: maxByteCount)
