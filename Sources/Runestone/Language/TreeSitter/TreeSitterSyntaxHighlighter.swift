@@ -162,8 +162,8 @@ private extension TreeSitterSyntaxHighlighter {
 
 private extension UIFont {
     func withSymbolicTraits(_ symbolicTraits: UIFontDescriptor.SymbolicTraits) -> UIFont? {
-        if let fontDescriptor = UIFontDescriptor(name: familyName, size: pointSize).withSymbolicTraits(symbolicTraits) {
-            return UIFont(descriptor: fontDescriptor, size: pointSize)
+        if let newFontDescriptor = fontDescriptor.withSymbolicTraits(symbolicTraits) {
+            return UIFont(descriptor: newFontDescriptor, size: pointSize)
         } else {
             return nil
         }
