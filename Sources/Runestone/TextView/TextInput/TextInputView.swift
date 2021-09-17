@@ -769,7 +769,7 @@ extension TextInputView {
             return
         }
         let deleteRange: NSRange
-        if selectedRange.length == 1, let indentRange = indentController.indentRangeInfrontOfLocation(selectedRange.upperBound) {
+        if selectedRange.length == 1, let indentRange = indentController.indentRangeInFrontOfLocation(selectedRange.upperBound) {
             deleteRange = indentRange
         } else {
             deleteRange = string.rangeOfComposedCharacterSequences(for: selectedRange)
