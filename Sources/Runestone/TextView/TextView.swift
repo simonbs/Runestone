@@ -237,6 +237,15 @@ public final class TextView: UIScrollView {
             textInputView.characterPairs = newValue
         }
     }
+    /// Determines what should happen to the trailing component of a character pair when deleting the leading component. Defaults to `disabled` meaning that nothing will happen.
+    public var characterPairTrailingComponentDeletionMode: CharacterPairTrailingComponentDeletionMode {
+        get {
+            return textInputView.characterPairTrailingComponentDeletionMode
+        }
+        set {
+            textInputView.characterPairTrailingComponentDeletionMode = newValue
+        }
+    }
     /// Enable to show line numbers in the gutter.
     public var showLineNumbers: Bool {
         get {

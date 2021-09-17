@@ -7,12 +7,6 @@
 
 import UIKit
 
-public enum GoToLineSelection {
-    case beginning
-    case end
-    case line
-}
-
 protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidBeginEditing(_ view: TextInputView)
     func textInputViewDidEndEditing(_ view: TextInputView)
@@ -292,7 +286,12 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
-    var characterPairs: [CharacterPair] = []
+    var characterPairs: [CharacterPair] = [] {
+        didSet {
+            maximumLeadingCharacterPairComponentLength = characterPairs.map(\.leading.utf16.count).max() ?? 0
+        }
+    }
+    var characterPairTrailingComponentDeletionMode: CharacterPairTrailingComponentDeletionMode = .disabled
     var showPageGuide = false {
         didSet {
             if showPageGuide != oldValue {
@@ -440,6 +439,7 @@ final class TextInputView: UIView, UITextInput {
     private var markedRange: NSRange?
     private var floatingCaretView: FloatingCaretView?
     private var insertionPointColorBeforeFloatingBegan: UIColor = .black
+    private var maximumLeadingCharacterPairComponentLength = 0
     private var textSelectionView: UIView? {
         if let klass = NSClassFromString("UITextSelectionView") {
             for subview in subviews {
@@ -768,12 +768,7 @@ extension TextInputView {
         guard let selectedRange = selectedRange, selectedRange.length > 0 else {
             return
         }
-        let deleteRange: NSRange
-        if selectedRange.length == 1, let indentRange = indentController.indentRangeInFrontOfLocation(selectedRange.upperBound) {
-            deleteRange = indentRange
-        } else {
-            deleteRange = string.rangeOfComposedCharacterSequences(for: selectedRange)
-        }
+        let deleteRange = rangeForDeletingText(in: selectedRange)
         if shouldChangeText(in: deleteRange, replacementText: "") {
             if let currentText = text(in: deleteRange) {
                 let undoRange = NSRange(location: deleteRange.location, length: 0)
@@ -807,6 +802,30 @@ extension TextInputView {
 
     func text(in range: NSRange) -> String? {
         return stringView.substring(in: range)
+    }
+
+    private func rangeForDeletingText(in range: NSRange) -> NSRange {
+        var resultingRange = range
+        if range.length == 1, let indentRange = indentController.indentRangeInFrontOfLocation(range.upperBound) {
+            resultingRange = indentRange
+        } else {
+            resultingRange = string.rangeOfComposedCharacterSequences(for: range)
+        }
+        // If deleting the leading component of a character pair we may also expand the range to delete the trailing component.
+        if characterPairTrailingComponentDeletionMode == .immediatelyFollowingLeadingComponent
+            && maximumLeadingCharacterPairComponentLength > 0
+            && resultingRange.length <= maximumLeadingCharacterPairComponentLength {
+            let stringToDelete = stringView.substring(in: resultingRange)
+            if let characterPair = characterPairs.first(where: { $0.leading == stringToDelete }) {
+                let trailingComponentLength = characterPair.trailing.utf16.count
+                let trailingComponentRange = NSRange(location: resultingRange.upperBound, length: trailingComponentLength)
+                if stringView.substring(in: trailingComponentRange) == characterPair.trailing {
+                    let deleteRange = trailingComponentRange.upperBound - resultingRange.lowerBound
+                    resultingRange = NSRange(location: resultingRange.lowerBound, length: deleteRange)
+                }
+            }
+        }
+        return resultingRange
     }
 
     private func replaceCharacters(in range: NSRange, with newString: NSString) {
