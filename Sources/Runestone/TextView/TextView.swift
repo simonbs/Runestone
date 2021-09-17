@@ -480,6 +480,7 @@ public final class TextView: UIScrollView {
     public override func becomeFirstResponder() -> Bool {
         if !isEditing && shouldBeginEditing {
             _ = textInputView.resignFirstResponder()
+            installEditableInteraction()
             _ = textInputView.becomeFirstResponder()
             return true
         } else {
