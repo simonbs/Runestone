@@ -67,8 +67,7 @@ final class LayoutManager {
         didSet {
             if languageMode !== oldValue {
                 for (_, lineController) in lineControllers {
-                    lineController.syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
-                    lineController.syntaxHighlighter?.theme = theme
+                    lineController.syntaxHighlighter = makeLineSyntaxHighlighter()
                     lineController.invalidateSyntaxHighlighting()
                 }
             }
@@ -178,6 +177,14 @@ final class LayoutManager {
         }
     }
     var lineHeightMultiplier: CGFloat = 1 {
+        didSet {
+            if lineHeightMultiplier != oldValue {
+                invalidateContentSize()
+                invalidateLines()
+            }
+        }
+    }
+    var kern: CGFloat = 0 {
         didSet {
             if lineHeightMultiplier != oldValue {
                 invalidateContentSize()
@@ -363,6 +370,7 @@ final class LayoutManager {
         for (_, lineController) in lineControllers {
             lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
             lineController.tabWidth = tabWidth
+            lineController.syntaxHighlighter?.kern = kern
             lineController.invalidateSyntaxHighlighting()
         }
     }
@@ -802,11 +810,17 @@ extension LayoutManager {
             lineController.estimatedLineFragmentHeight = theme.font.lineHeight
             lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
             lineController.tabWidth = tabWidth
-            lineController.syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
-            lineController.syntaxHighlighter?.theme = theme
+            lineController.syntaxHighlighter = makeLineSyntaxHighlighter()
             lineControllers[line.id] = lineController
             return lineController
         }
+    }
+
+    private func makeLineSyntaxHighlighter() -> LineSyntaxHighlighter {
+        let syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
+        syntaxHighlighter.theme = theme
+        syntaxHighlighter.kern = kern
+        return syntaxHighlighter
     }
 }
 

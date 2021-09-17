@@ -368,6 +368,15 @@ public final class TextView: UIScrollView {
             textInputView.lineHeightMultiplier = newValue
         }
     }
+    /// The number of points by which to adjust kern-pair characters. The default value is 0 meaning that kerning is disabled.
+    public var kern: CGFloat {
+        get {
+            return textInputView.kern
+        }
+        set {
+            textInputView.kern = newValue
+        }
+    }
     /// The text view shows a page guide when enabled. Use `pageGuideColumn` to specify the location of the page guide.
     public var showPageGuide: Bool {
         get {

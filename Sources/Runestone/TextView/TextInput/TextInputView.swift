@@ -273,15 +273,22 @@ final class TextInputView: UIView, UITextInput {
         }
         set {
             if newValue != layoutManager.lineHeightMultiplier {
-                // Notify the delegate that the selection may changeas the position
-                // of the caret will change when we adjust the height of lines.
-                inputDelegate?.selectionWillChange(self)
-                layoutManager.lineHeightMultiplier = newValue
-                lineManager.estimatedLineHeight = estimatedLineHeight
-                layoutManager.setNeedsLayout()
-                inputDelegate?.selectionDidChange(self)
-                // Do a layout pass to ensure the position of the caret is correct.
-                setNeedsLayout()
+                performSelectionModifyingChanges {
+                    layoutManager.lineHeightMultiplier = newValue
+                    lineManager.estimatedLineHeight = theme.font.lineHeight * newValue
+                }
+            }
+        }
+    }
+    var kern: CGFloat {
+        get {
+            return layoutManager.kern
+        }
+        set {
+            if newValue != layoutManager.kern {
+                performSelectionModifyingChanges {
+                    layoutManager.kern = newValue
+                }
             }
         }
     }
@@ -881,6 +888,17 @@ extension TextInputView {
         } else {
             return []
         }
+    }
+
+    private func performSelectionModifyingChanges(_ changes: () -> Void) {
+        // Notify the delegate that the selection may change as the position
+        // of the caret will change when we adjust the width or height of lines.
+        inputDelegate?.selectionWillChange(self)
+        changes()
+        layoutManager.setNeedsLayout()
+        inputDelegate?.selectionDidChange(self)
+        // Do a layout pass to ensure the position of the caret is correct.
+        setNeedsLayout()
     }
 }
 

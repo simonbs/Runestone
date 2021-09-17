@@ -5,6 +5,7 @@
 //  Created by Simon Støvring on 03/02/2021.
 //
 
+import CoreGraphics
 import Foundation
 
 extension NSAttributedString.Key {
@@ -29,6 +30,7 @@ final class LineSyntaxHighlighterInput {
 protocol LineSyntaxHighlighter: AnyObject {
     typealias AsyncCallback = (Result<Void, Error>) -> Void
     var theme: Theme { get set }
+    var kern: CGFloat { get set }
     var canHighlight: Bool { get }
     func setDefaultAttributes(on attributedString: NSMutableAttributedString)
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput)
@@ -39,7 +41,11 @@ protocol LineSyntaxHighlighter: AnyObject {
 extension LineSyntaxHighlighter {
     func setDefaultAttributes(on attributedString: NSMutableAttributedString) {
         let entireRange = NSRange(location: 0, length: attributedString.length)
-        let attributes: [NSAttributedString.Key: Any] = [.foregroundColor: theme.textColor, .font: theme.font]
+        let attributes: [NSAttributedString.Key: Any] = [
+            .foregroundColor: theme.textColor,
+            .font: theme.font,
+            .kern: kern as NSNumber
+        ]
         attributedString.beginEditing()
         attributedString.setAttributes(attributes, range: entireRange)
         attributedString.endEditing()

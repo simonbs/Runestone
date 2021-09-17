@@ -23,6 +23,7 @@ enum TreeSitterSyntaxHighlighterError: LocalizedError {
 
 final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
     var theme: Theme = DefaultTheme()
+    var kern: CGFloat = 0
     var canHighlight: Bool {
         return languageMode.canHighlight
     }
