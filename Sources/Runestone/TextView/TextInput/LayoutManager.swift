@@ -94,6 +94,7 @@ final class LayoutManager {
                 }
                 setNeedsLayout()
                 setNeedsLayoutSelection()
+                layoutIfNeeded()
             }
         }
     }
