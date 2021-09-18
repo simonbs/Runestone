@@ -8,6 +8,7 @@
 import UIKit
 
 protocol TextInputViewDelegate: AnyObject {
+    func textInputViewWillBeginEditing(_ view: TextInputView)
     func textInputViewDidBeginEditing(_ view: TextInputView)
     func textInputViewDidEndEditing(_ view: TextInputView)
     func textInputViewDidChange(_ view: TextInputView)
@@ -474,6 +475,9 @@ final class TextInputView: UIView, UITextInput {
     }
 
     override func becomeFirstResponder() -> Bool {
+        if canBecomeFirstResponder {
+            delegate?.textInputViewWillBeginEditing(self)
+        }
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if didBecomeFirstResponder {
             delegate?.textInputViewDidBeginEditing(self)

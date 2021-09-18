@@ -480,7 +480,6 @@ public final class TextView: UIScrollView {
     public override func becomeFirstResponder() -> Bool {
         if !isEditing && shouldBeginEditing {
             _ = textInputView.resignFirstResponder()
-            installEditableInteraction()
             _ = textInputView.becomeFirstResponder()
             return true
         } else {
@@ -649,9 +648,9 @@ private extension TextView {
     @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
         if tapGestureRecognizer.state == .ended {
             let point = gestureRecognizer.location(in: textInputView)
-            let oldSelectedTextRange = selectedTextRange
+            let oldSelectedTextRange = textInputView.selectedTextRange
             textInputView.moveCaret(to: point)
-            if selectedTextRange != oldSelectedTextRange {
+            if textInputView.selectedTextRange != oldSelectedTextRange {
                 layoutIfNeeded()
                 editorDelegate?.textViewDidChangeSelection(self)
             }
@@ -824,18 +823,25 @@ private extension TextView {
 
 // MARK: - TextInputViewDelegate
 extension TextView: TextInputViewDelegate {
-    func textInputViewDidBeginEditing(_ view: TextInputView) {
+    func textInputViewWillBeginEditing(_ view: TextInputView) {
         isEditing = true
         if textInputView.selectedTextRange == nil {
             textInputView.selectedTextRange = IndexedRange(location: 0, length: 0)
         }
+        // Ensure selection is laid out without animation.
+        UIView.performWithoutAnimation {
+            textInputView.layoutIfNeeded()
+        }
+        // The editable interaction must be installed early in the -becomeFirstResponder() call 
         installEditableInteraction()
+    }
+
+    func textInputViewDidBeginEditing(_ view: TextInputView) {
         editorDelegate?.textViewDidBeginEditing(self)
     }
 
     func textInputViewDidEndEditing(_ view: TextInputView) {
         isEditing = false
-        textInputView.selectedTextRange = nil
         installNonEditableInteraction()
         editorDelegate?.textViewDidEndEditing(self)
     }
