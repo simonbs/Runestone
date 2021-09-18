@@ -377,7 +377,7 @@ public final class TextView: UIScrollView {
             textInputView.lineHeightMultiplier = newValue
         }
     }
-    /// The number of points by which to adjust kern-pair characters. The default value is 0 meaning that kerning is disabled.
+    /// The number of points by which to adjust kern. The default value is 0 meaning that kerning is disabled.
     public var kern: CGFloat {
         get {
             return textInputView.kern
