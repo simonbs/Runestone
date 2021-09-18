@@ -832,7 +832,7 @@ extension TextView: TextInputViewDelegate {
         UIView.performWithoutAnimation {
             textInputView.layoutIfNeeded()
         }
-        // The editable interaction must be installed early in the -becomeFirstResponder() call 
+        // The editable interaction must be installed early in the -becomeFirstResponder() call
         installEditableInteraction()
     }
 
