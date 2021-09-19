@@ -31,7 +31,16 @@ public final class TextPreview {
     }
 
     public func prepare() {
+        forEachRangeInLineController { lineController, range in
+            lineController.prepareToDisplayString(toLocation: range.upperBound, syntaxHighlightAsynchronously: true)
+        }
         updateAttributedString()
+    }
+
+    public func invalidateSyntaxHighlighting() {
+        for lineController in lineControllers {
+            lineController.invalidateSyntaxHighlighting()
+        }
     }
 
     public func cancelSyntaxHighlighting() {
@@ -44,6 +53,15 @@ public final class TextPreview {
 private extension TextPreview {
     private func updateAttributedString() {
         let resultingAttributedString = NSMutableAttributedString()
+        forEachRangeInLineController { lineController, range in
+            if let substring = lineController.attributedString?.attributedSubstring(from: range) {
+                resultingAttributedString.append(substring)
+            }
+        }
+        attributedString = resultingAttributedString
+    }
+
+    private func forEachRangeInLineController(_ handler: (LineController, NSRange) -> Void) {
         var remainingLength = previewRange.length
         for lineController in lineControllers {
             let lineLocation = lineController.line.location
@@ -52,12 +70,8 @@ private extension TextPreview {
             let length = min(remainingLength, lineLength)
             let range = NSRange(location: location, length: length)
             remainingLength -= length
-            lineController.prepareToDisplayString(toLocation: range.upperBound, syntaxHighlightAsynchronously: true)
-            if let substring = lineController.attributedString?.attributedSubstring(from: range) {
-                resultingAttributedString.append(substring)
-            }
+            handler(lineController, range)
         }
-        attributedString = resultingAttributedString
     }
 }
 

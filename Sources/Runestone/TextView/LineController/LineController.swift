@@ -199,6 +199,7 @@ private extension LineController {
     }
 
     private func prepareString(syntaxHighlightAsynchronously: Bool) {
+        syntaxHighlighter?.cancel()
         clearLineFragmentControllersIfNecessary()
         updateStringIfNecessary()
         updateDefaultAttributesIfNecessary()
@@ -217,11 +218,36 @@ private extension LineController {
         if isStringInvalid {
             let range = NSRange(location: line.location, length: line.data.totalLength)
             if let string = stringView.substring(in: range) {
-                self.attributedString = NSMutableAttributedString(string: string)
+                attributedString = NSMutableAttributedString(string: string)
             } else {
                 attributedString = nil
             }
             isStringInvalid = false
+            isDefaultAttributesInvalid = true
+            isSyntaxHighlightingInvalid = true
+            isTypesetterInvalid = true
+        }
+    }
+
+    private func updateDefaultAttributesIfNecessary() {
+        if isDefaultAttributesInvalid {
+            updateParagraphStyle()
+            if let input = createLineSyntaxHighlightInput() {
+                syntaxHighlighter?.setDefaultAttributes(on: input.attributedString)
+            }
+            isDefaultAttributesInvalid = false
+            isSyntaxHighlightingInvalid = true
+            isTypesetterInvalid = true
+        }
+    }
+
+    private func updateParagraphStyle() {
+        if let attributedString = attributedString {
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.tabStops = []
+            paragraphStyle.defaultTabInterval = tabWidth
+            let range = NSRange(location: 0, length: attributedString.length)
+            attributedString.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
         }
     }
 
@@ -233,26 +259,6 @@ private extension LineController {
                 typesetter.prepareToTypeset(attributedString)
             }
             isTypesetterInvalid = false
-        }
-    }
-
-    private func updateDefaultAttributesIfNecessary() {
-        if isDefaultAttributesInvalid {
-            updateParagraphStyle()
-            if let input = createLineSyntaxHighlightInput() {
-                syntaxHighlighter?.setDefaultAttributes(on: input.attributedString)
-            }
-            isDefaultAttributesInvalid = false
-        }
-    }
-
-    private func updateParagraphStyle() {
-        if let attributedString = attributedString {
-            let paragraphStyle = NSMutableParagraphStyle()
-            paragraphStyle.tabStops = []
-            paragraphStyle.defaultTabInterval = tabWidth
-            let range = NSRange(location: 0, length: attributedString.length)
-            attributedString.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
         }
     }
 
@@ -272,7 +278,6 @@ private extension LineController {
             return
         }
         if async {
-            syntaxHighlighter.cancel()
             syntaxHighlighter.syntaxHighlight(input) { [weak self] result in
                 if case .success = result, let self = self {
                     let oldWidth = self.lineWidth
