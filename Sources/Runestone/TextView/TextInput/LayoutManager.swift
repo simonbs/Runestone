@@ -5,6 +5,8 @@
 //  Created by Simon Støvring on 25/01/2021.
 //
 
+// swiftlint:disable file_length
+
 import UIKit
 
 protocol LayoutManagerDelegate: AnyObject {
@@ -14,6 +16,7 @@ protocol LayoutManagerDelegate: AnyObject {
     func layoutManagerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ layoutManager: LayoutManager)
 }
 
+// swiftlint:disable:next type_body_length
 final class LayoutManager {
     // MARK: - Public
     weak var delegate: LayoutManagerDelegate?
@@ -596,7 +599,11 @@ extension LayoutManager {
         }
         let totalGutterWidth = additionalInset.left + gutterWidth
         gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: totalGutterWidth, height: selectedRect.height)
-        lineSelectionBackgroundView.frame = CGRect(x: viewport.minX + totalGutterWidth, y: selectedRect.minY, width: scrollViewWidth - gutterWidth, height: selectedRect.height)
+        lineSelectionBackgroundView.frame = CGRect(
+            x: viewport.minX + totalGutterWidth,
+            y: selectedRect.minY,
+            width: scrollViewWidth - gutterWidth,
+            height: selectedRect.height)
     }
 
     private func selectionRectangleForLineFragment(containingCharacterAt location: Int) -> CGRect {
@@ -614,6 +621,7 @@ extension LayoutManager {
         }
     }
 
+    // swiftlint:disable:next function_body_length
     private func layoutLines() {
         let oldTextContentWidth = _textContentWidth
         let oldTextContentHeight = _textContentHeight

@@ -14,7 +14,7 @@ final class PlainTextSyntaxHighlighter: LineSyntaxHighlighter {
     var canHighlight: Bool {
         return false
     }
-    
+
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput) {}
 
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput, completion: @escaping AsyncCallback) {

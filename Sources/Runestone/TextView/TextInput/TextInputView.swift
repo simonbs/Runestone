@@ -5,6 +5,8 @@
 //  Created by Simon Støvring on 05/01/2021.
 //
 
+// swiftlint:disable file_length
+
 import UIKit
 
 protocol TextInputViewDelegate: AnyObject {
@@ -21,6 +23,7 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidEndFloatingCursor(_ view: TextInputView)
 }
 
+// swiftlint:disable:next type_body_length
 final class TextInputView: UIView, UITextInput {
     // MARK: - UITextInput
     var selectedTextRange: UITextRange? {
@@ -52,7 +55,7 @@ final class TextInputView: UIView, UITextInput {
     var endOfDocument: UITextPosition {
         return IndexedPosition(index: string.length)
     }
-    var inputDelegate: UITextInputDelegate?
+    weak var inputDelegate: UITextInputDelegate?
     var hasText: Bool {
         return string.length > 0
     }
@@ -1083,7 +1086,7 @@ extension TextInputView: LayoutManagerDelegate {
         layoutManager.setNeedsLayout()
         delegate?.textInputViewDidUpdateGutterWidth(self)
     }
-    
+
     func layoutManagerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ layoutManager: LayoutManager) {
         setNeedsLayout()
         layoutManager.setNeedsLayout()
@@ -1109,11 +1112,17 @@ extension TextInputView: LineMovementControllerDelegate {
         return layoutManager.numberOfLineFragments(in: line)
     }
 
-    func lineMovementController(_ controller: LineMovementController, lineFragmentNodeAtIndex index: Int, in line: DocumentLineNode) -> LineFragmentNode {
+    func lineMovementController(
+        _ controller: LineMovementController,
+        lineFragmentNodeAtIndex index: Int,
+        in line: DocumentLineNode) -> LineFragmentNode {
         return layoutManager.lineFragmentNode(atIndex: index, in: line)
     }
 
-    func lineMovementController(_ controller: LineMovementController, lineFragmentNodeContainingCharacterAt location: Int, in line: DocumentLineNode) -> LineFragmentNode {
+    func lineMovementController(
+        _ controller: LineMovementController,
+        lineFragmentNodeContainingCharacterAt location: Int,
+        in line: DocumentLineNode) -> LineFragmentNode {
         return layoutManager.lineFragmentNode(containingCharacterAt: location, in: line)
     }
 }

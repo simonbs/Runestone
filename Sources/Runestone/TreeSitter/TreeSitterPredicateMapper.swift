@@ -8,7 +8,7 @@
 import Foundation
 
 final class TreeSitterPredicateMapper {
-    struct MapResult  {
+    struct MapResult {
         let properties: [String: String]
         let textPredicates: [TreeSitterTextPredicate]
     }

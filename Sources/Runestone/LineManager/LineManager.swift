@@ -249,7 +249,7 @@ final class LineManager {
             return true
         }
     }
-    
+
     func lines(in range: NSRange) -> [DocumentLineNode] {
         guard let firstLine = line(containingCharacterAt: range.location) else {
             return []

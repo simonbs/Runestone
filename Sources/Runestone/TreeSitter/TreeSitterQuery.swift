@@ -18,7 +18,7 @@ enum TreeSitterQueryError: Error {
 
 final class TreeSitterQuery {
     let pointer: OpaquePointer
-    
+
     private let language: UnsafePointer<TSLanguage>
     private var patternCount: UInt32 {
         return ts_query_pattern_count(pointer)

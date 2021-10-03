@@ -23,7 +23,7 @@ final class LineFragmentView: UIView {
             }
         }
     }
-    
+
     init() {
         super.init(frame: .zero)
         isUserInteractionEnabled = false

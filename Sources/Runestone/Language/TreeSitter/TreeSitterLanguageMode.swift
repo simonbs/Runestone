@@ -76,7 +76,7 @@ final class TreeSitterLanguageMode: LanguageMode {
     func captures(in range: ByteRange) -> [TreeSitterCapture] {
         return rootLanguageLayer.captures(in: range)
     }
-    
+
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter {
         return TreeSitterSyntaxHighlighter(stringView: stringView, languageMode: self, operationQueue: operationQueue)
     }
@@ -93,10 +93,18 @@ final class TreeSitterLanguageMode: LanguageMode {
         let startLayerAndNode = rootLanguageLayer.layerAndNode(at: startLinePosition)
         let endLayerAndNode = rootLanguageLayer.layerAndNode(at: endLinePosition)
         if let indentationScopes = startLayerAndNode?.layer.language.indentationScopes ?? endLayerAndNode?.layer.language.indentationScopes {
-            let indentController = TreeSitterIndentController(indentationScopes: indentationScopes, stringView: stringView, lineManager: lineManager, tabLength: indentStrategy.tabLength)
+            let indentController = TreeSitterIndentController(
+                indentationScopes: indentationScopes,
+                stringView: stringView,
+                lineManager: lineManager,
+                tabLength: indentStrategy.tabLength)
             let startNode = startLayerAndNode?.node
             let endNode = endLayerAndNode?.node
-            return indentController.strategyForInsertingLineBreak(between: startNode, and: endNode, caretStartPosition: startLinePosition, caretEndPosition: endLinePosition)
+            return indentController.strategyForInsertingLineBreak(
+                between: startNode,
+                and: endNode,
+                caretStartPosition: startLinePosition,
+                caretEndPosition: endLinePosition)
         } else {
             return InsertLineBreakIndentStrategy(indentLevel: 0, insertExtraLineBreak: false)
         }

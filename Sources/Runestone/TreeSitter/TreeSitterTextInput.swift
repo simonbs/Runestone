@@ -22,7 +22,7 @@ final class TreeSitterTextInput {
     }
 
     let rawInput: TSInput
-    
+
     private var payload: Payload
 
     init(encoding: TSInputEncoding, callback: @escaping TreeSitterTextProviderCallback) {

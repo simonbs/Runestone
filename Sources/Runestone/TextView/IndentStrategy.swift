@@ -27,7 +27,7 @@ extension IndentStrategy {
             return length
         }
     }
-    
+
     func string(indentLevel: Int) -> String {
         switch self {
         case .tab:

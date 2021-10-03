@@ -121,7 +121,8 @@ final class IndentController {
 
     func insertLineBreak(in range: NSRange, using lineBreak: LineBreak) {
         let symbol = lineBreak.rawValue
-        if let startLinePosition = lineManager.linePosition(at: range.lowerBound), let endLinePosition = lineManager.linePosition(at: range.upperBound) {
+        if let startLinePosition = lineManager.linePosition(at: range.lowerBound),
+            let endLinePosition = lineManager.linePosition(at: range.upperBound) {
             let strategy = languageMode.strategyForInsertingLineBreak(from: startLinePosition, to: endLinePosition, using: indentStrategy)
             if strategy.insertExtraLineBreak {
                 // Inserting a line break enters a new indentation level.

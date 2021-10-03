@@ -5,6 +5,8 @@
 //  Created by Simon Støvring on 10/01/2021.
 //
 
+// swiftlint:disable file_length
+
 import Foundation
 
 final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNodeValue, NodeData> {
@@ -44,7 +46,11 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNode
         return node(containingLocation: location, minimumValue: minimumValue, valueKeyPath: \.value, totalValueKeyPath: \.nodeTotalValue)!
     }
 
-    func node<T: Comparable & AdditiveArithmetic>(containingLocation location: T, minimumValue: T, valueKeyPath: KeyPath<Node, T>, totalValueKeyPath: KeyPath<Node, T>) -> Node? {
+    func node<T: Comparable & AdditiveArithmetic>(
+        containingLocation location: T,
+        minimumValue: T,
+        valueKeyPath: KeyPath<Node, T>,
+        totalValueKeyPath: KeyPath<Node, T>) -> Node? {
         if location == root[keyPath: totalValueKeyPath] {
             return root.rightMost
         } else {
@@ -237,7 +243,9 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNode
         return search(using: query)
     }
 
-    func search<T: RedBlackTreeSearchQuery>(using query: T) -> [RedBlackTreeSearchMatch<NodeID, NodeValue, NodeData>] where T.NodeID == NodeID, T.NodeValue == NodeValue, T.NodeData == NodeData {
+    func search<T: RedBlackTreeSearchQuery>(using query: T)
+    -> [RedBlackTreeSearchMatch<NodeID, NodeValue, NodeData>]
+    where T.NodeID == NodeID, T.NodeValue == NodeValue, T.NodeData == NodeData {
         var matches: [RedBlackTreeSearchMatch<NodeID, NodeValue, NodeData>] = []
         func search(from node: Node) {
             let nodeLowerBound = node.location
@@ -354,6 +362,7 @@ private extension RedBlackTree {
         }
     }
 
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     private func fixTree(afterDeleting node: Node?, parentNode: Node) {
         assert(node == nil || node?.parent === parentNode)
         var sibling = self.sibling(to: node, through: parentNode)

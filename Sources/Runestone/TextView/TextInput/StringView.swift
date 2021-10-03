@@ -47,7 +47,7 @@ final class StringView {
     convenience init(string: String) {
         self.init(string: NSMutableString(string: string))
     }
-    
+
     func substring(in range: NSRange) -> String? {
         if range.upperBound <= internalString.length {
             return internalString.substring(with: range)

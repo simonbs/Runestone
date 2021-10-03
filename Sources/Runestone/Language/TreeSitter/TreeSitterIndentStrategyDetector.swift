@@ -39,30 +39,20 @@ final class TreeSitterIndentStrategyDetector {
                 continue
             }
             scannedLineWithContentCount += 1
-            var range = NSRange(location: line.location, length: 1)
-            var character = stringView.substring(in: range)
+            let lineLocation = line.location
+            let range = NSRange(location: lineLocation, length: 1)
+            let character = stringView.substring(in: range)
             if character == Symbol.tab {
                 lineCountBeginningWithTab += 1
             } else if character == Symbol.space {
-                // Count how many spaces the line starts with.
-                var spaceCount = 0
-                let stringLength = stringView.string.length
-                while spaceCount < line.data.totalLength
-                        && character == Symbol.space
-                        && spaceCount < lowestSpaceCount
-                        && range.location < stringLength - 1 {
-                    spaceCount += 1
-                    range = NSRange(location: range.location + 1, length: 1)
-                    character = stringView.substring(in: range)
-                }
+                let spaceCount = numberOfSpacesAtBeginning(of: line, lineLocation: lineLocation, lowestSpaceCount: lowestSpaceCount)
                 if spaceCount > 1 {
                     lowestSpaceCount = min(spaceCount, lowestSpaceCount)
                     lineCountBeginningWithSpace += 1
                 }
             }
-            // If we have scanned at least 20 lines that aren't either empty or a comment or we have seen 100 lines in
-            // total, and we have found at least one line that begins with a tab or a space, then we base our suggested
-            // strategy on that.
+            // If we have scanned at least 20 lines that aren't either empty or a comment or we have seen 100 lines in total,
+            // and we have found at least one line that begins with a tab or a space, then we base our suggested strategy on that.
             let hasScannedEnoughLines = scannedLineCount >= min(lineCount, 100) || scannedLineWithContentCount >= min(20, lineCount)
             let canSuggestStrategy = lineCountBeginningWithTab != 0 || lineCountBeginningWithSpace != 0
             if hasScannedEnoughLines && canSuggestStrategy {
@@ -75,5 +65,23 @@ final class TreeSitterIndentStrategyDetector {
             }
         }
         return detectedStrategy
+    }
+}
+
+private extension TreeSitterIndentStrategyDetector {
+    private func numberOfSpacesAtBeginning(of line: DocumentLineNode, lineLocation: Int, lowestSpaceCount: Int) -> Int {
+        var range = NSRange(location: lineLocation, length: 1)
+        var character = stringView.substring(in: range)
+        var spaceCount = 0
+        let stringLength = stringView.string.length
+        while spaceCount < line.data.totalLength
+                && character == Symbol.space
+                && spaceCount < lowestSpaceCount
+                && range.location < stringLength - 1 {
+            spaceCount += 1
+            range = NSRange(location: range.location + 1, length: 1)
+            character = stringView.substring(in: range)
+        }
+        return spaceCount
     }
 }

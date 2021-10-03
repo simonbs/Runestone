@@ -30,7 +30,7 @@ extension ByteCount: Comparable {
     static func < (lhs: ByteCount, rhs: ByteCount) -> Bool {
         return lhs.value < rhs.value
     }
-    
+
     static func <= (lhs: ByteCount, rhs: ByteCount) -> Bool {
         return lhs.value <= rhs.value
     }
@@ -56,7 +56,7 @@ extension ByteCount: Numeric {
         return value
     }
 
-    init?<T>(exactly source: T) where T : BinaryInteger {
+    init?<T>(exactly source: T) where T: BinaryInteger {
         self.value = Int(source)
     }
 
@@ -85,7 +85,7 @@ extension ByteCount: Numeric {
     }
 
     static func *= (lhs: inout ByteCount, rhs: ByteCount) {
-        lhs.value = lhs.value * rhs.value
+        lhs.value *= rhs.value
     }
 }
 

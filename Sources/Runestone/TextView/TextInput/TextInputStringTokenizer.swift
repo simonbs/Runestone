@@ -31,11 +31,17 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         }
     }
 
-    override func isPosition(_ position: UITextPosition, withinTextUnit granularity: UITextGranularity, inDirection direction: UITextDirection) -> Bool {
+    override func isPosition(
+        _ position: UITextPosition,
+        withinTextUnit granularity: UITextGranularity,
+        inDirection direction: UITextDirection) -> Bool {
         return super.isPosition(position, withinTextUnit: granularity, inDirection: map(direction))
     }
 
-    override func position(from position: UITextPosition, toBoundary granularity: UITextGranularity, inDirection direction: UITextDirection) -> UITextPosition? {
+    override func position(
+        from position: UITextPosition,
+        toBoundary granularity: UITextGranularity,
+        inDirection direction: UITextDirection) -> UITextPosition? {
         guard let indexedPosition = position as? IndexedPosition else {
             return super.position(from: position, toBoundary: granularity, inDirection: direction)
         }
@@ -50,7 +56,10 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         }
     }
 
-    override func rangeEnclosingPosition(_ position: UITextPosition, with granularity: UITextGranularity, inDirection direction: UITextDirection) -> UITextRange? {
+    override func rangeEnclosingPosition(
+        _ position: UITextPosition,
+        with granularity: UITextGranularity,
+        inDirection direction: UITextDirection) -> UITextRange? {
         return super.rangeEnclosingPosition(position, with: granularity, inDirection: map(direction))
     }
 }

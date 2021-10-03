@@ -9,7 +9,7 @@ import UIKit
 
 final class ViewReuseQueue<Key: Hashable, View: UIView> {
     private(set) var visibleViews: [Key: View] = [:]
-    
+
     private var queuedViews: Set<View> = []
 
     func enqueueViews(withKeys keys: Set<Key>) {

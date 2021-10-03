@@ -24,6 +24,6 @@ let package = Package(
         .target(name: "TestTreeSitterLanguages"),
         .testTarget(
             name: "RunestoneTests",
-            dependencies: ["Runestone", "TestTreeSitterLanguages"]),
+            dependencies: ["Runestone", "TestTreeSitterLanguages"])
     ]
 )

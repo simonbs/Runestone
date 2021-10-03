@@ -136,7 +136,7 @@ private extension TreeSitterIndentController {
         }
         return nil
     }
-    
+
     private func indentLevelOfLine(atRow row: Int) -> Int {
         // Get indentation level of line before the supplied line position.
         let line = lineManager.line(atRow: row)

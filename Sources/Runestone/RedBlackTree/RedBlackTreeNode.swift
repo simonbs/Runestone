@@ -38,7 +38,7 @@ final class RedBlackTreeNode<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTree
             fatalError("Accessing tree after it has been deallocated.")
         }
     }
-    
+
     private weak var _tree: Tree?
 
     init(tree: Tree, value: NodeValue, data: NodeData) {

@@ -66,7 +66,9 @@ private extension LineFragmentRenderer {
                 draw(invisibleCharacterConfiguration.spaceSymbol, at: .character(indexInLine))
             } else if invisibleCharacterConfiguration.showTabs && substring == Symbol.Character.tab {
                 draw(invisibleCharacterConfiguration.tabSymbol, at: .character(indexInLine))
-            } else if invisibleCharacterConfiguration.showLineBreaks && substring == Symbol.Character.lineFeed || substring == Symbol.Character.carriageReturnLineFeed {
+            } else if invisibleCharacterConfiguration.showLineBreaks
+                        && (substring == Symbol.Character.lineFeed
+                            || substring == Symbol.Character.carriageReturnLineFeed) {
                 draw(invisibleCharacterConfiguration.lineBreakSymbol, at: .endOfLine)
             }
         }

@@ -5,6 +5,8 @@
 //  Created by Simon Støvring on 02/02/2021.
 //
 
+// swiftlint:disable file_length
+
 import CoreGraphics
 import CoreText
 import UIKit
@@ -155,7 +157,7 @@ final class LineController {
         let query = LineFragmentFrameQuery(range: localMinY ... localMaxY)
         return lineFragmentControllers(matching: query)
     }
-    
+
     func lineFragmentNode(containingCharacterAt location: Int) -> LineFragmentNode {
         return lineFragmentTree.node(containingLocation: location)
     }
@@ -361,7 +363,7 @@ private extension LineController {
         reapplyLineFragmentToLineFragmentControllers()
         setNeedsDisplayOnLineFragmentViews()
     }
-    
+
     private func reapplyLineFragmentToLineFragmentControllers() {
         for (_, lineFragmentController) in lineFragmentControllers {
             let lineFragmentID = lineFragmentController.lineFragment.id
@@ -371,7 +373,8 @@ private extension LineController {
         }
     }
 
-    private func lineFragmentControllers<T: RedBlackTreeSearchQuery>(matching query: T) -> [LineFragmentController] where T.NodeID == LineFragmentNodeID, T.NodeValue == Int, T.NodeData == LineFragmentNodeData {
+    private func lineFragmentControllers<T: RedBlackTreeSearchQuery>(matching query: T)
+    -> [LineFragmentController] where T.NodeID == LineFragmentNodeID, T.NodeValue == Int, T.NodeData == LineFragmentNodeData {
         let queryResult = lineFragmentTree.search(using: query)
         return queryResult.compactMap { match in
             if let lineFragment = match.node.data.lineFragment {
@@ -382,7 +385,7 @@ private extension LineController {
         }
     }
 
-    private func invokeEachAttributedStringObserver(_ handler: (LineControllerAttributedStringObserver) -> ()) {
+    private func invokeEachAttributedStringObserver(_ handler: (LineControllerAttributedStringObserver) -> Void) {
         for (_, value) in attributedStringObservers {
             if let observer = value.observer {
                 handler(observer)

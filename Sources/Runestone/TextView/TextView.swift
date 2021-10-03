@@ -5,6 +5,8 @@
 //  Created by Simon Støvring on 04/01/2021.
 //
 
+// swiftlint:disable file_length
+
 import CoreText
 import UIKit
 
@@ -52,6 +54,7 @@ public extension TextViewDelegate {
     func textViewDidEndDraggingCursor(_ view: TextView) {}
 }
 
+// swiftlint:disable:next type_body_length
 public final class TextView: UIScrollView {
     /// Delegate to receive callbacks for events triggered by the editor.
     public weak var editorDelegate: TextViewDelegate?
@@ -783,18 +786,14 @@ private extension TextView {
     }
 
     private func installListenersForGestureRecognizers(attachedTo textInteraction: UITextInteraction) {
-        for gestureRecognizer in editableTextInteraction.gesturesForFailureRequirements {
-            if gestureRecognizer is UILongPressGestureRecognizer {
-                gestureRecognizer.addTarget(self, action: #selector(handleLoupeGesture(from:)))
-            }
+        for gestureRecognizer in editableTextInteraction.gesturesForFailureRequirements where gestureRecognizer is UILongPressGestureRecognizer {
+            gestureRecognizer.addTarget(self, action: #selector(handleLoupeGesture(from:)))
         }
     }
 
     private func uninstallListenersForGestureRecognizers(attachedTo textInteraction: UITextInteraction) {
-        for gestureRecognizer in editableTextInteraction.gesturesForFailureRequirements {
-            if gestureRecognizer is UILongPressGestureRecognizer {
-                gestureRecognizer.removeTarget(self, action: #selector(handleLoupeGesture(from:)))
-            }
+        for gestureRecognizer in editableTextInteraction.gesturesForFailureRequirements where gestureRecognizer is UILongPressGestureRecognizer {
+            gestureRecognizer.removeTarget(self, action: #selector(handleLoupeGesture(from:)))
         }
     }
 
@@ -910,7 +909,10 @@ extension TextView: UIGestureRecognizerDelegate {
 
 // MARK: - KeyboardObserverDelegate
 extension TextView: KeyboardObserverDelegate {
-    func keyboardObserver(_ keyboardObserver: KeyboardObserver, keyboardWillShowWithHeight keyboardHeight: CGFloat, animation: KeyboardObserver.Animation?) {
+    func keyboardObserver(
+        _ keyboardObserver: KeyboardObserver,
+        keyboardWillShowWithHeight keyboardHeight: CGFloat,
+        animation: KeyboardObserver.Animation?) {
         if isAutomaticScrollEnabled, !isAdjustingCursor, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scroll(to: newRange.location)
         }

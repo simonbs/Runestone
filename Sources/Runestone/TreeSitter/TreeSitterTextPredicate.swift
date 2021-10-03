@@ -57,7 +57,9 @@ extension TreeSitterTextPredicate.CaptureEqualsStringParameters: CustomDebugStri
 
 extension TreeSitterTextPredicate.CaptureEqualsCaptureParameters: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TreeSitterTextPredicate.CaptureEqualsCaptureParameters lhsCaptureIndex=\(lhsCaptureIndex) rhsCaptureIndex=\(rhsCaptureIndex) isPositive=\(isPositive)]"
+        return "[TreeSitterTextPredicate.CaptureEqualsCaptureParameters lhsCaptureIndex=\(lhsCaptureIndex)"
+        + " rhsCaptureIndex=\(rhsCaptureIndex)"
+        + " isPositive=\(isPositive)]"
     }
 }
 
