@@ -416,6 +416,15 @@ public final class TextView: UIScrollView {
     public var lengthOfInitallyLongestLine: Int? {
         return textInputView.lineManager.initialLongestLine?.data.totalLength
     }
+    /// Ranges in the text to be highlighted. The color defined by the background will be drawen behind the text. The text view will automatically update the position of ranges when the text is modified. The changes will not be reflected in this property.
+    public var highlightedRanges: [HighlightedRange] {
+        get {
+            return textInputView.highlightedRanges
+        }
+        set {
+            textInputView.highlightedRanges = newValue
+        }
+    }
 
     private let textInputView: TextInputView
     private let editableTextInteraction = UITextInteraction(for: .editable)

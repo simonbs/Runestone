@@ -172,6 +172,14 @@ final class LineController {
         }
     }
 
+    func setHighlightedRangesOnLineFragments(_ highlightedRanges: [HighlightedRange]) {
+        for (_, lineFragmentController) in lineFragmentControllers {
+            let lineFragment = lineFragmentController.lineFragment
+            lineFragmentController.highlightedRanges = highlightedRanges.filter { $0.range.overlaps(lineFragment.range) }
+            lineFragmentController.lineFragmentView?.setNeedsDisplay()
+        }
+    }
+
     func addObserver(_ observer: LineControllerAttributedStringObserver) {
         let identifier = ObjectIdentifier(observer)
         attributedStringObservers[identifier] = WeakObserver(observer)

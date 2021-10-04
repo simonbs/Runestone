@@ -18,7 +18,6 @@ protocol LayoutManagerDelegate: AnyObject {
 
 // swiftlint:disable:next type_body_length
 final class LayoutManager {
-    // MARK: - Public
     weak var delegate: LayoutManagerDelegate?
     weak var editorView: UIScrollView? {
         didSet {
@@ -196,6 +195,15 @@ final class LayoutManager {
             }
         }
     }
+    var highlightedRanges: [HighlightedRange] = [] {
+        didSet {
+            if highlightedRanges != oldValue {
+                recreateHighlightedRangesMap()
+                updateHighlightedRangesOnVisibleLines()
+            }
+        }
+    }
+    private var highlightedRangesMap: [DocumentLineNodeID: [HighlightedRange]] = [:]
 
     // MARK: - Views
     let gutterContainerView = UIView()
@@ -641,7 +649,6 @@ extension LayoutManager {
             let oldLineHeight = lineController.lineHeight
             lineController.constrainingWidth = maximumLineWidth
             lineController.prepareToDisplayString(in: lineLocalViewport, syntaxHighlightAsynchronously: true)
-            // Layout the line number.
             layoutLineNumberView(for: line)
             // Layout line fragments ("sublines") in the line until we have filled the viewport.
             let lineYPosition = line.yPosition
@@ -653,6 +660,9 @@ extension LayoutManager {
                 layoutLineFragmentView(for: lineFragmentController, lineYPosition: lineYPosition, lineFragmentFrame: &lineFragmentFrame)
                 maxY = lineFragmentFrame.maxY
             }
+            // The line fragments have now been created and we can set the highlighted ranges on them.
+            let highlightedRanges = highlightedRangesMap[line.id] ?? []
+            lineController.setHighlightedRangesOnLineFragments(highlightedRanges)
             // If we found at least one line to be shown and now aren't getting any line fragments within the viewport
             // then there's no more line fragments to be shown in the viewport and we stop generating line fragments.
             var stoppedGeneratingLineFragments = false
@@ -845,6 +855,38 @@ extension LayoutManager {
 
     func lineFragmentNode(containingCharacterAt location: Int, in line: DocumentLineNode) -> LineFragmentNode {
         return lineController(for: line).lineFragmentNode(containingCharacterAt: location)
+    }
+}
+
+// MARK: - Highlight
+private extension LayoutManager {
+    private func recreateHighlightedRangesMap() {
+        highlightedRangesMap.removeAll()
+        for highlightedRange in highlightedRanges where highlightedRange.range.length > 0 {
+            let lines = lineManager.lines(in: highlightedRange.range)
+            for line in lines {
+                let lineLocation = line.location
+                let cappedLocation = max(highlightedRange.range.location - lineLocation, line.location - lineLocation)
+                let cappedLength = min(highlightedRange.range.length, line.data.length - cappedLocation)
+                let cappedRange = NSRange(location: cappedLocation, length: cappedLength)
+                let highlightedRange = HighlightedRange(range: cappedRange, color: highlightedRange.color)
+                if let existingHighlightedRanges = highlightedRangesMap[line.id] {
+                    highlightedRangesMap[line.id] = existingHighlightedRanges + [highlightedRange]
+                } else {
+                    highlightedRangesMap[line.id] = [highlightedRange]
+                }
+            }
+        }
+    }
+
+    private func updateHighlightedRangesOnVisibleLines() {
+        for lineID in visibleLineIDs {
+            if let lineController = lineControllers[lineID] {
+                let highlightedRanges = highlightedRangesMap[lineID] ?? []
+                lineController.setHighlightedRangesOnLineFragments(highlightedRanges)
+                lineController.setNeedsDisplayOnLineFragmentViews()
+            }
+        }
     }
 }
 

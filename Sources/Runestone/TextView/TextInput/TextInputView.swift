@@ -324,6 +324,14 @@ final class TextInputView: UIView, UITextInput {
     private var estimatedLineHeight: CGFloat {
         return theme.font.lineHeight * lineHeightMultiplier
     }
+    var highlightedRanges: [HighlightedRange] {
+        get {
+            return layoutManager.highlightedRanges
+        }
+        set {
+            layoutManager.highlightedRanges = newValue
+        }
+    }
 
     // MARK: - Contents
     weak var delegate: TextInputViewDelegate?

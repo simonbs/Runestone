@@ -12,6 +12,7 @@ protocol LineFragmentControllerDelegate: AnyObject {
 }
 
 final class LineFragmentController {
+    weak var delegate: LineFragmentControllerDelegate?
     var lineFragment: LineFragment {
         didSet {
             if lineFragment !== oldValue {
@@ -20,7 +21,6 @@ final class LineFragmentController {
             }
         }
     }
-    weak var delegate: LineFragmentControllerDelegate?
     weak var lineFragmentView: LineFragmentView? {
         didSet {
             if lineFragmentView !== oldValue || lineFragmentView?.renderer !== renderer {
@@ -34,6 +34,14 @@ final class LineFragmentController {
         }
         set {
             renderer.invisibleCharacterConfiguration = newValue
+        }
+    }
+    var highlightedRanges: [HighlightedRange] {
+        get {
+            return renderer.highlightedRanges
+        }
+        set {
+            renderer.highlightedRanges = newValue
         }
     }
 

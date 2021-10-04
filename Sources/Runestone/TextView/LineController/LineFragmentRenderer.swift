@@ -21,6 +21,7 @@ final class LineFragmentRenderer {
     weak var delegate: LineFragmentRendererDelegate?
     var lineFragment: LineFragment
     var invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
+    var highlightedRanges: [HighlightedRange] = []
 
     private var showInvisibleCharacters: Bool {
         return invisibleCharacterConfiguration.showTabs
@@ -33,13 +34,30 @@ final class LineFragmentRenderer {
     }
 
     func draw(to context: CGContext) {
-        drawBackground(to: context)
+        drawHighlights(to: context)
+        drawInvisibleCharacters(to: context)
         drawText(to: context)
     }
 }
 
 private extension LineFragmentRenderer {
-    private func drawBackground(to context: CGContext) {
+    private func drawHighlights(to context: CGContext) {
+        if !highlightedRanges.isEmpty {
+            context.saveGState()
+            for highlightedRange in highlightedRanges {
+                let startLocation = highlightedRange.range.lowerBound
+                let endLocation = highlightedRange.range.upperBound
+                let startX = CTLineGetOffsetForStringIndex(lineFragment.line, startLocation, nil)
+                let endX = CTLineGetOffsetForStringIndex(lineFragment.line, endLocation, nil)
+                let rect = CGRect(x: startX, y: 0, width: endX - startX, height: lineFragment.scaledSize.height)
+                context.setFillColor(highlightedRange.color.cgColor)
+                context.fill(rect)
+            }
+            context.restoreGState()
+        }
+    }
+
+    private func drawInvisibleCharacters(to context: CGContext) {
         if showInvisibleCharacters {
             if let string = delegate?.string(in: self) {
                 drawInvisibleCharacters(in: string, to: context)
@@ -67,8 +85,7 @@ private extension LineFragmentRenderer {
             } else if invisibleCharacterConfiguration.showTabs && substring == Symbol.Character.tab {
                 draw(invisibleCharacterConfiguration.tabSymbol, at: .character(indexInLine))
             } else if invisibleCharacterConfiguration.showLineBreaks
-                        && (substring == Symbol.Character.lineFeed
-                            || substring == Symbol.Character.carriageReturnLineFeed) {
+                        && (substring == Symbol.Character.lineFeed || substring == Symbol.Character.carriageReturnLineFeed) {
                 draw(invisibleCharacterConfiguration.lineBreakSymbol, at: .endOfLine)
             }
         }

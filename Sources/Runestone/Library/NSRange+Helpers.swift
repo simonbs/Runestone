@@ -13,4 +13,10 @@ extension NSRange {
         let length = byteRange.length.value / 2
         self.init(location: location, length: length)
     }
+
+    func overlaps(_ range: NSRange) -> Bool {
+        let r1 = location ... location + length
+        let r2 = range.location ... range.location + range.length
+        return r1.overlaps(r2)
+    }
 }
