@@ -129,7 +129,7 @@ private extension LineTypesetter {
 
     private func typesetLineFragments(until condition: TypesetEndCondition, additionalLineFragmentCount: Int = 0) -> [LineFragment] {
         if let typesetter = typesetter {
-            let typesetResult = self.typesetLineFragments(
+            let typesetResult = typesetLineFragments(
                 until: condition,
                 additionalLineFragmentCount: additionalLineFragmentCount,
                 using: typesetter,

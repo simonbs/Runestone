@@ -19,12 +19,12 @@ final class IndexedRange: UITextRange {
         return range.length == 0
     }
 
-    init(range: NSRange) {
+    init(_ range: NSRange) {
         self.range = range
     }
 
     convenience init(location: Int, length: Int) {
         let range = NSRange(location: location, length: length)
-        self.init(range: range)
+        self.init(range)
     }
 }

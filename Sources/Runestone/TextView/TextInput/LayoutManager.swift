@@ -404,6 +404,17 @@ final class LayoutManager {
         }
     }
 
+    func typesetLines(to location: Int) {
+        let range = NSRange(location: 0, length: location)
+        let lines = lineManager.lines(in: range)
+        for line in lines {
+            let lineController = lineController(for: line)
+            let lineLocation = line.location
+            let endTypesettingLocation = min(lineLocation + line.data.length, location) - lineLocation
+            lineController.prepareToDisplayString(toLocation: endTypesettingLocation, syntaxHighlightAsynchronously: true)
+        }
+    }
+
     func textPreview(containing needleRange: NSRange, peekLength: Int = 50) -> TextPreview? {
         let lines = lineManager.lines(in: needleRange)
         guard !lines.isEmpty else {
@@ -561,7 +572,7 @@ extension LayoutManager {
             resetLineWidthsIfNecessary()
             layoutGutter()
             layoutSelection()
-            layoutLines()
+            layoutLinesInViewport()
             updateLineNumberColors()
             CATransaction.commit()
         }
@@ -629,8 +640,26 @@ extension LayoutManager {
         }
     }
 
+    func layoutLines(untilLocation location: Int) {
+        var nextLine: DocumentLineNode? = lineManager.firstLine
+        while let line = nextLine {
+            let lineLocation = line.location
+            let endTypesettingLocation = min(lineLocation + line.data.length, location) - lineLocation
+            let lineController = lineController(for: line)
+            lineController.constrainingWidth = maximumLineWidth
+            lineController.prepareToDisplayString(toLocation: endTypesettingLocation, syntaxHighlightAsynchronously: true)
+            let lineSize = CGSize(width: lineController.lineWidth, height: lineController.lineHeight)
+            setSize(of: lineController.line, to: lineSize)
+            if lineLocation + line.data.length <= location {
+                nextLine = lineManager.line(atRow: line.index + 1)
+            } else {
+                nextLine = nil
+            }
+        }
+    }
+
     // swiftlint:disable:next function_body_length
-    private func layoutLines() {
+    private func layoutLinesInViewport() {
         let oldTextContentWidth = _textContentWidth
         let oldTextContentHeight = _textContentHeight
         let oldVisibleLineIDs = visibleLineIDs

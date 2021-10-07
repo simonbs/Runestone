@@ -30,7 +30,7 @@ final class LineController {
         }
     }
 
-    private enum StringDisplayPreparationAmount {
+    private enum TypesetAmount {
         case inRect(CGRect)
         case toLocation(Int)
     }
@@ -194,18 +194,9 @@ final class LineController {
 }
 
 private extension LineController {
-    private func prepareToDisplayString(_ preparationAmount: StringDisplayPreparationAmount, syntaxHighlightAsynchronously: Bool) {
+    private func prepareToDisplayString(_ typesetAmount: TypesetAmount, syntaxHighlightAsynchronously: Bool) {
         prepareString(syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
-        let newLineFragments: [LineFragment]
-        switch preparationAmount {
-        case .inRect(let rect):
-            newLineFragments = typesetter.typesetLineFragments(in: rect)
-        case .toLocation(let location):
-            // When typesetting to a location we'll typeset an additional line fragment to ensure that we can display the text surrounding that location.
-            newLineFragments = typesetter.typesetLineFragments(toLocation: location, additionalLineFragmentCount: 1)
-        }
-        updateLineHeight(for: newLineFragments)
-        textInputProxy.lineFragments = typesetter.lineFragments
+        justTypesetLineFragments(typesetAmount)
     }
 
     private func prepareString(syntaxHighlightAsynchronously: Bool) {
@@ -216,6 +207,19 @@ private extension LineController {
         updateSyntaxHighlightingIfNecessary(async: syntaxHighlightAsynchronously)
         updateTypesetterIfNecessary()
     }
+
+    private func justTypesetLineFragments(_ typesetAmount: TypesetAmount) {
+       let newLineFragments: [LineFragment]
+       switch typesetAmount {
+       case .inRect(let rect):
+           newLineFragments = typesetter.typesetLineFragments(in: rect)
+       case .toLocation(let location):
+           // When typesetting to a location we'll typeset an additional line fragment to ensure that we can display the text surrounding that location.
+           newLineFragments = typesetter.typesetLineFragments(toLocation: location, additionalLineFragmentCount: 1)
+       }
+       updateLineHeight(for: newLineFragments)
+       textInputProxy.lineFragments = typesetter.lineFragments
+   }
 
     private func clearLineFragmentControllersIfNecessary() {
         if isLineFragmentCacheInvalid {

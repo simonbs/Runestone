@@ -29,7 +29,7 @@ final class TextInputView: UIView, UITextInput {
     var selectedTextRange: UITextRange? {
         get {
             if let range = selectedRange {
-                return IndexedRange(range: range)
+                return IndexedRange(range)
             } else {
                 return nil
             }
@@ -649,6 +649,10 @@ final class TextInputView: UIView, UITextInput {
         return layoutManager.textPreview(containing: range)
     }
 
+    func layoutLines(untilLocation location: Int) {
+        layoutManager.layoutLines(untilLocation: location)
+    }
+
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         // We end our current undo group when the user touches the view.
         let result = super.hitTest(point, with: event)
@@ -900,7 +904,7 @@ extension TextInputView {
         timedUndoManager.beginUndoGrouping()
         timedUndoManager.setActionName(L10n.Undo.ActionName.typing)
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
-            let indexedRange = IndexedRange(range: range)
+            let indexedRange = IndexedRange(range)
             textInputView.justInsert(text, in: indexedRange.range)
             let textLength = text.utf16.count
             if range.length > 0 && textLength > 0 {
@@ -1009,7 +1013,7 @@ extension TextInputView {
             return nil
         }
         let range = NSRange(location: fromIndexedPosition.index, length: toIndexedPosition.index - fromIndexedPosition.index)
-        return IndexedRange(range: range)
+        return IndexedRange(range)
     }
 
     func position(from position: UITextPosition, offset: Int) -> UITextPosition? {
@@ -1109,7 +1113,7 @@ extension TextInputView: IndentControllerDelegate {
 
     func indentController(_ controller: IndentController, shouldSelect range: NSRange) {
         if range != selectedRange {
-            selectedTextRange = IndexedRange(range: range)
+            selectedTextRange = IndexedRange(range)
         }
     }
 }

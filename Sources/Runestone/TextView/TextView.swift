@@ -25,6 +25,8 @@ public protocol TextViewDelegate: AnyObject {
     func textViewDidEndFloatingCursor(_ view: TextView)
     func textViewDidBeginDraggingCursor(_ view: TextView)
     func textViewDidEndDraggingCursor(_ view: TextView)
+    func textViewDidLoopToLastHighlightedRange(_ view: TextView)
+    func textViewDidLoopToFirstHighlightedRange(_ view: TextView)
 }
 
 public extension TextViewDelegate {
@@ -52,6 +54,8 @@ public extension TextViewDelegate {
     func textViewDidEndFloatingCursor(_ view: TextView) {}
     func textViewDidBeginDraggingCursor(_ view: TextView) {}
     func textViewDidEndDraggingCursor(_ view: TextView) {}
+    func textViewDidLoopToLastHighlightedRange(_ view: TextView) {}
+    func textViewDidLoopToFirstHighlightedRange(_ view: TextView) {}
 }
 
 // swiftlint:disable:next type_body_length
@@ -195,7 +199,7 @@ public final class TextView: UIScrollView {
         }
     }
     public var selectedTextRange: UITextRange? {
-        return IndexedRange(range: selectedRange)
+        return IndexedRange(selectedRange)
     }
     public override var inputAccessoryView: UIView? {
         get {
@@ -423,6 +427,7 @@ public final class TextView: UIScrollView {
         }
         set {
             textInputView.highlightedRanges = newValue
+            highlightNavigationController.highlightedRanges = newValue
         }
     }
 
@@ -450,6 +455,7 @@ public final class TextView: UIScrollView {
     private var isInputAccessoryViewEnabled = false
     private var isAdjustingCursor = false
     private let keyboardObserver = KeyboardObserver()
+    private let highlightNavigationController = HighlightNavigationController()
 
     public override init(frame: CGRect) {
         textInputView = TextInputView(theme: DefaultTheme())
@@ -466,6 +472,7 @@ public final class TextView: UIScrollView {
         addGestureRecognizer(tapGestureRecognizer)
         installNonEditableInteraction()
         keyboardObserver.delegate = self
+        highlightNavigationController.delegate = self
     }
 
     required init?(coder: NSCoder) {
@@ -654,6 +661,14 @@ public final class TextView: UIScrollView {
     public func textPreview(containing range: NSRange) -> TextPreview? {
         return textInputView.textPreview(containing: range)
     }
+
+    public func selectPreviousHighlightedRange() {
+        highlightNavigationController.selectPreviousRange()
+    }
+
+    public func selectNextHighlightedRange() {
+        highlightNavigationController.selectNextRange()
+    }
 }
 
 private extension TextView {
@@ -682,14 +697,14 @@ private extension TextView {
         if selectedRange.length == 0 {
             textInputView.insertText(characterPair.leading + characterPair.trailing)
             let newSelectedRange = NSRange(location: range.location + characterPair.leading.count, length: 0)
-            textInputView.selectedTextRange = IndexedRange(range: newSelectedRange)
+            textInputView.selectedTextRange = IndexedRange(newSelectedRange)
             return true
         } else if let text = textInputView.text(in: selectedRange) {
             let modifiedText = characterPair.leading + text + characterPair.trailing
-            let indexedRange = IndexedRange(range: selectedRange)
+            let indexedRange = IndexedRange(selectedRange)
             textInputView.replace(indexedRange, withText: modifiedText)
             let newSelectedRange = NSRange(location: range.location + characterPair.leading.count, length: range.length)
-            textInputView.selectedTextRange = IndexedRange(range: newSelectedRange)
+            textInputView.selectedTextRange = IndexedRange(newSelectedRange)
             return true
         } else {
             return false
@@ -717,7 +732,7 @@ private extension TextView {
     private func moveCaret(byOffset offset: Int) {
         if let selectedRange = textInputView.selectedRange {
             let newSelectedRange = NSRange(location: selectedRange.location + offset, length: 0)
-            textInputView.selectedTextRange = IndexedRange(range: newSelectedRange)
+            textInputView.selectedTextRange = IndexedRange(newSelectedRange)
         }
     }
 
@@ -862,6 +877,7 @@ extension TextView: TextInputViewDelegate {
     }
 
     func textInputViewDidChangeSelection(_ view: TextInputView) {
+        highlightNavigationController.selectedRange = view.selectedRange
         if isAutomaticScrollEnabled, !isAdjustingCursor, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scroll(to: newRange.location)
         }
@@ -902,6 +918,28 @@ extension TextView: TextInputViewDelegate {
 
     func textInputViewDidEndFloatingCursor(_ view: TextInputView) {
         editorDelegate?.textViewDidEndFloatingCursor(self)
+    }
+}
+
+// MARK: - HighlightNavigationControllerDelegate
+extension TextView: HighlightNavigationControllerDelegate {
+    func highlightNavigationController(
+        _ controller: HighlightNavigationController,
+        shouldNavigateTo highlightNavigationRange: HighlightNavigationRange) {
+        let range = highlightNavigationRange.range
+        _ = textInputView.becomeFirstResponder()
+        // Layout lines up until the location of the range so we can scroll to it immediately after.
+        textInputView.layoutLines(untilLocation: range.upperBound)
+        scroll(to: range.location)
+        textInputView.selectedTextRange = IndexedRange(range)
+        switch highlightNavigationRange.loopMode {
+        case .previousGoesToLast:
+            editorDelegate?.textViewDidLoopToLastHighlightedRange(self)
+        case .nextGoesToFirst:
+            editorDelegate?.textViewDidLoopToFirstHighlightedRange(self)
+        case .none:
+            break
+        }
     }
 }
 

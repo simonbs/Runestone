@@ -22,3 +22,9 @@ extension HighlightedRange: Equatable {
         return lhs.range == rhs.range && lhs.color == rhs.color
     }
 }
+
+extension HighlightedRange: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        return "[HighightedRange range=\(range)]"
+    }
+}
