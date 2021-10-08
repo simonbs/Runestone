@@ -430,6 +430,24 @@ public final class TextView: UIScrollView {
             highlightNavigationController.highlightedRanges = newValue
         }
     }
+    /// Wheter the text view should loop when navigating through highlighted ranges using `selectPreviousHighlightedRange` or `selectNextHighlightedRange` on the text view.
+    public var highlightedRangeLoopingMode: HighlightedRangeLoopingMode {
+        get {
+            if highlightNavigationController.loopRanges {
+                return .enabled
+            } else {
+                return .disabled
+            }
+        }
+        set {
+            switch newValue {
+            case .enabled:
+                highlightNavigationController.loopRanges = true
+            case .disabled:
+                highlightNavigationController.loopRanges = false
+            }
+        }
+    }
 
     private let textInputView: TextInputView
     private let editableTextInteraction = UITextInteraction(for: .editable)

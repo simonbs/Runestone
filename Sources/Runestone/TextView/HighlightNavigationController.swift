@@ -34,13 +34,14 @@ final class HighlightNavigationController {
     weak var delegate: HighlightNavigationControllerDelegate?
     var selectedRange: NSRange?
     var highlightedRanges: [HighlightedRange] = []
+    var loopRanges = false
 
     private var previousNavigationRange: HighlightNavigationRange? {
         if let selectedRange = selectedRange {
             let reversedRanges = highlightedRanges.reversed()
             if let nextRange = reversedRanges.first(where: { $0.range.upperBound <= selectedRange.lowerBound }) {
                 return HighlightNavigationRange(range: nextRange.range)
-            } else if let firstRange = reversedRanges.first {
+            } else if loopRanges, let firstRange = reversedRanges.first {
                 return HighlightNavigationRange(range: firstRange.range, loopMode: .previousGoesToLast)
             } else {
                 return nil
@@ -55,7 +56,7 @@ final class HighlightNavigationController {
         if let selectedRange = selectedRange {
             if let nextRange = highlightedRanges.first(where: { $0.range.lowerBound >= selectedRange.upperBound }) {
                 return HighlightNavigationRange(range: nextRange.range)
-            } else if let firstRange = highlightedRanges.first {
+            } else if loopRanges, let firstRange = highlightedRanges.first {
                 return HighlightNavigationRange(range: firstRange.range, loopMode: .nextGoesToFirst)
             } else {
                 return nil
