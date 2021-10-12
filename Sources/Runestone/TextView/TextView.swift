@@ -676,6 +676,16 @@ public final class TextView: UIScrollView {
         }
     }
 
+    public func search(for query: SearchQuery, replacingMatchesWith replacementString: String) -> [SearchReplaceResult] {
+        return search(for: query).map { searchResult in
+            return SearchReplaceResult(
+                range: searchResult.range,
+                startLinePosition: searchResult.startLinePosition,
+                endLinePosition: searchResult.endLinePosition,
+                replacementText: replacementString)
+        }
+    }
+
     public func textPreview(containing range: NSRange) -> TextPreview? {
         return textInputView.textPreview(containing: range)
     }
