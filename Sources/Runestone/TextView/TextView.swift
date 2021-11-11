@@ -10,54 +10,6 @@
 import CoreText
 import UIKit
 
-public protocol TextViewDelegate: AnyObject {
-    func textViewShouldBeginEditing(_ textView: TextView) -> Bool
-    func textViewShouldEndEditing(_ textView: TextView) -> Bool
-    func textViewDidBeginEditing(_ textView: TextView)
-    func textViewDidEndEditing(_ textView: TextView)
-    func textViewDidChange(_ textView: TextView)
-    func textViewDidChangeSelection(_ textView: TextView)
-    func textView(_ textView: TextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
-    func textView(_ textView: TextView, shouldInsert characterPair: CharacterPair, in range: NSRange) -> Bool
-    func textView(_ textView: TextView, shouldSkipTrailingComponentOf characterPair: CharacterPair, in range: NSRange) -> Bool
-    func textViewDidUpdateGutterWidth(_ textView: TextView)
-    func textViewDidBeginFloatingCursor(_ view: TextView)
-    func textViewDidEndFloatingCursor(_ view: TextView)
-    func textViewDidBeginDraggingCursor(_ view: TextView)
-    func textViewDidEndDraggingCursor(_ view: TextView)
-    func textViewDidLoopToLastHighlightedRange(_ view: TextView)
-    func textViewDidLoopToFirstHighlightedRange(_ view: TextView)
-}
-
-public extension TextViewDelegate {
-    func textViewShouldBeginEditing(_ textView: TextView) -> Bool {
-        return true
-    }
-    func textViewShouldEndEditing(_ textView: TextView) -> Bool {
-        return true
-    }
-    func textViewDidBeginEditing(_ textView: TextView) {}
-    func textViewDidEndEditing(_ textView: TextView) {}
-    func textViewDidChange(_ textView: TextView) {}
-    func textViewDidChangeSelection(_ textView: TextView) {}
-    func textView(_ textView: TextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
-        return true
-    }
-    func textView(_ textView: TextView, shouldInsert characterPair: CharacterPair, in range: NSRange) -> Bool {
-        return true
-    }
-    func textView(_ textView: TextView, shouldSkipTrailingComponentOf characterPair: CharacterPair, in range: NSRange) -> Bool {
-        return true
-    }
-    func textViewDidUpdateGutterWidth(_ textView: TextView) {}
-    func textViewDidBeginFloatingCursor(_ view: TextView) {}
-    func textViewDidEndFloatingCursor(_ view: TextView) {}
-    func textViewDidBeginDraggingCursor(_ view: TextView) {}
-    func textViewDidEndDraggingCursor(_ view: TextView) {}
-    func textViewDidLoopToLastHighlightedRange(_ view: TextView) {}
-    func textViewDidLoopToFirstHighlightedRange(_ view: TextView) {}
-}
-
 // swiftlint:disable:next type_body_length
 public final class TextView: UIScrollView {
     /// Delegate to receive callbacks for events triggered by the editor.
@@ -474,6 +426,12 @@ public final class TextView: UIScrollView {
     private var isAdjustingCursor = false
     private let keyboardObserver = KeyboardObserver()
     private let highlightNavigationController = HighlightNavigationController()
+    private var highlightedRangeInSelection: HighlightedRange? {
+        return highlightedRanges.first(where: { highlightedRange in
+            let range = highlightedRange.range
+            return range.lowerBound == selectedRange.lowerBound && range.upperBound == selectedRange.upperBound
+        })
+    }
 
     public override init(frame: CGRect) {
         textInputView = TextInputView(theme: DefaultTheme())
@@ -491,6 +449,7 @@ public final class TextView: UIScrollView {
         installNonEditableInteraction()
         keyboardObserver.delegate = self
         highlightNavigationController.delegate = self
+        setupMenuItems()
     }
 
     required init?(coder: NSCoder) {
@@ -537,6 +496,18 @@ public final class TextView: UIScrollView {
         textInputView.reloadInputViews()
     }
 
+    public override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if let highlightedRangeInSelection = highlightedRangeInSelection {
+            if action == #selector(replaceTextInSelectedHighlightedRange) {
+                return editorDelegate?.textView(self, canReplaceTextIn: highlightedRangeInSelection) ?? false
+            } else {
+                return false
+            }
+        } else {
+            return super.canPerformAction(action, withSender: sender)
+        }
+    }
+
     /// Sets the current _state_ of the editor. The state contains the text to be displayed by the editor and
     /// various additional information about the text that the editor needs to show the text.
     ///
@@ -580,6 +551,22 @@ public final class TextView: UIScrollView {
     ///   - text: A string to replace the text in range.
     public func replace(_ range: UITextRange, withText text: String) {
         textInputView.replace(range, withText: text)
+    }
+
+    /// Replaces the text that is in the specified range.
+    /// - Parameters:
+    ///   - range: A range of text in the document.
+    ///   - text: A string to replace the text in range.
+    public func replace(_ range: NSRange, withText text: String) {
+        let indexedRange = IndexedRange(range)
+        textInputView.replace(indexedRange, withText: text)
+    }
+
+    /// Replaces the text in the specified matches.
+    /// - Parameters:
+    ///   - batchReplaceSet: Set of ranges to replace with a text.
+    public func replace(textIn batchReplaceSet: BatchReplaceSet) {
+        textInputView.replace(textIn: batchReplaceSet)
     }
 
     /// Returns the text in the specified range.
@@ -870,6 +857,26 @@ private extension TextView {
         }
         return SearchResult(range: range, startLinePosition: startLinePosition, endLinePosition: endLinePosition)
     }
+
+    private func showMenuForText(in range: NSRange) {
+        let startCaretRect = textInputView.caretRect(at: range.location)
+        let endCaretRect = textInputView.caretRect(at: range.location + range.length)
+        let menuWidth = min(endCaretRect.maxX - startCaretRect.minX, frame.width)
+        let menuRect = CGRect(x: startCaretRect.minX, y: startCaretRect.minY, width: menuWidth, height: startCaretRect.height)
+        UIMenuController.shared.showMenu(from: self, rect: menuRect)
+    }
+
+    private func setupMenuItems() {
+        UIMenuController.shared.menuItems = [
+            UIMenuItem(title: L10n.Menu.ItemTitle.replace, action: #selector(replaceTextInSelectedHighlightedRange))
+        ]
+    }
+
+    @objc private func replaceTextInSelectedHighlightedRange() {
+        if let highlightedRangeInSelection = highlightedRangeInSelection {
+            editorDelegate?.textView(self, replaceTextIn: highlightedRangeInSelection)
+        }
+    }
 }
 
 // MARK: - TextInputViewDelegate
@@ -905,6 +912,7 @@ extension TextView: TextInputViewDelegate {
     }
 
     func textInputViewDidChangeSelection(_ view: TextInputView) {
+        UIMenuController.shared.hideMenu(from: self)
         highlightNavigationController.selectedRange = view.selectedRange
         if isAutomaticScrollEnabled, !isAdjustingCursor, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scroll(to: newRange.location)
@@ -954,21 +962,22 @@ extension TextView: HighlightNavigationControllerDelegate {
     func highlightNavigationController(
         _ controller: HighlightNavigationController,
         shouldNavigateTo highlightNavigationRange: HighlightNavigationRange) {
-        let range = highlightNavigationRange.range
-        _ = textInputView.becomeFirstResponder()
-        // Layout lines up until the location of the range so we can scroll to it immediately after.
-        textInputView.layoutLines(untilLocation: range.upperBound)
-        scroll(to: range.location)
-        textInputView.selectedTextRange = IndexedRange(range)
-        switch highlightNavigationRange.loopMode {
-        case .previousGoesToLast:
-            editorDelegate?.textViewDidLoopToLastHighlightedRange(self)
-        case .nextGoesToFirst:
-            editorDelegate?.textViewDidLoopToFirstHighlightedRange(self)
-        case .none:
-            break
+            let range = highlightNavigationRange.range
+            _ = textInputView.becomeFirstResponder()
+            // Layout lines up until the location of the range so we can scroll to it immediately after.
+            textInputView.layoutLines(untilLocation: range.upperBound)
+            scroll(to: range.location)
+            textInputView.selectedTextRange = IndexedRange(range)
+            showMenuForText(in: range)
+            switch highlightNavigationRange.loopMode {
+            case .previousGoesToLast:
+                editorDelegate?.textViewDidLoopToLastHighlightedRange(self)
+            case .nextGoesToFirst:
+                editorDelegate?.textViewDidLoopToFirstHighlightedRange(self)
+            case .none:
+                break
+            }
         }
-    }
 }
 
 // MARK: - UIGestureRecognizerDelegate

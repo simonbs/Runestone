@@ -1,1 +1,3 @@
 "undo.action_name.typing" = "Typing";
+"undo.action_name.replace_all" = "Replace All";
+"menu.item_title.replace" = "Replace";

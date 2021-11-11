@@ -11,8 +11,17 @@ import Foundation
 // swiftlint:disable nesting type_body_length type_name vertical_whitespace_opening_braces
 internal enum L10n {
 
+  internal enum Menu {
+    internal enum ItemTitle {
+      /// Replace
+      internal static let replace = L10n.tr("Localizable", "menu.item_title.replace")
+    }
+  }
+
   internal enum Undo {
     internal enum ActionName {
+      /// Replace All
+      internal static let replaceAll = L10n.tr("Localizable", "undo.action_name.replace_all")
       /// Typing
       internal static let typing = L10n.tr("Localizable", "undo.action_name.typing")
     }

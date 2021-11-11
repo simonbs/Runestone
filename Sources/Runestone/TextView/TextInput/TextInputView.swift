@@ -811,6 +811,44 @@ extension TextInputView {
         }
     }
 
+    func replace(textIn batchReplaceSet: BatchReplaceSet) {
+        guard !batchReplaceSet.matches.isEmpty else {
+            return
+        }
+        timedUndoManager.endUndoGrouping()
+        let oldSelectedRange = selectedRange
+        let sortedMatches = batchReplaceSet.matches.sorted(by: { $0.range.location < $1.range.location })
+        var replacedRanges: [NSRange] = []
+        var undoMatches: [BatchReplaceSet.Match] = []
+        var totalChangeInLength = 0
+        for result in sortedMatches where !replacedRanges.contains(where: { $0.overlaps(result.range) }) {
+            let range = result.range
+            let adjustedRange = NSRange(location: range.location + totalChangeInLength, length: range.length)
+            let existingText = stringView.substring(in: adjustedRange) ?? ""
+            let nsReplacementText = result.replacementText as NSString
+            replaceCharacters(in: adjustedRange, with: nsReplacementText)
+            let undoRange = NSRange(location: adjustedRange.location, length: nsReplacementText.length)
+            let undoMatch = BatchReplaceSet.Match(range: undoRange, replacementText: existingText)
+            replacedRanges.append(range)
+            undoMatches.append(undoMatch)
+            totalChangeInLength += result.replacementText.utf16.count - range.length
+        }
+        let undoBatchReplaceSet = BatchReplaceSet(matches: undoMatches)
+        timedUndoManager.beginUndoGrouping()
+        timedUndoManager.setActionName(L10n.Undo.ActionName.replaceAll)
+        timedUndoManager.registerUndo(withTarget: self) { textInputView in
+            self.replace(textIn: undoBatchReplaceSet)
+        }
+        timedUndoManager.endUndoGrouping()
+        if let oldSelectedRange = oldSelectedRange {
+            if oldSelectedRange.location < stringView.string.length {
+                selectedRange = NSRange(location: oldSelectedRange.location, length: 0)
+            } else {
+                selectedRange = NSRange(location: stringView.string.length, length: 0)
+            }
+        }
+    }
+
     func text(in range: UITextRange) -> String? {
         if let indexedRange = range as? IndexedRange {
             return text(in: indexedRange.range)
