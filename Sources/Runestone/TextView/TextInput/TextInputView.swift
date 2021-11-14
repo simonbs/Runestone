@@ -413,6 +413,16 @@ final class TextInputView: UIView, UITextInput {
     var gutterContainerView: UIView {
         return layoutManager.gutterContainerView
     }
+    private(set) var stringView = StringView() {
+        didSet {
+            if stringView !== oldValue {
+                lineManager.stringView = stringView
+                layoutManager.stringView = stringView
+                indentController.stringView = stringView
+                lineMovementController.stringView = stringView
+            }
+        }
+    }
     private(set) var lineManager: LineManager {
         didSet {
             if lineManager !== oldValue {
@@ -423,16 +433,6 @@ final class TextInputView: UIView, UITextInput {
     }
 
     // MARK: - Private
-    private var stringView = StringView() {
-        didSet {
-            if stringView !== oldValue {
-                lineManager.stringView = stringView
-                layoutManager.stringView = stringView
-                indentController.stringView = stringView
-                lineMovementController.stringView = stringView
-            }
-        }
-    }
     private var languageMode: LanguageMode = PlainTextLanguageMode() {
         didSet {
             if languageMode !== oldValue {

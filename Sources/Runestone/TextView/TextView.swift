@@ -643,34 +643,15 @@ public final class TextView: UIScrollView {
     }
 
     public func search(for query: SearchQuery) -> [SearchResult] {
-        guard !query.text.isEmpty else {
-            return []
-        }
-        do {
-            let regex = try query.makeRegularExpression()
-            let range = NSRange(location: 0, length: textInputView.string.length)
-            let matches = regex.matches(in: text, options: [], range: range)
-            var searchResults: [SearchResult] = []
-            for match in matches where match.range.length > 0 {
-                if let searchResult = searchResult(from: match) {
-                    searchResults.append(searchResult)
-                }
-            }
-            return searchResults
-        } catch {
-            print(error)
-            return []
-        }
+        let searchController = SearchController(stringView: textInputView.stringView)
+        searchController.delegate = self
+        return searchController.search(for: query)
     }
 
     public func search(for query: SearchQuery, replacingMatchesWith replacementString: String) -> [SearchReplaceResult] {
-        return search(for: query).map { searchResult in
-            return SearchReplaceResult(
-                range: searchResult.range,
-                startLinePosition: searchResult.startLinePosition,
-                endLinePosition: searchResult.endLinePosition,
-                replacementText: replacementString)
-        }
+        let searchController = SearchController(stringView: textInputView.stringView)
+        searchController.delegate = self
+        return searchController.search(for: query, replacingMatchesWith: replacementString)
     }
 
     public func textPreview(containing range: NSRange) -> TextPreview? {
@@ -846,18 +827,6 @@ private extension TextView {
         }
     }
 
-    private func searchResult(from textCheckingResult: NSTextCheckingResult) -> SearchResult? {
-        let range = textCheckingResult.range
-        let lineManager = textInputView.lineManager
-        guard let startLinePosition = lineManager.linePosition(at: range.lowerBound) else {
-            return nil
-        }
-        guard let endLinePosition = lineManager.linePosition(at: range.upperBound) else {
-            return nil
-        }
-        return SearchResult(range: range, startLinePosition: startLinePosition, endLinePosition: endLinePosition)
-    }
-
     private func showMenuForText(in range: NSRange) {
         let startCaretRect = textInputView.caretRect(at: range.location)
         let endCaretRect = textInputView.caretRect(at: range.location + range.length)
@@ -978,6 +947,13 @@ extension TextView: HighlightNavigationControllerDelegate {
                 break
             }
         }
+}
+
+// MARK: - SearchControllerDelegate
+extension TextView: SearchControllerDelegate {
+    func searchController(_ searchController: SearchController, linePositionAt location: Int) -> LinePosition? {
+        return textInputView.lineManager.linePosition(at: location)
+    }
 }
 
 // MARK: - UIGestureRecognizerDelegate
