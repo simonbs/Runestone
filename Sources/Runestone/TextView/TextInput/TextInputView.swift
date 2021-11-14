@@ -837,7 +837,7 @@ extension TextInputView {
         timedUndoManager.beginUndoGrouping()
         timedUndoManager.setActionName(L10n.Undo.ActionName.replaceAll)
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
-            self.replace(textIn: undoBatchReplaceSet)
+            textInputView.replace(textIn: undoBatchReplaceSet)
         }
         timedUndoManager.endUndoGrouping()
         if let oldSelectedRange = oldSelectedRange {
