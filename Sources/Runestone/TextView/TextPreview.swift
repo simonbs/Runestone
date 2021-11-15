@@ -54,7 +54,8 @@ private extension TextPreview {
     private func updateAttributedString() {
         let resultingAttributedString = NSMutableAttributedString()
         forEachRangeInLineController { lineController, range in
-            if let substring = lineController.attributedString?.attributedSubstring(from: range) {
+            if let attributedString = lineController.attributedString, range.upperBound < attributedString.length {
+                let substring = attributedString.attributedSubstring(from: range)
                 resultingAttributedString.append(substring)
             }
         }

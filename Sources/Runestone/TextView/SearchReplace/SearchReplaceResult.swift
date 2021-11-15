@@ -8,6 +8,7 @@
 import Foundation
 
 public struct SearchReplaceResult: Hashable, Equatable {
+    public let id: String = UUID().uuidString
     public let range: NSRange
     public let startLinePosition: LinePosition
     public let endLinePosition: LinePosition

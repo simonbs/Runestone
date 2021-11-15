@@ -38,7 +38,7 @@ final class ReplacementStringParserTests: XCTestCase {
         XCTAssertEqual(parsedReplacementString, .init(components: [.placeholder(123)]))
     }
 
-    func testPlaceholderAtEndOString() {
+    func testPlaceholderAtEndOfString() {
         let parser = ReplacementStringParser(string: "hello world $1")
         let parsedReplacementString = parser.parse()
         XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello world "), .placeholder(1)]))
@@ -96,5 +96,117 @@ final class ReplacementStringParserTests: XCTestCase {
         let parser = ReplacementStringParser(string: "\\$1$2")
         let parsedReplacementString = parser.parse()
         XCTAssertEqual(parsedReplacementString, .init(components: [.text("$1"), .placeholder(2)]))
+    }
+
+    func testDollarSignFollowedByLetter() {
+        let parser = ReplacementStringParser(string: "hello $world")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello $world")]))
+    }
+
+    func testStringEndingWithDollarSign() {
+        let parser = ReplacementStringParser(string: "hello world $")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello world $")]))
+    }
+
+    func testStringBeginnignWithDolarSign() {
+        let parser = ReplacementStringParser(string: "$ hello world")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("$ hello world")]))
+    }
+
+    func testStringContainingOnlyDollarSign() {
+        let parser = ReplacementStringParser(string: "$")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("$")]))
+    }
+
+    func testStringEndingWithBackslash() {
+        let parser = ReplacementStringParser(string: "hello world \\")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello world \\")]))
+    }
+
+    func testEmptyString() {
+        let parser = ReplacementStringParser(string: "")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: []))
+    }
+
+    func testStringContainingTwoBackslashes() {
+        let parser = ReplacementStringParser(string: "hello \\\\ world")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello \\\\ world")]))
+    }
+
+    func testModifierWithNoMeaning() {
+        let parser = ReplacementStringParser(string: "\\uhello")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("\\uhello")]))
+    }
+
+    func testSingleModifier() {
+        let parser = ReplacementStringParser(string: "hello \\u$1 world")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [
+            .text("hello "),
+            .placeholder(modifiers: [.uppercaseLetter], index: 1),
+            .text(" world")
+        ]))
+    }
+
+    func testMultipleModifiers() {
+        let parser = ReplacementStringParser(string: "hello \\u$1 \\L$2 world")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [
+            .text("hello "),
+            .placeholder(modifiers: [.uppercaseLetter], index: 1),
+            .text(" "),
+            .placeholder(modifiers: [.lowercaseAllLetters], index: 2),
+            .text(" world")
+        ]))
+    }
+
+    func testMultipleModifiersOnSinglePlaceholder() {
+        let parser = ReplacementStringParser(string: "hello \\u\\l\\U$1 world")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [
+            .text("hello "),
+            .placeholder(modifiers: [.uppercaseLetter, .lowercaseLetter, .uppercaseAllLetters], index: 1),
+            .text(" world")
+        ]))
+    }
+
+    func testOnlyPlaceholderWithSingleModifier() {
+        let parser = ReplacementStringParser(string: "\\u$1")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.placeholder(modifiers: [.uppercaseLetter], index: 1)]))
+    }
+
+    func testOnlyPlaceholderWithMultipleModifiers() {
+        let parser = ReplacementStringParser(string: "\\u\\l\\U$1")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [
+            .placeholder(modifiers: [.uppercaseLetter, .lowercaseLetter, .uppercaseAllLetters], index: 1)
+        ]))
+    }
+
+    func testMultipleModifiersWithNoMeaning() {
+        let parser = ReplacementStringParser(string: "\\u\\l\\UHello")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("\\u\\l\\UHello")]))
+    }
+
+    func testModifierInFrontOfEscapedDollarSign() {
+        let parser = ReplacementStringParser(string: "\\u\\$")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("\\u$")]))
+    }
+
+    func testModifiersFollowedByInvalidModifier() {
+        let parser = ReplacementStringParser(string: "\\u\\l\\A")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("\\u\\l\\A")]))
     }
 }
