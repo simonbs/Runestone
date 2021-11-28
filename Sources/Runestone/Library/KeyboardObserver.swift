@@ -12,10 +12,10 @@ protocol KeyboardObserverDelegate: AnyObject {
         _ keyboardObserver: KeyboardObserver,
         keyboardWillShowWithHeight keyboardHeight: CGFloat,
         animation: KeyboardObserver.Animation?)
-    func keyboardObserverKeyboardWillHide(_ keyboardObserver: KeyboardObserver, animation: KeyboardObserver.Animation?)
+    func keyboardObserver(_ keyboardObserver: KeyboardObserver, keyboardWillHideWith animation: KeyboardObserver.Animation?)
     func keyboardObserver(
         _ keyboardObserver: KeyboardObserver,
-        keyboardWillChangeHeight keyboardHeight: CGFloat,
+        keyboardWillChangeHeightTo keyboardHeight: CGFloat,
         animation: KeyboardObserver.Animation?)
 }
 
@@ -24,10 +24,10 @@ extension KeyboardObserverDelegate {
         _ keyboardObserver: KeyboardObserver,
         keyboardWillShowWithHeight keyboardHeight: CGFloat,
         animation: KeyboardObserver.Animation?) {}
-    func keyboardObserverKeyboardWillHide(_ keyboardObserver: KeyboardObserver, animation: KeyboardObserver.Animation?) {}
+    func keyboardObserver(_ keyboardObserver: KeyboardObserver, keyboardWillHideWith animation: KeyboardObserver.Animation?) {}
     func keyboardObserver(
         _ keyboardObserver: KeyboardObserver,
-        keyboardWillChangeHeight keyboardHeight: CGFloat,
+        keyboardWillChangeHeightTo keyboardHeight: CGFloat,
         animation: KeyboardObserver.Animation?) {}
 }
 
@@ -77,14 +77,10 @@ private extension KeyboardObserver {
     @objc private func keyboardWillShow(notification: Notification) {
         let animation = createAnimation(from: notification)
         let newKeyboardHeight = keyboardHeight(from: notification)
-        if !isKeyboardVisible {
+        if !isKeyboardVisible || newKeyboardHeight != keyboardHeight {
             keyboardHeight = newKeyboardHeight
             isKeyboardVisible = true
             delegate?.keyboardObserver(self, keyboardWillShowWithHeight: keyboardHeight, animation: animation)
-        } else if newKeyboardHeight != keyboardHeight {
-            keyboardHeight = newKeyboardHeight
-            let animation = createAnimation(from: notification)
-            delegate?.keyboardObserver(self, keyboardWillChangeHeight: keyboardHeight, animation: animation)
         }
     }
 
@@ -93,7 +89,7 @@ private extension KeyboardObserver {
             isKeyboardVisible = false
             let animation = createAnimation(from: notification)
             keyboardHeight = 0
-            delegate?.keyboardObserverKeyboardWillHide(self, animation: animation)
+            delegate?.keyboardObserver(self, keyboardWillHideWith: animation)
         }
     }
 
@@ -102,7 +98,7 @@ private extension KeyboardObserver {
             let newKeyboardHeight = keyboardHeight(from: notification)
             if newKeyboardHeight != keyboardHeight {
                 let animation = createAnimation(from: notification)
-                delegate?.keyboardObserver(self, keyboardWillChangeHeight: keyboardHeight, animation: animation)
+                delegate?.keyboardObserver(self, keyboardWillChangeHeightTo: keyboardHeight, animation: animation)
             }
         }
     }
