@@ -365,7 +365,7 @@ public final class TextView: UIScrollView {
     }
     /// Automatically scrolls the text view to show the caret when typing or moving the caret.
     public var isAutomaticScrollEnabled = true
-    /// When automatic scrolling is enabled and the caret leaves the viewport, the text view will automatically scroll the content. The `automaticScrollInset` is applied to the viewport before scrolling. The inset can be used to adjust when the text view should scroll the content. For example it can be used to account for views overlaying the content. The text view will automatically account for the keyboard but will not account for the status bar.
+    /// When automatic scrolling is enabled and the caret leaves the viewport, the text view will automatically scroll the content. The `automaticScrollInset` is applied to the viewport before scrolling. The inset can be used to adjust when the text view should scroll the content. For example it can be used to account for views overlaying the content. The text view will does account for the keyboard or the status bar.
     public var automaticScrollInset: UIEdgeInsets = .zero
     /// The length of the line that was longest when opening the document. This will return nil if the line is no longer available.
     /// The value will not be kept updated as the text is changed. The value can be used to determine if a document contains a very long line in which case the performance may be degraded when editing the line.
@@ -757,14 +757,8 @@ private extension TextView {
         let caretRect = textInputView.caretRect(at: location)
         let viewportMinX = contentOffset.x + automaticScrollInset.left + gutterWidth
         let viewportMinY = contentOffset.y + automaticScrollInset.top
-        let viwportHeight = frame.height
-            - keyboardObserver.keyboardHeight
-            - automaticScrollInset.top
-            - automaticScrollInset.bottom
-        let viewportWidth = frame.width
-            - gutterWidth
-            - automaticScrollInset.left
-            - automaticScrollInset.right
+        let viwportHeight = frame.height - automaticScrollInset.top - automaticScrollInset.bottom
+        let viewportWidth = frame.width - gutterWidth  - automaticScrollInset.left - automaticScrollInset.right
         let viewport = CGRect(x: viewportMinX, y: viewportMinY, width: viewportWidth, height: viwportHeight)
         var newContentOffset = contentOffset
         if caretRect.minX < viewport.minX {
