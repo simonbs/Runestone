@@ -679,14 +679,11 @@ private extension TextInputView {
             // even when the scroll view bouncing on the right side.
             let maxContentOffsetX = layoutManager.contentSize.width - viewport.width
             let widthExtension = max(ceil(viewport.minX - maxContentOffsetX), 0)
-            let pageGuideXPosition = layoutManager.gutterWidth + textContainerInset.left + pageGuideController.columnOffset
-            let pageGuideOrigin = CGPoint(x: pageGuideXPosition, y: viewport.minY)
-            let pageGuideSize = CGSize(width: bounds.width - pageGuideXPosition + widthExtension, height: viewport.height)
-            if pageGuideSize.width > 0 {
-                pageGuideController.guideView.frame = CGRect(origin: pageGuideOrigin, size: pageGuideSize)
-            } else {
-                pageGuideController.guideView.frame = .zero
-            }
+            let xPosition = layoutManager.gutterWidth + textContainerInset.left + pageGuideController.columnOffset
+            let width = max(bounds.width - xPosition + widthExtension, 0)
+            let orrigin = CGPoint(x: xPosition, y: viewport.minY)
+            let pageGuideSize = CGSize(width: width, height: viewport.height)
+            pageGuideController.guideView.frame = CGRect(origin: orrigin, size: pageGuideSize)
         }
     }
 }
