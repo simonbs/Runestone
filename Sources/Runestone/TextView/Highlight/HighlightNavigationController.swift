@@ -81,4 +81,17 @@ final class HighlightNavigationController {
             delegate?.highlightNavigationController(self, shouldNavigateTo: nextNavigationRange)
         }
     }
+
+    func selectRange(at index: Int) {
+        if index >= 0 && index < highlightedRanges.count {
+            let highlightedRange = highlightedRanges[index]
+            let navigationRange = HighlightNavigationRange(range: highlightedRange.range)
+            selectedRange = highlightedRange.range
+            delegate?.highlightNavigationController(self, shouldNavigateTo: navigationRange)
+        } else {
+            let count = highlightedRanges.count
+            let countString = count == 1 ? "There is \(count) highlighted range" : "There are \(count) highlighted ranges"
+            fatalError("Cannot select highlighted range at index \(index). \(countString)")
+        }
+    }
 }

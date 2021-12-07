@@ -665,6 +665,10 @@ public final class TextView: UIScrollView {
     public func selectNextHighlightedRange() {
         highlightNavigationController.selectNextRange()
     }
+
+    public func selectHighlightedRange(at index: Int) {
+        highlightNavigationController.selectRange(at: index)
+    }
 }
 
 private extension TextView {
