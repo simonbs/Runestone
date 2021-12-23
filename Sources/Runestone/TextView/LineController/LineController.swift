@@ -5,8 +5,6 @@
 //  Created by Simon Støvring on 02/02/2021.
 //
 
-// swiftlint:disable file_length
-
 import CoreGraphics
 import CoreText
 import UIKit
