@@ -17,19 +17,7 @@ protocol LineControllerDelegate: AnyObject {
     func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController)
 }
 
-protocol LineControllerAttributedStringObserver: AnyObject {
-    func lineControllerDidUpdateAttributedString(_ lineController: LineController)
-}
-
 final class LineController {
-    private final class WeakObserver {
-        private(set) weak var observer: LineControllerAttributedStringObserver?
-
-        init(_ observer: LineControllerAttributedStringObserver) {
-            self.observer = observer
-        }
-    }
-
     private enum TypesetAmount {
         case inRect(CGRect)
         case toLocation(Int)
@@ -88,13 +76,7 @@ final class LineController {
     var isFinishedTypesetting: Bool {
         return typesetter.isFinishedTypesetting
     }
-    private(set) var attributedString: NSMutableAttributedString? {
-        didSet {
-            if attributedString != oldValue {
-                invokeEachAttributedStringObserver { $0.lineControllerDidUpdateAttributedString(self) }
-            }
-        }
-    }
+    private(set) var attributedString: NSMutableAttributedString?
 
     private let stringView: StringView
     private let typesetter: LineTypesetter
@@ -107,7 +89,6 @@ final class LineController {
     private var isTypesetterInvalid = true
     private var _lineHeight: CGFloat?
     private var lineFragmentTree: LineFragmentTree
-    private var attributedStringObservers: [ObjectIdentifier: WeakObserver] = [:]
 
     init(line: DocumentLineNode, stringView: StringView) {
         self.line = line
@@ -116,10 +97,6 @@ final class LineController {
         self.textInputProxy.estimatedLineFragmentHeight = estimatedLineFragmentHeight
         let rootLineFragmentNodeData = LineFragmentNodeData(lineFragment: nil)
         self.lineFragmentTree = LineFragmentTree(minimumValue: 0, rootValue: 0, rootData: rootLineFragmentNodeData)
-    }
-
-    deinit {
-        attributedStringObservers = [:]
     }
 
     func prepareToDisplayString(in rect: CGRect, syntaxHighlightAsynchronously: Bool) {
@@ -178,18 +155,6 @@ final class LineController {
             lineFragmentController.highlightedRanges = highlightedRanges.filter { $0.range.overlaps(lineFragment.range) }
             lineFragmentController.lineFragmentView?.setNeedsDisplay()
         }
-    }
-
-    func addObserver(_ observer: LineControllerAttributedStringObserver) {
-        let identifier = ObjectIdentifier(observer)
-        attributedStringObservers[identifier] = WeakObserver(observer)
-        cleanUpAttributedStringObservers()
-    }
-
-    func removeObserver(_ observer: LineControllerAttributedStringObserver) {
-        let identifier = ObjectIdentifier(observer)
-        attributedStringObservers.removeValue(forKey: identifier)
-        cleanUpAttributedStringObservers()
     }
 }
 
@@ -298,7 +263,6 @@ private extension LineController {
                     self.isSyntaxHighlightingInvalid = false
                     self.isTypesetterInvalid = true
                     self.redisplayLineFragments()
-                    self.invokeEachAttributedStringObserver { $0.lineControllerDidUpdateAttributedString(self) }
                     if abs(self.lineWidth - oldWidth) > CGFloat.ulpOfOne {
                         self.delegate?.lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(self)
                     }
@@ -309,7 +273,6 @@ private extension LineController {
             syntaxHighlighter.syntaxHighlight(input)
             isSyntaxHighlightingInvalid = false
             isTypesetterInvalid = true
-            invokeEachAttributedStringObserver { $0.lineControllerDidUpdateAttributedString(self) }
         }
     }
 
@@ -395,18 +358,6 @@ private extension LineController {
                 return nil
             }
         }
-    }
-
-    private func invokeEachAttributedStringObserver(_ handler: (LineControllerAttributedStringObserver) -> Void) {
-        for (_, value) in attributedStringObservers {
-            if let observer = value.observer {
-                handler(observer)
-            }
-        }
-    }
-
-    private func cleanUpAttributedStringObservers() {
-        attributedStringObservers = attributedStringObservers.filter { $0.value.observer != nil }
     }
 }
 

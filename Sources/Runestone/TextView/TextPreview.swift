@@ -7,12 +7,7 @@
 
 import Foundation
 
-public protocol TextPreviewDelegate: AnyObject {
-    func textPreviewDidUpdateAttributedString(_ provider: TextPreview)
-}
-
 public final class TextPreview {
-    public weak var delegate: TextPreviewDelegate?
     public let needleRange: NSRange
     public let previewRange: NSRange
     public let needleInPreviewRange: NSRange
@@ -25,14 +20,11 @@ public final class TextPreview {
         self.previewRange = previewRange
         self.needleInPreviewRange = needleInPreviewRange
         self.lineControllers = lineControllers
-        for lineController in lineControllers {
-            lineController.addObserver(self)
-        }
     }
 
     public func prepare() {
         forEachRangeInLineController { lineController, range in
-            lineController.prepareToDisplayString(toLocation: range.upperBound, syntaxHighlightAsynchronously: true)
+            lineController.prepareToDisplayString(toLocation: range.upperBound, syntaxHighlightAsynchronously: false)
         }
         updateAttributedString()
     }
@@ -73,12 +65,5 @@ private extension TextPreview {
             remainingLength -= length
             handler(lineController, range)
         }
-    }
-}
-
-extension TextPreview: LineControllerAttributedStringObserver {
-    func lineControllerDidUpdateAttributedString(_ lineController: LineController) {
-        updateAttributedString()
-        delegate?.textPreviewDidUpdateAttributedString(self)
     }
 }
