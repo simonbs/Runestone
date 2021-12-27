@@ -1,5 +1,5 @@
-import XCTest
 @testable import Runestone
+import XCTest
 
 final class NSStringHelpersTests: XCTestCase {
     func testByteCountOfLetter() {

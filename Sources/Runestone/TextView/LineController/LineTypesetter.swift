@@ -5,9 +5,9 @@
 //  Created by Simon Støvring on 02/02/2021.
 //
 
-import Foundation
 import CoreGraphics
 import CoreText
+import Foundation
 
 private final class TypesetResult {
     let lineFragments: [LineFragment]

@@ -142,7 +142,7 @@ extension TreeSitterLanguageLayer {
         queryCursor.setQueryRange(range)
         queryCursor.execute()
         let matches = queryCursor.allMatches()
-        let matchesInChildren = childLanguageLayers.values.reduce([]) { $0 + $1.matches(in: range) }
+        let matchesInChildren = childLanguageLayers.values.reduce(into: []) { $0 += $1.matches(in: range) }
         return matches + matchesInChildren
     }
 
@@ -275,7 +275,7 @@ private extension TreeSitterCapture {
 
 private extension TreeSitterQueryCursor {
     func allCaptures() -> [TreeSitterCapture] {
-        return allMatches().reduce([]) { $0 + $1.captures }
+        return allMatches().reduce(into: []) { $0 += $1.captures }
     }
 }
 

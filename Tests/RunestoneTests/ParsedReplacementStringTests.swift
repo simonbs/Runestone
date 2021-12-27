@@ -1,5 +1,5 @@
-import XCTest
 @testable import Runestone
+import XCTest
 
 // swiftlint:disable force_try
 

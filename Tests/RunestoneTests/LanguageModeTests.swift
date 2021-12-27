@@ -1,6 +1,6 @@
-import XCTest
 @testable import Runestone
 import TestTreeSitterLanguages
+import XCTest
 
 final class LanguageModeTests: XCTestCase {}
 

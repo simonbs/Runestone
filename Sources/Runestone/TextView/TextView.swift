@@ -112,7 +112,7 @@ public final class TextView: UIScrollView {
             textInputView.returnKeyType = newValue
         }
     }
-    public override var undoManager: UndoManager? {
+    override public var undoManager: UndoManager? {
         return textInputView.undoManager
     }
     /// The color of the insertion point. This can be used to control the color of the caret.
@@ -153,7 +153,7 @@ public final class TextView: UIScrollView {
     public var selectedTextRange: UITextRange? {
         return IndexedRange(selectedRange)
     }
-    public override var inputAccessoryView: UIView? {
+    override public var inputAccessoryView: UIView? {
         get {
             if isInputAccessoryViewEnabled {
                 return _inputAccessoryView
@@ -165,13 +165,13 @@ public final class TextView: UIScrollView {
             _inputAccessoryView = newValue
         }
     }
-    public override var inputAssistantItem: UITextInputAssistantItem {
+    override public var inputAssistantItem: UITextInputAssistantItem {
         return textInputView.inputAssistantItem
     }
-    public override var canBecomeFirstResponder: Bool {
+    override public var canBecomeFirstResponder: Bool {
         return !textInputView.isFirstResponder
     }
-    public override var backgroundColor: UIColor? {
+    override public var backgroundColor: UIColor? {
         get {
             return textInputView.backgroundColor
         }
@@ -180,7 +180,7 @@ public final class TextView: UIScrollView {
             textInputView.backgroundColor = newValue
         }
     }
-    public override var contentOffset: CGPoint {
+    override public var contentOffset: CGPoint {
         didSet {
             if contentOffset != oldValue {
                 textInputView.viewport = CGRect(origin: contentOffset, size: frame.size)
@@ -427,13 +427,13 @@ public final class TextView: UIScrollView {
     private let keyboardObserver = KeyboardObserver()
     private let highlightNavigationController = HighlightNavigationController()
     private var highlightedRangeInSelection: HighlightedRange? {
-        return highlightedRanges.first(where: { highlightedRange in
+        return highlightedRanges.first { highlightedRange in
             let range = highlightedRange.range
             return range.lowerBound == selectedRange.lowerBound && range.upperBound == selectedRange.upperBound
-        })
+        }
     }
 
-    public override init(frame: CGRect) {
+    override public init(frame: CGRect) {
         textInputView = TextInputView(theme: DefaultTheme())
         super.init(frame: frame)
         backgroundColor = .white
@@ -456,7 +456,7 @@ public final class TextView: UIScrollView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    public override func layoutSubviews() {
+    override public func layoutSubviews() {
         super.layoutSubviews()
         handleContentSizeUpdateIfNecessary()
         textInputView.scrollViewWidth = frame.width
@@ -465,7 +465,7 @@ public final class TextView: UIScrollView {
         bringSubviewToFront(textInputView.gutterContainerView)
     }
 
-    public override func safeAreaInsetsDidChange() {
+    override public func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
         textInputView.scrollViewSafeAreaInsets = safeAreaInsets
         contentSize = textInputView.contentSize
@@ -473,7 +473,7 @@ public final class TextView: UIScrollView {
     }
 
     @discardableResult
-    public override func becomeFirstResponder() -> Bool {
+    override public func becomeFirstResponder() -> Bool {
         if !isEditing && shouldBeginEditing {
             _ = textInputView.resignFirstResponder()
             _ = textInputView.becomeFirstResponder()
@@ -484,7 +484,7 @@ public final class TextView: UIScrollView {
     }
 
     @discardableResult
-    public override func resignFirstResponder() -> Bool {
+    override public func resignFirstResponder() -> Bool {
         if isEditing && shouldEndEditing {
             return textInputView.resignFirstResponder()
         } else {
@@ -492,11 +492,11 @@ public final class TextView: UIScrollView {
         }
     }
 
-    public override func reloadInputViews() {
+    override public func reloadInputViews() {
         textInputView.reloadInputViews()
     }
 
-    public override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+    override public func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
         if let highlightedRangeInSelection = highlightedRangeInSelection {
             if action == #selector(replaceTextInSelectedHighlightedRange) {
                 return editorDelegate?.textView(self, canReplaceTextIn: highlightedRangeInSelection) ?? false
@@ -762,7 +762,7 @@ private extension TextView {
         let viewportMinX = contentOffset.x + automaticScrollInset.left + gutterWidth
         let viewportMinY = contentOffset.y + automaticScrollInset.top
         let viwportHeight = frame.height - automaticScrollInset.top - automaticScrollInset.bottom
-        let viewportWidth = frame.width - gutterWidth  - automaticScrollInset.left - automaticScrollInset.right
+        let viewportWidth = frame.width - gutterWidth - automaticScrollInset.left - automaticScrollInset.right
         let viewport = CGRect(x: viewportMinX, y: viewportMinY, width: viewportWidth, height: viwportHeight)
         var newContentOffset = contentOffset
         if caretRect.minX < viewport.minX {
@@ -941,7 +941,7 @@ extension TextView: HighlightNavigationControllerDelegate {
                 editorDelegate?.textViewDidLoopToLastHighlightedRange(self)
             case .nextGoesToFirst:
                 editorDelegate?.textViewDidLoopToFirstHighlightedRange(self)
-            case .none:
+            case .disabled:
                 break
             }
         }
@@ -956,7 +956,7 @@ extension TextView: SearchControllerDelegate {
 
 // MARK: - UIGestureRecognizerDelegate
 extension TextView: UIGestureRecognizerDelegate {
-    public override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+    override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         if gestureRecognizer === tapGestureRecognizer {
             return !isEditing && shouldBeginEditing
         } else {

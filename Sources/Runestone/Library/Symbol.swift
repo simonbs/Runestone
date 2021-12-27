@@ -16,9 +16,9 @@ enum Symbol {
         static let space: Swift.Character = " "
     }
 
-    static let lineFeed = String(Symbol.Character.lineFeed)
-    static let carriageReturn = String(Symbol.Character.carriageReturn)
-    static let carriageReturnLineFeed = String(Symbol.Character.carriageReturnLineFeed)
-    static let tab = String(Symbol.Character.tab)
-    static let space = String(Symbol.Character.space)
+    static let lineFeed = String(Self.Character.lineFeed)
+    static let carriageReturn = String(Self.Character.carriageReturn)
+    static let carriageReturnLineFeed = String(Self.Character.carriageReturnLineFeed)
+    static let tab = String(Self.Character.tab)
+    static let space = String(Self.Character.space)
 }

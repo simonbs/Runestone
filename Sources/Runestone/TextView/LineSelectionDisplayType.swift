@@ -8,7 +8,7 @@
 import Foundation
 
 public enum LineSelectionDisplayType {
-    case none
+    case disabled
     case line
     case lineFragment
 }
@@ -16,7 +16,7 @@ public enum LineSelectionDisplayType {
 extension LineSelectionDisplayType {
     var shouldShowLineSelection: Bool {
         switch self {
-        case .none:
+        case .disabled:
             return false
         case .line, .lineFragment:
             return true

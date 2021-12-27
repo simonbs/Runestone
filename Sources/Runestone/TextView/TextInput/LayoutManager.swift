@@ -118,7 +118,7 @@ final class LayoutManager {
             }
         }
     }
-    var lineSelectionDisplayType: LineSelectionDisplayType = .none {
+    var lineSelectionDisplayType: LineSelectionDisplayType = .disabled {
         didSet {
             if lineSelectionDisplayType != oldValue {
                 setNeedsLayoutSelection()
@@ -285,7 +285,7 @@ final class LayoutManager {
         } else {
             // Rendering multiple very long lines is very expensive. In order to let the editor remain useable,
             // we set a very high maximum line width when line wrapping is disabled.
-            return 10000
+            return 10_000
         }
     }
     private var insetViewport: CGRect {
@@ -627,7 +627,7 @@ extension LayoutManager {
 
     private func selectionRectangleForLineFragment(containingCharacterAt location: Int) -> CGRect {
         switch lineSelectionDisplayType {
-        case .none:
+        case .disabled:
             return .null
         case .line:
             let line = lineManager.line(containingCharacterAt: location)!

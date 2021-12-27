@@ -12,6 +12,7 @@ import Foundation
 final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNodeValue, NodeData> {
     typealias Node = RedBlackTreeNode<NodeID, NodeValue, NodeData>
 
+    // swiftlint:disable:next implicitly_unwrapped_optional
     private(set) var root: Node!
     var nodeTotalCount: Int {
         return root.nodeTotalCount

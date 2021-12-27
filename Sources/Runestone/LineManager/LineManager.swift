@@ -4,8 +4,9 @@
 //
 //  Created by Simon Støvring on 08/12/2020.
 //
-import Foundation
+
 import CoreGraphics
+import Foundation
 
 struct DocumentLineNodeID: RedBlackTreeNodeID, Hashable {
     let id = UUID()

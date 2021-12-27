@@ -5,8 +5,8 @@
 //  Created by Simon Støvring on 10/01/2021.
 //
 
-import Foundation
 import CoreGraphics
+import Foundation
 
 final class DocumentLineChildrenUpdater: RedBlackTreeChildrenUpdater<DocumentLineNodeID, Int, DocumentLineNodeData> {
     override func updateAfterChangingChildren(of node: Node) -> Bool {

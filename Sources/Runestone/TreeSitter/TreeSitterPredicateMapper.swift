@@ -7,7 +7,7 @@
 
 import Foundation
 
-final class TreeSitterPredicateMapper {
+enum TreeSitterPredicateMapper {
     struct MapResult {
         let properties: [String: String]
         let textPredicates: [TreeSitterTextPredicate]
@@ -43,7 +43,7 @@ private extension TreeSitterPredicateMapper {
             fatalError("Set predicate must contain exactly two steps.")
         }
         switch (steps[0], steps[1]) {
-        case (.string(let name), .string(let value)):
+        case let (.string(name), .string(value)):
             return (name, value)
         default:
             fatalError("Set predicate must contain exactly two string steps.")
@@ -55,9 +55,9 @@ private extension TreeSitterPredicateMapper {
             fatalError("eq? and not-eq? predicates must contain exactly two teps.")
         }
         switch (steps[0], steps[1]) {
-        case (.capture(let captureIndex), .string(let value)):
+        case let (.capture(captureIndex), .string(value)):
             return .captureEqualsString(.init(captureIndex: captureIndex, string: value, isPositive: isPositive))
-        case (.capture(let lhsCaptureIndex), .capture(let rhsCaptureIndex)):
+        case let (.capture(lhsCaptureIndex), .capture(rhsCaptureIndex)):
             return .captureEqualsCapture(.init(lhsCaptureIndex: lhsCaptureIndex, rhsCaptureIndex: rhsCaptureIndex, isPositive: isPositive))
         default:
             fatalError("Predicate contains invalid combination of steps.")
@@ -69,7 +69,7 @@ private extension TreeSitterPredicateMapper {
             fatalError("match? and not-match? predicates must contain exactly stwo teps.")
         }
         switch (steps[0], steps[1]) {
-        case (.capture(let captureIndex), .string(let value)):
+        case let (.capture(captureIndex), .string(value)):
             return .captureMatchesPattern(.init(captureIndex: captureIndex, pattern: value, isPositive: isPositive))
         default:
             fatalError("Predicate contains invalid combination of steps.")

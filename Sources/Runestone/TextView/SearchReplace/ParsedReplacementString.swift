@@ -40,14 +40,14 @@ struct ParsedReplacementString: Equatable {
     let components: [Component]
 
     var containsPlaceholder: Bool {
-        return components.contains(where: { component in
+        return components.contains { component in
             switch component {
             case .text:
                 return false
             case .placeholder:
                 return true
             }
-        })
+        }
     }
 
     func string(byMatching textCheckingResult: NSTextCheckingResult, in string: NSString) -> String {

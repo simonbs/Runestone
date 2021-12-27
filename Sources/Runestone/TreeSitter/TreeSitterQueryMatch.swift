@@ -15,6 +15,6 @@ final class TreeSitterQueryMatch {
     }
 
     func capture(forIndex index: UInt32) -> TreeSitterCapture? {
-        return captures.first(where: { $0.index == index })
+        return captures.first { $0.index == index }
     }
 }

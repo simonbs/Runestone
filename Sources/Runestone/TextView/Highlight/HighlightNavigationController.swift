@@ -16,7 +16,7 @@ protocol HighlightNavigationControllerDelegate: AnyObject {
 
 struct HighlightNavigationRange {
     enum LoopMode {
-        case none
+        case disabled
         case previousGoesToLast
         case nextGoesToFirst
     }
@@ -24,7 +24,7 @@ struct HighlightNavigationRange {
     let range: NSRange
     let loopMode: LoopMode
 
-    init(range: NSRange, loopMode: LoopMode = .none) {
+    init(range: NSRange, loopMode: LoopMode = .disabled) {
         self.range = range
         self.loopMode = loopMode
     }

@@ -814,7 +814,7 @@ extension TextInputView {
         }
         timedUndoManager.endUndoGrouping()
         let oldSelectedRange = selectedRange
-        let sortedMatches = batchReplaceSet.matches.sorted(by: { $0.range.location < $1.range.location })
+        let sortedMatches = batchReplaceSet.matches.sorted { $0.range.location < $1.range.location }
         var replacedRanges: [NSRange] = []
         var undoMatches: [BatchReplaceSet.Match] = []
         var totalChangeInLength = 0
@@ -1099,7 +1099,7 @@ extension TextInputView: TreeSitterLanguageModeDelegate {
         guard byteIndex.value >= 0 && byteIndex < stringView.string.byteCount else {
             return nil
         }
-        let targetCharacterCount = 4 * 1024
+        let targetCharacterCount = 4 * 1_024
         let startLocation = byteIndex.utf16Length
         let endLocation = min(startLocation + targetCharacterCount, stringView.string.length - 1)
         let startRange = string.rangeOfComposedCharacterSequence(at: startLocation)
