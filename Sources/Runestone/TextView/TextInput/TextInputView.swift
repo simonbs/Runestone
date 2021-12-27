@@ -433,11 +433,11 @@ final class TextInputView: UIView, UITextInput {
     }
 
     // MARK: - Private
-    private var languageMode: LanguageMode = PlainTextLanguageMode() {
+    private var languageMode: InternalLanguageMode = PlainTextInternalLanguageMode() {
         didSet {
             if languageMode !== oldValue {
                 indentController.languageMode = languageMode
-                if let treeSitterLanguageMode = languageMode as? TreeSitterLanguageMode {
+                if let treeSitterLanguageMode = languageMode as? TreeSitterInternalLanguageMode {
                     treeSitterLanguageMode.delegate = self
                 }
             }
@@ -599,16 +599,14 @@ final class TextInputView: UIView, UITextInput {
         }
     }
 
-    func setLanguage(_ language: TreeSitterLanguage?, completion: ((Bool) -> Void)? = nil) {
-        let newLanguageMode: LanguageMode
-        if let language = language {
-            newLanguageMode = TreeSitterLanguageMode(language: language, stringView: stringView, lineManager: lineManager)
-        } else {
-            newLanguageMode = PlainTextLanguageMode()
-        }
-        self.languageMode = newLanguageMode
-        layoutManager.languageMode = newLanguageMode
-        newLanguageMode.parse(string) { [weak self] finished in
+    func setLanguageMode(_ languageMode: LanguageMode, completion: ((Bool) -> Void)? = nil) {
+        let internalLanguageMode = InternalLanguageModeFactory.internalLanguageMode(
+            from: languageMode,
+            stringView: stringView,
+            lineManager: lineManager)
+        self.languageMode = internalLanguageMode
+        layoutManager.languageMode = internalLanguageMode
+        internalLanguageMode.parse(string) { [weak self] finished in
             if let self = self, finished {
                 self.inputDelegate?.selectionWillChange(self)
                 self.layoutManager.invalidateLines()
@@ -1095,7 +1093,7 @@ extension TextInputView {
 
 // MARK: - TreeSitterLanguageModeDeleage
 extension TextInputView: TreeSitterLanguageModeDelegate {
-    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult? {
+    func treeSitterLanguageMode(_ languageMode: TreeSitterInternalLanguageMode, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult? {
         guard byteIndex.value >= 0 && byteIndex < stringView.string.byteCount else {
             return nil
         }

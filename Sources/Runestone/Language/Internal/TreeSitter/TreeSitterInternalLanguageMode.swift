@@ -1,5 +1,5 @@
 //
-//  TreeSitterLanguageMode.swift
+//  TreeSitterInternalLanguageMode.swift
 //  
 //
 //  Created by Simon Støvring on 05/12/2020.
@@ -9,10 +9,10 @@ import Foundation
 import TreeSitter
 
 protocol TreeSitterLanguageModeDelegate: AnyObject {
-    func treeSitterLanguageMode(_ languageMode: TreeSitterLanguageMode, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult?
+    func treeSitterLanguageMode(_ languageMode: TreeSitterInternalLanguageMode, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult?
 }
 
-final class TreeSitterLanguageMode: LanguageMode {
+final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     weak var delegate: TreeSitterLanguageModeDelegate?
     var canHighlight: Bool {
         return rootLanguageLayer.canHighlight
@@ -24,13 +24,18 @@ final class TreeSitterLanguageMode: LanguageMode {
     private let rootLanguageLayer: TreeSitterLanguageLayer
     private let operationQueue = OperationQueue()
 
-    init(language: TreeSitterLanguage, stringView: StringView, lineManager: LineManager) {
+    init(language: TreeSitterLanguage, languageProvider: TreeSitterLanguageProvider?, stringView: StringView, lineManager: LineManager) {
         self.stringView = stringView
         self.lineManager = lineManager
         operationQueue.name = "TreeSitterLanguageMode"
         operationQueue.qualityOfService = .userInitiated
         parser = TreeSitterParser(encoding: TSInputEncodingUTF16)
-        rootLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser, stringView: stringView, lineManager: lineManager)
+        rootLanguageLayer = TreeSitterLanguageLayer(
+            language: language,
+            languageProvider: languageProvider,
+            parser: parser,
+            stringView: stringView,
+            lineManager: lineManager)
         parser.delegate = self
     }
 
@@ -130,7 +135,7 @@ final class TreeSitterLanguageMode: LanguageMode {
     }
 }
 
-extension TreeSitterLanguageMode: TreeSitterParserDelegate {
+extension TreeSitterInternalLanguageMode: TreeSitterParserDelegate {
     func parser(_ parser: TreeSitterParser, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult? {
         return delegate?.treeSitterLanguageMode(self, bytesAt: byteIndex)
     }

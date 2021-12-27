@@ -33,19 +33,15 @@ public final class TreeSitterLanguage {
     let highlightsQuery: TreeSitterQuery?
     let injectionsQuery: TreeSitterQuery?
     let indentationScopes: TreeSitterIndentationScopes?
-    private(set) weak var injectedLanguageProvider: TreeSitterLanguageProvider?
 
-    public init(
-        _ language: UnsafePointer<TSLanguage>,
-        highlightsQuery: Query? = nil,
-        injectionsQuery: Query? = nil,
-        indentationScopes: TreeSitterIndentationScopes? = nil,
-        injectedLanguageProvider: TreeSitterLanguageProvider? = nil) {
+    public init(_ language: UnsafePointer<TSLanguage>,
+                highlightsQuery: Query? = nil,
+                injectionsQuery: Query? = nil,
+                indentationScopes: TreeSitterIndentationScopes? = nil) {
         self.languagePointer = language
         self.highlightsQuery = highlightsQuery?.createQuery(with: language)
         self.injectionsQuery = injectionsQuery?.createQuery(with: language)
         self.indentationScopes = indentationScopes
-        self.injectedLanguageProvider = injectedLanguageProvider
     }
 }
 

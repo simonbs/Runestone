@@ -41,7 +41,7 @@ final class IndentController {
     weak var delegate: IndentControllerDelegate?
     var stringView: StringView
     var lineManager: LineManager
-    var languageMode: LanguageMode
+    var languageMode: InternalLanguageMode
     var indentFont: UIFont {
         didSet {
             if indentFont != oldValue {
@@ -73,7 +73,7 @@ final class IndentController {
 
     private var _tabWidth: CGFloat?
 
-    init(stringView: StringView, lineManager: LineManager, languageMode: LanguageMode, indentStrategy: IndentStrategy, indentFont: UIFont) {
+    init(stringView: StringView, lineManager: LineManager, languageMode: InternalLanguageMode, indentStrategy: IndentStrategy, indentFont: UIFont) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.languageMode = languageMode

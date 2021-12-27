@@ -2,10 +2,10 @@
 import TestTreeSitterLanguages
 import XCTest
 
-final class LanguageModeTests: XCTestCase {}
+final class InternalLanguageModeTests: XCTestCase {}
 
-extension LanguageModeTests {
-    func javaScriptLanguageMode(text: String) -> TreeSitterLanguageMode {
+extension InternalLanguageModeTests {
+    func javaScriptLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
         let indentationScopes = TreeSitterIndentationScopes(
             indent: [
                 "array",
@@ -30,7 +30,7 @@ extension LanguageModeTests {
         return languageMode
     }
 
-    func jsonLanguageMode(text: String) -> TreeSitterLanguageMode {
+    func jsonLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
         let indentationScopes = TreeSitterIndentationScopes(indent: ["object", "array"], outdent: ["}", "]"])
         let language = TreeSitterLanguage(tree_sitter_json(), indentationScopes: indentationScopes)
         let languageMode = languageMode(language: language, text: text)
@@ -38,7 +38,7 @@ extension LanguageModeTests {
         return languageMode
     }
 
-    func htmlLanguageMode(text: String) -> TreeSitterLanguageMode {
+    func htmlLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
         let indentationScopes = TreeSitterIndentationScopes(indent: ["start_tag", "element"], outdent: ["end_tag"])
         let language = TreeSitterLanguage(tree_sitter_html(), indentationScopes: indentationScopes)
         let languageMode = languageMode(language: language, text: text)
@@ -46,7 +46,7 @@ extension LanguageModeTests {
         return languageMode
     }
 
-    func pythonLanguageMode(text: String) -> TreeSitterLanguageMode {
+    func pythonLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
         let indentationScopes = TreeSitterIndentationScopes(
             indent: [
                 "function_definition",
@@ -66,10 +66,10 @@ extension LanguageModeTests {
         return languageMode
     }
 
-    func languageMode(language: TreeSitterLanguage, text: String) -> TreeSitterLanguageMode {
+    func languageMode(language: TreeSitterLanguage, text: String) -> TreeSitterInternalLanguageMode {
         let stringView = StringView(string: text)
         let lineManager = LineManager(stringView: stringView)
         lineManager.rebuild(from: text as NSString)
-        return TreeSitterLanguageMode(language: language, stringView: stringView, lineManager: lineManager)
+        return TreeSitterInternalLanguageMode(language: language, languageProvider: nil, stringView: stringView, lineManager: lineManager)
     }
 }

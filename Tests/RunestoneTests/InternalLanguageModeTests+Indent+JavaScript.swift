@@ -2,7 +2,7 @@
 import TestTreeSitterLanguages
 import XCTest
 
-extension LanguageModeTests {
+extension InternalLanguageModeTests {
     func testJavaScript_insertingLineBreakBetweenBrackets() {
         let text = "function greet(name) {}"
         let languageMode = javaScriptLanguageMode(text: text)

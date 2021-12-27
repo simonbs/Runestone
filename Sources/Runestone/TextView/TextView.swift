@@ -143,11 +143,16 @@ public final class TextView: UIScrollView {
         }
     }
     public var selectedRange: NSRange {
-        if let selectedRange = textInputView.selectedRange {
-            return selectedRange
-        } else {
-            // UITextView returns the end of the document for the selectedRange by default.
-            return NSRange(location: textInputView.string.length, length: 0)
+        get {
+            if let selectedRange = textInputView.selectedRange {
+                return selectedRange
+            } else {
+                // UITextView returns the end of the document for the selectedRange by default.
+                return NSRange(location: textInputView.string.length, length: 0)
+            }
+        }
+        set {
+            textInputView.selectedTextRange = IndexedRange(newValue)
         }
     }
     public var selectedTextRange: UITextRange? {
@@ -530,13 +535,13 @@ public final class TextView: UIScrollView {
         return textInputView.linePosition(at: location)
     }
 
-    /// Sets the language on a background thread.
+    /// Sets the language mode on a background thread.
     ///
     /// - Parameters:
-    ///   - language: The new language to be used by the editor.
+    ///   - languageMode: The new language mode to be used by the editor.
     ///   - completion: Called when the content have been parsed or when parsing fails.
-    public func setLanguage(_ language: TreeSitterLanguage?, completion: ((Bool) -> Void)? = nil) {
-        textInputView.setLanguage(language, completion: completion)
+    public func setLanguageMode(_ languageMode: LanguageMode, completion: ((Bool) -> Void)? = nil) {
+        textInputView.setLanguageMode(languageMode, completion: completion)
     }
 
     /// Insets text at the location of the caret.

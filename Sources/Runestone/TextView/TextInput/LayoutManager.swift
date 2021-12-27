@@ -65,7 +65,7 @@ final class LayoutManager {
     var contentSize: CGSize {
         return CGSize(width: contentWidth, height: contentHeight)
     }
-    var languageMode: LanguageMode {
+    var languageMode: InternalLanguageMode {
         didSet {
             if languageMode !== oldValue {
                 for (_, lineController) in lineControllers {
@@ -321,7 +321,7 @@ final class LayoutManager {
         }
     }
 
-    init(lineManager: LineManager, languageMode: LanguageMode, stringView: StringView) {
+    init(lineManager: LineManager, languageMode: InternalLanguageMode, stringView: StringView) {
         self.lineManager = lineManager
         self.languageMode = languageMode
         self.stringView = stringView

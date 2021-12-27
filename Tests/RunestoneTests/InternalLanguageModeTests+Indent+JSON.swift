@@ -2,7 +2,7 @@
 import TestTreeSitterLanguages
 import XCTest
 
-extension LanguageModeTests {
+extension InternalLanguageModeTests {
     func testJSON_insertingLineBreakInObject() {
         // {
         //   "hello": "world",|}

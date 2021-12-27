@@ -29,11 +29,11 @@ final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
     }
 
     private let stringView: StringView
-    private let languageMode: TreeSitterLanguageMode
+    private let languageMode: TreeSitterInternalLanguageMode
     private let operationQueue: OperationQueue
     private var currentOperation: Operation?
 
-    init(stringView: StringView, languageMode: TreeSitterLanguageMode, operationQueue: OperationQueue) {
+    init(stringView: StringView, languageMode: TreeSitterInternalLanguageMode, operationQueue: OperationQueue) {
         self.stringView = stringView
         self.languageMode = languageMode
         self.operationQueue = operationQueue

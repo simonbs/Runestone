@@ -19,6 +19,7 @@ final class TreeSitterLanguageLayer {
     private let stringView: StringView
     private var childLanguageLayers: [String: TreeSitterLanguageLayer] = [:]
     private weak var parentLanguageLayer: TreeSitterLanguageLayer?
+    private weak var languageProvider: TreeSitterLanguageProvider?
     private var isEmpty: Bool {
         if let rootNode = tree?.rootNode {
             return rootNode.endByte - rootNode.startByte <= ByteCount(0)
@@ -27,8 +28,13 @@ final class TreeSitterLanguageLayer {
         }
     }
 
-    init(language: TreeSitterLanguage, parser: TreeSitterParser, stringView: StringView, lineManager: LineManager) {
+    init(language: TreeSitterLanguage,
+         languageProvider: TreeSitterLanguageProvider?,
+         parser: TreeSitterParser,
+         stringView: StringView,
+         lineManager: LineManager) {
         self.language = language
+        self.languageProvider = languageProvider
         self.parser = parser
         self.stringView = stringView
         self.lineManager = lineManager
@@ -165,8 +171,13 @@ private extension TreeSitterLanguageLayer {
     private func childLanguageLayer(named languageName: String) -> TreeSitterLanguageLayer? {
         if let childLanguageLayer = childLanguageLayers[languageName] {
             return childLanguageLayer
-        } else if let language = language.injectedLanguageProvider?.treeSitterLanguage(named: languageName) {
-            let childLanguageLayer = TreeSitterLanguageLayer(language: language, parser: parser, stringView: stringView, lineManager: lineManager)
+        } else if let language = languageProvider?.treeSitterLanguage(named: languageName) {
+            let childLanguageLayer = TreeSitterLanguageLayer(
+                language: language,
+                languageProvider: languageProvider,
+                parser: parser,
+                stringView: stringView,
+                lineManager: lineManager)
             childLanguageLayer.parentLanguageLayer = self
             childLanguageLayers[languageName] = childLanguageLayer
             return childLanguageLayer

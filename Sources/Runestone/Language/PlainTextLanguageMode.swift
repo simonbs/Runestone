@@ -1,0 +1,18 @@
+//
+//  PlainTextLanguageMode.swift
+//  
+//
+//  Created by Simon on 27/12/2021.
+//
+
+import Foundation
+
+public final class PlainTextLanguageMode {
+    public init() {}
+}
+
+extension PlainTextLanguageMode: LanguageMode {
+    func makeInternalLanguageMode(stringView: StringView, lineManager: LineManager) -> InternalLanguageMode {
+        return PlainTextInternalLanguageMode()
+    }
+}

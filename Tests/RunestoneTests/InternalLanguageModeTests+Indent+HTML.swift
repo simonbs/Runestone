@@ -2,7 +2,7 @@
 import TestTreeSitterLanguages
 import XCTest
 
-extension LanguageModeTests {
+extension InternalLanguageModeTests {
     func testHTML_insertingLineBreakInElements() {
         // <div>|</div>
         let text = "<div></div>"

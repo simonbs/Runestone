@@ -12,20 +12,29 @@ public final class TextViewState {
     let stringView: StringView
     let theme: Theme
     let lineManager: LineManager
-    let languageMode: LanguageMode
+    let languageMode: InternalLanguageMode
 
     public private(set) var detectedIndentStrategy: DetectedIndentStrategy = .unknown
 
-    public init(text: String, theme: Theme, language: TreeSitterLanguage? = nil) {
+    public init(text: String, theme: Theme, language: TreeSitterLanguage, languageProvider: TreeSitterLanguageProvider) {
         self.text = text
         self.theme = theme
         self.stringView = StringView(string: NSMutableString(string: text))
         self.lineManager = LineManager(stringView: stringView)
-        if let language = language {
-            self.languageMode = TreeSitterLanguageMode(language: language, stringView: stringView, lineManager: lineManager)
-        } else {
-            self.languageMode = PlainTextLanguageMode()
-        }
+        self.languageMode = TreeSitterInternalLanguageMode(
+            language: language,
+            languageProvider: languageProvider,
+            stringView: stringView,
+            lineManager: lineManager)
+        prepare()
+    }
+
+    public init(text: String, theme: Theme) {
+        self.text = text
+        self.theme = theme
+        self.stringView = StringView(string: NSMutableString(string: text))
+        self.lineManager = LineManager(stringView: stringView)
+        self.languageMode = PlainTextInternalLanguageMode()
         prepare()
     }
 }

@@ -1,5 +1,5 @@
 //
-//  PlainTextLanguageMode.swift
+//  PlainTextInternalLanguageMode.swift
 //  
 //
 //  Created by Simon Støvring on 14/02/2021.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-final class PlainTextLanguageMode: LanguageMode {
+final class PlainTextInternalLanguageMode: InternalLanguageMode {
     func parse(_ text: NSString) {}
 
     func parse(_ text: NSString, completion: @escaping ((Bool) -> Void)) {

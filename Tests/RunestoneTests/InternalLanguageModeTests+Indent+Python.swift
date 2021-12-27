@@ -2,7 +2,7 @@
 import TestTreeSitterLanguages
 import XCTest
 
-extension LanguageModeTests {
+extension InternalLanguageModeTests {
     func testPython_insertingLineBreakAfterFunction() {
         // def greet(name):|
         let text = "def greet(name):"
