@@ -25,6 +25,11 @@ protocol TextInputViewDelegate: AnyObject {
 
 // swiftlint:disable:next type_body_length
 final class TextInputView: UIView, UITextInput {
+    private enum UndoCaretBehavior {
+        case `default`
+        case preserve
+    }
+
     // MARK: - UITextInput
     var selectedTextRange: UITextRange? {
         get {
@@ -581,7 +586,9 @@ final class TextInputView: UIView, UITextInput {
         return lineManager.linePosition(at: location)
     }
 
-    func setState(_ state: TextViewState) {
+    func setState(_ state: TextViewState, addUndoAction: Bool = false) {
+        let oldText = stringView.string
+        let newText = state.stringView.string
         stringView = state.stringView
         theme = state.theme
         languageMode = state.languageMode
@@ -591,6 +598,17 @@ final class TextInputView: UIView, UITextInput {
         layoutManager.lineManager = state.lineManager
         layoutManager.invalidateContentSize()
         layoutManager.updateLineNumberWidth()
+        if addUndoAction {
+            if newText != oldText {
+                let newRange = NSRange(location: 0, length: newText.length)
+                timedUndoManager.endUndoGrouping()
+                timedUndoManager.beginUndoGrouping()
+                addUndoOperation(replacing: newRange, withText: oldText as String, caretBehavior: .preserve)
+                timedUndoManager.endUndoGrouping()
+            }
+        } else {
+            timedUndoManager.removeAllActions()
+        }
         if window != nil {
             inputDelegate?.selectionWillChange(self)
             layoutManager.invalidateLines()
@@ -768,52 +786,27 @@ extension TextInputView {
                 inputDelegate?.selectionDidChange(self)
                 delegate?.textInputViewDidChangeSelection(self)
             } else {
-                inputDelegate?.selectionWillChange(self)
-                justInsert(text, in: selectedRange)
-                inputDelegate?.selectionDidChange(self)
-                delegate?.textInputViewDidChangeSelection(self)
+                replaceCharactersAndNotifyDelegate(replacing: selectedRange, with: text)
             }
         }
-    }
-
-    private func justInsert(_ text: String, in range: NSRange) {
-        let nsText = text as NSString
-        let currentText = self.text(in: range) ?? ""
-        let newRange = NSRange(location: range.location, length: nsText.length)
-        addUndoOperation(replacing: newRange, withText: currentText)
-        selectedRange = NSRange(location: newRange.upperBound, length: 0)
-        replaceCharacters(in: range, with: nsText)
     }
 
     func deleteBackward() {
-        guard let selectedRange = selectedRange, selectedRange.length > 0 else {
-            return
-        }
-        let deleteRange = rangeForDeletingText(in: selectedRange)
-        if shouldChangeText(in: deleteRange, replacementText: "") {
-            if let currentText = text(in: deleteRange) {
-                let undoRange = NSRange(location: deleteRange.location, length: 0)
-                addUndoOperation(replacing: undoRange, withText: currentText)
+        if let selectedRange = selectedRange, selectedRange.length > 0 {
+            let deleteRange = rangeForDeletingText(in: selectedRange)
+            if shouldChangeText(in: deleteRange, replacementText: "") {
+                replaceCharactersAndNotifyDelegate(replacing: deleteRange, with: "")
             }
-            inputDelegate?.selectionWillChange(self)
-            self.selectedRange = NSRange(location: deleteRange.location, length: 0)
-            replaceCharacters(in: deleteRange, with: "")
-            inputDelegate?.selectionDidChange(self)
-            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
     func replace(_ range: UITextRange, withText text: String) {
         if let indexedRange = range as? IndexedRange, shouldChangeText(in: indexedRange.range, replacementText: text) {
-            inputDelegate?.selectionWillChange(self)
-            justInsert(text, in: indexedRange.range)
-            layoutIfNeeded()
-            inputDelegate?.selectionDidChange(self)
-            delegate?.textInputViewDidChangeSelection(self)
+            replaceCharactersAndNotifyDelegate(replacing: indexedRange.range, with: text)
         }
     }
 
-    func replace(textIn batchReplaceSet: BatchReplaceSet) {
+    func replaceText(in batchReplaceSet: BatchReplaceSet) {
         guard !batchReplaceSet.matches.isEmpty else {
             return
         }
@@ -823,23 +816,31 @@ extension TextInputView {
         var replacedRanges: [NSRange] = []
         var undoMatches: [BatchReplaceSet.Match] = []
         var totalChangeInLength = 0
+        var didAddOrRemoveLines = false
         for result in sortedMatches where !replacedRanges.contains(where: { $0.overlaps(result.range) }) {
             let range = result.range
             let adjustedRange = NSRange(location: range.location + totalChangeInLength, length: range.length)
             let existingText = stringView.substring(in: adjustedRange) ?? ""
             let nsReplacementText = result.replacementText as NSString
-            replaceCharacters(in: adjustedRange, with: nsReplacementText)
+            let localDidAddOrRemoveLines = justReplaceCharacters(in: adjustedRange, with: nsReplacementText)
+            if localDidAddOrRemoveLines {
+                didAddOrRemoveLines = true
+            }
             let undoRange = NSRange(location: adjustedRange.location, length: nsReplacementText.length)
             let undoMatch = BatchReplaceSet.Match(range: undoRange, replacementText: existingText)
             replacedRanges.append(range)
             undoMatches.append(undoMatch)
             totalChangeInLength += result.replacementText.utf16.count - range.length
         }
+        delegate?.textInputViewDidChange(self)
+        if didAddOrRemoveLines {
+            delegate?.textInputViewDidInvalidateContentSize(self)
+        }
         let undoBatchReplaceSet = BatchReplaceSet(matches: undoMatches)
         timedUndoManager.beginUndoGrouping()
         timedUndoManager.setActionName(L10n.Undo.ActionName.replaceAll)
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
-            textInputView.replace(textIn: undoBatchReplaceSet)
+            textInputView.replaceText(in: undoBatchReplaceSet)
         }
         timedUndoManager.endUndoGrouping()
         if let oldSelectedRange = oldSelectedRange {
@@ -887,28 +888,28 @@ extension TextInputView {
         return resultingRange
     }
 
-    private func replaceCharacters(in range: NSRange, with newString: NSString) {
-        let changeSet = justReplaceCharacters(in: range, with: newString)
-        let didAddOrRemoveLines = !changeSet.insertedLines.isEmpty || !changeSet.removedLines.isEmpty
-        if didAddOrRemoveLines {
-            layoutManager.invalidateContentSize()
-            for removedLine in changeSet.removedLines {
-                layoutManager.removeLine(withID: removedLine.id)
-            }
-        }
-        layoutManager.redisplay(changeSet.editedLines)
-        if didAddOrRemoveLines {
-            layoutManager.updateLineNumberWidth()
-        }
-        layoutManager.setNeedsLayout()
-        layoutManager.layoutIfNeeded()
+    private func replaceCharactersAndNotifyDelegate(replacing range: NSRange, with text: String, undoCaretBehavior: UndoCaretBehavior = .default) {
+        inputDelegate?.selectionWillChange(self)
+        let didAddOrRemoveLines = replaceCharacters(in: range, with: text, undoCaretBehavior: undoCaretBehavior)
+        layoutIfNeeded()
         delegate?.textInputViewDidChange(self)
         if didAddOrRemoveLines {
             delegate?.textInputViewDidInvalidateContentSize(self)
         }
+        inputDelegate?.selectionDidChange(self)
+        delegate?.textInputViewDidChangeSelection(self)
     }
 
-    private func justReplaceCharacters(in range: NSRange, with nsNewString: NSString) -> LineChangeSet {
+    private func replaceCharacters(in range: NSRange, with text: String, undoCaretBehavior: UndoCaretBehavior = .default) -> Bool {
+        let nsText = text as NSString
+        let currentText = self.text(in: range) ?? ""
+        let newRange = NSRange(location: range.location, length: nsText.length)
+        addUndoOperation(replacing: newRange, withText: currentText, caretBehavior: undoCaretBehavior)
+        selectedRange = NSRange(location: newRange.upperBound, length: 0)
+        return justReplaceCharacters(in: range, with: nsText)
+    }
+
+    private func justReplaceCharacters(in range: NSRange, with nsNewString: NSString) -> Bool {
         let byteRange = ByteRange(utf16Range: range)
         let newString = nsNewString as String
         let oldEndLinePosition = lineManager.linePosition(at: range.location + range.length)!
@@ -933,26 +934,54 @@ extension TextInputView {
         for editedLine in languageModeEditedLines {
             changeSet.markLineEdited(editedLine)
         }
-        return changeSet
+        // Invalidate lines if necessary.
+        let didAddOrRemoveLines = !changeSet.insertedLines.isEmpty || !changeSet.removedLines.isEmpty
+        if didAddOrRemoveLines {
+            layoutManager.invalidateContentSize()
+            for removedLine in changeSet.removedLines {
+                layoutManager.removeLine(withID: removedLine.id)
+            }
+        }
+        layoutManager.redisplay(changeSet.editedLines)
+        if didAddOrRemoveLines {
+            layoutManager.updateLineNumberWidth()
+        }
+        layoutManager.setNeedsLayout()
+        layoutManager.layoutIfNeeded()
+        return didAddOrRemoveLines
     }
 
     private func shouldChangeText(in range: NSRange, replacementText text: String) -> Bool {
         return delegate?.textInputView(self, shouldChangeTextIn: range, replacementText: text) ?? true
     }
 
-    private func addUndoOperation(replacing range: NSRange, withText text: String) {
+    private func addUndoOperation(replacing range: NSRange, withText text: String, caretBehavior: UndoCaretBehavior = .default) {
+        let oldSelectedRange = selectedRange
         timedUndoManager.beginUndoGrouping()
         timedUndoManager.setActionName(L10n.Undo.ActionName.typing)
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
-            let indexedRange = IndexedRange(range)
-            textInputView.justInsert(text, in: indexedRange.range)
-            let textLength = text.utf16.count
-            if range.length > 0 && textLength > 0 {
-                self.selectedRange = NSRange(location: range.location, length: textLength)
-            }
             self.inputDelegate?.selectionWillChange(self)
+            let indexedRange = IndexedRange(range)
+            let didAddOrRemoveLines = textInputView.replaceCharacters(in: indexedRange.range, with: text, undoCaretBehavior: caretBehavior)
+            switch caretBehavior {
+            case .default:
+                let textLength = text.utf16.count
+                if range.length > 0 && textLength > 0 {
+                    self.selectedRange = NSRange(location: range.location, length: textLength)
+                }
+            case .preserve:
+                if let oldSelectedRange = oldSelectedRange, oldSelectedRange.location >= self.stringView.string.length {
+                    self.selectedRange = NSRange(location: self.stringView.string.length, length: 0)
+                } else {
+                    self.selectedRange = oldSelectedRange
+                }
+            }
             self.layoutIfNeeded()
             self.inputDelegate?.selectionDidChange(self)
+            self.delegate?.textInputViewDidChange(self)
+            if didAddOrRemoveLines {
+                self.delegate?.textInputViewDidInvalidateContentSize(self)
+            }
             self.delegate?.textInputViewDidChangeSelection(self)
         }
     }
@@ -1148,7 +1177,7 @@ extension TextInputView: LayoutManagerDelegate {
 // MARK: - IndentControllerDelegate
 extension TextInputView: IndentControllerDelegate {
     func indentController(_ controller: IndentController, shouldInsert text: String, in range: NSRange) {
-        justInsert(text, in: range)
+        replaceCharactersAndNotifyDelegate(replacing: range, with: text)
     }
 
     func indentController(_ controller: IndentController, shouldSelect range: NSRange) {

@@ -522,8 +522,9 @@ public final class TextView: UIScrollView {
     ///
     /// This is the preferred way to initially set the text, language and theme on the <code>TextView</code>.
     /// - Parameter state: The new state to be used by the editor.
-    public func setState(_ state: TextViewState) {
-        textInputView.setState(state)
+    /// - Parameter addUndoAction: Whether the state change can be undone. Defaults to false.
+    public func setState(_ state: TextViewState, addUndoAction: Bool = false) {
+        textInputView.setState(state, addUndoAction: addUndoAction)
         contentSize = textInputView.contentSize
     }
 
@@ -571,7 +572,7 @@ public final class TextView: UIScrollView {
     /// - Parameters:
     ///   - batchReplaceSet: Set of ranges to replace with a text.
     public func replace(textIn batchReplaceSet: BatchReplaceSet) {
-        textInputView.replace(textIn: batchReplaceSet)
+        textInputView.replaceText(in: batchReplaceSet)
     }
 
     /// Returns the text in the specified range.
