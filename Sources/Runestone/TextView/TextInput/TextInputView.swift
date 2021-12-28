@@ -591,6 +591,13 @@ final class TextInputView: UIView, UITextInput {
         layoutManager.lineManager = state.lineManager
         layoutManager.invalidateContentSize()
         layoutManager.updateLineNumberWidth()
+        if window != nil {
+            inputDelegate?.selectionWillChange(self)
+            layoutManager.invalidateLines()
+            layoutManager.setNeedsLayout()
+            layoutManager.layoutIfNeeded()
+            inputDelegate?.selectionDidChange(self)
+        }
     }
 
     func moveCaret(to point: CGPoint) {
