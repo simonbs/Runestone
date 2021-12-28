@@ -1164,17 +1164,15 @@ extension TextInputView: LineMovementControllerDelegate {
         return layoutManager.numberOfLineFragments(in: line)
     }
 
-    func lineMovementController(
-        _ controller: LineMovementController,
-        lineFragmentNodeAtIndex index: Int,
-        in line: DocumentLineNode) -> LineFragmentNode {
+    func lineMovementController(_ controller: LineMovementController,
+                                lineFragmentNodeAtIndex index: Int,
+                                in line: DocumentLineNode) -> LineFragmentNode {
         return layoutManager.lineFragmentNode(atIndex: index, in: line)
     }
 
-    func lineMovementController(
-        _ controller: LineMovementController,
-        lineFragmentNodeContainingCharacterAt location: Int,
-        in line: DocumentLineNode) -> LineFragmentNode {
+    func lineMovementController(_ controller: LineMovementController,
+                                lineFragmentNodeContainingCharacterAt location: Int,
+                                in line: DocumentLineNode) -> LineFragmentNode {
         return layoutManager.lineFragmentNode(containingCharacterAt: location, in: line)
     }
 }
