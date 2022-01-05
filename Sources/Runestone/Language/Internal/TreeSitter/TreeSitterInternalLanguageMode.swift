@@ -140,14 +140,3 @@ extension TreeSitterInternalLanguageMode: TreeSitterParserDelegate {
         return delegate?.treeSitterLanguageMode(self, bytesAt: byteIndex)
     }
 }
-
-private extension TreeSitterIndentationScopes.IndentScanLocation {
-    func startPosition(from linePosition: LinePosition) -> LinePosition {
-        switch self {
-        case .caret:
-            return linePosition
-        case .lineStart:
-            return LinePosition(row: linePosition.row, column: 0)
-        }
-    }
-}

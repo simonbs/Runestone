@@ -8,25 +8,20 @@
 import Foundation
 
 public final class TreeSitterIndentationScopes {
-    public enum IndentScanLocation {
-        case caret
-        case lineStart
-    }
-
     public let indent: [String]
     public let inheritIndent: [String]
     public let outdent: [String]
-    public let indentScanLocation: IndentScanLocation
+    public let indentationDenotesBlocks: Bool
 
     public init(
         indent: [String] = [],
         inheritIndent: [String] = [],
         outdent: [String] = [],
-        indentScanLocation: IndentScanLocation = .caret) {
+        whitespaceDenotesBlocks: Bool = false) {
         self.indent = indent
         self.inheritIndent = inheritIndent
         self.outdent = outdent
-        self.indentScanLocation = indentScanLocation
+        self.indentationDenotesBlocks = whitespaceDenotesBlocks
     }
 }
 
@@ -35,17 +30,6 @@ extension TreeSitterIndentationScopes: CustomDebugStringConvertible {
         return "[TreeSitterIndentationScopes indent=\(indent)"
         + " inheritIndent=\(inheritIndent)"
         + " outdent=\(outdent)"
-        + " indentScanLocation=\(indentScanLocation)]"
-    }
-}
-
-extension TreeSitterIndentationScopes.IndentScanLocation: CustomDebugStringConvertible {
-    public var debugDescription: String {
-        switch self {
-        case .caret:
-            return "caret"
-        case .lineStart:
-            return "lineStart"
-        }
+        + " indentationDenotesBlocks=\(indentationDenotesBlocks)]"
     }
 }

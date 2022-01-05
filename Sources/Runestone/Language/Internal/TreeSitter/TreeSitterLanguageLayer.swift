@@ -8,6 +8,8 @@
 import Foundation
 
 final class TreeSitterLanguageLayer {
+    typealias LayerAndNodeTuple = (layer: TreeSitterLanguageLayer, node: TreeSitterNode)
+
     let language: TreeSitterLanguage
     private(set) var tree: TreeSitterTree?
     var canHighlight: Bool {
@@ -52,18 +54,13 @@ extension TreeSitterLanguageLayer {
         let ranges = [tree?.rootNode.textRange].compactMap { $0 }
         return apply(edit, parsing: ranges)
     }
-
-    func layerAndNode(at linePosition: LinePosition) -> (layer: TreeSitterLanguageLayer, node: TreeSitterNode)? {
-        let point: TreeSitterTextPoint
-        if language.indentationScopes?.indentScanLocation == .lineStart {
-            point = TreeSitterTextPoint(row: UInt32(linePosition.row), column: 0)
-        } else {
-            point = TreeSitterTextPoint(linePosition)
-        }
+    
+    func layerAndNode(at linePosition: LinePosition) -> LayerAndNodeTuple? {
+        let point = TreeSitterTextPoint(linePosition)
         guard let node = tree?.rootNode.descendantForRange(from: point, to: point) else {
             return nil
         }
-        var result = (layer: self, node: node)
+        var result: LayerAndNodeTuple = (layer: self, node: node)
         for (_, childLanguageLayer) in childLanguageLayers {
             if let childRootNode = childLanguageLayer.tree?.rootNode, childRootNode.contains(point) {
                 if let childResult = childLanguageLayer.layerAndNode(at: linePosition) {

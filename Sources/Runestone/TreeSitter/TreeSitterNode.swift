@@ -52,6 +52,9 @@ final class TreeSitterNode {
     var textRange: TreeSitterTextRange {
         return TreeSitterTextRange(startPoint: startPoint, endPoint: endPoint, startByte: startByte, endByte: endByte)
     }
+    var childCount: Int {
+        return Int(ts_node_child_count(rawValue))
+    }
 
     init(node: TSNode) {
         self.rawValue = node
@@ -60,6 +63,15 @@ final class TreeSitterNode {
     func descendantForRange(from startPoint: TreeSitterTextPoint, to endPoint: TreeSitterTextPoint) -> TreeSitterNode {
         let node = ts_node_descendant_for_point_range(rawValue, startPoint.rawValue, endPoint.rawValue)
         return TreeSitterNode(node: node)
+    }
+
+    func child(at index: Int) -> TreeSitterNode? {
+        if index < childCount {
+            let node = ts_node_child(rawValue, UInt32(index))
+            return TreeSitterNode(node: node)
+        } else {
+            return nil
+        }
     }
 }
 

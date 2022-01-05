@@ -27,27 +27,25 @@ final class TreeSitterIndentController {
         caretEndPosition: LinePosition) -> InsertLineBreakIndentStrategy {
         var indentAdjustment = 0
         var outdentAdjustment = 0
+        var indentingNode: TreeSitterNode?
         var outdentingNode: TreeSitterNode?
-        var startLinePosition: LinePosition?
-        if let startPoint = startNode?.startPoint {
-            startLinePosition = LinePosition(startPoint)
-        }
         if let startNode = startNode, let nodeIncreasingIndentLevel = nodeIncreasingIndentLevel(from: startNode, caretPosition: caretStartPosition) {
+            indentingNode = nodeIncreasingIndentLevel
             indentAdjustment = max(indentLevelAdjustment(from: nodeIncreasingIndentLevel), 0) + 1
         }
         if let endNode = endNode, let nodeDecrasingIndentLevel = nodeDecreasingIndentLevel(from: endNode, caretPosition: caretEndPosition) {
             outdentingNode = nodeDecrasingIndentLevel
             outdentAdjustment = min(indentLevelAdjustment(from: nodeDecrasingIndentLevel), 0) - 1
         }
-        if let startLinePosition = startLinePosition, indentAdjustment > 0 && outdentAdjustment < 0 {
-            let currentIndentLevel = indentLevelOfLine(atRow: startLinePosition.row)
+        if indentAdjustment > 0 && outdentAdjustment < 0, let indentingNode = indentingNode {
+            let currentIndentLevel = indentLevelOfLine(atRow: Int(indentingNode.startPoint.row))
             return InsertLineBreakIndentStrategy(indentLevel: currentIndentLevel + 1, insertExtraLineBreak: true)
-        } else if let startLinePosition = startLinePosition, indentAdjustment > 0 {
-            // We preserve the indent level of the previous line so users have a chance to correct any idnentation
+        } else if indentAdjustment > 0, let indentingNode = indentingNode {
+            // We preserve the indent level of the previous line so users have a chance to correct any indentation
             // we might have gotten wrong previously and work from that indent level.
             // We only increment the indent level by one, even if the line contains multiple nodes that would
             // increase the indent level. Most users probably don't want to indent a new line multiple times.
-            let currentIndentLevel = indentLevelOfLine(atRow: startLinePosition.row)
+            let currentIndentLevel = indentLevelOfLine(atRow: Int(indentingNode.startPoint.row))
             return InsertLineBreakIndentStrategy(indentLevel: currentIndentLevel + 1, insertExtraLineBreak: false)
         } else if outdentAdjustment < 0, let outdentingNode = outdentingNode {
             // Find the starting node.
@@ -95,6 +93,9 @@ private extension TreeSitterIndentController {
     /// The node can be used to determine the indentation level of a new line and if we should insert an addtional line break.
     private func nodeIncreasingIndentLevel(from node: TreeSitterNode, caretPosition: LinePosition) -> TreeSitterNode? {
         var workingNode: TreeSitterNode? = node
+        if indentationScopes.indentationDenotesBlocks {
+            workingNode = deepestChildNode(containing: caretPosition, startingAt: node)
+        }
         while let node = workingNode, node.startPoint.row == caretPosition.row {
             if let type = node.type {
                 // A node adds an indent level if it's type fulfills one of two:
@@ -142,5 +143,32 @@ private extension TreeSitterIndentController {
         let line = lineManager.line(atRow: row)
         let measurer = IndentLevelMeasurer(stringView: stringView)
         return measurer.indentLevel(lineStartLocation: line.location, lineTotalLength: line.data.totalLength, tabLength: tabLength)
+    }
+
+    /// Finds the deepest child node that contains the specified location. This is used in languages where whitespace denotes a block.
+    /// This includes Python and YAML. In those languages we cannot rely solely on the caret location when indenting.
+    /// Consider the following Python:
+    ///
+    /// def helloWorld():|
+    ///
+    /// The caret is placed at the pipe (|). Pressing enter will insert a line break in the `module` scope.
+    /// This is the outermost scope and it does not indent. Instead we find the deepest child that contains the caret.
+    /// That happens to be a `block` which does in fact indent.
+    private func deepestChildNode(containing linePosition: LinePosition, startingAt node: TreeSitterNode) -> TreeSitterNode? {
+        let point = TreeSitterTextPoint(linePosition)
+        guard node.startPoint.row < point.row || (node.startPoint.row == point.row && point.column >= node.startPoint.column) else {
+            return nil
+        }
+        guard node.endPoint.row > point.row || (node.endPoint.row == point.row && point.column <= node.endPoint.column) else {
+            return nil
+        }
+        // Assumes that children of are node are ordered so the deeper nodes are the last children.
+        // This assumption have not been proven to hold but it appears that it does.
+        for index in (0 ..< node.childCount).reversed() {
+            if let child = node.child(at: index), let childResult = deepestChildNode(containing: linePosition, startingAt: child) {
+                return childResult
+            }
+        }
+        return node
     }
 }
