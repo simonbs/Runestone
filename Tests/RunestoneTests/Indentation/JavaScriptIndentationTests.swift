@@ -2,10 +2,10 @@
 import TestTreeSitterLanguages
 import XCTest
 
-extension InternalLanguageModeTests {
-    func testJavaScript_insertingLineBreakBetweenBrackets() {
+final class JavaScriptIndentationTests: XCTestCase {
+    func testInsertingLineBreakBetweenBrackets() {
         let text = "function greet(name) {}"
-        let languageMode = javaScriptLanguageMode(text: text)
+        let languageMode = LanguageModeFactory.javaScriptLanguageMode(text: text)
         // function greet(name) {|}
         let caretPosition1 = LinePosition(row: 0, column: 22)
         let strategy1 = languageMode.strategyForInsertingLineBreak(from: caretPosition1, to: caretPosition1, using: .space(length: 2))
@@ -18,9 +18,9 @@ extension InternalLanguageModeTests {
         XCTAssertTrue(strategy2.insertExtraLineBreak)
     }
 
-    func testJavaScript_insertingLineBreakBrackets() {
+    func testInsertingLineBreakBrackets() {
         let text = "function greet(name) {}"
-        let languageMode = javaScriptLanguageMode(text: text)
+        let languageMode = LanguageModeFactory.javaScriptLanguageMode(text: text)
         // function greet(name) {}|
         let caretPosition = LinePosition(row: 0, column: 23)
         let strategy = languageMode.strategyForInsertingLineBreak(from: caretPosition, to: caretPosition, using: .space(length: 2))
@@ -28,9 +28,9 @@ extension InternalLanguageModeTests {
         XCTAssertFalse(strategy.insertExtraLineBreak)
     }
 
-    func testJavaScript_insertingLineBreakAtDocumentStart() {
+    func testInsertingLineBreakAtDocumentStart() {
         let text = "function greet(name) {}"
-        let languageMode = javaScriptLanguageMode(text: text)
+        let languageMode = LanguageModeFactory.javaScriptLanguageMode(text: text)
         // |function greet(name) {}
         let caretPosition = LinePosition(row: 0, column: 0)
         let strategy = languageMode.strategyForInsertingLineBreak(from: caretPosition, to: caretPosition, using: .space(length: 2))
@@ -38,9 +38,9 @@ extension InternalLanguageModeTests {
         XCTAssertFalse(strategy.insertExtraLineBreak)
     }
 
-    func testJavaScript_insertingLineBreakInMiddleOfLine() {
+    func testInsertingLineBreakInMiddleOfLine() {
         let text = "function greet(name) {}"
-        let languageMode = javaScriptLanguageMode(text: text)
+        let languageMode = LanguageModeFactory.javaScriptLanguageMode(text: text)
         // fun|ction greet(name) {}
         let caretPosition1 = LinePosition(row: 0, column: 3)
         let strategy1 = languageMode.strategyForInsertingLineBreak(from: caretPosition1, to: caretPosition1, using: .space(length: 2))

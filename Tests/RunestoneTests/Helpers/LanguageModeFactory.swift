@@ -1,11 +1,16 @@
+//
+//  LanguageModeFactory.swift
+//  
+//
+//  Created by Simon on 05/01/2022.
+//
+
+import Foundation
 @testable import Runestone
 import TestTreeSitterLanguages
-import XCTest
 
-final class InternalLanguageModeTests: XCTestCase {}
-
-extension InternalLanguageModeTests {
-    func javaScriptLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
+enum LanguageModeFactory {
+    static func javaScriptLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
         let indentationScopes = TreeSitterIndentationScopes(
             indent: [
                 "array",
@@ -30,7 +35,7 @@ extension InternalLanguageModeTests {
         return languageMode
     }
 
-    func jsonLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
+    static func jsonLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
         let indentationScopes = TreeSitterIndentationScopes(indent: ["object", "array"], outdent: ["}", "]"])
         let language = TreeSitterLanguage(tree_sitter_json(), indentationScopes: indentationScopes)
         let languageMode = languageMode(language: language, text: text)
@@ -38,7 +43,7 @@ extension InternalLanguageModeTests {
         return languageMode
     }
 
-    func htmlLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
+    static func htmlLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
         let indentationScopes = TreeSitterIndentationScopes(indent: ["start_tag", "element"], outdent: ["end_tag"])
         let language = TreeSitterLanguage(tree_sitter_html(), indentationScopes: indentationScopes)
         let languageMode = languageMode(language: language, text: text)
@@ -46,7 +51,7 @@ extension InternalLanguageModeTests {
         return languageMode
     }
 
-    func pythonLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
+    static func pythonLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
         let indentationScopes = TreeSitterIndentationScopes(
             indent: [
                 "function_definition",
@@ -59,14 +64,22 @@ extension InternalLanguageModeTests {
                 "if_statement",
                 "try_statement"
             ],
-            indentScanLocation: .lineStart)
+            whitespaceDenotesBlocks: true)
         let language = TreeSitterLanguage(tree_sitter_python(), indentationScopes: indentationScopes)
         let languageMode = languageMode(language: language, text: text)
         languageMode.parse(text as NSString)
         return languageMode
     }
 
-    func languageMode(language: TreeSitterLanguage, text: String) -> TreeSitterInternalLanguageMode {
+    static func yamlLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
+        let indentationScopes = TreeSitterIndentationScopes(indent: ["block_mapping_pair"], whitespaceDenotesBlocks: true)
+        let language = TreeSitterLanguage(tree_sitter_yaml(), indentationScopes: indentationScopes)
+        let languageMode = languageMode(language: language, text: text)
+        languageMode.parse(text as NSString)
+        return languageMode
+    }
+
+    static func languageMode(language: TreeSitterLanguage, text: String) -> TreeSitterInternalLanguageMode {
         let stringView = StringView(string: text)
         let lineManager = LineManager(stringView: stringView)
         lineManager.rebuild(from: text as NSString)
