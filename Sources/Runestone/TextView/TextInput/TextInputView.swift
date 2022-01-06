@@ -278,7 +278,7 @@ final class TextInputView: UIView, UITextInput {
             if newValue != layoutManager.lineHeightMultiplier {
                 performSelectionModifyingChanges {
                     layoutManager.lineHeightMultiplier = newValue
-                    lineManager.estimatedLineHeight = theme.font.lineHeight * newValue
+                    lineManager.estimatedLineHeight = estimatedLineHeight
                 }
             }
         }
@@ -327,7 +327,7 @@ final class TextInputView: UIView, UITextInput {
         }
     }
     private var estimatedLineHeight: CGFloat {
-        return theme.font.lineHeight * lineHeightMultiplier
+        return theme.font.totalLineHeight * lineHeightMultiplier
     }
     var highlightedRanges: [HighlightedRange] {
         get {

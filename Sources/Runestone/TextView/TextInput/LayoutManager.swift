@@ -86,7 +86,7 @@ final class LayoutManager {
                 gutterSelectionBackgroundView.backgroundColor = theme.selectedLinesGutterBackgroundColor
                 lineSelectionBackgroundView.backgroundColor = theme.selectedLineBackgroundColor
                 for (_, lineController) in lineControllers {
-                    lineController.estimatedLineFragmentHeight = theme.font.lineHeight
+                    lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
                     lineController.syntaxHighlighter?.theme = theme
                     lineController.invalidateSyntaxHighlighting()
                 }
@@ -855,7 +855,7 @@ extension LayoutManager {
             let lineController = LineController(line: line, stringView: stringView)
             lineController.delegate = self
             lineController.constrainingWidth = maximumLineWidth
-            lineController.estimatedLineFragmentHeight = theme.font.lineHeight
+            lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
             lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
             lineController.tabWidth = tabWidth
             lineController.syntaxHighlighter = makeLineSyntaxHighlighter()

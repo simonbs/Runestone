@@ -42,7 +42,7 @@ public final class TextViewState {
 private extension TextViewState {
     private func prepare() {
         let nsString = text as NSString
-        lineManager.estimatedLineHeight = theme.font.lineHeight
+        lineManager.estimatedLineHeight = theme.font.totalLineHeight
         lineManager.rebuild(from: nsString)
         languageMode.parse(nsString)
         detectedIndentStrategy = languageMode.detectIndentStrategy()
