@@ -54,7 +54,7 @@ extension TreeSitterLanguageLayer {
         let ranges = [tree?.rootNode.textRange].compactMap { $0 }
         return apply(edit, parsing: ranges)
     }
-    
+
     func layerAndNode(at linePosition: LinePosition) -> LayerAndNodeTuple? {
         let point = TreeSitterTextPoint(linePosition)
         guard let node = tree?.rootNode.descendantForRange(from: point, to: point) else {
