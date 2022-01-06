@@ -10,20 +10,12 @@ let package = Package(
         .iOS(.v14)
     ],
     products: [
-        .library(
-            name: "Runestone",
-            targets: ["Runestone"])
+        .library(name: "Runestone", targets: ["Runestone"])
     ],
     targets: [
-        .target(
-            name: "Runestone",
-            dependencies: ["TreeSitter"]),
-        .target(
-            name: "TreeSitter",
-            exclude: ["src"]),
+        .target(name: "Runestone", dependencies: ["TreeSitter"]),
+        .target(name: "TreeSitter", exclude: ["src"]),
         .target(name: "TestTreeSitterLanguages"),
-        .testTarget(
-            name: "RunestoneTests",
-            dependencies: ["Runestone", "TestTreeSitterLanguages"])
+        .testTarget(name: "RunestoneTests", dependencies: ["Runestone", "TestTreeSitterLanguages"])
     ]
 )
