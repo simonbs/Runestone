@@ -7,6 +7,7 @@
 
 #define _POSIX_C_SOURCE 200112L
 
+#include "src/alloc.c"
 #include "src/get_changed_ranges.c"
 #include "src/language.c"
 #include "src/lexer.c"
