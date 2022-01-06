@@ -96,7 +96,6 @@ private extension TreeSitterIndentController {
         if indentationScopes.indentationDenotesBlocks {
             workingNode = deepestChildNode(containing: caretPosition, startingAt: node)
         }
-        print(workingNode?.type)
         while let node = workingNode, node.startPoint.row == caretPosition.row {
             if let type = node.type {
                 // A node adds an indent level if it's type fulfills one of two:
