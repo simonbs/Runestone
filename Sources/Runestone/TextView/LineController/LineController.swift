@@ -141,9 +141,9 @@ final class LineController {
         return lineFragmentTree.node(atIndex: index)
     }
 
-    func setNeedsDisplayOnLineFragmentViews() {
+    func invalidateAndUpdateImageOnLineFragmentViews() {
         for (_, lineFragmentController) in lineFragmentControllers {
-            lineFragmentController.lineFragmentView?.setNeedsDisplay()
+            lineFragmentController.lineFragmentView?.invalidateAndUpdateImage()
         }
     }
 
@@ -151,7 +151,6 @@ final class LineController {
         for (_, lineFragmentController) in lineFragmentControllers {
             let lineFragment = lineFragmentController.lineFragment
             lineFragmentController.highlightedRanges = highlightedRanges.filter { $0.range.overlaps(lineFragment.range) }
-            lineFragmentController.lineFragmentView?.setNeedsDisplay()
         }
     }
 }
@@ -334,7 +333,7 @@ private extension LineController {
         updateLineHeight(for: newLineFragments)
         textInputProxy.lineFragments = typesetter.lineFragments
         reapplyLineFragmentToLineFragmentControllers()
-        setNeedsDisplayOnLineFragmentViews()
+        invalidateAndUpdateImageOnLineFragmentViews()
     }
 
     private func reapplyLineFragmentToLineFragmentControllers() {

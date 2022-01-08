@@ -398,9 +398,9 @@ final class LayoutManager {
         }
     }
 
-    func setNeedsDisplayOnLines() {
+    func invalidateAndUpdateImageOnLines() {
         for (_, lineController) in lineControllers {
-            lineController.setNeedsDisplayOnLineFragmentViews()
+            lineController.invalidateAndUpdateImageOnLineFragmentViews()
         }
     }
 
@@ -913,7 +913,7 @@ private extension LayoutManager {
             if let lineController = lineControllers[lineID] {
                 let highlightedRanges = highlightedRangesMap[lineID] ?? []
                 lineController.setHighlightedRangesOnLineFragments(highlightedRanges)
-                lineController.setNeedsDisplayOnLineFragmentViews()
+                lineController.invalidateAndUpdateImageOnLineFragmentViews()
             }
         }
     }

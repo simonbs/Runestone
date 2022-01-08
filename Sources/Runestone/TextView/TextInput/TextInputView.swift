@@ -146,7 +146,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.showTabs {
                 layoutManager.invisibleCharacterConfiguration.showTabs = newValue
-                layoutManager.setNeedsDisplayOnLines()
+                layoutManager.invalidateAndUpdateImageOnLines()
             }
         }
     }
@@ -157,7 +157,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.showSpaces {
                 layoutManager.invisibleCharacterConfiguration.showSpaces = newValue
-                layoutManager.setNeedsDisplayOnLines()
+                layoutManager.invalidateAndUpdateImageOnLines()
             }
         }
     }
@@ -170,7 +170,7 @@ final class TextInputView: UIView, UITextInput {
                 layoutManager.invisibleCharacterConfiguration.showLineBreaks = newValue
                 layoutManager.invalidateLines()
                 layoutManager.setNeedsLayout()
-                layoutManager.setNeedsDisplayOnLines()
+                layoutManager.invalidateAndUpdateImageOnLines()
                 setNeedsLayout()
             }
         }
@@ -182,7 +182,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.tabSymbol {
                 layoutManager.invisibleCharacterConfiguration.tabSymbol = newValue
-                layoutManager.setNeedsDisplayOnLines()
+                layoutManager.invalidateAndUpdateImageOnLines()
             }
         }
     }
@@ -193,7 +193,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.spaceSymbol {
                 layoutManager.invisibleCharacterConfiguration.spaceSymbol = newValue
-                layoutManager.setNeedsDisplayOnLines()
+                layoutManager.invalidateAndUpdateImageOnLines()
             }
         }
     }
@@ -204,7 +204,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.lineBreakSymbol {
                 layoutManager.invisibleCharacterConfiguration.lineBreakSymbol = newValue
-                layoutManager.setNeedsDisplayOnLines()
+                layoutManager.invalidateAndUpdateImageOnLines()
             }
         }
     }
