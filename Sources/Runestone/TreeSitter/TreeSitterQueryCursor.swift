@@ -42,6 +42,10 @@ final class TreeSitterQueryCursor {
         }
         let matchPointer = UnsafeMutablePointer<TSQueryMatch>.allocate(capacity: 1)
         let captureIndex = UnsafeMutablePointer<UInt32>.allocate(capacity: 1)
+        defer {
+            matchPointer.deallocate()
+            captureIndex.deallocate()
+        }
         var result: [TreeSitterQueryMatch] = []
         while ts_query_cursor_next_capture(pointer, matchPointer, captureIndex) {
             let captureCount = Int(matchPointer.pointee.capture_count)
