@@ -7,9 +7,18 @@
 
 import Foundation
 
-struct StringViewBytesResult {
+final class StringViewBytesResult {
     let bytes: UnsafePointer<Int8>
     let length: ByteCount
+
+    init(bytes: UnsafePointer<Int8>, length: ByteCount) {
+        self.bytes = bytes
+        self.length = length
+    }
+
+    deinit {
+        bytes.deallocate()
+    }
 }
 
 final class StringView {
