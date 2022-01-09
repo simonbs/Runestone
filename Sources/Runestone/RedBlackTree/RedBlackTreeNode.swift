@@ -28,7 +28,7 @@ final class RedBlackTreeNode<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTree
     }
     var left: RedBlackTreeNode?
     var right: RedBlackTreeNode?
-    var parent: RedBlackTreeNode?
+    weak var parent: RedBlackTreeNode?
     var color: RedBlackTreeNodeColor = .black
     let data: NodeData
     var tree: Tree {
