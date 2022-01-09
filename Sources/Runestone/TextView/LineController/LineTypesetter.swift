@@ -87,17 +87,20 @@ final class LineTypesetter {
 
     @discardableResult
     func typesetLineFragments(in rect: CGRect) -> [LineFragment] {
-        return typesetLineFragments(until: .yPosition(rect.maxY))
+        let lineFragments = typesetLineFragments(until: .yPosition(rect.maxY))
+        if isFinishedTypesetting {
+            typesetter = nil
+        }
+        return lineFragments
     }
 
     @discardableResult
     func typesetLineFragments(toLocation location: Int, additionalLineFragmentCount: Int = 0) -> [LineFragment] {
-        return typesetLineFragments(until: .characterIndex(location), additionalLineFragmentCount: additionalLineFragmentCount)
-    }
-
-    @discardableResult
-    func retypeset() -> [LineFragment] {
-        return typesetLineFragments(until: .characterIndex(startOffset))
+        let lineFragments = typesetLineFragments(until: .characterIndex(location), additionalLineFragmentCount: additionalLineFragmentCount)
+        if isFinishedTypesetting {
+            typesetter = nil
+        }
+        return lineFragments
     }
 
     func lineFragment(withID lineFragmentID: LineFragmentID) -> LineFragment? {
