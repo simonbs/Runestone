@@ -41,22 +41,6 @@ final class LineFragmentRenderer {
 }
 
 private extension LineFragmentRenderer {
-    private func justRenderImage(ofSize size: CGSize) -> UIImage? {
-        var resultingImage: UIImage?
-        let scale = UIScreen.main.scale
-        UIGraphicsBeginImageContextWithOptions(size, false, scale)
-        if let context = UIGraphicsGetCurrentContext() {
-            drawHighlights(to: context)
-            drawInvisibleCharacters(to: context)
-            drawText(to: context)
-            if let cgImage = context.makeImage() {
-                resultingImage = UIImage(cgImage: cgImage)
-            }
-        }
-        UIGraphicsEndImageContext()
-        return resultingImage
-    }
-
     private func drawHighlights(to context: CGContext) {
         if !highlightedRanges.isEmpty {
             context.saveGState()
