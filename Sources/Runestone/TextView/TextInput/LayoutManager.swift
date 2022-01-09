@@ -334,7 +334,7 @@ final class LayoutManager {
         self.updateShownViews()
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(didReceiveMemoryWarning(_:)),
+            selector: #selector(clearMemory),
             name: UIApplication.didReceiveMemoryWarningNotification,
             object: nil)
     }
@@ -921,7 +921,7 @@ private extension LayoutManager {
 
 // MARK: - Memory Management
 private extension LayoutManager {
-    @objc private func didReceiveMemoryWarning(_ notification: Notification) {
+    @objc private func clearMemory() {
         let allLineIDs = Set(lineControllers.keys)
         let lineIDsToRelease = allLineIDs.subtracting(visibleLineIDs)
         for lineID in lineIDsToRelease {
