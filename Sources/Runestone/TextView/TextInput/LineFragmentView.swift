@@ -7,7 +7,7 @@
 
 import UIKit
 
-final class LineFragmentView: UIView {
+final class LineFragmentView: UIImageView {
     var renderer: LineFragmentRenderer? {
         didSet {
             if renderer !== oldValue {
@@ -16,17 +16,10 @@ final class LineFragmentView: UIView {
         }
     }
 
-    private let imageView: UIImageView = {
-        let this = UIImageView()
-        this.translatesAutoresizingMaskIntoConstraints = false
-        return this
-    }()
-
     init() {
         super.init(frame: .zero)
         isUserInteractionEnabled = false
         backgroundColor = .clear
-        addSubview(imageView)
     }
 
     required init?(coder: NSCoder) {
@@ -35,7 +28,6 @@ final class LineFragmentView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        imageView.frame = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height)
         updateImage()
     }
 
@@ -50,7 +42,7 @@ final class LineFragmentView: UIView {
 private extension LineFragmentView {
     private func updateImage() {
         if bounds.size != .zero {
-            imageView.image = renderer?.renderImage(ofSize: bounds.size)
+            image = renderer?.renderImage(ofSize: bounds.size)
         }
     }
 }
