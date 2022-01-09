@@ -23,8 +23,6 @@ final class LineFragmentRenderer {
     var invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
     var highlightedRanges: [HighlightedRange] = []
 
-    private var cachedImage: UIImage?
-    private var previousRenderSize: CGSize?
     private var showInvisibleCharacters: Bool {
         return invisibleCharacterConfiguration.showTabs
             || invisibleCharacterConfiguration.showSpaces
@@ -35,23 +33,10 @@ final class LineFragmentRenderer {
         self.lineFragment = lineFragment
     }
 
-    func renderImage(ofSize size: CGSize) -> UIImage? {
-        if let cachedImage = cachedImage, previousRenderSize == size {
-            return cachedImage
-        } else if let image = justRenderImage(ofSize: size) {
-            cachedImage = image
-            previousRenderSize = size
-            return image
-        } else {
-            cachedImage = nil
-            previousRenderSize = nil
-            return nil
-        }
-    }
-
-    func invalidateCachedImage() {
-        cachedImage = nil
-        previousRenderSize = nil
+    func draw(to context: CGContext) {
+        drawHighlights(to: context)
+        drawInvisibleCharacters(to: context)
+        drawText(to: context)
     }
 }
 

@@ -141,9 +141,9 @@ final class LineController {
         return lineFragmentTree.node(atIndex: index)
     }
 
-    func invalidateAndUpdateImageOnLineFragmentViews() {
+    func setNeedsDisplayOnLineFragmentViews() {
         for (_, lineFragmentController) in lineFragmentControllers {
-            lineFragmentController.lineFragmentView?.invalidateAndUpdateImage()
+            lineFragmentController.lineFragmentView?.setNeedsDisplay()
         }
     }
 
@@ -333,7 +333,7 @@ private extension LineController {
         updateLineHeight(for: newLineFragments)
         textInputProxy.lineFragments = typesetter.lineFragments
         reapplyLineFragmentToLineFragmentControllers()
-        invalidateAndUpdateImageOnLineFragmentViews()
+        setNeedsDisplayOnLineFragmentViews()
     }
 
     private func reapplyLineFragmentToLineFragmentControllers() {

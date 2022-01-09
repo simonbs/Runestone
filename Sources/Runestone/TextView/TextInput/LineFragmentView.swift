@@ -7,42 +7,38 @@
 
 import UIKit
 
-final class LineFragmentView: UIImageView {
+final class LineFragmentView: UIView {
     var renderer: LineFragmentRenderer? {
         didSet {
             if renderer !== oldValue {
-                updateImage()
+                setNeedsDisplay()
+            }
+        }
+    }
+    override var frame: CGRect {
+        didSet {
+            if frame.size != oldValue.size {
+                setNeedsDisplay()
             }
         }
     }
 
+    private var isRenderInvalid = true
+
     init() {
         super.init(frame: .zero)
-        isUserInteractionEnabled = false
         backgroundColor = .clear
+        isUserInteractionEnabled = false
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        updateImage()
-    }
-
-    func invalidateAndUpdateImage() {
-        renderer?.invalidateCachedImage()
-        if window != nil {
-            updateImage()
-        }
-    }
-}
-
-private extension LineFragmentView {
-    private func updateImage() {
-        if bounds.size != .zero {
-            image = renderer?.renderImage(ofSize: bounds.size)
+    override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        if let context = UIGraphicsGetCurrentContext() {
+            renderer?.draw(to: context)
         }
     }
 }

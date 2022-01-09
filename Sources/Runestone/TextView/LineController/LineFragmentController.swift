@@ -17,7 +17,7 @@ final class LineFragmentController {
         didSet {
             if lineFragment !== oldValue {
                 renderer.lineFragment = lineFragment
-                lineFragmentView?.invalidateAndUpdateImage()
+                lineFragmentView?.setNeedsDisplay()
             }
         }
     }
@@ -43,7 +43,7 @@ final class LineFragmentController {
         set {
             if newValue != renderer.highlightedRanges {
                 renderer.highlightedRanges = newValue
-                lineFragmentView?.invalidateAndUpdateImage()
+                lineFragmentView?.setNeedsDisplay()
             }
         }
     }
