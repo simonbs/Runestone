@@ -7,7 +7,7 @@
 
 import UIKit
 
-final class LineNumberView: UIView {
+final class LineNumberView: UIView, ReusableView {
     var textColor: UIColor {
         get {
             return titleLabel.textColor

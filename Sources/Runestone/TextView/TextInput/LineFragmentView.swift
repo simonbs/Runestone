@@ -7,7 +7,7 @@
 
 import UIKit
 
-final class LineFragmentView: UIView {
+final class LineFragmentView: UIView, ReusableView {
     var renderer: LineFragmentRenderer? {
         didSet {
             if renderer !== oldValue {
@@ -40,5 +40,9 @@ final class LineFragmentView: UIView {
         if let context = UIGraphicsGetCurrentContext() {
             renderer?.draw(to: context)
         }
+    }
+
+    func prepareForReuse() {
+        renderer = nil
     }
 }
