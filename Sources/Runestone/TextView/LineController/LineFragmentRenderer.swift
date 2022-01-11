@@ -108,9 +108,9 @@ private extension LineFragmentRenderer {
     private func xPosition(for horizontalPosition: HorizontalPosition) -> CGFloat {
         switch horizontalPosition {
         case .character(let index):
-            return round(CTLineGetOffsetForStringIndex(lineFragment.line, index, nil))
+            return CTLineGetOffsetForStringIndex(lineFragment.line, index, nil)
         case .endOfLine:
-            return CGFloat(round(CTLineGetTypographicBounds(lineFragment.line, nil, nil, nil)))
+            return CGFloat(CTLineGetTypographicBounds(lineFragment.line, nil, nil, nil))
         }
     }
 
