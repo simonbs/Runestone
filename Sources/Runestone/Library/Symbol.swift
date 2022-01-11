@@ -12,6 +12,7 @@ enum Symbol {
         static let lineFeed: Swift.Character = "\n"
         static let carriageReturn: Swift.Character = "\r"
         static let carriageReturnLineFeed: Swift.Character = "\r\n"
+        static let lineSeparator: Swift.Character = "\u{2028}"
         static let tab: Swift.Character = "\t"
         static let space: Swift.Character = " "
     }

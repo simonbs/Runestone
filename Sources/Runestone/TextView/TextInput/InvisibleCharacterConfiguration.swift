@@ -20,8 +20,15 @@ final class InvisibleCharacterConfiguration {
     var showSpaces = false
     var showLineBreaks = false {
         didSet {
-            if showTabs != oldValue {
+            if showLineBreaks != oldValue {
                 _lineBreakSymbolSize = nil
+            }
+        }
+    }
+    var showSoftLineBreaks = false {
+        didSet {
+            if showSoftLineBreaks != oldValue {
+                _softLineBreakSymbolSize = nil
             }
         }
     }
@@ -30,6 +37,13 @@ final class InvisibleCharacterConfiguration {
     var lineBreakSymbol = "\u{00ac}" {
         didSet {
             if lineBreakSymbol != oldValue {
+                _lineBreakSymbolSize = nil
+            }
+        }
+    }
+    var softLineBreakSymbol = "\u{00ac}" {
+        didSet {
+            if softLineBreakSymbol != oldValue {
                 _lineBreakSymbolSize = nil
             }
         }
@@ -46,6 +60,19 @@ final class InvisibleCharacterConfiguration {
             return .zero
         }
     }
+    var softLineBreakSymbolSize: CGSize {
+        if let softLineBreakSymbolSize = _softLineBreakSymbolSize {
+            return softLineBreakSymbolSize
+        } else if showSoftLineBreaks {
+            let attrs: [NSAttributedString.Key: Any] = [.font: font]
+            let softLineBreakSymbolSize = softLineBreakSymbol.size(withAttributes: attrs)
+            _softLineBreakSymbolSize = softLineBreakSymbolSize
+            return softLineBreakSymbolSize
+        } else {
+            return .zero
+        }
+    }
 
     private var _lineBreakSymbolSize: CGSize?
+    private var _softLineBreakSymbolSize: CGSize?
 }

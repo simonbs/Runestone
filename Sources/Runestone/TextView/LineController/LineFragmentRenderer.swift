@@ -27,6 +27,7 @@ final class LineFragmentRenderer {
         return invisibleCharacterConfiguration.showTabs
             || invisibleCharacterConfiguration.showSpaces
             || invisibleCharacterConfiguration.showLineBreaks
+            || invisibleCharacterConfiguration.showSoftLineBreaks
     }
 
     init(lineFragment: LineFragment) {
@@ -84,9 +85,10 @@ private extension LineFragmentRenderer {
                 draw(invisibleCharacterConfiguration.spaceSymbol, at: .character(indexInLine))
             } else if invisibleCharacterConfiguration.showTabs && substring == Symbol.Character.tab {
                 draw(invisibleCharacterConfiguration.tabSymbol, at: .character(indexInLine))
-            } else if invisibleCharacterConfiguration.showLineBreaks
-                        && (substring == Symbol.Character.lineFeed || substring == Symbol.Character.carriageReturnLineFeed) {
+            } else if invisibleCharacterConfiguration.showLineBreaks && isLineBreak(substring) {
                 draw(invisibleCharacterConfiguration.lineBreakSymbol, at: .endOfLine)
+            } else if invisibleCharacterConfiguration.showSoftLineBreaks && substring == Symbol.Character.lineSeparator {
+                draw(invisibleCharacterConfiguration.softLineBreakSymbol, at: .endOfLine)
             }
         }
     }
@@ -110,5 +112,9 @@ private extension LineFragmentRenderer {
         case .endOfLine:
             return CGFloat(round(CTLineGetTypographicBounds(lineFragment.line, nil, nil, nil)))
         }
+    }
+
+    private func isLineBreak(_ string: String.Element) -> Bool {
+        return string == Symbol.Character.lineFeed || string == Symbol.Character.carriageReturnLineFeed
     }
 }

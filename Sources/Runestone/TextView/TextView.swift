@@ -255,6 +255,15 @@ public final class TextView: UIScrollView {
             textInputView.showLineBreaks = newValue
         }
     }
+    /// The text view renders invisible soft line breaks when enabled. The `softLineBreakSymbol` is used to render line breaks. These line breaks are typically represented by the U+2028 unicode character. Runestone does not provide any key commands for inserting these but supports rendering them.
+    public var showSoftLineBreaks: Bool {
+        get {
+            return textInputView.showSoftLineBreaks
+        }
+        set {
+            textInputView.showSoftLineBreaks = newValue
+        }
+    }
     /// Used when rendering tabs. The value is only used when invisible tab characters is enabled. The default is ▸.
     public var tabSymbol: String {
         get {
@@ -280,6 +289,15 @@ public final class TextView: UIScrollView {
         }
         set {
             textInputView.lineBreakSymbol = newValue
+        }
+    }
+    /// Used when rendering soft line breaks. The value is only used when showing invisible soft line break characters is enabled. The default is ¬.
+    public var softLineBreakSymbol: String {
+        get {
+            return textInputView.softLineBreakSymbol
+        }
+        set {
+            textInputView.softLineBreakSymbol = newValue
         }
     }
     /// The strategy used when indenting text.

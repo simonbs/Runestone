@@ -175,6 +175,20 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
+    var showSoftLineBreaks: Bool {
+        get {
+            return layoutManager.invisibleCharacterConfiguration.showSoftLineBreaks
+        }
+        set {
+            if newValue != layoutManager.invisibleCharacterConfiguration.showSoftLineBreaks {
+                layoutManager.invisibleCharacterConfiguration.showSoftLineBreaks = newValue
+                layoutManager.invalidateLines()
+                layoutManager.setNeedsLayout()
+                layoutManager.setNeedsDisplayOnLines()
+                setNeedsLayout()
+            }
+        }
+    }
     var tabSymbol: String {
         get {
             return layoutManager.invisibleCharacterConfiguration.tabSymbol
@@ -204,6 +218,17 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.lineBreakSymbol {
                 layoutManager.invisibleCharacterConfiguration.lineBreakSymbol = newValue
+                layoutManager.setNeedsDisplayOnLines()
+            }
+        }
+    }
+    var softLineBreakSymbol: String {
+        get {
+            return layoutManager.invisibleCharacterConfiguration.softLineBreakSymbol
+        }
+        set {
+            if newValue != layoutManager.invisibleCharacterConfiguration.softLineBreakSymbol {
+                layoutManager.invisibleCharacterConfiguration.softLineBreakSymbol = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }

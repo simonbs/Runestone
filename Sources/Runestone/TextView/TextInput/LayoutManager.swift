@@ -221,7 +221,7 @@ final class LayoutManager {
         if isLineWrappingEnabled {
             return scrollViewWidth - scrollViewSafeAreaInsets.left - scrollViewSafeAreaInsets.right
         } else {
-            return ceil(textContentWidth + leadingLineSpacing + textContainerInset.right + lineBreakInvisibleSymbolWidth)
+            return ceil(textContentWidth + leadingLineSpacing + textContainerInset.right + maximumLineBreakymbolWidth)
         }
     }
     private var contentHeight: CGFloat {
@@ -313,9 +313,13 @@ final class LayoutManager {
     private var lineControllers: [DocumentLineNodeID: LineController] = [:]
     private var needsLayout = false
     private var needsLayoutSelection = false
-    private var lineBreakInvisibleSymbolWidth: CGFloat {
-        if invisibleCharacterConfiguration.showLineBreaks {
+    private var maximumLineBreakymbolWidth: CGFloat {
+        if invisibleCharacterConfiguration.showLineBreaks && invisibleCharacterConfiguration.showSoftLineBreaks {
+            return max(invisibleCharacterConfiguration.lineBreakSymbolSize.width, invisibleCharacterConfiguration.softLineBreakSymbolSize.width)
+        } else if invisibleCharacterConfiguration.showLineBreaks {
             return invisibleCharacterConfiguration.lineBreakSymbolSize.width
+        } else if invisibleCharacterConfiguration.showSoftLineBreaks {
+            return invisibleCharacterConfiguration.softLineBreakSymbolSize.width
         } else {
             return 0
         }
@@ -763,7 +767,7 @@ extension LayoutManager {
         lineFragmentController.invisibleCharacterConfiguration = invisibleCharacterConfiguration
         lineFragmentController.lineFragmentView = lineFragmentView
         let lineFragmentOrigin = CGPoint(x: leadingLineSpacing, y: textContainerInset.top + lineYPosition + lineFragment.yPosition)
-        let lineFragmentSize = CGSize(width: lineFragment.scaledSize.width + lineBreakInvisibleSymbolWidth, height: lineFragment.scaledSize.height)
+        let lineFragmentSize = CGSize(width: lineFragment.scaledSize.width + maximumLineBreakymbolWidth, height: lineFragment.scaledSize.height)
         lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragmentSize)
         lineFragmentView.frame = lineFragmentFrame
     }
