@@ -207,10 +207,10 @@ private extension LineController {
 
     private func updateDefaultAttributesIfNecessary() {
         if isDefaultAttributesInvalid {
-            updateParagraphStyle()
             if let input = createLineSyntaxHighlightInput() {
                 syntaxHighlighter?.setDefaultAttributes(on: input.attributedString)
             }
+            updateParagraphStyle()
             isDefaultAttributesInvalid = false
             isSyntaxHighlightingInvalid = true
             isTypesetterInvalid = true
