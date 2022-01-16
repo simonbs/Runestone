@@ -236,10 +236,13 @@ final class TextInputView: UIView, UITextInput {
     var indentStrategy: IndentStrategy = .tab(length: 2) {
         didSet {
             if indentStrategy != oldValue {
+                inputDelegate?.selectionWillChange(self)
                 indentController.indentStrategy = indentStrategy
                 layoutManager.tabWidth = indentController.tabWidth
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
+                layoutIfNeeded()
+                inputDelegate?.selectionDidChange(self)
             }
         }
     }
