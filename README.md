@@ -11,7 +11,7 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 - Show invisible characters (tabs, spaces and line breaks).
 - Automatically indents when adding a line break.
 - Insertion of character pairs, e.g. inserting the trailing quotation mark when inserting the leading.
-- Customization of colors and fonts using the [Theme protocol](https://github.com/simonbs/Runestone/blob/main/Sources/Runestone/Editor/Theme.swift).
+- Customization of colors and fonts using the [Theme](https://github.com/simonbs/Runestone/blob/main/Sources/Runestone/TextView/Theme.swift) protocol.
 - Toggle line wrapping on and off.
 - Adjust line heights.
 - Uses native font picker.
@@ -20,7 +20,7 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 
 ## Performance
 
-Runestone was built to be fast. It's good performance is by far mostly thanks to [Tree-sitter's incremental parsing](https://tree-sitter.github.io/tree-sitter/) and [AvalonEdit's approach for managing lines in a document](https://github.com/icsharpcode/AvalonEdit/blob/master/ICSharpCode.AvalonEdit/Document/DocumentLineTree.cs).
+Runestone was built to be fast. It's good performance is by far mostly thanks to Tree-sitter's incremental parsing and [AvalonEdit's approach for managing lines in a document](https://github.com/icsharpcode/AvalonEdit/blob/master/ICSharpCode.AvalonEdit/Document/DocumentLineTree.cs).
 
 When judging the performance of Runestone, it is key to build your app in the release configuration. The optimizations applied by the compiler when using the release configuration becomes very apparent when opening large documents.
 
