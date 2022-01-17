@@ -12,18 +12,21 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 - Automatically indents when adding a line break.
 - Insertion of character pairs, e.g. inserting the trailing quotation mark when inserting the leading.
 - Customization of colors and fonts using the [Theme protocol](https://github.com/simonbs/Runestone/blob/main/Sources/Runestone/Editor/Theme.swift).
-- Toggle line wrapping on and of.
+- Toggle line wrapping on and off.
 - Adjust line heights.
 - Uses native font picker.
 - Add a page guide.
 - Automatically detects if a file is using spaces or tabs for indentation.
-- Search and replace with support for regular expressions and pattern matching.
+
+### Wishlist
+
+- [ ] Search and replace
 
 ## Performance
 
-Runestone was built to be fast. Its good performance is by far mostly thanks to [Tree-sitter's incremental parsing](https://tree-sitter.github.io/tree-sitter/), [AvalonEdit's approach for managing lines in a document](https://github.com/icsharpcode/AvalonEdit/blob/master/ICSharpCode.AvalonEdit/Document/DocumentLineTree.cs) and the fact that the NSTextStorage subclass is written in Objective-C ([SR-6197](https://bugs.swift.org/plugins/servlet/mobile#issue/SR-6197)).
+Runestone was built to be fast. It's good performance is by far mostly thanks to [Tree-sitter's incremental parsing](https://tree-sitter.github.io/tree-sitter/) and [AvalonEdit's approach for managing lines in a document](https://github.com/icsharpcode/AvalonEdit/blob/master/ICSharpCode.AvalonEdit/Document/DocumentLineTree.cs).
 
-When judging the performance of Runestone, it is key to build the app in the release configuration. The optimazations applied by the compiler when using the release configuration becomes very apparent when opening large documents.
+When judging the performance of Runestone, it is key to build your app in the release configuration. The optimizations applied by the compiler when using the release configuration becomes very apparent when opening large documents.
 
 ## Acknowledgments
 
@@ -31,6 +34,4 @@ When judging the performance of Runestone, it is key to build the app in the rel
 - Line management is translated to Swift from [AvalonEdit](https://github.com/icsharpcode/AvalonEdit).
 - [swift-tree-sitter](https://github.com/viktorstrate/swift-tree-sitter) which Runestone's Swift bindings for Tree-sitter is heavily inspired by.
 - Detection of indent strategy inspired by [auto-detect-indentation](https://github.com/jtokoph/auto-detect-indentation).
-- The [JetBrains Mono](https://www.jetbrains.com/lp/mono/) and [FiraCode](https://github.com/tonsky/FiraCode) fonts that are bundled with the app.
-- The [Tomorrow](https://github.com/chriskempson/tomorrow-theme), [Solarized](https://ethanschoonover.com/solarized/), [Gruvbox](https://github.com/morhetz/gruvbox) and [Dracula](https://draculatheme.com) themes included in the example project.
 - And last (but not least!), thanks a ton to [Alexander Blach](https://twitter.com/Lextar) (developer of [Textastic](https://www.textasticapp.com)), [Till Konitzer](https://twitter.com/knutknatter) (developer of [Essayist](https://www.essayist.app)), [Greg Pierce](https://twitter.com/agiletortoise) (developer of [Drafts](https://getdrafts.com)) and [Max Brunsfeld](https://twitter.com/maxbrunsfeld) (developer of [Tree-sitter](https://tree-sitter.github.io/tree-sitter/)) for pointing me in the right direction when I got stuck.
