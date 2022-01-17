@@ -17,10 +17,7 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 - Uses native font picker.
 - Add a page guide.
 - Automatically detects if a file is using spaces or tabs for indentation.
-
-### Wishlist
-
-- [ ] Search and replace
+- Search and replace with support for regular expressions and pattern matching.
 
 ## Performance
 
