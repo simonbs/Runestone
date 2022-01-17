@@ -7,11 +7,11 @@
 
 import Foundation
 
-public final class RedBlackTreeNodePosition<NodeValue> {
-    public let nodeStartLocation: NodeValue
-    public let index: Int
-    public let offset: NodeValue
-    public let value: NodeValue
+final class RedBlackTreeNodePosition<NodeValue> {
+    let nodeStartLocation: NodeValue
+    let index: Int
+    let offset: NodeValue
+    let value: NodeValue
 
     init(nodeStartLocation: NodeValue, index: Int, offset: NodeValue, value: NodeValue) {
         self.nodeStartLocation = nodeStartLocation
