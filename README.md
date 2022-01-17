@@ -18,10 +18,6 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 - Add a page guide.
 - Automatically detects if a file is using spaces or tabs for indentation.
 
-### Wishlist
-
-- [ ] Search and replace
-
 ## Performance
 
 Runestone was built to be fast. It's good performance is by far mostly thanks to [Tree-sitter's incremental parsing](https://tree-sitter.github.io/tree-sitter/) and [AvalonEdit's approach for managing lines in a document](https://github.com/icsharpcode/AvalonEdit/blob/master/ICSharpCode.AvalonEdit/Document/DocumentLineTree.cs).
