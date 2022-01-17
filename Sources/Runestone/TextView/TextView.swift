@@ -5,12 +5,10 @@
 //  Created by Simon Støvring on 04/01/2021.
 //
 
-// swiftlint:disable file_length
+// swiftlint:disable file_length type_body_length
 
 import CoreText
 import UIKit
-
-// swiftlint:disable:next type_body_length
 
 /// A type similiar to UITextView with features commonly found in code editors.
 ///
@@ -552,7 +550,6 @@ public final class TextView: UIScrollView {
     override public func reloadInputViews() {
         textInputView.reloadInputViews()
     }
-
 
     /// Requests the receiving responder to enable or disable the specified command in the user interface.
     /// - Parameters:
