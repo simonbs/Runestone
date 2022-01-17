@@ -11,6 +11,15 @@ import CoreText
 import UIKit
 
 // swiftlint:disable:next type_body_length
+
+/// A type similiar to UITextView with features commonly found in code editors.
+///
+/// `TextView` is a performant implementation of a text view with features such as showing line numbers, searching for text and replacing results, syntax highlighting, showing invisible characters and more.
+///
+/// The type does not sublcass `UITextView` but it's interface is kept close to `UITextView`.
+///
+/// When initially configuring the `TextView` with a theme, a language and the text to be shwon, it is recommended the use the <doc:setState(_:addUndoAction:)> function.
+/// The function takes an instance of <doc:TextViewState> as input which can be created on a background queue to avoid blocking the main queue while doing the initial parse of a text.
 public final class TextView: UIScrollView {
     /// Delegate to receive callbacks for events triggered by the editor.
     public weak var editorDelegate: TextViewDelegate?
@@ -22,6 +31,7 @@ public final class TextView: UIScrollView {
             }
         }
     }
+    /// The text that the text view displays.
     public var text: String {
         get {
             return textInputView.string as String
@@ -40,6 +50,7 @@ public final class TextView: UIScrollView {
             textInputView.theme = newValue
         }
     }
+    /// The autocorrection style for the text view.
     public var autocorrectionType: UITextAutocorrectionType {
         get {
             return textInputView.autocorrectionType
@@ -48,6 +59,7 @@ public final class TextView: UIScrollView {
             textInputView.autocorrectionType = newValue
         }
     }
+    /// The autocapitalization style for the text view.
     public var autocapitalizationType: UITextAutocapitalizationType {
         get {
             return textInputView.autocapitalizationType
@@ -56,6 +68,7 @@ public final class TextView: UIScrollView {
             textInputView.autocapitalizationType = newValue
         }
     }
+    /// The spell-checking style for the text view.
     public var smartQuotesType: UITextSmartQuotesType {
         get {
             return textInputView.smartQuotesType
@@ -64,6 +77,7 @@ public final class TextView: UIScrollView {
             textInputView.smartQuotesType = newValue
         }
     }
+    /// The configuration state for smart dashes.
     public var smartDashesType: UITextSmartDashesType {
         get {
             return textInputView.smartDashesType
@@ -72,6 +86,7 @@ public final class TextView: UIScrollView {
             textInputView.smartDashesType = newValue
         }
     }
+    /// The configuration state for the smart insertion and deletion of space characters.
     public var smartInsertDeleteType: UITextSmartInsertDeleteType {
         get {
             return textInputView.smartInsertDeleteType
@@ -80,6 +95,7 @@ public final class TextView: UIScrollView {
             textInputView.smartInsertDeleteType = newValue
         }
     }
+    /// The spell-checking style for the text object.
     public var spellCheckingType: UITextSpellCheckingType {
         get {
             return textInputView.spellCheckingType
@@ -88,6 +104,7 @@ public final class TextView: UIScrollView {
             textInputView.spellCheckingType = newValue
         }
     }
+    /// The keyboard type for the text view.
     public var keyboardType: UIKeyboardType {
         get {
             return textInputView.keyboardType
@@ -96,6 +113,7 @@ public final class TextView: UIScrollView {
             textInputView.keyboardType = newValue
         }
     }
+    /// The appearance style of the keyboard for the text view.
     public var keyboardAppearance: UIKeyboardAppearance {
         get {
             return textInputView.keyboardAppearance
@@ -104,6 +122,7 @@ public final class TextView: UIScrollView {
             textInputView.keyboardAppearance = newValue
         }
     }
+    /// The visible title of the Return key.
     public var returnKeyType: UIReturnKeyType {
         get {
             return textInputView.returnKeyType
@@ -112,6 +131,7 @@ public final class TextView: UIScrollView {
             textInputView.returnKeyType = newValue
         }
     }
+    /// Returns the undo manager used by the text view.
     override public var undoManager: UndoManager? {
         return textInputView.undoManager
     }
@@ -142,6 +162,7 @@ public final class TextView: UIScrollView {
             textInputView.selectionHighlightColor = newValue
         }
     }
+    /// The current selection range of the text view.
     public var selectedRange: NSRange {
         get {
             if let selectedRange = textInputView.selectedRange {
@@ -155,9 +176,11 @@ public final class TextView: UIScrollView {
             textInputView.selectedTextRange = IndexedRange(newValue)
         }
     }
+    /// The current selection range of the text view as a UITextRange.
     public var selectedTextRange: UITextRange? {
         return IndexedRange(selectedRange)
     }
+    /// The custom input accessory view to display when the receiver becomes the first responder.
     override public var inputAccessoryView: UIView? {
         get {
             if isInputAccessoryViewEnabled {
@@ -170,12 +193,15 @@ public final class TextView: UIScrollView {
             _inputAccessoryView = newValue
         }
     }
+    /// The input assistant to use when configuring the keyboard’s shortcuts bar.
     override public var inputAssistantItem: UITextInputAssistantItem {
         return textInputView.inputAssistantItem
     }
+    /// Returns a Boolean value indicating whether this object can become the first responder.
     override public var canBecomeFirstResponder: Bool {
         return !textInputView.isFirstResponder
     }
+    /// The text view’s background color.
     override public var backgroundColor: UIColor? {
         get {
             return textInputView.backgroundColor
@@ -185,6 +211,7 @@ public final class TextView: UIScrollView {
             textInputView.backgroundColor = newValue
         }
     }
+    /// The point at which the origin of the content view is offset from the origin of the scroll view.
     override public var contentOffset: CGPoint {
         didSet {
             if contentOffset != oldValue {
@@ -327,7 +354,7 @@ public final class TextView: UIScrollView {
             textInputView.gutterTrailingPadding = newValue
         }
     }
-    // The amount of spacing surrounding the lines.
+    /// The amount of spacing surrounding the lines.
     public var textContainerInset: UIEdgeInsets {
         get {
             return textInputView.textContainerInset
@@ -456,6 +483,8 @@ public final class TextView: UIScrollView {
         }
     }
 
+    /// Create a new text view.
+    /// - Parameter frame: The frame rectangle of the text view.
     override public init(frame: CGRect) {
         textInputView = TextInputView(theme: DefaultTheme())
         super.init(frame: frame)
@@ -479,6 +508,7 @@ public final class TextView: UIScrollView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    /// Lays out subviews.
     override public func layoutSubviews() {
         super.layoutSubviews()
         handleContentSizeUpdateIfNecessary()
@@ -488,6 +518,7 @@ public final class TextView: UIScrollView {
         bringSubviewToFront(textInputView.gutterContainerView)
     }
 
+    /// Called when the safe area of the view changes.
     override public func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
         textInputView.scrollViewSafeAreaInsets = safeAreaInsets
@@ -495,6 +526,7 @@ public final class TextView: UIScrollView {
         layoutIfNeeded()
     }
 
+    /// Asks UIKit to make this object the first responder in its window.
     @discardableResult
     override public func becomeFirstResponder() -> Bool {
         if !isEditing && shouldBeginEditing {
@@ -506,6 +538,7 @@ public final class TextView: UIScrollView {
         }
     }
 
+    /// Notifies this object that it has been asked to relinquish its status as first responder in its window.
     @discardableResult
     override public func resignFirstResponder() -> Bool {
         if isEditing && shouldEndEditing {
@@ -515,10 +548,17 @@ public final class TextView: UIScrollView {
         }
     }
 
+    /// Updates the custom input and accessory views when the object is the first responder.
     override public func reloadInputViews() {
         textInputView.reloadInputViews()
     }
 
+
+    /// Requests the receiving responder to enable or disable the specified command in the user interface.
+    /// - Parameters:
+    ///   - action: A selector that identifies a method associated with a command. For the editing menu, this is one of the editing methods declared by the UIResponderStandardEditActions informal protocol (for example, `copy:`).
+    ///   - sender: The object calling this method. For the editing menu commands, this is the shared UIApplication object. Depending on the context, you can query the sender for information to help you determine whether a command should be enabled.
+    /// - Returns: `true if the command identified by action should be enabled or `false` if it should be disabled. Returning `true` means that your class can handle the command in the current context.
     override public func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
         if let highlightedRangeInSelection = highlightedRangeInSelection {
             if action == #selector(replaceTextInSelectedHighlightedRange) {
@@ -666,30 +706,48 @@ public final class TextView: UIScrollView {
         return true
     }
 
+    /// Search for the specified query.
+    /// - Parameter query: Query to find matches for.
+    /// - Returns: Results matching the query.
     public func search(for query: SearchQuery) -> [SearchResult] {
         let searchController = SearchController(stringView: textInputView.stringView)
         searchController.delegate = self
         return searchController.search(for: query)
     }
 
+    /// Search for the specified query and return results that take a replacement string into account.
+    ///
+    /// When searching for a regular expression this function will perform pattern matching and take matched groups into account in the returned results.
+    ///
+    /// - Parameters:
+    ///   - query: Query to find matches for.
+    ///   - replacementString: String to replace matches with. Can refer to groups in a regular expression using $0, $1, $2 etc.
+    /// - Returns: Results matching the query.
     public func search(for query: SearchQuery, replacingMatchesWith replacementString: String) -> [SearchReplaceResult] {
         let searchController = SearchController(stringView: textInputView.stringView)
         searchController.delegate = self
         return searchController.search(for: query, replacingMatchesWith: replacementString)
     }
 
+    /// Returns a peek into the text view's underlying attributed string.
+    /// - Parameter range: Range of text to include in text view. The returned result may span a larger range than the one specified.
+    /// - Returns: Text preview containing the specified range.
     public func textPreview(containing range: NSRange) -> TextPreview? {
         return textInputView.textPreview(containing: range)
     }
 
+    /// Selects a highlighted range behind the selected range if possible.
     public func selectPreviousHighlightedRange() {
         highlightNavigationController.selectPreviousRange()
     }
 
+    /// Selects a highlighted range after the selected range if possible.
     public func selectNextHighlightedRange() {
         highlightNavigationController.selectNextRange()
     }
 
+    /// Selects the highlighed range at the specified index.
+    /// - Parameter index: Index of highlighted range to select.
     public func selectHighlightedRange(at index: Int) {
         highlightNavigationController.selectRange(at: index)
     }
