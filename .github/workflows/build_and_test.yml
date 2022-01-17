@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: Build and test on iPhone 13
-    runs-on: macos-latest
+    runs-on: macOS-11
     steps:
       - name: Checkout
         uses: actions/checkout@v2
