@@ -1,0 +1,35 @@
+[build]
+publish = "Sources/Runestone/Documentation.docc/"
+
+[[redirects]]
+from = "/documentation/*"
+status = 200
+to = "/index.html"
+
+[[redirects]]
+from = "/tutorials/*"
+status = 200
+to = "/index.html"
+
+[[redirects]]
+from = "/data/documentation.json"
+status = 200
+to = "/data/documentation/vapordocc.json"
+
+[[redirects]]
+force = true
+from = "/"
+status = 302
+to = "/documentation/"
+
+[[redirects]]
+force = true
+from = "/documentation"
+status = 302
+to = "/documentation/"
+
+[[redirects]]
+force = true
+from = "/tutorials"
+status = 302
+to = "/tutorials/"
