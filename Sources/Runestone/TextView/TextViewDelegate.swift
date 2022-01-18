@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// The methods for receiving editing-related messages for the text view.
 public protocol TextViewDelegate: AnyObject {
     func textViewShouldBeginEditing(_ textView: TextView) -> Bool
     func textViewShouldEndEditing(_ textView: TextView) -> Bool

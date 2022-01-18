@@ -8,26 +8,11 @@
 import Foundation
 import TreeSitter
 
-public enum TreeSitterTextEncoding {
-    case utf8
-    case utf16
-}
-
-public extension TreeSitterTextEncoding {
-    var treeSitterEncoding: TSInputEncoding {
-        switch self {
-        case .utf8:
-            return TSInputEncodingUTF8
-        case .utf16:
-            return TSInputEncodingUTF16
-        }
-    }
-}
-
-public protocol TreeSitterLanguageProvider: AnyObject {
-    func treeSitterLanguage(named languageName: String) -> TreeSitterLanguage?
-}
-
+/// Language to use for syntax highlighting with Tree-sitter.
+///
+/// Use a `TreeSitterLanguage` with ``TreeSitterLanguageMode`` to perform syntax highlighting using [Tree-sitter](https://tree-sitter.github.io/tree-sitter/).
+///
+/// Refer to <doc:AddingATreeSitterLanguage> for more information on adding a Tree-sitter language to your project.
 public final class TreeSitterLanguage {
     let languagePointer: UnsafePointer<TSLanguage>
     let highlightsQuery: TreeSitterQuery?

@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  Theme.swift
 //  
 //
 //  Created by Simon Støvring on 13/12/2020.
@@ -7,38 +7,53 @@
 
 import UIKit
 
-public struct FontTraits: OptionSet {
-    public static let bold = FontTraits(rawValue: 1 << 0)
-    public static let italic = FontTraits(rawValue: 1 << 1)
-
-    public let rawValue: Int
-
-    public init(rawValue: Int) {
-        self.rawValue = rawValue
-    }
-}
-
+/// Fonts and colors to be used by a `TextView`.
 public protocol Theme: AnyObject {
+    /// Default font of text in the text view.
     var font: UIFont { get }
+    /// Default color of text in the text view.
     var textColor: UIColor { get }
+    /// Background color of the gutter containing line numbers.
     var gutterBackgroundColor: UIColor { get }
+    /// Color of the hairline next to the gutter containing line numbers.
     var gutterHairlineColor: UIColor { get }
+    /// Width of the hairline next to the gutter containing line numbers.
     var gutterHairlineWidth: CGFloat { get }
+    /// Color of the line numbers in the gutter.
     var lineNumberColor: UIColor { get }
+    /// Font of the line nubmers in the gutter.
     var lineNumberFont: UIFont { get }
+    /// Background color of the selected line.
     var selectedLineBackgroundColor: UIColor { get }
+    /// Color of the line number of the selected line.
     var selectedLinesLineNumberColor: UIColor { get }
+    /// Background color of the gutter for selected lines.
     var selectedLinesGutterBackgroundColor: UIColor { get }
+    /// Color of invisible characters, i.e. dots, spaces and line breaks.
     var invisibleCharactersColor: UIColor { get }
+    /// Color of the hairline next to the page guide.
     var pageGuideHairlineColor: UIColor { get }
+    /// Background color of the page guide.
     var pageGuideBackgroundColor: UIColor { get }
+    /// Color of text matching the capture sequence.
+    ///
+    /// See <doc:UnderstandingCaptureSequences> for more information on capture sequences.
     func textColor(for captureSequence: String) -> UIColor?
+    /// Font of text matching the capture sequence.
+    ///
+    /// See <doc:UnderstandingCaptureSequences> for more information on capture sequences.
     func font(for captureSequence: String) -> UIFont?
+    /// Traits of text matching the capture sequence.
+    ///
+    /// See <doc:UnderstandingCaptureSequences> for more information on capture sequences.
     func fontTraits(for captureSequence: String) -> FontTraits
+    /// Shadow of text matching the capture sequence.
+    ///
+    /// See <doc:UnderstandingCaptureSequences> for more information on capture sequences.
     func shadow(for captureSequence: String) -> NSShadow?
 }
 
-public extension Theme {
+extension Theme {
     var gutterHairlineWidth: CGFloat {
         return 1 / UIScreen.main.scale
     }

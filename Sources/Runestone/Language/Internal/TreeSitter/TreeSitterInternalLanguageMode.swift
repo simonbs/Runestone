@@ -117,9 +117,9 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
 
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode? {
         if let node = rootLanguageLayer.layerAndNode(at: linePosition)?.node, let type = node.type {
-            let startPosition = LinePosition(node.startPoint)
-            let endPosition = LinePosition(node.endPoint)
-            return SyntaxNode(type: type, startPosition: startPosition, endPosition: endPosition)
+            let startLocation = TextLocation(LinePosition(node.startPoint))
+            let endLocation = TextLocation(LinePosition(node.endPoint))
+            return SyntaxNode(type: type, startLocation: startLocation, endLocation: endLocation)
         } else {
             return nil
         }

@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  DefaultTheme.swift
 //  
 //
 //  Created by Simon Støvring on 13/12/2020.

@@ -7,11 +7,20 @@
 
 import UIKit
 
+/// Range of text to highlight.
 public final class HighlightedRange {
+    /// Unique identifier of the highlighted range.
     public let id: String
+    /// Range in the text to highlight.
     public let range: NSRange
+    /// Color to highlight the text with.
     public let color: UIColor
 
+    /// Create a new highlighted range.
+    /// - Parameters:
+    ///   - id: ID of the range. Defaults to a UUID.
+    ///   - range: Range in the text to highlight.
+    ///   - color: Color to highlight the text with.
     public init(id: String = UUID().uuidString, range: NSRange, color: UIColor) {
         self.id = id
         self.range = range

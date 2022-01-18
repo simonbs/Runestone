@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// Provides a peek into the underlying attributed string of a text view.
 public final class TextPreview {
     public let needleRange: NSRange
     public let previewRange: NSRange

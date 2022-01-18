@@ -7,15 +7,12 @@
 
 import Foundation
 
+/// Strategy to use when indenting text.
 public enum IndentStrategy: Equatable {
+    /// Indent using tabs. The length specified length is used to determine the width of the tab measured in space characers.
     case tab(length: Int)
+    /// Indent using a number of spaces.
     case space(length: Int)
-}
-
-public enum DetectedIndentStrategy {
-    case tab
-    case space(length: Int)
-    case unknown
 }
 
 extension IndentStrategy {
