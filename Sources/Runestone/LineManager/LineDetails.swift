@@ -7,10 +7,10 @@
 
 import Foundation
 
-public final class LineDetails {
-    public let startLocation: Int
-    public let totalLength: Int
-    public let position: LinePosition
+final class LineDetails {
+    let startLocation: Int
+    let totalLength: Int
+    let position: LinePosition
 
     init(startLocation: Int, totalLength: Int, position: LinePosition) {
         self.startLocation = startLocation
@@ -20,7 +20,7 @@ public final class LineDetails {
 }
 
 extension LineDetails: CustomDebugStringConvertible {
-    public var debugDescription: String {
+    var debugDescription: String {
         return "[LinePosition startLocation=\(startLocation) totalLength=\(totalLength) position=\(position)]"
     }
 }

@@ -583,12 +583,15 @@ public final class TextView: UIScrollView {
         contentSize = textInputView.contentSize
     }
 
-    /// The line position at a location in the text. Common usages of this includes showing the line and column\
-    /// that the caret is currently located at.
+    /// The caret position at a location in the text. Common usages of this includes showing the line and column that the caret is currently located at.
     /// - Parameter location: The location is relative to the first index in the string.
-    /// - Returns: The line position if the location could be found in the string, otherwise nil.
-    public func linePosition(at location: Int) -> LinePosition? {
-        return textInputView.linePosition(at: location)
+    /// - Returns: The text location if the input location could be found in the string, otherwise nil.
+    public func caretLocation(at location: Int) -> TextLocation? {
+        if let linePosition = textInputView.linePosition(at: location) {
+            return TextLocation(linePosition)
+        } else {
+            return nil
+        }
     }
 
     /// Sets the language mode on a background thread.
