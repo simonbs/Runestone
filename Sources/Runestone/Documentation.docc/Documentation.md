@@ -83,4 +83,4 @@ Automatically insert and delete closing the closing component of a character pai
 ### Navigation
 
 - ``GoToLineSelection``
-- ``LinePosition``
+- ``TextLocation``
