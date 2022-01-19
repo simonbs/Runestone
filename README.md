@@ -1,6 +1,6 @@
-# Runestone
+![](https://github.com/simonbs/Runestone/raw/main/Sources/Runestone/Documentation.docc/Resources/hero.png)
 
-Welcome to Runestone - a code editor for iOS with focus on performance.
+### Welcome to Runestone - a code editor for iOS with focus on performance
 
 Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) to parse code to a syntax tree which is used for features that require an understanding of the code in the editor, for example syntax highlighting.
 
@@ -18,7 +18,7 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 
 ## Getting Started
 
-Coming.
+Please refer to the [Getting Started](https://docs.runestone.app/documentation/runestone/gettingstarted) article in the documentation.
 
 ## Documentation
 
