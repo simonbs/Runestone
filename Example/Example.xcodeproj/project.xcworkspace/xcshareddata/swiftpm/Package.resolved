@@ -1,0 +1,16 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "TreeSitterLanguages",
+        "repositoryURL": "https://github.com/simonbs/TreeSitterLanguages",
+        "state": {
+          "branch": "main",
+          "revision": "1c513ae1a05218ac021eb3b263552b559ad87950",
+          "version": null
+        }
+      }
+    ]
+  },
+  "version": 1
+}
