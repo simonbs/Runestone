@@ -62,7 +62,7 @@ printNamesAndYears(names, years)
 // Print the year each person was born.
 function printNamesAndYears(names, years) {
   for (let i = 0; i < names.length; i++) {
-    console.log(names[i] + " was born in " + ages[i])
+    console.log(names[i] + " was born in " + years[i])
   }
 }
 """
