@@ -19,7 +19,7 @@ extension NSString {
 
     func getBytes(in range: NSRange, encoding: String.Encoding, usedLength: inout Int) -> UnsafeMutablePointer<Int8>? {
         let byteRange = ByteRange(utf16Range: range)
-        let buffer = UnsafeMutablePointer<CChar>.allocate(capacity: byteRange.length.value)
+        let buffer = UnsafeMutablePointer<Int8>.allocate(capacity: byteRange.length.value)
         let didGetBytes = getBytes(
             buffer,
             maxLength: byteRange.length.value,
