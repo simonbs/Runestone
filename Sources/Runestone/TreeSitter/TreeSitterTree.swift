@@ -22,7 +22,7 @@ final class TreeSitterTree {
     }
 
     func apply(_ inputEdit: TreeSitterInputEdit) {
-        withUnsafePointer(to: inputEdit.asRawInputEdit()) { inputEditPointer in
+        withUnsafePointer(to: TSInputEdit(inputEdit)) { inputEditPointer in
             ts_tree_edit(pointer, inputEditPointer)
         }
     }
