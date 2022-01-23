@@ -82,20 +82,9 @@ final class StringView {
         guard range.lowerBound.value >= 0 && range.upperBound <= string.byteCount else {
             return nil
         }
-        let encoding = String.preferredUTF16Encoding.rawValue
-        let maxByteCount = range.length.value
-        var usedLength: Int = 0
         let stringRange = NSRange(range)
-        let buffer = UnsafeMutablePointer<CChar>.allocate(capacity: maxByteCount)
-        let didGetBytes = string.getBytes(
-            buffer,
-            maxLength: maxByteCount,
-            usedLength: &usedLength,
-            encoding: encoding,
-            options: [],
-            range: stringRange,
-            remaining: nil)
-        if didGetBytes {
+        var usedLength = 0
+        if let buffer = string.getBytes(in: stringRange, encoding: String.preferredUTF16Encoding, usedLength: &usedLength) {
             return StringViewBytesResult(bytes: buffer, length: ByteCount(usedLength))
         } else {
             return nil
