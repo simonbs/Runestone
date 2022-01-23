@@ -53,7 +53,7 @@ public protocol Theme: AnyObject {
     func shadow(for captureSequence: String) -> NSShadow?
 }
 
-extension Theme {
+public extension Theme {
     var gutterHairlineWidth: CGFloat {
         return 1 / UIScreen.main.scale
     }
