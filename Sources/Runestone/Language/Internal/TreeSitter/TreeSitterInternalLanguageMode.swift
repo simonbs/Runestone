@@ -91,10 +91,9 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
         return measurer.indentLevel(lineStartLocation: line.location, lineTotalLength: line.data.totalLength, tabLength: indentStrategy.tabLength)
     }
 
-    func strategyForInsertingLineBreak(
-        from startLinePosition: LinePosition,
-        to endLinePosition: LinePosition,
-        using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
+    func strategyForInsertingLineBreak(from startLinePosition: LinePosition,
+                                       to endLinePosition: LinePosition,
+                                       using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
         let startLayerAndNode = rootLanguageLayer.layerAndNode(at: startLinePosition)
         let endLayerAndNode = rootLanguageLayer.layerAndNode(at: endLinePosition)
         if let indentationScopes = startLayerAndNode?.layer.language.indentationScopes ?? endLayerAndNode?.layer.language.indentationScopes {
