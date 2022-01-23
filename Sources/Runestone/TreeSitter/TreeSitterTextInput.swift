@@ -31,11 +31,11 @@ final class TreeSitterTextInput {
             var payload = payload!.assumingMemoryBound(to: Payload.self).pointee
             let point = TreeSitterTextPoint(position)
             if let result = payload.callback(ByteCount(byteIndex), point) {
-                bytesRead?.initialize(to: result.length)
+                bytesRead?.pointee = result.length
                 payload.bytePointers.append(result.bytes)
                 return result.bytes
             } else {
-                bytesRead?.initialize(to: 0)
+                bytesRead?.pointee = 0
                 return nil
             }
         }
