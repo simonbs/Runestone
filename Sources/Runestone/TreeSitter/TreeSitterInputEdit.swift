@@ -39,11 +39,11 @@ extension TreeSitterInputEdit: CustomDebugStringConvertible {
 
 extension TSInputEdit {
     init(_ inputEdit: TreeSitterInputEdit) {
-        self.init(start_byte: UInt32(startByte.value),
-                  old_end_byte: UInt32(oldEndByte.value),
-                  new_end_byte: UInt32(newEndByte.value),
-                  start_point: startPoint.rawValue,
-                  old_end_point: oldEndPoint.rawValue,
-                  new_end_point: newEndPoint.rawValue)
+        self.init(start_byte: UInt32(inputEdit.startByte.value),
+                  old_end_byte: UInt32(inputEdit.oldEndByte.value),
+                  new_end_byte: UInt32(inputEdit.newEndByte.value),
+                  start_point: inputEdit.startPoint.rawValue,
+                  old_end_point: inputEdit.oldEndPoint.rawValue,
+                  new_end_point: inputEdit.newEndPoint.rawValue)
     }
 }
