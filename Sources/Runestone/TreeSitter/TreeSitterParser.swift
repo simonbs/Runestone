@@ -42,9 +42,9 @@ final class TreeSitterParser {
         guard let stringEncoding = encoding.stringEncoding else {
             return nil
         }
-        let bytesPointer = string.cString(using: stringEncoding.rawValue)
-        let bytesCount = UInt32(string.byteCount.value)
-        if let newTreePointer = ts_parser_parse_string_encoding(pointer, oldTree?.pointer, bytesPointer, bytesCount, encoding) {
+        var usedLength = 0
+        let buffer = string.getAllBytes(withEncoding: stringEncoding, usedLength: &usedLength)
+        if let newTreePointer = ts_parser_parse_string_encoding(pointer, oldTree?.pointer, buffer, UInt32(usedLength), encoding) {
             return TreeSitterTree(newTreePointer)
         } else {
             return nil
