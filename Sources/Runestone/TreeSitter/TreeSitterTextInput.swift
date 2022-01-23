@@ -12,41 +12,41 @@ struct TreeSitterTextProviderResult {
     let length: UInt32
 }
 
-typealias TreeSitterTextProviderCallback = (_ byteIndex: ByteCount, _ position: TreeSitterTextPoint) -> TreeSitterTextProviderResult?
-private typealias TextInputRead = @convention(c) (UnsafeMutableRawPointer?, UInt32, TSPoint, UnsafeMutablePointer<UInt32>?) -> UnsafePointer<Int8>?
+typealias TreeSitterReadCallback = (_ byteIndex: ByteCount, _ position: TreeSitterTextPoint) -> TreeSitterTextProviderResult?
 
+/// The implementation is inspired by SwiftTreeSitter.
+/// https://github.com/ChimeHQ/SwiftTreeSitter/blob/main/Sources/SwiftTreeSitter/Input.swift
 final class TreeSitterTextInput {
-    struct Payload {
-        var callback: TreeSitterTextProviderCallback
-        var bytePointers: [UnsafePointer<Int8>] = []
+    fileprivate let encoding: TSInputEncoding
+    fileprivate let callback: TreeSitterReadCallback
+    fileprivate var bytePointers: [UnsafePointer<Int8>] = []
+
+    init(encoding: TSInputEncoding, callback: @escaping TreeSitterReadCallback) {
+        self.encoding = encoding
+        self.callback = callback
     }
 
-    let rawInput: TSInput
-
-    private var payload: Payload
-
-    init(encoding: TSInputEncoding, callback: @escaping TreeSitterTextProviderCallback) {
-        self.payload = Payload(callback: callback)
-        let read: TextInputRead = { payload, byteIndex, position, bytesRead in
-            var payload = payload!.assumingMemoryBound(to: Payload.self).pointee
-            let point = TreeSitterTextPoint(position)
-            if let result = payload.callback(ByteCount(byteIndex), point) {
-                bytesRead?.pointee = result.length
-                payload.bytePointers.append(result.bytes)
-                return result.bytes
-            } else {
-                bytesRead?.pointee = 0
-                return nil
-            }
-        }
-        rawInput = withUnsafeMutableBytes(of: &payload) { pointer in
-            return TSInput(payload: pointer.baseAddress, read: read, encoding: encoding)
-        }
+    func makeTSInput() -> TSInput {
+        let payload = Unmanaged.passUnretained(self).toOpaque()
+        return TSInput(payload: payload, read: read, encoding: encoding)
     }
 
     func deallocate() {
-        for pointer in payload.bytePointers {
-            pointer.deallocate()
+        for bytePointer in bytePointers {
+            bytePointer.deallocate()
         }
+        bytePointers = []
+    }
+}
+
+private func read(payload: UnsafeMutableRawPointer?, byteIndex: UInt32, position: TSPoint, bytesRead: UnsafeMutablePointer<UInt32>?) -> UnsafePointer<Int8>? {
+    let input: TreeSitterTextInput = Unmanaged.fromOpaque(payload!).takeUnretainedValue()
+    if let result = input.callback(ByteCount(byteIndex), TreeSitterTextPoint(position)) {
+        bytesRead?.pointee = result.length
+        input.bytePointers.append(result.bytes)
+        return result.bytes
+    } else {
+        bytesRead?.pointee = 0
+        return nil
     }
 }
