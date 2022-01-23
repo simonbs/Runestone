@@ -8,16 +8,13 @@
 import Foundation
 
 final class StringViewBytesResult {
+    // The bytes are not deallocated by this type.
     let bytes: UnsafePointer<Int8>
     let length: ByteCount
 
     init(bytes: UnsafePointer<Int8>, length: ByteCount) {
         self.bytes = bytes
         self.length = length
-    }
-
-    deinit {
-        bytes.deallocate()
     }
 }
 
