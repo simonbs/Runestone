@@ -87,7 +87,7 @@ private extension TSInputEncoding {
         case TSInputEncodingUTF8:
             return .utf8
         case TSInputEncodingUTF16:
-            return .utf16LittleEndian
+            return String.preferredUTF16Encoding
         default:
             return nil
         }

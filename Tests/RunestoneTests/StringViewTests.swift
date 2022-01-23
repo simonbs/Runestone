@@ -109,6 +109,6 @@ final class StringViewTests: XCTestCase {
 private extension StringViewTests {
     private func string(from result: StringViewBytesResult) -> String {
         let data = Data(bytes: result.bytes, count: result.length.value)
-        return String(data: data, encoding: .utf16LittleEndian)!
+        return String(data: data, encoding: String.preferredUTF16Encoding)!
     }
 }
