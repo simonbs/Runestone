@@ -12,7 +12,7 @@ final class TomorrowTheme: Theme {
     let font: UIFont = .monospacedSystemFont(ofSize: 14, weight: .regular)
     let textColor = UIColor(named: "Foreground")!
     let gutterBackgroundColor = UIColor(named: "CurrentLine")!
-    let gutterHairlineColor = UIColor(named: "Foreground")!
+    let gutterHairlineColor: UIColor = .opaqueSeparator
     let gutterHairlineWidth: CGFloat = 1 / UIScreen.main.scale
     let lineNumberColor = UIColor(named: "Foreground")!.withAlphaComponent(0.5)
     let lineNumberFont: UIFont = .monospacedSystemFont(ofSize: 14, weight: .regular)
