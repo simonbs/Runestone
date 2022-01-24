@@ -39,6 +39,13 @@ private extension MainViewController {
         let state = TextViewState(text: text, theme: TomorrowTheme(), language: .javaScript, languageProvider: self)
         contentView.textView.editorDelegate = self
         contentView.textView.setState(state)
+        contentView.textView.characterPairs = [
+            BasicCharacterPair(leading: "(", trailing: ")"),
+            BasicCharacterPair(leading: "{", trailing: "}"),
+            BasicCharacterPair(leading: "[", trailing: "]"),
+            BasicCharacterPair(leading: "\"", trailing: "\""),
+            BasicCharacterPair(leading: "'", trailing: "'")
+        ]
     }
 
     private func updateTextViewSettings() {
