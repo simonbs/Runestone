@@ -517,11 +517,7 @@ extension LayoutManager {
                     screenRect.size.width = max(contentWidth, scrollViewWidth) - screenRect.minX
                 }
                 selectionRects += [
-                    TextSelectionRect(
-                        rect: screenRect,
-                        writingDirection: .natural,
-                        containsStart: containsStart,
-                        containsEnd: containsEnd)
+                    TextSelectionRect(rect: screenRect, writingDirection: .natural, containsStart: containsStart, containsEnd: containsEnd)
                 ]
             }
         }
