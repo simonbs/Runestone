@@ -19,4 +19,14 @@ extension NSRange {
         let r2 = range.location ... range.location + range.length
         return r1.overlaps(r2)
     }
+
+    var nonNegativeLength: NSRange {
+        if length < 0 {
+            let absoluteLength = abs(length)
+            let safeAbsoluteLength = min(absoluteLength, location)
+            return NSRange(location: location - safeAbsoluteLength, length: safeAbsoluteLength)
+        } else {
+            return self
+        }
+    }
 }
