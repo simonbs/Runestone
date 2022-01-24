@@ -611,7 +611,7 @@ extension LayoutManager {
         let startLocation = selectedRange.location
         let endLocation = selectedRange.location + selectedRange.length
         let selectedRect: CGRect
-        if selectedRange.length > 0 {
+        if selectedRange.nonNegativeLength.length > 0 {
             let startSelectionRect = selectionRectangleForLineFragment(containingCharacterAt: startLocation)
             let endSelectionRect = selectionRectangleForLineFragment(containingCharacterAt: endLocation)
             let height = endSelectionRect.maxY - startSelectionRect.minY

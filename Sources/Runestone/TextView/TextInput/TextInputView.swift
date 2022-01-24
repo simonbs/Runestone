@@ -829,8 +829,8 @@ extension TextInputView {
     }
 
     func replace(_ range: UITextRange, withText text: String) {
-        if let indexedRange = range as? IndexedRange, shouldChangeText(in: indexedRange.range, replacementText: text) {
-            replaceCharactersAndNotifyDelegate(replacing: indexedRange.range, with: text)
+        if let indexedRange = range as? IndexedRange, shouldChangeText(in: indexedRange.range.nonNegativeLength, replacementText: text) {
+            replaceCharactersAndNotifyDelegate(replacing: indexedRange.range.nonNegativeLength, with: text)
         }
     }
 
@@ -882,7 +882,7 @@ extension TextInputView {
 
     func text(in range: UITextRange) -> String? {
         if let indexedRange = range as? IndexedRange {
-            return text(in: indexedRange.range)
+            return text(in: indexedRange.range.nonNegativeLength)
         } else {
             return nil
         }
@@ -1019,7 +1019,7 @@ extension TextInputView {
 extension TextInputView {
     func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
         if let indexedRange = range as? IndexedRange {
-            return layoutManager.selectionRects(in: indexedRange.range)
+            return layoutManager.selectionRects(in: indexedRange.range.nonNegativeLength)
         } else {
             return []
         }

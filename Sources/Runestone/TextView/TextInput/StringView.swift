@@ -55,7 +55,7 @@ final class StringView {
     }
 
     func substring(in range: NSRange) -> String? {
-        if range.upperBound <= internalString.length {
+        if range.location >= 0 && range.upperBound <= internalString.length && range.length > 0 {
             return internalString.substring(with: range)
         } else {
             return nil
