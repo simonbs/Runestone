@@ -11,17 +11,24 @@ import UIKit
 final class TomorrowTheme: Theme {
     let font: UIFont = .monospacedSystemFont(ofSize: 14, weight: .regular)
     let textColor = UIColor(named: "Foreground")!
+
     let gutterBackgroundColor = UIColor(named: "CurrentLine")!
     let gutterHairlineColor: UIColor = .opaqueSeparator
-    let gutterHairlineWidth: CGFloat = 1 / UIScreen.main.scale
+
     let lineNumberColor = UIColor(named: "Foreground")!.withAlphaComponent(0.5)
     let lineNumberFont: UIFont = .monospacedSystemFont(ofSize: 14, weight: .regular)
+
     let selectedLineBackgroundColor = UIColor(named: "CurrentLine")!
     let selectedLinesLineNumberColor = UIColor(named: "Foreground")!
     let selectedLinesGutterBackgroundColor: UIColor = .clear
+
     let invisibleCharactersColor = UIColor(named: "Foreground")!.withAlphaComponent(0.7)
+
     let pageGuideHairlineColor = UIColor(named: "Foreground")!
     let pageGuideBackgroundColor = UIColor(named: "CurrentLine")!
+
+    let markedTextBackgroundColor = UIColor(named: "Foreground")!.withAlphaComponent(0.1)
+    let markedTextBackgroundCornerRadius: CGFloat = 4
 
     func textColor(for captureSequence: String) -> UIColor? {
         guard let scope = Scope(captureSequence: captureSequence) else {

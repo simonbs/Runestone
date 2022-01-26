@@ -21,6 +21,9 @@ final class LineFragmentRenderer {
     weak var delegate: LineFragmentRendererDelegate?
     var lineFragment: LineFragment
     var invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
+    var markedRange: NSRange?
+    var markedTextBackgroundColor: UIColor = .systemFill
+    var markedTextBackgroundCornerRadius: CGFloat = 0
     var highlightedRanges: [HighlightedRange] = []
 
     private var showInvisibleCharacters: Bool {
@@ -36,6 +39,7 @@ final class LineFragmentRenderer {
 
     func draw(to context: CGContext) {
         drawHighlightedRanges(to: context)
+        drawMarkedRange(to: context)
         drawInvisibleCharacters(to: context)
         drawText(to: context)
     }
@@ -64,6 +68,20 @@ private extension LineFragmentRenderer {
             context.restoreGState()
         }
     }
+
+    private func drawMarkedRange(to context: CGContext) {
+        if let markedRange = markedRange {
+            context.saveGState()
+            let startX = CTLineGetOffsetForStringIndex(lineFragment.line, markedRange.lowerBound, nil)
+            let endX = CTLineGetOffsetForStringIndex(lineFragment.line, markedRange.upperBound, nil)
+            let rect = CGRect(x: startX, y: 0, width: endX - startX, height: lineFragment.scaledSize.height)
+            context.setFillColor(markedTextBackgroundColor.cgColor)
+            if markedTextBackgroundCornerRadius > 0 {
+                let cornerRadius = markedTextBackgroundCornerRadius
+                let path = CGPath(roundedRect: rect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
+                context.addPath(path)
+                context.fillPath()
+            } else {
                 context.fill(rect)
             }
             context.restoreGState()

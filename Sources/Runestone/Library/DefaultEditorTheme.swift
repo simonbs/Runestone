@@ -31,14 +31,17 @@ final class DefaultTheme: Theme {
     let lineNumberColor: UIColor = .secondaryLabel
     let lineNumberFont = UIFont(name: "Menlo-Regular", size: 14)!
 
-    var selectedLineBackgroundColor: UIColor = .secondarySystemBackground
+    let selectedLineBackgroundColor: UIColor = .secondarySystemBackground
     let selectedLinesLineNumberColor: UIColor = .label
     let selectedLinesGutterBackgroundColor = UIColor.opaqueSeparator.withAlphaComponent(0.4)
 
     let invisibleCharactersColor: UIColor = .tertiaryLabel
 
     let pageGuideBackgroundColor: UIColor = .secondarySystemBackground
-    var pageGuideHairlineColor: UIColor = .opaqueSeparator
+    let pageGuideHairlineColor: UIColor = .opaqueSeparator
+
+    let markedTextBackgroundColor: UIColor = .systemFill
+    let markedTextBackgroundBorderColor: UIColor = .clear
 
     func textColor(for captureSequence: String) -> UIColor? {
         guard let captureName = CaptureName(sequence: captureSequence) else {

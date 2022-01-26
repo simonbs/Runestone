@@ -1005,13 +1005,23 @@ extension TextView: TextInputViewDelegate {
     func textInputViewDidEndFloatingCursor(_ view: TextInputView) {
         editorDelegate?.textViewDidEndFloatingCursor(self)
     }
+
+    func textInputViewDidUpdateMarkedRange(_ view: TextInputView) {
+        // There seems to be a bug in UITextInput (or UITextInteraction?) where updating the markedTextRange of a UITextInput
+        // will cause the caret to disappear. Removing the editable text interaction and adding it back will work around this issue.
+        DispatchQueue.main.async {
+            if !view.viewHierarchyContainsCaret && self.editableTextInteraction.view != nil {
+                self.removeInteraction(self.editableTextInteraction)
+                self.addInteraction(self.editableTextInteraction)
+            }
+        }
+    }
 }
 
 // MARK: - HighlightNavigationControllerDelegate
 extension TextView: HighlightNavigationControllerDelegate {
-    func highlightNavigationController(
-        _ controller: HighlightNavigationController,
-        shouldNavigateTo highlightNavigationRange: HighlightNavigationRange) {
+    func highlightNavigationController(_ controller: HighlightNavigationController,
+                                       shouldNavigateTo highlightNavigationRange: HighlightNavigationRange) {
             let range = highlightNavigationRange.range
             _ = textInputView.becomeFirstResponder()
             // Layout lines up until the location of the range so we can scroll to it immediately after.
@@ -1050,10 +1060,9 @@ extension TextView: UIGestureRecognizerDelegate {
 
 // MARK: - KeyboardObserverDelegate
 extension TextView: KeyboardObserverDelegate {
-    func keyboardObserver(
-        _ keyboardObserver: KeyboardObserver,
-        keyboardWillShowWithHeight keyboardHeight: CGFloat,
-        animation: KeyboardObserver.Animation?) {
+    func keyboardObserver(_ keyboardObserver: KeyboardObserver,
+                          keyboardWillShowWithHeight keyboardHeight: CGFloat,
+                          animation: KeyboardObserver.Animation?) {
         if isAutomaticScrollEnabled, !isAdjustingCursor, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scroll(to: newRange.location)
         }

@@ -35,6 +35,11 @@ public protocol Theme: AnyObject {
     var pageGuideHairlineColor: UIColor { get }
     /// Background color of the page guide.
     var pageGuideBackgroundColor: UIColor { get }
+    /// Background color of marked text. Text will be marked when writing certain languages, for example Chinese and Japanese.
+    var markedTextBackgroundColor: UIColor { get }
+    /// Corner radius of the background of marked text. Text will be marked when writing certain languages, for example Chinese and Japanese.
+    /// A value of zero or less means that the background will not have rounded corners. Defaults to 0.
+    var markedTextBackgroundCornerRadius: CGFloat { get }
     /// Color of text matching the capture sequence.
     ///
     /// See <doc:UnderstandingCaptureSequences> for more information on capture sequences.
@@ -60,6 +65,10 @@ public extension Theme {
 
     var pageGuideHairlineWidth: CGFloat {
         return 1 / UIScreen.main.scale
+    }
+
+    var markedTextBackgroundCornerRadius: CGFloat {
+        return 0
     }
 
     func font(for captureSequence: String) -> UIFont? {
