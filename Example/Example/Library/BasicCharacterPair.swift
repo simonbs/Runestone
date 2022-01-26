@@ -1,10 +1,3 @@
-//
-//  BasicCharacterPair.swift
-//  Example
-//
-//  Created by Simon on 24/01/2022.
-//
-
 import Runestone
 
 final class BasicCharacterPair: CharacterPair {

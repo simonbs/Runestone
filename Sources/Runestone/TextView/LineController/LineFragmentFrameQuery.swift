@@ -1,10 +1,3 @@
-//
-//  LineFragmentFrameQuery.swift
-//  
-//
-//  Created by Simon on 29/05/2021.
-//
-
 import CoreGraphics
 
 final class LineFragmentFrameQuery: RedBlackTreeSearchQuery {

@@ -1,10 +1,3 @@
-//
-//  CharacterPairTrailingComponentDeletionMode.swift
-//  
-//
-//  Created by Simon on 17/09/2021.
-//
-
 import Foundation
 
 /// Determines what should happen to the trailing component of a character pair when deleting the leading component.

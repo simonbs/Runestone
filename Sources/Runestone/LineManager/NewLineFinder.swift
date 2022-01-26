@@ -1,10 +1,3 @@
-//
-//  NewLineFinder.swift
-//  
-//
-//  Created by Simon Støvring on 08/12/2020.
-//
-
 import Foundation
 
 enum NewLineFinder {

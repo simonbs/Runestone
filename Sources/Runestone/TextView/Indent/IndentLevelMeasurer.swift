@@ -1,10 +1,3 @@
-//
-//  IndentLevelMeasurer.swift
-//  
-//
-//  Created by Simon on 28/03/2021.
-//
-
 import Foundation
 
 final class IndentLevelMeasurer {

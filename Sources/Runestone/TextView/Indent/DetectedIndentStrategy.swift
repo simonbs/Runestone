@@ -1,10 +1,3 @@
-//
-//  DetectedIndentStrategy.swift
-//  
-//
-//  Created by Simon on 18/01/2022.
-//
-
 import Foundation
 
 /// Indentation strategy detected in text.

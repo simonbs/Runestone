@@ -1,10 +1,3 @@
-//
-//  TreeSitterIndentStrategyDetector.swift
-//  
-//
-//  Created by Simon on 24/03/2021.
-//
-
 import Foundation
 
 final class TreeSitterIndentStrategyDetector {

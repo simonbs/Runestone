@@ -1,10 +1,3 @@
-//
-//  HighlightedRange.swift
-//  
-//
-//  Created by Simon on 03/10/2021.
-//
-
 import UIKit
 
 /// Range of text to highlight.

@@ -1,10 +1,3 @@
-//
-//  TimedUndoManager.swift
-//  
-//
-//  Created by Simon Støvring on 07/02/2021.
-//
-
 import Foundation
 
 final class TimedUndoManager: UndoManager {

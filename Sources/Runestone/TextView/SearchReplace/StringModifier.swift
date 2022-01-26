@@ -1,10 +1,3 @@
-//
-//  ParsedReplacementStringModifier.swift
-//  
-//
-//  Created by Simon on 15/11/2021.
-//
-
 import Foundation
 
 enum StringModifier {

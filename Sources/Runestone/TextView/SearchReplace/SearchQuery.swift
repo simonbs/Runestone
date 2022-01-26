@@ -1,10 +1,3 @@
-//
-//  SearchQuery.swift
-//  
-//
-//  Created by Simon on 25/08/2021.
-//
-
 import Foundation
 
 /// Query to search for in the text view.

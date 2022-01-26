@@ -1,10 +1,3 @@
-//
-//  SyntaxNode.swift
-//  
-//
-//  Created by Simon Støvring on 25/02/2021.
-//
-
 import Foundation
 
 /// Node in the syntax tree.

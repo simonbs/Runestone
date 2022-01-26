@@ -1,10 +1,3 @@
-//
-//  LineFragmentCharacterLocationQuery.swift
-//  
-//
-//  Created by Simon on 31/08/2021.
-//
-
 import CoreGraphics
 import Foundation
 

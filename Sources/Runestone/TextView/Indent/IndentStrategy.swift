@@ -1,10 +1,3 @@
-//
-//  IndentStrategy.swift
-//  
-//
-//  Created by Simon Støvring on 07/03/2021.
-//
-
 import Foundation
 
 /// Strategy to use when indenting text.

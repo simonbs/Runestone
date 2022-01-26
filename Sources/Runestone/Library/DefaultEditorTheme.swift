@@ -1,10 +1,3 @@
-//
-//  DefaultTheme.swift
-//  
-//
-//  Created by Simon Støvring on 13/12/2020.
-//
-
 import UIKit
 
 final class DefaultTheme: Theme {

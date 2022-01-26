@@ -1,10 +1,3 @@
-//
-//  String+Helpers.swift
-//  
-//
-//  Created by Simon Støvring on 01/12/2020.
-//
-
 import Foundation
 
 extension String {

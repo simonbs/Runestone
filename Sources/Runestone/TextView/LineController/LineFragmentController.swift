@@ -1,10 +1,3 @@
-//
-//  LineFragmentController.swift
-//  
-//
-//  Created by Simon on 20/03/2021.
-//
-
 import UIKit
 
 protocol LineFragmentControllerDelegate: AnyObject {

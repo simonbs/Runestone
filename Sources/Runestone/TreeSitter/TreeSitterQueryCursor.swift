@@ -1,10 +1,3 @@
-//
-//  TreeSitterQueryCursor.swift
-//  
-//
-//  Created by Simon Støvring on 16/02/2021.
-//
-
 import TreeSitter
 
 final class TreeSitterQueryCursor {

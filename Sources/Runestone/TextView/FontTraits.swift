@@ -1,10 +1,3 @@
-//
-//  FontTraits.swift
-//  
-//
-//  Created by Simon on 18/01/2022.
-//
-
 import Foundation
 
 /// Traits to be applied to a font.

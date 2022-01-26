@@ -1,10 +1,3 @@
-//
-//  ViewReuseQueue.swift
-//  
-//
-//  Created by Simon Støvring on 27/01/2021.
-//
-
 import UIKit
 
 protocol ReusableView {

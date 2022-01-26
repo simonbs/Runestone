@@ -1,10 +1,3 @@
-//
-//  DocumentLineChildrenUpdater.swift
-//  
-//
-//  Created by Simon Støvring on 10/01/2021.
-//
-
 import CoreGraphics
 import Foundation
 

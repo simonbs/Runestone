@@ -1,10 +1,3 @@
-//
-//  DocumentLineNodeData.swift
-//  
-//
-//  Created by Simon Støvring on 09/01/2021.
-//
-
 import CoreGraphics
 import Foundation
 

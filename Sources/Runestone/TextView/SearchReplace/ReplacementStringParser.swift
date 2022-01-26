@@ -1,10 +1,3 @@
-//
-//  ReplacementStringParser.swift
-//  
-//
-//  Created by Simon on 14/11/2021.
-//
-
 import Foundation
 
 final class ReplacementStringParser {

@@ -1,10 +1,3 @@
-//
-//  TreeSitterLanguageProvider.swift
-//  
-//
-//  Created by Simon on 18/01/2022.
-//
-
 import Foundation
 
 /// Provide Tree-sitter languages on demand.

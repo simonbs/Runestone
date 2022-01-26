@@ -1,10 +1,3 @@
-//
-//  LineMovementController.swift
-//  
-//
-//  Created by Simon on 21/03/2021.
-//
-
 import UIKit
 
 protocol LineMovementControllerDelegate: AnyObject {

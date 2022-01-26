@@ -1,10 +1,3 @@
-//
-//  RedBlackTree.swift
-//  
-//
-//  Created by Simon Støvring on 10/01/2021.
-//
-
 // swiftlint:disable file_length
 
 import Foundation

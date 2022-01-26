@@ -1,10 +1,3 @@
-//
-//  TreeSitterLanguageMode.swift
-//  
-//
-//  Created by Simon on 27/12/2021.
-//
-
 import Foundation
 
 /// Perform syntax highlighting with Tree-sitter.

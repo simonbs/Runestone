@@ -1,10 +1,3 @@
-//
-//  LineSelectionDisplayType.swift
-//  
-//
-//  Created by Simon on 03/06/2021.
-//
-
 import Foundation
 
 /// Approach for highlighting the selected line.

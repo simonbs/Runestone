@@ -1,10 +1,3 @@
-//
-//  javascript.h
-//  RunestoneEditor
-//
-//  Created by Simon Støvring on 29/12/2020.
-//
-
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -1,10 +1,3 @@
-//
-//  TextSelectionRect.swift
-//  
-//
-//  Created by Simon Støvring on 07/01/2021.
-//
-
 import UIKit
 
 final class TextSelectionRect: UITextSelectionRect {

@@ -1,10 +1,3 @@
-//
-//  LineDetails.swift
-//  
-//
-//  Created by Simon Støvring on 25/02/2021.
-//
-
 import Foundation
 
 final class LineDetails {

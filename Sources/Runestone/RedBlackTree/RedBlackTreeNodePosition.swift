@@ -1,10 +1,3 @@
-//
-//  RedBlackTreeNodePosition.swift
-//  
-//
-//  Created by Simon Støvring on 09/12/2020.
-//
-
 import Foundation
 
 final class RedBlackTreeNodePosition<NodeValue> {

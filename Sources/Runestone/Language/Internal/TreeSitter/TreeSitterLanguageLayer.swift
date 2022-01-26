@@ -1,10 +1,3 @@
-//
-//  TreeSitterLanguageLayer.swift
-//  
-//
-//  Created by Simon Støvring on 16/02/2021.
-//
-
 import Foundation
 
 final class TreeSitterLanguageLayer {

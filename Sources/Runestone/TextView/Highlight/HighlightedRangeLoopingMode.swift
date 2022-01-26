@@ -1,10 +1,3 @@
-//
-//  HighlightedRangeLoopingMode.swift
-//  
-//
-//  Created by Simon on 08/10/2021.
-//
-
 import Foundation
 
 /// Strategy to use when the end while navigating highlighted ranges.

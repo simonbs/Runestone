@@ -1,10 +1,3 @@
-//
-//  TextViewDelegate.swift
-//  
-//
-//  Created by Simon on 04/11/2021.
-//
-
 import Foundation
 
 /// The methods for receiving editing-related messages for the text view.

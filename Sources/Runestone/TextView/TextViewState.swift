@@ -1,10 +1,3 @@
-//
-//  TextViewState.swift
-//  
-//
-//  Created by Simon Støvring on 16/01/2021.
-//
-
 import Foundation
 
 /// Encapsulates the bare informations needed to do syntax highlighting in a text view.

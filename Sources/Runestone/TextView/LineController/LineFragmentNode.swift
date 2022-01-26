@@ -1,10 +1,3 @@
-//
-//  LineFragmentNode.swift
-//  
-//
-//  Created by Simon on 29/05/2021.
-//
-
 import CoreGraphics
 import Foundation
 
