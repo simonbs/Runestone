@@ -1,10 +1,3 @@
-//
-//  LanguageModeFactory.swift
-//  
-//
-//  Created by Simon on 05/01/2022.
-//
-
 import Foundation
 @testable import Runestone
 import TestTreeSitterLanguages

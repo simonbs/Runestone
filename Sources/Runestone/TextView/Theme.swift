@@ -1,10 +1,3 @@
-//
-//  Theme.swift
-//  
-//
-//  Created by Simon Støvring on 13/12/2020.
-//
-
 import UIKit
 
 /// Fonts and colors to be used by a `TextView`.

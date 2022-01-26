@@ -1,10 +1,3 @@
-//
-//  QuickTapGestureRecognizer.swift
-//  
-//
-//  Created by Simon Støvring on 14/03/2021.
-//
-
 import UIKit
 
 final class QuickTapGestureRecognizer: UITapGestureRecognizer {

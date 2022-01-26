@@ -1,10 +1,3 @@
-//
-//  TreeSitterPredicatesValidator.swift
-//  
-//
-//  Created by Simon Støvring on 23/02/2021.
-//
-
 import Foundation
 
 final class TreeSitterTextPredicatesEvaluator {

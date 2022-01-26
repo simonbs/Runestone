@@ -1,10 +1,3 @@
-//
-//  LineChangeSet.swift
-//  
-//
-//  Created by Simon on 02/04/2021.
-//
-
 import Foundation
 
 final class LineChangeSet {

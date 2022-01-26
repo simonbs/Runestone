@@ -1,10 +1,3 @@
-//
-//  LanguageMode.swift
-//  
-//
-//  Created by Simon Støvring on 11/02/2021.
-//
-
 import Foundation
 
 struct LanguageModeTextChange {

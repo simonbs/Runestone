@@ -1,10 +1,3 @@
-//
-//  ParsedReplacementString.swift
-//  RegexReplace
-//
-//  Created by Simon on 14/11/2021.
-//
-
 import Foundation
 
 struct ParsedReplacementString: Equatable {

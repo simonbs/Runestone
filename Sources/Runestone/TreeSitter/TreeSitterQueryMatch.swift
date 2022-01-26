@@ -1,10 +1,3 @@
-//
-//  TreeSitterQueryMatch.swift
-//  
-//
-//  Created by Simon Støvring on 23/02/2021.
-//
-
 import TreeSitter
 
 final class TreeSitterQueryMatch {

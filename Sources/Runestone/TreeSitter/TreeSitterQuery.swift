@@ -1,10 +1,3 @@
-//
-//  TreeSitterQuery.swift
-//  
-//
-//  Created by Simon Støvring on 18/12/2020.
-//
-
 import TreeSitter
 
 enum TreeSitterQueryError: Error {

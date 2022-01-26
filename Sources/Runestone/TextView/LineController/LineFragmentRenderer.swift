@@ -1,10 +1,3 @@
-//
-//  LineFragmentRenderer.swift
-//  
-//
-//  Created by Simon Støvring on 06/02/2021.
-//
-
 import CoreText
 import UIKit
 

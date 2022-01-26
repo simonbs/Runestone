@@ -1,10 +1,3 @@
-//
-//  TreeSitterSyntaxHighlightToken.swift
-//  
-//
-//  Created by Simon Støvring on 22/01/2021.
-//
-
 import UIKit
 
 final class TreeSitterSyntaxHighlightToken {

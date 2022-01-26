@@ -1,10 +1,3 @@
-//
-//  TreeSitterTree.swift
-//  
-//
-//  Created by Simon Støvring on 05/12/2020.
-//
-
 import TreeSitter
 
 final class TreeSitterTree {

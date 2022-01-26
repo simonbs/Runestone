@@ -1,10 +1,3 @@
-//
-//  CharacterPair.swift
-//  
-//
-//  Created by Simon Støvring on 20/12/2020.
-//
-
 import Foundation
 
 /// Character pair to be registered with a text view.

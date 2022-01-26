@@ -1,10 +1,3 @@
-//
-//  TextPreview.swift
-//  
-//
-//  Created by Simon on 31/08/2021.
-//
-
 import Foundation
 
 /// Provides a peek into the underlying attributed string of a text view.

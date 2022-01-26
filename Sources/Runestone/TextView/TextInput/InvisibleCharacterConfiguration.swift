@@ -1,10 +1,3 @@
-//
-//  InvisibleCharacterConfiguration.swift
-//  
-//
-//  Created by Simon Støvring on 31/01/2021.
-//
-
 import UIKit
 
 final class InvisibleCharacterConfiguration {

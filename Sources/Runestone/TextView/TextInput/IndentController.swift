@@ -1,10 +1,3 @@
-//
-//  IndentController.swift
-//  
-//
-//  Created by Simon Støvring on 01/03/2021.
-//
-
 import Foundation
 import UIKit
 

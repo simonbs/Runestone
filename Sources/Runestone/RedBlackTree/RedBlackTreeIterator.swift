@@ -1,10 +1,3 @@
-//
-//  RedBlackTreeIterator.swift
-//  
-//
-//  Created by Simon on 21/03/2021.
-//
-
 import Foundation
 
 final class RedBlackTreeIterator<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNodeValue, NodeData>: IteratorProtocol, LazySequenceProtocol {

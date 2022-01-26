@@ -1,10 +1,3 @@
-//
-//  TreeSitterSyntaxHighlighter.swift
-//  
-//
-//  Created by Simon Støvring on 16/01/2021.
-//
-
 import UIKit
 
 enum TreeSitterSyntaxHighlighterError: LocalizedError {

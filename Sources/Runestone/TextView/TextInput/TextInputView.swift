@@ -1,10 +1,3 @@
-//
-//  TextInputView.swift
-//  
-//
-//  Created by Simon Støvring on 05/01/2021.
-//
-
 // swiftlint:disable file_length
 
 import UIKit

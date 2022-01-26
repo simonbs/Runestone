@@ -1,10 +1,3 @@
-//
-//  TextView.swift
-//  
-//
-//  Created by Simon Støvring on 04/01/2021.
-//
-
 // swiftlint:disable file_length type_body_length
 
 import CoreText

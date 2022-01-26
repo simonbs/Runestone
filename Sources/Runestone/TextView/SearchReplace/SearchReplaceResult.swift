@@ -1,10 +1,3 @@
-//
-//  SearchReplaceResult.swift
-//  
-//
-//  Created by Simon on 11/10/2021.
-//
-
 import Foundation
 
 /// Contains information necessary to replace a range in the text view with a replacement text.

@@ -1,10 +1,3 @@
-//
-//  TextLocation.swift
-//  
-//
-//  Created by Simon on 18/01/2022.
-//
-
 import Foundation
 
 /// A location in the text.

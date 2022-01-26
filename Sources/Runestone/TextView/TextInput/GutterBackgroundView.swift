@@ -1,10 +1,3 @@
-//
-//  GutterBackgroundView.swift
-//  
-//
-//  Created by Simon Støvring on 27/01/2021.
-//
-
 import UIKit
 
 final class GutterBackgroundView: UIView {

@@ -1,10 +1,3 @@
-//
-//  Symbol.swift
-//  
-//
-//  Created by Simon Støvring on 11/12/2020.
-//
-
 import Foundation
 
 enum Symbol {

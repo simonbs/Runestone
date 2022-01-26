@@ -1,10 +1,3 @@
-//
-//  LineController.swift
-//  
-//
-//  Created by Simon Støvring on 02/02/2021.
-//
-
 import CoreGraphics
 import CoreText
 import UIKit

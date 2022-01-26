@@ -1,10 +1,3 @@
-//
-//  TreeSitterInternalLanguageMode.swift
-//  
-//
-//  Created by Simon Støvring on 05/12/2020.
-//
-
 import Foundation
 import TreeSitter
 

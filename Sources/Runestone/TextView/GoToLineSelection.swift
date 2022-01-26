@@ -1,10 +1,3 @@
-//
-//  GoToLineSelection.swift
-//  
-//
-//  Created by Simon on 17/09/2021.
-//
-
 import Foundation
 
 /// Amount of text to select when navigating to a line.

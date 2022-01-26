@@ -1,10 +1,3 @@
-//
-//  CaptureSequence.swift
-//  Example
-//
-//  Created by Simon on 22/01/2022.
-//
-
 import Foundation
 
 enum Scope: String {

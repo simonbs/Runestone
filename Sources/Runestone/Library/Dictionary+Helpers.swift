@@ -1,10 +1,3 @@
-//
-//  Dictionary+Helpers.swift
-//  
-//
-//  Created by Simon on 19/03/2021.
-//
-
 import Foundation
 
 extension Dictionary {

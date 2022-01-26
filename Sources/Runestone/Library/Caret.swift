@@ -1,10 +1,3 @@
-//
-//  Caret.swift
-//  
-//
-//  Created by Simon Støvring on 13/01/2021.
-//
-
 import UIKit
 
 enum Caret {

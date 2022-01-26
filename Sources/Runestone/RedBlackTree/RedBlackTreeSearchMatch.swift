@@ -1,10 +1,3 @@
-//
-//  RedBlackTreeSearchMatch.swift
-//  
-//
-//  Created by Simon Støvring on 10/01/2021.
-//
-
 import Foundation
 
 final class RedBlackTreeSearchMatch<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNodeValue, Data> {

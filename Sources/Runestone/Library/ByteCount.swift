@@ -1,10 +1,3 @@
-//
-//  ByteCount.swift
-//  
-//
-//  Created by Simon Støvring on 22/01/2021.
-//
-
 import Foundation
 
 struct ByteCount: Hashable {

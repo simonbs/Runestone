@@ -1,10 +1,3 @@
-//
-//  LineFragmentView.swift
-//  
-//
-//  Created by Simon Støvring on 18/01/2021.
-//
-
 import UIKit
 
 final class LineFragmentView: UIView, ReusableView {

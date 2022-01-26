@@ -1,10 +1,3 @@
-//
-//  PageGuideView.swift
-//  
-//
-//  Created by Simon on 05/12/2021.
-//
-
 import UIKit
 
 final class PageGuideView: UIView {

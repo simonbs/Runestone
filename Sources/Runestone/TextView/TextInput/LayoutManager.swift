@@ -1,10 +1,3 @@
-//
-//  LayoutManager.swift
-//  
-//
-//  Created by Simon Støvring on 25/01/2021.
-//
-
 // swiftlint:disable file_length
 
 import UIKit

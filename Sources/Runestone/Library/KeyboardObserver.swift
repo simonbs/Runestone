@@ -1,10 +1,3 @@
-//
-//  KeyboardObserver.swift
-//  RunestoneEditor
-//
-//  Created by Simon Støvring on 14/12/2020.
-//
-
 import UIKit
 
 protocol KeyboardObserverDelegate: AnyObject {

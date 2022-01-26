@@ -1,10 +1,3 @@
-//
-//  TreeSitterPredicate.swift
-//  
-//
-//  Created by Simon Støvring on 15/02/2021.
-//
-
 import Foundation
 
 final class TreeSitterPredicate {
