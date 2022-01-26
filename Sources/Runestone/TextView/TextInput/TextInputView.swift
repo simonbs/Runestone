@@ -21,12 +21,15 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidUpdateGutterWidth(_ view: TextInputView)
     func textInputViewDidBeginFloatingCursor(_ view: TextInputView)
     func textInputViewDidEndFloatingCursor(_ view: TextInputView)
+    func textInputViewDidUpdateMarkedRange(_ view: TextInputView)
 }
 
 // swiftlint:disable:next type_body_length
 final class TextInputView: UIView, UITextInput {
     private enum UndoCaretBehavior {
+        /// Select the text that was undone.
         case `default`
+        /// Try to keep the caret at the same location after undoing.
         case preserve
     }
 
@@ -52,7 +55,18 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
-    private(set) var markedTextRange: UITextRange?
+    private(set) var markedTextRange: UITextRange? {
+        set {
+            markedRange = (newValue as? IndexedRange)?.range
+        }
+        get {
+            if let markedRange = markedRange {
+                return IndexedRange(markedRange)
+            } else {
+                return nil
+            }
+        }
+    }
     var markedTextStyle: [NSAttributedString.Key: Any]?
     var beginningOfDocument: UITextPosition {
         return IndexedPosition(index: 0)
@@ -464,6 +478,9 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
+    var viewHierarchyContainsCaret: Bool {
+        return textSelectionView?.subviews.count == 1
+    }
 
     // MARK: - Private
     private var languageMode: InternalLanguageMode = PlainTextInternalLanguageMode() {
@@ -481,7 +498,14 @@ final class TextInputView: UIView, UITextInput {
     private let indentController: IndentController
     private let lineMovementController: LineMovementController
     private let pageGuideController = PageGuideController()
-    private var markedRange: NSRange?
+    private var markedRange: NSRange? {
+        set {
+            layoutManager.markedRange = newValue
+        }
+        get {
+            return layoutManager.markedRange
+        }
+    }
     private var floatingCaretView: FloatingCaretView?
     private var insertionPointColorBeforeFloatingBegan: UIColor = .black
     private var maximumLeadingCharacterPairComponentLength = 0
@@ -1064,9 +1088,23 @@ extension TextInputView {
 
 // MARK: - Marking
 extension TextInputView {
-    func setMarkedText(_ markedText: String?, selectedRange: NSRange) {}
+    func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
+        guard let rangeToReplace = markedRange ?? self.selectedRange else {
+            return
+        }
+        let markedText = markedText ?? ""
+        guard shouldChangeText(in: rangeToReplace, replacementText: markedText) else {
+            return
+        }
+        markedRange = markedText.isEmpty ? nil : NSRange(location: rangeToReplace.location, length: markedText.utf16.count)
+        replaceCharactersAndNotifyDelegate(replacing: rangeToReplace, with: markedText)
+        delegate?.textInputViewDidUpdateMarkedRange(self)
+    }
 
-    func unmarkText() {}
+    func unmarkText() {
+        markedRange = nil
+        delegate?.textInputViewDidUpdateMarkedRange(self)
+    }
 }
 
 // MARK: - Ranges and Positions

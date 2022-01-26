@@ -14,6 +14,19 @@ extension NSRange {
         self.init(location: location, length: length)
     }
 
+    init?(globalRange: NSRange, localTo line: DocumentLineNode) {
+        let lineLocation = line.location
+        let lineLength = line.data.length
+        let globalLineRange = NSRange(location: lineLocation, length: lineLength)
+        if globalRange.overlaps(globalLineRange) {
+            let cappedLocation = max(globalRange.location - lineLocation, 0)
+            let cappedLength = min(globalRange.length, lineLength - cappedLocation)
+            self = NSRange(location: cappedLocation, length: cappedLength)
+        } else {
+            return nil
+        }
+    }
+
     func overlaps(_ range: NSRange) -> Bool {
         let r1 = location ... location + length
         let r2 = range.location ... range.location + range.length

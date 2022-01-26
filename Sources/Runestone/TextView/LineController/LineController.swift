@@ -12,6 +12,7 @@ import UIKit
 typealias LineFragmentTree = RedBlackTree<LineFragmentNodeID, Int, LineFragmentNodeData>
 
 protocol LineControllerDelegate: AnyObject {
+    func lineSyntaxHighlighter(for lineController: LineController) -> LineSyntaxHighlighter?
     func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController)
 }
 
@@ -31,7 +32,12 @@ final class LineController {
             }
         }
     }
-    var syntaxHighlighter: LineSyntaxHighlighter?
+    var theme: Theme = DefaultTheme() {
+        didSet {
+            syntaxHighlighter?.theme = theme
+            applyThemeToAllLineFragmentControllers()
+        }
+    }
     var estimatedLineFragmentHeight: CGFloat = 15 {
         didSet {
             if estimatedLineFragmentHeight != oldValue {
@@ -68,6 +74,13 @@ final class LineController {
             return lineHeight
         }
     }
+    var kern: CGFloat = 0 {
+        didSet {
+            if kern != oldValue {
+                syntaxHighlighter?.kern = kern
+            }
+        }
+    }
     var numberOfLineFragments: Int {
         return typesetter.lineFragments.count
     }
@@ -78,6 +91,7 @@ final class LineController {
 
     private let stringView: StringView
     private let typesetter: LineTypesetter
+    private var cachedSyntaxHighlighter: LineSyntaxHighlighter?
     private let textInputProxy = LineTextInputProxy()
     private var lineFragmentControllers: [LineFragmentID: LineFragmentController] = [:]
     private var isLineFragmentCacheInvalid = true
@@ -87,6 +101,17 @@ final class LineController {
     private var isTypesetterInvalid = true
     private var _lineHeight: CGFloat?
     private var lineFragmentTree: LineFragmentTree
+    private var syntaxHighlighter: LineSyntaxHighlighter? {
+        if let cachedSyntaxHighlighter = cachedSyntaxHighlighter {
+            return cachedSyntaxHighlighter
+        } else if let syntaxHighlighter = delegate?.lineSyntaxHighlighter(for: self) {
+            syntaxHighlighter.theme = theme
+            cachedSyntaxHighlighter = syntaxHighlighter
+            return syntaxHighlighter
+        } else {
+            return nil
+        }
+    }
 
     init(line: DocumentLineNode, stringView: StringView) {
         self.line = line
@@ -118,6 +143,10 @@ final class LineController {
         _lineHeight = nil
     }
 
+    func invalidateSyntaxHighlighter() {
+        cachedSyntaxHighlighter = nil
+    }
+
     func invalidateSyntaxHighlighting() {
         isTypesetterInvalid = true
         isDefaultAttributesInvalid = true
@@ -144,6 +173,17 @@ final class LineController {
     func setNeedsDisplayOnLineFragmentViews() {
         for (_, lineFragmentController) in lineFragmentControllers {
             lineFragmentController.lineFragmentView?.setNeedsDisplay()
+        }
+    }
+
+    func setMarkedTextOnLineFragments(_ range: NSRange?) {
+        for (_, lineFragmentController) in lineFragmentControllers {
+            let lineFragment = lineFragmentController.lineFragment
+            if let range = range, range.overlaps(lineFragment.range) {
+                lineFragmentController.markedRange = range
+            } else {
+                lineFragmentController.markedRange = nil
+            }
         }
     }
 
@@ -321,6 +361,7 @@ private extension LineController {
             let lineFragmentController = LineFragmentController(lineFragment: lineFragment)
             lineFragmentController.delegate = self
             lineFragmentControllers[lineFragment.id] = lineFragmentController
+            applyTheme(to: lineFragmentController)
             return lineFragmentController
         }
     }
@@ -355,6 +396,17 @@ private extension LineController {
                 return nil
             }
         }
+    }
+
+    private func applyThemeToAllLineFragmentControllers() {
+        for (_, lineFragmentController) in lineFragmentControllers {
+            applyTheme(to: lineFragmentController)
+        }
+    }
+
+    private func applyTheme(to lineFragmentController: LineFragmentController) {
+        lineFragmentController.markedTextBackgroundColor = theme.markedTextBackgroundColor
+        lineFragmentController.markedTextBackgroundCornerRadius = theme.markedTextBackgroundCornerRadius
     }
 }
 

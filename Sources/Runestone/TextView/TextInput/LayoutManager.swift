@@ -69,7 +69,7 @@ final class LayoutManager {
         didSet {
             if languageMode !== oldValue {
                 for (_, lineController) in lineControllers {
-                    lineController.syntaxHighlighter = makeLineSyntaxHighlighter()
+                    lineController.invalidateSyntaxHighlighter()
                     lineController.invalidateSyntaxHighlighting()
                 }
             }
@@ -86,8 +86,8 @@ final class LayoutManager {
                 gutterSelectionBackgroundView.backgroundColor = theme.selectedLinesGutterBackgroundColor
                 lineSelectionBackgroundView.backgroundColor = theme.selectedLineBackgroundColor
                 for (_, lineController) in lineControllers {
+                    lineController.theme = theme
                     lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
-                    lineController.syntaxHighlighter?.theme = theme
                     lineController.invalidateSyntaxHighlighting()
                 }
                 updateLineNumberWidth()
@@ -192,6 +192,13 @@ final class LayoutManager {
             if lineHeightMultiplier != oldValue {
                 invalidateContentSize()
                 invalidateLines()
+            }
+        }
+    }
+    var markedRange: NSRange? {
+        didSet {
+            if markedRange != oldValue {
+                updateMarkedTextOnVisibleLines()
             }
         }
     }
@@ -386,7 +393,7 @@ final class LayoutManager {
         for (_, lineController) in lineControllers {
             lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
             lineController.tabWidth = tabWidth
-            lineController.syntaxHighlighter?.kern = kern
+            lineController.kern = kern
             lineController.invalidateSyntaxHighlighting()
         }
     }
@@ -687,7 +694,13 @@ extension LayoutManager {
                 layoutLineFragmentView(for: lineFragmentController, lineYPosition: lineYPosition, lineFragmentFrame: &lineFragmentFrame)
                 maxY = lineFragmentFrame.maxY
             }
-            // The line fragments have now been created and we can set the highlighted ranges on them.
+            // The line fragments have now been created and we can set the marked and highlighted ranges on them.
+            if let markedRange = markedRange {
+                let localMarkedRange = NSRange(globalRange: markedRange, localTo: lineController.line)
+                lineController.setMarkedTextOnLineFragments(localMarkedRange)
+            } else {
+                lineController.setMarkedTextOnLineFragments(nil)
+            }
             let highlightedRanges = highlightedRangesMap[line.id] ?? []
             lineController.setHighlightedRangesOnLineFragments(highlightedRanges)
             // If we found at least one line to be shown and now aren't getting any line fragments within the viewport
@@ -856,17 +869,10 @@ extension LayoutManager {
             lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
             lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
             lineController.tabWidth = tabWidth
-            lineController.syntaxHighlighter = makeLineSyntaxHighlighter()
+            lineController.theme = theme
             lineControllers[line.id] = lineController
             return lineController
         }
-    }
-
-    private func makeLineSyntaxHighlighter() -> LineSyntaxHighlighter {
-        let syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
-        syntaxHighlighter.theme = theme
-        syntaxHighlighter.kern = kern
-        return syntaxHighlighter
     }
 }
 
@@ -885,6 +891,22 @@ extension LayoutManager {
     }
 }
 
+// MARK: - Marked Text
+private extension LayoutManager {
+    private func updateMarkedTextOnVisibleLines() {
+        for lineID in visibleLineIDs {
+            if let lineController = lineControllers[lineID] {
+                if let markedRange = markedRange {
+                    let localMarkedRange = NSRange(globalRange: markedRange, localTo: lineController.line)
+                    lineController.setMarkedTextOnLineFragments(localMarkedRange)
+                } else {
+                    lineController.setMarkedTextOnLineFragments(nil)
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Highlight
 private extension LayoutManager {
     private func recreateHighlightedRangesMap() {
@@ -892,19 +914,17 @@ private extension LayoutManager {
         for highlightedRange in highlightedRanges where highlightedRange.range.length > 0 {
             let lines = lineManager.lines(in: highlightedRange.range)
             for line in lines {
-                let lineLocation = line.location
-                let cappedLocation = max(highlightedRange.range.location - lineLocation, line.location - lineLocation)
-                let cappedLength = min(highlightedRange.range.length, line.data.length - cappedLocation)
-                let cappedRange = NSRange(location: cappedLocation, length: cappedLength)
-                let highlightedRange = HighlightedRange(
-                    id: highlightedRange.id,
-                    range: cappedRange,
-                    color: highlightedRange.color,
-                    cornerRadius: highlightedRange.cornerRadius)
-                if let existingHighlightedRanges = highlightedRangesMap[line.id] {
-                    highlightedRangesMap[line.id] = existingHighlightedRanges + [highlightedRange]
-                } else {
-                    highlightedRangesMap[line.id] = [highlightedRange]
+                if let cappedRange = NSRange(globalRange: highlightedRange.range, localTo: line) {
+                    let highlightedRange = HighlightedRange(
+                        id: highlightedRange.id,
+                        range: cappedRange,
+                        color: highlightedRange.color,
+                        cornerRadius: highlightedRange.cornerRadius)
+                    if let existingHighlightedRanges = highlightedRangesMap[line.id] {
+                        highlightedRangesMap[line.id] = existingHighlightedRanges + [highlightedRange]
+                    } else {
+                        highlightedRangesMap[line.id] = [highlightedRange]
+                    }
                 }
             }
         }
@@ -915,7 +935,6 @@ private extension LayoutManager {
             if let lineController = lineControllers[lineID] {
                 let highlightedRanges = highlightedRangesMap[lineID] ?? []
                 lineController.setHighlightedRangesOnLineFragments(highlightedRanges)
-                lineController.setNeedsDisplayOnLineFragmentViews()
             }
         }
     }
@@ -934,6 +953,12 @@ private extension LayoutManager {
 
 // MARK: - LineControllerDelegate
 extension LayoutManager: LineControllerDelegate {
+    func lineSyntaxHighlighter(for lineController: LineController) -> LineSyntaxHighlighter? {
+        let syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
+        syntaxHighlighter.kern = kern
+        return syntaxHighlighter
+    }
+
     func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController) {
         delegate?.layoutManagerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(self)
     }

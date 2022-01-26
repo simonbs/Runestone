@@ -36,6 +36,36 @@ final class LineFragmentController {
             renderer.invisibleCharacterConfiguration = newValue
         }
     }
+    var markedRange: NSRange? {
+        didSet {
+            if markedRange != oldValue {
+                renderer.markedRange = markedRange
+                lineFragmentView?.setNeedsDisplay()
+            }
+        }
+    }
+    var markedTextBackgroundColor: UIColor {
+        get {
+            return renderer.markedTextBackgroundColor
+        }
+        set {
+            if newValue != renderer.markedTextBackgroundColor {
+                renderer.markedTextBackgroundColor = newValue
+                lineFragmentView?.setNeedsDisplay()
+            }
+        }
+    }
+    var markedTextBackgroundCornerRadius: CGFloat {
+        get {
+            return renderer.markedTextBackgroundCornerRadius
+        }
+        set {
+            if newValue != renderer.markedTextBackgroundCornerRadius {
+                renderer.markedTextBackgroundCornerRadius = newValue
+                lineFragmentView?.setNeedsDisplay()
+            }
+        }
+    }
     var highlightedRanges: [HighlightedRange] {
         get {
             return renderer.highlightedRanges
