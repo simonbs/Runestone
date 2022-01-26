@@ -898,7 +898,11 @@ private extension LayoutManager {
                 let cappedLocation = max(highlightedRange.range.location - lineLocation, line.location - lineLocation)
                 let cappedLength = min(highlightedRange.range.length, line.data.length - cappedLocation)
                 let cappedRange = NSRange(location: cappedLocation, length: cappedLength)
-                let highlightedRange = HighlightedRange(id: highlightedRange.id, range: cappedRange, color: highlightedRange.color)
+                let highlightedRange = HighlightedRange(
+                    id: highlightedRange.id,
+                    range: cappedRange,
+                    color: highlightedRange.color,
+                    cornerRadius: highlightedRange.cornerRadius)
                 if let existingHighlightedRanges = highlightedRangesMap[line.id] {
                     highlightedRangesMap[line.id] = existingHighlightedRanges + [highlightedRange]
                 } else {

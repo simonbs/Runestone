@@ -35,14 +35,14 @@ final class LineFragmentRenderer {
     }
 
     func draw(to context: CGContext) {
-        drawHighlights(to: context)
+        drawHighlightedRanges(to: context)
         drawInvisibleCharacters(to: context)
         drawText(to: context)
     }
 }
 
 private extension LineFragmentRenderer {
-    private func drawHighlights(to context: CGContext) {
+    private func drawHighlightedRanges(to context: CGContext) {
         if !highlightedRanges.isEmpty {
             context.saveGState()
             for highlightedRange in highlightedRanges {
@@ -52,6 +52,18 @@ private extension LineFragmentRenderer {
                 let endX = CTLineGetOffsetForStringIndex(lineFragment.line, endLocation, nil)
                 let rect = CGRect(x: startX, y: 0, width: endX - startX, height: lineFragment.scaledSize.height)
                 context.setFillColor(highlightedRange.color.cgColor)
+                if highlightedRange.cornerRadius > 0 {
+                    let cornerRadius = highlightedRange.cornerRadius
+                    let path = CGPath(roundedRect: rect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
+                    context.addPath(path)
+                    context.fillPath()
+                } else {
+                    context.fill(rect)
+                }
+            }
+            context.restoreGState()
+        }
+    }
                 context.fill(rect)
             }
             context.restoreGState()
