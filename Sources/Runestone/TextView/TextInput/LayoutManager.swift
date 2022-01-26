@@ -618,11 +618,9 @@ extension LayoutManager {
         }
         let totalGutterWidth = additionalInset.left + gutterWidth
         gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: totalGutterWidth, height: selectedRect.height)
-        lineSelectionBackgroundView.frame = CGRect(
-            x: viewport.minX + totalGutterWidth,
-            y: selectedRect.minY,
-            width: scrollViewWidth - gutterWidth,
-            height: selectedRect.height)
+        let lineSelectionBackgroundOrigin = CGPoint(x: viewport.minX + totalGutterWidth, y: selectedRect.minY)
+        let lineSelectionBackgroundSize = CGSize(width: scrollViewWidth - gutterWidth, height: selectedRect.height)
+        lineSelectionBackgroundView.frame = CGRect(origin: lineSelectionBackgroundOrigin, size: lineSelectionBackgroundSize)
     }
 
     private func selectionRectangleForLineFragment(containingCharacterAt location: Int) -> CGRect {
