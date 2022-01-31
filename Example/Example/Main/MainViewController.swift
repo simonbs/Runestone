@@ -28,6 +28,7 @@ final class MainViewController: UIViewController {
         setupMenuButton()
         setupTextView()
         updateTextViewSettings()
+        contentView.textView.inputAccessoryView = KeyboardToolsView(textView: contentView.textView)
     }
 }
 
@@ -37,27 +38,25 @@ private extension MainViewController {
         let state = TextViewState(text: text, theme: TomorrowTheme(), language: .javaScript, languageProvider: self)
         contentView.textView.editorDelegate = self
         contentView.textView.setState(state)
-        contentView.textView.characterPairs = [
-            BasicCharacterPair(leading: "(", trailing: ")"),
-            BasicCharacterPair(leading: "{", trailing: "}"),
-            BasicCharacterPair(leading: "[", trailing: "]"),
-            BasicCharacterPair(leading: "\"", trailing: "\""),
-            BasicCharacterPair(leading: "'", trailing: "'")
-        ]
     }
 
     private func updateTextViewSettings() {
         let settings = UserDefaults.standard
-        contentView.textView.showLineNumbers = settings.showLineNumbers
-        contentView.textView.isLineWrappingEnabled = settings.wrapLines
-        contentView.textView.lineSelectionDisplayType = settings.highlightSelectedLine ? .line : .disabled
+        let theme = settings.theme.makeTheme()
+        contentView.textView.applyTheme(theme)
+        contentView.textView.applySettings(from: settings)
     }
 
     private func setupMenuButton() {
         let settings = UserDefaults.standard
-        let menu = UIMenu(children: [
+        let settingsMenu = UIMenu(options: .displayInline, children: [
             UIAction(title: "Show Line Numbers", state: settings.showLineNumbers ? .on : .off) { [weak self] _ in
                 settings.showLineNumbers.toggle()
+                self?.updateTextViewSettings()
+                self?.setupMenuButton()
+            },
+            UIAction(title: "Show Invisible Characters", state: settings.showInvisibleCharacters ? .on : .off) { [weak self] _ in
+                settings.showInvisibleCharacters.toggle()
                 self?.updateTextViewSettings()
                 self?.setupMenuButton()
             },
@@ -70,9 +69,30 @@ private extension MainViewController {
                 settings.highlightSelectedLine.toggle()
                 self?.updateTextViewSettings()
                 self?.setupMenuButton()
+            },
+            UIAction(title: "Show Page Guide", state: settings.showPageGuide ? .on : .off) { [weak self] _ in
+                settings.showPageGuide.toggle()
+                self?.updateTextViewSettings()
+                self?.setupMenuButton()
             }
         ])
+        let miscMenu = UIMenu(options: .displayInline, children: [
+            UIAction(title: "Theme") { [weak self] _ in
+                self?.presentThemePicker()
+            }
+        ])
+        let menu = UIMenu(children: [settingsMenu, miscMenu])
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), primaryAction: nil, menu: menu)
+    }
+}
+
+private extension MainViewController {
+    private func presentThemePicker() {
+        let theme = UserDefaults.standard.theme
+        let themePickerViewController = ThemePickerViewController(selectedTheme: theme)
+        themePickerViewController.delegate = self
+        let navigationController = UINavigationController(rootViewController: themePickerViewController)
+        present(navigationController, animated: true)
     }
 }
 
@@ -85,5 +105,13 @@ extension MainViewController: TreeSitterLanguageProvider {
 extension MainViewController: TextViewDelegate {
     func textViewDidChange(_ textView: TextView) {
         UserDefaults.standard.text = textView.text
+    }
+}
+
+extension MainViewController: ThemePickerViewControllerDelegate {
+    func themePickerViewController(_ viewController: ThemePickerViewController, didPick theme: ThemeSetting) {
+        UserDefaults.standard.theme = theme
+        view.window?.overrideUserInterfaceStyle = theme.makeTheme().userInterfaceStyle
+        updateTextViewSettings()
     }
 }

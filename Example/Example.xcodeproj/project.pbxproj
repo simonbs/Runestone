@@ -14,6 +14,16 @@
 		AC5F0253279C74A1001D1E43 /* UserDefaults+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */; };
 		AC5F0255279C79FD001D1E43 /* Scope.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC5F0254279C79FD001D1E43 /* Scope.swift */; };
 		AC832D552798C4FA00EC6832 /* TomorrowTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC832D542798C4FA00EC6832 /* TomorrowTheme.swift */; };
+		AC85537327A83AE200F7916D /* TomorrowNightTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537227A83AE200F7916D /* TomorrowNightTheme.swift */; };
+		AC85537527A83C3D00F7916D /* OneDarkTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537427A83C3D00F7916D /* OneDarkTheme.swift */; };
+		AC85537727A83C6600F7916D /* PlainTextTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537627A83C6600F7916D /* PlainTextTheme.swift */; };
+		AC85537927A83D2000F7916D /* ThemeSetting.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537827A83D2000F7916D /* ThemeSetting.swift */; };
+		AC85537B27A83FDF00F7916D /* EditorTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537A27A83FDF00F7916D /* EditorTheme.swift */; };
+		AC85537D27A845BB00F7916D /* CodeSample.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537C27A845BB00F7916D /* CodeSample.swift */; };
+		AC85537F27A849DF00F7916D /* KeyboardToolsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537E27A849DF00F7916D /* KeyboardToolsView.swift */; };
+		AC85538527A84CF600F7916D /* TextView+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85538427A84CF600F7916D /* TextView+Helpers.swift */; };
+		ACB08AD327A8113E00EB6819 /* ThemePickerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACB08AD227A8113E00EB6819 /* ThemePickerViewController.swift */; };
+		ACB08AD527A81ADF00EB6819 /* ThemePickerPreviewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACB08AD427A81ADF00EB6819 /* ThemePickerPreviewCell.swift */; };
 		ACFDF4B127983BAA00059A1B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACFDF4B027983BAA00059A1B /* AppDelegate.swift */; };
 		ACFDF4B327983BAA00059A1B /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACFDF4B227983BAA00059A1B /* SceneDelegate.swift */; };
 		ACFDF4B527983BAA00059A1B /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACFDF4B427983BAA00059A1B /* MainViewController.swift */; };
@@ -28,6 +38,16 @@
 		AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserDefaults+Helpers.swift"; sourceTree = "<group>"; };
 		AC5F0254279C79FD001D1E43 /* Scope.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scope.swift; sourceTree = "<group>"; };
 		AC832D542798C4FA00EC6832 /* TomorrowTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TomorrowTheme.swift; sourceTree = "<group>"; };
+		AC85537227A83AE200F7916D /* TomorrowNightTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TomorrowNightTheme.swift; sourceTree = "<group>"; };
+		AC85537427A83C3D00F7916D /* OneDarkTheme.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OneDarkTheme.swift; sourceTree = "<group>"; };
+		AC85537627A83C6600F7916D /* PlainTextTheme.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlainTextTheme.swift; sourceTree = "<group>"; };
+		AC85537827A83D2000F7916D /* ThemeSetting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSetting.swift; sourceTree = "<group>"; };
+		AC85537A27A83FDF00F7916D /* EditorTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorTheme.swift; sourceTree = "<group>"; };
+		AC85537C27A845BB00F7916D /* CodeSample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeSample.swift; sourceTree = "<group>"; };
+		AC85537E27A849DF00F7916D /* KeyboardToolsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardToolsView.swift; sourceTree = "<group>"; };
+		AC85538427A84CF600F7916D /* TextView+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TextView+Helpers.swift"; sourceTree = "<group>"; };
+		ACB08AD227A8113E00EB6819 /* ThemePickerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePickerViewController.swift; sourceTree = "<group>"; };
+		ACB08AD427A81ADF00EB6819 /* ThemePickerPreviewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePickerPreviewCell.swift; sourceTree = "<group>"; };
 		ACFDF4AD27983BAA00059A1B /* Example.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Example.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		ACFDF4B027983BAA00059A1B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		ACFDF4B227983BAA00059A1B /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -65,7 +85,7 @@
 			children = (
 				ACFDF4C427983C2700059A1B /* MainView.swift */,
 				ACFDF4B427983BAA00059A1B /* MainViewController.swift */,
-				AC832D542798C4FA00EC6832 /* TomorrowTheme.swift */,
+				AC85537E27A849DF00F7916D /* KeyboardToolsView.swift */,
 			);
 			path = Main;
 			sourceTree = "<group>";
@@ -76,8 +96,32 @@
 				AC5F0254279C79FD001D1E43 /* Scope.swift */,
 				AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */,
 				AC480600279EE0180015F712 /* BasicCharacterPair.swift */,
+				AC85537827A83D2000F7916D /* ThemeSetting.swift */,
+				AC85537C27A845BB00F7916D /* CodeSample.swift */,
+				AC85538427A84CF600F7916D /* TextView+Helpers.swift */,
 			);
 			path = Library;
+			sourceTree = "<group>";
+		};
+		AC85537127A83A9F00F7916D /* Themes */ = {
+			isa = PBXGroup;
+			children = (
+				AC85537A27A83FDF00F7916D /* EditorTheme.swift */,
+				AC85537427A83C3D00F7916D /* OneDarkTheme.swift */,
+				AC85537627A83C6600F7916D /* PlainTextTheme.swift */,
+				AC85537227A83AE200F7916D /* TomorrowNightTheme.swift */,
+				AC832D542798C4FA00EC6832 /* TomorrowTheme.swift */,
+			);
+			path = Themes;
+			sourceTree = "<group>";
+		};
+		ACB08ACF27A8112600EB6819 /* ThemePicker */ = {
+			isa = PBXGroup;
+			children = (
+				ACB08AD427A81ADF00EB6819 /* ThemePickerPreviewCell.swift */,
+				ACB08AD227A8113E00EB6819 /* ThemePickerViewController.swift */,
+			);
+			path = ThemePicker;
 			sourceTree = "<group>";
 		};
 		ACFDF4A427983BAA00059A1B = {
@@ -105,8 +149,10 @@
 				ACFDF4B927983BAB00059A1B /* Assets.xcassets */,
 				ACFDF4BB27983BAB00059A1B /* LaunchScreen.storyboard */,
 				AC832D582798C72A00EC6832 /* Application */,
-				AC832D592798C73300EC6832 /* Main */,
+				AC85537127A83A9F00F7916D /* Themes */,
 				AC832D5A2798C73B00EC6832 /* Library */,
+				AC832D592798C73300EC6832 /* Main */,
+				ACB08ACF27A8112600EB6819 /* ThemePicker */,
 			);
 			path = Example;
 			sourceTree = "<group>";
@@ -221,12 +267,22 @@
 			files = (
 				ACFDF4B527983BAA00059A1B /* MainViewController.swift in Sources */,
 				ACFDF4C527983C2700059A1B /* MainView.swift in Sources */,
+				AC85537F27A849DF00F7916D /* KeyboardToolsView.swift in Sources */,
 				ACFDF4B127983BAA00059A1B /* AppDelegate.swift in Sources */,
+				ACB08AD327A8113E00EB6819 /* ThemePickerViewController.swift in Sources */,
+				AC85537727A83C6600F7916D /* PlainTextTheme.swift in Sources */,
 				ACFDF4B327983BAA00059A1B /* SceneDelegate.swift in Sources */,
+				AC85537327A83AE200F7916D /* TomorrowNightTheme.swift in Sources */,
 				AC5F0255279C79FD001D1E43 /* Scope.swift in Sources */,
+				AC85537D27A845BB00F7916D /* CodeSample.swift in Sources */,
+				AC85537927A83D2000F7916D /* ThemeSetting.swift in Sources */,
+				AC85538527A84CF600F7916D /* TextView+Helpers.swift in Sources */,
+				AC85537B27A83FDF00F7916D /* EditorTheme.swift in Sources */,
+				ACB08AD527A81ADF00EB6819 /* ThemePickerPreviewCell.swift in Sources */,
 				AC5F0253279C74A1001D1E43 /* UserDefaults+Helpers.swift in Sources */,
 				AC480601279EE0180015F712 /* BasicCharacterPair.swift in Sources */,
 				AC832D552798C4FA00EC6832 /* TomorrowTheme.swift in Sources */,
+				AC85537527A83C3D00F7916D /* OneDarkTheme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

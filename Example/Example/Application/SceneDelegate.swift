@@ -10,6 +10,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             fatalError("Unexpected type of scene: \(type(of: scene))")
         }
         window = UIWindow(windowScene: windowScene)
+        window?.overrideUserInterfaceStyle = UserDefaults.standard.theme.makeTheme().userInterfaceStyle
         window?.rootViewController = makeRootViewController()
         window?.makeKeyAndVisible()
     }

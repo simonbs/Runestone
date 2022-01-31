@@ -4,8 +4,11 @@ extension UserDefaults {
     private enum Key {
         static let text = "RunestoneExample.text"
         static let showLineNumbers = "RunestoneExample.showLineNumbers"
+        static let showInvisibleCharacters = "RunestoneExample.showInvisibleCharacters"
         static let wrapLines = "RunestoneExample.wrapLines"
         static let highlightSelectedLine = "RunestoneExample.highlightSelectedLine"
+        static let showPageGuide = "RunestoneExample.showPageGuide"
+        static let theme = "RunestoneExample.theme"
     }
 
     var text: String? {
@@ -24,6 +27,14 @@ extension UserDefaults {
             set(newValue, forKey: Key.showLineNumbers)
         }
     }
+    var showInvisibleCharacters: Bool {
+        get {
+            return bool(forKey: Key.showInvisibleCharacters)
+        }
+        set {
+            set(newValue, forKey: Key.showInvisibleCharacters)
+        }
+    }
     var wrapLines: Bool {
         get {
             return bool(forKey: Key.wrapLines)
@@ -40,27 +51,30 @@ extension UserDefaults {
             set(newValue, forKey: Key.highlightSelectedLine)
         }
     }
+    var showPageGuide: Bool {
+        get {
+            return bool(forKey: Key.showPageGuide)
+        }
+        set {
+            set(newValue, forKey: Key.showPageGuide)
+        }
+    }
+    var theme: ThemeSetting {
+        get {
+            if let rawValue = string(forKey: Key.theme), let setting = ThemeSetting(rawValue: rawValue) {
+                return setting
+            } else {
+                return .tomorrow
+            }
+        }
+        set {
+            set(newValue.rawValue, forKey: Key.theme)
+        }
+    }
 
     func registerDefaults() {
-        let text = """
-/**
- * This is a Runestone text view with syntax highlighting
- * for the JavaScript programming language.
- */
-
-let names = ["Steve Jobs", "Tim Cook", "Eddy Cue"]
-let years = [1955, 1960, 1964]
-printNamesAndYears(names, years)
-
-// Print the year each person was born.
-function printNamesAndYears(names, years) {
-  for (let i = 0; i < names.length; i++) {
-    console.log(names[i] + " was born in " + years[i])
-  }
-}
-"""
         register(defaults: [
-            Key.text: text,
+            Key.text: CodeSample.default,
             Key.showLineNumbers: true,
             Key.wrapLines: false,
             Key.highlightSelectedLine: true
