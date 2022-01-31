@@ -103,7 +103,7 @@ private extension ThemePickerViewController {
             fatalError("Expected cell of type \(ThemePickerPreviewCell.self) but got \(type(of: cell))")
         }
         let theme = parameters.theme.makeTheme()
-        let viewModel = ThemePickerPreviewCell.ViewModel(languageProvider: self, theme: theme, text: CodeSample.default)
+        let viewModel = ThemePickerPreviewCell.ViewModel(theme: theme, text: CodeSample.default)
         typedCell.populate(with: viewModel)
         return typedCell
     }
@@ -128,11 +128,5 @@ extension ThemePickerViewController {
         case .preview, .none:
             break
         }
-    }
-}
-
-extension ThemePickerViewController: TreeSitterLanguageProvider {
-    func treeSitterLanguage(named languageName: String) -> TreeSitterLanguage? {
-        return nil
     }
 }

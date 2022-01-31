@@ -51,14 +51,15 @@ final class ThemePickerPreviewCell: UITableViewCell {
 
 extension ThemePickerPreviewCell {
     struct ViewModel {
-        let languageProvider: TreeSitterLanguageProvider
         let theme: EditorTheme
         let text: String
     }
 
     func populate(with viewModel: ViewModel) {
-        let state = TextViewState(text: viewModel.text, theme: viewModel.theme, language: .javaScript, languageProvider: viewModel.languageProvider)
-        textView.setState(state)
+        let languageMode = TreeSitterLanguageMode(language: .javaScript, languageProvider: nil)
+        textView.setLanguageMode(languageMode)
+        textView.theme = viewModel.theme
+        textView.text = viewModel.text
         textView.backgroundColor = viewModel.theme.backgroundColor
         textView.insertionPointColor = viewModel.theme.textColor
         textView.selectionBarColor = viewModel.theme.textColor
