@@ -95,7 +95,7 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
-    @objc var selectionHighlightColor: UIColor = .black {
+    @objc var selectionHighlightColor: UIColor = .black.withAlphaComponent(0.2) {
         didSet {
             if selectionHighlightColor != oldValue {
                 updateCaretColor()
