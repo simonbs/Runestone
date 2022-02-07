@@ -512,6 +512,7 @@ final class TextInputView: UIView, UITextInput {
         }
         return nil
     }
+    private var hasPendingFullLayout = false
 
     // MARK: - Lifecycle
     init(theme: Theme) {
@@ -655,11 +656,9 @@ final class TextInputView: UIView, UITextInput {
             timedUndoManager.removeAllActions()
         }
         if window != nil {
-            inputDelegate?.selectionWillChange(self)
-            layoutManager.invalidateLines()
-            layoutManager.setNeedsLayout()
-            layoutManager.layoutIfNeeded()
-            inputDelegate?.selectionDidChange(self)
+            performFullLayout()
+        } else {
+            hasPendingFullLayout = true
         }
     }
 
@@ -721,6 +720,14 @@ final class TextInputView: UIView, UITextInput {
         layoutManager.layoutLines(untilLocation: location)
     }
 
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if hasPendingFullLayout && window != nil {
+            hasPendingFullLayout = false
+            performFullLayout()
+        }
+    }
+
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         // We end our current undo group when the user touches the view.
         let result = super.hitTest(point, with: event)
@@ -753,6 +760,14 @@ private extension TextInputView {
             let pageGuideSize = CGSize(width: width, height: viewport.height)
             pageGuideController.guideView.frame = CGRect(origin: orrigin, size: pageGuideSize)
         }
+    }
+
+    private func performFullLayout() {
+        inputDelegate?.selectionWillChange(self)
+        layoutManager.invalidateLines()
+        layoutManager.setNeedsLayout()
+        layoutManager.layoutIfNeeded()
+        inputDelegate?.selectionDidChange(self)
     }
 }
 
