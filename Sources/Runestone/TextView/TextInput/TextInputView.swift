@@ -6,6 +6,7 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewWillBeginEditing(_ view: TextInputView)
     func textInputViewDidBeginEditing(_ view: TextInputView)
     func textInputViewDidEndEditing(_ view: TextInputView)
+    func textInputViewDidCancelBeginEditing(_ view: TextInputView)
     func textInputViewDidChange(_ view: TextInputView)
     func textInputViewDidChangeSelection(_ view: TextInputView)
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
@@ -543,6 +544,13 @@ final class TextInputView: UIView, UITextInput {
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if didBecomeFirstResponder {
             delegate?.textInputViewDidBeginEditing(self)
+        } else {
+            // This is called in the case where:
+            // 1. The view is the first responder.
+            // 2. A view is presented modally on top of the editor.
+            // 3. The modally presented view is dismissed.
+            // 4. The responder chain attempts to make the text view first responder again but super.becomeFirstResponder() returns false.
+            delegate?.textInputViewDidCancelBeginEditing(self)
         }
         return didBecomeFirstResponder
     }

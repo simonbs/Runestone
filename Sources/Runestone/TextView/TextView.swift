@@ -937,6 +937,11 @@ extension TextView: TextInputViewDelegate {
         installEditableInteraction()
     }
 
+    func textInputViewDidCancelBeginEditing(_ view: TextInputView) {
+        isEditing = false
+        installNonEditableInteraction()
+    }
+
     func textInputViewDidBeginEditing(_ view: TextInputView) {
         editorDelegate?.textViewDidBeginEditing(self)
     }
