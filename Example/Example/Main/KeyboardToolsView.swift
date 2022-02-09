@@ -16,6 +16,20 @@ final class KeyboardToolsView: UIInputView {
         this.tintColor = .label
         return this
     }()
+    let undoButton: UIButton = {
+        let this = UIButton(type: .system)
+        this.translatesAutoresizingMaskIntoConstraints = false
+        this.setImage(UIImage(systemName: "arrow.uturn.backward"), for: .normal)
+        this.tintColor = .label
+        return this
+    }()
+    let redoButton: UIButton = {
+        let this = UIButton(type: .system)
+        this.translatesAutoresizingMaskIntoConstraints = false
+        this.setImage(UIImage(systemName: "arrow.uturn.forward"), for: .normal)
+        this.tintColor = .label
+        return this
+    }()
     let dismissButton: UIButton = {
         let this = UIButton(type: .system)
         this.translatesAutoresizingMaskIntoConstraints = false
@@ -41,6 +55,8 @@ final class KeyboardToolsView: UIInputView {
     private func setupView() {
         addSubview(shiftLeftButton)
         addSubview(shiftRightButton)
+        addSubview(undoButton)
+        addSubview(redoButton)
         addSubview(dismissButton)
         shiftLeftButton.addTarget(self, action: #selector(shiftLeft), for: .touchUpInside)
         shiftRightButton.addTarget(self, action: #selector(shiftRight), for: .touchUpInside)
@@ -53,9 +69,17 @@ final class KeyboardToolsView: UIInputView {
             shiftLeftButton.topAnchor.constraint(equalTo: topAnchor),
             shiftLeftButton.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            shiftRightButton.leadingAnchor.constraint(equalTo: shiftLeftButton.trailingAnchor, constant: 5),
+            shiftRightButton.leadingAnchor.constraint(equalTo: shiftLeftButton.trailingAnchor, constant: 6),
             shiftRightButton.topAnchor.constraint(equalTo: topAnchor),
             shiftRightButton.bottomAnchor.constraint(equalTo: bottomAnchor),
+
+            undoButton.trailingAnchor.constraint(equalTo: redoButton.leadingAnchor, constant: -10),
+            undoButton.topAnchor.constraint(equalTo: topAnchor),
+            undoButton.bottomAnchor.constraint(equalTo: bottomAnchor),
+
+            redoButton.trailingAnchor.constraint(equalTo: dismissButton.leadingAnchor, constant: -30),
+            redoButton.topAnchor.constraint(equalTo: topAnchor),
+            redoButton.bottomAnchor.constraint(equalTo: bottomAnchor),
 
             dismissButton.trailingAnchor.constraint(equalTo: layoutMarginsGuide.trailingAnchor),
             dismissButton.topAnchor.constraint(equalTo: topAnchor),
