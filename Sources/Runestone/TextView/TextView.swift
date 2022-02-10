@@ -1020,22 +1020,22 @@ extension TextView: TextInputViewDelegate {
 extension TextView: HighlightNavigationControllerDelegate {
     func highlightNavigationController(_ controller: HighlightNavigationController,
                                        shouldNavigateTo highlightNavigationRange: HighlightNavigationRange) {
-            let range = highlightNavigationRange.range
-            _ = textInputView.becomeFirstResponder()
-            // Layout lines up until the location of the range so we can scroll to it immediately after.
-            textInputView.layoutLines(untilLocation: range.upperBound)
-            scroll(to: range.location)
-            textInputView.selectedTextRange = IndexedRange(range)
-            showMenuForText(in: range)
-            switch highlightNavigationRange.loopMode {
-            case .previousGoesToLast:
-                editorDelegate?.textViewDidLoopToLastHighlightedRange(self)
-            case .nextGoesToFirst:
-                editorDelegate?.textViewDidLoopToFirstHighlightedRange(self)
-            case .disabled:
-                break
-            }
+        let range = highlightNavigationRange.range
+        _ = textInputView.becomeFirstResponder()
+        // Layout lines up until the location of the range so we can scroll to it immediately after.
+        textInputView.layoutLines(untilLocation: range.upperBound)
+        scroll(to: range.location)
+        textInputView.selectedTextRange = IndexedRange(range)
+        showMenuForText(in: range)
+        switch highlightNavigationRange.loopMode {
+        case .previousGoesToLast:
+            editorDelegate?.textViewDidLoopToLastHighlightedRange(self)
+        case .nextGoesToFirst:
+            editorDelegate?.textViewDidLoopToFirstHighlightedRange(self)
+        case .disabled:
+            break
         }
+    }
 }
 
 // MARK: - SearchControllerDelegate
