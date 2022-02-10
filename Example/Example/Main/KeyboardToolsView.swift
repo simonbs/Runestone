@@ -2,35 +2,35 @@ import Runestone
 import UIKit
 
 final class KeyboardToolsView: UIInputView {
-    let shiftLeftButton: UIButton = {
+    private let shiftLeftButton: UIButton = {
         let this = UIButton(type: .system)
         this.translatesAutoresizingMaskIntoConstraints = false
         this.setImage(UIImage(systemName: "arrow.left.to.line"), for: .normal)
         this.tintColor = .label
         return this
     }()
-    let shiftRightButton: UIButton = {
+    private let shiftRightButton: UIButton = {
         let this = UIButton(type: .system)
         this.translatesAutoresizingMaskIntoConstraints = false
         this.setImage(UIImage(systemName: "arrow.right.to.line"), for: .normal)
         this.tintColor = .label
         return this
     }()
-    let undoButton: UIButton = {
+    private let undoButton: UIButton = {
         let this = UIButton(type: .system)
         this.translatesAutoresizingMaskIntoConstraints = false
         this.setImage(UIImage(systemName: "arrow.uturn.backward"), for: .normal)
         this.tintColor = .label
         return this
     }()
-    let redoButton: UIButton = {
+    private let redoButton: UIButton = {
         let this = UIButton(type: .system)
         this.translatesAutoresizingMaskIntoConstraints = false
         this.setImage(UIImage(systemName: "arrow.uturn.forward"), for: .normal)
         this.tintColor = .label
         return this
     }()
-    let dismissButton: UIButton = {
+    private let dismissButton: UIButton = {
         let this = UIButton(type: .system)
         this.translatesAutoresizingMaskIntoConstraints = false
         this.setImage(UIImage(systemName: "keyboard.chevron.compact.down"), for: .normal)
@@ -46,10 +46,17 @@ final class KeyboardToolsView: UIInputView {
         super.init(frame: frame, inputViewStyle: .keyboard)
         setupView()
         setupLayout()
+        NotificationCenter.default.addObserver(self, selector: #selector(updateUndoRedoButtonStates), name: .NSUndoManagerCheckpoint, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(updateUndoRedoButtonStates), name: .NSUndoManagerDidUndoChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(updateUndoRedoButtonStates), name: .NSUndoManagerDidRedoChange, object: nil)
     }
 
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     private func setupView() {
@@ -60,7 +67,10 @@ final class KeyboardToolsView: UIInputView {
         addSubview(dismissButton)
         shiftLeftButton.addTarget(self, action: #selector(shiftLeft), for: .touchUpInside)
         shiftRightButton.addTarget(self, action: #selector(shiftRight), for: .touchUpInside)
+        undoButton.addTarget(self, action: #selector(undo), for: .touchUpInside)
+        redoButton.addTarget(self, action: #selector(redo), for: .touchUpInside)
         dismissButton.addTarget(self, action: #selector(dismissKeyboard), for: .touchUpInside)
+        updateUndoRedoButtonStates()
     }
 
     private func setupLayout() {
@@ -97,7 +107,21 @@ private extension KeyboardToolsView {
         textView?.shiftRight()
     }
 
+    @objc private func undo() {
+        textView?.undoManager?.undo()
+    }
+
+    @objc private func redo() {
+        textView?.undoManager?.redo()
+    }
+
     @objc private func dismissKeyboard() {
         textView?.resignFirstResponder()
+    }
+
+    @objc private func updateUndoRedoButtonStates() {
+        let undoManager = textView?.undoManager
+        undoButton.isEnabled = undoManager?.canUndo ?? false
+        redoButton.isEnabled = undoManager?.canRedo ?? false
     }
 }
