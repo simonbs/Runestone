@@ -27,11 +27,10 @@ final class MainViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        contentView.textView.inputAccessoryView = toolsView
         setupMenuButton()
         setupTextView()
-        setupKeyboardToolsView()
         updateTextViewSettings()
-        updateUndoRedoButtonStates()
     }
 }
 
@@ -41,12 +40,6 @@ private extension MainViewController {
         let state = TextViewState(text: text, theme: TomorrowTheme(), language: .javaScript, languageProvider: self)
         contentView.textView.editorDelegate = self
         contentView.textView.setState(state)
-    }
-
-    private func setupKeyboardToolsView() {
-        toolsView.undoButton.addTarget(self, action: #selector(undo), for: .touchUpInside)
-        toolsView.redoButton.addTarget(self, action: #selector(redo), for: .touchUpInside)
-        contentView.textView.inputAccessoryView = toolsView
     }
 
     private func updateTextViewSettings() {
@@ -93,24 +86,6 @@ private extension MainViewController {
         let menu = UIMenu(children: [settingsMenu, miscMenu])
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), primaryAction: nil, menu: menu)
     }
-
-    private func updateUndoRedoButtonStates() {
-        let undoManager = contentView.textView.undoManager
-        toolsView.undoButton.isEnabled = undoManager?.canUndo ?? false
-        toolsView.redoButton.isEnabled = undoManager?.canRedo ?? false
-    }
-
-    @objc private func undo() {
-        let undoManager = contentView.textView.undoManager
-        undoManager?.undo()
-        updateUndoRedoButtonStates()
-    }
-
-    @objc private func redo() {
-        let undoManager = contentView.textView.undoManager
-        undoManager?.redo()
-        updateUndoRedoButtonStates()
-    }
 }
 
 private extension MainViewController {
@@ -132,7 +107,6 @@ extension MainViewController: TreeSitterLanguageProvider {
 extension MainViewController: TextViewDelegate {
     func textViewDidChange(_ textView: TextView) {
         UserDefaults.standard.text = textView.text
-        updateUndoRedoButtonStates()
     }
 }
 
