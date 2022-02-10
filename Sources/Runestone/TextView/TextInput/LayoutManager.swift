@@ -463,25 +463,11 @@ extension LayoutManager {
         let lineController = lineController(for: line)
         let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
         let lineContentsRect = lineController.firstRect(for: localRange)
-        let globalLineContentsYPosition = line.yPosition + lineContentsRect.minY
         let visibleWidth = viewport.width - gutterWidth
-        let width: CGFloat
-        let rangeContainsLineBreak = range.location + range.length > line.location + line.data.length
-        if rangeContainsLineBreak {
-            // The range contains the line break so we extend the rect past the contents of the line.
-            // When the contents of the line can otherwise be contained within the visible width,
-            // i.e. without scrolling the text view, we limit the width of the rect to the visible width.
-            // This makes the scrolling performed by UIKit a bit better when selecting text using UITextInteraction.
-            if lineContentsRect.minX <= visibleWidth && lineContentsRect.maxX <= visibleWidth {
-                width = visibleWidth - lineContentsRect.minX
-            } else {
-                width = contentWidth - lineContentsRect.minX
-            }
-        } else {
-            width = lineContentsRect.width
-        }
-        let cappedWidth = min(width, visibleWidth)
-        return CGRect(x: lineContentsRect.minX, y: globalLineContentsYPosition, width: cappedWidth, height: lineContentsRect.height)
+        let xPosition = lineContentsRect.minX + textContainerInset.left + gutterWidth
+        let yPosition = line.yPosition + lineContentsRect.minY + textContainerInset.top
+        let width = min(lineContentsRect.width, visibleWidth)
+        return CGRect(x: xPosition, y: yPosition, width: width, height: lineContentsRect.height)
     }
 
     func selectionRects(in range: NSRange) -> [TextSelectionRect] {
