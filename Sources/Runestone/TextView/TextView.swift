@@ -880,13 +880,13 @@ private extension TextView {
     }
 
     private func installListenersForGestureRecognizers(attachedTo textInteraction: UITextInteraction) {
-        for gestureRecognizer in editableTextInteraction.gesturesForFailureRequirements where gestureRecognizer is UILongPressGestureRecognizer {
+        for gestureRecognizer in textInteraction.gesturesForFailureRequirements where gestureRecognizer is UILongPressGestureRecognizer {
             gestureRecognizer.addTarget(self, action: #selector(handleLoupeGesture(from:)))
         }
     }
 
     private func uninstallListenersForGestureRecognizers(attachedTo textInteraction: UITextInteraction) {
-        for gestureRecognizer in editableTextInteraction.gesturesForFailureRequirements where gestureRecognizer is UILongPressGestureRecognizer {
+        for gestureRecognizer in textInteraction.gesturesForFailureRequirements where gestureRecognizer is UILongPressGestureRecognizer {
             gestureRecognizer.removeTarget(self, action: #selector(handleLoupeGesture(from:)))
         }
     }
