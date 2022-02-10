@@ -550,8 +550,8 @@ public final class TextView: UIScrollView {
     ///   - sender: The object calling this method. For the editing menu commands, this is the shared UIApplication object. Depending on the context, you can query the sender for information to help you determine whether a command should be enabled.
     /// - Returns: `true if the command identified by action should be enabled or `false` if it should be disabled. Returning `true` means that your class can handle the command in the current context.
     override public func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
-        if let highlightedRangeInSelection = highlightedRangeInSelection {
-            if action == #selector(replaceTextInSelectedHighlightedRange) {
+        if action == #selector(replaceTextInSelectedHighlightedRange) {
+            if let highlightedRangeInSelection = highlightedRangeInSelection {
                 return editorDelegate?.textView(self, canReplaceTextIn: highlightedRangeInSelection) ?? false
             } else {
                 return false
