@@ -612,14 +612,20 @@ final class TextInputView: UIView, UITextInput {
     }
 
     override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
-        if action == #selector(copy(_:)) || action == #selector(cut(_:)) {
+        if action == #selector(copy(_:)) {
             if let selectedTextRange = selectedTextRange {
                 return !selectedTextRange.isEmpty
             } else {
                 return false
             }
+        } else if action == #selector(cut(_:)) {
+            if let selectedTextRange = selectedTextRange {
+                return isEditing && !selectedTextRange.isEmpty
+            } else {
+                return false
+            }
         } else if action == #selector(paste(_:)) {
-            return UIPasteboard.general.hasStrings
+            return isEditing && UIPasteboard.general.hasStrings
         } else if action == #selector(selectAll(_:)) {
             return true
         } else if action == #selector(replace(_:)) {
