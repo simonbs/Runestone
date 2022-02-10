@@ -20,13 +20,6 @@ protocol TextInputViewDelegate: AnyObject {
 
 // swiftlint:disable:next type_body_length
 final class TextInputView: UIView, UITextInput {
-    private enum UndoCaretBehavior {
-        /// Select the text that was undone.
-        case `default`
-        /// Try to keep the caret at the same location after undoing.
-        case preserve
-    }
-
     // MARK: - UITextInput
     var selectedTextRange: UITextRange? {
         get {
@@ -657,7 +650,7 @@ final class TextInputView: UIView, UITextInput {
                 let newRange = NSRange(location: 0, length: newText.length)
                 timedUndoManager.endUndoGrouping()
                 timedUndoManager.beginUndoGrouping()
-                addUndoOperation(replacing: newRange, withText: oldText as String, caretBehavior: .preserve)
+                addUndoOperation(replacing: newRange, withText: oldText as String)
                 timedUndoManager.endUndoGrouping()
             }
         } else {
@@ -956,9 +949,9 @@ extension TextInputView {
         return resultingRange
     }
 
-    private func replaceCharactersAndNotifyDelegate(replacing range: NSRange, with text: String, undoCaretBehavior: UndoCaretBehavior = .default) {
+    private func replaceCharactersAndNotifyDelegate(replacing range: NSRange, with text: String) {
         inputDelegate?.selectionWillChange(self)
-        let didAddOrRemoveLines = replaceCharacters(in: range, with: text, undoCaretBehavior: undoCaretBehavior)
+        let didAddOrRemoveLines = replaceCharacters(in: range, with: text)
         layoutIfNeeded()
         delegate?.textInputViewDidChange(self)
         if didAddOrRemoveLines {
@@ -968,11 +961,11 @@ extension TextInputView {
         delegate?.textInputViewDidChangeSelection(self)
     }
 
-    private func replaceCharacters(in range: NSRange, with text: String, undoCaretBehavior: UndoCaretBehavior = .default) -> Bool {
+    private func replaceCharacters(in range: NSRange, with text: String) -> Bool {
         let nsText = text as NSString
         let currentText = self.text(in: range) ?? ""
         let newRange = NSRange(location: range.location, length: nsText.length)
-        addUndoOperation(replacing: newRange, withText: currentText, caretBehavior: undoCaretBehavior)
+        addUndoOperation(replacing: newRange, withText: currentText)
         selectedRange = NSRange(location: newRange.upperBound, length: 0)
         return justReplaceCharacters(in: range, with: nsText)
     }
@@ -1023,27 +1016,14 @@ extension TextInputView {
         return delegate?.textInputView(self, shouldChangeTextIn: range, replacementText: text) ?? true
     }
 
-    private func addUndoOperation(replacing range: NSRange, withText text: String, caretBehavior: UndoCaretBehavior = .default) {
+    private func addUndoOperation(replacing range: NSRange, withText text: String) {
         let oldSelectedRange = selectedRange
         timedUndoManager.beginUndoGrouping()
         timedUndoManager.setActionName(L10n.Undo.ActionName.typing)
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
             self.inputDelegate?.selectionWillChange(self)
-            let indexedRange = IndexedRange(range)
-            let didAddOrRemoveLines = textInputView.replaceCharacters(in: indexedRange.range, with: text, undoCaretBehavior: caretBehavior)
-            switch caretBehavior {
-            case .default:
-                let textLength = text.utf16.count
-                if range.length > 0 && textLength > 0 {
-                    self.selectedRange = NSRange(location: range.location, length: textLength)
-                }
-            case .preserve:
-                if let oldSelectedRange = oldSelectedRange, oldSelectedRange.location >= self.stringView.string.length {
-                    self.selectedRange = NSRange(location: self.stringView.string.length, length: 0)
-                } else {
-                    self.selectedRange = oldSelectedRange
-                }
-            }
+            let didAddOrRemoveLines = textInputView.replaceCharacters(in: range, with: text)
+            self.selectedRange = oldSelectedRange
             self.layoutIfNeeded()
             self.inputDelegate?.selectionDidChange(self)
             self.delegate?.textInputViewDidChange(self)
