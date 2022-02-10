@@ -448,6 +448,7 @@ public final class TextView: UIScrollView {
     private let tapGestureRecognizer = QuickTapGestureRecognizer()
     private var _inputAccessoryView: UIView?
     private let _inputAssistantItem = UITextInputAssistantItem()
+    private var willBeginEditingFromNonEditableTextInteraction = false
     private var shouldBeginEditing: Bool {
         if let editorDelegate = editorDelegate {
             return editorDelegate.textViewShouldBeginEditing(self)
@@ -485,6 +486,8 @@ public final class TextView: UIScrollView {
         textInputView.scrollViewSafeAreaInsets = safeAreaInsets
         editableTextInteraction.textInput = textInputView
         nonEditableTextInteraction.textInput = textInputView
+        editableTextInteraction.delegate = self
+        nonEditableTextInteraction.delegate = self
         addSubview(textInputView)
         tapGestureRecognizer.delegate = self
         tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
@@ -521,6 +524,8 @@ public final class TextView: UIScrollView {
     @discardableResult
     override public func becomeFirstResponder() -> Bool {
         if !isEditing && shouldBeginEditing {
+            // Reset willBeginEditingFromNonEditableTextInteraction to support calling becomeFirstResponder() programmatically.
+            willBeginEditingFromNonEditableTextInteraction = false
             _ = textInputView.resignFirstResponder()
             _ = textInputView.becomeFirstResponder()
             return true
@@ -750,6 +755,7 @@ public final class TextView: UIScrollView {
 private extension TextView {
     @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
         if tapGestureRecognizer.state == .ended {
+            willBeginEditingFromNonEditableTextInteraction = false
             let point = gestureRecognizer.location(in: textInputView)
             let oldSelectedTextRange = textInputView.selectedTextRange
             textInputView.moveCaret(to: point)
@@ -925,7 +931,7 @@ private extension TextView {
 // MARK: - TextInputViewDelegate
 extension TextView: TextInputViewDelegate {
     func textInputViewWillBeginEditing(_ view: TextInputView) {
-        isEditing = true
+        isEditing = !willBeginEditingFromNonEditableTextInteraction
         if textInputView.selectedTextRange == nil {
             textInputView.selectedTextRange = IndexedRange(location: 0, length: 0)
         }
@@ -934,16 +940,20 @@ extension TextView: TextInputViewDelegate {
             textInputView.layoutIfNeeded()
         }
         // The editable interaction must be installed early in the -becomeFirstResponder() call
-        installEditableInteraction()
+        if !willBeginEditingFromNonEditableTextInteraction {
+            installEditableInteraction()
+        }
+    }
+
+    func textInputViewDidBeginEditing(_ view: TextInputView) {
+        if !willBeginEditingFromNonEditableTextInteraction {
+            editorDelegate?.textViewDidBeginEditing(self)
+        }
     }
 
     func textInputViewDidCancelBeginEditing(_ view: TextInputView) {
         isEditing = false
         installNonEditableInteraction()
-    }
-
-    func textInputViewDidBeginEditing(_ view: TextInputView) {
-        editorDelegate?.textViewDidBeginEditing(self)
     }
 
     func textInputViewDidEndEditing(_ view: TextInputView) {
@@ -1063,6 +1073,17 @@ extension TextView: KeyboardObserverDelegate {
                           animation: KeyboardObserver.Animation?) {
         if isAutomaticScrollEnabled, !isAdjustingCursor, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scroll(to: newRange.location)
+        }
+    }
+}
+
+extension TextView: UITextInteractionDelegate {
+    public func interactionWillBegin(_ interaction: UITextInteraction) {
+        if interaction.textInteractionMode == .nonEditable {
+            // When long-pressing our instance of UITextInput, the UITextInteraction will make the text input first responder.
+            // In this case the user wants to select text in the text view but not start editing, so we set a flag that tells us
+            // that we should not install editable text interaction in this case.
+            willBeginEditingFromNonEditableTextInteraction = true
         }
     }
 }
