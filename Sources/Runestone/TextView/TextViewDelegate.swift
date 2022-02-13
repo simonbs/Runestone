@@ -14,8 +14,6 @@ public protocol TextViewDelegate: AnyObject {
     func textViewDidUpdateGutterWidth(_ textView: TextView)
     func textViewDidBeginFloatingCursor(_ view: TextView)
     func textViewDidEndFloatingCursor(_ view: TextView)
-    func textViewDidBeginDraggingCursor(_ view: TextView)
-    func textViewDidEndDraggingCursor(_ view: TextView)
     func textViewDidLoopToLastHighlightedRange(_ view: TextView)
     func textViewDidLoopToFirstHighlightedRange(_ view: TextView)
     func textView(_ view: TextView, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool
@@ -56,10 +54,6 @@ public extension TextViewDelegate {
     func textViewDidBeginFloatingCursor(_ view: TextView) {}
 
     func textViewDidEndFloatingCursor(_ view: TextView) {}
-
-    func textViewDidBeginDraggingCursor(_ view: TextView) {}
-
-    func textViewDidEndDraggingCursor(_ view: TextView) {}
 
     func textViewDidLoopToLastHighlightedRange(_ view: TextView) {}
 
