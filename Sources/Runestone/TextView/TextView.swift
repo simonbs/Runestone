@@ -473,6 +473,12 @@ public final class TextView: UIScrollView {
             return range.lowerBound == selectedRange.lowerBound && range.upperBound == selectedRange.upperBound
         }
     }
+    // Store a reference to instances of the private type UITextRangeAdjustmentGestureRecognizer in order to track adjustments
+    // to the selected text range and scroll the text view when the handles approach the bottom.
+    // The approach is based on the one described in Steve Shephard's blog post "Adventures with UITextInteraction".
+    // https://steveshepard.com/blog/adventures-with-uitextinteraction/
+    private var textRangeAdjustmentGestureRecognizers: Set<UIGestureRecognizer> = []
+    private var previousSelectedRangeDuringGestureHandling: NSRange?
 
     /// Create a new text view.
     /// - Parameter frame: The frame rectangle of the text view.
@@ -767,6 +773,22 @@ private extension TextView {
         }
     }
 
+    @objc private func handleTextRangeAdjustmentPan(_ gestureRecognizer: UIPanGestureRecognizer) {
+        // This function scroll the text view when the selected range is adjusted.
+        if gestureRecognizer.state == .began {
+            previousSelectedRangeDuringGestureHandling = selectedRange
+        } else if gestureRecognizer.state == .changed, let previousSelectedRange = previousSelectedRangeDuringGestureHandling {
+            if selectedRange.lowerBound != previousSelectedRange.lowerBound {
+                // User is adjusting the lower bound (location) of the selected range.
+                scroll(to: selectedRange.lowerBound)
+            } else if selectedRange.upperBound != previousSelectedRange.upperBound {
+                // User is adjusting the upper bound (length) of the selected range.
+                scroll(to: selectedRange.upperBound)
+            }
+            previousSelectedRangeDuringGestureHandling = selectedRange
+        }
+    }
+
     private func insertLeadingComponent(of characterPair: CharacterPair, in range: NSRange) -> Bool {
         let shouldInsertCharacterPair = editorDelegate?.textView(self, shouldInsert: characterPair, in: range) ?? true
         guard shouldInsertCharacterPair else {
@@ -1038,6 +1060,17 @@ extension TextView: UIGestureRecognizerDelegate {
         } else {
             return true
         }
+    }
+
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                                  shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        if let klass = NSClassFromString("UITextRangeAdjustmentGestureRecognizer") {
+            if !textRangeAdjustmentGestureRecognizers.contains(otherGestureRecognizer) && otherGestureRecognizer.isKind(of: klass) {
+                otherGestureRecognizer.addTarget(self, action: #selector(handleTextRangeAdjustmentPan(_:)))
+                textRangeAdjustmentGestureRecognizers.insert(otherGestureRecognizer)
+            }
+        }
+        return gestureRecognizer !== panGestureRecognizer
     }
 }
 
