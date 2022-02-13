@@ -465,7 +465,6 @@ public final class TextView: UIScrollView {
     }
     private var hasPendingContentSizeUpdate = false
     private var isInputAccessoryViewEnabled = false
-    private var isAdjustingCursor = false
     private let keyboardObserver = KeyboardObserver()
     private let highlightNavigationController = HighlightNavigationController()
     private var highlightedRangeInSelection: HighlightedRange? {
@@ -867,10 +866,8 @@ private extension TextView {
     private func installEditableInteraction() {
         if editableTextInteraction.view == nil {
             isInputAccessoryViewEnabled = true
-            uninstallListenersForGestureRecognizers(attachedTo: nonEditableTextInteraction)
             removeInteraction(nonEditableTextInteraction)
             addInteraction(editableTextInteraction)
-            installListenersForGestureRecognizers(attachedTo: editableTextInteraction)
         }
     }
 
@@ -882,28 +879,6 @@ private extension TextView {
             for gestureRecognizer in nonEditableTextInteraction.gesturesForFailureRequirements {
                 gestureRecognizer.require(toFail: tapGestureRecognizer)
             }
-        }
-    }
-
-    private func installListenersForGestureRecognizers(attachedTo textInteraction: UITextInteraction) {
-        for gestureRecognizer in textInteraction.gesturesForFailureRequirements where gestureRecognizer is UILongPressGestureRecognizer {
-            gestureRecognizer.addTarget(self, action: #selector(handleLoupeGesture(from:)))
-        }
-    }
-
-    private func uninstallListenersForGestureRecognizers(attachedTo textInteraction: UITextInteraction) {
-        for gestureRecognizer in textInteraction.gesturesForFailureRequirements where gestureRecognizer is UILongPressGestureRecognizer {
-            gestureRecognizer.removeTarget(self, action: #selector(handleLoupeGesture(from:)))
-        }
-    }
-
-    @objc private func handleLoupeGesture(from gestureRecognizer: UILongPressGestureRecognizer) {
-        if gestureRecognizer.state == .began {
-            isAdjustingCursor = true
-            editorDelegate?.textViewDidBeginDraggingCursor(self)
-        } else if gestureRecognizer.state == .ended {
-            isAdjustingCursor = false
-            editorDelegate?.textViewDidEndDraggingCursor(self)
         }
     }
 
@@ -963,7 +938,7 @@ extension TextView: TextInputViewDelegate {
     }
 
     func textInputViewDidChange(_ view: TextInputView) {
-        if isAutomaticScrollEnabled, !isAdjustingCursor, let newRange = textInputView.selectedRange, newRange.length == 0 {
+        if isAutomaticScrollEnabled, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scroll(to: newRange.location)
         }
         editorDelegate?.textViewDidChange(self)
@@ -972,7 +947,7 @@ extension TextView: TextInputViewDelegate {
     func textInputViewDidChangeSelection(_ view: TextInputView) {
         UIMenuController.shared.hideMenu(from: self)
         highlightNavigationController.selectedRange = view.selectedRange
-        if isAutomaticScrollEnabled, !isAdjustingCursor, let newRange = textInputView.selectedRange, newRange.length == 0 {
+        if isAutomaticScrollEnabled, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scroll(to: newRange.location)
         }
         editorDelegate?.textViewDidChangeSelection(self)
@@ -1071,7 +1046,7 @@ extension TextView: KeyboardObserverDelegate {
     func keyboardObserver(_ keyboardObserver: KeyboardObserver,
                           keyboardWillShowWithHeight keyboardHeight: CGFloat,
                           animation: KeyboardObserver.Animation?) {
-        if isAutomaticScrollEnabled, !isAdjustingCursor, let newRange = textInputView.selectedRange, newRange.length == 0 {
+        if isAutomaticScrollEnabled, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scroll(to: newRange.location)
         }
     }
