@@ -754,7 +754,7 @@ public final class TextView: UIScrollView {
 
 private extension TextView {
     @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
-        if tapGestureRecognizer.state == .ended {
+        if gestureRecognizer.state == .ended {
             willBeginEditingFromNonEditableTextInteraction = false
             let point = gestureRecognizer.location(in: textInputView)
             let oldSelectedTextRange = textInputView.selectedTextRange
