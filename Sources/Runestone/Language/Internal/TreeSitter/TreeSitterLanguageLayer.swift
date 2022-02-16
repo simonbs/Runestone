@@ -104,11 +104,10 @@ extension TreeSitterLanguageLayer {
             let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
             injectionsQueryCursor.execute()
             let captures = injectionsQueryCursor.allCaptures()
-            let groups = Dictionary(compactGrouping: captures) { $0.injectionLanguage }
-            for (languageName, captures) in groups {
-                if let childLanguageLayer = childLanguageLayer(named: languageName) {
-                    let ranges = captures.map { $0.node.textRange }
-                    childLanguageLayer.parse(ranges, from: text)
+            let injectedLanguageGroups = injectedLanguageGroups(from: captures)
+            for injectedLanguageGroup in injectedLanguageGroups {
+                if let childLanguageLayer = childLanguageLayer(named: injectedLanguageGroup.languageName) {
+                    childLanguageLayer.parse(injectedLanguageGroup.textRanges, from: text)
                 }
             }
         }
@@ -184,7 +183,8 @@ private extension TreeSitterLanguageLayer {
         let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
         injectionsQueryCursor.execute()
         let captures = injectionsQueryCursor.allCaptures()
-        let capturedLanguageNames = Set(captures.compactMap { $0.injectionLanguage })
+        let injectedLanguageGroups = injectedLanguageGroups(from: captures)
+        let capturedLanguageNames = injectedLanguageGroups.map(\.languageName)
         let currentLanguageNames = Array(childLanguageLayers.keys)
         for languageName in currentLanguageNames {
             if !capturedLanguageNames.contains(languageName) {
@@ -197,15 +197,28 @@ private extension TreeSitterLanguageLayer {
         }
         // Update layers for current captures
         var changedRows: Set<Int> = []
-        let groups = Dictionary(compactGrouping: captures) { $0.injectionLanguage }
-        for (languageName, captures) in groups {
-            if let childLanguageLayer = childLanguageLayer(named: languageName) {
-                let ranges = captures.map { $0.node.textRange }
-                let applyEditResult = childLanguageLayer.apply(edit, parsing: ranges)
+        for injectedLanguageGroup in injectedLanguageGroups {
+            if let childLanguageLayer = childLanguageLayer(named: injectedLanguageGroup.languageName) {
+                let applyEditResult = childLanguageLayer.apply(edit, parsing: injectedLanguageGroup.textRanges)
                 changedRows.formUnion(applyEditResult.changedRows)
             }
         }
         return changedRows
+    }
+
+    private func injectedLanguageGroups(from captures: [TreeSitterCapture]) -> [TreeSitterInjectedLanguageGroup] {
+        let mapper = TreeSitterInjectedLanguageGroupMapper(captures: captures)
+        mapper.delegate = self
+        return mapper.makeGroups()
+    }
+}
+
+// MARK: - TreeSitterInjectedLanguageGroupMapperDelegate
+extension TreeSitterLanguageLayer: TreeSitterInjectedLanguageGroupMapperDelegate {
+    func treeSitterInjectedLanguageGroupMapper(_ mapper: TreeSitterInjectedLanguageGroupMapper, textIn textRange: TreeSitterTextRange) -> String? {
+        let byteRange = ByteRange(from: textRange.startByte, to: textRange.endByte)
+        let range = NSRange(byteRange)
+        return stringView.substring(in: range)
     }
 }
 
@@ -285,11 +298,5 @@ private extension TreeSitterNode {
         let containsStart = point.row > startPoint.row || (point.row == startPoint.row && point.column >= startPoint.column)
         let containsEnd = point.row < endPoint.row || (point.row == endPoint.row && point.column <= endPoint.column)
         return containsStart && containsEnd
-    }
-}
-
-private extension TreeSitterCapture {
-    var injectionLanguage: String? {
-        return properties["injection.language"]
     }
 }
