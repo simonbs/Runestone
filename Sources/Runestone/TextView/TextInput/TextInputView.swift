@@ -845,7 +845,8 @@ extension TextInputView {
 // MARK: - Editing
 extension TextInputView {
     func insertText(_ text: String) {
-        if let selectedRange = selectedRange, shouldChangeText(in: selectedRange, replacementText: text) {
+        let text = makeTextSafeForInsertion(text)
+        if let selectedRange = markedRange ?? selectedRange, shouldChangeText(in: selectedRange, replacementText: text) {
             if let lineBreak = IndentController.LineBreak(rawValue: text) {
                 inputDelegate?.selectionWillChange(self)
                 indentController.insertLineBreak(in: selectedRange, using: lineBreak)
@@ -929,6 +930,21 @@ extension TextInputView {
 
     func text(in range: NSRange) -> String? {
         return stringView.substring(in: range)
+    }
+
+    private func makeTextSafeForInsertion(_ text: String) -> String {
+        // When editing a mark text, for example started by a backtick (`), and pressing return the text passed to -insertText(_:)
+        // will end with a carriage return (\r). Other text editors like TextEdit and BBEdit seem to insert a line feed (\n).
+        // I haven't found a good way to do this other than checking if we're editing a marked range and replace \r with \n
+        // if it's the last character in the text to be inserted.
+        if markedRange != nil && text.last == Symbol.Character.carriageReturn {
+            var safeText = text
+            safeText.removeLast(1)
+            safeText += Symbol.lineFeed
+            return safeText
+        } else {
+            return text
+        }
     }
 
     private func rangeForDeletingText(in range: NSRange) -> NSRange {
