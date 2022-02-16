@@ -11,3 +11,9 @@ final class TreeSitterQueryMatch {
         return captures.first { $0.index == index }
     }
 }
+
+extension TreeSitterQueryMatch: CustomDebugStringConvertible {
+    var debugDescription: String {
+        return "[TreeSitterQueryMatch captures=\(captures.count)]"
+    }
+}
