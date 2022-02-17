@@ -63,7 +63,7 @@ private extension TreeSitterIndentController {
         // the indent level. Consider the following line which would increase the indent level when inserting
         // a line break after the pipe (|), assuming the language is HTML.
         //   <div>|
-        // However, inserting a line break after the pipe on the followign line should not increase the indent level.
+        // However, inserting a line break after the pipe on the following line should not increase the indent level.
         //   <div></div>|
         var indentLevel = 0
         let startingRow = node.startPoint.row
@@ -102,7 +102,7 @@ private extension TreeSitterIndentController {
                 //      else|
                 //         # ...
                 //      end
-                //    Inserting a line break where on of the pipes (|) are placed shouldn't increase the indent level but
+                //    Inserting a line break where one of the pipes (|) are placed shouldn't increase the indent level but
                 //    instead keep the indent level starting at the "if" node. This is needed because "elseif" and "else"
                 //    are children of the "if" node.
                 let shouldNodeIndent = indentationScopes.indent.contains(type) || indentationScopes.inheritIndent.contains(type)
@@ -117,7 +117,7 @@ private extension TreeSitterIndentController {
     }
 
     /// Looks for a node that decreases the indentation level and is on the line of the `targetLinePosition` but after its column.
-    /// The node can be used to determine the indentation level of a new line and if we should insert an addtional line break.
+    /// The node can be used to determine the indentation level of a new line and if we should insert an additional line break.
     private func nodeDecreasingIndentLevel(from node: TreeSitterNode, caretPosition: LinePosition) -> TreeSitterNode? {
         var workingNode: TreeSitterNode? = node
         while let node = workingNode, node.startPoint.row == caretPosition.row {
