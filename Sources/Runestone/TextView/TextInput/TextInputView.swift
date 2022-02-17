@@ -751,6 +751,60 @@ final class TextInputView: UIView, UITextInput {
             layoutManager.setNeedsLayout()
         }
     }
+
+    override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        super.pressesEnded(presses, with: event)
+        if let keyCode = presses.first?.key?.keyCode, presses.count == 1 {
+            if markedRange != nil {
+                handleKeyPressDuringMultistageTextInput(keyCode: keyCode)
+            }
+        }
+    }
+}
+
+// MARK: - Navigation
+private extension TextInputView {
+    private func handleKeyPressDuringMultistageTextInput(keyCode: UIKeyboardHIDUsage) {
+        // When editing multistage text input (that is, we have a marked text) we let the user unmark the text
+        // by pressing the arrow keys or Escape. This isn't common in iOS apps but it's the default behavior
+        // on macOS and I think that works quite well for plain text editors on iOS too.
+        guard let markedRange = markedRange, let markedText = stringView.substring(in: markedRange) else {
+            return
+        }
+        // We only unmark the text if the marked text contains ASCII characters only. Some languages use multistage text input
+        // extensively and iOS has a special UI for those languages that is presented when navigating with the arrow keys.
+        // We do not want to interfere with that interaction.
+        guard markedText.containsASCIICharactersOnly else {
+            return
+        }
+        switch keyCode {
+        case .keyboardUpArrow:
+            navigate(in: .up, offset: 1)
+            unmarkText()
+        case .keyboardRightArrow:
+            navigate(in: .right, offset: 1)
+            unmarkText()
+        case .keyboardDownArrow:
+            navigate(in: .down, offset: 1)
+            unmarkText()
+        case .keyboardLeftArrow:
+            navigate(in: .left, offset: 1)
+            unmarkText()
+        case .keyboardEscape:
+            unmarkText()
+        default:
+            break
+        }
+    }
+
+    private func navigate(in direction: UITextLayoutDirection, offset: Int) {
+        if let selectedRange = selectedRange {
+            if let location = lineMovementController.location(from: selectedRange.location, in: direction, offset: offset) {
+                let range = NSRange(location: location, length: 0)
+                selectedTextRange = IndexedRange(range)
+            }
+        }
+    }
 }
 
 // MARK: - Layout
