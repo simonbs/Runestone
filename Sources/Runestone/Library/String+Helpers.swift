@@ -8,11 +8,6 @@ extension String {
         return dataA == dataB ? .utf16LittleEndian : .utf16BigEndian
     }
 
-    var containsASCIICharactersOnly: Bool {
-        let containsNonASCIICharacter = unicodeScalars.contains(where: { !$0.isASCII })
-        return !containsNonASCIICharacter
-    }
-
     var byteCount: ByteCount {
         return ByteCount(utf16.count * 2)
     }
