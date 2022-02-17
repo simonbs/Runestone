@@ -771,10 +771,11 @@ private extension TextInputView {
         guard let markedRange = markedRange, let markedText = stringView.substring(in: markedRange) else {
             return
         }
-        // We only unmark the text if the marked text contains symbols only. Examples include `, ´ and ¨.
+        // We only unmark the text if the marked text contains specific characters only.
         // Some languages use multistage text input extensively and for those iOS presents a UI when
         // navigating with the arrow keys. We do not want to interfere with that interaction.
-        guard markedText.rangeOfCharacter(from: CharacterSet.symbols.inverted) == nil else {
+        let characterSet = CharacterSet(charactersIn: "`´^¨")
+        guard markedText.rangeOfCharacter(from: characterSet.inverted) == nil else {
             return
         }
         switch keyCode {
