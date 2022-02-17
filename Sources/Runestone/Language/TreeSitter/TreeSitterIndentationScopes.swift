@@ -6,11 +6,10 @@ public final class TreeSitterIndentationScopes {
     public let outdent: [String]
     public let indentationDenotesBlocks: Bool
 
-    public init(
-        indent: [String] = [],
-        inheritIndent: [String] = [],
-        outdent: [String] = [],
-        whitespaceDenotesBlocks: Bool = false) {
+    public init(indent: [String] = [],
+                inheritIndent: [String] = [],
+                outdent: [String] = [],
+                whitespaceDenotesBlocks: Bool = false) {
         self.indent = indent
         self.inheritIndent = inheritIndent
         self.outdent = outdent
