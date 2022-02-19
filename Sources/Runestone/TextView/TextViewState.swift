@@ -19,7 +19,7 @@ public final class TextViewState {
         self.stringView = StringView(string: NSMutableString(string: text))
         self.lineManager = LineManager(stringView: stringView)
         self.languageMode = TreeSitterInternalLanguageMode(
-            language: language,
+            language: TreeSitterInternalLanguage(language),
             languageProvider: languageProvider,
             stringView: stringView,
             lineManager: lineManager)
