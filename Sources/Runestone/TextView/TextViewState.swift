@@ -14,7 +14,13 @@ public final class TextViewState {
     /// The information provided by the detected strategy can be used to update the ``TextView/indentStrategy`` on the text view to align with the existing strategy in a text.
     public private(set) var detectedIndentStrategy: DetectedIndentStrategy = .unknown
 
-    public init(text: String, theme: Theme, language: TreeSitterLanguage, languageProvider: TreeSitterLanguageProvider) {
+    /// Creates state that can be passed to an instance of `TextView`.
+    /// - Parameters:
+    ///   - text: The text to display in the text view.
+    ///   - theme: The theme to use when syntax highlighting the text.
+    ///   - language: The language to use when parsing the text.
+    ///   - languageProvider: Object that can provide embedded languages on demand. A strong reference will be stored to the language provider.
+    public init(text: String, theme: Theme, language: TreeSitterLanguage, languageProvider: TreeSitterLanguageProvider? = nil) {
         self.theme = theme
         self.stringView = StringView(string: NSMutableString(string: text))
         self.lineManager = LineManager(stringView: stringView)
