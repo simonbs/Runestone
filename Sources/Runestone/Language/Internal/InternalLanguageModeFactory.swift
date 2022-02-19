@@ -6,8 +6,9 @@ enum InternalLanguageModeFactory {
         case is PlainTextLanguageMode:
             return PlainTextInternalLanguageMode()
         case let languageMode as TreeSitterLanguageMode:
+            let internalLanguage = TreeSitterInternalLanguage(languageMode.language)
             return TreeSitterInternalLanguageMode(
-                language: languageMode.language,
+                language: internalLanguage,
                 languageProvider: languageMode.languageProvider,
                 stringView: stringView,
                 lineManager: lineManager)
