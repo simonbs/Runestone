@@ -1,6 +1,6 @@
 import TreeSitter
 
-enum TreeSitterQueryError: Error {
+enum TreeSitterInternalQueryError: Error {
     case syntax(offset: UInt32)
     case nodeType(offset: UInt32)
     case field(offset: UInt32)
@@ -9,7 +9,7 @@ enum TreeSitterQueryError: Error {
     case unknown
 }
 
-final class TreeSitterQuery {
+final class TreeSitterInternalQuery {
     let pointer: OpaquePointer
 
     private let language: UnsafePointer<TSLanguage>
@@ -29,21 +29,21 @@ final class TreeSitterQuery {
         }
         switch errorType.pointee.rawValue {
         case 1:
-            throw TreeSitterQueryError.syntax(offset: errorOffset.pointee)
+            throw TreeSitterInternalQueryError.syntax(offset: errorOffset.pointee)
         case 2:
-            throw TreeSitterQueryError.nodeType(offset: errorOffset.pointee)
+            throw TreeSitterInternalQueryError.nodeType(offset: errorOffset.pointee)
         case 3:
-            throw TreeSitterQueryError.field(offset: errorOffset.pointee)
+            throw TreeSitterInternalQueryError.field(offset: errorOffset.pointee)
         case 4:
-            throw TreeSitterQueryError.capture(offset: errorOffset.pointee)
+            throw TreeSitterInternalQueryError.capture(offset: errorOffset.pointee)
         case 5:
-            throw TreeSitterQueryError.structure(offset: errorOffset.pointee)
+            throw TreeSitterInternalQueryError.structure(offset: errorOffset.pointee)
         default:
             if let pointer = pointer {
                 self.language = language
                 self.pointer = pointer
             } else {
-                throw TreeSitterQueryError.unknown
+                throw TreeSitterInternalQueryError.unknown
             }
         }
     }
@@ -91,7 +91,7 @@ final class TreeSitterQuery {
     }
 }
 
-private extension TreeSitterQuery {
+private extension TreeSitterInternalQuery {
     private func stringValue(forId id: uint) -> String {
         let lengthPointer = UnsafeMutablePointer<UInt32>.allocate(capacity: 1)
         defer {
