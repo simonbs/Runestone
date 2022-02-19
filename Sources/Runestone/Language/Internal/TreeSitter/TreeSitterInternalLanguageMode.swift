@@ -17,7 +17,7 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     private let rootLanguageLayer: TreeSitterLanguageLayer
     private let operationQueue = OperationQueue()
 
-    init(language: TreeSitterLanguage, languageProvider: TreeSitterLanguageProvider?, stringView: StringView, lineManager: LineManager) {
+    init(language: TreeSitterInternalLanguage, languageProvider: TreeSitterLanguageProvider?, stringView: StringView, lineManager: LineManager) {
         self.stringView = stringView
         self.lineManager = lineManager
         operationQueue.name = "TreeSitterLanguageMode"

@@ -7,18 +7,18 @@ import TreeSitter
 ///
 /// Refer to <doc:AddingATreeSitterLanguage> for more information on adding a Tree-sitter language to your project.
 public final class TreeSitterLanguage {
-    let languagePointer: UnsafePointer<TSLanguage>
-    let highlightsQuery: TreeSitterQuery?
-    let injectionsQuery: TreeSitterQuery?
-    let indentationScopes: TreeSitterIndentationScopes?
+    public let languagePointer: UnsafePointer<TSLanguage>
+    public let highlightsQuery: TreeSitterLanguage.Query?
+    public let injectionsQuery: TreeSitterLanguage.Query?
+    public let indentationScopes: TreeSitterIndentationScopes?
 
     public init(_ language: UnsafePointer<TSLanguage>,
-                highlightsQuery: Query? = nil,
-                injectionsQuery: Query? = nil,
+                highlightsQuery: TreeSitterLanguage.Query? = nil,
+                injectionsQuery: TreeSitterLanguage.Query? = nil,
                 indentationScopes: TreeSitterIndentationScopes? = nil) {
         self.languagePointer = language
-        self.highlightsQuery = highlightsQuery?.createQuery(with: language)
-        self.injectionsQuery = injectionsQuery?.createQuery(with: language)
+        self.highlightsQuery = highlightsQuery
+        self.injectionsQuery = injectionsQuery
         self.indentationScopes = indentationScopes
     }
 }
@@ -33,14 +33,6 @@ extension TreeSitterLanguage {
 
         public init(string: String) {
             self.string = string
-        }
-
-        func createQuery(with language: UnsafePointer<TSLanguage>) -> TreeSitterQuery? {
-            if let string = string {
-                return try? TreeSitterQuery(source: string, language: language)
-            } else {
-                return nil
-            }
         }
     }
 }

@@ -3,7 +3,7 @@ import Foundation
 final class TreeSitterLanguageLayer {
     typealias LayerAndNodeTuple = (layer: TreeSitterLanguageLayer, node: TreeSitterNode)
 
-    let language: TreeSitterLanguage
+    let language: TreeSitterInternalLanguage
     private(set) var tree: TreeSitterTree?
     var canHighlight: Bool {
         return parser.language != nil && tree != nil
@@ -23,7 +23,7 @@ final class TreeSitterLanguageLayer {
         }
     }
 
-    init(language: TreeSitterLanguage,
+    init(language: TreeSitterInternalLanguage,
          languageProvider: TreeSitterLanguageProvider?,
          parser: TreeSitterParser,
          stringView: StringView,
@@ -161,8 +161,9 @@ private extension TreeSitterLanguageLayer {
         if let childLanguageLayer = childLanguageLayers[languageName] {
             return childLanguageLayer
         } else if let language = languageProvider?.treeSitterLanguage(named: languageName) {
+            let internalLanguage = TreeSitterInternalLanguage(language)
             let childLanguageLayer = TreeSitterLanguageLayer(
-                language: language,
+                language: internalLanguage,
                 languageProvider: languageProvider,
                 parser: parser,
                 stringView: stringView,
