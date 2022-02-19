@@ -2,11 +2,20 @@
   "object": {
     "pins": [
       {
+        "package": "Runestone",
+        "repositoryURL": "git@github.com:simonbs/Runestone.git",
+        "state": {
+          "branch": "main",
+          "revision": "ed4f6b3cb9ff724405aa060c420eff256c4d6791",
+          "version": null
+        }
+      },
+      {
         "package": "TreeSitterLanguages",
         "repositoryURL": "https://github.com/simonbs/TreeSitterLanguages",
         "state": {
           "branch": "main",
-          "revision": "5d4221b1d3f4abe3b07a8cf7d2c172bb020b761e",
+          "revision": "a7c2fd06df11cf3301ba2ee1cb1fd9960a718b58",
           "version": null
         }
       }
