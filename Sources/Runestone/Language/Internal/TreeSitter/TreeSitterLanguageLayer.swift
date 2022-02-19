@@ -14,7 +14,7 @@ final class TreeSitterLanguageLayer {
     private let stringView: StringView
     private var childLanguageLayers: [String: TreeSitterLanguageLayer] = [:]
     private weak var parentLanguageLayer: TreeSitterLanguageLayer?
-    private weak var languageProvider: TreeSitterLanguageProvider?
+    private let languageProvider: TreeSitterLanguageProvider?
     private var isEmpty: Bool {
         if let rootNode = tree?.rootNode {
             return rootNode.endByte - rootNode.startByte <= ByteCount(0)
