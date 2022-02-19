@@ -1,6 +1,6 @@
 import TreeSitter
 
-enum TreeSitterInternalQueryError: Error {
+enum TreeSitterQueryError: Error {
     case syntax(offset: UInt32)
     case nodeType(offset: UInt32)
     case field(offset: UInt32)
@@ -9,7 +9,7 @@ enum TreeSitterInternalQueryError: Error {
     case unknown
 }
 
-final class TreeSitterInternalQuery {
+final class TreeSitterQuery {
     let pointer: OpaquePointer
 
     private let language: UnsafePointer<TSLanguage>
@@ -29,21 +29,21 @@ final class TreeSitterInternalQuery {
         }
         switch errorType.pointee.rawValue {
         case 1:
-            throw TreeSitterInternalQueryError.syntax(offset: errorOffset.pointee)
+            throw TreeSitterQueryError.syntax(offset: errorOffset.pointee)
         case 2:
-            throw TreeSitterInternalQueryError.nodeType(offset: errorOffset.pointee)
+            throw TreeSitterQueryError.nodeType(offset: errorOffset.pointee)
         case 3:
-            throw TreeSitterInternalQueryError.field(offset: errorOffset.pointee)
+            throw TreeSitterQueryError.field(offset: errorOffset.pointee)
         case 4:
-            throw TreeSitterInternalQueryError.capture(offset: errorOffset.pointee)
+            throw TreeSitterQueryError.capture(offset: errorOffset.pointee)
         case 5:
-            throw TreeSitterInternalQueryError.structure(offset: errorOffset.pointee)
+            throw TreeSitterQueryError.structure(offset: errorOffset.pointee)
         default:
             if let pointer = pointer {
                 self.language = language
                 self.pointer = pointer
             } else {
-                throw TreeSitterInternalQueryError.unknown
+                throw TreeSitterQueryError.unknown
             }
         }
     }
@@ -91,7 +91,7 @@ final class TreeSitterInternalQuery {
     }
 }
 
-private extension TreeSitterInternalQuery {
+private extension TreeSitterQuery {
     private func stringValue(forId id: uint) -> String {
         let lengthPointer = UnsafeMutablePointer<UInt32>.allocate(capacity: 1)
         defer {

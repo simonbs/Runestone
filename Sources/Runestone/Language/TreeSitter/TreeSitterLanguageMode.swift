@@ -22,7 +22,7 @@ public final class TreeSitterLanguageMode {
 extension TreeSitterLanguageMode: LanguageMode {
     func makeInternalLanguageMode(stringView: StringView, lineManager: LineManager) -> InternalLanguageMode {
         return TreeSitterInternalLanguageMode(
-            language: TreeSitterInternalLanguage(language),
+            language: language,
             languageProvider: languageProvider,
             stringView: stringView,
             lineManager: lineManager)

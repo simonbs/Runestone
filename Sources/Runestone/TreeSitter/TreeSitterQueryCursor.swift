@@ -2,11 +2,11 @@ import TreeSitter
 
 final class TreeSitterQueryCursor {
     private let pointer: OpaquePointer
-    private let query: TreeSitterInternalQuery
+    private let query: TreeSitterQuery
     private let node: TreeSitterNode
     private var haveExecuted = false
 
-    init(query: TreeSitterInternalQuery, node: TreeSitterNode) {
+    init(query: TreeSitterQuery, node: TreeSitterNode) {
         self.pointer = ts_query_cursor_new()
         self.query = query
         self.node = node
