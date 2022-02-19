@@ -37,7 +37,7 @@ final class MainViewController: UIViewController {
 private extension MainViewController {
     private func setupTextView() {
         let text = UserDefaults.standard.text ?? ""
-        let state = TextViewState(text: text, theme: TomorrowTheme(), language: .javaScript, languageProvider: self)
+        let state = TextViewState(text: text, theme: TomorrowTheme(), language: .javaScript)
         contentView.textView.editorDelegate = self
         contentView.textView.setState(state)
     }
@@ -95,12 +95,6 @@ private extension MainViewController {
         themePickerViewController.delegate = self
         let navigationController = UINavigationController(rootViewController: themePickerViewController)
         present(navigationController, animated: true)
-    }
-}
-
-extension MainViewController: TreeSitterLanguageProvider {
-    func treeSitterLanguage(named languageName: String) -> TreeSitterLanguage? {
-        return nil
     }
 }
 
