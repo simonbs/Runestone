@@ -6,8 +6,8 @@ import Foundation
 ///
 /// Refer to <doc:AddingATreeSitterLanguage> for more information on adding a Tree-sitter language to your project.
 public final class TreeSitterLanguageMode {
-    let language: TreeSitterLanguage
-    let languageProvider: TreeSitterLanguageProvider?
+    public let language: TreeSitterLanguage
+    public let languageProvider: TreeSitterLanguageProvider?
 
     /// Create a language mode for the specified Tree-sitter language.
     /// - Parameters:
