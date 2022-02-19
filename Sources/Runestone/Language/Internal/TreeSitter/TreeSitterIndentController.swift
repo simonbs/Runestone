@@ -13,11 +13,10 @@ final class TreeSitterIndentController {
         self.tabLength = tabLength
     }
 
-    func strategyForInsertingLineBreak(
-        between startNode: TreeSitterNode?,
-        and endNode: TreeSitterNode?,
-        caretStartPosition: LinePosition,
-        caretEndPosition: LinePosition) -> InsertLineBreakIndentStrategy {
+    func strategyForInsertingLineBreak(between startNode: TreeSitterNode?,
+                                       and endNode: TreeSitterNode?,
+                                       caretStartPosition: LinePosition,
+                                       caretEndPosition: LinePosition) -> InsertLineBreakIndentStrategy {
         var indentAdjustment = 0
         var outdentAdjustment = 0
         var indentingNode: TreeSitterNode?
