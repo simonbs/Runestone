@@ -161,9 +161,8 @@ private extension TreeSitterLanguageLayer {
         if let childLanguageLayer = childLanguageLayers[languageName] {
             return childLanguageLayer
         } else if let language = languageProvider?.treeSitterLanguage(named: languageName) {
-            let internalLanguage = TreeSitterInternalLanguage(language)
             let childLanguageLayer = TreeSitterLanguageLayer(
-                language: internalLanguage,
+                language: language.internalLanguage,
                 languageProvider: languageProvider,
                 parser: parser,
                 stringView: stringView,
