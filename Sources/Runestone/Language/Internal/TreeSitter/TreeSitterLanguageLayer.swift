@@ -281,6 +281,8 @@ private extension TreeSitterCapture {
             return false
         } else if lhs.byteRange.length > rhs.byteRange.length {
             return true
+        } else if lhs.byteRange.length < rhs.byteRange.length {
+            return false
         } else {
             return lhs.nameComponentCount < rhs.nameComponentCount
         }
