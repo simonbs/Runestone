@@ -6,7 +6,9 @@ import Foundation
 ///
 /// Refer to <doc:AddingATreeSitterLanguage> for more information on adding a Tree-sitter language to your project.
 public final class TreeSitterLanguageMode {
+    /// Tree-sitter language to use with the language mode.
     public let language: TreeSitterLanguage
+    /// RefeAn object that can provide embedded languages on demand. A strong reference will be stored to the language provider.
     public let languageProvider: TreeSitterLanguageProvider?
 
     /// Create a language mode for the specified Tree-sitter language.
@@ -21,9 +23,8 @@ public final class TreeSitterLanguageMode {
 
 extension TreeSitterLanguageMode: LanguageMode {
     func makeInternalLanguageMode(stringView: StringView, lineManager: LineManager) -> InternalLanguageMode {
-        let internalLanguage = TreeSitterInternalLanguage(language)
         return TreeSitterInternalLanguageMode(
-            language: internalLanguage,
+            language: language.internalLanguage,
             languageProvider: languageProvider,
             stringView: stringView,
             lineManager: lineManager)
