@@ -626,6 +626,7 @@ extension LayoutManager {
 
     func layoutLines(untilLocation location: Int) {
         var nextLine: DocumentLineNode? = lineManager.firstLine
+        let isLocationEndOfString = location >= stringView.string.length
         while let line = nextLine {
             let lineLocation = line.location
             let endTypesettingLocation = min(lineLocation + line.data.length, location) - lineLocation
@@ -634,7 +635,8 @@ extension LayoutManager {
             lineController.prepareToDisplayString(toLocation: endTypesettingLocation, syntaxHighlightAsynchronously: true)
             let lineSize = CGSize(width: lineController.lineWidth, height: lineController.lineHeight)
             setSize(of: lineController.line, to: lineSize)
-            if lineLocation + line.data.length <= location {
+            let lineEndLocation = lineLocation + line.data.length
+            if (lineEndLocation < location) || (lineLocation == location && !isLocationEndOfString) {
                 nextLine = lineManager.line(atRow: line.index + 1)
             } else {
                 nextLine = nil
