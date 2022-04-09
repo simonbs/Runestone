@@ -76,6 +76,7 @@ enum LanguageModeFactory {
         let stringView = StringView(string: text)
         let lineManager = LineManager(stringView: stringView)
         lineManager.rebuild(from: text as NSString)
-        return TreeSitterInternalLanguageMode(language: language, languageProvider: nil, stringView: stringView, lineManager: lineManager)
+        let internalLanguage = language.internalLanguage
+        return TreeSitterInternalLanguageMode(language: internalLanguage, languageProvider: nil, stringView: stringView, lineManager: lineManager)
     }
 }
