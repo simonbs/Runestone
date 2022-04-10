@@ -452,9 +452,6 @@ final class LayoutManager {
 extension LayoutManager {
     func caretRect(at location: Int) -> CGRect {
         let safeLocation = min(max(location, 0), stringView.string.length)
-        if location != safeLocation {
-            print("\(location) => \(safeLocation)")
-        }
         let line = lineManager.line(containingCharacterAt: safeLocation)!
         let lineController = lineController(for: line)
         let localLocation = safeLocation - line.location
