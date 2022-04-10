@@ -613,7 +613,7 @@ extension LayoutManager {
         var realEndLine = endLine
         if selectedRange.upperBound == endLine.location {
             realEndLine = endLine.previous
-            selectedRange = NSRange(location: selectedRange.lowerBound, length: selectedRange.length - 1)
+            selectedRange = NSRange(location: selectedRange.lowerBound, length: max(selectedRange.length - 1, 0))
         }
         switch lineSelectionDisplayType {
         case .line:
