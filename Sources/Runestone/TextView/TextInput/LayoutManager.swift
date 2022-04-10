@@ -557,7 +557,7 @@ extension LayoutManager {
             CATransaction.setDisableActions(true)
             resetLineWidthsIfNecessary()
             layoutGutter()
-            layoutSelection()
+            layoutLineSelection()
             layoutLinesInViewport()
             updateLineNumberColors()
             CATransaction.commit()
@@ -573,7 +573,7 @@ extension LayoutManager {
             needsLayoutSelection = true
             CATransaction.begin()
             CATransaction.setDisableActions(false)
-            layoutSelection()
+            layoutLineSelection()
             updateLineNumberColors()
             CATransaction.commit()
         }
@@ -586,7 +586,7 @@ extension LayoutManager {
         lineNumbersContainerView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: contentSize.height)
     }
 
-    private func layoutSelection() {
+    private func layoutLineSelection() {
         guard lineSelectionDisplayType.shouldShowLineSelection, let selectedRange = selectedRange else {
             return
         }
