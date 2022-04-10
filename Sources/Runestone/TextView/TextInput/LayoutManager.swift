@@ -299,11 +299,11 @@ final class LayoutManager {
         if let editorView = editorView {
             let adjustContentInset = editorView.adjustedContentInset
             let contentInset = editorView.contentInset
-            return UIEdgeInsets(
-                top: adjustContentInset.top - contentInset.top,
-                left: adjustContentInset.left - contentInset.left,
-                bottom: adjustContentInset.bottom - contentInset.bottom,
-                right: adjustContentInset.right - contentInset.right)
+            let top = adjustContentInset.top - contentInset.top
+            let left = adjustContentInset.left - contentInset.left
+            let bottom = adjustContentInset.bottom - contentInset.bottom
+            let right = adjustContentInset.right - contentInset.right
+            return UIEdgeInsets(top: top, left: left, bottom: bottom, right: right)
         } else {
             return .zero
         }
