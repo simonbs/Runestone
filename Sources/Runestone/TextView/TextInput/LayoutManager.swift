@@ -451,9 +451,13 @@ final class LayoutManager {
 // MARK: - UITextInput
 extension LayoutManager {
     func caretRect(at location: Int) -> CGRect {
-        let line = lineManager.line(containingCharacterAt: location)!
+        let safeLocation = min(max(location, 0), stringView.string.length)
+        if location != safeLocation {
+            print("\(location) => \(safeLocation)")
+        }
+        let line = lineManager.line(containingCharacterAt: safeLocation)!
         let lineController = lineController(for: line)
-        let localLocation = location - line.location
+        let localLocation = safeLocation - line.location
         let localCaretRect = lineController.caretRect(atIndex: localLocation)
         let globalYPosition = line.yPosition + localCaretRect.minY
         let globalRect = CGRect(x: localCaretRect.minX, y: globalYPosition, width: localCaretRect.width, height: localCaretRect.height)
