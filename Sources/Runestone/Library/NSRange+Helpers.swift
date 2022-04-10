@@ -37,19 +37,14 @@ extension NSRange {
         guard globalRange.overlaps(globalLineRange) else {
             return nil
         }
-        print("\(globalRange.lowerBound) - \(globalRange.upperBound): \(globalLineRange.lowerBound) - \(globalLineRange.upperBound)")
         if localToLine {
             let cappedLocation = max(globalRange.location - lineLocation, 0)
             let cappedLength = min(globalRange.length, lineLength - cappedLocation)
-            let r = NSRange(location: cappedLocation, length: cappedLength)
-            print(" => A: \(r.lowerBound) - \(r.upperBound)")
-            self = r
+            self = NSRange(location: cappedLocation, length: cappedLength)
         } else {
             let cappedLocation = max(globalRange.location, lineLocation)
             let cappedLength = min(globalRange.length, lineLength)
-            let r = NSRange(location: cappedLocation, length: cappedLength)
-            print(" => B: \(r.lowerBound) - \(r.upperBound)")
-            self = r
+            self = NSRange(location: cappedLocation, length: cappedLength)
         }
     }
 
