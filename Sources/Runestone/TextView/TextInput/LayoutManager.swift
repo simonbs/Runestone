@@ -199,6 +199,7 @@ final class LayoutManager {
         didSet {
             if highlightedRanges != oldValue {
                 highlightRectsForLineIDs = [:]
+                clearHighlightedViews()
                 recreateHighlightedRangesMap()
                 setNeedsLayout()
                 layoutIfNeeded()
@@ -799,6 +800,11 @@ extension LayoutManager {
             highlightRectsForLineIDs[lineID] = rects
             return rects
         }
+    }
+
+    private func clearHighlightedViews() {
+        let keys = Set(highlightViewReuseQueue.visibleViews.keys)
+        highlightViewReuseQueue.enqueueViews(withKeys: keys)
     }
 
     private func setSize(of line: DocumentLineNode, to newSize: CGSize) {
