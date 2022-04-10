@@ -59,17 +59,6 @@ final class LineFragmentController {
             }
         }
     }
-    var highlightedRanges: [HighlightedRange] {
-        get {
-            return renderer.highlightedRanges
-        }
-        set {
-            if newValue != renderer.highlightedRanges {
-                renderer.highlightedRanges = newValue
-                lineFragmentView?.setNeedsDisplay()
-            }
-        }
-    }
 
     private let renderer: LineFragmentRenderer
 

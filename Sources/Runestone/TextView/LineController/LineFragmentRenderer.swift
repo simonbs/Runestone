@@ -17,7 +17,6 @@ final class LineFragmentRenderer {
     var markedRange: NSRange?
     var markedTextBackgroundColor: UIColor = .systemFill
     var markedTextBackgroundCornerRadius: CGFloat = 0
-    var highlightedRanges: [HighlightedRange] = []
 
     private var showInvisibleCharacters: Bool {
         return invisibleCharacterConfiguration.showTabs
@@ -31,7 +30,6 @@ final class LineFragmentRenderer {
     }
 
     func draw(to context: CGContext) {
-        drawHighlightedRanges(to: context)
         drawMarkedRange(to: context)
         drawInvisibleCharacters(to: context)
         drawText(to: context)
@@ -39,29 +37,6 @@ final class LineFragmentRenderer {
 }
 
 private extension LineFragmentRenderer {
-    private func drawHighlightedRanges(to context: CGContext) {
-        if !highlightedRanges.isEmpty {
-            context.saveGState()
-            for highlightedRange in highlightedRanges {
-                let startLocation = highlightedRange.range.lowerBound
-                let endLocation = highlightedRange.range.upperBound
-                let startX = CTLineGetOffsetForStringIndex(lineFragment.line, startLocation, nil)
-                let endX = CTLineGetOffsetForStringIndex(lineFragment.line, endLocation, nil)
-                let rect = CGRect(x: startX, y: 0, width: endX - startX, height: lineFragment.scaledSize.height)
-                context.setFillColor(highlightedRange.color.cgColor)
-                if highlightedRange.cornerRadius > 0 {
-                    let cornerRadius = highlightedRange.cornerRadius
-                    let path = CGPath(roundedRect: rect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
-                    context.addPath(path)
-                    context.fillPath()
-                } else {
-                    context.fill(rect)
-                }
-            }
-            context.restoreGState()
-        }
-    }
-
     private func drawMarkedRange(to context: CGContext) {
         if let markedRange = markedRange {
             context.saveGState()
