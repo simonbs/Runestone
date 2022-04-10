@@ -471,15 +471,16 @@ extension LayoutManager {
     }
 
     func selectionRects(in range: NSRange) -> [TextSelectionRect] {
-        guard let startLine = lineManager.line(containingCharacterAt: range.location) else {
+        guard let (startLine, endLine) = lineManager.startAndEndLine(in: range) else {
             return []
         }
-        guard let endLine = lineManager.line(containingCharacterAt: range.location + range.length) else {
-            return []
-        }
-        var selectionRects: [TextSelectionRect] = []
+        var resultingSelectionRects: [TextSelectionRect] = []
         let startLineIndex = startLine.index
-        let endLineIndex = endLine.index
+        var endLineIndex = endLine.index
+        // If the end line starts where our selection ends then we're only interested in selecting the line break and we will therefore iterate one line less.
+        if range.upperBound == endLine.location {
+            endLineIndex -= 1
+        }
         let lineIndexRange = startLineIndex ..< endLineIndex + 1
         for lineIndex in lineIndexRange {
             let line = lineManager.line(atRow: lineIndex)
@@ -489,25 +490,25 @@ extension LayoutManager {
             let localRangeLocation = max(range.location, lineStartLocation) - lineStartLocation
             let localRangeLength = min(range.location + range.length, lineEndLocation) - lineStartLocation - localRangeLocation
             let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
-            let lineFragmentSelectionRects = lineController.selectionRects(in: localRange)
-            for (lineFragmentSelectionRectIdx, lineFragmentSelectionRect) in lineFragmentSelectionRects.enumerated() {
+            let selectionRects = lineController.selectionRects(in: localRange)
+            for (selectionRectIdx, selectionRect) in selectionRects.enumerated() {
                 // Determining containsStart and containsEnd based on indices assumes that the text selection rects are iterated in order.
                 // This means that `-selectionRects(in:)` on LineController should return them in order.
-                let containsStart = lineIndex == lineIndexRange.lowerBound && lineFragmentSelectionRectIdx == 0
-                let containsEnd = lineIndex == lineIndexRange.upperBound - 1 && lineFragmentSelectionRectIdx == lineFragmentSelectionRects.count - 1
-                var screenRect = lineFragmentSelectionRect.rect
+                let containsStart = lineIndex == lineIndexRange.lowerBound && selectionRectIdx == 0
+                let containsEnd = lineIndex == lineIndexRange.upperBound - 1 && selectionRectIdx == selectionRects.count - 1
+                let selectionContainsLineBreak = line.data.delimiterLength > 0 && range.contains(lineEndLocation - 1)
+                var screenRect = selectionRect.rect
                 screenRect.origin.x += leadingLineSpacing
-                screenRect.origin.y = textContainerInset.top + line.yPosition + lineFragmentSelectionRect.rect.minY
-                if !containsEnd {
-                    // If the following lines are selected, we make sure that the selections extends the entire line.
-                    screenRect.size.width = max(contentWidth, scrollViewWidth) - screenRect.minX
+                screenRect.origin.y = textContainerInset.top + line.yPosition + selectionRect.rect.minY
+                if selectionContainsLineBreak || selectionRect.extendsBeyondEnd {
+                    screenRect.size.width = max(contentWidth, scrollViewWidth) - textContainerInset.right - screenRect.minX
                 }
-                selectionRects += [
+                resultingSelectionRects += [
                     TextSelectionRect(rect: screenRect, writingDirection: .natural, containsStart: containsStart, containsEnd: containsEnd)
                 ]
             }
         }
-        return selectionRects.ensuringYAxisAlignment()
+        return resultingSelectionRects.ensuringYAxisAlignment()
     }
 
     func closestIndex(to point: CGPoint) -> Int? {
@@ -587,40 +588,43 @@ extension LayoutManager {
     }
 
     private func layoutLineSelection() {
-        guard lineSelectionDisplayType.shouldShowLineSelection, let selectedRange = selectedRange else {
-            return
+        if let rect = getLineSelectionRect() {
+            let totalGutterWidth = additionalInset.left + gutterWidth
+            gutterSelectionBackgroundView.frame = CGRect(x: 0, y: rect.minY, width: totalGutterWidth, height: rect.height)
+            let lineSelectionBackgroundOrigin = CGPoint(x: viewport.minX + totalGutterWidth, y: rect.minY)
+            let lineSelectionBackgroundSize = CGSize(width: scrollViewWidth - gutterWidth, height: rect.height)
+            lineSelectionBackgroundView.frame = CGRect(origin: lineSelectionBackgroundOrigin, size: lineSelectionBackgroundSize)
         }
-        let startLocation = selectedRange.location
-        let endLocation = selectedRange.location + selectedRange.length
-        let selectedRect: CGRect
-        if selectedRange.nonNegativeLength.length > 0 {
-            let startSelectionRect = selectionRectangleForLineFragment(containingCharacterAt: startLocation)
-            let endSelectionRect = selectionRectangleForLineFragment(containingCharacterAt: endLocation)
-            let height = endSelectionRect.maxY - startSelectionRect.minY
-            selectedRect = CGRect(x: 0, y: startSelectionRect.minY, width: scrollViewWidth, height: height)
-        } else {
-            let selectionRect = selectionRectangleForLineFragment(containingCharacterAt: startLocation)
-            selectedRect = CGRect(x: 0, y: selectionRect.minY, width: scrollViewWidth, height: selectionRect.height)
-        }
-        let totalGutterWidth = additionalInset.left + gutterWidth
-        gutterSelectionBackgroundView.frame = CGRect(x: 0, y: selectedRect.minY, width: totalGutterWidth, height: selectedRect.height)
-        let lineSelectionBackgroundOrigin = CGPoint(x: viewport.minX + totalGutterWidth, y: selectedRect.minY)
-        let lineSelectionBackgroundSize = CGSize(width: scrollViewWidth - gutterWidth, height: selectedRect.height)
-        lineSelectionBackgroundView.frame = CGRect(origin: lineSelectionBackgroundOrigin, size: lineSelectionBackgroundSize)
     }
 
-    private func selectionRectangleForLineFragment(containingCharacterAt location: Int) -> CGRect {
+    private func getLineSelectionRect() -> CGRect? {
+        guard lineSelectionDisplayType.shouldShowLineSelection, var selectedRange = selectedRange else {
+            return nil
+        }
+        guard let (startLine, endLine) = lineManager.startAndEndLine(in: selectedRange) else {
+            return nil
+        }
+        // If the line starts where our selection ends then our selection end son a line break and we will not include the following line.
+        var realEndLine = endLine
+        if selectedRange.upperBound == endLine.location {
+            realEndLine = endLine.previous
+            selectedRange = NSRange(location: selectedRange.lowerBound, length: selectedRange.length - 1)
+        }
         switch lineSelectionDisplayType {
-        case .disabled:
-            return .null
         case .line:
-            let line = lineManager.line(containingCharacterAt: location)!
-            return CGRect(x: 0, y: textContainerInset.top + line.yPosition, width: scrollViewWidth, height: line.data.lineHeight)
+            let minY = startLine.yPosition
+            let height = (realEndLine.yPosition + realEndLine.data.lineHeight) - minY
+            return CGRect(x: 0, y: textContainerInset.top + minY, width: scrollViewWidth, height: height)
         case .lineFragment:
-            let caretRect = caretRect(at: location)
-            let lineFragmentHeight = caretRect.height * lineHeightMultiplier
-            let lineFragmentYPosition = caretRect.minY + (caretRect.height - lineFragmentHeight) / 2
-            return CGRect(x: 0, y: lineFragmentYPosition, width: scrollViewWidth, height: lineFragmentHeight)
+            let startCaretRect = caretRect(at: selectedRange.lowerBound)
+            let endCaretRect = caretRect(at: selectedRange.upperBound)
+            let startLineFragmentHeight = startCaretRect.height * lineHeightMultiplier
+            let endLineFragmentHeight = endCaretRect.height * lineHeightMultiplier
+            let minY = startCaretRect.minY - (startLineFragmentHeight - startCaretRect.height) / 2
+            let maxY = endCaretRect.maxY + (endLineFragmentHeight - endCaretRect.height) / 2
+            return CGRect(x: 0, y: minY, width: scrollViewWidth, height: maxY - minY)
+        case .disabled:
+            return nil
         }
     }
 

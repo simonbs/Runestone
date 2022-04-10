@@ -260,6 +260,20 @@ final class LineManager {
         return lines
     }
 
+    func startAndEndLine(in range: NSRange) -> (startLine: DocumentLineNode, endLine: DocumentLineNode)? {
+        if range.length == 0 {
+            if let line = line(containingCharacterAt: range.lowerBound) {
+                return (line, line)
+            } else {
+                return nil
+            }
+        } else if let startLine = line(containingCharacterAt: range.lowerBound), let endLine = line(containingCharacterAt: range.upperBound) {
+            return (startLine, endLine)
+        } else {
+            return nil
+        }
+    }
+
     func createLineIterator() -> RedBlackTreeIterator<DocumentLineNodeID, Int, DocumentLineNodeData> {
         return RedBlackTreeIterator(tree: documentLineTree)
     }

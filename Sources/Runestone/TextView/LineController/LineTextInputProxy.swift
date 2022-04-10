@@ -24,7 +24,7 @@ final class LineTextInputProxy {
     func selectionRects(in range: NSRange) -> [LineFragmentSelectionRect] {
         guard !lineFragments.isEmpty else {
             let rect = CGRect(x: 0, y: 0, width: 0, height: estimatedLineFragmentHeight * lineFragmentHeightMultiplier)
-            return [LineFragmentSelectionRect(rect: rect, range: range)]
+            return [LineFragmentSelectionRect(rect: rect, range: range, extendsBeyondEnd: false)]
         }
         var selectionRects: [LineFragmentSelectionRect] = []
         for lineFragment in lineFragments {
@@ -33,11 +33,12 @@ final class LineTextInputProxy {
             let lineRange = NSRange(location: cfLineRange.location, length: cfLineRange.length)
             let selectionIntersection = range.intersection(lineRange)
             if let selectionIntersection = selectionIntersection {
-                let xStart = CTLineGetOffsetForStringIndex(line, selectionIntersection.location, nil)
-                let xEnd = CTLineGetOffsetForStringIndex(line, selectionIntersection.location + selectionIntersection.length, nil)
+                let xStart = CTLineGetOffsetForStringIndex(line, selectionIntersection.lowerBound, nil)
+                let xEnd = CTLineGetOffsetForStringIndex(line, selectionIntersection.upperBound, nil)
                 let yPosition = lineFragment.yPosition
                 let rect = CGRect(x: xStart, y: yPosition, width: xEnd - xStart, height: lineFragment.scaledSize.height)
-                let selectionRect = LineFragmentSelectionRect(rect: rect, range: selectionIntersection)
+                let extendsBeyondEnd = range.upperBound > selectionIntersection.upperBound
+                let selectionRect = LineFragmentSelectionRect(rect: rect, range: selectionIntersection, extendsBeyondEnd: extendsBeyondEnd)
                 selectionRects.append(selectionRect)
             }
         }
