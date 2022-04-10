@@ -88,7 +88,7 @@ final class LayoutManager {
                     invalidateContentSize()
                 }
                 setNeedsLayout()
-                setNeedsLayoutSelection()
+                setNeedsLayoutLineSelection()
                 layoutIfNeeded()
             }
         }
@@ -114,8 +114,8 @@ final class LayoutManager {
     var lineSelectionDisplayType: LineSelectionDisplayType = .disabled {
         didSet {
             if lineSelectionDisplayType != oldValue {
-                setNeedsLayoutSelection()
-                layoutSelectionIfNeeded()
+                setNeedsLayoutLineSelection()
+                layoutLineSelectionIfNeeded()
                 updateShownViews()
             }
         }
@@ -312,7 +312,7 @@ final class LayoutManager {
     // MARK: - Rendering
     private var lineControllers: [DocumentLineNodeID: LineController] = [:]
     private var needsLayout = false
-    private var needsLayoutSelection = false
+    private var needsLayoutLineSelection = false
     private var maximumLineBreakymbolWidth: CGFloat {
         if invisibleCharacterConfiguration.showLineBreaks && invisibleCharacterConfiguration.showSoftLineBreaks {
             return max(invisibleCharacterConfiguration.lineBreakSymbolSize.width, invisibleCharacterConfiguration.softLineBreakSymbolSize.width)
@@ -564,13 +564,13 @@ extension LayoutManager {
         }
     }
 
-    func setNeedsLayoutSelection() {
-        needsLayoutSelection = true
+    func setNeedsLayoutLineSelection() {
+        needsLayoutLineSelection = true
     }
 
-    func layoutSelectionIfNeeded() {
-        if needsLayoutSelection {
-            needsLayoutSelection = true
+    func layoutLineSelectionIfNeeded() {
+        if needsLayoutLineSelection {
+            needsLayoutLineSelection = true
             CATransaction.begin()
             CATransaction.setDisableActions(false)
             layoutLineSelection()
