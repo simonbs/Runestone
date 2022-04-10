@@ -677,7 +677,7 @@ extension LayoutManager {
             }
             // The line fragments have now been created and we can set the marked and highlighted ranges on them.
             if let markedRange = markedRange {
-                let localMarkedRange = NSRange(globalRange: markedRange, localTo: lineController.line)
+                let localMarkedRange = NSRange(globalRange: markedRange, cappedLocalTo: lineController.line)
                 lineController.setMarkedTextOnLineFragments(localMarkedRange)
             } else {
                 lineController.setMarkedTextOnLineFragments(nil)
@@ -878,7 +878,7 @@ private extension LayoutManager {
         for lineID in visibleLineIDs {
             if let lineController = lineControllers[lineID] {
                 if let markedRange = markedRange {
-                    let localMarkedRange = NSRange(globalRange: markedRange, localTo: lineController.line)
+                    let localMarkedRange = NSRange(globalRange: markedRange, cappedLocalTo: lineController.line)
                     lineController.setMarkedTextOnLineFragments(localMarkedRange)
                 } else {
                     lineController.setMarkedTextOnLineFragments(nil)
@@ -895,12 +895,11 @@ private extension LayoutManager {
         for highlightedRange in highlightedRanges where highlightedRange.range.length > 0 {
             let lines = lineManager.lines(in: highlightedRange.range)
             for line in lines {
-                if let cappedRange = NSRange(globalRange: highlightedRange.range, localTo: line) {
-                    let highlightedRange = HighlightedRange(
-                        id: highlightedRange.id,
-                        range: cappedRange,
-                        color: highlightedRange.color,
-                        cornerRadius: highlightedRange.cornerRadius)
+                if let cappedRange = NSRange(globalRange: highlightedRange.range, cappedTo: line) {
+                    let id = highlightedRange.id
+                    let color = highlightedRange.color
+                    let cornerRadius = highlightedRange.cornerRadius
+                    let highlightedRange = HighlightedRange(id: id, range: cappedRange, color: color, cornerRadius: cornerRadius)
                     if let existingHighlightedRanges = highlightedRangesMap[line.id] {
                         highlightedRangesMap[line.id] = existingHighlightedRanges + [highlightedRange]
                     } else {
