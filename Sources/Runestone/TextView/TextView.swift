@@ -29,7 +29,7 @@ public final class TextView: UIScrollView {
         }
         set {
             textInputView.string = newValue as NSString
-            contentSize = textInputView.contentSize
+            contentSize = preferredContentSize
         }
     }
     /// Colors and fonts to be used by the editor.
@@ -408,6 +408,24 @@ public final class TextView: UIScrollView {
     public var isAutomaticScrollEnabled = true
     /// When automatic scrolling is enabled and the caret leaves the viewport, the text view will automatically scroll the content. The `automaticScrollInset` is applied to the viewport before scrolling. The inset can be used to adjust when the text view should scroll the content. For example it can be used to account for views overlaying the content. The text view will does account for the keyboard or the status bar.
     public var automaticScrollInset: UIEdgeInsets = .zero
+    /// Amount of overscroll to add in the vertical direction. The overscroll is a factor of the scrollable area height and will not take into account any insets. 0 means no overscroll and 1 means an amount equal to the height of the text view. Detaults to 0.
+    public var verticalOverscrollFactor: CGFloat = 0 {
+        didSet {
+            if horizontalOverscrollFactor != oldValue {
+                hasPendingContentSizeUpdate = true
+                handleContentSizeUpdateIfNeeded()
+            }
+        }
+    }
+    /// Amount of overscroll to add in the horizontal direction. The overscroll is a factor of the scrollable area height and will not take into account any insets or the width of the gutter. 0 means no overscroll and 1 means an amount equal to the width of the text view. Detaults to 0.
+    public var horizontalOverscrollFactor: CGFloat = 0 {
+        didSet {
+            if horizontalOverscrollFactor != oldValue {
+                hasPendingContentSizeUpdate = true
+                handleContentSizeUpdateIfNeeded()
+            }
+        }
+    }
     /// The length of the line that was longest when opening the document. This will return nil if the line is no longer available.
     /// The value will not be kept updated as the text is changed. The value can be used to determine if a document contains a very long line in which case the performance may be degraded when editing the line.
     public var lengthOfInitallyLongestLine: Int? {
@@ -479,6 +497,14 @@ public final class TextView: UIScrollView {
     // https://steveshepard.com/blog/adventures-with-uitextinteraction/
     private var textRangeAdjustmentGestureRecognizers: Set<UIGestureRecognizer> = []
     private var previousSelectedRangeDuringGestureHandling: NSRange?
+    private var preferredContentSize: CGSize {
+        let horizontalOverscrollLength = max(frame.width * horizontalOverscrollFactor, 0)
+        let verticalOverscrollLength = max(frame.height * verticalOverscrollFactor, 0)
+        let baseContentSize = textInputView.contentSize
+        let width = baseContentSize.width + horizontalOverscrollLength
+        let height = baseContentSize.height + verticalOverscrollLength
+        return CGSize(width: width, height: height)
+    }
 
     /// Create a new text view.
     /// - Parameter frame: The frame rectangle of the text view.
@@ -521,7 +547,7 @@ public final class TextView: UIScrollView {
     override public func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
         textInputView.scrollViewSafeAreaInsets = safeAreaInsets
-        contentSize = textInputView.contentSize
+        contentSize = preferredContentSize
         layoutIfNeeded()
     }
 
@@ -583,7 +609,7 @@ public final class TextView: UIScrollView {
     /// - Parameter addUndoAction: Whether the state change can be undone. Defaults to false.
     public func setState(_ state: TextViewState, addUndoAction: Bool = false) {
         textInputView.setState(state, addUndoAction: addUndoAction)
-        contentSize = textInputView.contentSize
+        contentSize = preferredContentSize
     }
 
     /// Returns the row and column at the specified location in the text.
@@ -853,7 +879,7 @@ private extension TextView {
             if !isBouncingHorizontally || isCriticalUpdate || !isScrolling {
                 hasPendingContentSizeUpdate = false
                 let oldContentOffset = contentOffset
-                contentSize = textInputView.contentSize
+                contentSize = preferredContentSize
                 contentOffset = oldContentOffset
                 setNeedsLayout()
             }
