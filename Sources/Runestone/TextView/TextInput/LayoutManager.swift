@@ -482,7 +482,7 @@ extension LayoutManager {
         let startLineIndex = startLine.index
         var endLineIndex = endLine.index
         // If the end line starts where our selection ends then we're only interested in selecting the line break and we will therefore iterate one line less.
-        if range.upperBound == endLine.location {
+        if range.upperBound == endLine.location && startLineIndex != endLineIndex {
             endLineIndex -= 1
         }
         let lineIndexRange = startLineIndex ..< endLineIndex + 1
@@ -611,7 +611,7 @@ extension LayoutManager {
         }
         // If the line starts where our selection ends then our selection end son a line break and we will not include the following line.
         var realEndLine = endLine
-        if selectedRange.upperBound == endLine.location {
+        if selectedRange.upperBound == endLine.location && startLine !== endLine {
             realEndLine = endLine.previous
             selectedRange = NSRange(location: selectedRange.lowerBound, length: max(selectedRange.length - 1, 0))
         }
