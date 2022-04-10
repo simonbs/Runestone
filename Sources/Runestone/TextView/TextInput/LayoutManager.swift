@@ -491,8 +491,8 @@ extension LayoutManager {
             let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
             let lineFragmentSelectionRects = lineController.selectionRects(in: localRange)
             for (lineFragmentSelectionRectIdx, lineFragmentSelectionRect) in lineFragmentSelectionRects.enumerated() {
-                // Determining containsStart and containsEnd based on indices assumes that the text selection rects are
-                // iterated in order. This means that `-selectionRects(in:)` on LineController should return them in order.
+                // Determining containsStart and containsEnd based on indices assumes that the text selection rects are iterated in order.
+                // This means that `-selectionRects(in:)` on LineController should return them in order.
                 let containsStart = lineIndex == lineIndexRange.lowerBound && lineFragmentSelectionRectIdx == 0
                 let containsEnd = lineIndex == lineIndexRange.upperBound - 1 && lineFragmentSelectionRectIdx == lineFragmentSelectionRects.count - 1
                 var screenRect = lineFragmentSelectionRect.rect
