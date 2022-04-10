@@ -179,13 +179,6 @@ final class LineController {
             }
         }
     }
-
-    func setHighlightedRangesOnLineFragments(_ highlightedRanges: [HighlightedRange]) {
-        for (_, lineFragmentController) in lineFragmentControllers {
-            let lineFragment = lineFragmentController.lineFragment
-            lineFragmentController.highlightedRanges = highlightedRanges.filter { $0.range.overlaps(lineFragment.range) }
-        }
-    }
 }
 
 private extension LineController {
