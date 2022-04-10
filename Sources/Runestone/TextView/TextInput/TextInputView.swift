@@ -428,7 +428,7 @@ final class TextInputView: UIView, UITextInput {
         didSet {
             if selectedRange != oldValue {
                 layoutManager.selectedRange = selectedRange
-                layoutManager.setNeedsLayoutSelection()
+                layoutManager.setNeedsLayoutLineSelection()
                 setNeedsLayout()
             }
         }
@@ -563,7 +563,7 @@ final class TextInputView: UIView, UITextInput {
     override func layoutSubviews() {
         super.layoutSubviews()
         layoutManager.layoutIfNeeded()
-        layoutManager.layoutSelectionIfNeeded()
+        layoutManager.layoutLineSelectionIfNeeded()
         layoutPageGuideIfNeeded()
     }
 
