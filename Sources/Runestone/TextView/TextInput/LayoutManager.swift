@@ -336,11 +336,8 @@ final class LayoutManager {
         self.gutterSelectionBackgroundView.isUserInteractionEnabled = false
         self.lineSelectionBackgroundView.isUserInteractionEnabled = false
         self.updateShownViews()
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(clearMemory),
-            name: UIApplication.didReceiveMemoryWarningNotification,
-            object: nil)
+        let memoryWarningNotificationName = UIApplication.didReceiveMemoryWarningNotification
+        NotificationCenter.default.addObserver(self, selector: #selector(clearMemory), name: memoryWarningNotificationName, object: nil)
     }
 
     func invalidateContentSize() {
