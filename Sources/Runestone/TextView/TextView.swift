@@ -510,7 +510,7 @@ public final class TextView: UIScrollView {
     /// Lays out subviews.
     override public func layoutSubviews() {
         super.layoutSubviews()
-        handleContentSizeUpdateIfNecessary()
+        handleContentSizeUpdateIfNeeded()
         textInputView.scrollViewWidth = frame.width
         textInputView.frame = CGRect(x: 0, y: 0, width: max(contentSize.width, frame.width), height: max(contentSize.height, frame.height))
         textInputView.viewport = CGRect(origin: contentOffset, size: frame.size)
@@ -839,7 +839,7 @@ private extension TextView {
         }
     }
 
-    private func handleContentSizeUpdateIfNecessary() {
+    private func handleContentSizeUpdateIfNeeded() {
         if hasPendingContentSizeUpdate {
             // We don't want to update the content size when the scroll view is "bouncing" near the gutter,
             // or at the end of a line since it causes flickering when updating the content size while scrolling.
@@ -978,7 +978,7 @@ extension TextView: TextInputViewDelegate {
     func textInputViewDidInvalidateContentSize(_ view: TextInputView) {
         if contentSize != view.contentSize {
             hasPendingContentSizeUpdate = true
-            handleContentSizeUpdateIfNecessary()
+            handleContentSizeUpdateIfNeeded()
         }
     }
 
