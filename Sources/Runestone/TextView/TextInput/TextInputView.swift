@@ -727,6 +727,12 @@ final class TextInputView: UIView, UITextInput {
         layoutManager.layoutLines(untilLocation: location)
     }
 
+    func redisplayVisibleLines() {
+        layoutManager.redisplayVisibleLines()
+        layoutManager.setNeedsLayout()
+        layoutManager.layoutIfNeeded()
+    }
+
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if hasPendingFullLayout && window != nil {
@@ -1090,7 +1096,8 @@ extension TextInputView {
                 layoutManager.removeLine(withID: removedLine.id)
             }
         }
-        layoutManager.redisplay(changeSet.editedLines)
+        let editedLineIDs = Set(changeSet.editedLines.map(\.id))
+        layoutManager.redisplayLines(withIDs: editedLineIDs)
         if didAddOrRemoveLines {
             layoutManager.updateLineNumberWidth()
         }

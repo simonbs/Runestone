@@ -781,6 +781,11 @@ public final class TextView: UIScrollView {
     public func selectHighlightedRange(at index: Int) {
         highlightNavigationController.selectRange(at: index)
     }
+
+    /// Synchronously displays the visible lines. This can be used to immediately update the visible lines after setting the theme. Use with caution as this redisplaying the visible lines can be a costly operation.
+    public func redisplayVisibleLines() {
+        textInputView.redisplayVisibleLines()
+    }
 }
 
 private extension TextView {

@@ -395,10 +395,15 @@ final class LayoutManager {
         }
     }
 
-    func redisplay(_ lines: Set<DocumentLineNode>) {
-        for line in lines {
-            if let lineController = lineControllers[line.id] {
-                let lineYPosition = line.yPosition
+    func redisplayVisibleLines() {
+        redisplayLines(withIDs: visibleLineIDs)
+        setNeedsDisplayOnLines()
+    }
+
+    func redisplayLines(withIDs lineIDs: Set<DocumentLineNodeID>) {
+        for lineID in lineIDs {
+            if let lineController = lineControllers[lineID] {
+                let lineYPosition = lineController.line.yPosition
                 let lineLocalViewport = CGRect(x: 0, y: lineYPosition, width: insetViewport.width, height: insetViewport.maxY - lineYPosition)
                 lineController.invalidateEverything()
                 lineController.prepareToDisplayString(in: lineLocalViewport, syntaxHighlightAsynchronously: false)
