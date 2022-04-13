@@ -319,6 +319,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.kern {
                 performSelectionModifyingChanges {
+                    pageGuideController.kern = newValue
                     layoutManager.kern = newValue
                 }
             }
@@ -729,8 +730,6 @@ final class TextInputView: UIView, UITextInput {
 
     func redisplayVisibleLines() {
         layoutManager.redisplayVisibleLines()
-        layoutManager.setNeedsLayout()
-        layoutManager.layoutIfNeeded()
     }
 
     override func didMoveToWindow() {

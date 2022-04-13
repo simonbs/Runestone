@@ -396,8 +396,15 @@ final class LayoutManager {
     }
 
     func redisplayVisibleLines() {
+        // Ensure we have the correct set of visible lines.
+        setNeedsLayout()
+        layoutIfNeeded()
+        // Force a preparation of the lines synchronously.
         redisplayLines(withIDs: visibleLineIDs)
         setNeedsDisplayOnLines()
+        // Then force a relayout of the lines.
+        setNeedsLayout()
+        layoutIfNeeded()
     }
 
     func redisplayLines(withIDs lineIDs: Set<DocumentLineNodeID>) {
