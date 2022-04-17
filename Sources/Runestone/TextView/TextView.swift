@@ -467,7 +467,7 @@ public final class TextView: UIScrollView {
     private var _inputAccessoryView: UIView?
     private let _inputAssistantItem = UITextInputAssistantItem()
     private var willBeginEditingFromNonEditableTextInteraction = false
-    private var shouldBeginEditing: Bool {
+    private var delegateAllowsEditingToBegin: Bool {
         if let editorDelegate = editorDelegate {
             return editorDelegate.textViewShouldBeginEditing(self)
         } else {
@@ -554,7 +554,7 @@ public final class TextView: UIScrollView {
     /// Asks UIKit to make this object the first responder in its window.
     @discardableResult
     override public func becomeFirstResponder() -> Bool {
-        if !isEditing && shouldBeginEditing {
+        if !isEditing && delegateAllowsEditingToBegin {
             // Reset willBeginEditingFromNonEditableTextInteraction to support calling becomeFirstResponder() programmatically.
             willBeginEditingFromNonEditableTextInteraction = false
             _ = textInputView.resignFirstResponder()
@@ -1087,7 +1087,7 @@ extension TextView: SearchControllerDelegate {
 extension TextView: UIGestureRecognizerDelegate {
     override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         if gestureRecognizer === tapGestureRecognizer {
-            return !isEditing && shouldBeginEditing
+            return !isEditing && !isDragging && !isDecelerating && delegateAllowsEditingToBegin
         } else {
             return true
         }
