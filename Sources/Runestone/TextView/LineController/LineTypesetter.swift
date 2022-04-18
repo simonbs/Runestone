@@ -114,15 +114,6 @@ private extension LineTypesetter {
         maximumLineWidth = max(maximumLineWidth, typesetResult.maximumLineWidth)
     }
 
-    private func createAttributedString(from string: String) -> CFAttributedString? {
-        if let attributedString = CFAttributedStringCreateMutable(kCFAllocatorDefault, string.utf16.count) {
-            CFAttributedStringReplaceString(attributedString, CFRangeMake(0, 0), string as CFString)
-            return attributedString
-        } else {
-            return nil
-        }
-    }
-
     private func typesetLineFragments(until condition: TypesetEndCondition, additionalLineFragmentCount: Int = 0) -> [LineFragment] {
         if let typesetter = typesetter {
             let typesetResult = typesetLineFragments(
