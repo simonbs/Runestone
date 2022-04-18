@@ -137,11 +137,10 @@ private extension LineTypesetter {
         }
     }
 
-    private func typesetLineFragments(
-        until condition: TypesetEndCondition,
-        additionalLineFragmentCount: Int = 0,
-        using typesetter: CTTypesetter,
-        stringLength: Int) -> TypesetResult {
+    private func typesetLineFragments(until condition: TypesetEndCondition,
+                                      additionalLineFragmentCount: Int = 0,
+                                      using typesetter: CTTypesetter,
+                                      stringLength: Int) -> TypesetResult {
         guard constrainingWidth > 0 else {
             return TypesetResult(lineFragments: [], lineFragmentsMap: [:], maximumLineWidth: 0)
         }
@@ -149,8 +148,8 @@ private extension LineTypesetter {
         var lineFragments: [LineFragment] = []
         var lineFragmentsMap: [LineFragmentID: Int] = [:]
         var remainingAdditionalLineFragmentCount = additionalLineFragmentCount
-        var shouldKeepTypesetting = condition.shouldKeepTypesetting(currentYPosition: nextYPosition, currentCharacterIndex: startOffset)
-            || remainingAdditionalLineFragmentCount > 0
+        let conditionAllowsKeepTypesetting = condition.shouldKeepTypesetting(currentYPosition: nextYPosition, currentCharacterIndex: startOffset)
+        var shouldKeepTypesetting = conditionAllowsKeepTypesetting || remainingAdditionalLineFragmentCount > 0
         while startOffset < stringLength && shouldKeepTypesetting {
             let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingWidth))
             let range = CFRangeMake(startOffset, length)
