@@ -52,6 +52,7 @@ final class LineTypesetter {
 
     private let lineID: String
     private var stringLength = 0
+    private var attributedString: NSAttributedString?
     private var typesetter: CTTypesetter?
     private var lineFragmentsMap: [LineFragmentID: Int] = [:]
     private var startOffset = 0
@@ -66,6 +67,7 @@ final class LineTypesetter {
         lineFragments = []
         maximumLineWidth = 0
         stringLength = 0
+        attributedString = nil
         typesetter = nil
         lineFragmentsMap = [:]
         startOffset = 0
@@ -73,7 +75,8 @@ final class LineTypesetter {
         lineFragmentIndex = 0
     }
 
-    func prepareToTypeset(_ attributedString: CFAttributedString) {
+    func prepareToTypeset(_ attributedString: NSAttributedString) {
+        self.attributedString = attributedString
         stringLength = CFAttributedStringGetLength(attributedString)
         typesetter = CTTypesetterCreateWithAttributedString(attributedString)
     }
@@ -82,6 +85,7 @@ final class LineTypesetter {
     func typesetLineFragments(in rect: CGRect) -> [LineFragment] {
         let lineFragments = typesetLineFragments(until: .yPosition(rect.maxY))
         if isFinishedTypesetting {
+            attributedString = nil
             typesetter = nil
         }
         return lineFragments
@@ -91,6 +95,7 @@ final class LineTypesetter {
     func typesetLineFragments(toLocation location: Int, additionalLineFragmentCount: Int = 0) -> [LineFragment] {
         let lineFragments = typesetLineFragments(until: .characterIndex(location), additionalLineFragmentCount: additionalLineFragmentCount)
         if isFinishedTypesetting {
+            attributedString = nil
             typesetter = nil
         }
         return lineFragments
@@ -142,7 +147,7 @@ private extension LineTypesetter {
         let conditionAllowsKeepTypesetting = condition.shouldKeepTypesetting(currentYPosition: nextYPosition, currentCharacterIndex: startOffset)
         var shouldKeepTypesetting = conditionAllowsKeepTypesetting || remainingAdditionalLineFragmentCount > 0
         while startOffset < stringLength && shouldKeepTypesetting {
-            let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingWidth))
+            let length = suggestNextLineBreak(using: typesetter)
             let range = CFRangeMake(startOffset, length)
             let lineFragment = makeLineFragment(for: range, in: typesetter, lineFragmentIndex: lineFragmentIndex, yPosition: nextYPosition)
             lineFragments.append(lineFragment)
@@ -165,6 +170,52 @@ private extension LineTypesetter {
         return TypesetResult(lineFragments: lineFragments, lineFragmentsMap: lineFragmentsMap, maximumLineWidth: maximumLineWidth)
     }
 
+    private func suggestNextLineBreak(using typesetter: CTTypesetter) -> Int {
+        let length = CTTypesetterSuggestClusterBreak(typesetter, startOffset, Double(constrainingWidth))
+        guard startOffset + length < stringLength, let attributedString = attributedString else {
+            // We've reached the end of the line.
+            return length
+        }
+        let lastCharacterIndex = startOffset + length - 1
+        let breaksAtWhitespace = attributedString.isWhitespaceCharacter(at: lastCharacterIndex)
+        guard !breaksAtWhitespace else {
+            // We're breaking at a whitespace so we return the break suggested by CTTypesetter.
+            return length
+        }
+        // CTTypesetter did not suggest breaking at a whitespace. We try to go back in the string to find a whitespace to break at.
+        // If that fails we'll just use the break suggested by CTTypesetter. This workaround solves two issues:
+        // 1. The results more closely matches the behavior of desktop editors like Nova. They tend to prefer breaking at whitespaces.
+        // 2. It fixes an issue where breaking in the middle of the /> ligature would cause the slash not to be drawn. More info in this tweet:
+        //    https://twitter.com/simonbs/status/1515961709671899137
+        let maximumLookback = max(length, 100)
+        if let lookbackLength = lookbackToFindFirstWhitespace(startingAt: startOffset + length, maximumLookback: maximumLookback) {
+            return length - lookbackLength
+        } else {
+            return length
+        }
+    }
+
+    private func lookbackToFindFirstWhitespace(startingAt startLocation: Int, maximumLookback: Int) -> Int? {
+        guard let attributedString = attributedString else {
+            return nil
+        }
+        var lookback = 0
+        var foundWhitespace = false
+        while lookback < maximumLookback && !foundWhitespace {
+            if attributedString.isWhitespaceCharacter(at: startLocation - lookback) {
+                foundWhitespace = true
+            } else {
+                lookback += 1
+            }
+        }
+        if foundWhitespace {
+            // Subtract one to break at the whitespace we've found.
+            return lookback - 1
+        } else {
+            return nil
+        }
+    }
+
     private func makeLineFragment(for range: CFRange, in typesetter: CTTypesetter, lineFragmentIndex: Int, yPosition: CGFloat) -> LineFragment {
         let line = CTTypesetterCreateLine(typesetter, range)
         var ascent: CGFloat = 0
@@ -185,5 +236,13 @@ private extension LineTypesetter {
             baseSize: baseSize,
             scaledSize: scaledSize,
             yPosition: yPosition)
+    }
+}
+
+private extension NSAttributedString {
+    func isWhitespaceCharacter(at location: Int) -> Bool {
+        let range = NSRange(location: location, length: 1)
+        let attributedSubstring = attributedSubstring(from: range)
+        return attributedSubstring.string.trimmingCharacters(in: .whitespaces).isEmpty
     }
 }
