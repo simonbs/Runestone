@@ -58,6 +58,9 @@ final class LineTypesetter {
     private var startOffset = 0
     private var nextYPosition: CGFloat = 0
     private var lineFragmentIndex = 0
+    /// List of characters that we prefer wrapping a line after. These are less preferred than whitespace.
+    /// If it's not possible to wrap a line after a whitespace or any of these characters, then we'll wrap after any character.
+    private let preferredLineBreakCharacters = [",", ";"]
 
     init(lineID: String) {
         self.lineID = lineID
@@ -177,8 +180,8 @@ private extension LineTypesetter {
             return length
         }
         let lastCharacterIndex = startOffset + length - 1
-        let breaksAtWhitespace = attributedString.isWhitespaceCharacter(at: lastCharacterIndex)
-        guard !breaksAtWhitespace else {
+        let prefersLineBreakAfterCharacter = prefersInsertingLineBreakAfterCharacter(at: lastCharacterIndex)
+        guard !prefersLineBreakAfterCharacter else {
             // We're breaking at a whitespace so we return the break suggested by CTTypesetter.
             return length
         }
@@ -187,22 +190,19 @@ private extension LineTypesetter {
         // 1. The results more closely matches the behavior of desktop editors like Nova. They tend to prefer breaking at whitespaces.
         // 2. It fixes an issue where breaking in the middle of the /> ligature would cause the slash not to be drawn. More info in this tweet:
         //    https://twitter.com/simonbs/status/1515961709671899137
-        if let lookbackLength = lookbackToFindFirstWhitespace(startingAt: startOffset + length, maximumLookback: maximumLookback) {
         let maximumLookback = min(length, 100)
+        if let lookbackLength = lookbackToFindFirstLineBreakableCharacter(startingAt: startOffset + length, maximumLookback: maximumLookback) {
             return length - lookbackLength
         } else {
             return length
         }
     }
 
-    private func lookbackToFindFirstWhitespace(startingAt startLocation: Int, maximumLookback: Int) -> Int? {
-        guard let attributedString = attributedString else {
-            return nil
-        }
+    private func lookbackToFindFirstLineBreakableCharacter(startingAt startLocation: Int, maximumLookback: Int) -> Int? {
         var lookback = 0
         var foundWhitespace = false
         while lookback < maximumLookback && !foundWhitespace {
-            if attributedString.isWhitespaceCharacter(at: startLocation - lookback) {
+            if prefersInsertingLineBreakAfterCharacter(at: startLocation - lookback) {
                 foundWhitespace = true
             } else {
                 lookback += 1
@@ -213,6 +213,20 @@ private extension LineTypesetter {
             return lookback - 1
         } else {
             return nil
+        }
+    }
+
+    private func prefersInsertingLineBreakAfterCharacter(at location: Int) -> Bool {
+        guard let attributedString = attributedString else {
+            return false
+        }
+        let range = NSRange(location: location, length: 1)
+        let attributedSubstring = attributedString.attributedSubstring(from: range)
+        let string = attributedSubstring.string.trimmingCharacters(in: .whitespaces)
+        if string.isEmpty {
+            return true
+        } else {
+            return preferredLineBreakCharacters.contains(string)
         }
     }
 
@@ -236,13 +250,5 @@ private extension LineTypesetter {
             baseSize: baseSize,
             scaledSize: scaledSize,
             yPosition: yPosition)
-    }
-}
-
-private extension NSAttributedString {
-    func isWhitespaceCharacter(at location: Int) -> Bool {
-        let range = NSRange(location: location, length: 1)
-        let attributedSubstring = attributedSubstring(from: range)
-        return attributedSubstring.string.trimmingCharacters(in: .whitespaces).isEmpty
     }
 }
