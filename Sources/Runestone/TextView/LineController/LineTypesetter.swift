@@ -187,8 +187,8 @@ private extension LineTypesetter {
         // 1. The results more closely matches the behavior of desktop editors like Nova. They tend to prefer breaking at whitespaces.
         // 2. It fixes an issue where breaking in the middle of the /> ligature would cause the slash not to be drawn. More info in this tweet:
         //    https://twitter.com/simonbs/status/1515961709671899137
-        let maximumLookback = max(length, 100)
         if let lookbackLength = lookbackToFindFirstWhitespace(startingAt: startOffset + length, maximumLookback: maximumLookback) {
+        let maximumLookback = min(length, 100)
             return length - lookbackLength
         } else {
             return length
