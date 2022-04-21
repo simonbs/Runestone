@@ -8,14 +8,17 @@ Runestone provides a text view with support for features commonly found in code 
 
 - Syntax highlighting.
 - Line numbers.
-- Show invisible characters.
-- Highlight select line.
-- Enable/disable line wrapping.
-- Adjust line-height and kerning.
-- Search and replace with support for regular expression.
-- Indent on line break.
-- Show page guide.
-- Handling of character like quotes and brackets.
+- Highlight the selected line.
+- Show invisible characters (tabs, spaces and line breaks).
+- Insertion of character pairs, e.g. inserting the trailing quotation mark when inserting the leading.
+- Customization of colors and fonts.
+- Toggle line wrapping on and off.
+- Adjust height of lines.
+- Add a page guide.
+- Add vertical and horizontal overscroll.
+- Highlight ranges in the text view.
+- Search the text using regular expressions.
+- Automatically detects if a file is using spaces or tabs for indentation.
 
 The text view provided by Runestone does not subclass UITextView but has an API that is similar to the one of UITextView.
 
