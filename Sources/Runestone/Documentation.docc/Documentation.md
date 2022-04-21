@@ -21,7 +21,11 @@ The text view provided by Runestone does not subclass UITextView but has an API 
 
 The framework is [available on GitHub](https://github.com/simonbs/runestone).
 
-![](hero.png)
+![Shows syntax highlighted code snippets in a grid with the Runestone logo on top.](hero.png)
+
+The [Runestone Editor](https://apps.apple.com/us/app/runestone-editor/id1548193893) app was built on top of the Runestone framework and is free to download on the App Store.
+
+[![Download Runestone Editor on the App Store](app-store-download.png)](https://apps.apple.com/us/app/runestone-editor/id1548193893)
 
 ## Topics
 
