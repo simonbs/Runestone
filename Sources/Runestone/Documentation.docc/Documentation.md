@@ -36,13 +36,18 @@ The [Runestone Editor](https://apps.apple.com/us/app/runestone-editor/id15481938
 - ``TextViewDelegate``
 - ``TextViewState``
 
+### Appearance
+
+The appearance of <doc:TextView> can be customized using a <doc:Theme>. This is also for the text styling and colors used for syntax highlighting.
+
+- <doc:CreatingATheme>
+- ``Theme``
+
 ### Syntax Highlighting
 
 Syntax highlighting is based on GitHub's [Tree-sitter](https://github.com/tree-sitter/tree-sitter) parser generator. It has support for most popular programming languages.
 
 - <doc:AddingATreeSitterLanguage>
-- <doc:UnderstandingCaptureSequences>
-- ``Theme``
 - ``FontTraits``
 - ``LanguageMode``
 - ``PlainTextLanguageMode``
