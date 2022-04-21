@@ -368,7 +368,7 @@ public final class TextView: UIScrollView {
     public var gutterWidth: CGFloat {
         return textInputView.gutterWidth
     }
-    /// The line height is multiplied with the value.
+    /// The line-height is multiplied with the value.
     public var lineHeightMultiplier: CGFloat {
         get {
             return textInputView.lineHeightMultiplier
