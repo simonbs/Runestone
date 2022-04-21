@@ -11,7 +11,7 @@ Runestone provides a text view with support for features commonly found in code 
 - Show invisible characters.
 - Highlight select line.
 - Enable/disable line wrapping.
-- Adjust line height and kerning.
+- Adjust line-height and kerning.
 - Search and replace with support for regular expression.
 - Indent on line break.
 - Show page guide.
