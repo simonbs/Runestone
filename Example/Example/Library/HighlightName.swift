@@ -1,6 +1,6 @@
 import Foundation
 
-enum Scope: String {
+enum HighlightName: String {
     case comment
     case function
     case keyword
@@ -11,12 +11,12 @@ enum Scope: String {
     case string
     case variableBuiltin = "variable.builtin"
 
-    init?(captureSequence: String) {
-        var comps = captureSequence.split(separator: ".")
+    init?(_ rawHighlightName: String) {
+        var comps = rawHighlightName.split(separator: ".")
         while !comps.isEmpty {
-            let scopeName = comps.joined(separator: ".")
-            if let scope = Scope(rawValue: scopeName) {
-                self = scope
+            let candidateRawHighlightName = comps.joined(separator: ".")
+            if let highlightName = Self(rawValue: candidateRawHighlightName) {
+                self = highlightName
                 return
             }
             comps.removeLast()

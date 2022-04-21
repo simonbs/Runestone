@@ -26,12 +26,12 @@ final class PlainTextTheme: EditorTheme {
     let markedTextBackgroundColor: UIColor = .black.withAlphaComponent(0.1)
     let markedTextBackgroundCornerRadius: CGFloat = 4
 
-    func textColor(for captureSequence: String) -> UIColor? {
+    func textColor(for rawHighlightName: String) -> UIColor? {
         return nil
     }
 
-    func fontTraits(for captureSequence: String) -> FontTraits {
-        if let scope = Scope(captureSequence: captureSequence), scope == .keyword {
+    func fontTraits(for rawHighlightName: String) -> FontTraits {
+        if let highlightName = HighlightName(rawHighlightName), highlightName == .keyword {
             return .bold
         } else {
             return []

@@ -26,11 +26,11 @@ final class TomorrowNightTheme: EditorTheme {
     let markedTextBackgroundColor = UIColor(named: "TomorrowNightForeground")!.withAlphaComponent(0.1)
     let markedTextBackgroundCornerRadius: CGFloat = 4
 
-    func textColor(for captureSequence: String) -> UIColor? {
-        guard let scope = Scope(captureSequence: captureSequence) else {
+    func textColor(for rawHighlightName: String) -> UIColor? {
+        guard let highlightName = HighlightName(rawHighlightName) else {
             return nil
         }
-        switch scope {
+        switch highlightName {
         case .comment:
             return UIColor(named: "TomorrowNightComment")
         case .operator, .punctuation:
@@ -50,8 +50,8 @@ final class TomorrowNightTheme: EditorTheme {
         }
     }
 
-    func fontTraits(for captureSequence: String) -> FontTraits {
-        if let scope = Scope(captureSequence: captureSequence), scope == .keyword {
+    func fontTraits(for rawHighlightName: String) -> FontTraits {
+        if let highlightName = HighlightName(rawHighlightName), highlightName == .keyword {
             return .bold
         } else {
             return []

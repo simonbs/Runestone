@@ -35,20 +35,20 @@ public protocol Theme: AnyObject {
     var markedTextBackgroundCornerRadius: CGFloat { get }
     /// Color of text matching the capture sequence.
     ///
-    /// See <doc:UnderstandingCaptureSequences> for more information on capture sequences.
-    func textColor(for captureSequence: String) -> UIColor?
+    /// See <doc:CreatingATheme> for more information on higlight names.
+    func textColor(for highlightName: String) -> UIColor?
     /// Font of text matching the capture sequence.
     ///
-    /// See <doc:UnderstandingCaptureSequences> for more information on capture sequences.
-    func font(for captureSequence: String) -> UIFont?
+    /// See <doc:CreatingATheme> for more information on higlight names.
+    func font(for highlightName: String) -> UIFont?
     /// Traits of text matching the capture sequence.
     ///
-    /// See <doc:UnderstandingCaptureSequences> for more information on capture sequences.
-    func fontTraits(for captureSequence: String) -> FontTraits
+    /// See <doc:CreatingATheme> for more information on higlight names.
+    func fontTraits(for highlightName: String) -> FontTraits
     /// Shadow of text matching the capture sequence.
     ///
-    /// See <doc:UnderstandingCaptureSequences> for more information on capture sequences.
-    func shadow(for captureSequence: String) -> NSShadow?
+    /// See <doc:CreatingATheme> for more information on higlight names.
+    func shadow(for highlightName: String) -> NSShadow?
 }
 
 public extension Theme {
@@ -64,15 +64,15 @@ public extension Theme {
         return 0
     }
 
-    func font(for captureSequence: String) -> UIFont? {
+    func font(for highlightName: String) -> UIFont? {
         return nil
     }
 
-    func fontTraits(for captureSequence: String) -> FontTraits {
+    func fontTraits(for highlightName: String) -> FontTraits {
         return []
     }
 
-    func shadow(for captureSequence: String) -> NSShadow? {
+    func shadow(for highlightName: String) -> NSShadow? {
         return nil
     }
 }
