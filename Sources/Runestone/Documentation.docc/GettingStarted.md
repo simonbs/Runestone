@@ -64,9 +64,11 @@ Assuming you have added a language to your app using the [TreeSitterLanguages](h
 
 ```swift
 DispatchQueue.global(qos: .userInitiated) {
+    // Initialize of TextViewState on a background queue to due avoid blocking the main thread.
     let text = "let foo = \"Hello World\""
     let state = TextViewState(text: text, theme: ColorfulTheme(), language: .javaScript)
     DispatchQueue.main.async {
+        // setState(_:) should be called on the main thread.
         textView.setState(state)
     }
 }
