@@ -20,7 +20,7 @@ The functions should return a font, font traits, and a color for a _highlight na
 
 Highlight names are strings defined by the highlights query in the parser, and as such, there is no fixed set of highlight names used by Runestone. Consult the highlights query of the language you are using. This query is typically in a file named highlights.scm.
 
-Exampleso of highlight names include `keyword`, `comment`, `string` and `function`. Highlight names can share common subsequences. Examples:
+Examples of highlight names include `keyword`, `comment`, `string` and `function`. Highlight names can share common subsequences. Examples:
 
 - `variable and `variable.parameter`.
 - `function`, `function.builtin` and `function.method`.
