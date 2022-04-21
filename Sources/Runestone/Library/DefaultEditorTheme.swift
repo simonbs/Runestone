@@ -1,7 +1,7 @@
 import UIKit
 
 final class DefaultTheme: Theme {
-    fileprivate enum CaptureName: String {
+    fileprivate enum HighlightName: String {
         case `operator` = "operator"
         case keyword = "keyword"
         case variable = "variable"
@@ -36,11 +36,11 @@ final class DefaultTheme: Theme {
     let markedTextBackgroundColor: UIColor = .systemFill
     let markedTextBackgroundBorderColor: UIColor = .clear
 
-    func textColor(for captureSequence: String) -> UIColor? {
-        guard let captureName = CaptureName(sequence: captureSequence) else {
+    func textColor(for rawHighlightName: String) -> UIColor? {
+        guard let highlightName = HighlightName(sequence: rawHighlightName) else {
             return nil
         }
-        switch captureName {
+        switch highlightName {
         case .punctuationBracket, .punctuationDelimiter, .operator:
             return .secondaryLabel
         case .comment:
@@ -62,11 +62,11 @@ final class DefaultTheme: Theme {
         }
     }
 
-    func font(for captureSequence: String) -> UIFont? {
-        guard let captureName = CaptureName(sequence: captureSequence) else {
+    func font(for rawHighlightName: String) -> UIFont? {
+        guard let highlightName = HighlightName(rawHighlightName) else {
             return nil
         }
-        switch captureName {
+        switch highlightName {
         case .keyword:
             return UIFont(name: "Menlo-Bold", size: 14)!
         default:
@@ -75,15 +75,15 @@ final class DefaultTheme: Theme {
     }
 }
 
-private extension DefaultTheme.CaptureName {
-    init?(sequence: String) {
+private extension DefaultTheme.HighlightName {
+    init?(_ rawHighlightName: String) {
         // From the Tree-sitter documentation:
         //
         //   For a given highlight produced, styling will be determined based on the longest matching theme key.
         //   For example, the highlight function.builtin.static would match the key function.builtin rather than function.
         //
         //  https://tree-sitter.github.io/tree-sitter/syntax-highlighting
-        var comps = sequence.split(separator: ".")
+        var comps = rawHighlightName.split(separator: ".")
         var result: Self?
         while result == nil && !comps.isEmpty {
             let rawValue = comps.joined(separator: ".")
