@@ -12,7 +12,7 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
     func textInputViewDidInvalidateContentSize(_ view: TextInputView)
     func textInputView(_ view: TextInputView, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
-    func textInputViewDidUpdateGutterWidth(_ view: TextInputView)
+    func textInputViewDidChangeGutterWidth(_ view: TextInputView)
     func textInputViewDidBeginFloatingCursor(_ view: TextInputView)
     func textInputViewDidEndFloatingCursor(_ view: TextInputView)
     func textInputViewDidUpdateMarkedRange(_ view: TextInputView)
@@ -1314,13 +1314,13 @@ extension TextInputView: LayoutManagerDelegate {
         delegate?.textInputView(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
     }
 
-    func layoutManagerDidUpdateGutterWidth(_ layoutManager: LayoutManager) {
+    func layoutManagerDidChangeGutterWidth(_ layoutManager: LayoutManager) {
         // Typeset lines again when the line number width changes.
         // Changing line number width may increase or reduce the number of line fragments in a line.
         setNeedsLayout()
         layoutManager.invalidateLines()
         layoutManager.setNeedsLayout()
-        delegate?.textInputViewDidUpdateGutterWidth(self)
+        delegate?.textInputViewDidChangeGutterWidth(self)
     }
 
     func layoutManagerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ layoutManager: LayoutManager) {
