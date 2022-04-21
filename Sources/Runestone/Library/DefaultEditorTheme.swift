@@ -37,7 +37,7 @@ final class DefaultTheme: Theme {
     let markedTextBackgroundBorderColor: UIColor = .clear
 
     func textColor(for rawHighlightName: String) -> UIColor? {
-        guard let highlightName = HighlightName(sequence: rawHighlightName) else {
+        guard let highlightName = HighlightName(rawHighlightName) else {
             return nil
         }
         switch highlightName {
