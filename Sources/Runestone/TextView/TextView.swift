@@ -846,9 +846,9 @@ private extension TextView {
     }
 
     private func skipInsertingTrailingComponent(of characterPair: CharacterPair, in range: NSRange) -> Bool {
-        // If the user is typing the trailing component of a character pair, e.g. ) or } and the cursor is just in front
-        // of that character, then we give the delegate the option to skip inserting the character. In that case we
-        // move the caret to after the character in front of it instead.
+        // When typing the trailing component of a character pair, e.g. ) or } and the cursor is just in front of that character,
+        // the delegate is asked whether the text view should skip inserting that character. If the character is skipped,
+        // then the caret is moved after the trailing character component.
         let followingTextRange = NSRange(location: range.location + range.length, length: characterPair.trailing.count)
         let followingText = textInputView.text(in: followingTextRange)
         guard followingText == characterPair.trailing else {
@@ -1030,8 +1030,8 @@ extension TextView: TextInputViewDelegate {
         }
     }
 
-    func textInputViewDidUpdateGutterWidth(_ view: TextInputView) {
-        editorDelegate?.textViewDidUpdateGutterWidth(self)
+    func textInputViewDidChangeGutterWidth(_ view: TextInputView) {
+        editorDelegate?.textViewDidChangeGutterWidth(self)
     }
 
     func textInputViewDidBeginFloatingCursor(_ view: TextInputView) {

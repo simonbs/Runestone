@@ -5,7 +5,7 @@ import UIKit
 protocol LayoutManagerDelegate: AnyObject {
     func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager)
     func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
-    func layoutManagerDidUpdateGutterWidth(_ layoutManager: LayoutManager)
+    func layoutManagerDidChangeGutterWidth(_ layoutManager: LayoutManager)
     func layoutManagerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ layoutManager: LayoutManager)
 }
 
@@ -379,7 +379,7 @@ final class LayoutManager {
             let oldLineNumberWidth = lineNumberWidth
             lineNumberWidth = ceil(size.width) + gutterLeadingPadding + gutterTrailingPadding
             if lineNumberWidth != oldLineNumberWidth {
-                delegate?.layoutManagerDidUpdateGutterWidth(self)
+                delegate?.layoutManagerDidChangeGutterWidth(self)
                 _textContentWidth = nil
                 delegate?.layoutManagerDidInvalidateContentSize(self)
             }
