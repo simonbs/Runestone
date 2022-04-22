@@ -4,6 +4,14 @@
 
 Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) to parse code to a syntax tree which is used for features that require an understanding of the code in the editor, for example syntax highlighting.
 
+## ❤️ Sponsors Only
+
+This repository is currently only available to people who are sponsoring my work on GitHub. The repository will be made available to everyone on May 5th.
+
+I've decided to give people sponsoring me a sneak peek of Runestone, since I know there are a few people amongst my sponsors who have been patiently awaiting Runestone for the past few months, and it's time that you get a chance to check it out.
+
+I'm also hoping that you'll give me some early feedback on the project, so I can smooth out any issues. Please don't hesitate to to create issues if you stumble upon any bugs or shortcomings 😊
+
 ## ✨ Features
 
 - Syntax highlighting.
