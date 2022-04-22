@@ -42,6 +42,14 @@ Runestone was built to be fast. It's good performance is by far mostly thanks to
 
 When judging the performance of Runestone, it is key to build your app in the release configuration. The optimizations applied by the compiler when using the release configuration becomes very apparent when opening large documents.
 
+## 📱 Projects
+
+The Runestone framework is used by an app of the same name. Runestone (the app) is a plain text editor for iPhone and iPad that uses all the features of this framework.
+
+<a href="https://apps.apple.com/us/app/runestone-editor/id1548193893" target="_blank"><img width="150" alt="Runestone app icon" src="Assets/runestone-editor-app-icon.png"/></a>
+
+<a href="https://apps.apple.com/us/app/runestone-editor/id1548193893" target="_blank"><img width="150" alt="Download on the App Store" src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"/></a>
+
 ## ❤️ Acknowledgments
 
 - [Tree-sitter](https://tree-sitter.github.io/tree-sitter) is used to parse code incrementally.
