@@ -705,12 +705,7 @@ extension LayoutManager {
                 lineController.setMarkedTextOnLineFragments(nil)
             }
             layoutHighlightViews(forLineWithID: line.id)
-            // If we found at least one line to be shown and now aren't getting any line fragments within the viewport
-            // then there's no more line fragments to be shown in the viewport and we stop generating line fragments.
-            var stoppedGeneratingLineFragments = false
-            if !appearedLineFragmentIDs.isEmpty {
-                stoppedGeneratingLineFragments = lineFragmentControllers.isEmpty
-            }
+            let stoppedGeneratingLineFragments = lineFragmentControllers.isEmpty
             let lineSize = CGSize(width: lineController.lineWidth, height: lineController.lineHeight)
             setSize(of: lineController.line, to: lineSize)
             let isSizingLineAboveTopEdge = line.yPosition < insetViewport.minY + textContainerInset.top
