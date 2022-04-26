@@ -668,6 +668,10 @@ extension LayoutManager {
 
     // swiftlint:disable:next function_body_length
     private func layoutLinesInViewport() {
+        // Immediately bail out from generating lines in a viewport of zero size.
+        guard viewport.size.width > 0 && viewport.size.height > 0 else {
+            return
+        }
         let oldTextContentWidth = _textContentWidth
         let oldTextContentHeight = _textContentHeight
         let oldVisibleLineIDs = visibleLineIDs
