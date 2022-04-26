@@ -7,10 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		729C6A0528188D23004F0CA2 /* HighlightName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729C6A0428188D23004F0CA2 /* HighlightName.swift */; };
 		72CCC9852803151300274C87 /* Runestone in Resources */ = {isa = PBXBuildFile; fileRef = 72CCC9842803151300274C87 /* Runestone */; };
 		AC480601279EE0180015F712 /* BasicCharacterPair.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC480600279EE0180015F712 /* BasicCharacterPair.swift */; };
 		AC5F0253279C74A1001D1E43 /* UserDefaults+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */; };
-		AC5F0255279C79FD001D1E43 /* Scope.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC5F0254279C79FD001D1E43 /* Scope.swift */; };
 		AC832D552798C4FA00EC6832 /* TomorrowTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC832D542798C4FA00EC6832 /* TomorrowTheme.swift */; };
 		AC85537327A83AE200F7916D /* TomorrowNightTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537227A83AE200F7916D /* TomorrowNightTheme.swift */; };
 		AC85537527A83C3D00F7916D /* OneDarkTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537427A83C3D00F7916D /* OneDarkTheme.swift */; };
@@ -32,10 +32,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		729C6A0428188D23004F0CA2 /* HighlightName.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HighlightName.swift; sourceTree = "<group>"; };
 		72CCC9842803151300274C87 /* Runestone */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Runestone; path = ..; sourceTree = "<group>"; };
 		AC480600279EE0180015F712 /* BasicCharacterPair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasicCharacterPair.swift; sourceTree = "<group>"; };
 		AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserDefaults+Helpers.swift"; sourceTree = "<group>"; };
-		AC5F0254279C79FD001D1E43 /* Scope.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scope.swift; sourceTree = "<group>"; };
 		AC832D542798C4FA00EC6832 /* TomorrowTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TomorrowTheme.swift; sourceTree = "<group>"; };
 		AC85537227A83AE200F7916D /* TomorrowNightTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TomorrowNightTheme.swift; sourceTree = "<group>"; };
 		AC85537427A83C3D00F7916D /* OneDarkTheme.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OneDarkTheme.swift; sourceTree = "<group>"; };
@@ -91,12 +91,12 @@
 		AC832D5A2798C73B00EC6832 /* Library */ = {
 			isa = PBXGroup;
 			children = (
-				AC5F0254279C79FD001D1E43 /* Scope.swift */,
-				AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */,
 				AC480600279EE0180015F712 /* BasicCharacterPair.swift */,
-				AC85537827A83D2000F7916D /* ThemeSetting.swift */,
 				AC85537C27A845BB00F7916D /* CodeSample.swift */,
+				729C6A0428188D23004F0CA2 /* HighlightName.swift */,
 				AC85538427A84CF600F7916D /* TextView+Helpers.swift */,
+				AC85537827A83D2000F7916D /* ThemeSetting.swift */,
+				AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */,
 			);
 			path = Library;
 			sourceTree = "<group>";
@@ -269,7 +269,6 @@
 				AC85537727A83C6600F7916D /* PlainTextTheme.swift in Sources */,
 				ACFDF4B327983BAA00059A1B /* SceneDelegate.swift in Sources */,
 				AC85537327A83AE200F7916D /* TomorrowNightTheme.swift in Sources */,
-				AC5F0255279C79FD001D1E43 /* Scope.swift in Sources */,
 				AC85537D27A845BB00F7916D /* CodeSample.swift in Sources */,
 				AC85537927A83D2000F7916D /* ThemeSetting.swift in Sources */,
 				AC85538527A84CF600F7916D /* TextView+Helpers.swift in Sources */,
@@ -277,6 +276,7 @@
 				ACB08AD527A81ADF00EB6819 /* ThemePickerPreviewCell.swift in Sources */,
 				AC5F0253279C74A1001D1E43 /* UserDefaults+Helpers.swift in Sources */,
 				AC480601279EE0180015F712 /* BasicCharacterPair.swift in Sources */,
+				729C6A0528188D23004F0CA2 /* HighlightName.swift in Sources */,
 				AC832D552798C4FA00EC6832 /* TomorrowTheme.swift in Sources */,
 				AC85537527A83C3D00F7916D /* OneDarkTheme.swift in Sources */,
 			);
