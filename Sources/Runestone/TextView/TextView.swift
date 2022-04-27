@@ -113,7 +113,7 @@ public final class TextView: UIScrollView {
             textInputView.keyboardAppearance = newValue
         }
     }
-    /// The visible title of the Return key.
+    /// The display of the return key.
     public var returnKeyType: UIReturnKeyType {
         get {
             return textInputView.returnKeyType
@@ -210,7 +210,9 @@ public final class TextView: UIScrollView {
             }
         }
     }
-    /// Character pairs are used by the editor to automatically insert a trailing character when the user types the leading character. Common usages of this includes the \" character to surround strings and { } to surround a scope.
+    /// Character pairs are used by the editor to automatically insert a trailing character when the user types the leading character.
+    ///
+    /// Common usages of this includes the \" character to surround strings and { } to surround a scope.
     public var characterPairs: [CharacterPair] {
         get {
             return textInputView.characterPairs
@@ -273,7 +275,9 @@ public final class TextView: UIScrollView {
             textInputView.showLineBreaks = newValue
         }
     }
-    /// The text view renders invisible soft line breaks when enabled. The `softLineBreakSymbol` is used to render line breaks. These line breaks are typically represented by the U+2028 unicode character. Runestone does not provide any key commands for inserting these but supports rendering them.
+    /// The text view renders invisible soft line breaks when enabled.
+    ///
+    /// The `softLineBreakSymbol` is used to render line breaks. These line breaks are typically represented by the U+2028 unicode character. Runestone does not provide any key commands for inserting these but supports rendering them.
     public var showSoftLineBreaks: Bool {
         get {
             return textInputView.showSoftLineBreaks
@@ -406,9 +410,13 @@ public final class TextView: UIScrollView {
     }
     /// Automatically scrolls the text view to show the caret when typing or moving the caret.
     public var isAutomaticScrollEnabled = true
-    /// When automatic scrolling is enabled and the caret leaves the viewport, the text view will automatically scroll the content. The `automaticScrollInset` is applied to the viewport before scrolling. The inset can be used to adjust when the text view should scroll the content. For example it can be used to account for views overlaying the content. The text view will does account for the keyboard or the status bar.
+    /// When automatic scrolling is enabled and the caret leaves the viewport, the text view will automatically scroll the content.
+    ///
+    /// The `automaticScrollInset` is applied to the viewport before scrolling. The inset can be used to adjust when the text view should scroll the content. For example it can be used to account for views overlaying the content. The text view will does account for the keyboard or the status bar.
     public var automaticScrollInset: UIEdgeInsets = .zero
-    /// Amount of overscroll to add in the vertical direction. The overscroll is a factor of the scrollable area height and will not take into account any insets. 0 means no overscroll and 1 means an amount equal to the height of the text view. Detaults to 0.
+    /// Amount of overscroll to add in the vertical direction.
+    ///
+    /// The overscroll is a factor of the scrollable area height and will not take into account any insets. 0 means no overscroll and 1 means an amount equal to the height of the text view. Detaults to 0.
     public var verticalOverscrollFactor: CGFloat = 0 {
         didSet {
             if horizontalOverscrollFactor != oldValue {
@@ -417,7 +425,9 @@ public final class TextView: UIScrollView {
             }
         }
     }
-    /// Amount of overscroll to add in the horizontal direction. The overscroll is a factor of the scrollable area height and will not take into account any insets or the width of the gutter. 0 means no overscroll and 1 means an amount equal to the width of the text view. Detaults to 0.
+    /// Amount of overscroll to add in the horizontal direction.
+    ///
+    /// The overscroll is a factor of the scrollable area height and will not take into account any insets or the width of the gutter. 0 means no overscroll and 1 means an amount equal to the width of the text view. Detaults to 0.
     public var horizontalOverscrollFactor: CGFloat = 0 {
         didSet {
             if horizontalOverscrollFactor != oldValue {
@@ -426,8 +436,9 @@ public final class TextView: UIScrollView {
             }
         }
     }
-    /// The length of the line that was longest when opening the document. This will return nil if the line is no longer available.
-    /// The value will not be kept updated as the text is changed. The value can be used to determine if a document contains a very long line in which case the performance may be degraded when editing the line.
+    /// The length of the line that was longest when opening the document.
+    ///
+    /// This will return nil if the line is no longer available. The value will not be kept updated as the text is changed. The value can be used to determine if a document contains a very long line in which case the performance may be degraded when editing the line.
     public var lengthOfInitallyLongestLine: Int? {
         return textInputView.lineManager.initialLongestLine?.data.totalLength
     }
