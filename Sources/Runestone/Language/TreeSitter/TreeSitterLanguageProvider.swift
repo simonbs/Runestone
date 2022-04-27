@@ -14,4 +14,3 @@ public protocol TreeSitterLanguageProvider: AnyObject {
     /// - Returns: Language matching the name,
     func treeSitterLanguage(named languageName: String) -> TreeSitterLanguage?
 }
-

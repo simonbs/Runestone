@@ -85,7 +85,7 @@ private extension TreeSitterIndentController {
     /// The node can be used to determine the indentation level of a new line and if we should insert an addtional line break.
     private func nodeIncreasingIndentLevel(from node: TreeSitterNode, caretPosition: LinePosition) -> TreeSitterNode? {
         var workingNode: TreeSitterNode? = node
-        if indentationScopes.indentationDenotesBlocks {
+        if indentationScopes.whitespaceDenotesBlocks {
             workingNode = deepestChildNode(containing: caretPosition, startingAt: node)
         }
         while let node = workingNode, node.startPoint.row == caretPosition.row {
