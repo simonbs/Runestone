@@ -5,20 +5,32 @@ import Foundation
 /// When replacing text in batches, Runestone can do some optimizations to make the operation faster than when replacing the ranges one by one.
 ///
 /// Replacing a batch of matches will only register a single undo operation.
+///
+/// All ranges should be provided relative to the current text in the text view.
 public struct BatchReplaceSet: Hashable {
-    public struct Match: Hashable {
+    /// A range of text to replace and the text to replace that range with.
+    public struct Replacement: Hashable {
+        /// The range of text in the text view to replace.
         public let range: NSRange
-        public let replacementText: String
+        /// The text to replace the text in the specified range with.
+        public let text: String
 
-        public init(range: NSRange, replacementText: String) {
+        /// Creates a match to be replaced with the specified replacement text.
+        /// - Parameters:
+        ///   - range: The range of text in the text view to replace.
+        ///   - text: The text to replace the text in the specified range with.
+        public init(range: NSRange, text: String) {
             self.range = range
-            self.replacementText = replacementText
+            self.text = text
         }
     }
 
-    public let matches: [Match]
+    /// All text matches to replace.
+    public let replacements: [Replacement]
 
-    public init(matches: [Match]) {
-        self.matches = matches
+    /// Creates a set of ranges to replace with specified strings.
+    /// - Parameter replacements: All ranges to replace in the text view and their corresponding replacement texts.
+    public init(replacements: [Replacement]) {
+        self.replacements = replacements
     }
 }

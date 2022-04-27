@@ -945,36 +945,36 @@ extension TextInputView {
     }
 
     func replaceText(in batchReplaceSet: BatchReplaceSet) {
-        guard !batchReplaceSet.matches.isEmpty else {
+        guard !batchReplaceSet.replacements.isEmpty else {
             return
         }
         timedUndoManager.endUndoGrouping()
         let oldSelectedRange = selectedRange
-        let sortedMatches = batchReplaceSet.matches.sorted { $0.range.location < $1.range.location }
+        let sortedReplacements = batchReplaceSet.replacements.sorted { $0.range.location < $1.range.location }
         var replacedRanges: [NSRange] = []
-        var undoMatches: [BatchReplaceSet.Match] = []
+        var undoReplacements: [BatchReplaceSet.Replacement] = []
         var totalChangeInLength = 0
         var didAddOrRemoveLines = false
-        for result in sortedMatches where !replacedRanges.contains(where: { $0.overlaps(result.range) }) {
-            let range = result.range
+        for replacement in sortedReplacements where !replacedRanges.contains(where: { $0.overlaps(replacement.range) }) {
+            let range = replacement.range
             let adjustedRange = NSRange(location: range.location + totalChangeInLength, length: range.length)
             let existingText = stringView.substring(in: adjustedRange) ?? ""
-            let nsReplacementText = result.replacementText as NSString
-            let localDidAddOrRemoveLines = justReplaceCharacters(in: adjustedRange, with: nsReplacementText)
+            let nsText = replacement.text as NSString
+            let localDidAddOrRemoveLines = justReplaceCharacters(in: adjustedRange, with: nsText)
             if localDidAddOrRemoveLines {
                 didAddOrRemoveLines = true
             }
-            let undoRange = NSRange(location: adjustedRange.location, length: nsReplacementText.length)
-            let undoMatch = BatchReplaceSet.Match(range: undoRange, replacementText: existingText)
+            let undoRange = NSRange(location: adjustedRange.location, length: nsText.length)
+            let undoMatch = BatchReplaceSet.Replacement(range: undoRange, text: existingText)
             replacedRanges.append(range)
-            undoMatches.append(undoMatch)
-            totalChangeInLength += result.replacementText.utf16.count - range.length
+            undoReplacements.append(undoMatch)
+            totalChangeInLength += replacement.text.utf16.count - range.length
         }
         delegate?.textInputViewDidChange(self)
         if didAddOrRemoveLines {
             delegate?.textInputViewDidInvalidateContentSize(self)
         }
-        let undoBatchReplaceSet = BatchReplaceSet(matches: undoMatches)
+        let undoBatchReplaceSet = BatchReplaceSet(replacements: undoReplacements)
         timedUndoManager.beginUndoGrouping()
         timedUndoManager.setActionName(L10n.Undo.ActionName.replaceAll)
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
