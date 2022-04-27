@@ -184,7 +184,7 @@ public final class TextView: UIScrollView {
             _inputAccessoryView = newValue
         }
     }
-    /// The input assistant to use when configuring the keyboard’s shortcuts bar.
+    /// The input assistant to use when configuring the keyboard's shortcuts bar.
     override public var inputAssistantItem: UITextInputAssistantItem {
         return textInputView.inputAssistantItem
     }
@@ -192,7 +192,7 @@ public final class TextView: UIScrollView {
     override public var canBecomeFirstResponder: Bool {
         return !textInputView.isFirstResponder
     }
-    /// The text view’s background color.
+    /// The text view's background color.
     override public var backgroundColor: UIColor? {
         get {
             return textInputView.backgroundColor
