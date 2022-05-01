@@ -909,8 +909,8 @@ extension TextInputView {
         if let selectedRange = markedRange ?? selectedRange, shouldChangeText(in: selectedRange, replacementText: text) {
             // If we're inserting text then we can't have a marked range. However, UITextInput doesn't always clear the marked range
             // before calling -insertText(_:), so we do it manually. This issue can be tested by entering a backtick (`) in an empty
-            // document, then pressing any arrow key (up, right, down or left) followed by the return key. The backtick will remain marked
-            // unless we manually clear the marked range.
+            // document, then pressing any arrow key (up, right, down or left) followed by the return key.
+            // The backtick will remain marked unless we manually clear the marked range.
             markedRange = nil
             if let lineBreak = IndentController.LineBreak(rawValue: text) {
                 inputDelegate?.selectionWillChange(self)
@@ -927,8 +927,8 @@ extension TextInputView {
     func deleteBackward() {
         if let selectedRange = markedRange ?? selectedRange, selectedRange.length > 0 {
             let deleteRange = rangeForDeletingText(in: selectedRange)
-            // If we're deleting everything in the marked range then we clear the marked range. UITextInput doesn't
-            // do that for us. Can be tested by entering a backtick (`) in an empty document and deleting it.
+            // If we're deleting everything in the marked range then we clear the marked range. UITextInput doesn't do that for us.
+            // Can be tested by entering a backtick (`) in an empty document and deleting it.
             if deleteRange == markedRange {
                 markedRange = nil
             }
