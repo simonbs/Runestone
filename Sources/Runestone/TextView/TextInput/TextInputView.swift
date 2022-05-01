@@ -1139,8 +1139,7 @@ extension TextInputView {
     }
 
     private func performSelectionModifyingChanges(_ changes: () -> Void) {
-        // Notify the delegate that the selection may change as the position
-        // of the caret will change when we adjust the width or height of lines.
+        // Notify the delegate that the selection may change as the position of the caret will change when we adjust the width or height of lines.
         inputDelegate?.selectionWillChange(self)
         changes()
         layoutManager.setNeedsLayout()
