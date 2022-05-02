@@ -1,0 +1,6 @@
+strings:
+  - inputs: 
+      - Sources/Runestone/Resources
+    outputs:
+      templateName: structured-swift5
+      output: Sources/Runestone/Library/L10n.swift
