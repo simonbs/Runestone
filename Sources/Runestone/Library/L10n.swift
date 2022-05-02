@@ -20,6 +20,10 @@ internal enum L10n {
 
   internal enum Undo {
     internal enum ActionName {
+      /// Move Lines Down
+      internal static let moveLinesDown = L10n.tr("Localizable", "undo.action_name.move_lines_down")
+      /// Move Lines Up
+      internal static let moveLinesUp = L10n.tr("Localizable", "undo.action_name.move_lines_up")
       /// Replace All
       internal static let replaceAll = L10n.tr("Localizable", "undo.action_name.replace_all")
       /// Typing

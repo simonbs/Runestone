@@ -1020,12 +1020,15 @@ extension TextInputView {
         return resultingRange
     }
 
-    private func replaceText(in range: NSRange, with newString: String, selectedRangeAfterUndo: NSRange? = nil) {
+    private func replaceText(in range: NSRange,
+                             with newString: String,
+                             selectedRangeAfterUndo: NSRange? = nil,
+                             undoActionName: String = L10n.Undo.ActionName.typing) {
         inputDelegate?.selectionWillChange(self)
         let nsNewString = newString as NSString
         let currentText = text(in: range) ?? ""
         let newRange = NSRange(location: range.location, length: nsNewString.length)
-        addUndoOperation(replacing: newRange, withText: currentText, selectedRangeAfterUndo: selectedRangeAfterUndo)
+        addUndoOperation(replacing: newRange, withText: currentText, selectedRangeAfterUndo: selectedRangeAfterUndo, actionName: undoActionName)
         selectedRange = NSRange(location: newRange.upperBound, length: 0)
         let textEditHelper = TextEditHelper(stringView: stringView, lineManager: lineManager)
         let textEditResult = textEditHelper.replaceText(in: range, with: newString)
@@ -1065,10 +1068,13 @@ extension TextInputView {
         return delegate?.textInputView(self, shouldChangeTextIn: range, replacementText: text) ?? true
     }
 
-    private func addUndoOperation(replacing range: NSRange, withText text: String, selectedRangeAfterUndo: NSRange? = nil) {
+    private func addUndoOperation(replacing range: NSRange,
+                                  withText text: String,
+                                  selectedRangeAfterUndo: NSRange? = nil,
+                                  actionName: String = L10n.Undo.ActionName.typing) {
         let oldSelectedRange = selectedRangeAfterUndo ?? selectedRange
         timedUndoManager.beginUndoGrouping()
-        timedUndoManager.setActionName(L10n.Undo.ActionName.typing)
+        timedUndoManager.setActionName(actionName)
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
             textInputView.replaceText(in: range, with: text)
             if textInputView.selectedRange != oldSelectedRange {
@@ -1137,14 +1143,14 @@ extension TextInputView {
 // MARK: - Move Lines
 extension TextInputView {
     func moveSelectedLinesUp() {
-        moveSelectedLine(byOffset: -1)
+        moveSelectedLine(byOffset: -1, undoActionName: L10n.Undo.ActionName.moveLinesUp)
     }
 
     func moveSelectedLinesDown() {
-        moveSelectedLine(byOffset: 1)
+        moveSelectedLine(byOffset: 1, undoActionName: L10n.Undo.ActionName.moveLinesDown)
     }
 
-    private func moveSelectedLine(byOffset lineOffset: Int) {
+    private func moveSelectedLine(byOffset lineOffset: Int, undoActionName: String) {
         // This implementation of moving lines is naive, as it first removes the selected lines and then insertes the text at the target line.
         // That requires two parses of the syntax tree and two operations on our line manager. Ideally we would do this in one operation.
         let isMovingDown = lineOffset > 0
@@ -1184,15 +1190,18 @@ extension TextInputView {
         let removeRange = NSRange(location: removeLocation, length: removeLength)
         let insertRange = NSRange(location: insertLocation, length: 0)
         if var text = stringView.substring(in: removeRange) {
+            timedUndoManager.endUndoGrouping()
+            timedUndoManager.beginUndoGrouping()
             if lastLine.data.delimiterLength == 0 {
                 text += Symbol.lineFeed
             }
-            replaceText(in: removeRange, with: "")
-            replaceText(in: insertRange, with: text)
+            replaceText(in: removeRange, with: "", undoActionName: undoActionName)
+            replaceText(in: insertRange, with: text, undoActionName: undoActionName)
+            // Update the selected range to match the old one but at the new lines.
+            let locationOffset = insertLocation - removeLocation
+            selectedTextRange = IndexedRange(location: oldSelectedRange.location + locationOffset, length: oldSelectedRange.length)
+            timedUndoManager.endUndoGrouping()
         }
-        // Update the selected range to match the old one but at the new lines.
-        let locationOffset = insertLocation - removeLocation
-        selectedTextRange = IndexedRange(location: oldSelectedRange.location + locationOffset, length: oldSelectedRange.length)
     }
 }
 
