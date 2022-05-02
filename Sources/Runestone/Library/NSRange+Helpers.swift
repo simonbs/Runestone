@@ -52,8 +52,8 @@ extension NSRange {
     /// - Parameter range: Range to check against.
     /// - Returns: True if the ranges overlap otherwise false.
     func overlaps(_ range: NSRange) -> Bool {
-        let r1 = location ... location + length
-        let r2 = range.location ... range.location + range.length
+        let r1 = location ..< location + length
+        let r2 = range.location ..< range.location + range.length
         return r1.overlaps(r2)
     }
 
