@@ -63,7 +63,7 @@ final class StringView {
         }
     }
 
-    func replaceCharacters(in range: NSRange, with string: String) {
+    func replaceText(in range: NSRange, with string: String) {
         internalString.replaceCharacters(in: range, with: string)
         invalidate()
     }

@@ -118,7 +118,7 @@
 - ``smartQuotesType``
 - ``text(in:)``
 - ``insertText(_:)``
-- ``replace(textIn:)``
+- ``replaceText(in:)``
 - ``replace(_:withText:)-7gret``
 - ``replace(_:withText:)-7ugo8``
 - ``undoManager``

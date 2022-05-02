@@ -43,7 +43,7 @@ extension TreeSitterLanguageLayer {
         parse(ranges, from: text)
     }
 
-    func apply(_ edit: TreeSitterInputEdit) -> LanguageModeTextChangeResult {
+    func apply(_ edit: TreeSitterInputEdit) -> LineChangeSet {
         let ranges = [tree?.rootNode.textRange].compactMap { $0 }
         return apply(edit, parsing: ranges)
     }
@@ -66,25 +66,28 @@ extension TreeSitterLanguageLayer {
         return result
     }
 
-    private func apply(_ edit: TreeSitterInputEdit, parsing ranges: [TreeSitterTextRange] = []) -> LanguageModeTextChangeResult {
+    private func apply(_ edit: TreeSitterInputEdit, parsing ranges: [TreeSitterTextRange] = []) -> LineChangeSet {
         // Apply edit to tree.
         let oldTree = tree
         tree?.apply(edit)
         prepareParser(toParse: ranges)
         tree = parser.parse(oldTree: tree)
-        // Gather changed line indices.
-        var changedRows: Set<Int> = []
+        // Gather changed lines.
+        let lineChangeSet = LineChangeSet()
         if let oldTree = oldTree, let newTree = tree {
             let changedRanges = oldTree.rangesChanged(comparingTo: newTree)
             for changedRange in changedRanges {
                 let startRow = Int(changedRange.startPoint.row)
                 let endRow = Int(changedRange.endPoint.row)
-                changedRows.formUnion(startRow ... endRow)
+                for row in startRow ... endRow {
+                    let line = lineManager.line(atRow: row)
+                    lineChangeSet.markLineEdited(line)
+                }
             }
         }
-        let childChangedRows = updateChildLayers(applying: edit)
-        changedRows.formUnion(childChangedRows)
-        return LanguageModeTextChangeResult(changedRows: changedRows)
+        let childLineChangeSet = updateChildLayers(applying: edit)
+        lineChangeSet.union(with: childLineChangeSet)
+        return lineChangeSet
     }
 
     private func prepareParser(toParse ranges: [TreeSitterTextRange]) {
@@ -175,10 +178,10 @@ private extension TreeSitterLanguageLayer {
         }
     }
 
-    private func updateChildLayers(applying edit: TreeSitterInputEdit) -> Set<Int> {
+    private func updateChildLayers(applying edit: TreeSitterInputEdit) -> LineChangeSet {
         guard let injectionsQuery = language.injectionsQuery, let node = tree?.rootNode else {
             childLanguageLayers.removeAll()
-            return []
+            return LineChangeSet()
         }
         let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
         injectionsQueryCursor.execute()
@@ -196,14 +199,14 @@ private extension TreeSitterLanguageLayer {
             }
         }
         // Update layers for current captures
-        var changedRows: Set<Int> = []
+        let lineChangeSet = LineChangeSet()
         for injectedLanguageGroup in injectedLanguageGroups {
             if let childLanguageLayer = childLanguageLayer(named: injectedLanguageGroup.languageName) {
-                let applyEditResult = childLanguageLayer.apply(edit, parsing: injectedLanguageGroup.textRanges)
-                changedRows.formUnion(applyEditResult.changedRows)
+                let childLineChangeSet = childLanguageLayer.apply(edit, parsing: injectedLanguageGroup.textRanges)
+                lineChangeSet.union(with: childLineChangeSet)
             }
         }
-        return changedRows
+        return lineChangeSet
     }
 
     private func injectedLanguageGroups(from captures: [TreeSitterCapture]) -> [TreeSitterInjectedLanguageGroup] {

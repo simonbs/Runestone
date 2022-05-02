@@ -670,7 +670,7 @@ public final class TextView: UIScrollView {
     /// Replaces the text in the specified matches.
     /// - Parameters:
     ///   - batchReplaceSet: Set of ranges to replace with a text.
-    public func replace(textIn batchReplaceSet: BatchReplaceSet) {
+    public func replaceText(in batchReplaceSet: BatchReplaceSet) {
         textInputView.replaceText(in: batchReplaceSet)
     }
 
