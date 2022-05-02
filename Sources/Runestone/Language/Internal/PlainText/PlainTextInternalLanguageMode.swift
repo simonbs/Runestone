@@ -7,8 +7,8 @@ final class PlainTextInternalLanguageMode: InternalLanguageMode {
         completion(true)
     }
 
-    func textDidChange(_ change: LanguageModeTextChange) -> LanguageModeTextChangeResult {
-        return LanguageModeTextChangeResult(changedRows: [])
+    func textDidChange(_ change: TextChange) -> LineChangeSet {
+        return LineChangeSet()
     }
 
     func tokenType(at location: Int) -> String? {

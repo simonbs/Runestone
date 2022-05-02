@@ -2,7 +2,7 @@ import Foundation
 
 /// Contains information necessary to replace a range in the text view with a replacement text.
 ///
-/// When the text view returns this result the text has not been replaced yet. It is up to the developer to use the range and replacement text in this result to replace the text in the text view, for example by calling ``TextView/replace(textIn:)``.
+/// When the text view returns this result the text has not been replaced yet. It is up to the developer to use the range and replacement text in this result to replace the text in the text view, for example by calling ``TextView/replaceText(in:)``.
 public struct SearchReplaceResult: Hashable, Equatable {
     /// Unique identifier of the result.
     public let id: String = UUID().uuidString

@@ -58,9 +58,9 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
         operationQueue.addOperation(operation)
     }
 
-    func textDidChange(_ change: LanguageModeTextChange) -> LanguageModeTextChangeResult {
+    func textDidChange(_ change: TextChange) -> LineChangeSet {
         let bytesRemoved = change.byteRange.length
-        let bytesAdded = change.newString.byteCount
+        let bytesAdded = change.bytesAdded
         let edit = TreeSitterInputEdit(
             startByte: change.byteRange.location,
             oldEndByte: change.byteRange.location + bytesRemoved,
