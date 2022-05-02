@@ -1,3 +1,5 @@
 "undo.action_name.typing" = "Typing";
 "undo.action_name.replace_all" = "Replace All";
+"undo.action_name.move_lines_up" = "Move Lines Up";
+"undo.action_name.move_lines_down" = "Move Lines Down";
 "menu.item_title.replace" = "Replace";
