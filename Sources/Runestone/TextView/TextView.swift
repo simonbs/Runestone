@@ -712,6 +712,20 @@ public final class TextView: UIScrollView {
         textInputView.shiftRight()
     }
 
+    /// Moves the selected lines up by one line.
+    ///
+    /// Calling this function has no effect when the selected lines include the first line in the text view.
+    public func moveSelectedLinesUp() {
+        textInputView.moveSelectedLinesUp()
+    }
+
+    /// Moves the selected lines down by one line.
+    ///
+    /// Calling this function has no effect when the selected lines include the last line in the text view.
+    public func moveSelectedLinesDown() {
+        textInputView.moveSelectedLinesDown()
+    }
+
     /// Attempts to detect the indent strategy used in the document. This may return an unknown strategy even
     /// when the document contains indentation.
     public func detectIndentStrategy() -> DetectedIndentStrategy {
