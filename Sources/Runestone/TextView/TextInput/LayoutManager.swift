@@ -452,11 +452,10 @@ final class LayoutManager {
         let localNeedleLocation = needleRange.location - startLocation
         let localNeedleLength = min(needleRange.length, previewRange.length)
         let needleInPreviewRange = NSRange(location: localNeedleLocation, length: localNeedleLength)
-        return TextPreview(
-            needleRange: needleRange,
-            previewRange: previewRange,
-            needleInPreviewRange: needleInPreviewRange,
-            lineControllers: lineControllers)
+        return TextPreview(needleRange: needleRange,
+                           previewRange: previewRange,
+                           needleInPreviewRange: needleInPreviewRange,
+                           lineControllers: lineControllers)
     }
 }
 
