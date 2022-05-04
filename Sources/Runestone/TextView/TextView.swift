@@ -512,7 +512,7 @@ public final class TextView: UIScrollView {
         let horizontalOverscrollLength = max(frame.width * horizontalOverscrollFactor, 0)
         let verticalOverscrollLength = max(frame.height * verticalOverscrollFactor, 0)
         let baseContentSize = textInputView.contentSize
-        let width = baseContentSize.width + horizontalOverscrollLength
+        let width = isLineWrappingEnabled ? baseContentSize.width : baseContentSize.width + horizontalOverscrollLength
         let height = baseContentSize.height + verticalOverscrollLength
         return CGSize(width: width, height: height)
     }
