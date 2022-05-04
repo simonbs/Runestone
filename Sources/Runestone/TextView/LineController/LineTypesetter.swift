@@ -218,7 +218,7 @@ private extension LineTypesetter {
         let range = NSRange(location: location, length: 1)
         let attributedSubstring = attributedString.attributedSubstring(from: range)
         let string = attributedSubstring.string.trimmingCharacters(in: .whitespaces)
-        return string.isEmpty ||CharacterSet(charactersIn: string).isSubset(of: .punctuationCharacters)
+        return string.isEmpty || CharacterSet(charactersIn: string).isSubset(of: .punctuationCharacters)
     }
 
     private func makeLineFragment(for range: CFRange, in typesetter: CTTypesetter, lineFragmentIndex: Int, yPosition: CGFloat) -> LineFragment {
