@@ -205,7 +205,6 @@ private extension LineController {
             // When typesetting to a location we'll typeset an additional line fragment to ensure that we can display the text surrounding that location.
             newLineFragments = typesetter.typesetLineFragments(toLocation: location, additionalLineFragmentCount: 1)
         }
-        let oldLineHeight = lineHeight
         updateLineHeight(for: newLineFragments)
         textInputProxy.lineFragments = typesetter.lineFragments
     }
