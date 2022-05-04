@@ -487,44 +487,40 @@ extension LayoutManager {
     }
 
     func selectionRects(in range: NSRange) -> [TextSelectionRect] {
-        guard let (startLine, endLine) = lineManager.startAndEndLine(in: range) else {
+        guard let endLine = lineManager.line(containingCharacterAt: range.upperBound) else {
             return []
         }
-        var resultingSelectionRects: [TextSelectionRect] = []
-        let startLineIndex = startLine.index
-        var endLineIndex = endLine.index
-        // If the end line starts where our selection ends then we're only interested in selecting the line break and we will therefore iterate one line less.
-        if range.upperBound == endLine.location && startLineIndex != endLineIndex {
-            endLineIndex -= 1
+        let selectsLineEnding = range.upperBound == endLine.location
+        let adjustedRange = NSRange(location: range.location, length: selectsLineEnding ? range.length - 1 : range.length)
+        let startCaretRect = caretRect(at: adjustedRange.lowerBound)
+        let endCaretRect = caretRect(at: adjustedRange.upperBound)
+        let fullWidth = max(contentWidth, scrollViewWidth) - textContainerInset.right
+        if startCaretRect.minY == endCaretRect.minY && startCaretRect.maxY == endCaretRect.maxY {
+            // Selecting text in the same line fragment.
+            let width = selectsLineEnding ? fullWidth - leadingLineSpacing : endCaretRect.maxX - startCaretRect.maxX
+            let scaledHeight = startCaretRect.height * lineHeightMultiplier
+            let offsetY = startCaretRect.minY - (scaledHeight - startCaretRect.height) / 2
+            let rect = CGRect(x: startCaretRect.minX, y: offsetY, width: width, height: scaledHeight)
+            let selectionRect = TextSelectionRect(rect: rect, writingDirection: .natural, containsStart: true, containsEnd: true)
+            return [selectionRect]
+        } else {
+            // Selecting text across line fragments and possibly across lines.
+            let startWidth = fullWidth - startCaretRect.minX
+            let startScaledHeight = startCaretRect.height * lineHeightMultiplier
+            let startOffsetY = startCaretRect.minY - (startScaledHeight - startCaretRect.height) / 2
+            let startRect = CGRect(x: startCaretRect.minX, y: startOffsetY, width: startWidth, height: startScaledHeight)
+            let endWidth = selectsLineEnding ? fullWidth - leadingLineSpacing : endCaretRect.minX - leadingLineSpacing
+            let endScaledHeight = endCaretRect.height * lineHeightMultiplier
+            let endOffsetY = endCaretRect.minY - (endScaledHeight - endCaretRect.height) / 2
+            let endRect = CGRect(x: leadingLineSpacing, y: endOffsetY, width: endWidth, height: endScaledHeight)
+            let middleWidth = fullWidth - leadingLineSpacing
+            let middleHeight = endRect.minY - startRect.maxY
+            let middleRect = CGRect(x: leadingLineSpacing, y: startRect.maxY, width: middleWidth, height: middleHeight)
+            let startSelectionRect = TextSelectionRect(rect: startRect, writingDirection: .natural, containsStart: true, containsEnd: false)
+            let middleSelectionRect = TextSelectionRect(rect: middleRect, writingDirection: .natural, containsStart: false, containsEnd: false)
+            let endSelectionRect = TextSelectionRect(rect: endRect, writingDirection: .natural, containsStart: false, containsEnd: true)
+            return [startSelectionRect, middleSelectionRect, endSelectionRect]
         }
-        let lineIndexRange = startLineIndex ..< endLineIndex + 1
-        for lineIndex in lineIndexRange {
-            let line = lineManager.line(atRow: lineIndex)
-            let lineController = lineController(for: line)
-            let lineStartLocation = line.location
-            let lineEndLocation = lineStartLocation + line.data.totalLength
-            let localRangeLocation = max(range.location, lineStartLocation) - lineStartLocation
-            let localRangeLength = min(range.location + range.length, lineEndLocation) - lineStartLocation - localRangeLocation
-            let localRange = NSRange(location: localRangeLocation, length: localRangeLength)
-            let selectionRects = lineController.selectionRects(in: localRange)
-            for (selectionRectIdx, selectionRect) in selectionRects.enumerated() {
-                // Determining containsStart and containsEnd based on indices assumes that the text selection rects are iterated in order.
-                // This means that `-selectionRects(in:)` on LineController should return them in order.
-                let containsStart = lineIndex == lineIndexRange.lowerBound && selectionRectIdx == 0
-                let containsEnd = lineIndex == lineIndexRange.upperBound - 1 && selectionRectIdx == selectionRects.count - 1
-                let selectionContainsLineBreak = line.data.delimiterLength > 0 && range.contains(lineEndLocation - 1)
-                var screenRect = selectionRect.rect
-                screenRect.origin.x += leadingLineSpacing
-                screenRect.origin.y = textContainerInset.top + line.yPosition + selectionRect.rect.minY
-                if selectionContainsLineBreak || selectionRect.extendsBeyondEnd {
-                    screenRect.size.width = max(contentWidth, scrollViewWidth) - textContainerInset.right - screenRect.minX
-                }
-                resultingSelectionRects += [
-                    TextSelectionRect(rect: screenRect, writingDirection: .natural, containsStart: containsStart, containsEnd: containsEnd)
-                ]
-            }
-        }
-        return resultingSelectionRects.ensuringYAxisAlignment()
     }
 
     func closestIndex(to point: CGPoint) -> Int? {

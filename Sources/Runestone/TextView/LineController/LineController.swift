@@ -402,10 +402,6 @@ extension LineController {
         return textInputProxy.caretRect(atIndex: index)
     }
 
-    func selectionRects(in range: NSRange) -> [LineFragmentSelectionRect] {
-        return textInputProxy.selectionRects(in: range)
-    }
-
     func firstRect(for range: NSRange) -> CGRect {
         return textInputProxy.firstRect(for: range)
     }
