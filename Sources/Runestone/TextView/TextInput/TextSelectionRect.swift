@@ -48,11 +48,10 @@ extension Array where Element == TextSelectionRect {
             let newYPosition = yPosition - distanceDiff
             let newHeight = element.rect.height + distanceDiff
             let newRect = CGRect(x: element.rect.minX, y: newYPosition, width: element.rect.width, height: newHeight)
-            let newElement = Element(
-                rect: newRect,
-                writingDirection: element.writingDirection,
-                containsStart: element.containsStart,
-                containsEnd: element.containsEnd)
+            let newElement = Element(rect: newRect,
+                                     writingDirection: element.writingDirection,
+                                     containsStart: element.containsStart,
+                                     containsEnd: element.containsEnd)
             result.append(newElement)
         }
         return result
