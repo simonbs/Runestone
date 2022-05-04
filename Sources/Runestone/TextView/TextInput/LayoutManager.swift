@@ -424,7 +424,7 @@ final class LayoutManager {
         }
     }
 
-    func typesetLines(to location: Int) {
+    func typesetLines(toLocation location: Int) {
         let range = NSRange(location: 0, length: location)
         let lines = lineManager.lines(in: range)
         for line in lines {
@@ -645,7 +645,7 @@ extension LayoutManager {
         }
     }
 
-    func layoutLines(untilLocation location: Int) {
+    func layoutLines(toLocation location: Int) {
         var nextLine: DocumentLineNode? = lineManager.firstLine
         let isLocationEndOfString = location >= stringView.string.length
         while let line = nextLine {

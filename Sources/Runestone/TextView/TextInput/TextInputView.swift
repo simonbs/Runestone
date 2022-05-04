@@ -713,8 +713,8 @@ final class TextInputView: UIView, UITextInput {
         return layoutManager.textPreview(containing: range)
     }
 
-    func layoutLines(untilLocation location: Int) {
-        layoutManager.layoutLines(untilLocation: location)
+    func layoutLines(toLocation location: Int) {
+        layoutManager.layoutLines(toLocation: location)
     }
 
     func redisplayVisibleLines() {
