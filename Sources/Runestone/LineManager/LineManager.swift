@@ -214,19 +214,17 @@ final class LineManager {
     }
 
     func line(containingYOffset yOffset: CGFloat) -> DocumentLineNode? {
-        return documentLineTree.node(
-            containingLocation: yOffset,
-            minimumValue: 0,
-            valueKeyPath: \.data.lineHeight,
-            totalValueKeyPath: \.data.totalLineHeight)
+        return documentLineTree.node(containingLocation: yOffset,
+                                     minimumValue: 0,
+                                     valueKeyPath: \.data.lineHeight,
+                                     totalValueKeyPath: \.data.totalLineHeight)
     }
 
     func line(containingByteAt byteIndex: ByteCount) -> DocumentLineNode? {
-        return documentLineTree.node(
-            containingLocation: byteIndex,
-            minimumValue: ByteCount(0),
-            valueKeyPath: \.data.byteCount,
-            totalValueKeyPath: \.data.nodeTotalByteCount)
+        return documentLineTree.node(containingLocation: byteIndex,
+                                     minimumValue: ByteCount(0),
+                                     valueKeyPath: \.data.byteCount,
+                                     totalValueKeyPath: \.data.nodeTotalByteCount)
     }
 
     func line(atRow row: Int) -> DocumentLineNode {
