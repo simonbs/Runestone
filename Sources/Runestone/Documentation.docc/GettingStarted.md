@@ -30,7 +30,7 @@ view.addSubView(textView)
 The text view can be customized in a variety of ways. The following code snippet shows how to enable line numbers, show the selected line, add a page guide, show invisible characters and adjust the line-height. Refer to the documentation of <doc:TextView> for a full overview of the settings.
 
 ```swift
-// Shiw line numbers.
+// Show line numbers.
 textView.showLineNumbers = true
 // Highlight the selected line.
 textView.lineSelectionDisplayType = .line
