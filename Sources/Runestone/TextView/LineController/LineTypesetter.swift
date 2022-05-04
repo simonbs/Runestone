@@ -58,9 +58,6 @@ final class LineTypesetter {
     private var startOffset = 0
     private var nextYPosition: CGFloat = 0
     private var lineFragmentIndex = 0
-    /// List of characters that we prefer wrapping a line after. These are less preferred than whitespace.
-    /// If it's not possible to wrap a line after a whitespace or any of these characters, then we'll wrap after any character.
-    private let preferredLineBreakCharacters = [",", ";"]
 
     init(lineID: String) {
         self.lineID = lineID
@@ -221,11 +218,7 @@ private extension LineTypesetter {
         let range = NSRange(location: location, length: 1)
         let attributedSubstring = attributedString.attributedSubstring(from: range)
         let string = attributedSubstring.string.trimmingCharacters(in: .whitespaces)
-        if string.isEmpty {
-            return true
-        } else {
-            return preferredLineBreakCharacters.contains(string)
-        }
+        return string.isEmpty ||CharacterSet(charactersIn: string).isSubset(of: .punctuationCharacters)
     }
 
     private func makeLineFragment(for range: CFRange, in typesetter: CTTypesetter, lineFragmentIndex: Int, yPosition: CGFloat) -> LineFragment {
