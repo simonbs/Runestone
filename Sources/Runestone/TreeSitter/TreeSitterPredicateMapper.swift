@@ -23,6 +23,8 @@ enum TreeSitterPredicateMapper {
             case "not-match?":
                 textPredicates.append(textPredicate(fromMatchSteps: predicate.steps, isPositive: false))
             default:
+                let parameters = TreeSitterTextPredicate.UnsupportedParameters(name: predicate.name)
+                textPredicates.append(.unsupported(parameters))
                 break
             }
         }
