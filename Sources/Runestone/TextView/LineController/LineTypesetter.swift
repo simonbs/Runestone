@@ -169,7 +169,7 @@ private extension LineTypesetter {
     }
 
     private func suggestNextLineBreak(using typesetter: CTTypesetter) -> Int {
-        let length = CTTypesetterSuggestClusterBreak(typesetter, startOffset, Double(constrainingWidth))
+        let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingWidth))
         guard startOffset + length < stringLength else {
             // We've reached the end of the line.
             return length
