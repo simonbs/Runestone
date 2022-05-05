@@ -37,9 +37,18 @@ enum TreeSitterTextPredicate {
         }
     }
 
+    struct UnsupportedParameters {
+        let name: String
+
+        init(name: String) {
+            self.name = name
+        }
+    }
+
     case captureEqualsString(CaptureEqualsStringParameters)
     case captureEqualsCapture(CaptureEqualsCaptureParameters)
     case captureMatchesPattern(CaptureMatchesPatternParameters)
+    case unsupported(UnsupportedParameters)
 }
 
 extension TreeSitterTextPredicate.CaptureEqualsStringParameters: CustomDebugStringConvertible {
