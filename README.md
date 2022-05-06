@@ -36,7 +36,7 @@ When judging the performance of Runestone, it is key to build your app in the re
 
 ## 📱 Projects
 
-The Runestone framework is used by an app of the same name. Runestone (the app) is a plain text editor for iPhone and iPad that uses all the features of this framework.
+The Runestone framework is used by an app of the same name. The Runestone app is a plain text editor for iPhone and iPad that uses all the features of this framework.
 
 <a href="https://apps.apple.com/us/app/runestone-editor/id1548193893" target="_blank"><img width="150" alt="Runestone app icon" src="Assets/runestone-editor-app-icon.png"/></a>
 
