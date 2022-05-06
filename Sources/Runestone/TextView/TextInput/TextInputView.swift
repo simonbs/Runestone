@@ -1,5 +1,4 @@
 // swiftlint:disable file_length
-
 import UIKit
 
 protocol TextInputViewDelegate: AnyObject {
@@ -43,15 +42,15 @@ final class TextInputView: UIView, UITextInput {
         }
     }
     private(set) var markedTextRange: UITextRange? {
-        set {
-            markedRange = (newValue as? IndexedRange)?.range
-        }
         get {
             if let markedRange = markedRange {
                 return IndexedRange(markedRange)
             } else {
                 return nil
             }
+        }
+        set {
+            markedRange = (newValue as? IndexedRange)?.range
         }
     }
     var markedTextStyle: [NSAttributedString.Key: Any]?
@@ -485,11 +484,11 @@ final class TextInputView: UIView, UITextInput {
     private let lineMovementController: LineMovementController
     private let pageGuideController = PageGuideController()
     private var markedRange: NSRange? {
-        set {
-            layoutManager.markedRange = newValue
-        }
         get {
             return layoutManager.markedRange
+        }
+        set {
+            layoutManager.markedRange = newValue
         }
     }
     private var floatingCaretView: FloatingCaretView?
@@ -965,9 +964,11 @@ extension TextInputView {
         guard newString != string else {
             return
         }
+        guard let let oldString = stringView.string.copy() as? NSString else {
+            return
+        }
         timedUndoManager.endUndoGrouping()
         let oldSelectedRange = selectedRange
-        let oldString = stringView.string.copy() as! NSString
         string = newString
         timedUndoManager.beginUndoGrouping()
         timedUndoManager.setActionName(L10n.Undo.ActionName.replaceAll)
