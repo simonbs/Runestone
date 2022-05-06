@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import CoreGraphics
 import CoreText
 import UIKit
