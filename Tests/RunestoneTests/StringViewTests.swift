@@ -44,9 +44,9 @@ final class StringViewTests: XCTestCase {
     func testGetBytesOfFirstCharacter() {
         let str = "Hello world"
         let stringView = StringView(string: str)
-        let byteRange = ByteRange(location: 2, length: 2)
+        let byteRange = ByteRange(location: 0, length: 2)
         let bytes = stringView.bytes(in: byteRange)!
-        XCTAssertEqual(string(from: bytes), "e")
+        XCTAssertEqual(string(from: bytes), "H")
     }
 
     func testGetBytesOfTwoFirstCharacters() {
