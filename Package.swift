@@ -36,8 +36,7 @@ let package = Package(
                     "src/tree.c",
                     "src/query.c"
                 ],
-                sources: ["src/lib.c"],
-                cSettings: [.unsafeFlags(["-w"])]),
+                sources: ["src/lib.c"]),
         .target(name: "TestTreeSitterLanguages", cSettings: [.unsafeFlags(["-w"])]),
         .testTarget(name: "RunestoneTests", dependencies: ["Runestone", "TestTreeSitterLanguages"])
     ]
