@@ -32,7 +32,10 @@ final class TreeSitterTextInput {
     }
 }
 
-private func read(payload: UnsafeMutableRawPointer?, byteIndex: UInt32, position: TSPoint, bytesRead: UnsafeMutablePointer<UInt32>?) -> UnsafePointer<Int8>? {
+private func read(payload: UnsafeMutableRawPointer?,
+                  byteIndex: UInt32,
+                  position: TSPoint,
+                  bytesRead: UnsafeMutablePointer<UInt32>?) -> UnsafePointer<Int8>? {
     let input: TreeSitterTextInput = Unmanaged.fromOpaque(payload!).takeUnretainedValue()
     if let result = input.callback(ByteCount(byteIndex), TreeSitterTextPoint(position)) {
         bytesRead?.pointee = result.length

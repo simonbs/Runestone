@@ -25,7 +25,6 @@ enum TreeSitterPredicateMapper {
             default:
                 let parameters = TreeSitterTextPredicate.UnsupportedParameters(name: predicate.name)
                 textPredicates.append(.unsupported(parameters))
-                break
             }
         }
         return MapResult(properties: properties, textPredicates: textPredicates)

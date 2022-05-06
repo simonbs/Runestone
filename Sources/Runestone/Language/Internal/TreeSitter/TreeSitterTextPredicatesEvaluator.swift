@@ -34,7 +34,8 @@ final class TreeSitterTextPredicatesEvaluator {
                 #if DEBUG
                 if !Self.previousUnsupportedPredicateNames.contains(parameters.name) {
                     Self.previousUnsupportedPredicateNames.append(parameters.name)
-                    print("Unsupported predicate '\(parameters.name)'. This message is only printed once and only when running in the debug configuration.")
+                    print("Unsupported predicate '\(parameters.name)'."
+                          + " This message is only printed once and only when running in the debug configuration.")
                 }
                 #endif
                 return false
