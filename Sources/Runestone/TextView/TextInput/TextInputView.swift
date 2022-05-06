@@ -964,7 +964,7 @@ extension TextInputView {
         guard newString != string else {
             return
         }
-        guard let let oldString = stringView.string.copy() as? NSString else {
+        guard let oldString = stringView.string.copy() as? NSString else {
             return
         }
         timedUndoManager.endUndoGrouping()
