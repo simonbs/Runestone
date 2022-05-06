@@ -41,6 +41,7 @@ final class TextEditHelper {
 
     func string(byApplying batchReplaceSet: BatchReplaceSet) -> NSString {
         let sortedReplacements = batchReplaceSet.replacements.sorted { $0.range.lowerBound < $1.range.lowerBound }
+        // swiftlint:disable:next force_cast
         let mutableSubstring = stringView.string.mutableCopy() as! NSMutableString
         var totalChangeInLength = 0
         var replacedRanges: [NSRange] = []
