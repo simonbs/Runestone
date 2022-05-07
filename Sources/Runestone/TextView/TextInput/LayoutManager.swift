@@ -44,16 +44,6 @@ final class LayoutManager {
             }
         }
     }
-    var scrollViewSafeAreaInsets: UIEdgeInsets = .zero {
-        didSet {
-            if scrollViewSafeAreaInsets != oldValue {
-                if isLineWrappingEnabled {
-                    invalidateContentSize()
-                    invalidateLines()
-                }
-            }
-        }
-    }
     var viewport: CGRect = .zero
     var contentSize: CGSize {
         return CGSize(width: contentWidth, height: contentHeight)
@@ -225,7 +215,7 @@ final class LayoutManager {
     // MARK: - Sizing
     private var contentWidth: CGFloat {
         if isLineWrappingEnabled {
-            return scrollViewWidth - scrollViewSafeAreaInsets.left - scrollViewSafeAreaInsets.right
+            return scrollViewWidth - safeAreaInset.left - safeAreaInset.right
         } else {
             return ceil(textContentWidth + leadingLineSpacing + textContainerInset.right + maximumLineBreakSymbolWidth)
         }
@@ -287,7 +277,7 @@ final class LayoutManager {
     private var lineIDTrackingWidth: DocumentLineNodeID?
     private var maximumLineWidth: CGFloat {
         if isLineWrappingEnabled {
-            return scrollViewWidth - leadingLineSpacing - textContainerInset.right - scrollViewSafeAreaInsets.left - scrollViewSafeAreaInsets.right
+            return scrollViewWidth - leadingLineSpacing - textContainerInset.right - safeAreaInset.left - safeAreaInset.right
         } else {
             // Rendering multiple very long lines is very expensive. In order to let the editor remain useable,
             // we set a very high maximum line width when line wrapping is disabled.
@@ -301,18 +291,14 @@ final class LayoutManager {
         let height = viewport.height + textContainerInset.top + textContainerInset.bottom
         return CGRect(x: x, y: y, width: width, height: height)
     }
-    private var additionalInset: UIEdgeInsets {
-        if let editorView = scrollView {
-            let adjustContentInset = editorView.adjustedContentInset
-            let contentInset = editorView.contentInset
-            let top = adjustContentInset.top - contentInset.top
-            let left = adjustContentInset.left - contentInset.left
-            let bottom = adjustContentInset.bottom - contentInset.bottom
-            let right = adjustContentInset.right - contentInset.right
-            return UIEdgeInsets(top: top, left: left, bottom: bottom, right: right)
-        } else {
-            return .zero
-        }
+    private var safeAreaInset: UIEdgeInsets {
+        let adjustContentInset = scrollView?.adjustedContentInset ?? .zero
+        let contentInset = scrollView?.contentInset ?? .zero
+        let topInset = adjustContentInset.top - contentInset.top
+        let leftInset = adjustContentInset.left - contentInset.left
+        let bottomInset = adjustContentInset.bottom - contentInset.bottom
+        let rightInset = adjustContentInset.right - contentInset.right
+        return UIEdgeInsets(top: topInset, left: leftInset, bottom: bottomInset, right: rightInset)
     }
 
     // MARK: - Rendering
@@ -594,7 +580,7 @@ extension LayoutManager {
     }
 
     private func layoutGutter() {
-        let totalGutterWidth = additionalInset.left + gutterWidth
+        let totalGutterWidth = safeAreaInset.left + gutterWidth
         gutterContainerView.frame = CGRect(x: viewport.minX, y: 0, width: totalGutterWidth, height: contentSize.height)
         gutterBackgroundView.frame = CGRect(x: 0, y: viewport.minY, width: totalGutterWidth, height: viewport.height)
         lineNumbersContainerView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: contentSize.height)
@@ -602,7 +588,7 @@ extension LayoutManager {
 
     private func layoutLineSelection() {
         if let rect = getLineSelectionRect() {
-            let totalGutterWidth = additionalInset.left + gutterWidth
+            let totalGutterWidth = safeAreaInset.left + gutterWidth
             gutterSelectionBackgroundView.frame = CGRect(x: 0, y: rect.minY, width: totalGutterWidth, height: rect.height)
             let lineSelectionBackgroundOrigin = CGPoint(x: viewport.minX + totalGutterWidth, y: rect.minY)
             let lineSelectionBackgroundSize = CGSize(width: scrollViewWidth - gutterWidth, height: rect.height)
@@ -753,7 +739,7 @@ extension LayoutManager {
         }
         let lineController = lineController(for: line)
         let fontLineHeight = theme.font.lineHeight
-        let xPosition = additionalInset.left + gutterLeadingPadding
+        let xPosition = safeAreaInset.left + gutterLeadingPadding
         var yPosition = textContainerInset.top + line.yPosition
         if lineController.numberOfLineFragments > 1 {
             // There are more than one line fragments, so we align the line number number at the top.
