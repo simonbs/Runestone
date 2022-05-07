@@ -797,8 +797,7 @@ private extension TextInputView {
 private extension TextInputView {
     private func layoutPageGuideIfNeeded() {
         if showPageGuide {
-            // The width extension is used to make the page guide look "attached" to the right hand side,
-            // even when the scroll view bouncing on the right side.
+            // The width extension is used to make the page guide look "attached" to the right hand side, even when the scroll view bouncing on the right side.
             let maxContentOffsetX = layoutManager.contentSize.width - viewport.width
             let widthExtension = max(ceil(viewport.minX - maxContentOffsetX), 0)
             let xPosition = layoutManager.gutterWidth + textContainerInset.left + pageGuideController.columnOffset
