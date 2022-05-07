@@ -8,7 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		729C6A0528188D23004F0CA2 /* HighlightName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729C6A0428188D23004F0CA2 /* HighlightName.swift */; };
-		72CCC9852803151300274C87 /* Runestone in Resources */ = {isa = PBXBuildFile; fileRef = 72CCC9842803151300274C87 /* Runestone */; };
+		72AC547A2826B2820037ED21 /* TreeSitterIndentationScopes+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72AC54782826B2820037ED21 /* TreeSitterIndentationScopes+Helpers.swift */; };
+		72AC547B2826B2820037ED21 /* TreeSitterLanguage+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72AC54792826B2820037ED21 /* TreeSitterLanguage+Helpers.swift */; };
+		72AC547D2826B2A50037ED21 /* TreeSitterJavaScript in Frameworks */ = {isa = PBXBuildFile; productRef = 72AC547C2826B2A50037ED21 /* TreeSitterJavaScript */; };
+		72AC547F2826B2A70037ED21 /* TreeSitterJavaScriptQueries in Frameworks */ = {isa = PBXBuildFile; productRef = 72AC547E2826B2A70037ED21 /* TreeSitterJavaScriptQueries */; };
+		72AC54812826B2A90037ED21 /* Runestone in Frameworks */ = {isa = PBXBuildFile; productRef = 72AC54802826B2A90037ED21 /* Runestone */; };
 		AC480601279EE0180015F712 /* BasicCharacterPair.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC480600279EE0180015F712 /* BasicCharacterPair.swift */; };
 		AC5F0253279C74A1001D1E43 /* UserDefaults+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */; };
 		AC832D552798C4FA00EC6832 /* TomorrowTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC832D542798C4FA00EC6832 /* TomorrowTheme.swift */; };
@@ -20,7 +24,6 @@
 		AC85537D27A845BB00F7916D /* CodeSample.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537C27A845BB00F7916D /* CodeSample.swift */; };
 		AC85537F27A849DF00F7916D /* KeyboardToolsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537E27A849DF00F7916D /* KeyboardToolsView.swift */; };
 		AC85538527A84CF600F7916D /* TextView+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85538427A84CF600F7916D /* TextView+Helpers.swift */; };
-		AC90A52E27B4677F006DEEE4 /* TreeSitterJavaScriptRunestone in Frameworks */ = {isa = PBXBuildFile; productRef = AC90A52D27B4677F006DEEE4 /* TreeSitterJavaScriptRunestone */; };
 		ACB08AD327A8113E00EB6819 /* ThemePickerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACB08AD227A8113E00EB6819 /* ThemePickerViewController.swift */; };
 		ACB08AD527A81ADF00EB6819 /* ThemePickerPreviewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACB08AD427A81ADF00EB6819 /* ThemePickerPreviewCell.swift */; };
 		ACFDF4B127983BAA00059A1B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACFDF4B027983BAA00059A1B /* AppDelegate.swift */; };
@@ -33,7 +36,10 @@
 
 /* Begin PBXFileReference section */
 		729C6A0428188D23004F0CA2 /* HighlightName.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HighlightName.swift; sourceTree = "<group>"; };
-		72CCC9842803151300274C87 /* Runestone */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Runestone; path = ..; sourceTree = "<group>"; };
+		72AC54762826B1F00037ED21 /* Languages */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Languages; sourceTree = "<group>"; };
+		72AC54772826B23D0037ED21 /* Runestone */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Runestone; path = ..; sourceTree = "<group>"; };
+		72AC54782826B2820037ED21 /* TreeSitterIndentationScopes+Helpers.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "TreeSitterIndentationScopes+Helpers.swift"; sourceTree = "<group>"; };
+		72AC54792826B2820037ED21 /* TreeSitterLanguage+Helpers.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "TreeSitterLanguage+Helpers.swift"; sourceTree = "<group>"; };
 		AC480600279EE0180015F712 /* BasicCharacterPair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasicCharacterPair.swift; sourceTree = "<group>"; };
 		AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserDefaults+Helpers.swift"; sourceTree = "<group>"; };
 		AC832D542798C4FA00EC6832 /* TomorrowTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TomorrowTheme.swift; sourceTree = "<group>"; };
@@ -62,13 +68,33 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AC90A52E27B4677F006DEEE4 /* TreeSitterJavaScriptRunestone in Frameworks */,
+				72AC547D2826B2A50037ED21 /* TreeSitterJavaScript in Frameworks */,
+				72AC54812826B2A90037ED21 /* Runestone in Frameworks */,
+				72AC547F2826B2A70037ED21 /* TreeSitterJavaScriptQueries in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		72AC54722826B0E40037ED21 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				72AC54762826B1F00037ED21 /* Languages */,
+				72AC54772826B23D0037ED21 /* Runestone */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		72AC54742826B1440037ED21 /* JavaScriptLanguage */ = {
+			isa = PBXGroup;
+			children = (
+				72AC54782826B2820037ED21 /* TreeSitterIndentationScopes+Helpers.swift */,
+				72AC54792826B2820037ED21 /* TreeSitterLanguage+Helpers.swift */,
+			);
+			path = JavaScriptLanguage;
+			sourceTree = "<group>";
+		};
 		AC832D582798C72A00EC6832 /* Application */ = {
 			isa = PBXGroup;
 			children = (
@@ -125,7 +151,7 @@
 		ACFDF4A427983BAA00059A1B = {
 			isa = PBXGroup;
 			children = (
-				72CCC9842803151300274C87 /* Runestone */,
+				72AC54722826B0E40037ED21 /* Packages */,
 				ACFDF4AF27983BAA00059A1B /* Example */,
 				ACFDF4AE27983BAA00059A1B /* Products */,
 				ACFDF4C827983DA900059A1B /* Frameworks */,
@@ -147,10 +173,11 @@
 				ACFDF4B927983BAB00059A1B /* Assets.xcassets */,
 				ACFDF4BB27983BAB00059A1B /* LaunchScreen.storyboard */,
 				AC832D582798C72A00EC6832 /* Application */,
-				AC85537127A83A9F00F7916D /* Themes */,
+				72AC54742826B1440037ED21 /* JavaScriptLanguage */,
 				AC832D5A2798C73B00EC6832 /* Library */,
 				AC832D592798C73300EC6832 /* Main */,
 				ACB08ACF27A8112600EB6819 /* ThemePicker */,
+				AC85537127A83A9F00F7916D /* Themes */,
 			);
 			path = Example;
 			sourceTree = "<group>";
@@ -180,7 +207,9 @@
 			);
 			name = Example;
 			packageProductDependencies = (
-				AC90A52D27B4677F006DEEE4 /* TreeSitterJavaScriptRunestone */,
+				72AC547C2826B2A50037ED21 /* TreeSitterJavaScript */,
+				72AC547E2826B2A70037ED21 /* TreeSitterJavaScriptQueries */,
+				72AC54802826B2A90037ED21 /* Runestone */,
 			);
 			productName = Example;
 			productReference = ACFDF4AD27983BAA00059A1B /* Example.app */;
@@ -211,7 +240,6 @@
 			);
 			mainGroup = ACFDF4A427983BAA00059A1B;
 			packageReferences = (
-				AC5971D9279D81880044CE16 /* XCRemoteSwiftPackageReference "TreeSitterLanguages" */,
 			);
 			productRefGroup = ACFDF4AE27983BAA00059A1B /* Products */;
 			projectDirPath = "";
@@ -228,7 +256,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				ACFDF4BD27983BAB00059A1B /* LaunchScreen.storyboard in Resources */,
-				72CCC9852803151300274C87 /* Runestone in Resources */,
 				ACFDF4BA27983BAB00059A1B /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -261,7 +288,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				72AC547B2826B2820037ED21 /* TreeSitterLanguage+Helpers.swift in Sources */,
 				ACFDF4B527983BAA00059A1B /* MainViewController.swift in Sources */,
+				72AC547A2826B2820037ED21 /* TreeSitterIndentationScopes+Helpers.swift in Sources */,
 				ACFDF4C527983C2700059A1B /* MainView.swift in Sources */,
 				AC85537F27A849DF00F7916D /* KeyboardToolsView.swift in Sources */,
 				ACFDF4B127983BAA00059A1B /* AppDelegate.swift in Sources */,
@@ -489,22 +518,18 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		AC5971D9279D81880044CE16 /* XCRemoteSwiftPackageReference "TreeSitterLanguages" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/simonbs/TreeSitterLanguages";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
 /* Begin XCSwiftPackageProductDependency section */
-		AC90A52D27B4677F006DEEE4 /* TreeSitterJavaScriptRunestone */ = {
+		72AC547C2826B2A50037ED21 /* TreeSitterJavaScript */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = AC5971D9279D81880044CE16 /* XCRemoteSwiftPackageReference "TreeSitterLanguages" */;
-			productName = TreeSitterJavaScriptRunestone;
+			productName = TreeSitterJavaScript;
+		};
+		72AC547E2826B2A70037ED21 /* TreeSitterJavaScriptQueries */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TreeSitterJavaScriptQueries;
+		};
+		72AC54802826B2A90037ED21 /* Runestone */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Runestone;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
