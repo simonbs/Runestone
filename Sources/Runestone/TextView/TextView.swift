@@ -359,6 +359,7 @@ public final class TextView: UIScrollView {
         }
     }
     /// When line wrapping is disabled, users can scroll the text view horizontally to see the entire line.
+    ///
     /// Line wrapping is enabled by default.
     public var isLineWrappingEnabled: Bool {
         get {

@@ -127,6 +127,7 @@ final class LayoutManager {
             }
         }
     }
+    /// Leading padding inside the gutter.
     var gutterLeadingPadding: CGFloat = 3 {
         didSet {
             if gutterLeadingPadding != oldValue {
@@ -134,6 +135,7 @@ final class LayoutManager {
             }
         }
     }
+    /// Trailing padding inside the gutter.
     var gutterTrailingPadding: CGFloat = 3 {
         didSet {
             if gutterTrailingPadding != oldValue {
@@ -141,6 +143,7 @@ final class LayoutManager {
             }
         }
     }
+    /// Spacing around the text. The left-side spacing defines the distance between the text and the gutter.
     var textContainerInset: UIEdgeInsets = .zero {
         didSet {
             if textContainerInset != oldValue {
@@ -155,6 +158,7 @@ final class LayoutManager {
             }
         }
     }
+    /// Total width of the gutter containing the line numbers.
     var gutterWidth: CGFloat {
         if showLineNumbers {
             return lineNumberWidth + gutterLeadingPadding + gutterTrailingPadding
@@ -263,6 +267,7 @@ final class LayoutManager {
     private var lineNumberWidth: CGFloat = 0
     private var previousLineNumberWidthUpdateLineCount: Int?
     private var previousLineNumberWidthUpdateFont: UIFont?
+    /// Spacing in front of a line.
     private var leadingLineSpacing: CGFloat {
         if showLineNumbers {
             return gutterWidth + textContainerInset.left
@@ -270,8 +275,7 @@ final class LayoutManager {
             return textContainerInset.left
         }
     }
-    // Reset the line widths when changing the line manager to measure the
-    // longest line and use it to determine the content width.
+    // Reset the line widths when changing the line manager to measure the longest line and use it to determine the content width.
     private var shouldResetLineWidths = true
     private var lineWidths: [DocumentLineNodeID: CGFloat] = [:]
     private var lineIDTrackingWidth: DocumentLineNodeID?
@@ -862,9 +866,7 @@ extension LayoutManager {
         lineSelectionBackgroundView.isHidden = !lineSelectionDisplayType.shouldShowLineSelection || !isEditing || selectedLength > 0
     }
 
-    // Resetting the line widths clears all recorded line widths, asks the line manager for the longest line,
-    // measures the width of the line and uses it to determine the width of content.
-    // This is used when first opening the text editor to make a fairly accurate guess of the content width.
+    // Resetting the line widths clears all recorded line widths, asks the line manager for the longest line measures the width of the line and uses it to determine the width of content. This is used when first opening the text editor to make a fairly accurate guess of the content width.
     private func resetLineWidthsIfNecessary() {
         if shouldResetLineWidths {
             shouldResetLineWidths = false
