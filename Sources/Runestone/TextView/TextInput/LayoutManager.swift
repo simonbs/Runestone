@@ -12,9 +12,9 @@ protocol LayoutManagerDelegate: AnyObject {
 // swiftlint:disable:next type_body_length
 final class LayoutManager {
     weak var delegate: LayoutManagerDelegate?
-    weak var editorView: UIScrollView? {
+    weak var scrollView: UIScrollView? {
         didSet {
-            if editorView != oldValue {
+            if scrollView != oldValue {
                 setupViewHierarchy()
             }
         }
@@ -302,7 +302,7 @@ final class LayoutManager {
         return CGRect(x: x, y: y, width: width, height: height)
     }
     private var additionalInset: UIEdgeInsets {
-        if let editorView = editorView {
+        if let editorView = scrollView {
             let adjustContentInset = editorView.adjustedContentInset
             let contentInset = editorView.contentInset
             let top = adjustContentInset.top - contentInset.top
@@ -862,7 +862,7 @@ extension LayoutManager {
         textInputView?.addSubview(lineSelectionBackgroundView)
         textInputView?.addSubview(highlightsContainerBackgroundView)
         textInputView?.addSubview(linesContainerView)
-        editorView?.addSubview(gutterContainerView)
+        scrollView?.addSubview(gutterContainerView)
         gutterContainerView.addSubview(gutterBackgroundView)
         gutterContainerView.addSubview(gutterSelectionBackgroundView)
         gutterContainerView.addSubview(lineNumbersContainerView)
