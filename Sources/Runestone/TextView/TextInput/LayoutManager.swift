@@ -275,7 +275,7 @@ final class LayoutManager {
     private var shouldResetLineWidths = true
     private var lineWidths: [DocumentLineNodeID: CGFloat] = [:]
     private var lineIDTrackingWidth: DocumentLineNodeID?
-    private var maximumLineWidth: CGFloat {
+    private var constrainingLineWidth: CGFloat {
         if isLineWrappingEnabled {
             return scrollViewWidth - leadingLineSpacing - textContainerInset.right - safeAreaInset.left - safeAreaInset.right
         } else {
@@ -634,7 +634,7 @@ extension LayoutManager {
             let lineLocation = line.location
             let endTypesettingLocation = min(lineLocation + line.data.length, location) - lineLocation
             let lineController = lineController(for: line)
-            lineController.constrainingWidth = maximumLineWidth
+            lineController.constrainingWidth = constrainingLineWidth
             lineController.prepareToDisplayString(toLocation: endTypesettingLocation, syntaxHighlightAsynchronously: true)
             let lineSize = CGSize(width: lineController.lineWidth, height: lineController.lineHeight)
             setSize(of: lineController.line, to: lineSize)
@@ -663,13 +663,13 @@ extension LayoutManager {
         var appearedLineFragmentIDs: Set<LineFragmentID> = []
         var maxY = insetViewport.minY
         var contentOffsetAdjustmentY: CGFloat = 0
-        while let line = nextLine, maxY < insetViewport.maxY, maximumLineWidth > 0 {
+        while let line = nextLine, maxY < insetViewport.maxY, constrainingLineWidth > 0 {
             appearedLineIDs.insert(line.id)
             // Prepare to line controller to display text.
             let lineLocalViewport = CGRect(x: 0, y: maxY, width: insetViewport.width, height: insetViewport.maxY - maxY)
             let lineController = lineController(for: line)
             let oldLineHeight = lineController.lineHeight
-            lineController.constrainingWidth = maximumLineWidth
+            lineController.constrainingWidth = constrainingLineWidth
             lineController.prepareToDisplayString(in: lineLocalViewport, syntaxHighlightAsynchronously: true)
             layoutLineNumberView(for: line)
             // Layout line fragments ("sublines") in the line until we have filled the viewport.
@@ -888,7 +888,7 @@ extension LayoutManager {
         } else {
             let lineController = LineController(line: line, stringView: stringView)
             lineController.delegate = self
-            lineController.constrainingWidth = maximumLineWidth
+            lineController.constrainingWidth = constrainingLineWidth
             lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
             lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
             lineController.tabWidth = tabWidth
