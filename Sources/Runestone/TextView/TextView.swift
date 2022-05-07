@@ -524,7 +524,7 @@ public final class TextView: UIScrollView {
         super.init(frame: frame)
         backgroundColor = .white
         textInputView.delegate = self
-        textInputView.editorView = self
+        textInputView.scrollView = self
         textInputView.scrollViewSafeAreaInsets = safeAreaInsets
         editableTextInteraction.textInput = textInputView
         nonEditableTextInteraction.textInput = textInputView
