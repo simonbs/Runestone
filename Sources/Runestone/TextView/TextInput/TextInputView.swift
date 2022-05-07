@@ -411,14 +411,6 @@ final class TextInputView: UIView, UITextInput {
             layoutManager.scrollViewWidth = newValue
         }
     }
-    var scrollViewSafeAreaInsets: UIEdgeInsets {
-        get {
-            return layoutManager.scrollViewSafeAreaInsets
-        }
-        set {
-            layoutManager.scrollViewSafeAreaInsets = newValue
-        }
-    }
     var contentSize: CGSize {
         return layoutManager.contentSize
     }
