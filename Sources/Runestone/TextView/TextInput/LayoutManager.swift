@@ -841,11 +841,13 @@ extension LayoutManager {
 
     private func setupViewHierarchy() {
         // Remove views from view hierarchy
-        gutterBackgroundView.removeFromSuperview()
-        lineNumbersContainerView.removeFromSuperview()
-        gutterSelectionBackgroundView.removeFromSuperview()
         lineSelectionBackgroundView.removeFromSuperview()
         highlightsContainerBackgroundView.removeFromSuperview()
+        linesContainerView.removeFromSuperview()
+        gutterContainerView.removeFromSuperview()
+        gutterBackgroundView.removeFromSuperview()
+        gutterSelectionBackgroundView.removeFromSuperview()
+        lineNumbersContainerView.removeFromSuperview()
         let allLineNumberKeys = lineFragmentViewReuseQueue.visibleViews.keys
         lineFragmentViewReuseQueue.enqueueViews(withKeys: Set(allLineNumberKeys))
         // Add views to view hierarchy
