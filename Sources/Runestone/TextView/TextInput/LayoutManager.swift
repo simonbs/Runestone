@@ -477,6 +477,9 @@ extension LayoutManager {
     }
 
     func selectionRects(in range: NSRange) -> [TextSelectionRect] {
+        guard range.length > 0 else {
+            return []
+        }
         guard let endLine = lineManager.line(containingCharacterAt: range.upperBound) else {
             return []
         }
