@@ -915,7 +915,7 @@ private extension TextView {
         }
     }
 
-    private func scroll(to location: Int, animated: Bool = false) {
+    private func scroll(to location: Int) {
         let caretRect = textInputView.caretRect(at: location)
         let viewportMinX = contentOffset.x + automaticScrollInset.left + gutterWidth
         let viewportMinY = contentOffset.y + automaticScrollInset.top
@@ -936,7 +936,7 @@ private extension TextView {
             newContentOffset.y = caretRect.maxY - viewport.height - automaticScrollInset.top
         }
         if newContentOffset != contentOffset {
-            setContentOffset(newContentOffset, animated: animated)
+            setContentOffset(newContentOffset, animated: false)
         }
     }
 
