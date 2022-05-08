@@ -927,7 +927,7 @@ private extension TextView {
             newContentOffset.x = caretRect.minX - gutterWidth - automaticScrollInset.left
         }
         if caretRect.maxX > viewport.maxX {
-            newContentOffset.x = caretRect.minX - viewport.width - gutterWidth + automaticScrollInset.right
+            newContentOffset.x = caretRect.maxX - viewport.width - gutterWidth + automaticScrollInset.right
         }
         if caretRect.minY < viewport.minY {
             newContentOffset.y = caretRect.minY - automaticScrollInset.top
