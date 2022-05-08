@@ -922,21 +922,24 @@ private extension TextView {
         let viwportHeight = frame.height - automaticScrollInset.top - automaticScrollInset.bottom
         let viewportWidth = frame.width - gutterWidth - automaticScrollInset.left - automaticScrollInset.right
         let viewport = CGRect(x: viewportMinX, y: viewportMinY, width: viewportWidth, height: viwportHeight)
-        var newContentOffset = contentOffset
+        var preferredContentOffset = contentOffset
         if caretRect.minX < viewport.minX {
-            newContentOffset.x = caretRect.minX - gutterWidth - automaticScrollInset.left
+            preferredContentOffset.x = caretRect.minX - gutterWidth - automaticScrollInset.left
         }
         if caretRect.maxX > viewport.maxX {
-            newContentOffset.x = caretRect.maxX - viewport.width - gutterWidth + automaticScrollInset.right
+            preferredContentOffset.x = caretRect.maxX - viewport.width - gutterWidth + automaticScrollInset.right
         }
         if caretRect.minY < viewport.minY {
-            newContentOffset.y = caretRect.minY - automaticScrollInset.top
+            preferredContentOffset.y = caretRect.minY - automaticScrollInset.top
         }
         if caretRect.maxY > viewport.maxY {
-            newContentOffset.y = caretRect.maxY - viewport.height - automaticScrollInset.top
+            preferredContentOffset.y = caretRect.maxY - viewport.height - automaticScrollInset.top
         }
-        if newContentOffset != contentOffset {
-            setContentOffset(newContentOffset, animated: false)
+        let cappedXOffset = min(max(preferredContentOffset.x, minimumContentOffset.x), maximumContentOffset.x)
+        let cappedYOffset = min(max(preferredContentOffset.y, minimumContentOffset.y), maximumContentOffset.y)
+        let cappedContentOffset = CGPoint(x: cappedXOffset, y: cappedYOffset)
+        if cappedContentOffset != contentOffset {
+            setContentOffset(cappedContentOffset, animated: false)
         }
     }
 
