@@ -8,6 +8,7 @@ enum Symbol {
         static let lineSeparator: Swift.Character = "\u{2028}"
         static let tab: Swift.Character = "\t"
         static let space: Swift.Character = " "
+        static let nonBreakingSpace: Swift.Character = "\u{A0}"
     }
 
     static let lineFeed = String(Self.Character.lineFeed)

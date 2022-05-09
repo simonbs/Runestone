@@ -11,6 +11,7 @@ final class InvisibleCharacterConfiguration {
     var textColor: UIColor = .black
     var showTabs = false
     var showSpaces = false
+    var showNonBreakingSpaces = false
     var showLineBreaks = false {
         didSet {
             if showLineBreaks != oldValue {
@@ -27,6 +28,7 @@ final class InvisibleCharacterConfiguration {
     }
     var tabSymbol = "\u{25b8}"
     var spaceSymbol = "\u{00b7}"
+    var nonBreakingSpaceSymbol = "\u{00b7}"
     var lineBreakSymbol = "\u{00ac}" {
         didSet {
             if lineBreakSymbol != oldValue {
