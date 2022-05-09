@@ -1,4 +1,6 @@
 import Runestone
+import RunestoneJavaScriptLanguage
+import RunestoneTomorrowTheme
 import UIKit
 
 final class MainViewController: UIViewController {

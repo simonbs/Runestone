@@ -6,6 +6,7 @@
 //
 
 import Runestone
+import RunestoneThemeCommon
 import UIKit
 
 extension TextView {
