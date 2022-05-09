@@ -414,7 +414,7 @@ final class TextInputView: UIView, UITextInput {
     var contentSize: CGSize {
         return layoutManager.contentSize
     }
-    private(set) var selectedRange: NSRange? {
+    var selectedRange: NSRange? {
         didSet {
             if selectedRange != oldValue {
                 layoutManager.selectedRange = selectedRange
