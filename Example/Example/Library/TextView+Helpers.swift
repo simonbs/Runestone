@@ -1,11 +1,5 @@
-//
-//  TextView+Helpers.swift
-//  Example
-//
-//  Created by Simon on 31/01/2022.
-//
-
 import Runestone
+import RunestoneThemeCommon
 import UIKit
 
 extension TextView {

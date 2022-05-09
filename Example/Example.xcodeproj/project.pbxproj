@@ -7,20 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		729C6A0528188D23004F0CA2 /* HighlightName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729C6A0428188D23004F0CA2 /* HighlightName.swift */; };
-		72AC547A2826B2820037ED21 /* TreeSitterIndentationScopes+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72AC54782826B2820037ED21 /* TreeSitterIndentationScopes+Helpers.swift */; };
-		72AC547B2826B2820037ED21 /* TreeSitterLanguage+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72AC54792826B2820037ED21 /* TreeSitterLanguage+Helpers.swift */; };
-		72AC547D2826B2A50037ED21 /* TreeSitterJavaScript in Frameworks */ = {isa = PBXBuildFile; productRef = 72AC547C2826B2A50037ED21 /* TreeSitterJavaScript */; };
-		72AC547F2826B2A70037ED21 /* TreeSitterJavaScriptQueries in Frameworks */ = {isa = PBXBuildFile; productRef = 72AC547E2826B2A70037ED21 /* TreeSitterJavaScriptQueries */; };
+		7216EAC82829A3C6001B6D39 /* RunestoneJavaScriptLanguage in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EAC72829A3C6001B6D39 /* RunestoneJavaScriptLanguage */; };
+		7216EACA2829A3C6001B6D39 /* RunestoneOneDarkTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EAC92829A3C6001B6D39 /* RunestoneOneDarkTheme */; };
+		7216EACC2829A3C6001B6D39 /* RunestonePlainTextTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EACB2829A3C6001B6D39 /* RunestonePlainTextTheme */; };
+		7216EACE2829A3C6001B6D39 /* RunestoneTomorrowNightTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EACD2829A3C6001B6D39 /* RunestoneTomorrowNightTheme */; };
+		7216EAD02829A3C6001B6D39 /* RunestoneTomorrowTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EACF2829A3C6001B6D39 /* RunestoneTomorrowTheme */; };
 		72AC54812826B2A90037ED21 /* Runestone in Frameworks */ = {isa = PBXBuildFile; productRef = 72AC54802826B2A90037ED21 /* Runestone */; };
 		AC480601279EE0180015F712 /* BasicCharacterPair.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC480600279EE0180015F712 /* BasicCharacterPair.swift */; };
 		AC5F0253279C74A1001D1E43 /* UserDefaults+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */; };
-		AC832D552798C4FA00EC6832 /* TomorrowTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC832D542798C4FA00EC6832 /* TomorrowTheme.swift */; };
-		AC85537327A83AE200F7916D /* TomorrowNightTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537227A83AE200F7916D /* TomorrowNightTheme.swift */; };
-		AC85537527A83C3D00F7916D /* OneDarkTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537427A83C3D00F7916D /* OneDarkTheme.swift */; };
-		AC85537727A83C6600F7916D /* PlainTextTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537627A83C6600F7916D /* PlainTextTheme.swift */; };
 		AC85537927A83D2000F7916D /* ThemeSetting.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537827A83D2000F7916D /* ThemeSetting.swift */; };
-		AC85537B27A83FDF00F7916D /* EditorTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537A27A83FDF00F7916D /* EditorTheme.swift */; };
 		AC85537D27A845BB00F7916D /* CodeSample.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537C27A845BB00F7916D /* CodeSample.swift */; };
 		AC85537F27A849DF00F7916D /* KeyboardToolsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537E27A849DF00F7916D /* KeyboardToolsView.swift */; };
 		AC85538527A84CF600F7916D /* TextView+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85538427A84CF600F7916D /* TextView+Helpers.swift */; };
@@ -35,19 +30,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		729C6A0428188D23004F0CA2 /* HighlightName.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HighlightName.swift; sourceTree = "<group>"; };
+		7216EAC62829A16C001B6D39 /* Themes */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Themes; sourceTree = "<group>"; };
 		72AC54762826B1F00037ED21 /* Languages */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Languages; sourceTree = "<group>"; };
 		72AC54772826B23D0037ED21 /* Runestone */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Runestone; path = ..; sourceTree = "<group>"; };
-		72AC54782826B2820037ED21 /* TreeSitterIndentationScopes+Helpers.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "TreeSitterIndentationScopes+Helpers.swift"; sourceTree = "<group>"; };
-		72AC54792826B2820037ED21 /* TreeSitterLanguage+Helpers.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "TreeSitterLanguage+Helpers.swift"; sourceTree = "<group>"; };
 		AC480600279EE0180015F712 /* BasicCharacterPair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasicCharacterPair.swift; sourceTree = "<group>"; };
 		AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserDefaults+Helpers.swift"; sourceTree = "<group>"; };
-		AC832D542798C4FA00EC6832 /* TomorrowTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TomorrowTheme.swift; sourceTree = "<group>"; };
-		AC85537227A83AE200F7916D /* TomorrowNightTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TomorrowNightTheme.swift; sourceTree = "<group>"; };
-		AC85537427A83C3D00F7916D /* OneDarkTheme.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OneDarkTheme.swift; sourceTree = "<group>"; };
-		AC85537627A83C6600F7916D /* PlainTextTheme.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlainTextTheme.swift; sourceTree = "<group>"; };
 		AC85537827A83D2000F7916D /* ThemeSetting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSetting.swift; sourceTree = "<group>"; };
-		AC85537A27A83FDF00F7916D /* EditorTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorTheme.swift; sourceTree = "<group>"; };
 		AC85537C27A845BB00F7916D /* CodeSample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeSample.swift; sourceTree = "<group>"; };
 		AC85537E27A849DF00F7916D /* KeyboardToolsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardToolsView.swift; sourceTree = "<group>"; };
 		AC85538427A84CF600F7916D /* TextView+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TextView+Helpers.swift"; sourceTree = "<group>"; };
@@ -68,9 +56,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				72AC547D2826B2A50037ED21 /* TreeSitterJavaScript in Frameworks */,
+				7216EACA2829A3C6001B6D39 /* RunestoneOneDarkTheme in Frameworks */,
 				72AC54812826B2A90037ED21 /* Runestone in Frameworks */,
-				72AC547F2826B2A70037ED21 /* TreeSitterJavaScriptQueries in Frameworks */,
+				7216EACC2829A3C6001B6D39 /* RunestonePlainTextTheme in Frameworks */,
+				7216EAC82829A3C6001B6D39 /* RunestoneJavaScriptLanguage in Frameworks */,
+				7216EACE2829A3C6001B6D39 /* RunestoneTomorrowNightTheme in Frameworks */,
+				7216EAD02829A3C6001B6D39 /* RunestoneTomorrowTheme in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -82,17 +73,9 @@
 			children = (
 				72AC54762826B1F00037ED21 /* Languages */,
 				72AC54772826B23D0037ED21 /* Runestone */,
+				7216EAC62829A16C001B6D39 /* Themes */,
 			);
 			name = Packages;
-			sourceTree = "<group>";
-		};
-		72AC54742826B1440037ED21 /* JavaScriptLanguage */ = {
-			isa = PBXGroup;
-			children = (
-				72AC54782826B2820037ED21 /* TreeSitterIndentationScopes+Helpers.swift */,
-				72AC54792826B2820037ED21 /* TreeSitterLanguage+Helpers.swift */,
-			);
-			path = JavaScriptLanguage;
 			sourceTree = "<group>";
 		};
 		AC832D582798C72A00EC6832 /* Application */ = {
@@ -119,24 +102,11 @@
 			children = (
 				AC480600279EE0180015F712 /* BasicCharacterPair.swift */,
 				AC85537C27A845BB00F7916D /* CodeSample.swift */,
-				729C6A0428188D23004F0CA2 /* HighlightName.swift */,
 				AC85538427A84CF600F7916D /* TextView+Helpers.swift */,
 				AC85537827A83D2000F7916D /* ThemeSetting.swift */,
 				AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */,
 			);
 			path = Library;
-			sourceTree = "<group>";
-		};
-		AC85537127A83A9F00F7916D /* Themes */ = {
-			isa = PBXGroup;
-			children = (
-				AC85537A27A83FDF00F7916D /* EditorTheme.swift */,
-				AC85537427A83C3D00F7916D /* OneDarkTheme.swift */,
-				AC85537627A83C6600F7916D /* PlainTextTheme.swift */,
-				AC85537227A83AE200F7916D /* TomorrowNightTheme.swift */,
-				AC832D542798C4FA00EC6832 /* TomorrowTheme.swift */,
-			);
-			path = Themes;
 			sourceTree = "<group>";
 		};
 		ACB08ACF27A8112600EB6819 /* ThemePicker */ = {
@@ -173,11 +143,9 @@
 				ACFDF4B927983BAB00059A1B /* Assets.xcassets */,
 				ACFDF4BB27983BAB00059A1B /* LaunchScreen.storyboard */,
 				AC832D582798C72A00EC6832 /* Application */,
-				72AC54742826B1440037ED21 /* JavaScriptLanguage */,
 				AC832D5A2798C73B00EC6832 /* Library */,
 				AC832D592798C73300EC6832 /* Main */,
 				ACB08ACF27A8112600EB6819 /* ThemePicker */,
-				AC85537127A83A9F00F7916D /* Themes */,
 			);
 			path = Example;
 			sourceTree = "<group>";
@@ -207,9 +175,12 @@
 			);
 			name = Example;
 			packageProductDependencies = (
-				72AC547C2826B2A50037ED21 /* TreeSitterJavaScript */,
-				72AC547E2826B2A70037ED21 /* TreeSitterJavaScriptQueries */,
 				72AC54802826B2A90037ED21 /* Runestone */,
+				7216EAC72829A3C6001B6D39 /* RunestoneJavaScriptLanguage */,
+				7216EAC92829A3C6001B6D39 /* RunestoneOneDarkTheme */,
+				7216EACB2829A3C6001B6D39 /* RunestonePlainTextTheme */,
+				7216EACD2829A3C6001B6D39 /* RunestoneTomorrowNightTheme */,
+				7216EACF2829A3C6001B6D39 /* RunestoneTomorrowTheme */,
 			);
 			productName = Example;
 			productReference = ACFDF4AD27983BAA00059A1B /* Example.app */;
@@ -288,26 +259,18 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				72AC547B2826B2820037ED21 /* TreeSitterLanguage+Helpers.swift in Sources */,
 				ACFDF4B527983BAA00059A1B /* MainViewController.swift in Sources */,
-				72AC547A2826B2820037ED21 /* TreeSitterIndentationScopes+Helpers.swift in Sources */,
 				ACFDF4C527983C2700059A1B /* MainView.swift in Sources */,
 				AC85537F27A849DF00F7916D /* KeyboardToolsView.swift in Sources */,
 				ACFDF4B127983BAA00059A1B /* AppDelegate.swift in Sources */,
 				ACB08AD327A8113E00EB6819 /* ThemePickerViewController.swift in Sources */,
-				AC85537727A83C6600F7916D /* PlainTextTheme.swift in Sources */,
 				ACFDF4B327983BAA00059A1B /* SceneDelegate.swift in Sources */,
-				AC85537327A83AE200F7916D /* TomorrowNightTheme.swift in Sources */,
 				AC85537D27A845BB00F7916D /* CodeSample.swift in Sources */,
 				AC85537927A83D2000F7916D /* ThemeSetting.swift in Sources */,
 				AC85538527A84CF600F7916D /* TextView+Helpers.swift in Sources */,
-				AC85537B27A83FDF00F7916D /* EditorTheme.swift in Sources */,
 				ACB08AD527A81ADF00EB6819 /* ThemePickerPreviewCell.swift in Sources */,
 				AC5F0253279C74A1001D1E43 /* UserDefaults+Helpers.swift in Sources */,
 				AC480601279EE0180015F712 /* BasicCharacterPair.swift in Sources */,
-				729C6A0528188D23004F0CA2 /* HighlightName.swift in Sources */,
-				AC832D552798C4FA00EC6832 /* TomorrowTheme.swift in Sources */,
-				AC85537527A83C3D00F7916D /* OneDarkTheme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -519,13 +482,25 @@
 /* End XCConfigurationList section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		72AC547C2826B2A50037ED21 /* TreeSitterJavaScript */ = {
+		7216EAC72829A3C6001B6D39 /* RunestoneJavaScriptLanguage */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = TreeSitterJavaScript;
+			productName = RunestoneJavaScriptLanguage;
 		};
-		72AC547E2826B2A70037ED21 /* TreeSitterJavaScriptQueries */ = {
+		7216EAC92829A3C6001B6D39 /* RunestoneOneDarkTheme */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = TreeSitterJavaScriptQueries;
+			productName = RunestoneOneDarkTheme;
+		};
+		7216EACB2829A3C6001B6D39 /* RunestonePlainTextTheme */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RunestonePlainTextTheme;
+		};
+		7216EACD2829A3C6001B6D39 /* RunestoneTomorrowNightTheme */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RunestoneTomorrowNightTheme;
+		};
+		7216EACF2829A3C6001B6D39 /* RunestoneTomorrowTheme */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RunestoneTomorrowTheme;
 		};
 		72AC54802826B2A90037ED21 /* Runestone */ = {
 			isa = XCSwiftPackageProductDependency;
