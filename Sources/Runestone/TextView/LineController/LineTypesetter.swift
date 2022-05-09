@@ -144,13 +144,10 @@ private extension LineTypesetter {
         var remainingAdditionalLineFragmentCount = additionalLineFragmentCount
         let conditionAllowsKeepTypesetting = condition.shouldKeepTypesetting(currentYPosition: nextYPosition, currentCharacterIndex: startOffset)
         var shouldKeepTypesetting = conditionAllowsKeepTypesetting || remainingAdditionalLineFragmentCount > 0
-        while startOffset < stringLength && shouldKeepTypesetting {
-            let length = suggestNextLineBreak(using: typesetter)
-            let range = CFRangeMake(startOffset, length)
-            let lineFragment = makeLineFragment(for: range, in: typesetter, lineFragmentIndex: lineFragmentIndex, yPosition: nextYPosition)
+        while startOffset < stringLength && shouldKeepTypesetting, let lineFragment = makeNextLineFragment(using: typesetter) {
             lineFragments.append(lineFragment)
             nextYPosition += lineFragment.scaledSize.height
-            startOffset += length
+            startOffset += lineFragment.range.length
             if lineFragment.scaledSize.width > maximumLineWidth {
                 maximumLineWidth = lineFragment.scaledSize.width
             }
@@ -166,6 +163,19 @@ private extension LineTypesetter {
             }
         }
         return TypesetResult(lineFragments: lineFragments, lineFragmentsMap: lineFragmentsMap, maximumLineWidth: maximumLineWidth)
+    }
+
+    private func makeNextLineFragment(using typesetter: CTTypesetter) -> LineFragment? {
+        // suggestNextLineBreak(using:) uses CTTypesetterSuggestLineBreak but it may return lines that are longer than our constraining width.
+        // In that case we keep removeing characters from the line until we're below the constraining width.
+        var length = suggestNextLineBreak(using: typesetter)
+        var lineFragment: LineFragment?
+        while lineFragment == nil || lineFragment!.scaledSize.width > constrainingWidth {
+            let range = CFRangeMake(startOffset, length)
+            lineFragment = makeLineFragment(for: range, in: typesetter, lineFragmentIndex: lineFragmentIndex, yPosition: nextYPosition)
+            length -= 1
+        }
+        return lineFragment
     }
 
     private func suggestNextLineBreak(using typesetter: CTTypesetter) -> Int {
