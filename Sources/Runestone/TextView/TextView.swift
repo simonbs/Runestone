@@ -987,8 +987,10 @@ private extension TextView {
 extension TextView: TextInputViewDelegate {
     func textInputViewWillBeginEditing(_ view: TextInputView) {
         isEditing = !willBeginEditingFromNonEditableTextInteraction
-        if textInputView.selectedTextRange == nil {
-            textInputView.selectedTextRange = IndexedRange(location: 0, length: 0)
+        // If a developer is programmatically calling becomeFirstresponder() then we might not have a selected range.
+        // We set the selectedRange instead of the selectedTextRange to avoid invoking any delegates.
+        if textInputView.selectedRange == nil {
+            textInputView.selectedRange = NSRange(location: 0, length: 0)
         }
         // Ensure selection is laid out without animation.
         UIView.performWithoutAnimation {
