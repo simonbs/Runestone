@@ -15,7 +15,6 @@ public extension TreeSitterLanguage {
     }
 }
 
-
 private extension TreeSitterLanguage {
     static func queryFileURL(forQueryNamed queryName: String) -> URL {
         return Bundle.module.url(forResource: "queries/" + queryName, withExtension: "scm")!

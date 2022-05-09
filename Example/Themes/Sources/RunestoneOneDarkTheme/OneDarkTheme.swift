@@ -67,4 +67,3 @@ private extension UIColor {
         self.init(named: name, in: .module, compatibleWith: nil)!
     }
 }
-
