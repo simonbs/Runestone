@@ -1,4 +1,9 @@
 import Runestone
+import RunestoneOneDarkTheme
+import RunestonePlainTextTheme
+import RunestoneThemeCommon
+import RunestoneTomorrowNightTheme
+import RunestoneTomorrowTheme
 
 enum ThemeSetting: String, CaseIterable, Hashable {
     case oneDark

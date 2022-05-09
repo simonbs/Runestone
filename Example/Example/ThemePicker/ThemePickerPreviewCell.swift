@@ -1,4 +1,5 @@
 import Runestone
+import RunestoneThemeCommon
 import UIKit
 
 final class ThemePickerPreviewCell: UITableViewCell {

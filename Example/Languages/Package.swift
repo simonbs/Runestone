@@ -5,13 +5,15 @@ import PackageDescription
 
 let package = Package(
     name: "Languages",
+    platforms: [.iOS(.v14)],
     products: [
-        .library(name: "TreeSitterJavaScript", targets: ["TreeSitterJavaScript"]),
-        .library(name: "TreeSitterJavaScriptQueries", targets: ["TreeSitterJavaScriptQueries"])
-
+        .library(name: "RunestoneJavaScriptLanguage", targets: ["RunestoneJavaScriptLanguage"])
+    ],
+    dependencies: [
+        .package(path: "../Runestone")
     ],
     targets: [
-        .target(name: "TreeSitterJavaScript", cSettings: [.headerSearchPath("src")]),
-        .target(name: "TreeSitterJavaScriptQueries", resources: [.copy("queries")])
+        .target(name: "RunestoneJavaScriptLanguage", dependencies: ["TreeSitterJavaScript", "Runestone"], resources: [.copy("queries")]),
+        .target(name: "TreeSitterJavaScript", cSettings: [.headerSearchPath("src")])
     ]
 )
