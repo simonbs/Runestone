@@ -29,15 +29,15 @@ final class TextInputView: UIView, UITextInput {
             }
         }
         set {
+            // We should not use this setter. It's intended for UIKit to use. It'll invoke the setter in various scenarios, for example when navigating with the text using the keyboard.
             if let newRange = (newValue as? IndexedRange)?.range {
                 if newRange != selectedRange {
-                    inputDelegate?.selectionWillChange(self)
                     selectedRange = newRange
-                    inputDelegate?.selectionDidChange(self)
-                    delegate?.textInputViewDidChangeSelection(self)
+                    sendSelectionChangedToTextSelectionView()
                 }
-            } else {
+            } else if selectedRange != nil {
                 selectedRange = nil
+                sendSelectionChangedToTextSelectionView()
             }
         }
     }
@@ -326,10 +326,10 @@ final class TextInputView: UIView, UITextInput {
         }
         set {
             if newValue != layoutManager.lineHeightMultiplier {
-                performSelectionModifyingChanges {
-                    layoutManager.lineHeightMultiplier = newValue
-                    lineManager.estimatedLineHeight = estimatedLineHeight
-                }
+                layoutManager.lineHeightMultiplier = newValue
+                lineManager.estimatedLineHeight = estimatedLineHeight
+                layoutManager.setNeedsLayout()
+                setNeedsLayout()
             }
         }
     }
@@ -339,10 +339,10 @@ final class TextInputView: UIView, UITextInput {
         }
         set {
             if newValue != layoutManager.kern {
-                performSelectionModifyingChanges {
-                    pageGuideController.kern = newValue
-                    layoutManager.kern = newValue
-                }
+                pageGuideController.kern = newValue
+                layoutManager.kern = newValue
+                layoutManager.setNeedsLayout()
+                setNeedsLayout()
             }
         }
     }
@@ -442,6 +442,7 @@ final class TextInputView: UIView, UITextInput {
                 layoutManager.selectedRange = selectedRange
                 layoutManager.setNeedsLayoutLineSelection()
                 setNeedsLayout()
+                delegate?.textInputViewDidChangeSelection(self)
             }
         }
     }
@@ -587,19 +588,28 @@ final class TextInputView: UIView, UITextInput {
 
     override func paste(_ sender: Any?) {
         if let selectedTextRange = selectedTextRange, let string = UIPasteboard.general.string {
+            inputDelegate?.selectionWillChange(self)
             replace(selectedTextRange, withText: string)
+            inputDelegate?.selectionDidChange(self)
         }
     }
 
     override func cut(_ sender: Any?) {
         if let selectedTextRange = selectedTextRange, let text = text(in: selectedTextRange) {
             UIPasteboard.general.string = text
+            inputDelegate?.selectionWillChange(self)
             replace(selectedTextRange, withText: "")
+            inputDelegate?.selectionDidChange(self)
         }
     }
 
     override func selectAll(_ sender: Any?) {
-        selectedTextRange = IndexedRange(NSRange(location: 0, length: string.length))
+        let newSelectedRange = NSRange(location: 0, length: string.length)
+        if newSelectedRange != selectedRange {
+            inputDelegate?.selectionWillChange(self)
+            selectedRange = newSelectedRange
+            inputDelegate?.selectionDidChange(self)
+        }
     }
 
     /// When autocorrection is enabled and the user tap on a misspelled word, UITextInteraction will present
@@ -674,7 +684,12 @@ final class TextInputView: UIView, UITextInput {
 
     func moveCaret(to point: CGPoint) {
         if let index = layoutManager.closestIndex(to: point) {
-            selectedTextRange = IndexedRange(location: index, length: 0)
+            let newSelectedRange = NSRange(location: index, length: 0)
+            if newSelectedRange != selectedRange {
+                inputDelegate?.selectionWillChange(self)
+                selectedRange = newSelectedRange
+                inputDelegate?.selectionDidChange(self)
+            }
         }
     }
 
@@ -687,11 +702,9 @@ final class TextInputView: UIView, UITextInput {
         layoutManager.languageMode = internalLanguageMode
         internalLanguageMode.parse(string) { [weak self] finished in
             if let self = self, finished {
-                self.inputDelegate?.selectionWillChange(self)
                 self.layoutManager.invalidateLines()
                 self.layoutManager.setNeedsLayout()
                 self.layoutManager.layoutIfNeeded()
-                self.inputDelegate?.selectionDidChange(self)
             }
             completion?(finished)
         }
@@ -808,8 +821,12 @@ private extension TextInputView {
     private func navigate(in direction: UITextLayoutDirection, offset: Int) {
         if let selectedRange = selectedRange {
             if let location = lineMovementController.location(from: selectedRange.location, in: direction, offset: offset) {
-                let range = NSRange(location: location, length: 0)
-                selectedTextRange = IndexedRange(range)
+                let newSelectedRange = NSRange(location: location, length: 0)
+                if newSelectedRange != selectedRange {
+                    inputDelegate?.selectionWillChange(self)
+                    self.selectedRange = newSelectedRange
+                    inputDelegate?.selectionDidChange(self)
+                }
             }
         }
     }
@@ -914,11 +931,8 @@ extension TextInputView {
             // The backtick will remain marked unless we manually clear the marked range.
             markedRange = nil
             if let lineBreak = IndentController.LineBreak(rawValue: text) {
-                inputDelegate?.selectionWillChange(self)
                 indentController.insertLineBreak(in: selectedRange, using: lineBreak)
                 layoutIfNeeded()
-                inputDelegate?.selectionDidChange(self)
-                delegate?.textInputViewDidChangeSelection(self)
             } else {
                 replaceText(in: selectedRange, with: text)
             }
@@ -942,7 +956,16 @@ extension TextInputView {
                 } else {
                     selectedRangeAfterUndo = selectedRange
                 }
+                let isDeletingMultipleCharacters = selectedRange.length > 1
+                if isDeletingMultipleCharacters {
+                    timedUndoManager.endUndoGrouping()
+                    timedUndoManager.beginUndoGrouping()
+                }
                 replaceText(in: deleteRange, with: "", selectedRangeAfterUndo: selectedRangeAfterUndo)
+                sendSelectionChangedToTextSelectionView()
+                if isDeletingMultipleCharacters {
+                    timedUndoManager.endUndoGrouping()
+                }
             }
         }
     }
@@ -991,7 +1014,12 @@ extension TextInputView {
         timedUndoManager.endUndoGrouping()
         delegate?.textInputViewDidChange(self)
         if let oldSelectedRange = oldSelectedRange {
-            selectedTextRange = IndexedRange(safeSelectionRange(from: oldSelectedRange))
+            let newSelectedRange = safeSelectionRange(from: oldSelectedRange)
+            if newSelectedRange != oldSelectedRange {
+                inputDelegate?.selectionWillChange(self)
+                selectedRange = newSelectedRange
+                inputDelegate?.selectionDidChange(self)
+            }
         }
     }
 
@@ -1038,7 +1066,6 @@ extension TextInputView {
                              with newString: String,
                              selectedRangeAfterUndo: NSRange? = nil,
                              undoActionName: String = L10n.Undo.ActionName.typing) {
-        inputDelegate?.selectionWillChange(self)
         let nsNewString = newString as NSString
         let currentText = text(in: range) ?? ""
         let newRange = NSRange(location: range.location, length: nsNewString.length)
@@ -1057,8 +1084,6 @@ extension TextInputView {
         if updatedTextEditResult.didAddOrRemoveLines {
             delegate?.textInputViewDidInvalidateContentSize(self)
         }
-        inputDelegate?.selectionDidChange(self)
-        delegate?.textInputViewDidChangeSelection(self)
     }
 
     private func applyLineChangesToLayoutManager(_ lineChangeSet: LineChangeSet) {
@@ -1090,14 +1115,10 @@ extension TextInputView {
         timedUndoManager.beginUndoGrouping()
         timedUndoManager.setActionName(actionName)
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
+            textInputView.inputDelegate?.selectionWillChange(self)
             textInputView.replaceText(in: range, with: text)
-            if textInputView.selectedRange != oldSelectedRange {
-                textInputView.inputDelegate?.selectionWillChange(self)
-                textInputView.selectedRange = oldSelectedRange
-                textInputView.layoutIfNeeded()
-                textInputView.inputDelegate?.selectionDidChange(self)
-                textInputView.delegate?.textInputViewDidChangeSelection(self)
-            }
+            textInputView.selectedRange = oldSelectedRange
+            textInputView.inputDelegate?.selectionDidChange(self)
         }
     }
 }
@@ -1118,14 +1139,24 @@ extension TextInputView {
         return NSRange(location: cappedLocation, length: cappedLength)
     }
 
-    private func performSelectionModifyingChanges(_ changes: () -> Void) {
-        // Notify the delegate that the selection may change as the position of the caret will change when we adjust the width or height of lines.
-        inputDelegate?.selectionWillChange(self)
-        changes()
-        layoutManager.setNeedsLayout()
-        inputDelegate?.selectionDidChange(self)
-        // Do a layout pass to ensure the position of the caret is correct.
-        setNeedsLayout()
+    private func sendSelectionChangedToTextSelectionView() {
+        // Fores the position of the caret to be updated. Normally we can do this by notifying the input delegate when changing the selected range like:
+        //
+        // inputDelegate?.selectionWillChange(self)
+        // selectedRange = newSelectedRange
+        // inputDelegate?.selectionDidChange(self)
+        //
+        // If we don't notify the input delegate when the setter on selectedTextRange is called, then the location of the caret will not be updated.
+        // However, if we do notify the delegate when the setter is called, Korean input will no longer work as described in https://github.com/simonbs/Runestone/issues/11.
+        // So the workaround is to not notify the delegate but tell the text selection view directly that the selection has changed.
+        if let textSelectionView = textSelectionView {
+            let sel = NSSelectorFromString("selectionChanged")
+            if textSelectionView.responds(to: sel) {
+                textSelectionView.perform(sel)
+            } else {
+                print("\(textSelectionView) does not respod to 'selectionChanged'")
+            }
+        }
     }
 }
 
@@ -1138,7 +1169,6 @@ extension TextInputView {
             indentController.shiftLeft(in: selectedRange)
             inputDelegate?.textDidChange(self)
             inputDelegate?.selectionDidChange(self)
-            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
@@ -1149,7 +1179,6 @@ extension TextInputView {
             indentController.shiftRight(in: selectedRange)
             inputDelegate?.textDidChange(self)
             inputDelegate?.selectionDidChange(self)
-            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 }
@@ -1212,8 +1241,10 @@ extension TextInputView {
             replaceText(in: removeRange, with: "", undoActionName: undoActionName)
             replaceText(in: insertRange, with: text, undoActionName: undoActionName)
             // Update the selected range to match the old one but at the new lines.
+            inputDelegate?.selectionWillChange(self)
             let locationOffset = insertLocation - removeLocation
-            selectedTextRange = IndexedRange(location: oldSelectedRange.location + locationOffset, length: oldSelectedRange.length)
+            selectedRange = NSRange(location: oldSelectedRange.location + locationOffset, length: oldSelectedRange.length)
+            inputDelegate?.selectionDidChange(self)
             timedUndoManager.endUndoGrouping()
         }
     }
@@ -1380,9 +1411,7 @@ extension TextInputView: IndentControllerDelegate {
     }
 
     func indentController(_ controller: IndentController, shouldSelect range: NSRange) {
-        if range != selectedRange {
-            selectedTextRange = IndexedRange(range)
-        }
+        selectedRange = range
     }
 }
 
