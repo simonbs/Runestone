@@ -257,7 +257,9 @@ public final class TextView: UIScrollView {
             textInputView.showTabs = newValue
         }
     }
-    /// The text view renders invisible spaces when enabled. The `spaceSymbol` is used to render spaces.
+    /// The text view renders invisible spaces when enabled.
+    ///
+    /// he `spaceSymbol` is used to render spaces.
     public var showSpaces: Bool {
         get {
             return textInputView.showSpaces
@@ -266,7 +268,20 @@ public final class TextView: UIScrollView {
             textInputView.showSpaces = newValue
         }
     }
-    /// The text view renders invisible line breaks when enabled. The `lineBreakSymbol` is used to render line breaks.
+    /// The text view renders invisible spaces when enabled.
+    ///
+    /// The `nonBreakingSpaceSymbol` is used to render spaces.
+    public var showNonBreakingSpaces: Bool {
+        get {
+            return textInputView.showNonBreakingSpaces
+        }
+        set {
+            textInputView.showNonBreakingSpaces = newValue
+        }
+    }
+    /// The text view renders invisible line breaks when enabled.
+    ///
+    /// The `lineBreakSymbol` is used to render line breaks.
     public var showLineBreaks: Bool {
         get {
             return textInputView.showLineBreaks
@@ -286,7 +301,9 @@ public final class TextView: UIScrollView {
             textInputView.showSoftLineBreaks = newValue
         }
     }
-    /// Used when rendering tabs. The value is only used when invisible tab characters is enabled. The default is ▸.
+    /// Symbol used to display tabs.
+    ///
+    /// The value is only used when invisible tab characters is enabled. The default is ▸.
     public var tabSymbol: String {
         get {
             return textInputView.tabSymbol
@@ -295,7 +312,9 @@ public final class TextView: UIScrollView {
             textInputView.tabSymbol = newValue
         }
     }
-    /// Used when rendering spaces. The value is only used when showing invisible space characters is enabled. The default is ·.
+    /// Symbol used to display spaces.
+    ///
+    /// The value is only used when showing invisible space characters is enabled. The default is ·.
     public var spaceSymbol: String {
         get {
             return textInputView.spaceSymbol
@@ -304,7 +323,20 @@ public final class TextView: UIScrollView {
             textInputView.spaceSymbol = newValue
         }
     }
-    /// Used when rendering line breaks. The value is only used when showing invisible line break characters is enabled. The default is ¬.
+    /// Symbol used to display non-breaking spaces.
+    ///
+    /// The value is only used when showing invisible space characters is enabled. The default is ·.
+    public var nonBreakingSpaceSymbol: String {
+        get {
+            return textInputView.nonBreakingSpaceSymbol
+        }
+        set {
+            textInputView.nonBreakingSpaceSymbol = newValue
+        }
+    }
+    /// Symbol used to display line break.
+    ///
+    /// The value is only used when showing invisible line break characters is enabled. The default is ¬.
     public var lineBreakSymbol: String {
         get {
             return textInputView.lineBreakSymbol
@@ -313,7 +345,9 @@ public final class TextView: UIScrollView {
             textInputView.lineBreakSymbol = newValue
         }
     }
-    /// Used when rendering soft line breaks. The value is only used when showing invisible soft line break characters is enabled. The default is ¬.
+    /// Symbol used to display soft line breaks.
+    ///
+    /// The value is only used when showing invisible soft line break characters is enabled. The default is ¬.
     public var softLineBreakSymbol: String {
         get {
             return textInputView.softLineBreakSymbol

@@ -161,6 +161,17 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
+    var showNonBreakingSpaces: Bool {
+        get {
+            return layoutManager.invisibleCharacterConfiguration.showNonBreakingSpaces
+        }
+        set {
+            if newValue != layoutManager.invisibleCharacterConfiguration.showNonBreakingSpaces {
+                layoutManager.invisibleCharacterConfiguration.showNonBreakingSpaces = newValue
+                layoutManager.setNeedsDisplayOnLines()
+            }
+        }
+    }
     var showLineBreaks: Bool {
         get {
             return layoutManager.invisibleCharacterConfiguration.showLineBreaks
@@ -207,6 +218,17 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != layoutManager.invisibleCharacterConfiguration.spaceSymbol {
                 layoutManager.invisibleCharacterConfiguration.spaceSymbol = newValue
+                layoutManager.setNeedsDisplayOnLines()
+            }
+        }
+    }
+    var nonBreakingSpaceSymbol: String {
+        get {
+            return layoutManager.invisibleCharacterConfiguration.nonBreakingSpaceSymbol
+        }
+        set {
+            if newValue != layoutManager.invisibleCharacterConfiguration.nonBreakingSpaceSymbol {
+                layoutManager.invisibleCharacterConfiguration.nonBreakingSpaceSymbol = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }

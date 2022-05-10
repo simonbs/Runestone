@@ -81,6 +81,8 @@ private extension LineFragmentRenderer {
             let indexInLine = textRange.location + indexInLineFragment
             if invisibleCharacterConfiguration.showSpaces && substring == Symbol.Character.space {
                 draw(invisibleCharacterConfiguration.spaceSymbol, at: .character(indexInLine))
+            } else if invisibleCharacterConfiguration.showNonBreakingSpaces && substring == Symbol.Character.nonBreakingSpace {
+                draw(invisibleCharacterConfiguration.nonBreakingSpaceSymbol, at: .character(indexInLine))
             } else if invisibleCharacterConfiguration.showTabs && substring == Symbol.Character.tab {
                 draw(invisibleCharacterConfiguration.tabSymbol, at: .character(indexInLine))
             } else if invisibleCharacterConfiguration.showLineBreaks && isLineBreak(substring) {
