@@ -104,9 +104,9 @@ extension TreeSitterLanguageLayer {
         tree = parser.parse(text)
         childLanguageLayers.removeAll()
         if let injectionsQuery = language.injectionsQuery, let node = tree?.rootNode {
-            let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
-            injectionsQueryCursor.execute()
-            let captures = injectionsQueryCursor.allCaptures()
+            let queryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
+            queryCursor.execute()
+            let captures = queryCursor.validCaptures(in: stringView)
             let injectedLanguageGroups = injectedLanguageGroups(from: captures)
             for injectedLanguageGroup in injectedLanguageGroups {
                 if let childLanguageLayer = childLanguageLayer(named: injectedLanguageGroup.languageName) {
@@ -123,37 +123,24 @@ extension TreeSitterLanguageLayer {
         guard !range.isEmpty else {
             return []
         }
-        let matches = matches(in: range)
-        var captures = validCaptures(in: matches)
+        var captures = allValidCaptures(in: range)
         captures.sort(by: TreeSitterCapture.captureLayerSorting)
         return captures
     }
 
-    private func matches(in range: ByteRange) -> [TreeSitterQueryMatch] {
+    private func allValidCaptures(in range: ByteRange) -> [TreeSitterCapture] {
         guard let tree = tree else {
             return []
         }
-        guard let query = language.highlightsQuery else {
+        guard let highlightsQuery = language.highlightsQuery else {
             return []
         }
-        let queryCursor = TreeSitterQueryCursor(query: query, node: tree.rootNode)
+        let queryCursor = TreeSitterQueryCursor(query: highlightsQuery, node: tree.rootNode)
         queryCursor.setQueryRange(range)
         queryCursor.execute()
-        let matches = queryCursor.allMatches()
-        let matchesInChildren = childLanguageLayers.values.reduce(into: []) { $0 += $1.matches(in: range) }
-        return matches + matchesInChildren
-    }
-
-    private func validCaptures(in matches: [TreeSitterQueryMatch]) -> [TreeSitterCapture] {
-        var result: [TreeSitterCapture] = []
-        for match in matches {
-            let predicateEvaluator = TreeSitterTextPredicatesEvaluator(match: match, stringView: stringView)
-            let captures = match.captures.filter { capture in
-                return predicateEvaluator.evaluatePredicates(in: capture)
-            }
-            result.append(contentsOf: captures)
-        }
-        return result
+        let captures = queryCursor.validCaptures(in: stringView)
+        let capturesInChildren = childLanguageLayers.values.reduce(into: []) { $0 += $1.allValidCaptures(in: range) }
+        return captures + capturesInChildren
     }
 }
 
@@ -185,7 +172,7 @@ private extension TreeSitterLanguageLayer {
         }
         let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
         injectionsQueryCursor.execute()
-        let captures = injectionsQueryCursor.allCaptures()
+        let captures = injectionsQueryCursor.validCaptures(in: stringView)
         let injectedLanguageGroups = injectedLanguageGroups(from: captures)
         let capturedLanguageNames = injectedLanguageGroups.map(\.languageName)
         let currentLanguageNames = Array(childLanguageLayers.keys)
@@ -289,12 +276,6 @@ private extension TreeSitterCapture {
         } else {
             return lhs.nameComponentCount < rhs.nameComponentCount
         }
-    }
-}
-
-private extension TreeSitterQueryCursor {
-    func allCaptures() -> [TreeSitterCapture] {
-        return allMatches().reduce(into: []) { $0 += $1.captures }
     }
 }
 
