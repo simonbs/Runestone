@@ -12,7 +12,7 @@ final class TreeSitterLanguageLayer {
     private let lineManager: LineManager
     private let parser: TreeSitterParser
     private let stringView: StringView
-    private var childLanguageLayers: [String: TreeSitterLanguageLayer] = [:]
+    private var childLanguageLayers: [UnsafeRawPointer: TreeSitterLanguageLayer] = [:]
     private weak var parentLanguageLayer: TreeSitterLanguageLayer?
     private let languageProvider: TreeSitterLanguageProvider?
     private var isEmpty: Bool {
@@ -107,10 +107,11 @@ extension TreeSitterLanguageLayer {
             let queryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
             queryCursor.execute()
             let captures = queryCursor.validCaptures(in: stringView)
-            let injectedLanguageGroups = injectedLanguageGroups(from: captures)
-            for injectedLanguageGroup in injectedLanguageGroups {
-                if let childLanguageLayer = childLanguageLayer(named: injectedLanguageGroup.languageName) {
-                    childLanguageLayer.parse(injectedLanguageGroup.textRanges, from: text)
+            let injectedLanguages = injectedLanguages(from: captures)
+            for injectedLanguage in injectedLanguages {
+                print("\(injectedLanguage.id): \(injectedLanguage.languageName) \(injectedLanguage.textRange)")
+                if let childLanguageLayer = childLanguageLayer(withID: injectedLanguage.id, forLanguageNamed: injectedLanguage.languageName) {
+                    childLanguageLayer.parse([injectedLanguage.textRange], from: text)
                 }
             }
         }
@@ -147,8 +148,8 @@ extension TreeSitterLanguageLayer {
 // MARK: - Child Language Layers
 private extension TreeSitterLanguageLayer {
     @discardableResult
-    private func childLanguageLayer(named languageName: String) -> TreeSitterLanguageLayer? {
-        if let childLanguageLayer = childLanguageLayers[languageName] {
+    private func childLanguageLayer(withID id: UnsafeRawPointer, forLanguageNamed languageName: String) -> TreeSitterLanguageLayer? {
+        if let childLanguageLayer = childLanguageLayers[id] {
             return childLanguageLayer
         } else if let language = languageProvider?.treeSitterLanguage(named: languageName) {
             let childLanguageLayer = TreeSitterLanguageLayer(
@@ -158,7 +159,7 @@ private extension TreeSitterLanguageLayer {
                 stringView: stringView,
                 lineManager: lineManager)
             childLanguageLayer.parentLanguageLayer = self
-            childLanguageLayers[languageName] = childLanguageLayer
+            childLanguageLayers[id] = childLanguageLayer
             return childLanguageLayer
         } else {
             return nil
@@ -173,39 +174,45 @@ private extension TreeSitterLanguageLayer {
         let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
         injectionsQueryCursor.execute()
         let captures = injectionsQueryCursor.validCaptures(in: stringView)
-        let injectedLanguageGroups = injectedLanguageGroups(from: captures)
-        let capturedLanguageNames = injectedLanguageGroups.map(\.languageName)
-        let currentLanguageNames = Array(childLanguageLayers.keys)
-        for languageName in currentLanguageNames {
-            if !capturedLanguageNames.contains(languageName) {
+        let injectedLanguages = injectedLanguages(from: captures)
+        let capturedIDs = injectedLanguages.map(\.id)
+        let currentIDs = Array(childLanguageLayers.keys)
+        for id in currentIDs {
+            if !capturedIDs.contains(id) {
                 // Remove languages that we no longer have any captures for.
-                childLanguageLayers.removeValue(forKey: languageName)
-            } else if let rootNode = childLanguageLayers[languageName]?.tree?.rootNode, rootNode.byteRange.length <= 0 {
-                // Remove layers that no longer has any content.
-                childLanguageLayers.removeValue(forKey: languageName)
+                childLanguageLayers.removeValue(forKey: id)
+            } else if let rootNode = childLanguageLayers[id]?.tree?.rootNode, rootNode.byteRange.length <= 0 {
+                // Remove layers that no longer have any content.
+                childLanguageLayers.removeValue(forKey: id)
             }
         }
-        // Update layers for current captures
+//        childLanguageLayers = [:]
+        // Update layers for current captures.
         let lineChangeSet = LineChangeSet()
-        for injectedLanguageGroup in injectedLanguageGroups {
-            if let childLanguageLayer = childLanguageLayer(named: injectedLanguageGroup.languageName) {
-                let childLineChangeSet = childLanguageLayer.apply(edit, parsing: injectedLanguageGroup.textRanges)
+        for injectedLanguage in injectedLanguages {
+            print("\(injectedLanguage.id): \(injectedLanguage.languageName)")
+//            print(injectedLanguageGroup.languageName)
+//            for textRange in injectedLanguageGroup.textRanges {
+//                print(" - \(textRange)")
+//            }
+            if let childLanguageLayer = childLanguageLayer(withID: injectedLanguage.id, forLanguageNamed: injectedLanguage.languageName) {
+                let childLineChangeSet = childLanguageLayer.apply(edit, parsing: [injectedLanguage.textRange])
                 lineChangeSet.union(with: childLineChangeSet)
             }
         }
         return lineChangeSet
     }
 
-    private func injectedLanguageGroups(from captures: [TreeSitterCapture]) -> [TreeSitterInjectedLanguageGroup] {
-        let mapper = TreeSitterInjectedLanguageGroupMapper(captures: captures)
+    private func injectedLanguages(from captures: [TreeSitterCapture]) -> [TreeSitterInjectedLanguage] {
+        let mapper = TreeSitterInjectedLanguageMapper(captures: captures)
         mapper.delegate = self
-        return mapper.makeGroups()
+        return mapper.map()
     }
 }
 
-// MARK: - TreeSitterInjectedLanguageGroupMapperDelegate
-extension TreeSitterLanguageLayer: TreeSitterInjectedLanguageGroupMapperDelegate {
-    func treeSitterInjectedLanguageGroupMapper(_ mapper: TreeSitterInjectedLanguageGroupMapper, textIn textRange: TreeSitterTextRange) -> String? {
+// MARK: - TreeSitterInjectedLanguageMapperDelegate
+extension TreeSitterLanguageLayer: TreeSitterInjectedLanguageMapperDelegate {
+    func treeSitterInjectedLanguageMapper(_ mapper: TreeSitterInjectedLanguageMapper, textIn textRange: TreeSitterTextRange) -> String? {
         let byteRange = ByteRange(from: textRange.startByte, to: textRange.endByte)
         let range = NSRange(byteRange)
         return stringView.substring(in: range)
