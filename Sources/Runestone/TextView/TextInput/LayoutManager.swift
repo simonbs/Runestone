@@ -745,7 +745,7 @@ extension LayoutManager {
             lineNumbersContainerView.addSubview(lineNumberView)
         }
         let lineController = lineController(for: line)
-        let fontLineHeight = theme.font.lineHeight
+        let fontLineHeight = theme.lineNumberFont.lineHeight
         let xPosition = safeAreaInset.left + gutterLeadingPadding
         var yPosition = textContainerInset.top + line.yPosition
         if lineController.numberOfLineFragments > 1 {
@@ -756,7 +756,7 @@ extension LayoutManager {
             yPosition += (lineController.lineHeight - fontLineHeight) / 2
         }
         lineNumberView.text = "\(line.index + 1)"
-        lineNumberView.font = theme.font
+        lineNumberView.font = theme.lineNumberFont
         lineNumberView.textColor = theme.lineNumberColor
         lineNumberView.frame = CGRect(x: xPosition, y: yPosition, width: lineNumberWidth, height: fontLineHeight)
     }
