@@ -31,6 +31,7 @@
 
 /* Begin PBXFileReference section */
 		7216EAC62829A16C001B6D39 /* Themes */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Themes; sourceTree = "<group>"; };
+		7243F9BA282D73E9005AAABF /* Example.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Example.entitlements; sourceTree = "<group>"; };
 		72AC54762826B1F00037ED21 /* Languages */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Languages; sourceTree = "<group>"; };
 		72AC54772826B23D0037ED21 /* Runestone */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Runestone; path = ..; sourceTree = "<group>"; };
 		AC480600279EE0180015F712 /* BasicCharacterPair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasicCharacterPair.swift; sourceTree = "<group>"; };
@@ -139,6 +140,7 @@
 		ACFDF4AF27983BAA00059A1B /* Example */ = {
 			isa = PBXGroup;
 			children = (
+				7243F9BA282D73E9005AAABF /* Example.entitlements */,
 				ACFDF4BE27983BAB00059A1B /* Info.plist */,
 				ACFDF4B927983BAB00059A1B /* Assets.xcassets */,
 				ACFDF4BB27983BAB00059A1B /* LaunchScreen.storyboard */,
@@ -409,6 +411,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Example/Example.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 8NQFWJHC63;
@@ -425,9 +428,11 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dk.simonbs.Example;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,6";
 			};
 			name = Debug;
 		};
@@ -436,6 +441,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Example/Example.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 8NQFWJHC63;
@@ -452,9 +458,11 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dk.simonbs.Example;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,6";
 			};
 			name = Release;
 		};
