@@ -1328,7 +1328,12 @@ extension TextInputView {
 
     func compare(_ position: UITextPosition, to other: UITextPosition) -> ComparisonResult {
         guard let indexedPosition = position as? IndexedPosition, let otherIndexedPosition = other as? IndexedPosition else {
+            #if targetEnvironment(macCatalyst)
+            // Mac Catalyst may pass <uninitialized> to `position`. I'm not sure what the right way to deal with that is but returning .orderedSame seems to work.
+            return .orderedSame
+            #else
             fatalError("Positions must be of type \(IndexedPosition.self)")
+            #endif
         }
         if indexedPosition.index < otherIndexedPosition.index {
             return .orderedAscending
