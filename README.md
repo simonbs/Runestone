@@ -34,6 +34,10 @@ Runestone was built to be fast. Its good performance is by far mostly thanks to 
 
 When judging the performance of Runestone, it is key to build your app in the release configuration. The optimizations applied by the compiler when using the release configuration becomes very apparent when opening large documents.
 
+## 🖥 Catalyst
+
+The project should mostly work with Catalyst on the Mac, however, it isn't fully tested and the implementation isn't considered done. The focus is currently on the iPhone and iPad.
+
 ## 📱 Projects
 
 The Runestone framework is used by an app of the same name. The Runestone app is a plain text editor for iPhone and iPad that uses all the features of this framework.
