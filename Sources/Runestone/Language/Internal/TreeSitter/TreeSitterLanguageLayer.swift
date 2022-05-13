@@ -109,7 +109,6 @@ extension TreeSitterLanguageLayer {
             let captures = queryCursor.validCaptures(in: stringView)
             let injectedLanguages = injectedLanguages(from: captures)
             for injectedLanguage in injectedLanguages {
-                print("\(injectedLanguage.id): \(injectedLanguage.languageName) \(injectedLanguage.textRange)")
                 if let childLanguageLayer = childLanguageLayer(withID: injectedLanguage.id, forLanguageNamed: injectedLanguage.languageName) {
                     childLanguageLayer.parse([injectedLanguage.textRange], from: text)
                 }
@@ -186,15 +185,9 @@ private extension TreeSitterLanguageLayer {
                 childLanguageLayers.removeValue(forKey: id)
             }
         }
-//        childLanguageLayers = [:]
         // Update layers for current captures.
         let lineChangeSet = LineChangeSet()
         for injectedLanguage in injectedLanguages {
-            print("\(injectedLanguage.id): \(injectedLanguage.languageName)")
-//            print(injectedLanguageGroup.languageName)
-//            for textRange in injectedLanguageGroup.textRanges {
-//                print(" - \(textRange)")
-//            }
             if let childLanguageLayer = childLanguageLayer(withID: injectedLanguage.id, forLanguageNamed: injectedLanguage.languageName) {
                 let childLineChangeSet = childLanguageLayer.apply(edit, parsing: [injectedLanguage.textRange])
                 lineChangeSet.union(with: childLineChangeSet)
