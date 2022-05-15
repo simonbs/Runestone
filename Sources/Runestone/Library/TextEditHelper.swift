@@ -13,17 +13,20 @@ struct TextEditResult {
 final class TextEditHelper {
     private let stringView: StringView
     private let lineManager: LineManager
+    private let lineEndings: LineEnding
 
-    init(stringView: StringView, lineManager: LineManager) {
+    init(stringView: StringView, lineManager: LineManager, lineEndings: LineEnding) {
         self.stringView = stringView
         self.lineManager = lineManager
+        self.lineEndings = lineEndings
     }
 
     func replaceText(in range: NSRange, with newString: String) -> TextEditResult {
-        let nsNewString = newString as NSString
+        let preparedNewString = prepareTextForInsertion(newString)
+        let nsNewString = preparedNewString as NSString
         let byteRange = ByteRange(utf16Range: range)
         let oldEndLinePosition = lineManager.linePosition(at: range.location + range.length)!
-        stringView.replaceText(in: range, with: newString)
+        stringView.replaceText(in: range, with: preparedNewString)
         let lineChangeSet = LineChangeSet()
         let lineChangeSetFromRemovingCharacters = lineManager.removeCharacters(in: range)
         lineChangeSet.union(with: lineChangeSetFromRemovingCharacters)
@@ -32,7 +35,7 @@ final class TextEditHelper {
         let startLinePosition = lineManager.linePosition(at: range.location)!
         let newEndLinePosition = lineManager.linePosition(at: range.location + nsNewString.length)!
         let textChange = TextChange(byteRange: byteRange,
-                                    bytesAdded: newString.byteCount,
+                                    bytesAdded: preparedNewString.byteCount,
                                     oldEndLinePosition: oldEndLinePosition,
                                     startLinePosition: startLinePosition,
                                     newEndLinePosition: newEndLinePosition)
@@ -47,11 +50,22 @@ final class TextEditHelper {
         var replacedRanges: [NSRange] = []
         for replacement in sortedReplacements where !replacedRanges.contains(where: { $0.overlaps(replacement.range) }) {
             let range = replacement.range
+            let preparedText = prepareTextForInsertion(replacement.text)
             let adjustedRange = NSRange(location: range.location + totalChangeInLength, length: range.length)
-            mutableSubstring.replaceCharacters(in: adjustedRange, with: replacement.text)
+            mutableSubstring.replaceCharacters(in: adjustedRange, with: preparedText)
             replacedRanges.append(replacement.range)
-            totalChangeInLength += replacement.text.utf16.count - adjustedRange.length
+            totalChangeInLength += preparedText.utf16.count - adjustedRange.length
         }
         return mutableSubstring
+    }
+
+    func prepareTextForInsertion(_ text: String) -> String {
+        // Ensure all line endings match our preferred line endings.
+        var preparedText = text
+        let lineEndingsToReplace = LineEnding.allCases.filter { $0 != lineEndings }
+        for lineEnding in lineEndingsToReplace {
+            preparedText = preparedText.replacingOccurrences(of: lineEnding.symbol, with: lineEndings.symbol)
+        }
+        return preparedText
     }
 }

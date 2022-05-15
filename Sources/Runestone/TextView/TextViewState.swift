@@ -14,6 +14,13 @@ public final class TextViewState {
     /// The information provided by the detected strategy can be used to update the ``TextView/indentStrategy`` on the text view to align with the existing strategy in a text.
     public private(set) var detectedIndentStrategy: DetectedIndentStrategy = .unknown
 
+    /// Line endings detected in the dtext.
+    ///
+    /// The information pvoided by the detected line endings can be used to update the ``TextView/lineEndings`` on the text view to align with the existing line endings in a text.
+    ///
+    /// The value is `nil` if the line ending cannot be detected.
+    public private(set) var detectedLineEndings: LineEnding?
+
     /// Creates state that can be passed to an instance of <doc:TextView>.
     /// - Parameters:
     ///   - text: The text to display in the text view.
@@ -54,5 +61,7 @@ private extension TextViewState {
         lineManager.rebuild(from: nsString)
         languageMode.parse(nsString)
         detectedIndentStrategy = languageMode.detectIndentStrategy()
+        let lineEndingDetector = LineEndingDetector(lineManager: lineManager, stringView: stringView)
+        detectedLineEndings = lineEndingDetector.detect()
     }
 }
