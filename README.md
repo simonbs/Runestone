@@ -19,6 +19,8 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 - Highlight ranges in the text view.
 - Search the text using regular expressions.
 - Automatically detects if a file is using spaces or tabs for indentation.
+- Specify line endings (CR, LF, CRLF) to use when inserting a line break.
+- Automatically detect line endings in a text.
 
 ## 🚀 Getting Started
 
