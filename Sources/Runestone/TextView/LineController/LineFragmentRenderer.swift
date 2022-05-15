@@ -115,6 +115,6 @@ private extension LineFragmentRenderer {
     }
 
     private func isLineBreak(_ string: String.Element) -> Bool {
-        return string == Symbol.Character.lineFeed || string == Symbol.Character.carriageReturnLineFeed
+        return string == Symbol.Character.lineFeed || string == Symbol.Character.carriageReturn || string == Symbol.Character.carriageReturnLineFeed
     }
 }
