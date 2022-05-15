@@ -505,6 +505,17 @@ public final class TextView: UIScrollView {
             }
         }
     }
+    /// Line endings to use when inserting a line break.
+    ///
+    /// The value only affects new line breaks inserted in the text view and changing this value does not change the line endings of the text in the text view. Defaults to Unix (LF).
+    public var lineEndings: LineEnding {
+        get {
+            return textInputView.lineEndings
+        }
+        set {
+            textInputView.lineEndings = newValue
+        }
+    }
 
     private let textInputView: TextInputView
     private let editableTextInteraction = UITextInteraction(for: .editable)
