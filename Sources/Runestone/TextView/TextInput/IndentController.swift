@@ -7,30 +7,6 @@ protocol IndentControllerDelegate: AnyObject {
 }
 
 final class IndentController {
-    enum LineBreak: String {
-        case lineFeed
-        case carriageReturnLineFeed
-
-        var rawValue: String {
-            switch self {
-            case .lineFeed:
-                return Symbol.lineFeed
-            case .carriageReturnLineFeed:
-                return Symbol.carriageReturnLineFeed
-            }
-        }
-
-        init?(rawValue: String) {
-            if rawValue == Symbol.lineFeed {
-                self = .lineFeed
-            } else if rawValue == Symbol.carriageReturnLineFeed {
-                self = .carriageReturnLineFeed
-            } else {
-                return nil
-            }
-        }
-    }
-
     weak var delegate: IndentControllerDelegate?
     var stringView: StringView
     var lineManager: LineManager
@@ -112,8 +88,8 @@ final class IndentController {
         delegate?.indentController(self, shouldSelect: newSelectedRange)
     }
 
-    func insertLineBreak(in range: NSRange, using lineBreak: LineBreak) {
-        let symbol = lineBreak.rawValue
+    func insertLineBreak(in range: NSRange, using lineEnding: LineEnding) {
+        let symbol = lineEnding.symbol
         if let startLinePosition = lineManager.linePosition(at: range.lowerBound),
             let endLinePosition = lineManager.linePosition(at: range.upperBound) {
             let strategy = languageMode.strategyForInsertingLineBreak(from: startLinePosition, to: endLinePosition, using: indentStrategy)

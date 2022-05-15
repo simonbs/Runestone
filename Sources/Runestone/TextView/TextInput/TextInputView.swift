@@ -481,6 +481,7 @@ final class TextInputView: UIView, UITextInput {
     var viewHierarchyContainsCaret: Bool {
         return textSelectionView?.subviews.count == 1
     }
+    var lineEndings: LineEnding = .lf
 
     // MARK: - Private
     private var languageMode: InternalLanguageMode = PlainTextInternalLanguageMode() {
@@ -923,15 +924,14 @@ extension TextInputView {
 // MARK: - Editing
 extension TextInputView {
     func insertText(_ text: String) {
-        let text = makeTextSafeForInsertion(text)
         if let selectedRange = markedRange ?? selectedRange, shouldChangeText(in: selectedRange, replacementText: text) {
             // If we're inserting text then we can't have a marked range. However, UITextInput doesn't always clear the marked range
             // before calling -insertText(_:), so we do it manually. This issue can be tested by entering a backtick (`) in an empty
             // document, then pressing any arrow key (up, right, down or left) followed by the return key.
             // The backtick will remain marked unless we manually clear the marked range.
             markedRange = nil
-            if let lineBreak = IndentController.LineBreak(rawValue: text) {
-                indentController.insertLineBreak(in: selectedRange, using: lineBreak)
+            if LineEnding(symbol: text) != nil {
+                indentController.insertLineBreak(in: selectedRange, using: lineEndings)
                 layoutIfNeeded()
             } else {
                 replaceText(in: selectedRange, with: text)
@@ -978,7 +978,7 @@ extension TextInputView {
 
     func replaceText(in batchReplaceSet: BatchReplaceSet) {
         if !batchReplaceSet.replacements.isEmpty {
-            let textEditHelper = TextEditHelper(stringView: stringView, lineManager: lineManager)
+            let textEditHelper = TextEditHelper(stringView: stringView, lineManager: lineManager, lineEndings: lineEndings)
             let newString = textEditHelper.string(byApplying: batchReplaceSet)
             setStringWithUndoAction(newString)
         }
@@ -1023,21 +1023,6 @@ extension TextInputView {
         }
     }
 
-    private func makeTextSafeForInsertion(_ text: String) -> String {
-        // When editing a mark text, for example started by a backtick (`), and pressing return the text passed to -insertText(_:)
-        // will end with a carriage return (\r). Other text editors like TextEdit and BBEdit seem to insert a line feed (\n).
-        // I haven't found a good way to do this other than checking if we're editing a marked range and replace \r with \n
-        // if it's the last character in the text to be inserted.
-        if markedRange != nil && text.last == Symbol.Character.carriageReturn {
-            var safeText = text
-            safeText.removeLast(1)
-            safeText += Symbol.lineFeed
-            return safeText
-        } else {
-            return text
-        }
-    }
-
     private func rangeForDeletingText(in range: NSRange) -> NSRange {
         var resultingRange = range
         if range.length == 1, let indentRange = indentController.indentRangeInFrontOfLocation(range.upperBound) {
@@ -1071,7 +1056,7 @@ extension TextInputView {
         let newRange = NSRange(location: range.location, length: nsNewString.length)
         addUndoOperation(replacing: newRange, withText: currentText, selectedRangeAfterUndo: selectedRangeAfterUndo, actionName: undoActionName)
         selectedRange = NSRange(location: newRange.upperBound, length: 0)
-        let textEditHelper = TextEditHelper(stringView: stringView, lineManager: lineManager)
+        let textEditHelper = TextEditHelper(stringView: stringView, lineManager: lineManager, lineEndings: lineEndings)
         let textEditResult = textEditHelper.replaceText(in: range, with: newString)
         let textChange = textEditResult.textChange
         let lineChangeSet = textEditResult.lineChangeSet
@@ -1236,7 +1221,7 @@ extension TextInputView {
             timedUndoManager.endUndoGrouping()
             timedUndoManager.beginUndoGrouping()
             if lastLine.data.delimiterLength == 0 {
-                text += Symbol.lineFeed
+                text += lineEndings.symbol
             }
             replaceText(in: removeRange, with: "", undoActionName: undoActionName)
             replaceText(in: insertRange, with: text, undoActionName: undoActionName)
