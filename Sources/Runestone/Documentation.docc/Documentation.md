@@ -19,6 +19,8 @@ Runestone provides a text view with support for features commonly found in code 
 - Highlight ranges in the text view.
 - Search the text using regular expressions.
 - Automatically detects if a file is using spaces or tabs for indentation.
+- Specify line endings (CR, LF, CRLF) to use when inserting a line break.
+- Automatically detect line endings in a text.
 
 The text view provided by Runestone does not subclass UITextView but has an API that is similar to the one of UITextView.
 
