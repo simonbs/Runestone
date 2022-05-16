@@ -508,6 +508,8 @@ public final class TextView: UIScrollView {
     /// Line endings to use when inserting a line break.
     ///
     /// The value only affects new line breaks inserted in the text view and changing this value does not change the line endings of the text in the text view. Defaults to Unix (LF).
+    ///
+    /// The TextView will only update the line endings when text is modified through an external event, such as when the user typing on the keyboard, when the user is replacing selected text, and when pasting text into the text view. In all other cases, you should make sure that the text provided to the text view uses the desired line endings. This includes when calling <doc:TextView/setState(_:addUndoAction:)> and <doc:TextView/replaceText(in:)>.
     public var lineEndings: LineEnding {
         get {
             return textInputView.lineEndings
