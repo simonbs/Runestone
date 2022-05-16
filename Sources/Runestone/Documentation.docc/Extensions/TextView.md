@@ -43,10 +43,12 @@
 ### Invisible Characters
 
 - ``showSpaces``
+- ``showNonBreakingSpaces``
 - ``showTabs``
 - ``showLineBreaks``
 - ``showSoftLineBreaks``
 - ``spaceSymbol``
+- ``nonBreakingSpaceSymbol``
 - ``tabSymbol``
 - ``lineBreakSymbol``
 - ``softLineBreakSymbol``
@@ -82,6 +84,8 @@
 - ``TextLocation``
 - ``goToLine(_:select:)``
 - ``GoToLineSelection``
+- ``moveSelectedLinesUp()``
+- ``moveSelectedLinesDown()``
 
 ### Indenting Text
 
