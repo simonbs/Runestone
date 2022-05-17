@@ -1152,7 +1152,7 @@ extension TextInputView {
             if textSelectionView.responds(to: sel) {
                 textSelectionView.perform(sel)
             } else {
-                print("\(textSelectionView) does not respod to 'selectionChanged'")
+                print("\(textSelectionView) does not respond to 'selectionChanged'")
             }
         }
     }
