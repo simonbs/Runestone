@@ -15,7 +15,7 @@ public enum LineEnding: String, CaseIterable {
     /// Uses the `\r` character.
     case cr
 
-    var symbol: String {
+    public var symbol: String {
         switch self {
         case .cr:
             return Symbol.carriageReturn
