@@ -589,8 +589,9 @@ final class TextInputView: UIView, UITextInput {
 
     override func paste(_ sender: Any?) {
         if let selectedTextRange = selectedTextRange, let string = UIPasteboard.general.string {
+            let preparedText = prepareTextForInsertion(string)
             inputDelegate?.selectionWillChange(self)
-            replace(selectedTextRange, withText: string)
+            replace(selectedTextRange, withText: preparedText)
             inputDelegate?.selectionDidChange(self)
         }
     }
@@ -924,7 +925,8 @@ extension TextInputView {
 // MARK: - Editing
 extension TextInputView {
     func insertText(_ text: String) {
-        if let selectedRange = markedRange ?? selectedRange, shouldChangeText(in: selectedRange, replacementText: text) {
+        let preparedText = prepareTextForInsertion(text)
+        if let selectedRange = markedRange ?? selectedRange, shouldChangeText(in: selectedRange, replacementText: preparedText) {
             // If we're inserting text then we can't have a marked range. However, UITextInput doesn't always clear the marked range
             // before calling -insertText(_:), so we do it manually. This issue can be tested by entering a backtick (`) in an empty
             // document, then pressing any arrow key (up, right, down or left) followed by the return key.
@@ -934,7 +936,7 @@ extension TextInputView {
                 indentController.insertLineBreak(in: selectedRange, using: lineEndings)
                 layoutIfNeeded()
             } else {
-                replaceText(in: selectedRange, with: text)
+                replaceText(in: selectedRange, with: preparedText)
             }
         }
     }
@@ -971,8 +973,9 @@ extension TextInputView {
     }
 
     func replace(_ range: UITextRange, withText text: String) {
-        if let indexedRange = range as? IndexedRange, shouldChangeText(in: indexedRange.range.nonNegativeLength, replacementText: text) {
-            replaceText(in: indexedRange.range.nonNegativeLength, with: text)
+        let preparedText = prepareTextForInsertion(text)
+        if let indexedRange = range as? IndexedRange, shouldChangeText(in: indexedRange.range.nonNegativeLength, replacementText: preparedText) {
+            replaceText(in: indexedRange.range.nonNegativeLength, with: preparedText)
         }
     }
 
@@ -1105,6 +1108,16 @@ extension TextInputView {
             textInputView.selectedRange = oldSelectedRange
             textInputView.inputDelegate?.selectionDidChange(self)
         }
+    }
+
+    private func prepareTextForInsertion(_ text: String) -> String {
+        // Ensure all line endings match our preferred line endings.
+        var preparedText = text
+        let lineEndingsToReplace: [LineEnding] = [.crlf, .cr, .lf].filter { $0 != lineEndings }
+        for lineEnding in lineEndingsToReplace {
+            preparedText = preparedText.replacingOccurrences(of: lineEnding.symbol, with: lineEndings.symbol)
+        }
+        return preparedText
     }
 }
 
