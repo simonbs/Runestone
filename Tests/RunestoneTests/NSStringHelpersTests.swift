@@ -26,4 +26,22 @@ final class NSStringHelpersTests: XCTestCase {
         let str = "👨‍👩‍👧‍👦" as NSString
         XCTAssertEqual(str.byteCount, 22)
     }
+
+    func testComposedCharacterSequenceOfFirstLetter() {
+        let str = "Hello\r\nWorld" as NSString
+        let range = str.customRangeOfComposedCharacterSequence(at: 0)
+        XCTAssertEqual(range, NSRange(location: 0, length: 1))
+    }
+
+    func testComposedCharacterSequenceOfSecondLetter() {
+        let str = "Hello\r\nWorld" as NSString
+        let range = str.customRangeOfComposedCharacterSequence(at: 1)
+        XCTAssertEqual(range, NSRange(location: 1, length: 1))
+    }
+
+    func testComposedCharacterSequenceOfCRLF() {
+        let str = "Hello\r\nWorld" as NSString
+        let range = str.customRangeOfComposedCharacterSequence(at: 6)
+        XCTAssertEqual(range, NSRange(location: 5, length: 2))
+    }
 }
