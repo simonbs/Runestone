@@ -1031,7 +1031,7 @@ extension TextInputView {
         if range.length == 1, let indentRange = indentController.indentRangeInFrontOfLocation(range.upperBound) {
             resultingRange = indentRange
         } else {
-            resultingRange = string.rangeOfComposedCharacterSequences(for: range)
+            resultingRange = string.customRangeOfComposedCharacterSequences(for: range)
         }
         // If deleting the leading component of a character pair we may also expand the range to delete the trailing component.
         if characterPairTrailingComponentDeletionMode == .immediatelyFollowingLeadingComponent
@@ -1369,8 +1369,8 @@ extension TextInputView: TreeSitterLanguageModeDelegate {
         let targetCharacterCount = 4 * 1_024
         let startLocation = byteIndex.utf16Length
         let endLocation = min(startLocation + targetCharacterCount, stringView.string.length - 1)
-        let startRange = string.rangeOfComposedCharacterSequence(at: startLocation)
-        let endRange = string.rangeOfComposedCharacterSequence(at: endLocation)
+        let startRange = string.customRangeOfComposedCharacterSequence(at: startLocation)
+        let endRange = string.customRangeOfComposedCharacterSequence(at: endLocation)
         let byteLocation = ByteCount(utf16Length: startRange.location)
         let byteLength = ByteCount(utf16Length: endRange.upperBound - startRange.lowerBound)
         let byteRange = ByteRange(location: byteLocation, length: byteLength)

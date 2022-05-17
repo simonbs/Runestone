@@ -61,7 +61,7 @@ private extension LineMovementController {
         guard naiveNewLocation > 0 && naiveNewLocation < stringView.string.length else {
             return naiveNewLocation
         }
-        let range = stringView.string.rangeOfComposedCharacterSequence(at: naiveNewLocation)
+        let range = stringView.string.customRangeOfComposedCharacterSequence(at: naiveNewLocation)
         guard naiveNewLocation > range.location && naiveNewLocation < range.location + range.length else {
             return naiveNewLocation
         }
