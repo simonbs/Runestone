@@ -980,10 +980,18 @@ extension TextInputView {
     }
 
     func replaceText(in batchReplaceSet: BatchReplaceSet) {
-        if !batchReplaceSet.replacements.isEmpty {
-            let textEditHelper = TextEditHelper(stringView: stringView, lineManager: lineManager, lineEndings: lineEndings)
-            let newString = textEditHelper.string(byApplying: batchReplaceSet)
-            setStringWithUndoAction(newString)
+        guard !batchReplaceSet.replacements.isEmpty else {
+            return
+        }
+        var oldLinePosition: LinePosition?
+        if let oldSelectedRange = selectedRange {
+            oldLinePosition = lineManager.linePosition(at: oldSelectedRange.location)
+        }
+        let textEditHelper = TextEditHelper(stringView: stringView, lineManager: lineManager, lineEndings: lineEndings)
+        let newString = textEditHelper.string(byApplying: batchReplaceSet)
+        setStringWithUndoAction(newString)
+        if let oldLinePosition = oldLinePosition {
+            moveCaret(to: oldLinePosition)
         }
     }
 
@@ -1154,6 +1162,18 @@ extension TextInputView {
             } else {
                 print("\(textSelectionView) does not respod to 'selectionChanged'")
             }
+        }
+    }
+
+    private func moveCaret(to linePosition: LinePosition) {
+        // By restoring the selected range using the old line position we can better preserve the old selected language.
+        let line = lineManager.line(atRow: linePosition.row)
+        let location = line.location + min(linePosition.column, line.data.length)
+        let newSelectedRange = NSRange(location: location, length: 0)
+        if selectedRange != newSelectedRange {
+            inputDelegate?.selectionWillChange(self)
+            selectedRange = newSelectedRange
+            inputDelegate?.selectionDidChange(self)
         }
     }
 }
