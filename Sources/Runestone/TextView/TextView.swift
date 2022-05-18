@@ -46,8 +46,10 @@ public final class TextView: UIScrollView {
     /// A Boolean value that indicates whether the text view is selectable.
     public var isSelectable = true {
         didSet {
-            textInputView.isUserInteractionEnabled = isSelectable
-            textInputView.moveCaret(to: .zero)
+            if isSelectable != oldValue {
+                textInputView.isUserInteractionEnabled = isSelectable
+                textInputView.clearSelection()
+            }
         }
     }
 

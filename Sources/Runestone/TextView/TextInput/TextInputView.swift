@@ -684,6 +684,13 @@ final class TextInputView: UIView, UITextInput {
         }
     }
 
+    func clearSelection() {
+        inputDelegate?.selectionWillChange(self)
+        selectedRange = nil
+        inputDelegate?.selectionDidChange(self)
+        delegate?.textInputViewDidChangeSelection(self)
+    }
+
     func moveCaret(to point: CGPoint) {
         if let index = layoutManager.closestIndex(to: point) {
             let newSelectedRange = NSRange(location: index, length: 0)
