@@ -46,7 +46,7 @@ public final class TextView: UIScrollView {
     public var isSelectable = true {
         didSet {
             textInputView.isUserInteractionEnabled = isSelectable
-            // xxx: remove current selection
+            textInputView.moveCaret(to: .zero)
         }
     }
 
