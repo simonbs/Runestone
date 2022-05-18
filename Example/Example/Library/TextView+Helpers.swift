@@ -44,6 +44,8 @@ extension TextView {
         showSpaces = settings.showInvisibleCharacters
         showLineBreaks = settings.showInvisibleCharacters
         isLineWrappingEnabled = settings.wrapLines
+        isEditable = settings.isEditable
+        isSelectable = settings.isSelectable
         lineSelectionDisplayType = settings.highlightSelectedLine ? .line : .disabled
         showPageGuide = settings.showPageGuide
     }
