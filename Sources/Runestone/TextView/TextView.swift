@@ -46,7 +46,11 @@ public final class TextView: UIScrollView {
         didSet {
             if isSelectable != oldValue {
                 textInputView.isUserInteractionEnabled = isSelectable
-                textInputView.clearSelection()
+                if !isSelectable && isEditing {
+                    resignFirstResponder()
+                    textInputView.clearSelection()
+                    textInputViewDidEndEditing(textInputView)
+                }
             }
         }
     }
