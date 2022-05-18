@@ -42,6 +42,13 @@ public final class TextView: UIScrollView {
         }
     }
     
+    /// A Boolean value that indicates whether the text view is selectable.
+    public var isSelectable: Bool = true {
+        didSet {
+            textInputView.isUserInteractionEnabled = isSelectable
+        }
+    }
+    
     /// Colors and fonts to be used by the editor.
     public var theme: Theme {
         get {
@@ -874,6 +881,9 @@ public final class TextView: UIScrollView {
 
 private extension TextView {
     @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
+        guard isSelectable else {
+            return
+        }
         if gestureRecognizer.state == .ended {
             willBeginEditingFromNonEditableTextInteraction = false
             let point = gestureRecognizer.location(in: textInputView)
