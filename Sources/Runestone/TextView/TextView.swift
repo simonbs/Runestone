@@ -1223,6 +1223,16 @@ extension TextView: KeyboardObserverDelegate {
 }
 
 extension TextView: UITextInteractionDelegate {
+    public func interactionShouldBegin(_ interaction: UITextInteraction, at point: CGPoint) -> Bool {
+        if interaction.textInteractionMode == .editable {
+            return isEditable
+        } else if interaction.textInteractionMode == .nonEditable {
+            return isSelectable
+        } else {
+            return true
+        }
+    }
+
     public func interactionWillBegin(_ interaction: UITextInteraction) {
         if interaction.textInteractionMode == .nonEditable {
             // When long-pressing our instance of UITextInput, the UITextInteraction will make the text input first responder.
