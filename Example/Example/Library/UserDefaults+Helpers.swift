@@ -73,7 +73,7 @@ extension UserDefaults {
             set(newValue.rawValue, forKey: Key.theme)
         }
     }
-    
+
     var isEditable: Bool {
         get {
             return bool(forKey: Key.isEditable)
@@ -82,7 +82,7 @@ extension UserDefaults {
             set(newValue, forKey: Key.isEditable)
         }
     }
-    
+
     var isSelectable: Bool {
         get {
             return bool(forKey: Key.isSelectable)

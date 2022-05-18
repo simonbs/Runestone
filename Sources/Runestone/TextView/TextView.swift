@@ -32,24 +32,24 @@ public final class TextView: UIScrollView {
             contentSize = preferredContentSize
         }
     }
-    
+
     /// A Boolean value that indicates whether the text view is editable.
-    public var isEditable: Bool = true {
+    public var isEditable = true {
         didSet {
             if !isEditable {
                 self.textInputViewDidEndEditing(textInputView)
             }
         }
     }
-    
+
     /// A Boolean value that indicates whether the text view is selectable.
-    public var isSelectable: Bool = true {
+    public var isSelectable = true {
         didSet {
             textInputView.isUserInteractionEnabled = isSelectable
             // xxx: remove current selection
         }
     }
-    
+
     /// Colors and fonts to be used by the editor.
     public var theme: Theme {
         get {
