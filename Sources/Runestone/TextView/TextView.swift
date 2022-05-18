@@ -35,7 +35,7 @@ public final class TextView: UIScrollView {
     /// A Boolean value that indicates whether the text view is editable.
     public var isEditable = true {
         didSet {
-            if isEditable != oldValue && !isEditable {
+            if isEditable != oldValue && !isEditable && isEditing {
                 resignFirstResponder()
                 textInputViewDidEndEditing(textInputView)
             }
