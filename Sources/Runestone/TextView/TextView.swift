@@ -7,7 +7,7 @@ import UIKit
 ///
 /// `TextView` is a performant implementation of a text view with features such as showing line numbers, searching for text and replacing results, syntax highlighting, showing invisible characters and more.
 ///
-/// The type does not sublcass `UITextView` but it's interface is kept close to `UITextView`.
+/// The type does not subclass `UITextView` but its interface is kept close to `UITextView`.
 ///
 /// When initially configuring the `TextView` with a theme, a language and the text to be shown, it is recommended the use the <doc:setState(_:addUndoAction:)> function.
 /// The function takes an instance of <doc:TextViewState> as input which can be created on a background queue to avoid blocking the main queue while doing the initial parse of a text.
