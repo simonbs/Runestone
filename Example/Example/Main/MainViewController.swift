@@ -77,6 +77,16 @@ private extension MainViewController {
                 settings.showPageGuide.toggle()
                 self?.updateTextViewSettings()
                 self?.setupMenuButton()
+            },
+            UIAction(title: "Editable", state: settings.isEditable ? .on : .off) { [weak self] _ in
+                settings.isEditable.toggle()
+                self?.updateTextViewSettings()
+                self?.setupMenuButton()
+            },
+            UIAction(title: "Selectable", state: settings.isSelectable ? .on : .off) { [weak self] _ in
+                settings.isSelectable.toggle()
+                self?.updateTextViewSettings()
+                self?.setupMenuButton()
             }
         ])
         let miscMenu = UIMenu(options: .displayInline, children: [

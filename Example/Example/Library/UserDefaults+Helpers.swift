@@ -9,6 +9,8 @@ extension UserDefaults {
         static let highlightSelectedLine = "RunestoneExample.highlightSelectedLine"
         static let showPageGuide = "RunestoneExample.showPageGuide"
         static let theme = "RunestoneExample.theme"
+        static let isEditable = "RunestoneExample.isEditable"
+        static let isSelectable = "RunestoneExample.isSelectable"
     }
 
     var text: String? {
@@ -71,13 +73,33 @@ extension UserDefaults {
             set(newValue.rawValue, forKey: Key.theme)
         }
     }
+    
+    var isEditable: Bool {
+        get {
+            return bool(forKey: Key.isEditable)
+        }
+        set {
+            set(newValue, forKey: Key.isEditable)
+        }
+    }
+    
+    var isSelectable: Bool {
+        get {
+            return bool(forKey: Key.isSelectable)
+        }
+        set {
+            set(newValue, forKey: Key.isSelectable)
+        }
+    }
 
     func registerDefaults() {
         register(defaults: [
             Key.text: CodeSample.default,
             Key.showLineNumbers: true,
             Key.wrapLines: false,
-            Key.highlightSelectedLine: true
+            Key.highlightSelectedLine: true,
+            Key.isEditable: true,
+            Key.isSelectable: true
         ])
     }
 }
