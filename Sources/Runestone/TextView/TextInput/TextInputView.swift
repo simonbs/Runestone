@@ -34,10 +34,12 @@ final class TextInputView: UIView, UITextInput {
                 if newRange != selectedRange {
                     selectedRange = newRange
                     sendSelectionChangedToTextSelectionView()
+                    delegate?.textInputViewDidChangeSelection(self)
                 }
             } else if selectedRange != nil {
                 selectedRange = nil
                 sendSelectionChangedToTextSelectionView()
+                delegate?.textInputViewDidChangeSelection(self)
             }
         }
     }
@@ -410,6 +412,7 @@ final class TextInputView: UIView, UITextInput {
                 layoutManager.setNeedsLayout()
                 layoutManager.layoutIfNeeded()
                 inputDelegate?.selectionDidChange(self)
+                delegate?.textInputViewDidChangeSelection(self)
             }
         }
     }
@@ -442,7 +445,6 @@ final class TextInputView: UIView, UITextInput {
                 layoutManager.selectedRange = selectedRange
                 layoutManager.setNeedsLayoutLineSelection()
                 setNeedsLayout()
-                delegate?.textInputViewDidChangeSelection(self)
             }
         }
     }
@@ -611,6 +613,7 @@ final class TextInputView: UIView, UITextInput {
             inputDelegate?.selectionWillChange(self)
             selectedRange = newSelectedRange
             inputDelegate?.selectionDidChange(self)
+            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
@@ -691,6 +694,7 @@ final class TextInputView: UIView, UITextInput {
                 inputDelegate?.selectionWillChange(self)
                 selectedRange = newSelectedRange
                 inputDelegate?.selectionDidChange(self)
+                delegate?.textInputViewDidChangeSelection(self)
             }
         }
     }
@@ -828,6 +832,7 @@ private extension TextInputView {
                     inputDelegate?.selectionWillChange(self)
                     self.selectedRange = newSelectedRange
                     inputDelegate?.selectionDidChange(self)
+                    delegate?.textInputViewDidChangeSelection(self)
                 }
             }
         }
@@ -1030,6 +1035,7 @@ extension TextInputView {
                 inputDelegate?.selectionWillChange(self)
                 selectedRange = newSelectedRange
                 inputDelegate?.selectionDidChange(self)
+                delegate?.textInputViewDidChangeSelection(self)
             }
         }
     }
@@ -1080,6 +1086,7 @@ extension TextInputView {
         if updatedTextEditResult.didAddOrRemoveLines {
             delegate?.textInputViewDidInvalidateContentSize(self)
         }
+        delegate?.textInputViewDidChangeSelection(self)
     }
 
     private func applyLineChangesToLayoutManager(_ lineChangeSet: LineChangeSet) {
@@ -1115,6 +1122,7 @@ extension TextInputView {
             textInputView.replaceText(in: range, with: text)
             textInputView.selectedRange = oldSelectedRange
             textInputView.inputDelegate?.selectionDidChange(self)
+            self.delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
@@ -1187,6 +1195,7 @@ extension TextInputView {
             indentController.shiftLeft(in: selectedRange)
             inputDelegate?.textDidChange(self)
             inputDelegate?.selectionDidChange(self)
+            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
@@ -1197,6 +1206,7 @@ extension TextInputView {
             indentController.shiftRight(in: selectedRange)
             inputDelegate?.textDidChange(self)
             inputDelegate?.selectionDidChange(self)
+            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 }
@@ -1263,6 +1273,7 @@ extension TextInputView {
             let locationOffset = insertLocation - removeLocation
             selectedRange = NSRange(location: oldSelectedRange.location + locationOffset, length: oldSelectedRange.length)
             inputDelegate?.selectionDidChange(self)
+            delegate?.textInputViewDidChangeSelection(self)
             timedUndoManager.endUndoGrouping()
         }
     }
@@ -1435,6 +1446,7 @@ extension TextInputView: IndentControllerDelegate {
 
     func indentController(_ controller: IndentController, shouldSelect range: NSRange) {
         selectedRange = range
+        delegate?.textInputViewDidChangeSelection(self)
     }
 }
 
