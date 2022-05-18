@@ -32,6 +32,28 @@ public final class TextView: UIScrollView {
             contentSize = preferredContentSize
         }
     }
+    /// A Boolean value that indicates whether the text view is editable.
+    public var isEditable = true {
+        didSet {
+            if isEditable != oldValue && !isEditable && isEditing {
+                resignFirstResponder()
+                textInputViewDidEndEditing(textInputView)
+            }
+        }
+    }
+    /// A Boolean value that indicates whether the text view is selectable.
+    public var isSelectable = true {
+        didSet {
+            if isSelectable != oldValue {
+                textInputView.isUserInteractionEnabled = isSelectable
+                if !isSelectable && isEditing {
+                    resignFirstResponder()
+                    textInputView.clearSelection()
+                    textInputViewDidEndEditing(textInputView)
+                }
+            }
+        }
+    }
     /// Colors and fonts to be used by the editor.
     public var theme: Theme {
         get {
@@ -190,7 +212,7 @@ public final class TextView: UIScrollView {
     }
     /// Returns a Boolean value indicating whether this object can become the first responder.
     override public var canBecomeFirstResponder: Bool {
-        return !textInputView.isFirstResponder
+        return !textInputView.isFirstResponder && isEditable
     }
     /// The text view's background color.
     override public var backgroundColor: UIColor? {
@@ -527,6 +549,9 @@ public final class TextView: UIScrollView {
     private let _inputAssistantItem = UITextInputAssistantItem()
     private var willBeginEditingFromNonEditableTextInteraction = false
     private var delegateAllowsEditingToBegin: Bool {
+        guard isEditable else {
+            return false
+        }
         if let editorDelegate = editorDelegate {
             return editorDelegate.textViewShouldBeginEditing(self)
         } else {
@@ -861,6 +886,9 @@ public final class TextView: UIScrollView {
 
 private extension TextView {
     @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
+        guard isSelectable else {
+            return
+        }
         if gestureRecognizer.state == .ended {
             willBeginEditingFromNonEditableTextInteraction = false
             let point = gestureRecognizer.location(in: textInputView)
@@ -1033,6 +1061,9 @@ private extension TextView {
 // MARK: - TextInputViewDelegate
 extension TextView: TextInputViewDelegate {
     func textInputViewWillBeginEditing(_ view: TextInputView) {
+        guard isEditable else {
+            return
+        }
         isEditing = !willBeginEditingFromNonEditableTextInteraction
         // If a developer is programmatically calling becomeFirstresponder() then we might not have a selected range.
         // We set the selectedRange instead of the selectedTextRange to avoid invoking any delegates.
@@ -1193,6 +1224,17 @@ extension TextView: KeyboardObserverDelegate {
 }
 
 extension TextView: UITextInteractionDelegate {
+    public func interactionShouldBegin(_ interaction: UITextInteraction, at point: CGPoint) -> Bool {
+        if interaction.textInteractionMode == .editable {
+            return isEditable
+        } else if interaction.textInteractionMode == .nonEditable {
+            // The private UITextLoupeInteraction and UITextNonEditableInteractionclass will end up in this case. The latter is likely created from UITextInteraction(for: .nonEditable) but we want to disable both when selection is disabled.
+            return isSelectable
+        } else {
+            return true
+        }
+    }
+
     public func interactionWillBegin(_ interaction: UITextInteraction) {
         if interaction.textInteractionMode == .nonEditable {
             // When long-pressing our instance of UITextInput, the UITextInteraction will make the text input first responder.
