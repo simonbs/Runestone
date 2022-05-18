@@ -32,6 +32,16 @@ public final class TextView: UIScrollView {
             contentSize = preferredContentSize
         }
     }
+    
+    /// A Boolean value that indicates whether the text view is editable.
+    public var isEditable: Bool = true {
+        didSet {
+            if !isEditable {
+                self.textInputViewDidEndEditing(textInputView)
+            }
+        }
+    }
+    
     /// Colors and fonts to be used by the editor.
     public var theme: Theme {
         get {
@@ -190,7 +200,7 @@ public final class TextView: UIScrollView {
     }
     /// Returns a Boolean value indicating whether this object can become the first responder.
     override public var canBecomeFirstResponder: Bool {
-        return !textInputView.isFirstResponder
+        return !textInputView.isFirstResponder && isEditable
     }
     /// The text view's background color.
     override public var backgroundColor: UIColor? {
@@ -527,6 +537,9 @@ public final class TextView: UIScrollView {
     private let _inputAssistantItem = UITextInputAssistantItem()
     private var willBeginEditingFromNonEditableTextInteraction = false
     private var delegateAllowsEditingToBegin: Bool {
+        guard isEditable else {
+            return false
+        }
         if let editorDelegate = editorDelegate {
             return editorDelegate.textViewShouldBeginEditing(self)
         } else {
@@ -1033,6 +1046,9 @@ private extension TextView {
 // MARK: - TextInputViewDelegate
 extension TextView: TextInputViewDelegate {
     func textInputViewWillBeginEditing(_ view: TextInputView) {
+        guard isEditable else {
+            return
+        }
         isEditing = !willBeginEditingFromNonEditableTextInteraction
         // If a developer is programmatically calling becomeFirstresponder() then we might not have a selected range.
         // We set the selectedRange instead of the selectedTextRange to avoid invoking any delegates.
