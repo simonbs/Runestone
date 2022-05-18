@@ -1224,6 +1224,7 @@ extension TextView: UITextInteractionDelegate {
         if interaction.textInteractionMode == .editable {
             return isEditable
         } else if interaction.textInteractionMode == .nonEditable {
+            // The private UITextLoupeInteraction and UITextNonEditableInteractionclass will end up in this case. The latter is likely created from UITextInteraction(for: .nonEditable) but we want to disable both when selection is disabled.
             return isSelectable
         } else {
             return true
