@@ -32,7 +32,6 @@ public final class TextView: UIScrollView {
             contentSize = preferredContentSize
         }
     }
-
     /// A Boolean value that indicates whether the text view is editable.
     public var isEditable = true {
         didSet {
@@ -42,7 +41,6 @@ public final class TextView: UIScrollView {
             }
         }
     }
-
     /// A Boolean value that indicates whether the text view is selectable.
     public var isSelectable = true {
         didSet {
@@ -52,7 +50,6 @@ public final class TextView: UIScrollView {
             }
         }
     }
-
     /// Colors and fonts to be used by the editor.
     public var theme: Theme {
         get {
