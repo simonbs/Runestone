@@ -1,0 +1,3 @@
+tree-sitter/** linguist-vendored
+Sources/TreeSitterLanguages linguist-vendored
+Sources/Runestone/Documentation.docc/** linguist-documentation
