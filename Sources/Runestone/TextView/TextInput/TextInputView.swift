@@ -1404,14 +1404,9 @@ extension TextInputView: TreeSitterLanguageModeDelegate {
         guard byteIndex.value >= 0 && byteIndex < stringView.string.byteCount else {
             return nil
         }
-        let targetCharacterCount = 4 * 1_024
-        let startLocation = byteIndex.utf16Length
-        let endLocation = min(startLocation + targetCharacterCount, stringView.string.length - 1)
-        let startRange = string.customRangeOfComposedCharacterSequence(at: startLocation)
-        let endRange = string.customRangeOfComposedCharacterSequence(at: endLocation)
-        let byteLocation = ByteCount(utf16Length: startRange.location)
-        let byteLength = ByteCount(utf16Length: endRange.upperBound - startRange.lowerBound)
-        let byteRange = ByteRange(location: byteLocation, length: byteLength)
+        let targetByteCount: ByteCount = 4 * 1_024
+        let endByte = min(byteIndex + targetByteCount, stringView.string.byteCount)
+        let byteRange = ByteRange(from: byteIndex, to: endByte)
         if let result = stringView.bytes(in: byteRange) {
             return TreeSitterTextProviderResult(bytes: result.bytes, length: UInt32(result.length.value))
         } else {
