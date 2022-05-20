@@ -40,17 +40,16 @@ extension NSString {
         var location = defaultRange.location
         var length = defaultRange.length
         if defaultRange.location > 0 {
-            let candidateCRLFRange = NSRange(location: range.location - 1, length: 2)
+            let candidateCRLFRange = NSRange(location: defaultRange.location - 1, length: 2)
             if isCRLFLineEnding(in: candidateCRLFRange) {
                 location -= 1
                 length += 1
             }
         }
         if defaultRange.upperBound < length - 1 {
-            let candidateCRLFRange = NSRange(location: range.upperBound, length: 2)
+            let candidateCRLFRange = NSRange(location: defaultRange.upperBound, length: 2)
             if isCRLFLineEnding(in: candidateCRLFRange) {
-                location -= 1
-                length += 1
+                length += 2
             }
         }
         return NSRange(location: location, length: length)
