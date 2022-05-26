@@ -4,6 +4,8 @@
 
 Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) to parse code to a syntax tree which is used for features that require an understanding of the code in the editor, for example syntax highlighting.
 
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fstaging.swiftpackageindex.com%2Fapi%2Fpackages%2Fsimonbs%2FRunestone%2Fbadge%3Ftype%3Dswift-versions)](https://staging.swiftpackageindex.com/simonbs/Runestone) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fstaging.swiftpackageindex.com%2Fapi%2Fpackages%2Fsimonbs%2FRunestone%2Fbadge%3Ftype%3Dplatforms)](https://staging.swiftpackageindex.com/simonbs/Runestone)
+
 ## ✨ Features
 
 - Syntax highlighting.
