@@ -543,7 +543,7 @@ open class TextView: UIScrollView {
 
     /// Access the subcomponent that implements the `UITextInput` protocol
     public var textInput: UITextInput { textInputView }
-  
+
     private let textInputView: TextInputView
     private let editableTextInteraction = UITextInteraction(for: .editable)
     private let nonEditableTextInteraction = UITextInteraction(for: .nonEditable)
@@ -615,7 +615,7 @@ open class TextView: UIScrollView {
         setupMenuItems()
     }
 
-    required public init?(coder: NSCoder) {
+    public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
@@ -752,7 +752,7 @@ open class TextView: UIScrollView {
     public func deleteBackward() {
         textInputView.deleteBackward()
     }
-    
+
     /// Returns the text in the specified range.
     /// - Parameter range: A range of text in the document.
     /// - Returns: The substring that falls within the specified range.
