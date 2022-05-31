@@ -2,7 +2,7 @@ import Foundation
 
 /// Encapsulates the bare informations needed to do syntax highlighting in a text view.
 ///
-/// It is recommended to create an instance of `TextViewState` on a background queue and pass it to a <doc:TextView> instead of setting the text, theme and language on the text view separately.
+/// It is recommended to create an instance of `TextViewState` on a background queue and pass it to a ``TextView`` instead of setting the text, theme and language on the text view separately.
 public final class TextViewState {
     let stringView: StringView
     let theme: Theme
@@ -21,7 +21,7 @@ public final class TextViewState {
     /// The value is `nil` if the line ending cannot be detected.
     public private(set) var detectedLineEndings: LineEnding?
 
-    /// Creates state that can be passed to an instance of <doc:TextView>.
+    /// Creates state that can be passed to an instance of ``TextView``.
     /// - Parameters:
     ///   - text: The text to display in the text view.
     ///   - theme: The theme to use when syntax highlighting the text.
@@ -39,9 +39,9 @@ public final class TextViewState {
         prepare(with: text)
     }
 
-    /// Creates state that can be passed to an instance of <doc:TextView>.
+    /// Creates state that can be passed to an instance of ``TextView``.
     ///
-    /// The created theme will use an instance of <doc:PlainTextLanguageMode>.
+    /// The created theme will use an instance of ``PlainTextLanguageMode``.
     /// - Parameters:
     ///   - text: The text to display in the text view.
     ///   - theme: The theme to use when syntax highlighting the text.
