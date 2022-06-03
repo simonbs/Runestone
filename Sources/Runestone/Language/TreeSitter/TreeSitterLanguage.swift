@@ -95,7 +95,14 @@ private extension TreeSitterInternalLanguage {
 
     private static func makeInternalQuery(from query: TreeSitterLanguage.Query?, with language: UnsafePointer<TSLanguage>) -> TreeSitterQuery? {
         if let string = query?.string {
-            return try? TreeSitterQuery(source: string, language: language)
+            do {
+                return try TreeSitterQuery(source: string, language: language)
+            } catch {
+                #if DEBUG
+                print("Invalid TreeSitterLanguage.Query. Error: \(error).")
+                #endif
+                return nil
+            }
         } else {
             return nil
         }
