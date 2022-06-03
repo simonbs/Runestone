@@ -9,8 +9,8 @@ import UIKit
 ///
 /// The type does not subclass `UITextView` but its interface is kept close to `UITextView`.
 ///
-/// When initially configuring the `TextView` with a theme, a language and the text to be shown, it is recommended the use the <doc:setState(_:addUndoAction:)> function.
-/// The function takes an instance of <doc:TextViewState> as input which can be created on a background queue to avoid blocking the main queue while doing the initial parse of a text.
+/// When initially configuring the `TextView` with a theme, a language and the text to be shown, it is recommended to use the ``setState(_:addUndoAction:)`` function.
+/// The function takes an instance of ``TextViewState`` as input which can be created on a background queue to avoid blocking the main queue while doing the initial parse of a text.
 public final class TextView: UIScrollView {
     /// Delegate to receive callbacks for events triggered by the editor.
     public weak var editorDelegate: TextViewDelegate?
@@ -531,7 +531,7 @@ public final class TextView: UIScrollView {
     ///
     /// The value only affects new line breaks inserted in the text view and changing this value does not change the line endings of the text in the text view. Defaults to Unix (LF).
     ///
-    /// The TextView will only update the line endings when text is modified through an external event, such as when the user typing on the keyboard, when the user is replacing selected text, and when pasting text into the text view. In all other cases, you should make sure that the text provided to the text view uses the desired line endings. This includes when calling <doc:TextView/setState(_:addUndoAction:)> and <doc:TextView/replaceText(in:)>.
+    /// The TextView will only update the line endings when text is modified through an external event, such as when the user typing on the keyboard, when the user is replacing selected text, and when pasting text into the text view. In all other cases, you should make sure that the text provided to the text view uses the desired line endings. This includes when calling ``TextView/setState(_:addUndoAction:)`` and ``TextView/replaceText(in:)``.
     public var lineEndings: LineEnding {
         get {
             return textInputView.lineEndings
