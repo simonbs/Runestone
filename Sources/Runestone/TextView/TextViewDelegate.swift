@@ -30,7 +30,7 @@ public protocol TextViewDelegate: AnyObject {
     /// Tells the delegate when the text selection changes in the text view.
     /// - Parameter textView: The text view whose selection changed.
     ///
-    /// You can use <doc:TextView/selectedRange> of the text view to get the new selection.
+    /// You can use ``TextView/selectedRange`` of the text view to get the new selection.
     func textViewDidChangeSelection(_ textView: TextView)
     /// Asks the delegate whether to replace the specified text in the text view.
     /// - Parameters:
@@ -79,12 +79,12 @@ public protocol TextViewDelegate: AnyObject {
     /// Tells the delegate that the text view looped to the last highlighted range.
     /// - Parameter textView: The text view that looped to the last highlighted range.
     ///
-    /// The text view will loop to the last highlighted range in response to calling <doc:TextView/selectPreviousHighlightedRange()> while the first highlighted range is selected.
+    /// The text view will loop to the last highlighted range in response to calling ``TextView/selectPreviousHighlightedRange()`` while the first highlighted range is selected.
     func textViewDidLoopToLastHighlightedRange(_ textView: TextView)
     /// Tells the delegate that the text view looped to the first highlighted range.
     /// - Parameter textView: The text view that looped to the first highlighted range.
     ///
-    /// The text view will loop to the first highlighted range in response to calling <doc:TextView/selectNextHighlightedRange()> while the last highlighted range is selected.
+    /// The text view will loop to the first highlighted range in response to calling ``TextView/selectNextHighlightedRange()`` while the last highlighted range is selected.
     func textViewDidLoopToFirstHighlightedRange(_ textView: TextView)
     /// Asks the delegate if the text in the highlighted range can be replaced.
     /// - Parameters:
