@@ -887,7 +887,7 @@ open class TextView: UIScrollView {
     public func redisplayVisibleLines() {
         textInputView.redisplayVisibleLines()
     }
-    
+
     /// Text position marking the beginning of the text
     public var beginningOfDocument: UITextPosition {
         textInputView.beginningOfDocument
@@ -897,17 +897,17 @@ open class TextView: UIScrollView {
     public var endOfDocument: UITextPosition {
         textInputView.endOfDocument
     }
-    
+
     /// Text position relative from another text position
     public func position(from position: UITextPosition, in direction: UITextLayoutDirection, offset: Int) -> UITextPosition? {
         textInputView.position(from: position, in: direction, offset: offset)
     }
-    
+
     /// Text position from another text position by incrementing the index
     public func position(from position: UITextPosition, offset: Int) -> UITextPosition? {
         textInputView.position(from: position, offset: offset)
     }
-    
+
     /// Closest text position to the provided point
     public func closestPosition(to point: CGPoint) -> UITextPosition? {
         textInputView.closestPosition(to: point)
@@ -917,17 +917,17 @@ open class TextView: UIScrollView {
     public func textRange(from fromPosition: UITextPosition, to toPosition: UITextPosition) -> UITextRange? {
         textInputView.textRange(from: fromPosition, to: toPosition)
     }
-    
+
     /// Compare text positions
     public func compare(_ position: UITextPosition, to other: UITextPosition) -> ComparisonResult {
         textInputView.compare(position, to: other)
     }
-    
+
     /// Offset between two text positions
     public func offset(from: UITextPosition, to toPosition: UITextPosition) -> Int {
         textInputView.offset(from: from, to: toPosition)
     }
-    
+
     /// Translates text ranges into selection rects
     public func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
         textInputView.selectionRects(for: range)
