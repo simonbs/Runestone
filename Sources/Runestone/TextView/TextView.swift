@@ -541,9 +541,6 @@ open class TextView: UIScrollView {
         }
     }
 
-    /// Access the subcomponent that implements the `UITextInput` protocol
-    public var textInput: UITextInput { textInputView }
-
     private let textInputView: TextInputView
     private let editableTextInteraction = UITextInteraction(for: .editable)
     private let nonEditableTextInteraction = UITextInteraction(for: .nonEditable)
@@ -889,6 +886,51 @@ open class TextView: UIScrollView {
     /// Synchronously displays the visible lines. This can be used to immediately update the visible lines after setting the theme. Use with caution as this redisplaying the visible lines can be a costly operation.
     public func redisplayVisibleLines() {
         textInputView.redisplayVisibleLines()
+    }
+    
+    /// Text position marking the beginning of the text
+    public var beginningOfDocument: UITextPosition {
+        textInputView.beginningOfDocument
+    }
+
+    /// Text position marking the end of the text
+    public var endOfDocument: UITextPosition {
+        textInputView.endOfDocument
+    }
+    
+    /// Text position relative from another text position
+    public func position(from position: UITextPosition, in direction: UITextLayoutDirection, offset: Int) -> UITextPosition? {
+        textInputView.position(from: position, in: direction, offset: offset)
+    }
+    
+    /// Text position from another text position by incrementing the index
+    public func position(from position: UITextPosition, offset: Int) -> UITextPosition? {
+        textInputView.position(from: position, offset: offset)
+    }
+    
+    /// Closest text position to the provided point
+    public func closestPosition(to point: CGPoint) -> UITextPosition? {
+        textInputView.closestPosition(to: point)
+    }
+
+    /// Translates positions into a text range
+    public func textRange(from fromPosition: UITextPosition, to toPosition: UITextPosition) -> UITextRange? {
+        textInputView.textRange(from: fromPosition, to: toPosition)
+    }
+    
+    /// Compare text positions
+    public func compare(_ position: UITextPosition, to other: UITextPosition) -> ComparisonResult {
+        textInputView.compare(position, to: other)
+    }
+    
+    /// Offset between two text positions
+    public func offset(from: UITextPosition, to toPosition: UITextPosition) -> Int {
+        textInputView.offset(from: from, to: toPosition)
+    }
+    
+    /// Translates text ranges into selection rects
+    public func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
+        textInputView.selectionRects(for: range)
     }
 }
 
