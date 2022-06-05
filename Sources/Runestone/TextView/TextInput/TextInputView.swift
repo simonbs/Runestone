@@ -937,18 +937,30 @@ extension TextInputView {
 // MARK: - Editing
 extension TextInputView {
     func insertText(_ text: String) {
+        insertText(text, alwaysInsert: false)
+    }
+    
+    /// - Parameters:
+    ///   - text: Text to insert
+    ///   - alwaysInsert: Set to `true` to ensure that the text is always inserted, even if no
+    ///       caret is present, i.e., even if TextInputView is not the first responder.
+    func insertText(_ text: String, alwaysInsert: Bool) {
         let preparedText = prepareTextForInsertion(text)
-        if let selectedRange = markedRange ?? selectedRange, shouldChangeText(in: selectedRange, replacementText: preparedText) {
+        var selectedRange = markedRange ?? selectedRange
+        if selectedRange == nil, alwaysInsert {
+            selectedRange = NSRange(location: stringView.string.length, length: 0)
+        }
+        if let insertionRange = selectedRange, shouldChangeText(in: insertionRange, replacementText: preparedText) {
             // If we're inserting text then we can't have a marked range. However, UITextInput doesn't always clear the marked range
             // before calling -insertText(_:), so we do it manually. This issue can be tested by entering a backtick (`) in an empty
             // document, then pressing any arrow key (up, right, down or left) followed by the return key.
             // The backtick will remain marked unless we manually clear the marked range.
             markedRange = nil
             if LineEnding(symbol: text) != nil {
-                indentController.insertLineBreak(in: selectedRange, using: lineEndings)
+                indentController.insertLineBreak(in: insertionRange, using: lineEndings)
                 layoutIfNeeded()
             } else {
-                replaceText(in: selectedRange, with: preparedText)
+                replaceText(in: insertionRange, with: preparedText)
             }
         }
     }
