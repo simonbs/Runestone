@@ -939,7 +939,7 @@ extension TextInputView {
     func insertText(_ text: String) {
         insertText(text, alwaysInsert: false)
     }
-    
+
     /// - Parameters:
     ///   - text: Text to insert
     ///   - alwaysInsert: Set to `true` to ensure that the text is always inserted, even if no
