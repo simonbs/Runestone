@@ -1169,7 +1169,7 @@ extension TextInputView {
         // inputDelegate?.selectionDidChange(self)
         //
         // If we don't notify the input delegate when the setter on selectedTextRange is called, then the location of the caret will not be updated.
-        // However, if we do notify the delegate when the setter is called, Korean input will no longer work as described in https://github.com/simonbs/Runestone/issues/11.
+        // However, if we do notify the delegate when the setter is called, Korean input will no longer work as described in https://github.com/simonbs/Runestone/issues/11
         // So the workaround is to not notify the delegate but tell the text selection view directly that the selection has changed.
         if let textSelectionView = textSelectionView {
             let sel = NSSelectorFromString("selectionChanged")
