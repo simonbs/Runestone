@@ -315,7 +315,8 @@ final class TextInputView: UIView, UITextInput {
                 layoutManager.isLineWrappingEnabled = newValue
                 layoutManager.invalidateLines()
                 layoutManager.setNeedsLayout()
-                setNeedsLayout()
+                layoutManager.layoutIfNeeded()
+                sendSelectionChangedToTextSelectionView()
             }
         }
     }
