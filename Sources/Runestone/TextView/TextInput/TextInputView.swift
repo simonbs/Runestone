@@ -1161,7 +1161,7 @@ extension TextInputView {
         return NSRange(location: cappedLocation, length: cappedLength)
     }
 
-    private func sendSelectionChangedToTextSelectionView() {
+    func sendSelectionChangedToTextSelectionView() {
         // Fores the position of the caret to be updated. Normally we can do this by notifying the input delegate when changing the selected range like:
         //
         // inputDelegate?.selectionWillChange(self)
