@@ -719,6 +719,8 @@ public final class TextView: UIScrollView {
     /// - Parameter text: A text to insert.
     public func insertText(_ text: String) {
         textInputView.insertText(text)
+        // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
+        textInputView.sendSelectionChangedToTextSelectionView()
     }
 
     /// Replaces the text that is in the specified range.
@@ -727,6 +729,8 @@ public final class TextView: UIScrollView {
     ///   - text: A string to replace the text in range.
     public func replace(_ range: UITextRange, withText text: String) {
         textInputView.replace(range, withText: text)
+        // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
+        textInputView.sendSelectionChangedToTextSelectionView()
     }
 
     /// Replaces the text that is in the specified range.
@@ -736,6 +740,8 @@ public final class TextView: UIScrollView {
     public func replace(_ range: NSRange, withText text: String) {
         let indexedRange = IndexedRange(range)
         textInputView.replace(indexedRange, withText: text)
+        // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
+        textInputView.sendSelectionChangedToTextSelectionView()
     }
 
     /// Replaces the text in the specified matches.
