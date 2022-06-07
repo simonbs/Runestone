@@ -1016,6 +1016,12 @@ private extension TextView {
         if caretRect.maxY > viewport.maxY {
             preferredContentOffset.y = caretRect.maxY - viewport.height - automaticScrollInset.top
         }
+        if preferredContentOffset.x <= textContainerInset.left {
+            preferredContentOffset.x = 0
+        }
+        if preferredContentOffset.y <= textContainerInset.top {
+            preferredContentOffset.y = 0
+        }
         let cappedXOffset = min(max(preferredContentOffset.x, minimumContentOffset.x), maximumContentOffset.x)
         let cappedYOffset = min(max(preferredContentOffset.y, minimumContentOffset.y), maximumContentOffset.y)
         let cappedContentOffset = CGPoint(x: cappedXOffset, y: cappedYOffset)
