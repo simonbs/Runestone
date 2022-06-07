@@ -15,6 +15,8 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidBeginFloatingCursor(_ view: TextInputView)
     func textInputViewDidEndFloatingCursor(_ view: TextInputView)
     func textInputViewDidUpdateMarkedRange(_ view: TextInputView)
+    func textInputView(_ view: TextInputView, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool
+    func textInputView(_ view: TextInputView, replaceTextIn highlightedRange: HighlightedRange)
 }
 
 // swiftlint:disable:next type_body_length
@@ -524,6 +526,7 @@ final class TextInputView: UIView, UITextInput {
         return nil
     }
     private var hasPendingFullLayout = false
+    private let editMenuController = EditMenuController()
 
     // MARK: - Lifecycle
     init(theme: Theme) {
@@ -545,6 +548,8 @@ final class TextInputView: UIView, UITextInput {
         layoutManager.textInputView = self
         layoutManager.theme = theme
         layoutManager.tabWidth = indentController.tabWidth
+        editMenuController.delegate = self
+        editMenuController.setupEditMenu(in: self)
     }
 
     override func becomeFirstResponder() -> Bool {
@@ -649,6 +654,12 @@ final class TextInputView: UIView, UITextInput {
             return true
         } else if action == #selector(replace(_:)) {
             return true
+        } else if action == NSSelectorFromString("replaceTextInSelectedHighlightedRange") {
+            if let selectedRange = selectedRange, let highlightedRange = highlightedRange(for: selectedRange) {
+                return delegate?.textInputView(self, canReplaceTextIn: highlightedRange) ?? false
+            } else {
+                return false
+            }
         } else {
             return super.canPerformAction(action, withSender: sender)
         }
@@ -1399,6 +1410,27 @@ extension TextInputView {
     func setBaseWritingDirection(_ writingDirection: NSWritingDirection, for range: UITextRange) {}
 }
 
+// MARK: - UIEditMenuInteraction
+extension TextInputView {
+    func editMenu(for textRange: UITextRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
+        return editMenuController.editMenu(for: textRange, suggestedActions: suggestedActions)
+    }
+
+    func presentEditMenuForText(in range: NSRange) {
+        editMenuController.presentEditMenu(from: self, forTextIn: range)
+    }
+
+    @objc private func replaceTextInSelectedHighlightedRange() {
+        if let selectedRange = selectedRange, let highlightedRange = highlightedRange(for: selectedRange) {
+            delegate?.textInputView(self, replaceTextIn: highlightedRange)
+        }
+    }
+
+    private func highlightedRange(for range: NSRange) -> HighlightedRange? {
+        return highlightedRanges.first(where: { $0.range == range })
+    }
+}
+
 // MARK: - TreeSitterLanguageModeDeleage
 extension TextInputView: TreeSitterLanguageModeDelegate {
     func treeSitterLanguageMode(_ languageMode: TreeSitterInternalLanguageMode, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult? {
@@ -1469,5 +1501,28 @@ extension TextInputView: LineMovementControllerDelegate {
                                 lineFragmentNodeContainingCharacterAt location: Int,
                                 in line: DocumentLineNode) -> LineFragmentNode {
         return layoutManager.lineFragmentNode(containingCharacterAt: location, in: line)
+    }
+}
+
+// MARK: - EditMenuControllerDelegate
+extension TextInputView: EditMenuControllerDelegate {
+    func editMenuController(_ controller: EditMenuController, caretRectAt location: Int) -> CGRect {
+        return caretRect(at: location)
+    }
+
+    func editMenuControllerShouldReplaceText(_ controller: EditMenuController) {
+        replaceTextInSelectedHighlightedRange()
+    }
+
+    func editMenuController(_ controller: EditMenuController, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool {
+        return delegate?.textInputView(self, canReplaceTextIn: highlightedRange) ?? false
+    }
+
+    func editMenuController(_ controller: EditMenuController, highlightedRangeFor range: NSRange) -> HighlightedRange? {
+        return highlightedRange(for: range)
+    }
+
+    func selectedRange(for controller: EditMenuController) -> NSRange? {
+        return selectedRange
     }
 }
