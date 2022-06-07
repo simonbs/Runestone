@@ -3,7 +3,9 @@ import Foundation
 final class TimedUndoManager: UndoManager {
     private let endGroupingInterval: TimeInterval = 1
     private var endGroupingTimer: Timer?
-    private var hasOpenGroup = false
+    private var hasOpenGroup: Bool {
+        return groupingLevel > 0
+    }
 
     override init() {
         super.init()
@@ -11,14 +13,12 @@ final class TimedUndoManager: UndoManager {
     }
 
     override func removeAllActions() {
-        hasOpenGroup = false
         cancelTimer()
         super.removeAllActions()
     }
 
     override func beginUndoGrouping() {
         if !hasOpenGroup {
-            hasOpenGroup = true
             super.beginUndoGrouping()
             if endGroupingTimer == nil {
                 scheduleTimer()
@@ -27,9 +27,8 @@ final class TimedUndoManager: UndoManager {
     }
 
     override func endUndoGrouping() {
+        cancelTimer()
         if hasOpenGroup {
-            hasOpenGroup = false
-            cancelTimer()
             super.endUndoGrouping()
         }
     }
