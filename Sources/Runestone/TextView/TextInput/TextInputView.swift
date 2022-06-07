@@ -1392,7 +1392,7 @@ extension TextInputView {
     }
 
     private func highlightedRange(for range: NSRange) -> HighlightedRange? {
-        return highlightedRanges.first(where: { $0.range == range })
+        return highlightedRanges.first { $0.range == range }
     }
 }
 

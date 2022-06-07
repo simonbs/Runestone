@@ -79,11 +79,11 @@ private extension EditMenuController {
     private func highlightedRange(for range: NSRange) -> HighlightedRange? {
         return delegate?.editMenuController(self, highlightedRangeFor: range)
     }
-    
+
     private func canReplaceText(in highlightedRange: HighlightedRange) -> Bool {
         return delegate?.editMenuController(self, canReplaceTextIn: highlightedRange) ?? false
     }
-    
+
     private func caretRect(at location: Int) -> CGRect {
         return delegate?.editMenuController(self, caretRectAt: location) ?? .zero
     }
@@ -103,7 +103,9 @@ private extension EditMenuController {
 #if compiler(>=5.7)
 @available(iOS 16, *)
 extension EditMenuController: UIEditMenuInteractionDelegate {
-    func editMenuInteraction(_ interaction: UIEditMenuInteraction, menuFor configuration: UIEditMenuConfiguration, suggestedActions: [UIMenuElement]) -> UIMenu? {
+    func editMenuInteraction(_ interaction: UIEditMenuInteraction,
+                             menuFor configuration: UIEditMenuConfiguration,
+                             suggestedActions: [UIMenuElement]) -> UIMenu? {
         if let selectedRange = delegate?.selectedRange(for: self), let replaceAction = replaceActionIfAvailable(for: selectedRange) {
             return UIMenu(children: suggestedActions + [replaceAction])
         } else {
