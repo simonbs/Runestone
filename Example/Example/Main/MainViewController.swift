@@ -11,11 +11,15 @@ final class MainViewController: UIViewController {
 
     private let contentView = MainView()
     private let toolsView: KeyboardToolsView
+    private let findSession: UITextSearchingFindSession
+    private var findInteraction: UIFindInteraction?
 
     init() {
         toolsView = KeyboardToolsView(textView: contentView.textView)
+        findSession = UITextSearchingFindSession(searchableObject: contentView.textView)
         super.init(nibName: nil, bundle: nil)
         title = "Example"
+        findInteraction = UIFindInteraction(sessionDelegate: self)
     }
 
     required init?(coder: NSCoder) {
@@ -32,10 +36,19 @@ final class MainViewController: UIViewController {
         setupMenuButton()
         setupTextView()
         updateTextViewSettings()
+        view.addInteraction(findInteraction!)
     }
 }
 
 private extension MainViewController {
+    @objc private func presentFind() {
+        findInteraction?.presentFindNavigator(showingReplace: false)
+    }
+
+    @objc private func presentFindAndReplace() {
+        findInteraction?.presentFindNavigator(showingReplace: true)
+    }
+
     private func setupTextView() {
         let text = UserDefaults.standard.text ?? ""
         let state = TextViewState(text: text, theme: TomorrowTheme(), language: .javaScript)
@@ -50,44 +63,57 @@ private extension MainViewController {
         contentView.textView.applySettings(from: settings)
     }
 
+    // swiftlint:disable:next function_body_length
     private func setupMenuButton() {
         let settings = UserDefaults.standard
         let settingsMenu = UIMenu(options: .displayInline, children: [
-            UIAction(title: "Show Line Numbers", state: settings.showLineNumbers ? .on : .off) { [weak self] _ in
-                settings.showLineNumbers.toggle()
-                self?.updateTextViewSettings()
-                self?.setupMenuButton()
-            },
-            UIAction(title: "Show Invisible Characters", state: settings.showInvisibleCharacters ? .on : .off) { [weak self] _ in
-                settings.showInvisibleCharacters.toggle()
-                self?.updateTextViewSettings()
-                self?.setupMenuButton()
-            },
-            UIAction(title: "Wrap Lines", state: settings.wrapLines ? .on : .off) { [weak self] _ in
-                settings.wrapLines.toggle()
-                self?.updateTextViewSettings()
-                self?.setupMenuButton()
-            },
-            UIAction(title: "Highlight Selected Line", state: settings.highlightSelectedLine ? .on : .off) { [weak self] _ in
-                settings.highlightSelectedLine.toggle()
-                self?.updateTextViewSettings()
-                self?.setupMenuButton()
-            },
-            UIAction(title: "Show Page Guide", state: settings.showPageGuide ? .on : .off) { [weak self] _ in
-                settings.showPageGuide.toggle()
-                self?.updateTextViewSettings()
-                self?.setupMenuButton()
-            },
-            UIAction(title: "Allow Editing", state: settings.isEditable ? .on : .off) { [weak self] _ in
-                settings.isEditable.toggle()
-                self?.updateTextViewSettings()
-                self?.setupMenuButton()
-            },
-            UIAction(title: "Allow Selection", state: settings.isSelectable ? .on : .off) { [weak self] _ in
-                settings.isSelectable.toggle()
-                self?.updateTextViewSettings()
-                self?.setupMenuButton()
-            }
+            UIMenu(options: .displayInline, children: [
+                UIAction(title: "Find") { [weak self] _ in
+                    self?.presentFind()
+                },
+                UIAction(title: "Find and Replace") { [weak self] _ in
+                    self?.presentFindAndReplace()
+                }
+            ]),
+            UIMenu(options: .displayInline, children: [
+                UIAction(title: "Show Line Numbers", state: settings.showLineNumbers ? .on : .off) { [weak self] _ in
+                    settings.showLineNumbers.toggle()
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                },
+                UIAction(title: "Show Page Guide", state: settings.showPageGuide ? .on : .off) { [weak self] _ in
+                    settings.showPageGuide.toggle()
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                },
+                UIAction(title: "Show Invisible Characters", state: settings.showInvisibleCharacters ? .on : .off) { [weak self] _ in
+                    settings.showInvisibleCharacters.toggle()
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                },
+                UIAction(title: "Wrap Lines", state: settings.wrapLines ? .on : .off) { [weak self] _ in
+                    settings.wrapLines.toggle()
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                },
+                UIAction(title: "Highlight Selected Line", state: settings.highlightSelectedLine ? .on : .off) { [weak self] _ in
+                    settings.highlightSelectedLine.toggle()
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                }
+            ]),
+            UIMenu(options: .displayInline, children: [
+                UIAction(title: "Allow Editing", state: settings.isEditable ? .on : .off) { [weak self] _ in
+                    settings.isEditable.toggle()
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                },
+                UIAction(title: "Allow Selection", state: settings.isSelectable ? .on : .off) { [weak self] _ in
+                    settings.isSelectable.toggle()
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                }
+            ])
         ])
         let miscMenu = UIMenu(options: .displayInline, children: [
             UIAction(title: "Theme") { [weak self] _ in
@@ -120,5 +146,11 @@ extension MainViewController: ThemePickerViewControllerDelegate {
         UserDefaults.standard.theme = theme
         view.window?.overrideUserInterfaceStyle = theme.makeTheme().userInterfaceStyle
         updateTextViewSettings()
+    }
+}
+
+extension MainViewController: UIFindInteractionDelegate {
+    func findInteraction(_ interaction: UIFindInteraction, sessionFor view: UIView) -> UIFindSession? {
+        return findSession
     }
 }
