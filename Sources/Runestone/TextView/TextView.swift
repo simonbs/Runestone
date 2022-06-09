@@ -186,7 +186,7 @@ open class TextView: UIScrollView {
             }
         }
         set {
-            textInputView.selectedTextRange = IndexedRange(newValue)
+            textInputView.selectedRange = newValue
         }
     }
     /// The current selection range of the text view as a UITextRange.
@@ -719,6 +719,8 @@ open class TextView: UIScrollView {
     /// - Parameter text: A text to insert.
     open func insertText(_ text: String) {
         textInputView.insertText(text)
+        // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
+        textInputView.sendSelectionChangedToTextSelectionView()
     }
 
     /// Replaces the text that is in the specified range.
@@ -727,6 +729,8 @@ open class TextView: UIScrollView {
     ///   - text: A string to replace the text in range.
     open func replace(_ range: UITextRange, withText text: String) {
         textInputView.replace(range, withText: text)
+        // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
+        textInputView.sendSelectionChangedToTextSelectionView()
     }
 
     /// Replaces the text that is in the specified range.
@@ -736,6 +740,8 @@ open class TextView: UIScrollView {
     public func replace(_ range: NSRange, withText text: String) {
         let indexedRange = IndexedRange(range)
         textInputView.replace(indexedRange, withText: text)
+        // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
+        textInputView.sendSelectionChangedToTextSelectionView()
     }
 
     /// Replaces the text in the specified matches.
@@ -828,11 +834,11 @@ open class TextView: UIScrollView {
         layoutIfNeeded()
         switch selection {
         case .beginning:
-            textInputView.selectedTextRange = IndexedRange(location: line.location, length: 0)
+            textInputView.selectedRange = NSRange(location: line.location, length: 0)
         case .end:
-            textInputView.selectedTextRange = IndexedRange(location: line.data.length, length: 0)
+            textInputView.selectedRange = NSRange(location: line.data.length, length: line.data.length)
         case .line:
-            textInputView.selectedTextRange = IndexedRange(location: line.location, length: line.data.length)
+            textInputView.selectedRange = NSRange(location: line.location, length: line.data.length)
         }
         return true
     }
@@ -942,9 +948,9 @@ private extension TextView {
         if gestureRecognizer.state == .ended {
             willBeginEditingFromNonEditableTextInteraction = false
             let point = gestureRecognizer.location(in: textInputView)
-            let oldSelectedTextRange = textInputView.selectedTextRange
+            let oldSelectedRange = textInputView.selectedRange
             textInputView.moveCaret(to: point)
-            if textInputView.selectedTextRange != oldSelectedTextRange {
+            if textInputView.selectedRange != oldSelectedRange {
                 layoutIfNeeded()
                 editorDelegate?.textViewDidChangeSelection(self)
             }
@@ -979,15 +985,13 @@ private extension TextView {
         }
         if selectedRange.length == 0 {
             textInputView.insertText(characterPair.leading + characterPair.trailing)
-            let newSelectedRange = NSRange(location: range.location + characterPair.leading.count, length: 0)
-            textInputView.selectedTextRange = IndexedRange(newSelectedRange)
+            textInputView.selectedRange = NSRange(location: range.location + characterPair.leading.count, length: 0)
             return true
         } else if let text = textInputView.text(in: selectedRange) {
             let modifiedText = characterPair.leading + text + characterPair.trailing
             let indexedRange = IndexedRange(selectedRange)
             textInputView.replace(indexedRange, withText: modifiedText)
-            let newSelectedRange = NSRange(location: range.location + characterPair.leading.count, length: range.length)
-            textInputView.selectedTextRange = IndexedRange(newSelectedRange)
+            textInputView.selectedRange = NSRange(location: range.location + characterPair.leading.count, length: range.length)
             return true
         } else {
             return false
@@ -1014,8 +1018,7 @@ private extension TextView {
 
     private func moveCaret(byOffset offset: Int) {
         if let selectedRange = textInputView.selectedRange {
-            let newSelectedRange = NSRange(location: selectedRange.location + offset, length: 0)
-            textInputView.selectedTextRange = IndexedRange(newSelectedRange)
+            textInputView.selectedRange = NSRange(location: selectedRange.location + offset, length: 0)
         }
     }
 
@@ -1059,6 +1062,12 @@ private extension TextView {
         }
         if caretRect.maxY > viewport.maxY {
             preferredContentOffset.y = caretRect.maxY - viewport.height - automaticScrollInset.top
+        }
+        if preferredContentOffset.x <= textContainerInset.left {
+            preferredContentOffset.x = 0
+        }
+        if preferredContentOffset.y <= textContainerInset.top {
+            preferredContentOffset.y = 0
         }
         let cappedXOffset = min(max(preferredContentOffset.x, minimumContentOffset.x), maximumContentOffset.x)
         let cappedYOffset = min(max(preferredContentOffset.y, minimumContentOffset.y), maximumContentOffset.y)
@@ -1220,7 +1229,7 @@ extension TextView: HighlightNavigationControllerDelegate {
         // Layout lines up until the location of the range so we can scroll to it immediately after.
         textInputView.layoutLines(toLocation: range.upperBound)
         scroll(to: range.location)
-        textInputView.selectedTextRange = IndexedRange(range)
+        textInputView.selectedRange = range
         showMenuForText(in: range)
         switch highlightNavigationRange.loopMode {
         case .previousGoesToLast:

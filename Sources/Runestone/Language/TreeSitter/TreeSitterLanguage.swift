@@ -49,8 +49,8 @@ public final class TreeSitterLanguage {
     /// If the language haven't been explicitly prepared, Runestone will automatically do it before it's used.
     public func prepare() {
         if !isPrepared {
-            isPrepared = true
             _internalLanguage = TreeSitterInternalLanguage(self)
+            isPrepared = true
         }
     }
 }
