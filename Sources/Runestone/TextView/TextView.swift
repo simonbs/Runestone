@@ -718,7 +718,7 @@ public final class TextView: UIScrollView {
     /// Inserts text at the location of the caret or, if no selection or caret is present, at the end of the text.
     /// - Parameter text: A string to insert.
     public func insertText(_ text: String) {
-        textInputView.insertText(text, alwaysInsert: true)
+        textInputView.insertText(text)
         // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
         textInputView.sendSelectionChangedToTextSelectionView()
     }

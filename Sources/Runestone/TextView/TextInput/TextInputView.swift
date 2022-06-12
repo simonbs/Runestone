@@ -918,20 +918,10 @@ extension TextInputView {
 // MARK: - Editing
 extension TextInputView {
     func insertText(_ text: String) {
-        insertText(text, alwaysInsert: false)
-    }
-
-    /// - Parameters:
-    ///   - text: Text to insert
-    ///   - alwaysInsert: Set to `true` to ensure that the text is always inserted, even if no
-    ///       caret is present, i.e., even if TextInputView is not the first responder.
-    func insertText(_ text: String, alwaysInsert: Bool) {
         let preparedText = prepareTextForInsertion(text)
-        var selectedRange = markedRange ?? selectedRange
-        if selectedRange == nil, alwaysInsert {
-            selectedRange = NSRange(location: stringView.string.length, length: 0)
-        }
-        guard let selectedRange = selectedRange, shouldChangeText(in: selectedRange, replacementText: preparedText) else {
+        // If there is no marked range or selected range then we fallback to appending text to the end of our string.
+        let selectedRange = markedRange ?? selectedRange ?? NSRange(location: stringView.string.length, length: 0)
+        guard shouldChangeText(in: selectedRange, replacementText: preparedText) else {
             return
         }
         // If we're inserting text then we can't have a marked range. However, UITextInput doesn't always clear the marked range
