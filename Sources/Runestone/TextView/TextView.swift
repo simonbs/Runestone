@@ -1013,11 +1013,11 @@ private extension TextView {
         if caretRect.maxY > viewport.maxY {
             preferredContentOffset.y = caretRect.maxY - viewport.height - automaticScrollInset.top
         }
-        if preferredContentOffset.x <= textContainerInset.left {
-            preferredContentOffset.x = 0
+        if preferredContentOffset.x <= textContainerInset.left - adjustedContentInset.left {
+            preferredContentOffset.x = adjustedContentInset.left * -1
         }
-        if preferredContentOffset.y <= textContainerInset.top {
-            preferredContentOffset.y = 0
+        if preferredContentOffset.y <= textContainerInset.top - adjustedContentInset.top {
+            preferredContentOffset.y = adjustedContentInset.top * -1
         }
         let cappedXOffset = min(max(preferredContentOffset.x, minimumContentOffset.x), maximumContentOffset.x)
         let cappedYOffset = min(max(preferredContentOffset.y, minimumContentOffset.y), maximumContentOffset.y)
