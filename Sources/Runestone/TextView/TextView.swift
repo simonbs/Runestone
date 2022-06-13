@@ -715,8 +715,8 @@ open class TextView: UIScrollView {
         textInputView.setLanguageMode(languageMode, completion: completion)
     }
 
-    /// Inserts text at the location of the caret.
-    /// - Parameter text: A text to insert.
+    /// Inserts text at the location of the caret or, if no selection or caret is present, at the end of the text.
+    /// - Parameter text: A string to insert.
     open func insertText(_ text: String) {
         textInputView.insertText(text)
         // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
@@ -1063,11 +1063,11 @@ private extension TextView {
         if caretRect.maxY > viewport.maxY {
             preferredContentOffset.y = caretRect.maxY - viewport.height - automaticScrollInset.top
         }
-        if preferredContentOffset.x <= textContainerInset.left {
-            preferredContentOffset.x = 0
+        if preferredContentOffset.x <= textContainerInset.left - adjustedContentInset.left {
+            preferredContentOffset.x = adjustedContentInset.left * -1
         }
-        if preferredContentOffset.y <= textContainerInset.top {
-            preferredContentOffset.y = 0
+        if preferredContentOffset.y <= textContainerInset.top - adjustedContentInset.top {
+            preferredContentOffset.y = adjustedContentInset.top * -1
         }
         let cappedXOffset = min(max(preferredContentOffset.x, minimumContentOffset.x), maximumContentOffset.x)
         let cappedYOffset = min(max(preferredContentOffset.y, minimumContentOffset.y), maximumContentOffset.y)
