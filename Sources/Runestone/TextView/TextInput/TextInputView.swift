@@ -598,14 +598,18 @@ final class TextInputView: UIView, UITextInput {
     override func paste(_ sender: Any?) {
         if let selectedTextRange = selectedTextRange, let string = UIPasteboard.general.string {
             let preparedText = prepareTextForInsertion(string)
+            inputDelegate?.selectionWillChange(self)
             replace(selectedTextRange, withText: preparedText)
+            inputDelegate?.selectionDidChange(self)
         }
     }
 
     override func cut(_ sender: Any?) {
         if let selectedTextRange = selectedTextRange, let text = text(in: selectedTextRange) {
             UIPasteboard.general.string = text
+            inputDelegate?.selectionWillChange(self)
             replace(selectedTextRange, withText: "")
+            inputDelegate?.selectionDidChange(self)
         }
     }
 
@@ -1265,7 +1269,9 @@ extension TextInputView {
             return
         }
         markedRange = markedText.isEmpty ? nil : NSRange(location: range.location, length: markedText.utf16.count)
+        inputDelegate?.selectionWillChange(self)
         replaceText(in: range, with: markedText)
+        inputDelegate?.selectionDidChange(self)
         delegate?.textInputViewDidUpdateMarkedRange(self)
     }
 
