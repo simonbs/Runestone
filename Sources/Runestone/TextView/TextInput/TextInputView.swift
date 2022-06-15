@@ -930,7 +930,9 @@ extension TextInputView {
 extension TextInputView {
     func insertText(_ text: String) {
         let preparedText = prepareTextForInsertion(text)
-        guard let selectedRange = markedRange ?? selectedRange, shouldChangeText(in: selectedRange, replacementText: preparedText) else {
+        // If there is no marked range or selected range then we fallback to appending text to the end of our string.
+        let selectedRange = markedRange ?? selectedRange ?? NSRange(location: stringView.string.length, length: 0)
+        guard shouldChangeText(in: selectedRange, replacementText: preparedText) else {
             return
         }
         // If we're inserting text then we can't have a marked range. However, UITextInput doesn't always clear the marked range
