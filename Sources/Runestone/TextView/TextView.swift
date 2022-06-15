@@ -1080,16 +1080,16 @@ private extension TextView {
     private func installEditableInteraction() {
         if editableTextInteraction.view == nil {
             isInputAccessoryViewEnabled = true
-            removeInteraction(nonEditableTextInteraction)
-            addInteraction(editableTextInteraction)
+            textInputView.removeInteraction(nonEditableTextInteraction)
+            textInputView.addInteraction(editableTextInteraction)
         }
     }
 
     private func installNonEditableInteraction() {
         if nonEditableTextInteraction.view == nil {
             isInputAccessoryViewEnabled = false
-            removeInteraction(editableTextInteraction)
-            addInteraction(nonEditableTextInteraction)
+            textInputView.removeInteraction(editableTextInteraction)
+            textInputView.addInteraction(nonEditableTextInteraction)
             for gestureRecognizer in nonEditableTextInteraction.gesturesForFailureRequirements {
                 gestureRecognizer.require(toFail: tapGestureRecognizer)
             }
@@ -1213,8 +1213,8 @@ extension TextView: TextInputViewDelegate {
         // will cause the caret to disappear. Removing the editable text interaction and adding it back will work around this issue.
         DispatchQueue.main.async {
             if !view.viewHierarchyContainsCaret && self.editableTextInteraction.view != nil {
-                self.removeInteraction(self.editableTextInteraction)
-                self.addInteraction(self.editableTextInteraction)
+                view.removeInteraction(self.editableTextInteraction)
+                view.addInteraction(self.editableTextInteraction)
             }
         }
     }
