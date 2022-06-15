@@ -11,7 +11,7 @@ import UIKit
 ///
 /// When initially configuring the `TextView` with a theme, a language and the text to be shown, it is recommended to use the ``setState(_:addUndoAction:)`` function.
 /// The function takes an instance of ``TextViewState`` as input which can be created on a background queue to avoid blocking the main queue while doing the initial parse of a text.
-public final class TextView: UIScrollView {
+open class TextView: UIScrollView {
     /// Delegate to receive callbacks for events triggered by the editor.
     public weak var editorDelegate: TextViewDelegate?
     /// Whether the text view is in a state where the contents can be edited.
@@ -612,12 +612,12 @@ public final class TextView: UIScrollView {
         setupMenuItems()
     }
 
-    required init?(coder: NSCoder) {
+    public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
     /// Lays out subviews.
-    override public func layoutSubviews() {
+    override open func layoutSubviews() {
         super.layoutSubviews()
         handleContentSizeUpdateIfNeeded()
         textInputView.scrollViewWidth = frame.width
@@ -627,7 +627,7 @@ public final class TextView: UIScrollView {
     }
 
     /// Called when the safe area of the view changes.
-    override public func safeAreaInsetsDidChange() {
+    override open func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
         contentSize = preferredContentSize
         layoutIfNeeded()
@@ -635,7 +635,7 @@ public final class TextView: UIScrollView {
 
     /// Asks UIKit to make this object the first responder in its window.
     @discardableResult
-    override public func becomeFirstResponder() -> Bool {
+    override open func becomeFirstResponder() -> Bool {
         if !isEditing && delegateAllowsEditingToBegin {
             // Reset willBeginEditingFromNonEditableTextInteraction to support calling becomeFirstResponder() programmatically.
             willBeginEditingFromNonEditableTextInteraction = false
@@ -649,7 +649,7 @@ public final class TextView: UIScrollView {
 
     /// Notifies this object that it has been asked to relinquish its status as first responder in its window.
     @discardableResult
-    override public func resignFirstResponder() -> Bool {
+    override open func resignFirstResponder() -> Bool {
         if isEditing && shouldEndEditing {
             return textInputView.resignFirstResponder()
         } else {
@@ -658,7 +658,7 @@ public final class TextView: UIScrollView {
     }
 
     /// Updates the custom input and accessory views when the object is the first responder.
-    override public func reloadInputViews() {
+    override open func reloadInputViews() {
         textInputView.reloadInputViews()
     }
 
@@ -667,7 +667,7 @@ public final class TextView: UIScrollView {
     ///   - action: A selector that identifies a method associated with a command. For the editing menu, this is one of the editing methods declared by the UIResponderStandardEditActions informal protocol (for example, `copy:`).
     ///   - sender: The object calling this method. For the editing menu commands, this is the shared UIApplication object. Depending on the context, you can query the sender for information to help you determine whether a command should be enabled.
     /// - Returns: `true if the command identified by action should be enabled or `false` if it should be disabled. Returning `true` means that your class can handle the command in the current context.
-    override public func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+    override open func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
         if action == #selector(replaceTextInSelectedHighlightedRange) {
             if let highlightedRangeInSelection = highlightedRangeInSelection {
                 return editorDelegate?.textView(self, canReplaceTextIn: highlightedRangeInSelection) ?? false
@@ -717,7 +717,7 @@ public final class TextView: UIScrollView {
 
     /// Inserts text at the location of the caret or, if no selection or caret is present, at the end of the text.
     /// - Parameter text: A string to insert.
-    public func insertText(_ text: String) {
+    open func insertText(_ text: String) {
         textInputView.insertText(text)
         // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
         textInputView.sendSelectionChangedToTextSelectionView()
@@ -727,7 +727,7 @@ public final class TextView: UIScrollView {
     /// - Parameters:
     ///   - range: A range of text in the document.
     ///   - text: A string to replace the text in range.
-    public func replace(_ range: UITextRange, withText text: String) {
+    open func replace(_ range: UITextRange, withText text: String) {
         textInputView.replace(range, withText: text)
         // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
         textInputView.sendSelectionChangedToTextSelectionView()
@@ -749,6 +749,11 @@ public final class TextView: UIScrollView {
     ///   - batchReplaceSet: Set of ranges to replace with a text.
     public func replaceText(in batchReplaceSet: BatchReplaceSet) {
         textInputView.replaceText(in: batchReplaceSet)
+    }
+
+    /// Deletes the character just before the cursor
+    public func deleteBackward() {
+        textInputView.deleteBackward()
     }
 
     /// Returns the text in the specified range.
@@ -887,6 +892,51 @@ public final class TextView: UIScrollView {
     /// Synchronously displays the visible lines. This can be used to immediately update the visible lines after setting the theme. Use with caution as this redisplaying the visible lines can be a costly operation.
     public func redisplayVisibleLines() {
         textInputView.redisplayVisibleLines()
+    }
+
+    /// Text position marking the beginning of the text
+    public var beginningOfDocument: UITextPosition {
+        textInputView.beginningOfDocument
+    }
+
+    /// Text position marking the end of the text
+    public var endOfDocument: UITextPosition {
+        textInputView.endOfDocument
+    }
+
+    /// Text position relative from another text position
+    public func position(from position: UITextPosition, in direction: UITextLayoutDirection, offset: Int) -> UITextPosition? {
+        textInputView.position(from: position, in: direction, offset: offset)
+    }
+
+    /// Text position from another text position by incrementing the index
+    public func position(from position: UITextPosition, offset: Int) -> UITextPosition? {
+        textInputView.position(from: position, offset: offset)
+    }
+
+    /// Closest text position to the provided point
+    public func closestPosition(to point: CGPoint) -> UITextPosition? {
+        textInputView.closestPosition(to: point)
+    }
+
+    /// Translates positions into a text range
+    public func textRange(from fromPosition: UITextPosition, to toPosition: UITextPosition) -> UITextRange? {
+        textInputView.textRange(from: fromPosition, to: toPosition)
+    }
+
+    /// Compare text positions
+    public func compare(_ position: UITextPosition, to other: UITextPosition) -> ComparisonResult {
+        textInputView.compare(position, to: other)
+    }
+
+    /// Offset between two text positions
+    public func offset(from: UITextPosition, to toPosition: UITextPosition) -> Int {
+        textInputView.offset(from: from, to: toPosition)
+    }
+
+    /// Translates text ranges into selection rects
+    public func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
+        textInputView.selectionRects(for: range)
     }
 }
 
