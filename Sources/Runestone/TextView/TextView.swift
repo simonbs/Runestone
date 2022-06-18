@@ -1126,7 +1126,7 @@ extension TextView: TextInputViewDelegate {
         isEditing = !willBeginEditingFromNonEditableTextInteraction
         // If a developer is programmatically calling becomeFirstresponder() then we might not have a selected range.
         // We set the selectedRange instead of the selectedTextRange to avoid invoking any delegates.
-        if textInputView.selectedRange == nil {
+        if textInputView.selectedRange == nil && !willBeginEditingFromNonEditableTextInteraction {
             textInputView.selectedRange = NSRange(location: 0, length: 0)
         }
         // Ensure selection is laid out without animation.
