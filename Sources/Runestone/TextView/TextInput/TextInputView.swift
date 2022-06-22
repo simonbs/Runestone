@@ -1284,7 +1284,18 @@ extension TextInputView {
 // MARK: - Ranges and Positions
 extension TextInputView {
     func position(within range: UITextRange, farthestIn direction: UITextLayoutDirection) -> UITextPosition? {
-        return nil
+        // This implementation seems to match the behavior of UITextView.
+        guard let indexedRange = range as? IndexedRange else {
+            return nil
+        }
+        switch direction {
+        case .left, .up:
+            return IndexedPosition(index: indexedRange.range.lowerBound)
+        case .right, .down:
+            return IndexedPosition(index: indexedRange.range.upperBound)
+        @unknown default:
+            return nil
+        }
     }
 
     func position(from position: UITextPosition, in direction: UITextLayoutDirection, offset: Int) -> UITextPosition? {
