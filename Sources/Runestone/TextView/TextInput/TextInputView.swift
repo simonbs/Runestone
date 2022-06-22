@@ -1309,7 +1309,20 @@ extension TextInputView {
     }
 
     func characterRange(byExtending position: UITextPosition, in direction: UITextLayoutDirection) -> UITextRange? {
-        return nil
+        // This implementation seems to match the behavior of UITextView.
+        guard let indexedPosition = position as? IndexedPosition else {
+            return nil
+        }
+        switch direction {
+        case .left, .up:
+            let leftIndex = max(indexedPosition.index - 1, 0)
+            return IndexedRange(location: leftIndex, length: indexedPosition.index - leftIndex)
+        case .right, .down:
+            let rightIndex = min(indexedPosition.index + 1, stringView.string.length)
+            return IndexedRange(location: indexedPosition.index, length: rightIndex - indexedPosition.index)
+        @unknown default:
+            return nil
+        }
     }
 
     func characterRange(at point: CGPoint) -> UITextRange? {
