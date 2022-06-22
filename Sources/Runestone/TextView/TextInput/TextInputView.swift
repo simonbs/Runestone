@@ -1326,7 +1326,12 @@ extension TextInputView {
     }
 
     func characterRange(at point: CGPoint) -> UITextRange? {
-        return nil
+        guard let index = layoutManager.closestIndex(to: point) else {
+            return nil
+        }
+        let cappedIndex = max(index - 1, 0)
+        let range = stringView.string.customRangeOfComposedCharacterSequence(at: cappedIndex)
+        return IndexedRange(range)
     }
 
     func closestPosition(to point: CGPoint) -> UITextPosition? {
