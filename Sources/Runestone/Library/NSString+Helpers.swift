@@ -37,22 +37,22 @@ extension NSString {
     /// A wrapper around `rangeOfComposedCharacterSequences(for:)` that considers CRLF line endings as composed character sequences.
     func customRangeOfComposedCharacterSequences(for range: NSRange) -> NSRange {
         let defaultRange = rangeOfComposedCharacterSequences(for: range)
-        var location = defaultRange.location
-        var length = defaultRange.length
-        if defaultRange.location > 0 {
+        var resultingLocation = defaultRange.location
+        var resultingLength = defaultRange.length
+        if defaultRange.location > 0 && defaultRange.location < length - 1 {
             let candidateCRLFRange = NSRange(location: defaultRange.location - 1, length: 2)
             if isCRLFLineEnding(in: candidateCRLFRange) {
-                location -= 1
-                length += 1
+                resultingLocation -= 1
+                resultingLength += 1
             }
         }
         if defaultRange.upperBound < length - 1 {
             let candidateCRLFRange = NSRange(location: defaultRange.upperBound, length: 2)
             if isCRLFLineEnding(in: candidateCRLFRange) {
-                length += 2
+                resultingLength += 2
             }
         }
-        return NSRange(location: location, length: length)
+        return NSRange(location: resultingLocation, length: resultingLength)
     }
 }
 
