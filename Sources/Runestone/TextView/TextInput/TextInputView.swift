@@ -1284,7 +1284,18 @@ extension TextInputView {
 // MARK: - Ranges and Positions
 extension TextInputView {
     func position(within range: UITextRange, farthestIn direction: UITextLayoutDirection) -> UITextPosition? {
-        return nil
+        // This implementation seems to match the behavior of UITextView.
+        guard let indexedRange = range as? IndexedRange else {
+            return nil
+        }
+        switch direction {
+        case .left, .up:
+            return IndexedPosition(index: indexedRange.range.lowerBound)
+        case .right, .down:
+            return IndexedPosition(index: indexedRange.range.upperBound)
+        @unknown default:
+            return nil
+        }
     }
 
     func position(from position: UITextPosition, in direction: UITextLayoutDirection, offset: Int) -> UITextPosition? {
@@ -1298,11 +1309,29 @@ extension TextInputView {
     }
 
     func characterRange(byExtending position: UITextPosition, in direction: UITextLayoutDirection) -> UITextRange? {
-        return nil
+        // This implementation seems to match the behavior of UITextView.
+        guard let indexedPosition = position as? IndexedPosition else {
+            return nil
+        }
+        switch direction {
+        case .left, .up:
+            let leftIndex = max(indexedPosition.index - 1, 0)
+            return IndexedRange(location: leftIndex, length: indexedPosition.index - leftIndex)
+        case .right, .down:
+            let rightIndex = min(indexedPosition.index + 1, stringView.string.length)
+            return IndexedRange(location: indexedPosition.index, length: rightIndex - indexedPosition.index)
+        @unknown default:
+            return nil
+        }
     }
 
     func characterRange(at point: CGPoint) -> UITextRange? {
-        return nil
+        guard let index = layoutManager.closestIndex(to: point) else {
+            return nil
+        }
+        let cappedIndex = max(index - 1, 0)
+        let range = stringView.string.customRangeOfComposedCharacterSequence(at: cappedIndex)
+        return IndexedRange(range)
     }
 
     func closestPosition(to point: CGPoint) -> UITextPosition? {
@@ -1314,7 +1343,16 @@ extension TextInputView {
     }
 
     func closestPosition(to point: CGPoint, within range: UITextRange) -> UITextPosition? {
-        return nil
+        guard let indexedRange = range as? IndexedRange else {
+            return nil
+        }
+        guard let index = layoutManager.closestIndex(to: point) else {
+            return nil
+        }
+        let minimumIndex = indexedRange.range.lowerBound
+        let maximumIndex = indexedRange.range.upperBound
+        let cappedIndex = min(max(index, minimumIndex), maximumIndex)
+        return IndexedPosition(index: cappedIndex)
     }
 
     func textRange(from fromPosition: UITextPosition, to toPosition: UITextPosition) -> UITextRange? {
