@@ -1343,7 +1343,16 @@ extension TextInputView {
     }
 
     func closestPosition(to point: CGPoint, within range: UITextRange) -> UITextPosition? {
-        return nil
+        guard let indexedRange = range as? IndexedRange else {
+            return nil
+        }
+        guard let index = layoutManager.closestIndex(to: point) else {
+            return nil
+        }
+        let minimumIndex = indexedRange.range.lowerBound
+        let maximumIndex = indexedRange.range.upperBound
+        let cappedIndex = min(max(index, minimumIndex), maximumIndex)
+        return IndexedPosition(index: cappedIndex)
     }
 
     func textRange(from fromPosition: UITextPosition, to toPosition: UITextPosition) -> UITextRange? {
