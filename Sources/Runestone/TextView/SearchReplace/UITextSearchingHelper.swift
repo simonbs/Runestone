@@ -181,9 +181,25 @@ extension UITextSearchingHelper: UIFindInteractionDelegate {
 private extension SearchQuery {
     @available(iOS 16, *)
     init(queryString: String, options: UITextSearchOptions) {
-        let isRegularExpression = options.stringCompareOptions.contains(.regularExpression)
+        let matchMethod = SearchQuery.MatchMethod(options.wordMatchMethod)
         let isCaseSensitive = !options.stringCompareOptions.contains(.caseInsensitive)
-        self.init(text: queryString, isRegularExpression: isRegularExpression, isCaseSensitive: isCaseSensitive)
+        self.init(text: queryString, matchMethod: matchMethod, isCaseSensitive: isCaseSensitive)
+    }
+}
+
+@available(iOS 16, *)
+private extension SearchQuery.MatchMethod {
+    init(_ matchMethod: UITextSearchOptions.WordMatchMethod) {
+        switch matchMethod {
+        case .contains:
+            self = .contains
+        case .startsWith:
+            self = .startsWith
+        case .fullWord:
+            self = .fullWord
+        @unknown default:
+            self = .contains
+        }
     }
 }
 #endif
