@@ -80,10 +80,8 @@ private extension SearchController {
         guard let endLinePosition = delegate?.searchController(self, linePositionAt: range.upperBound) else {
             return nil
         }
-        return SearchReplaceResult(
-            range: range,
-            startLocation: TextLocation(startLinePosition),
-            endLocation: TextLocation(endLinePosition),
-            replacementText: replacementText)
+        let startLocation = TextLocation(startLinePosition)
+        let endLocation = TextLocation(endLinePosition)
+        return SearchReplaceResult(range: range, startLocation: startLocation, endLocation: endLocation, replacementText: replacementText)
     }
 }
