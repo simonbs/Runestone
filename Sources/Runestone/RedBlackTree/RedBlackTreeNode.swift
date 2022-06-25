@@ -1,6 +1,6 @@
 import Foundation
 
-protocol RedBlackTreeNodeID: Identifiable & Hashable {
+protocol RedBlackTreeNodeID: Identifiable, Hashable {
     init()
 }
 
