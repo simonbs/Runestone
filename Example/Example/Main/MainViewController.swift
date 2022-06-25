@@ -11,15 +11,11 @@ final class MainViewController: UIViewController {
 
     private let contentView = MainView()
     private let toolsView: KeyboardToolsView
-    private let findSession: UITextSearchingFindSession
-    private var findInteraction: UIFindInteraction?
 
     init() {
         toolsView = KeyboardToolsView(textView: contentView.textView)
-        findSession = UITextSearchingFindSession(searchableObject: contentView.textView)
         super.init(nibName: nil, bundle: nil)
         title = "Example"
-        findInteraction = UIFindInteraction(sessionDelegate: self)
     }
 
     required init?(coder: NSCoder) {
@@ -32,21 +28,25 @@ final class MainViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        if #available(iOS 16, *) {
+            contentView.textView.isFindInteractionEnabled = true
+        }
         contentView.textView.inputAccessoryView = toolsView
         setupMenuButton()
         setupTextView()
         updateTextViewSettings()
-        view.addInteraction(findInteraction!)
     }
 }
 
 private extension MainViewController {
+    @available(iOS 16, *)
     @objc private func presentFind() {
-        findInteraction?.presentFindNavigator(showingReplace: false)
+        contentView.textView.findInteraction?.presentFindNavigator(showingReplace: false)
     }
 
+    @available(iOS 16, *)
     @objc private func presentFindAndReplace() {
-        findInteraction?.presentFindNavigator(showingReplace: true)
+        contentView.textView.findInteraction?.presentFindNavigator(showingReplace: true)
     }
 
     private func setupTextView() {
@@ -63,18 +63,31 @@ private extension MainViewController {
         contentView.textView.applySettings(from: settings)
     }
 
-    // swiftlint:disable:next function_body_length
     private func setupMenuButton() {
+        var menuElements: [UIMenuElement] = []
+        if #available(iOS 16, *) {
+            menuElements += [makeFindReplaceMenu()]
+        }
+        menuElements += [makeSettingsMenu(), makeThemeMenu()]
+        let menu = UIMenu(children: menuElements)
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), menu: menu)
+    }
+
+    @available(iOS 16, *)
+    private func makeFindReplaceMenu() -> UIMenu {
+        return UIMenu(options: .displayInline, children: [
+            UIAction(title: "Find") { [weak self] _ in
+                self?.presentFind()
+            },
+            UIAction(title: "Find and Replace") { [weak self] _ in
+                self?.presentFindAndReplace()
+            }
+        ])
+    }
+
+    private func makeSettingsMenu() -> UIMenu {
         let settings = UserDefaults.standard
-        let settingsMenu = UIMenu(options: .displayInline, children: [
-            UIMenu(options: .displayInline, children: [
-                UIAction(title: "Find") { [weak self] _ in
-                    self?.presentFind()
-                },
-                UIAction(title: "Find and Replace") { [weak self] _ in
-                    self?.presentFindAndReplace()
-                }
-            ]),
+        return UIMenu(options: .displayInline, children: [
             UIMenu(options: .displayInline, children: [
                 UIAction(title: "Show Line Numbers", state: settings.showLineNumbers ? .on : .off) { [weak self] _ in
                     settings.showLineNumbers.toggle()
@@ -115,13 +128,14 @@ private extension MainViewController {
                 }
             ])
         ])
-        let miscMenu = UIMenu(options: .displayInline, children: [
+    }
+
+    private func makeThemeMenu() -> UIMenu {
+        return UIMenu(options: .displayInline, children: [
             UIAction(title: "Theme") { [weak self] _ in
                 self?.presentThemePicker()
             }
         ])
-        let menu = UIMenu(children: [settingsMenu, miscMenu])
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), primaryAction: nil, menu: menu)
     }
 }
 
@@ -139,6 +153,10 @@ extension MainViewController: TextViewDelegate {
     func textViewDidChange(_ textView: TextView) {
         UserDefaults.standard.text = textView.text
     }
+
+    func textView(_ textView: TextView, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool {
+        return true
+    }
 }
 
 extension MainViewController: ThemePickerViewControllerDelegate {
@@ -146,11 +164,5 @@ extension MainViewController: ThemePickerViewControllerDelegate {
         UserDefaults.standard.theme = theme
         view.window?.overrideUserInterfaceStyle = theme.makeTheme().userInterfaceStyle
         updateTextViewSettings()
-    }
-}
-
-extension MainViewController: UIFindInteractionDelegate {
-    func findInteraction(_ interaction: UIFindInteraction, sessionFor view: UIView) -> UIFindSession? {
-        return findSession
     }
 }

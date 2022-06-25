@@ -545,6 +545,22 @@ open class TextView: UIScrollView {
             textInputView.lineEndings = newValue
         }
     }
+#if compiler(>=5.7)
+    /// A boolean value that enables a text view’s built-in find interaction.
+    @available(iOS 16, *)
+    public var isFindInteractionEnabled: Bool {
+        get {
+            return textSearchingHelper.isFindInteractionEnabled
+        }
+        set {
+            textSearchingHelper.isFindInteractionEnabled = newValue
+        }
+    }
+    @available(iOS 16, *)
+    public var findInteraction: UIFindInteraction? {
+        return textSearchingHelper.findInteraction
+    }
+#endif
 
     private let textInputView: TextInputView
     private let editableTextInteraction = UITextInteraction(for: .editable)
@@ -580,7 +596,7 @@ open class TextView: UIScrollView {
             return range.lowerBound == selectedRange.lowerBound && range.upperBound == selectedRange.upperBound
         }
     }
-    private var textSearchingController = UITextSearchingController()
+    private var textSearchingHelper = UITextSearchingHelper()
     // Store a reference to instances of the private type UITextRangeAdjustmentGestureRecognizer in order to track adjustments
     // to the selected text range and scroll the text view when the handles approach the bottom.
     // The approach is based on the one described in Steve Shephard's blog post "Adventures with UITextInteraction".
@@ -615,7 +631,7 @@ open class TextView: UIScrollView {
         installNonEditableInteraction()
         keyboardObserver.delegate = self
         highlightNavigationController.delegate = self
-        textSearchingController.textView = self
+        textSearchingHelper.textView = self
         setupMenuItems()
     }
 
@@ -1408,48 +1424,6 @@ extension TextView: UITextInteractionDelegate {
             // In this case the user wants to select text in the text view but not start editing, so we set a flag that tells us
             // that we should not install editable text interaction in this case.
             willBeginEditingFromNonEditableTextInteraction = true
-        }
-    }
-}
-
-// MARK: - UITextSearching
-@available(iOS 16, *)
-extension TextView: UITextSearching {
-    public var supportsTextReplacement: Bool {
-        return true
-    }
-
-    public func compare(_ foundRange: UITextRange, toRange: UITextRange, document: AnyHashable??) -> ComparisonResult {
-        return textSearchingController.compare(foundRange, toRange: toRange, document: document)
-    }
-
-    public func performTextSearch(queryString: String, options: UITextSearchOptions, resultAggregator: UITextSearchAggregator<AnyHashable?>) {
-        textSearchingController.performTextSearch(queryString: queryString, options: options, resultAggregator: resultAggregator)
-    }
-
-    public func decorate(foundTextRange: UITextRange, document: AnyHashable??, usingStyle style: UITextSearchFoundTextStyle) {
-        textSearchingController.decorate(foundTextRange: foundTextRange, document: document, usingStyle: style)
-    }
-
-    public func clearAllDecoratedFoundText() {
-        highlightedRanges = []
-    }
-
-    public func replaceAll(queryString: String, options: UITextSearchOptions, withText: String) {
-        textSearchingController.replaceAll(queryString: queryString, options: options, withText: withText)
-    }
-
-    public func replace(foundTextRange: UITextRange, document: AnyHashable??, withText replacementText: String) {
-        textSearchingController.replace(foundTextRange: foundTextRange, document: document, withText: replacementText)
-    }
-
-    public func shouldReplace(foundTextRange: UITextRange, document: AnyHashable??, withText replacementText: String) -> Bool {
-        textSearchingController.shouldReplace(foundTextRange: foundTextRange, document: document, withText: replacementText)
-    }
-
-    public func scrollRangeToVisible(_ range: UITextRange, inDocument: AnyHashable??) {
-        if let range = range as? IndexedRange {
-            scroll(to: range.range.upperBound)
         }
     }
 }
