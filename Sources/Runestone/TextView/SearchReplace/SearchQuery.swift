@@ -20,7 +20,7 @@ public struct SearchQuery: Hashable, Equatable {
         case regularExpression
     }
 
-    /// The text to search for. May be a regular expression if ``SearchQuery/matchMethod-swift.property`` is ``SearchQuery/MatchMethod/regularExpression``.
+    /// The text to search for.
     public let text: String
     /// Whether the text is a regular exprssion.
     public let matchMethod: MatchMethod
@@ -55,7 +55,7 @@ public struct SearchQuery: Hashable, Equatable {
     /// Creates a query to search for in the text view.
     /// - Parameters:
     ///   - text: The text to search for. May be a regular expression if `isRegularExpression` is `true`.
-    ///   - matchMethod: Strategy to use when matching the search text against the text in the text view. Defaults to ``SearchQuery/MatchMethod/regularExpression``
+    ///   - matchMethod: Strategy to use when matching the search text against the text in the text view. Defaults to `contains`.
     ///   - isCaseSensitive: Whether to perform a case-sensitive search.
     public init(text: String, matchMethod: MatchMethod = .contains, isCaseSensitive: Bool = false) {
         self.text = text
