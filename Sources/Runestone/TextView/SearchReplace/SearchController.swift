@@ -20,7 +20,7 @@ final class SearchController {
     }
 
     func search(for query: SearchQuery, replacingMatchesWith replacementText: String) -> [SearchReplaceResult] {
-        guard query.isRegularExpression else {
+        guard query.matchMethod == .regularExpression else {
             return search(for: query, replacingWithPlainText: replacementText)
         }
         let replacementStringParser = ReplacementStringParser(string: replacementText)
@@ -46,20 +46,13 @@ private extension SearchController {
         guard !query.text.isEmpty else {
             return []
         }
-        do {
-            let regex = try query.makeRegularExpression()
-            let range = NSRange(location: 0, length: stringView.string.length)
-            let matches = regex.matches(in: stringView.string as String, options: [], range: range)
-            var searchResults: [T] = []
-            for match in matches where match.range.length > 0 {
-                if let searchResult = mapper(match) {
-                    searchResults.append(searchResult)
-                }
+        let matches = query.matches(in: stringView.string)
+        return matches.compactMap { textCheckingResult in
+            if textCheckingResult.range.length > 0, let mappedValue = mapper(textCheckingResult) {
+                return mappedValue
+            } else {
+                return nil
             }
-            return searchResults
-        } catch {
-            print(error)
-            return []
         }
     }
 
