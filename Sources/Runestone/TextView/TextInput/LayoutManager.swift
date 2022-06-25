@@ -77,6 +77,9 @@ final class LayoutManager {
                 if theme.font != oldValue.font {
                     invalidateContentSize()
                 }
+                // Clear the cached highlight rects as the font size might have changed, causing the position of the highlights to change.
+                highlightRectsForLineIDs = [:]
+                clearHighlightedViews()
                 setNeedsLayout()
                 setNeedsLayoutLineSelection()
                 layoutIfNeeded()

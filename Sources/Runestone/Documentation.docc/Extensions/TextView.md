@@ -5,6 +5,7 @@
 ### Initialing the Text View
 
 - ``init(frame:)``
+- ``init(coder:)``
 
 ### Responding to Text View Changes
 
@@ -68,6 +69,10 @@
 - ``characterPairs``
 - ``characterPairTrailingComponentDeletionMode``
 
+### Line Endings
+
+- ``lineEndings``
+
 ### Overscroll
 
 - ``verticalOverscrollFactor``
@@ -112,6 +117,8 @@
 
 ### Editing
 
+- ``isEditable``
+- ``isSelectable``
 - ``isEditing``
 - ``text``
 - ``autocapitalizationType``
@@ -120,11 +127,13 @@
 - ``smartDashesType``
 - ``smartInsertDeleteType``
 - ``smartQuotesType``
-- ``text(in:)``
+- ``text(in:)-3lp4v``
+- ``text(in:)-3wzco``
 - ``insertText(_:)``
 - ``replaceText(in:)``
 - ``replace(_:withText:)-7gret``
 - ``replace(_:withText:)-7ugo8``
+- ``deleteBackward()``
 - ``undoManager``
 
 ### Managing the Keyboard
@@ -160,3 +169,24 @@
 - ``becomeFirstResponder()``
 - ``resignFirstResponder()``
 - ``canPerformAction(_:withSender:)``
+
+### UITextInput Conformace
+
+- ``hasText``
+- ``beginningOfDocument``
+- ``endOfDocument``
+- ``markedTextRange``
+- ``tokenizer``
+- ``textRange(from:to:)``
+- ``position(from:offset:)``
+- ``position(from:in:offset:)``
+- ``position(within:farthestIn:)``
+- ``closestPosition(to:)``
+- ``closestPosition(to:within:)``
+- ``compare(_:to:)``
+- ``offset(from:to:)``
+- ``characterRange(at:)``
+- ``characterRange(byExtending:in:)``
+- ``caretRect(for:)``
+- ``firstRect(for:)``
+- ``selectionRects(for:)``
