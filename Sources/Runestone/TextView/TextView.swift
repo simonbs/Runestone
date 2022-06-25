@@ -549,6 +549,13 @@ open class TextView: UIScrollView {
     private let textInputView: TextInputView
     private let editableTextInteraction = UITextInteraction(for: .editable)
     private let nonEditableTextInteraction = UITextInteraction(for: .nonEditable)
+#if compiler(>=5.7)
+    @available(iOS 16.0, *)
+    private var editMenuInteraction: UIEditMenuInteraction? {
+        return _editMenuInteraction as? UIEditMenuInteraction
+    }
+    private var _editMenuInteraction: Any?
+#endif
     private let tapGestureRecognizer = QuickTapGestureRecognizer()
     private var _inputAccessoryView: UIView?
     private let _inputAssistantItem = UITextInputAssistantItem()
@@ -574,12 +581,6 @@ open class TextView: UIScrollView {
     private var isInputAccessoryViewEnabled = false
     private let keyboardObserver = KeyboardObserver()
     private let highlightNavigationController = HighlightNavigationController()
-    private var highlightedRangeInSelection: HighlightedRange? {
-        return highlightedRanges.first { highlightedRange in
-            let range = highlightedRange.range
-            return range.lowerBound == selectedRange.lowerBound && range.upperBound == selectedRange.upperBound
-        }
-    }
     // Store a reference to instances of the private type UITextRangeAdjustmentGestureRecognizer in order to track adjustments
     // to the selected text range and scroll the text view when the handles approach the bottom.
     // The approach is based on the one described in Steve Shephard's blog post "Adventures with UITextInteraction".
@@ -614,7 +615,6 @@ open class TextView: UIScrollView {
         installNonEditableInteraction()
         keyboardObserver.delegate = self
         highlightNavigationController.delegate = self
-        setupMenuItems()
     }
 
     /// The initializer has not been implemented.
@@ -667,23 +667,6 @@ open class TextView: UIScrollView {
     /// Updates the custom input and accessory views when the object is the first responder.
     override open func reloadInputViews() {
         textInputView.reloadInputViews()
-    }
-
-    /// Requests the receiving responder to enable or disable the specified command in the user interface.
-    /// - Parameters:
-    ///   - action: A selector that identifies a method associated with a command. For the editing menu, this is one of the editing methods declared by the UIResponderStandardEditActions informal protocol (for example, `copy:`).
-    ///   - sender: The object calling this method. For the editing menu commands, this is the shared UIApplication object. Depending on the context, you can query the sender for information to help you determine whether a command should be enabled.
-    /// - Returns: `true if the command identified by action should be enabled or `false` if it should be disabled. Returning `true` means that your class can handle the command in the current context.
-    override open func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
-        if action == #selector(replaceTextInSelectedHighlightedRange) {
-            if let highlightedRangeInSelection = highlightedRangeInSelection {
-                return editorDelegate?.textView(self, canReplaceTextIn: highlightedRangeInSelection) ?? false
-            } else {
-                return false
-            }
-        } else {
-            return super.canPerformAction(action, withSender: sender)
-        }
     }
 
     /// Sets the current _state_ of the editor. The state contains the text to be displayed by the editor and
@@ -1200,26 +1183,6 @@ private extension TextView {
             }
         }
     }
-
-    private func showMenuForText(in range: NSRange) {
-        let startCaretRect = textInputView.caretRect(at: range.location)
-        let endCaretRect = textInputView.caretRect(at: range.location + range.length)
-        let menuWidth = min(endCaretRect.maxX - startCaretRect.minX, frame.width)
-        let menuRect = CGRect(x: startCaretRect.minX, y: startCaretRect.minY, width: menuWidth, height: startCaretRect.height)
-        UIMenuController.shared.showMenu(from: self, rect: menuRect)
-    }
-
-    private func setupMenuItems() {
-        UIMenuController.shared.menuItems = [
-            UIMenuItem(title: L10n.Menu.ItemTitle.replace, action: #selector(replaceTextInSelectedHighlightedRange))
-        ]
-    }
-
-    @objc private func replaceTextInSelectedHighlightedRange() {
-        if let highlightedRangeInSelection = highlightedRangeInSelection {
-            editorDelegate?.textView(self, replaceTextIn: highlightedRangeInSelection)
-        }
-    }
 }
 
 // MARK: - TextInputViewDelegate
@@ -1323,6 +1286,14 @@ extension TextView: TextInputViewDelegate {
             }
         }
     }
+
+    func textInputView(_ view: TextInputView, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool {
+        return editorDelegate?.textView(self, canReplaceTextIn: highlightedRange) ?? false
+    }
+
+    func textInputView(_ view: TextInputView, replaceTextIn highlightedRange: HighlightedRange) {
+        editorDelegate?.textView(self, replaceTextIn: highlightedRange)
+    }
 }
 
 // MARK: - HighlightNavigationControllerDelegate
@@ -1335,7 +1306,7 @@ extension TextView: HighlightNavigationControllerDelegate {
         textInputView.layoutLines(toLocation: range.upperBound)
         scroll(to: range.location)
         textInputView.selectedRange = range
-        showMenuForText(in: range)
+        textInputView.presentEditMenuForText(in: range)
         switch highlightNavigationRange.loopMode {
         case .previousGoesToLast:
             editorDelegate?.textViewDidLoopToLastHighlightedRange(self)
