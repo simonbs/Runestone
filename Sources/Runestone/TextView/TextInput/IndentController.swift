@@ -55,7 +55,7 @@ final class IndentController {
         let minimumLocation = lines[0].location
         var newSelectedRange = range
         for (lineIndex, line) in lines.enumerated() {
-            let changeInLength = shiftLineRight(line)
+            let changeInLength = shiftLineLeft(line)
             if lineIndex == 0 {
                 // We don't want the selection to move to the previous line when we can't shift left anymore.
                 // Therefore we keep it to the minimum location, which is the location the line starts on.
@@ -78,7 +78,7 @@ final class IndentController {
         let lines = lineManager.lines(in: range)
         var newSelectedRange = range
         for (lineIndex, line) in lines.enumerated() {
-            let changeInLength = shiftLineLeft(line)
+            let changeInLength = shiftLineRight(line)
             if lineIndex == 0 {
                 newSelectedRange.location += changeInLength
             } else {
@@ -142,7 +142,7 @@ final class IndentController {
 
 extension IndentController {
     @discardableResult
-    private func shiftLineLeft(_ line: DocumentLineNode) -> Int {
+    private func shiftLineRight(_ line: DocumentLineNode) -> Int {
         let oldLength = line.data.totalLength
         let indentString = indentStrategy.string(indentLevel: 1)
         let startLocation = locationOfFirstNonWhitespaceCharacter(in: line)
@@ -152,7 +152,7 @@ extension IndentController {
     }
 
     @discardableResult
-    private func shiftLineRight(_ line: DocumentLineNode) -> Int {
+    private func shiftLineLeft(_ line: DocumentLineNode) -> Int {
         let oldLength = line.data.totalLength
         let indentString = indentStrategy.string(indentLevel: 1)
         let indentUTF16Count = indentString.utf16.count
