@@ -1487,11 +1487,15 @@ extension TextInputView: LayoutManagerDelegate {
 // MARK: - IndentControllerDelegate
 extension TextInputView: IndentControllerDelegate {
     func indentController(_ controller: IndentController, shouldInsert text: String, in range: NSRange) {
+        inputDelegate?.selectionWillChange(self)
         replaceText(in: range, with: text)
+        inputDelegate?.selectionDidChange(self)
     }
 
     func indentController(_ controller: IndentController, shouldSelect range: NSRange) {
+        inputDelegate?.selectionWillChange(self)
         selectedRange = range
+        inputDelegate?.selectionDidChange(self)
     }
 }
 
