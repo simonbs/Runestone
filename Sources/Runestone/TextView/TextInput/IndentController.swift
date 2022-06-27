@@ -50,42 +50,65 @@ final class IndentController {
         self.indentFont = indentFont
     }
 
-    func shiftLeft(in range: NSRange) {
-        let lines = lineManager.lines(in: range)
-        let minimumLocation = lines[0].location
-        var newSelectedRange = range
+    func shiftLeft(in selectedRange: NSRange) {
+        let lines = lineManager.lines(in: selectedRange)
+        let originalRange = range(surrounding: lines)
+        var newSelectedRange = selectedRange
+        var replacementString: String?
+        let indentString = indentStrategy.string(indentLevel: 1)
+        let indentLength = indentString.utf16.count
         for (lineIndex, line) in lines.enumerated() {
-            let changeInLength = shiftLineRight(line)
+            let lineRange = NSRange(location: line.location, length: line.data.totalLength)
+            let lineString = stringView.substring(in: lineRange) ?? ""
+            guard lineString.hasPrefix(indentString) else {
+                replacementString = (replacementString ?? "") + lineString
+                continue
+            }
+            let startIndex = lineString.index(lineString.startIndex, offsetBy: indentLength)
+            let endIndex = lineString.endIndex
+            replacementString = (replacementString ?? "") + lineString[startIndex ..< endIndex]
             if lineIndex == 0 {
                 // We don't want the selection to move to the previous line when we can't shift left anymore.
                 // Therefore we keep it to the minimum location, which is the location the line starts on.
                 // If we try to exceed that, we need to adjust the length of the selected range.
-                let preferredLocation = newSelectedRange.location + changeInLength
-                let newLocation = max(preferredLocation, minimumLocation)
+                let preferredLocation = newSelectedRange.location - indentLength
+                let newLocation = max(preferredLocation, originalRange.location)
                 newSelectedRange.location = newLocation
                 if newLocation > preferredLocation {
                     let preferredLength = newSelectedRange.length - (newLocation - preferredLocation)
                     newSelectedRange.length = max(preferredLength, 0)
                 }
             } else {
-                newSelectedRange.length += changeInLength
+                newSelectedRange.length -= indentLength
             }
         }
-        delegate?.indentController(self, shouldSelect: newSelectedRange)
+        if let replacementString = replacementString {
+            delegate?.indentController(self, shouldInsert: replacementString, in: originalRange)
+            delegate?.indentController(self, shouldSelect: newSelectedRange)
+        }
     }
 
-    func shiftRight(in range: NSRange) {
-        let lines = lineManager.lines(in: range)
-        var newSelectedRange = range
+    func shiftRight(in selectedRange: NSRange) {
+        let lines = lineManager.lines(in: selectedRange)
+        let originalRange = range(surrounding: lines)
+        var newSelectedRange = selectedRange
+        var replacementString: String?
+        let indentString = indentStrategy.string(indentLevel: 1)
+        let indentLength = indentString.utf16.count
         for (lineIndex, line) in lines.enumerated() {
-            let changeInLength = shiftLineLeft(line)
+            let lineRange = NSRange(location: line.location, length: line.data.totalLength)
+            let lineString = stringView.substring(in: lineRange) ?? ""
+            replacementString = (replacementString ?? "") + indentString + lineString
             if lineIndex == 0 {
-                newSelectedRange.location += changeInLength
+                newSelectedRange.location += indentLength
             } else {
-                newSelectedRange.length += changeInLength
+                newSelectedRange.length += indentLength
             }
         }
-        delegate?.indentController(self, shouldSelect: newSelectedRange)
+        if let replacementString = replacementString {
+            delegate?.indentController(self, shouldInsert: replacementString, in: originalRange)
+            delegate?.indentController(self, shouldSelect: newSelectedRange)
+        }
     }
 
     func insertLineBreak(in range: NSRange, using lineEnding: LineEnding) {
@@ -141,47 +164,11 @@ final class IndentController {
 }
 
 extension IndentController {
-    @discardableResult
-    private func shiftLineLeft(_ line: DocumentLineNode) -> Int {
-        let oldLength = line.data.totalLength
-        let indentString = indentStrategy.string(indentLevel: 1)
-        let startLocation = locationOfFirstNonWhitespaceCharacter(in: line)
-        let range = NSRange(location: startLocation, length: 0)
-        delegate?.indentController(self, shouldInsert: indentString, in: range)
-        return line.data.totalLength - oldLength
-    }
-
-    @discardableResult
-    private func shiftLineRight(_ line: DocumentLineNode) -> Int {
-        let oldLength = line.data.totalLength
-        let indentString = indentStrategy.string(indentLevel: 1)
-        let indentUTF16Count = indentString.utf16.count
-        guard line.data.length >= indentUTF16Count else {
-            return 0
-        }
-        let indentRange = NSRange(location: line.location, length: indentUTF16Count)
-        guard stringView.substring(in: indentRange) == indentString else {
-            return 0
-        }
-        delegate?.indentController(self, shouldInsert: "", in: indentRange)
-        return line.data.totalLength - oldLength
-    }
-
-    private func locationOfFirstNonWhitespaceCharacter(in line: DocumentLineNode) -> Int {
-        var location = line.location
-        let endLocation = location + line.data.length
-        let whitespaceCharacters: Set<Character> = [Symbol.Character.space, Symbol.Character.tab]
-        while location < endLocation {
-            // If stringView.character(at:) return nil then the character at the location is in fact
-            // a character sequence composed of multiple characters. Examples of this include emojis.
-            // We only check for whitespace characters that take up a single character so if we're
-            // getting a character sequence, then we assume that it isn't whitespace.
-            if let character = stringView.character(at: location), whitespaceCharacters.contains(character) {
-                location += 1
-            } else {
-                break
-            }
-        }
-        return location
+    private func range(surrounding lines: [DocumentLineNode]) -> NSRange {
+        let firstLine = lines[0]
+        let lastLine = lines[lines.count - 1]
+        let location = firstLine.location
+        let length = (lastLine.location - location) + lastLine.data.totalLength
+        return NSRange(location: location, length: length)
     }
 }
