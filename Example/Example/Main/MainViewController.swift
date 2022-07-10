@@ -59,51 +59,89 @@ private extension MainViewController {
     }
 
     private func setupMenuButton() {
-        let settings = UserDefaults.standard
-        let settingsMenu = UIMenu(options: .displayInline, children: [
-            UIAction(title: "Show Line Numbers", state: settings.showLineNumbers ? .on : .off) { [weak self] _ in
-                settings.showLineNumbers.toggle()
-                self?.updateTextViewSettings()
-                self?.setupMenuButton()
-            },
-            UIAction(title: "Show Invisible Characters", state: settings.showInvisibleCharacters ? .on : .off) { [weak self] _ in
-                settings.showInvisibleCharacters.toggle()
-                self?.updateTextViewSettings()
-                self?.setupMenuButton()
-            },
-            UIAction(title: "Wrap Lines", state: settings.wrapLines ? .on : .off) { [weak self] _ in
-                settings.wrapLines.toggle()
-                self?.updateTextViewSettings()
-                self?.setupMenuButton()
-            },
-            UIAction(title: "Highlight Selected Line", state: settings.highlightSelectedLine ? .on : .off) { [weak self] _ in
-                settings.highlightSelectedLine.toggle()
-                self?.updateTextViewSettings()
-                self?.setupMenuButton()
-            },
-            UIAction(title: "Show Page Guide", state: settings.showPageGuide ? .on : .off) { [weak self] _ in
-                settings.showPageGuide.toggle()
-                self?.updateTextViewSettings()
-                self?.setupMenuButton()
-            },
-            UIAction(title: "Allow Editing", state: settings.isEditable ? .on : .off) { [weak self] _ in
-                settings.isEditable.toggle()
-                self?.updateTextViewSettings()
-                self?.setupMenuButton()
-            },
-            UIAction(title: "Allow Selection", state: settings.isSelectable ? .on : .off) { [weak self] _ in
-                settings.isSelectable.toggle()
-                self?.updateTextViewSettings()
-                self?.setupMenuButton()
+        var menuElements: [UIMenuElement] = []
+        menuElements += [makeFeaturesMenu(), makeSettingsMenu(), makeThemeMenu()]
+        let menu = UIMenu(children: menuElements)
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), menu: menu)
+    }
+
+    private func makeFeaturesMenu() -> UIMenu {
+        return UIMenu(options: .displayInline, children: [
+            UIAction(title: "Go to Line") { [weak self] _ in
+                self?.presentGoToLineAlert()
             }
         ])
-        let miscMenu = UIMenu(options: .displayInline, children: [
+    }
+
+    private func makeSettingsMenu() -> UIMenu {
+        let settings = UserDefaults.standard
+        return UIMenu(options: .displayInline, children: [
+            UIMenu(options: .displayInline, children: [
+                UIAction(title: "Show Line Numbers", state: settings.showLineNumbers ? .on : .off) { [weak self] _ in
+                    settings.showLineNumbers.toggle()
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                },
+                UIAction(title: "Show Page Guide", state: settings.showPageGuide ? .on : .off) { [weak self] _ in
+                    settings.showPageGuide.toggle()
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                },
+                UIAction(title: "Show Invisible Characters", state: settings.showInvisibleCharacters ? .on : .off) { [weak self] _ in
+                    settings.showInvisibleCharacters.toggle()
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                },
+                UIAction(title: "Wrap Lines", state: settings.wrapLines ? .on : .off) { [weak self] _ in
+                    settings.wrapLines.toggle()
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                },
+                UIAction(title: "Highlight Selected Line", state: settings.highlightSelectedLine ? .on : .off) { [weak self] _ in
+                    settings.highlightSelectedLine.toggle()
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                }
+            ]),
+            UIMenu(options: .displayInline, children: [
+                UIAction(title: "Allow Editing", state: settings.isEditable ? .on : .off) { [weak self] _ in
+                    settings.isEditable.toggle()
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                },
+                UIAction(title: "Allow Selection", state: settings.isSelectable ? .on : .off) { [weak self] _ in
+                    settings.isSelectable.toggle()
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                }
+            ])
+        ])
+    }
+
+    private func makeThemeMenu() -> UIMenu {
+        return UIMenu(options: .displayInline, children: [
             UIAction(title: "Theme") { [weak self] _ in
                 self?.presentThemePicker()
             }
         ])
-        let menu = UIMenu(children: [settingsMenu, miscMenu])
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), primaryAction: nil, menu: menu)
+    }
+
+    private func presentGoToLineAlert() {
+        let alertController = UIAlertController(title: "Go To Line", message: nil, preferredStyle: .alert)
+        alertController.addTextField { textField in
+            textField.placeholder = "42"
+            textField.keyboardType = .numberPad
+        }
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        let doneAction = UIAlertAction(title: "Go", style: .default) { [weak self, weak alertController] _ in
+            if let textField = alertController?.textFields?.first, let text = textField.text, !text.isEmpty, let lineNumber = Int(text) {
+                let lineIndex = lineNumber - 1
+                self?.contentView.textView.goToLine(lineIndex, select: .line)
+            }
+        }
+        alertController.addAction(cancelAction)
+        alertController.addAction(doneAction)
+        present(alertController, animated: true)
     }
 }
 
