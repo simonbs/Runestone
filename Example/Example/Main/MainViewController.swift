@@ -16,6 +16,14 @@ final class MainViewController: UIViewController {
         toolsView = KeyboardToolsView(textView: contentView.textView)
         super.init(nibName: nil, bundle: nil)
         title = "Example"
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(keyboardWillChangeFrame(_:)),
+                                               name: UIApplication.keyboardWillChangeFrameNotification,
+                                               object: nil)
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(keyboardWillHide(_:)),
+                                               name: UIApplication.keyboardWillHideNotification,
+                                               object: nil)
     }
 
     required init?(coder: NSCoder) {
@@ -106,6 +114,24 @@ private extension MainViewController {
         themePickerViewController.delegate = self
         let navigationController = UINavigationController(rootViewController: themePickerViewController)
         present(navigationController, animated: true)
+    }
+
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        updateInsets(keyboardHeight: 0)
+    }
+
+    @objc private func keyboardWillChangeFrame(_ notification: Notification) {
+        if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+            let keyboardHeight = max(frame.height - view.safeAreaInsets.bottom, 0)
+            updateInsets(keyboardHeight: keyboardHeight)
+        }
+    }
+
+    private func updateInsets(keyboardHeight: CGFloat) {
+        let textView = contentView.textView
+        textView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: keyboardHeight, right: 0)
+        textView.scrollIndicatorInsets = UIEdgeInsets(top: 0, left: 0, bottom: keyboardHeight, right: 0)
+        textView.automaticScrollInset = UIEdgeInsets(top: 0, left: 0, bottom: keyboardHeight, right: 0)
     }
 }
 
