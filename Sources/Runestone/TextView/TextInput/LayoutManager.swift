@@ -655,6 +655,9 @@ extension LayoutManager {
                 nextLine = nil
             }
         }
+        if _textContentHeight == nil || _textContentWidth == nil {
+            delegate?.layoutManagerDidInvalidateContentSize(self)
+        }
     }
 
     // swiftlint:disable:next function_body_length
