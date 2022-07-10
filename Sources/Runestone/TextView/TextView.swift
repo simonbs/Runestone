@@ -838,6 +838,7 @@ open class TextView: UIScrollView {
         resignFirstResponder()
         becomeFirstResponder()
         let line = textInputView.lineManager.line(atRow: lineIndex)
+        textInputView.layoutLines(toLocation: line.location)
         scroll(to: line.location)
         layoutIfNeeded()
         switch selection {

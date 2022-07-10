@@ -16,6 +16,14 @@ final class MainViewController: UIViewController {
         toolsView = KeyboardToolsView(textView: contentView.textView)
         super.init(nibName: nil, bundle: nil)
         title = "Example"
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(keyboardWillChangeFrame(_:)),
+                                               name: UIApplication.keyboardWillChangeFrameNotification,
+                                               object: nil)
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(keyboardWillHide(_:)),
+                                               name: UIApplication.keyboardWillHideNotification,
+                                               object: nil)
     }
 
     required init?(coder: NSCoder) {
@@ -64,25 +72,30 @@ private extension MainViewController {
     }
 
     private func setupMenuButton() {
-        var menuElements: [UIMenuElement] = []
-        if #available(iOS 16, *) {
-            menuElements += [makeFindReplaceMenu()]
-        }
-        menuElements += [makeSettingsMenu(), makeThemeMenu()]
-        let menu = UIMenu(children: menuElements)
+        let menu = UIMenu(children: [makeFeaturesMenu(), makeSettingsMenu(), makeThemeMenu()])
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), menu: menu)
     }
 
-    @available(iOS 16, *)
-    private func makeFindReplaceMenu() -> UIMenu {
-        return UIMenu(options: .displayInline, children: [
-            UIAction(title: "Find") { [weak self] _ in
-                self?.presentFind()
-            },
-            UIAction(title: "Find and Replace") { [weak self] _ in
-                self?.presentFindAndReplace()
+    private func makeFeaturesMenu() -> UIMenu {
+        var children: [UIMenuElement] = []
+        if #available(iOS 16, *) {
+            children += [
+                UIMenu(options: .displayInline, children: [
+                    UIAction(title: "Find") { [weak self] _ in
+                        self?.presentFind()
+                    },
+                    UIAction(title: "Find and Replace") { [weak self] _ in
+                        self?.presentFindAndReplace()
+                    }
+                ])
+            ]
+        }
+        children += [
+            UIAction(title: "Go to Line") { [weak self] _ in
+                self?.presentGoToLineAlert()
             }
-        ])
+        ]
+        return UIMenu(options: .displayInline, children: children)
     }
 
     private func makeSettingsMenu() -> UIMenu {
@@ -137,6 +150,24 @@ private extension MainViewController {
             }
         ])
     }
+
+    private func presentGoToLineAlert() {
+        let alertController = UIAlertController(title: "Go To Line", message: nil, preferredStyle: .alert)
+        alertController.addTextField { textField in
+            textField.placeholder = "42"
+            textField.keyboardType = .numberPad
+        }
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        let doneAction = UIAlertAction(title: "Go", style: .default) { [weak self, weak alertController] _ in
+            if let textField = alertController?.textFields?.first, let text = textField.text, !text.isEmpty, let lineNumber = Int(text) {
+                let lineIndex = lineNumber - 1
+                self?.contentView.textView.goToLine(lineIndex, select: .line)
+            }
+        }
+        alertController.addAction(cancelAction)
+        alertController.addAction(doneAction)
+        present(alertController, animated: true)
+    }
 }
 
 private extension MainViewController {
@@ -146,6 +177,24 @@ private extension MainViewController {
         themePickerViewController.delegate = self
         let navigationController = UINavigationController(rootViewController: themePickerViewController)
         present(navigationController, animated: true)
+    }
+
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        updateInsets(keyboardHeight: 0)
+    }
+
+    @objc private func keyboardWillChangeFrame(_ notification: Notification) {
+        if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+            let keyboardHeight = max(frame.height - view.safeAreaInsets.bottom, 0)
+            updateInsets(keyboardHeight: keyboardHeight)
+        }
+    }
+
+    private func updateInsets(keyboardHeight: CGFloat) {
+        let textView = contentView.textView
+        textView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: keyboardHeight, right: 0)
+        textView.scrollIndicatorInsets = UIEdgeInsets(top: 0, left: 0, bottom: keyboardHeight, right: 0)
+        textView.automaticScrollInset = UIEdgeInsets(top: 0, left: 0, bottom: keyboardHeight, right: 0)
     }
 }
 
