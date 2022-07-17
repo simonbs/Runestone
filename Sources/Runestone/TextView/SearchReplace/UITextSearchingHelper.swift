@@ -128,6 +128,12 @@ extension UITextSearchingHelper: UITextSearching {
         }
         return _textView.editorDelegate?.textView(_textView, canReplaceTextIn: highlightedRange) ?? false
     }
+
+    func scrollRangeToVisible(_ range: UITextRange, inDocument: AnyHashable??) {
+        if let indexedRange = range as? IndexedRange {
+            _textView.scroll(to: indexedRange.range)
+        }
+    }
 }
 
 private extension UITextSearchingHelper {
