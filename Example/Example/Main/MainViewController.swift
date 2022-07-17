@@ -36,6 +36,11 @@ final class MainViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+#if compiler(>=5.7)
+        if #available(iOS 16, *) {
+            contentView.textView.isFindInteractionEnabled = true
+        }
+#endif
         contentView.textView.inputAccessoryView = toolsView
         setupMenuButton()
         setupTextView()
@@ -44,6 +49,18 @@ final class MainViewController: UIViewController {
 }
 
 private extension MainViewController {
+#if compiler(>=5.7)
+    @available(iOS 16, *)
+    @objc private func presentFind() {
+        contentView.textView.findInteraction?.presentFindNavigator(showingReplace: false)
+    }
+
+    @available(iOS 16, *)
+    @objc private func presentFindAndReplace() {
+        contentView.textView.findInteraction?.presentFindNavigator(showingReplace: true)
+    }
+#endif
+
     private func setupTextView() {
         let text = UserDefaults.standard.text ?? ""
         let state = TextViewState(text: text, theme: TomorrowTheme(), language: .javaScript)
@@ -59,18 +76,32 @@ private extension MainViewController {
     }
 
     private func setupMenuButton() {
-        var menuElements: [UIMenuElement] = []
-        menuElements += [makeFeaturesMenu(), makeSettingsMenu(), makeThemeMenu()]
-        let menu = UIMenu(children: menuElements)
+        let menu = UIMenu(children: [makeFeaturesMenu(), makeSettingsMenu(), makeThemeMenu()])
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), menu: menu)
     }
 
     private func makeFeaturesMenu() -> UIMenu {
-        return UIMenu(options: .displayInline, children: [
+        var children: [UIMenuElement] = []
+#if compiler(>=5.7)
+        if #available(iOS 16, *) {
+            children += [
+                UIMenu(options: .displayInline, children: [
+                    UIAction(title: "Find") { [weak self] _ in
+                        self?.presentFind()
+                    },
+                    UIAction(title: "Find and Replace") { [weak self] _ in
+                        self?.presentFindAndReplace()
+                    }
+                ])
+            ]
+        }
+#endif
+        children += [
             UIAction(title: "Go to Line") { [weak self] _ in
                 self?.presentGoToLineAlert()
             }
-        ])
+        ]
+        return UIMenu(options: .displayInline, children: children)
     }
 
     private func makeSettingsMenu() -> UIMenu {
@@ -176,6 +207,10 @@ private extension MainViewController {
 extension MainViewController: TextViewDelegate {
     func textViewDidChange(_ textView: TextView) {
         UserDefaults.standard.text = textView.text
+    }
+
+    func textView(_ textView: TextView, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool {
+        return true
     }
 }
 
