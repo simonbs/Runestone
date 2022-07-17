@@ -16,9 +16,6 @@ final class UITextSearchingHelper: NSObject {
     }
     @available(iOS 16, *)
     var findInteraction: UIFindInteraction? {
-        set {
-            _findInteraction = newValue
-        }
         get {
             guard let _findInteraction = _findInteraction else {
                 return nil
@@ -27,6 +24,9 @@ final class UITextSearchingHelper: NSObject {
                 fatalError("Expected _findInteraction to be of type \(UIFindInteraction.self)")
             }
             return findInteraction
+        }
+        set {
+            _findInteraction = newValue
         }
     }
     private var _findInteraction: Any?
@@ -94,7 +94,7 @@ extension UITextSearchingHelper: UITextSearching {
         guard let foundTextRange = foundTextRange as? IndexedRange else {
             return
         }
-        _textView.highlightedRanges.removeAll(where: { $0.range == foundTextRange.range })
+        _textView.highlightedRanges.removeAll { $0.range == foundTextRange.range }
         if let highlightedRange = _textView.theme.highlightedRange(forFoundTextRange: foundTextRange.range, ofStyle: style) {
             _textView.highlightedRanges.append(highlightedRange)
         }
