@@ -545,6 +545,22 @@ open class TextView: UIScrollView {
             textInputView.lineEndings = newValue
         }
     }
+#if compiler(>=5.7)
+    /// A boolean value that enables a text view’s built-in find interaction.
+    @available(iOS 16, *)
+    public var isFindInteractionEnabled: Bool {
+        get {
+            return textSearchingHelper.isFindInteractionEnabled
+        }
+        set {
+            textSearchingHelper.isFindInteractionEnabled = newValue
+        }
+    }
+    @available(iOS 16, *)
+    public var findInteraction: UIFindInteraction? {
+        return textSearchingHelper.findInteraction
+    }
+#endif
 
     private let textInputView: TextInputView
     private let editableTextInteraction = UITextInteraction(for: .editable)
@@ -581,6 +597,7 @@ open class TextView: UIScrollView {
     private var isInputAccessoryViewEnabled = false
     private let keyboardObserver = KeyboardObserver()
     private let highlightNavigationController = HighlightNavigationController()
+    private var textSearchingHelper = UITextSearchingHelper()
     // Store a reference to instances of the private type UITextRangeAdjustmentGestureRecognizer in order to track adjustments
     // to the selected text range and scroll the text view when the handles approach the bottom.
     // The approach is based on the one described in Steve Shephard's blog post "Adventures with UITextInteraction".
@@ -615,6 +632,7 @@ open class TextView: UIScrollView {
         installNonEditableInteraction()
         keyboardObserver.delegate = self
         highlightNavigationController.delegate = self
+        textSearchingHelper.textView = self
     }
 
     /// The initializer has not been implemented.
@@ -1380,6 +1398,7 @@ extension TextView: KeyboardObserverDelegate {
     }
 }
 
+// MARK: - UITextInteractionDelegate
 extension TextView: UITextInteractionDelegate {
     public func interactionShouldBegin(_ interaction: UITextInteraction, at point: CGPoint) -> Bool {
         if interaction.textInteractionMode == .editable {
