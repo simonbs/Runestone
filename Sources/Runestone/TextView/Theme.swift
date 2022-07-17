@@ -49,6 +49,10 @@ public protocol Theme: AnyObject {
     ///
     /// See <doc:CreatingATheme> for more information on higlight names.
     func shadow(for highlightName: String) -> NSShadow?
+#if compiler(>=5.7)
+    @available(iOS 16, *)
+    func highlightedRange(forFoundTextRange foundTextRange: NSRange, ofStyle style: UITextSearchFoundTextStyle) -> HighlightedRange?
+#endif
 }
 
 public extension Theme {
@@ -75,4 +79,20 @@ public extension Theme {
     func shadow(for highlightName: String) -> NSShadow? {
         return nil
     }
+
+#if compiler(>=5.7)
+    @available(iOS 16, *)
+    func highlightedRange(forFoundTextRange foundTextRange: NSRange, ofStyle style: UITextSearchFoundTextStyle) -> HighlightedRange? {
+        switch style {
+        case .found:
+            return HighlightedRange(range: foundTextRange, color: .systemYellow.withAlphaComponent(0.2))
+        case .highlighted:
+            return HighlightedRange(range: foundTextRange, color: .systemYellow)
+        case .normal:
+            return nil
+        @unknown default:
+            return nil
+        }
+    }
+#endif
 }

@@ -95,17 +95,8 @@ extension UITextSearchingHelper: UITextSearching {
             return
         }
         _textView.highlightedRanges.removeAll(where: { $0.range == foundTextRange.range })
-        switch style {
-        case .found:
-            let highlightedRange = HighlightedRange(range: foundTextRange.range, color: .yellow.withAlphaComponent(0.2))
+        if let highlightedRange = _textView.theme.highlightedRange(forFoundTextRange: foundTextRange.range, ofStyle: style) {
             _textView.highlightedRanges.append(highlightedRange)
-        case .highlighted:
-            let highlightedRange = HighlightedRange(range: foundTextRange.range, color: .yellow)
-            _textView.highlightedRanges.append(highlightedRange)
-        case .normal:
-            break
-        @unknown default:
-            break
         }
     }
 
