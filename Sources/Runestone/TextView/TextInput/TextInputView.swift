@@ -317,6 +317,20 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
+    var lineBreakMode: LineBreakMode {
+        get {
+            return layoutManager.lineBreakMode
+        }
+        set {
+            if newValue != layoutManager.lineBreakMode {
+                layoutManager.lineBreakMode = newValue
+                layoutManager.invalidateLines()
+                layoutManager.setNeedsLayout()
+                layoutManager.layoutIfNeeded()
+                sendSelectionChangedToTextSelectionView()
+            }
+        }
+    }
     var gutterWidth: CGFloat {
         return layoutManager.gutterWidth
     }

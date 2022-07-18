@@ -430,6 +430,15 @@ open class TextView: UIScrollView {
             textInputView.isLineWrappingEnabled = newValue
         }
     }
+    /// Line break mode for text view. The default value is .byWordWrapping meaning that wrapping occurs on word boundaries.
+    public var lineBreakMode: LineBreakMode {
+        get {
+            return textInputView.lineBreakMode
+        }
+        set {
+            textInputView.lineBreakMode = newValue
+        }
+    }
     /// Width of the gutter.
     public var gutterWidth: CGFloat {
         return textInputView.gutterWidth

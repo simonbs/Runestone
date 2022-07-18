@@ -107,10 +107,10 @@ final class LineController {
         }
     }
 
-    init(line: DocumentLineNode, stringView: StringView) {
+    init(line: DocumentLineNode, stringView: StringView, lineBreakMode: LineBreakMode) {
         self.line = line
         self.stringView = stringView
-        self.typesetter = LineTypesetter(lineID: line.id.rawValue)
+        self.typesetter = LineTypesetter(lineID: line.id.rawValue, lineBreakMode: lineBreakMode)
         self.textInputProxy.estimatedLineFragmentHeight = estimatedLineFragmentHeight
         let rootLineFragmentNodeData = LineFragmentNodeData(lineFragment: nil)
         self.lineFragmentTree = LineFragmentTree(minimumValue: 0, rootValue: 0, rootData: rootLineFragmentNodeData)

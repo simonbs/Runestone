@@ -130,6 +130,14 @@ final class LayoutManager {
             }
         }
     }
+    var lineBreakMode: LineBreakMode = .byWordWrapping {
+         didSet {
+             if lineBreakMode != oldValue {
+                 invalidateContentSize()
+                 invalidateLines()
+             }
+         }
+     }
     /// Leading padding inside the gutter.
     var gutterLeadingPadding: CGFloat = 3 {
         didSet {
@@ -899,7 +907,7 @@ extension LayoutManager {
         if let cachedLineController = lineControllers[line.id] {
             return cachedLineController
         } else {
-            let lineController = LineController(line: line, stringView: stringView)
+            let lineController = LineController(line: line, stringView: stringView, lineBreakMode: lineBreakMode)
             lineController.delegate = self
             lineController.constrainingWidth = constrainingLineWidth
             lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
