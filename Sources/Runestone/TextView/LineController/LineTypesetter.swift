@@ -178,7 +178,7 @@ private extension LineTypesetter {
         }
         return lineFragment
     }
-    
+
     private func suggestNextLineBreak(using typesetter: CTTypesetter) -> Int {
         switch lineBreakMode {
         case .byWordWrapping:
@@ -227,7 +227,7 @@ private extension LineTypesetter {
         }
         return length
     }
-    
+
     private func lookbackToFindFirstLineBreakableCharacter(startingAt startLocation: Int, maximumLookback: Int) -> Int? {
         var lookback = 0
         var foundWhitespace = false
