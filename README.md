@@ -54,6 +54,16 @@ The Runestone framework is used by an app of the same name. The Runestone app is
 
 <a href="https://apps.apple.com/us/app/runestone-editor/id1548193893" target="_blank"><img width="150" alt="Download on the App Store" src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"/></a>
 
+## 👨‍💻 Contributing
+
+Pull requests with bugfixes and new features are much appreciated. I'll be happy to review them and merge them once they're ready, as long as they contain change that fit within the vision of Runestone and provide generally useful functionality.
+
+Clone the repository to get started working on the project. Note that Runestone depends on Tree-sitter through a submodule. This submodule must be cloned as well before Runestone can be built. Pass the `--recursive` option when cloning the repository to clone all submodules.
+
+```bash
+git clone --recursive git@github.com:simonbs/Runestone.git
+```
+
 ## ❤️ Acknowledgments
 
 - [Tree-sitter](https://tree-sitter.github.io/tree-sitter) is used to parse code incrementally.
