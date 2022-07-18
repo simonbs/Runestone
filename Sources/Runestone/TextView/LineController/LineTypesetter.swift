@@ -181,10 +181,9 @@ private extension LineTypesetter {
     }
 
     private func suggestNextLineBreak(using typesetter: CTTypesetter) -> Int {
-        let length: CFIndex
         switch lineBreakMode {
         case .byWordWrapping:
-            length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingWidth))
+            let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingWidth))
             guard startOffset + length < stringLength else {
                 // We've reached the end of the line.
                 return length
@@ -207,7 +206,7 @@ private extension LineTypesetter {
                 return length
             }
         case .byCharWrapping:
-            length = CTTypesetterSuggestClusterBreak(typesetter, startOffset, Double(constrainingWidth))
+            let length = CTTypesetterSuggestClusterBreak(typesetter, startOffset, Double(constrainingWidth))
             guard startOffset + length < stringLength, let attributedString = attributedString else {
                 // There is no character after suggested line break.
                 return length
