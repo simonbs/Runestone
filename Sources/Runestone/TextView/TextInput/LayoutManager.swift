@@ -392,6 +392,7 @@ final class LayoutManager {
             lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
             lineController.tabWidth = tabWidth
             lineController.kern = kern
+            lineController.lineBreakMode = lineBreakMode
             lineController.invalidateSyntaxHighlighting()
         }
     }
@@ -907,13 +908,14 @@ extension LayoutManager {
         if let cachedLineController = lineControllers[line.id] {
             return cachedLineController
         } else {
-            let lineController = LineController(line: line, stringView: stringView, lineBreakMode: lineBreakMode)
+            let lineController = LineController(line: line, stringView: stringView)
             lineController.delegate = self
             lineController.constrainingWidth = constrainingLineWidth
             lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
             lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
             lineController.tabWidth = tabWidth
             lineController.theme = theme
+            lineController.lineBreakMode = lineBreakMode
             lineControllers[line.id] = lineController
             return lineController
         }

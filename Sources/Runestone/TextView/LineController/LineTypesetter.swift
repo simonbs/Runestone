@@ -29,6 +29,7 @@ final class LineTypesetter {
         }
     }
 
+    var lineBreakMode: LineBreakMode = .byWordWrapping
     var constrainingWidth: CGFloat = 0
     var lineFragmentHeightMultiplier: CGFloat = 1
     private(set) var lineFragments: [LineFragment] = []
@@ -51,7 +52,6 @@ final class LineTypesetter {
     }
 
     private let lineID: String
-    private var lineBreakMode: LineBreakMode
     private var stringLength = 0
     private var attributedString: NSAttributedString?
     private var typesetter: CTTypesetter?
@@ -60,9 +60,8 @@ final class LineTypesetter {
     private var nextYPosition: CGFloat = 0
     private var lineFragmentIndex = 0
 
-    init(lineID: String, lineBreakMode: LineBreakMode) {
+    init(lineID: String) {
         self.lineID = lineID
-        self.lineBreakMode = lineBreakMode
     }
 
     func reset() {
@@ -179,48 +178,56 @@ private extension LineTypesetter {
         }
         return lineFragment
     }
-
+    
     private func suggestNextLineBreak(using typesetter: CTTypesetter) -> Int {
         switch lineBreakMode {
         case .byWordWrapping:
-            let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingWidth))
-            guard startOffset + length < stringLength else {
-                // We've reached the end of the line.
-                return length
-            }
-            let lastCharacterIndex = startOffset + length - 1
-            let prefersLineBreakAfterCharacter = prefersInsertingLineBreakAfterCharacter(at: lastCharacterIndex)
-            guard !prefersLineBreakAfterCharacter else {
-                // We're breaking at a whitespace so we return the break suggested by CTTypesetter.
-                return length
-            }
-            // CTTypesetter did not suggest breaking at a whitespace. We try to go back in the string to find a whitespace to break at.
-            // If that fails we'll just use the break suggested by CTTypesetter. This workaround solves two issues:
-            // 1. The results more closely matches the behavior of desktop editors like Nova. They tend to prefer breaking at whitespaces.
-            // 2. It fixes an issue where breaking in the middle of the /> ligature would cause the slash not to be drawn. More info in this tweet:
-            //    https://twitter.com/simonbs/status/1515961709671899137
-            let maximumLookback = min(length, 100)
-            if let lookbackLength = lookbackToFindFirstLineBreakableCharacter(startingAt: startOffset + length, maximumLookback: maximumLookback) {
-                return length - lookbackLength
-            } else {
-                return length
-            }
+            return suggestNextLineBreakUsingWordWrapping(using: typesetter)
         case .byCharWrapping:
-            let length = CTTypesetterSuggestClusterBreak(typesetter, startOffset, Double(constrainingWidth))
-            guard startOffset + length < stringLength, let attributedString = attributedString else {
-                // There is no character after suggested line break.
-                return length
-            }
-            let lastCharacterIndex = startOffset + length - 1
-            let range = NSRange(location: lastCharacterIndex, length: 2)
-            if attributedString.attributedSubstring(from: range).string == Symbol.carriageReturnLineFeed {
-                // Suggested line break is in the middle of CRLF so return one position ahead which is after the character pair.
-                return length + 1
-            }
+            return suggestNextLineBreakUsingCharWrapping(using: typesetter)
+        }
+    }
+
+    private func suggestNextLineBreakUsingWordWrapping(using typesetter: CTTypesetter) -> Int {
+        let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingWidth))
+        guard startOffset + length < stringLength else {
+            // We've reached the end of the line.
+            return length
+        }
+        let lastCharacterIndex = startOffset + length - 1
+        let prefersLineBreakAfterCharacter = prefersInsertingLineBreakAfterCharacter(at: lastCharacterIndex)
+        guard !prefersLineBreakAfterCharacter else {
+            // We're breaking at a whitespace so we return the break suggested by CTTypesetter.
+            return length
+        }
+        // CTTypesetter did not suggest breaking at a whitespace. We try to go back in the string to find a whitespace to break at.
+        // If that fails we'll just use the break suggested by CTTypesetter. This workaround solves two issues:
+        // 1. The results more closely matches the behavior of desktop editors like Nova. They tend to prefer breaking at whitespaces.
+        // 2. It fixes an issue where breaking in the middle of the /> ligature would cause the slash not to be drawn. More info in this tweet:
+        //    https://twitter.com/simonbs/status/1515961709671899137
+        let maximumLookback = min(length, 100)
+        if let lookbackLength = lookbackToFindFirstLineBreakableCharacter(startingAt: startOffset + length, maximumLookback: maximumLookback) {
+            return length - lookbackLength
+        } else {
             return length
         }
     }
 
+    private func suggestNextLineBreakUsingCharWrapping(using typesetter: CTTypesetter) -> Int {
+        let length = CTTypesetterSuggestClusterBreak(typesetter, startOffset, Double(constrainingWidth))
+        guard startOffset + length < stringLength, let attributedString = attributedString else {
+            // There is no character after suggested line break.
+            return length
+        }
+        let lastCharacterIndex = startOffset + length - 1
+        let range = NSRange(location: lastCharacterIndex, length: 2)
+        if attributedString.attributedSubstring(from: range).string == Symbol.carriageReturnLineFeed {
+            // Suggested line break is in the middle of CRLF so return one position ahead which is after the character pair.
+            return length + 1
+        }
+        return length
+    }
+    
     private func lookbackToFindFirstLineBreakableCharacter(startingAt startLocation: Int, maximumLookback: Int) -> Int? {
         var lookback = 0
         var foundWhitespace = false

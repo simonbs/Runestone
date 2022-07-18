@@ -75,6 +75,14 @@ final class LineController {
             }
         }
     }
+    var lineBreakMode: LineBreakMode {
+        get {
+            return typesetter.lineBreakMode
+        }
+        set {
+            typesetter.lineBreakMode = newValue
+        }
+    }
     var numberOfLineFragments: Int {
         return typesetter.lineFragments.count
     }
@@ -107,10 +115,10 @@ final class LineController {
         }
     }
 
-    init(line: DocumentLineNode, stringView: StringView, lineBreakMode: LineBreakMode) {
+    init(line: DocumentLineNode, stringView: StringView) {
         self.line = line
         self.stringView = stringView
-        self.typesetter = LineTypesetter(lineID: line.id.rawValue, lineBreakMode: lineBreakMode)
+        self.typesetter = LineTypesetter(lineID: line.id.rawValue)
         self.textInputProxy.estimatedLineFragmentHeight = estimatedLineFragmentHeight
         let rootLineFragmentNodeData = LineFragmentNodeData(lineFragment: nil)
         self.lineFragmentTree = LineFragmentTree(minimumValue: 0, rootValue: 0, rootData: rootLineFragmentNodeData)
