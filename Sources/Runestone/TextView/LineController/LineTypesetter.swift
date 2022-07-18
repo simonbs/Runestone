@@ -29,6 +29,7 @@ final class LineTypesetter {
         }
     }
 
+    var lineBreakMode: LineBreakMode = .byWordWrapping
     var constrainingWidth: CGFloat = 0
     var lineFragmentHeightMultiplier: CGFloat = 1
     private(set) var lineFragments: [LineFragment] = []
@@ -179,6 +180,15 @@ private extension LineTypesetter {
     }
 
     private func suggestNextLineBreak(using typesetter: CTTypesetter) -> Int {
+        switch lineBreakMode {
+        case .byWordWrapping:
+            return suggestNextLineBreakUsingWordWrapping(using: typesetter)
+        case .byCharWrapping:
+            return suggestNextLineBreakUsingCharWrapping(using: typesetter)
+        }
+    }
+
+    private func suggestNextLineBreakUsingWordWrapping(using typesetter: CTTypesetter) -> Int {
         let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingWidth))
         guard startOffset + length < stringLength else {
             // We've reached the end of the line.
@@ -201,6 +211,21 @@ private extension LineTypesetter {
         } else {
             return length
         }
+    }
+
+    private func suggestNextLineBreakUsingCharWrapping(using typesetter: CTTypesetter) -> Int {
+        let length = CTTypesetterSuggestClusterBreak(typesetter, startOffset, Double(constrainingWidth))
+        guard startOffset + length < stringLength, let attributedString = attributedString else {
+            // There is no character after suggested line break.
+            return length
+        }
+        let lastCharacterIndex = startOffset + length - 1
+        let range = NSRange(location: lastCharacterIndex, length: 2)
+        if attributedString.attributedSubstring(from: range).string == Symbol.carriageReturnLineFeed {
+            // Suggested line break is in the middle of CRLF so return one position ahead which is after the character pair.
+            return length + 1
+        }
+        return length
     }
 
     private func lookbackToFindFirstLineBreakableCharacter(startingAt startLocation: Int, maximumLookback: Int) -> Int? {

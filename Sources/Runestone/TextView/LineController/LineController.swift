@@ -75,6 +75,14 @@ final class LineController {
             }
         }
     }
+    var lineBreakMode: LineBreakMode {
+        get {
+            return typesetter.lineBreakMode
+        }
+        set {
+            typesetter.lineBreakMode = newValue
+        }
+    }
     var numberOfLineFragments: Int {
         return typesetter.lineFragments.count
     }
