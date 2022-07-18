@@ -174,9 +174,7 @@ private extension MainViewController {
         alertController.addAction(doneAction)
         present(alertController, animated: true)
     }
-}
 
-private extension MainViewController {
     private func presentThemePicker() {
         let theme = UserDefaults.standard.theme
         let themePickerViewController = ThemePickerViewController(selectedTheme: theme)
