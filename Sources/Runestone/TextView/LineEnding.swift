@@ -8,7 +8,7 @@ public enum LineEnding: String, CaseIterable {
     case lf
     /// Windows (CRLF) line endings.
     ///
-    /// Uses the `\c\n` character.
+    /// Uses the `\r\n` character.
     case crlf
     /// Mac (CR) line endings.
     ///
