@@ -991,7 +991,7 @@ extension TextInputView {
         }
         let isDeletingMultipleCharacters = selectedRange.length > 1
         if isDeletingMultipleCharacters {
-                    timedUndoManager.endUndoGrouping()
+            timedUndoManager.endUndoGrouping()
             timedUndoManager.beginUndoGrouping()
         }
         replaceText(in: deleteRange, with: "", selectedRangeAfterUndo: selectedRangeAfterUndo)
