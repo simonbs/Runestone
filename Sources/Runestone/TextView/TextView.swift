@@ -584,7 +584,7 @@ open class TextView: UIScrollView {
     private let tapGestureRecognizer = QuickTapGestureRecognizer()
     private var _inputAccessoryView: UIView?
     private let _inputAssistantItem = UITextInputAssistantItem()
-    private var willBeginEditingFromNonEditableTextInteraction = false
+    private var isPerformingNonEditableTextInteraction = false
     private var delegateAllowsEditingToBegin: Bool {
         guard isEditable else {
             return false
@@ -671,8 +671,6 @@ open class TextView: UIScrollView {
     @discardableResult
     override open func becomeFirstResponder() -> Bool {
         if !isEditing && delegateAllowsEditingToBegin {
-            // Reset willBeginEditingFromNonEditableTextInteraction to support calling becomeFirstResponder() programmatically.
-            willBeginEditingFromNonEditableTextInteraction = false
             _ = textInputView.resignFirstResponder()
             _ = textInputView.becomeFirstResponder()
             return true
@@ -735,9 +733,9 @@ open class TextView: UIScrollView {
     /// Inserts text at the location of the caret or, if no selection or caret is present, at the end of the text.
     /// - Parameter text: A string to insert.
     open func insertText(_ text: String) {
+        textInputView.inputDelegate?.selectionWillChange(textInputView)
         textInputView.insertText(text)
-        // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
-        textInputView.sendSelectionChangedToTextSelectionView()
+        textInputView.inputDelegate?.selectionDidChange(textInputView)
     }
 
     /// Replaces the text that is in the specified range.
@@ -745,9 +743,9 @@ open class TextView: UIScrollView {
     ///   - range: A range of text in the document.
     ///   - text: A string to replace the text in range.
     open func replace(_ range: UITextRange, withText text: String) {
+        textInputView.inputDelegate?.selectionWillChange(textInputView)
         textInputView.replace(range, withText: text)
-        // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
-        textInputView.sendSelectionChangedToTextSelectionView()
+        textInputView.inputDelegate?.selectionDidChange(textInputView)
     }
 
     /// Replaces the text that is in the specified range.
@@ -755,10 +753,10 @@ open class TextView: UIScrollView {
     ///   - range: A range of text in the document.
     ///   - text: A string to replace the text in range.
     public func replace(_ range: NSRange, withText text: String) {
+        textInputView.inputDelegate?.selectionWillChange(textInputView)
         let indexedRange = IndexedRange(range)
         textInputView.replace(indexedRange, withText: text)
-        // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
-        textInputView.sendSelectionChangedToTextSelectionView()
+        textInputView.inputDelegate?.selectionDidChange(textInputView)
     }
 
     /// Replaces the text in the specified matches.
@@ -1079,7 +1077,6 @@ private extension TextView {
             return
         }
         if gestureRecognizer.state == .ended {
-            willBeginEditingFromNonEditableTextInteraction = false
             let point = gestureRecognizer.location(in: textInputView)
             let oldSelectedRange = textInputView.selectedRange
             textInputView.moveCaret(to: point)
@@ -1240,10 +1237,10 @@ extension TextView: TextInputViewDelegate {
         guard isEditable else {
             return
         }
-        isEditing = !willBeginEditingFromNonEditableTextInteraction
+        isEditing = !isPerformingNonEditableTextInteraction
         // If a developer is programmatically calling becomeFirstresponder() then we might not have a selected range.
         // We set the selectedRange instead of the selectedTextRange to avoid invoking any delegates.
-        if textInputView.selectedRange == nil && !willBeginEditingFromNonEditableTextInteraction {
+        if textInputView.selectedRange == nil && !isPerformingNonEditableTextInteraction {
             textInputView.selectedRange = NSRange(location: 0, length: 0)
         }
         // Ensure selection is laid out without animation.
@@ -1251,13 +1248,13 @@ extension TextView: TextInputViewDelegate {
             textInputView.layoutIfNeeded()
         }
         // The editable interaction must be installed early in the -becomeFirstResponder() call
-        if !willBeginEditingFromNonEditableTextInteraction {
+        if !isPerformingNonEditableTextInteraction {
             installEditableInteraction()
         }
     }
 
     func textInputViewDidBeginEditing(_ view: TextInputView) {
-        if !willBeginEditingFromNonEditableTextInteraction {
+        if !isPerformingNonEditableTextInteraction {
             editorDelegate?.textViewDidBeginEditing(self)
         }
     }
@@ -1425,7 +1422,13 @@ extension TextView: UITextInteractionDelegate {
             // When long-pressing our instance of UITextInput, the UITextInteraction will make the text input first responder.
             // In this case the user wants to select text in the text view but not start editing, so we set a flag that tells us
             // that we should not install editable text interaction in this case.
-            willBeginEditingFromNonEditableTextInteraction = true
+            isPerformingNonEditableTextInteraction = true
+        }
+    }
+
+    public func interactionDidEnd(_ interaction: UITextInteraction) {
+        if interaction.textInteractionMode == .nonEditable {
+            isPerformingNonEditableTextInteraction = false
         }
     }
 }
