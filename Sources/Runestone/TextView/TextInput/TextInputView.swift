@@ -541,6 +541,7 @@ final class TextInputView: UIView, UITextInput {
     }
     private var hasPendingFullLayout = false
     private let editMenuController = EditMenuController()
+    // swiftlint:disable:next identifier_name
     private var shouldNotifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
 
     // MARK: - Lifecycle
