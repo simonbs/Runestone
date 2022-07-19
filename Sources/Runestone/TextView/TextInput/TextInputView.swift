@@ -990,7 +990,7 @@ extension TextInputView {
         }
         let isDeletingMultipleCharacters = selectedRange.length > 1
         if isDeletingMultipleCharacters {
-                    timedUndoManager.endUndoGrouping()
+            timedUndoManager.endUndoGrouping()
             timedUndoManager.beginUndoGrouping()
         }
         // We've set shouldNotifyInputDelegateAboutSelectionChange to false so we must notify the input delegate ourselves.
