@@ -733,9 +733,9 @@ open class TextView: UIScrollView {
     /// Inserts text at the location of the caret or, if no selection or caret is present, at the end of the text.
     /// - Parameter text: A string to insert.
     open func insertText(_ text: String) {
+        textInputView.inputDelegate?.selectionWillChange(textInputView)
         textInputView.insertText(text)
-        // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
-        textInputView.sendSelectionChangedToTextSelectionView()
+        textInputView.inputDelegate?.selectionDidChange(textInputView)
     }
 
     /// Replaces the text that is in the specified range.
@@ -743,9 +743,9 @@ open class TextView: UIScrollView {
     ///   - range: A range of text in the document.
     ///   - text: A string to replace the text in range.
     open func replace(_ range: UITextRange, withText text: String) {
+        textInputView.inputDelegate?.selectionWillChange(textInputView)
         textInputView.replace(range, withText: text)
-        // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
-        textInputView.sendSelectionChangedToTextSelectionView()
+        textInputView.inputDelegate?.selectionDidChange(textInputView)
     }
 
     /// Replaces the text that is in the specified range.
@@ -753,10 +753,10 @@ open class TextView: UIScrollView {
     ///   - range: A range of text in the document.
     ///   - text: A string to replace the text in range.
     public func replace(_ range: NSRange, withText text: String) {
+        textInputView.inputDelegate?.selectionWillChange(textInputView)
         let indexedRange = IndexedRange(range)
         textInputView.replace(indexedRange, withText: text)
-        // Called in TextView since we only want to force the text selection view to update when editing text programmatically.
-        textInputView.sendSelectionChangedToTextSelectionView()
+        textInputView.inputDelegate?.selectionDidChange(textInputView)
     }
 
     /// Replaces the text in the specified matches.

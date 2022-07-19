@@ -313,7 +313,6 @@ final class TextInputView: UIView, UITextInput {
                 layoutManager.invalidateLines()
                 layoutManager.setNeedsLayout()
                 layoutManager.layoutIfNeeded()
-                sendSelectionChangedToTextSelectionView()
             }
         }
     }
@@ -327,7 +326,6 @@ final class TextInputView: UIView, UITextInput {
                 layoutManager.invalidateLines()
                 layoutManager.setNeedsLayout()
                 layoutManager.layoutIfNeeded()
-                sendSelectionChangedToTextSelectionView()
             }
         }
     }
@@ -995,7 +993,6 @@ extension TextInputView {
             timedUndoManager.beginUndoGrouping()
         }
         replaceText(in: deleteRange, with: "", selectedRangeAfterUndo: selectedRangeAfterUndo)
-        sendSelectionChangedToTextSelectionView()
         if isDeletingMultipleCharacters {
             timedUndoManager.endUndoGrouping()
         }
@@ -1169,26 +1166,6 @@ extension TextInputView {
         let cappedLocation = min(max(range.location, 0), stringView.string.length)
         let cappedLength = min(max(range.length, 0), stringView.string.length - cappedLocation)
         return NSRange(location: cappedLocation, length: cappedLength)
-    }
-
-    func sendSelectionChangedToTextSelectionView() {
-        // Fores the position of the caret to be updated. Normally we can do this by notifying the input delegate when changing the selected range like:
-        //
-        // inputDelegate?.selectionWillChange(self)
-        // selectedRange = newSelectedRange
-        // inputDelegate?.selectionDidChange(self)
-        //
-        // If we don't notify the input delegate when the setter on selectedTextRange is called, then the location of the caret will not be updated.
-        // However, if we do notify the delegate when the setter is called, Korean input will no longer work as described in https://github.com/simonbs/Runestone/issues/11
-        // So the workaround is to not notify the delegate but tell the text selection view directly that the selection has changed.
-        if let textSelectionView = textSelectionView {
-            let sel = NSSelectorFromString("selectionChanged")
-            if textSelectionView.responds(to: sel) {
-                textSelectionView.perform(sel)
-            } else {
-                print("\(textSelectionView) does not respond to 'selectionChanged'")
-            }
-        }
     }
 
     private func moveCaret(to linePosition: LinePosition) {
