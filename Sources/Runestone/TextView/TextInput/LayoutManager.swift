@@ -426,17 +426,6 @@ final class LayoutManager {
         }
     }
 
-    func typesetLines(toLocation location: Int) {
-        let range = NSRange(location: 0, length: location)
-        let lines = lineManager.lines(in: range)
-        for line in lines {
-            let lineController = lineController(for: line)
-            let lineLocation = line.location
-            let endTypesettingLocation = min(lineLocation + line.data.length, location) - lineLocation
-            lineController.prepareToDisplayString(toLocation: endTypesettingLocation, syntaxHighlightAsynchronously: true)
-        }
-    }
-
     func textPreview(containing needleRange: NSRange, peekLength: Int = 50) -> TextPreview? {
         let lines = lineManager.lines(in: needleRange)
         guard !lines.isEmpty else {
