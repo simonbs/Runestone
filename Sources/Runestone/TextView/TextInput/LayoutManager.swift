@@ -412,10 +412,13 @@ final class LayoutManager {
     func redisplayLines(withIDs lineIDs: Set<DocumentLineNodeID>) {
         for lineID in lineIDs {
             if let lineController = lineControllers[lineID] {
-                let lineYPosition = lineController.line.yPosition
-                let lineLocalViewport = CGRect(x: 0, y: lineYPosition, width: insetViewport.width, height: insetViewport.maxY - lineYPosition)
                 lineController.invalidateEverything()
-                lineController.prepareToDisplayString(in: lineLocalViewport, syntaxHighlightAsynchronously: false)
+                // Only display the line if it's currently visible on the screen. Otherwise it's enough to invalidate it and redisplay it later.
+                if visibleLineIDs.contains(lineID) {
+                    let lineYPosition = lineController.line.yPosition
+                    let lineLocalViewport = CGRect(x: 0, y: lineYPosition, width: insetViewport.width, height: insetViewport.maxY - lineYPosition)
+                    lineController.prepareToDisplayString(in: lineLocalViewport, syntaxHighlightAsynchronously: false)
+                }
             }
         }
     }
