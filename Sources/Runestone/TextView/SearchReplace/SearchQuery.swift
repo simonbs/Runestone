@@ -22,10 +22,12 @@ public struct SearchQuery: Hashable, Equatable {
 
     /// The text to search for.
     public let text: String
-    /// Whether the text is a regular exprssion.
+    /// Whether the text is a regular expression.
     public let matchMethod: MatchMethod
     /// Whether to perform a case-sensitive search.
     public let isCaseSensitive: Bool
+    /// A range in the text view that the search should run against. Defaults to `nil` meaning full text view. When set to `nil` the search will run against the full text view.
+    public let range: NSRange?
 
     private var annotatedText: String {
         switch matchMethod {
@@ -57,17 +59,18 @@ public struct SearchQuery: Hashable, Equatable {
     ///   - text: The text to search for. May be a regular expression if `isRegularExpression` is `true`.
     ///   - matchMethod: Strategy to use when matching the search text against the text in the text view. Defaults to `contains`.
     ///   - isCaseSensitive: Whether to perform a case-sensitive search.
-    public init(text: String, matchMethod: MatchMethod = .contains, isCaseSensitive: Bool = false) {
+    ///   - range: A range in the text view that the search should run against. Defaults to `nil` meaning full text view.
+    public init(text: String, matchMethod: MatchMethod = .contains, isCaseSensitive: Bool = false, range: NSRange? = nil) {
         self.text = text
         self.matchMethod = matchMethod
         self.isCaseSensitive = isCaseSensitive
+        self.range = range
     }
 
     func matches(in string: NSString) -> [NSTextCheckingResult] {
         do {
             let regex = try NSRegularExpression(pattern: annotatedText, options: regularExpressionOptions)
-            let range = NSRange(location: 0, length: string.length)
-            return regex.matches(in: string as String, range: range)
+            return regex.matches(in: string as String, range: range ?? NSRange(location: 0, length: string.length))
         } catch {
             #if DEBUG
             print(error)
