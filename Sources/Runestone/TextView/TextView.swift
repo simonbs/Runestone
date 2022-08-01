@@ -720,6 +720,21 @@ open class TextView: UIScrollView {
             return nil
         }
     }
+    
+    /// Returns the relative location to the first index in the text for the row/column text location.
+    /// - Parameter textLocation: The row/column text location in the text.
+    /// - Returns: The location if the input text location could be found in the string, otherwise nil.
+    public func textLocation(at textLocation: TextLocation) -> Int? {
+        let lineIndex = textLocation.lineNumber
+        guard lineIndex >= 0 && lineIndex < textInputView.lineManager.lineCount else {
+            return nil
+        }
+        let line = textInputView.lineManager.line(atRow: lineIndex)
+        guard textLocation.column >= 0 && textLocation.column <= line.data.totalLength else {
+            return nil
+        }
+        return line.location + textLocation.column
+    }
 
     /// Sets the language mode on a background thread.
     ///
