@@ -720,7 +720,7 @@ open class TextView: UIScrollView {
             return nil
         }
     }
-    
+
     /// Returns the relative location to the first index in the text for the row/column text location.
     /// - Parameter textLocation: The row/column text location in the text.
     /// - Returns: The location if the input text location could be found in the string, otherwise nil.
