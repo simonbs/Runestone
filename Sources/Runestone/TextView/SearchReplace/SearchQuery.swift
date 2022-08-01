@@ -26,7 +26,9 @@ public struct SearchQuery: Hashable, Equatable {
     public let matchMethod: MatchMethod
     /// Whether to perform a case-sensitive search.
     public let isCaseSensitive: Bool
-    /// A range in the text view that the search should run against. Defaults to `nil` meaning full text view. When set to `nil` the search will run against the full text view.
+    /// A range in the text view that the search should run against.
+    ///
+    /// When set to `nil` the search will run against the full text view. Defaults to `nil`.
     public let range: NSRange?
 
     private var annotatedText: String {
