@@ -721,6 +721,21 @@ open class TextView: UIScrollView {
         }
     }
 
+    /// Returns the character location at the specified row and column.
+    /// - Parameter textLocation: The row and column in the text.
+    /// - Returns: The location if the input row and column could be found in the text, otherwise nil.
+    public func location(at textLocation: TextLocation) -> Int? {
+        let lineIndex = textLocation.lineNumber
+        guard lineIndex >= 0 && lineIndex < textInputView.lineManager.lineCount else {
+            return nil
+        }
+        let line = textInputView.lineManager.line(atRow: lineIndex)
+        guard textLocation.column >= 0 && textLocation.column <= line.data.totalLength else {
+            return nil
+        }
+        return line.location + textLocation.column
+    }
+
     /// Sets the language mode on a background thread.
     ///
     /// - Parameters:
