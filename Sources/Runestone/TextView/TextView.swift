@@ -721,9 +721,9 @@ open class TextView: UIScrollView {
         }
     }
 
-    /// Returns the relative location to the first index in the text for the row/column text location.
-    /// - Parameter textLocation: The row/column text location in the text.
-    /// - Returns: The location if the input text location could be found in the string, otherwise nil.
+    /// Returns the character location at the specified row and column.
+    /// - Parameter textLocation: The row and column in the text.
+    /// - Returns: The location if the input row and column could be found in the text, otherwise nil.
     public func location(at textLocation: TextLocation) -> Int? {
         let lineIndex = textLocation.lineNumber
         guard lineIndex >= 0 && lineIndex < textInputView.lineManager.lineCount else {
