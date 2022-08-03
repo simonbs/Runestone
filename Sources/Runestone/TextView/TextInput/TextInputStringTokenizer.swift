@@ -85,4 +85,3 @@ private extension TextInputStringTokenizer {
         return direction.rawValue == UITextStorageDirection.forward.rawValue || direction.rawValue == UITextLayoutDirection.right.rawValue
     }
 }
-
