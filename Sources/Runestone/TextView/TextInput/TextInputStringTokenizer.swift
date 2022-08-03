@@ -2,9 +2,11 @@ import UIKit
 
 final class TextInputStringTokenizer: UITextInputStringTokenizer {
     private let lineManager: LineManager
+    private let stringView: StringView
 
-    init(textInput: UIResponder & UITextInput, lineManager: LineManager) {
+    init(textInput: UIResponder & UITextInput, lineManager: LineManager, stringView: StringView) {
         self.lineManager = lineManager
+        self.stringView = stringView
         super.init(textInput: textInput)
     }
 
@@ -12,13 +14,15 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         guard let indexedPosition = position as? IndexedPosition else {
             return super.isPosition(position, atBoundary: granularity, inDirection: direction)
         }
-        if granularity.treatAsLine, let line = lineManager.line(containingCharacterAt: indexedPosition.index) {
+        if (granularity == .line || granularity == .paragraph), let line = lineManager.line(containingCharacterAt: indexedPosition.index) {
             let localIndex = indexedPosition.index - line.location
             if isBackward(direction) {
                 return localIndex == 0
             } else {
                 return localIndex == line.data.length
             }
+        } else if granularity == .word, isCustomWordBoundry(at: indexedPosition.index) {
+            return true
         } else {
             return super.isPosition(position, atBoundary: granularity, inDirection: map(direction))
         }
@@ -36,7 +40,7 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         guard let indexedPosition = position as? IndexedPosition else {
             return super.position(from: position, toBoundary: granularity, inDirection: direction)
         }
-        if granularity.treatAsLine, let line = lineManager.line(containingCharacterAt: indexedPosition.index) {
+        if (granularity == .line || granularity == .paragraph), let line = lineManager.line(containingCharacterAt: indexedPosition.index) {
             if isBackward(direction) {
                 return IndexedPosition(index: line.location)
             } else {
@@ -55,6 +59,14 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
 }
 
 private extension TextInputStringTokenizer {
+    private func isCustomWordBoundry(at location: Int) -> Bool {
+        guard let character = stringView.character(at: location) else {
+            return false
+        }
+        let wordBoundryCharacterSet: CharacterSet = .punctuationCharacters
+        return character.unicodeScalars.allSatisfy { wordBoundryCharacterSet.contains($0) }
+    }
+
     private func map(_ direction: UITextDirection) -> UITextDirection {
         if direction.rawValue == UITextLayoutDirection.left.rawValue {
             return .storage(.backward)
@@ -74,15 +86,3 @@ private extension TextInputStringTokenizer {
     }
 }
 
-private extension UITextGranularity {
-    var treatAsLine: Bool {
-        switch self {
-        case .character, .document, .sentence, .word:
-            return false
-        case .line, .paragraph:
-            return true
-        @unknown default:
-            return false
-        }
-    }
-}
