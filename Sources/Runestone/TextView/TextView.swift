@@ -1392,7 +1392,7 @@ extension TextView: UIGestureRecognizerDelegate {
         if gestureRecognizer === tapGestureRecognizer {
             return !isEditing && !isDragging && !isDecelerating && delegateAllowsEditingToBegin
         } else {
-            return true
+            return super.gestureRecognizerShouldBegin(gestureRecognizer)
         }
     }
 
