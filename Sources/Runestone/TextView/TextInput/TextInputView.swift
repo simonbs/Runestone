@@ -64,7 +64,10 @@ final class TextInputView: UIView, UITextInput {
     var hasText: Bool {
         return string.length > 0
     }
-    private(set) lazy var tokenizer: UITextInputTokenizer = TextInputStringTokenizer(textInput: self, lineManager: lineManager)
+    private(set) lazy var tokenizer: UITextInputTokenizer = TextInputStringTokenizer(
+        textInput: self,
+        lineManager: lineManager,
+        stringView: stringView)
     var autocorrectionType: UITextAutocorrectionType = .default
     var autocapitalizationType: UITextAutocapitalizationType = .sentences
     var smartQuotesType: UITextSmartQuotesType = .default
