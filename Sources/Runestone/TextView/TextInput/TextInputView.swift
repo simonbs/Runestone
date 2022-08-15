@@ -1291,8 +1291,11 @@ extension TextInputView {
         guard shouldChangeText(in: range, replacementText: markedText) else {
             return
         }
+        shouldNotifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
         markedRange = markedText.isEmpty ? nil : NSRange(location: range.location, length: markedText.utf16.count)
         replaceText(in: range, with: markedText)
+        // The selected range passed to setMarkedText(_:selectedRange:) is local to the marked range.
+        _selectedRange = NSRange(location: range.location + selectedRange.location, length: selectedRange.length)
         delegate?.textInputViewDidUpdateMarkedRange(self)
     }
 
