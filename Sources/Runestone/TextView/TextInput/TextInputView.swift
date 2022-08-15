@@ -415,7 +415,9 @@ final class TextInputView: UIView, UITextInput {
                 languageMode.parse(newValue)
                 lineManager.rebuild(from: newValue)
                 if let oldSelectedRange = selectedRange {
+                    inputDelegate?.selectionWillChange(self)
                     selectedRange = safeSelectionRange(from: oldSelectedRange)
+                    inputDelegate?.selectionDidChange(self)
                 }
                 layoutManager.invalidateContentSize()
                 layoutManager.updateLineNumberWidth()
@@ -707,6 +709,11 @@ final class TextInputView: UIView, UITextInput {
             }
         } else {
             timedUndoManager.removeAllActions()
+        }
+        if let oldSelectedRange = selectedRange {
+            inputDelegate?.selectionWillChange(self)
+            selectedRange = safeSelectionRange(from: oldSelectedRange)
+            inputDelegate?.selectionDidChange(self)
         }
         if window != nil {
             performFullLayout()
