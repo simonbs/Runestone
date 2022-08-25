@@ -1184,8 +1184,9 @@ extension TextInputView {
     }
 
     private func safeSelectionRange(from range: NSRange) -> NSRange {
-        let cappedLocation = min(max(range.location, 0), stringView.string.length)
-        let cappedLength = min(max(range.length, 0), stringView.string.length - cappedLocation)
+        let stringLength = stringView.string.length
+        let cappedLocation = min(max(range.location, 0), stringLength)
+        let cappedLength = min(max(range.length, 0), stringLength - cappedLocation)
         return NSRange(location: cappedLocation, length: cappedLength)
     }
 
@@ -1295,7 +1296,8 @@ extension TextInputView {
         markedRange = markedText.isEmpty ? nil : NSRange(location: range.location, length: markedText.utf16.count)
         replaceText(in: range, with: markedText)
         // The selected range passed to setMarkedText(_:selectedRange:) is local to the marked range.
-        _selectedRange = NSRange(location: range.location + selectedRange.location, length: selectedRange.length)
+        let preferredSelectedRange = NSRange(location: range.location + selectedRange.location, length: selectedRange.length)
+        _selectedRange = safeSelectionRange(from: preferredSelectedRange)
         delegate?.textInputViewDidUpdateMarkedRange(self)
     }
 
