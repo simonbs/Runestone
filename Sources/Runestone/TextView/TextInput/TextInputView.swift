@@ -1184,8 +1184,9 @@ extension TextInputView {
     }
 
     private func safeSelectionRange(from range: NSRange) -> NSRange {
-        let cappedLocation = min(max(range.location, 0), stringView.string.length)
-        let cappedLength = min(max(range.length, 0), stringView.string.length - cappedLocation)
+        let stringLength = stringView.string.length
+        let cappedLocation = min(max(range.location, 0), stringLength)
+        let cappedLength = min(max(range.length, 0), stringLength - cappedLocation)
         return NSRange(location: cappedLocation, length: cappedLength)
     }
 
