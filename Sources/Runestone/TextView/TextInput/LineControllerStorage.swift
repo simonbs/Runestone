@@ -20,11 +20,11 @@ final class LineControllerStorage {
         }
     }
     private var lineControllers: [DocumentLineNodeID: LineController] = [:]
-    
+
     init(stringView: StringView) {
         self.stringView = stringView
     }
-    
+
     func getOrCreateLineController(for line: DocumentLineNode) -> LineController {
         if let cachedLineController = lineControllers[line.id] {
             return cachedLineController
