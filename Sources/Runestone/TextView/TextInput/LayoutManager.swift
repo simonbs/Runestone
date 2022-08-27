@@ -458,8 +458,8 @@ extension LayoutManager {
         }
         let selectsLineEnding = range.upperBound == endLine.location
         let adjustedRange = NSRange(location: range.location, length: selectsLineEnding ? range.length - 1 : range.length)
-        let startCaretRect = caretRect(at: adjustedRange.lowerBound)
-        let endCaretRect = caretRect(at: adjustedRange.upperBound)
+        let startCaretRect = caretRect(at: adjustedRange.lowerBound, placeCaretAtNextLineFragmentForLastCharacter: true)
+        let endCaretRect = caretRect(at: adjustedRange.upperBound, placeCaretAtNextLineFragmentForLastCharacter: false)
         let fullWidth = max(contentWidth, scrollViewWidth) - textContainerInset.right
         if startCaretRect.minY == endCaretRect.minY && startCaretRect.maxY == endCaretRect.maxY {
             // Selecting text in the same line fragment.
