@@ -1,12 +1,14 @@
 import UIKit
 
 final class TextInputStringTokenizer: UITextInputStringTokenizer {
-    private let lineManager: LineManager
     private let stringView: StringView
+    private let lineManager: LineManager
+    private let lineControllerStorage: LineControllerStorage
 
-    init(textInput: UIResponder & UITextInput, lineManager: LineManager, stringView: StringView) {
+    init(textInput: UIResponder & UITextInput, stringView: StringView, lineManager: LineManager, lineControllerStorage: LineControllerStorage) {
         self.lineManager = lineManager
         self.stringView = stringView
+        self.lineControllerStorage = lineControllerStorage
         super.init(textInput: textInput)
     }
 
@@ -14,12 +16,17 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         guard let indexedPosition = position as? IndexedPosition else {
             return super.isPosition(position, atBoundary: granularity, inDirection: direction)
         }
-        if (granularity == .line || granularity == .paragraph), let line = lineManager.line(containingCharacterAt: indexedPosition.index) {
-            let localIndex = indexedPosition.index - line.location
-            if isBackward(direction) {
-                return localIndex == 0
+        if granularity == .line || granularity == .paragraph {
+            if let location = lineBoundaryLocation(forLineContainingCharacterAt: indexedPosition.index, inDirection: direction) {
+                return indexedPosition.index == location
             } else {
-                return localIndex == line.data.length
+                return false
+            }
+        } else if granularity == .paragraph {
+            if let location = paragraphBoundaryLocation(forLineContainingCharacterAt: indexedPosition.index, inDirection: direction) {
+                return indexedPosition.index == location
+            } else {
+                return false
             }
         } else if granularity == .word, isCustomWordBoundry(at: indexedPosition.index) {
             return true
@@ -40,12 +47,10 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         guard let indexedPosition = position as? IndexedPosition else {
             return super.position(from: position, toBoundary: granularity, inDirection: direction)
         }
-        if (granularity == .line || granularity == .paragraph), let line = lineManager.line(containingCharacterAt: indexedPosition.index) {
-            if isBackward(direction) {
-                return IndexedPosition(index: line.location)
-            } else {
-                return IndexedPosition(index: line.location + line.data.length)
-            }
+        if granularity == .line || granularity == .paragraph {
+            return lineBoundaryLocation(forLineContainingCharacterAt: indexedPosition.index, inDirection: direction).map(IndexedPosition.init)
+        } else if granularity == .paragraph {
+            return paragraphBoundaryLocation(forLineContainingCharacterAt: indexedPosition.index, inDirection: direction).map(IndexedPosition.init)
         } else {
             return super.position(from: position, toBoundary: granularity, inDirection: direction)
         }
@@ -59,6 +64,38 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
 }
 
 private extension TextInputStringTokenizer {
+    private func lineBoundaryLocation(forLineContainingCharacterAt sourceLocation: Int, inDirection direction: UITextDirection) -> Int? {
+        guard let line = lineManager.line(containingCharacterAt: sourceLocation) else {
+            return nil
+        }
+        guard let lineController = lineControllerStorage[line.id] else {
+            return nil
+        }
+        let lineLocalLocation = sourceLocation - line.location
+        let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation)
+        guard let lineFragment = lineFragmentNode.data.lineFragment else {
+            return nil
+        }
+        if isBackward(direction) {
+            return lineFragment.range.lowerBound
+        } else if sourceLocation == lineFragment.range.lowerBound {
+            return lineFragmentNode.previous.data.lineFragment?.range.upperBound
+        } else {
+            return lineFragment.range.upperBound
+        }
+    }
+
+    private func paragraphBoundaryLocation(forLineContainingCharacterAt sourceLocation: Int, inDirection direction: UITextDirection) -> Int? {
+        guard let line = lineManager.line(containingCharacterAt: sourceLocation) else {
+            return nil
+        }
+        if isBackward(direction) {
+            return line.location
+        } else {
+            return line.location + line.data.length
+        }
+    }
+
     private func isCustomWordBoundry(at location: Int) -> Bool {
         guard let character = stringView.character(at: location) else {
             return false
