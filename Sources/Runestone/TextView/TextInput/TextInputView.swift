@@ -35,8 +35,20 @@ final class TextInputView: UIView, UITextInput {
             // It'll invoke the setter in various scenarios, for example when navigating the text using the keyboard.
             let newRange = (newValue as? IndexedRange)?.range
             if newRange != _selectedRange {
-                shouldNotifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
+                // The logic for determining whether or not to notify the input delegate is based on advice provided by Alexander Blach, developer of Textastic.
+                var shouldNotifyInputDelegate = false
+                if didCallPositionFromPositionInDirectionWithOffset {
+                    shouldNotifyInputDelegate = true
+                    didCallPositionFromPositionInDirectionWithOffset = false
+                }
+                shouldNotifyInputDelegateAboutSelectionChangeInLayoutSubviews = !shouldNotifyInputDelegate
+                if shouldNotifyInputDelegate {
+                    inputDelegate?.selectionWillChange(self)
+                }
                 _selectedRange = newRange
+                if shouldNotifyInputDelegate {
+                    inputDelegate?.selectionDidChange(self)
+                }
                 delegate?.textInputViewDidChangeSelection(self)
             }
         }
@@ -546,6 +558,7 @@ final class TextInputView: UIView, UITextInput {
     private let editMenuController = EditMenuController()
     // swiftlint:disable:next identifier_name
     private var shouldNotifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
+    private var didCallPositionFromPositionInDirectionWithOffset = false
     private var shouldPreserveUndoStackWhenSettingString = false
 
     // MARK: - Lifecycle
@@ -1339,6 +1352,7 @@ extension TextInputView {
         guard let indexedPosition = position as? IndexedPosition else {
             return nil
         }
+        didCallPositionFromPositionInDirectionWithOffset = true
         guard let location = lineMovementController.location(from: indexedPosition.index, in: direction, offset: offset) else {
             return nil
         }
