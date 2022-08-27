@@ -427,7 +427,7 @@ final class TextInputView: UIView, UITextInput {
                 invalidateLines()
                 layoutManager.setNeedsLayout()
                 layoutManager.layoutIfNeeded()
-                if !shouldPreserveUndoStackWhenSettingString {
+                if !preserveUndoStackWhenSettingString {
                     undoManager?.removeAllActions()
                 }
             }
@@ -558,7 +558,7 @@ final class TextInputView: UIView, UITextInput {
     private let editMenuController = EditMenuController()
     private var notifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
     private var didCallPositionFromPositionInDirectionWithOffset = false
-    private var shouldPreserveUndoStackWhenSettingString = false
+    private var preserveUndoStackWhenSettingString = false
 
     // MARK: - Lifecycle
     init(theme: Theme) {
@@ -1084,9 +1084,9 @@ extension TextInputView {
         }
         timedUndoManager.endUndoGrouping()
         let oldSelectedRange = selectedRange
-        shouldPreserveUndoStackWhenSettingString = true
+        preserveUndoStackWhenSettingString = true
         string = newString
-        shouldPreserveUndoStackWhenSettingString = false
+        preserveUndoStackWhenSettingString = false
         timedUndoManager.beginUndoGrouping()
         timedUndoManager.setActionName(L10n.Undo.ActionName.replaceAll)
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
