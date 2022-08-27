@@ -6,7 +6,6 @@ protocol LayoutManagerDelegate: AnyObject {
     func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager)
     func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
     func layoutManagerDidChangeGutterWidth(_ layoutManager: LayoutManager)
-    func layoutManagerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ layoutManager: LayoutManager)
 }
 
 // swiftlint:disable:next type_body_length
@@ -36,11 +35,8 @@ final class LayoutManager {
     var stringView: StringView
     var scrollViewWidth: CGFloat = 0 {
         didSet {
-            if scrollViewWidth != oldValue {
-                if isLineWrappingEnabled {
-                    invalidateContentSize()
-                    invalidateLines()
-                }
+            if scrollViewWidth != oldValue && isLineWrappingEnabled {
+                invalidateContentSize()
             }
         }
     }
@@ -51,7 +47,7 @@ final class LayoutManager {
     var languageMode: InternalLanguageMode {
         didSet {
             if languageMode !== oldValue {
-                for (_, lineController) in lineControllers {
+                for lineController in lineControllerStorage {
                     lineController.invalidateSyntaxHighlighter()
                     lineController.invalidateSyntaxHighlighting()
                 }
@@ -68,7 +64,7 @@ final class LayoutManager {
                 invisibleCharacterConfiguration.textColor = theme.invisibleCharactersColor
                 gutterSelectionBackgroundView.backgroundColor = theme.selectedLinesGutterBackgroundColor
                 lineSelectionBackgroundView.backgroundColor = theme.selectedLineBackgroundColor
-                for (_, lineController) in lineControllers {
+                for lineController in lineControllerStorage {
                     lineController.theme = theme
                     lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
                     lineController.invalidateSyntaxHighlighting()
@@ -114,30 +110,13 @@ final class LayoutManager {
         }
     }
     var invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
-    var tabWidth: CGFloat = 10 {
-        didSet {
-            if tabWidth != oldValue {
-                invalidateContentSize()
-                invalidateLines()
-            }
-        }
-    }
     var isLineWrappingEnabled = true {
         didSet {
             if isLineWrappingEnabled != oldValue {
                 invalidateContentSize()
-                invalidateLines()
             }
         }
     }
-    var lineBreakMode: LineBreakMode = .byWordWrapping {
-         didSet {
-             if lineBreakMode != oldValue {
-                 invalidateContentSize()
-                 invalidateLines()
-             }
-         }
-     }
     /// Leading padding inside the gutter.
     var gutterLeadingPadding: CGFloat = 3 {
         didSet {
@@ -181,16 +160,16 @@ final class LayoutManager {
         didSet {
             if lineHeightMultiplier != oldValue {
                 invalidateContentSize()
-                invalidateLines()
             }
         }
     }
-    var kern: CGFloat = 0 {
-        didSet {
-            if lineHeightMultiplier != oldValue {
-                invalidateContentSize()
-                invalidateLines()
-            }
+    var constrainingLineWidth: CGFloat {
+        if isLineWrappingEnabled {
+            return scrollViewWidth - leadingLineSpacing - textContainerInset.right - safeAreaInset.left - safeAreaInset.right
+        } else {
+            // Rendering multiple very long lines is very expensive. In order to let the editor remain useable,
+            // we set a very high maximum line width when line wrapping is disabled.
+            return 10_000
         }
     }
     var markedRange: NSRange? {
@@ -290,15 +269,6 @@ final class LayoutManager {
     private var shouldResetLineWidths = true
     private var lineWidths: [DocumentLineNodeID: CGFloat] = [:]
     private var lineIDTrackingWidth: DocumentLineNodeID?
-    private var constrainingLineWidth: CGFloat {
-        if isLineWrappingEnabled {
-            return scrollViewWidth - leadingLineSpacing - textContainerInset.right - safeAreaInset.left - safeAreaInset.right
-        } else {
-            // Rendering multiple very long lines is very expensive. In order to let the editor remain useable,
-            // we set a very high maximum line width when line wrapping is disabled.
-            return 10_000
-        }
-    }
     private var insetViewport: CGRect {
         let x = viewport.minX - textContainerInset.left
         let y = viewport.minY - textContainerInset.top
@@ -317,7 +287,7 @@ final class LayoutManager {
     }
 
     // MARK: - Rendering
-    private var lineControllers: [DocumentLineNodeID: LineController] = [:]
+    private let lineControllerStorage: LineControllerStorage
     private var needsLayout = false
     private var needsLayoutLineSelection = false
     private var maximumLineBreakSymbolWidth: CGFloat {
@@ -332,10 +302,11 @@ final class LayoutManager {
         }
     }
 
-    init(lineManager: LineManager, languageMode: InternalLanguageMode, stringView: StringView) {
+    init(lineManager: LineManager, languageMode: InternalLanguageMode, stringView: StringView, lineControllerStorage: LineControllerStorage) {
         self.lineManager = lineManager
         self.languageMode = languageMode
         self.stringView = stringView
+        self.lineControllerStorage = lineControllerStorage
         self.linesContainerView.isUserInteractionEnabled = false
         self.lineNumbersContainerView.isUserInteractionEnabled = false
         self.gutterContainerView.isUserInteractionEnabled = false
@@ -355,7 +326,7 @@ final class LayoutManager {
 
     func removeLine(withID lineID: DocumentLineNodeID) {
         lineWidths.removeValue(forKey: lineID)
-        lineControllers.removeValue(forKey: lineID)
+        lineControllerStorage.removeLineController(withID: lineID)
         if lineID == lineIDTrackingWidth {
             lineIDTrackingWidth = nil
             _textContentWidth = nil
@@ -387,16 +358,6 @@ final class LayoutManager {
         }
     }
 
-    func invalidateLines() {
-        for (_, lineController) in lineControllers {
-            lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
-            lineController.tabWidth = tabWidth
-            lineController.kern = kern
-            lineController.lineBreakMode = lineBreakMode
-            lineController.invalidateSyntaxHighlighting()
-        }
-    }
-
     func redisplayVisibleLines() {
         // Ensure we have the correct set of visible lines.
         setNeedsLayout()
@@ -411,7 +372,7 @@ final class LayoutManager {
 
     func redisplayLines(withIDs lineIDs: Set<DocumentLineNodeID>) {
         for lineID in lineIDs {
-            if let lineController = lineControllers[lineID] {
+            if let lineController = lineControllerStorage[lineID] {
                 lineController.invalidateEverything()
                 // Only display the line if it's currently visible on the screen. Otherwise it's enough to invalidate it and redisplay it later.
                 if visibleLineIDs.contains(lineID) {
@@ -424,7 +385,7 @@ final class LayoutManager {
     }
 
     func setNeedsDisplayOnLines() {
-        for (_, lineController) in lineControllers {
+        for lineController in lineControllerStorage {
             lineController.setNeedsDisplayOnLineFragmentViews()
         }
     }
@@ -442,7 +403,7 @@ final class LayoutManager {
         let endLocation = min(needleRange.location + needleRange.location + peekLength, maximumLocation)
         let previewLength = endLocation - startLocation
         let previewRange = NSRange(location: startLocation, length: previewLength)
-        let lineControllers = lines.map(lineController(for:))
+        let lineControllers = lines.map { lineControllerStorage.getOrCreateLineController(for: $0) }
         let localNeedleLocation = needleRange.location - startLocation
         let localNeedleLength = min(needleRange.length, previewRange.length)
         let needleInPreviewRange = NSRange(location: localNeedleLocation, length: localNeedleLength)
@@ -458,7 +419,7 @@ extension LayoutManager {
     func caretRect(at location: Int) -> CGRect {
         let safeLocation = min(max(location, 0), stringView.string.length)
         let line = lineManager.line(containingCharacterAt: safeLocation)!
-        let lineController = lineController(for: line)
+        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let localLocation = safeLocation - line.location
         let localCaretRect = lineController.caretRect(atIndex: localLocation)
         let globalYPosition = line.yPosition + localCaretRect.minY
@@ -470,7 +431,7 @@ extension LayoutManager {
         guard let line = lineManager.line(containingCharacterAt: range.location) else {
             fatalError("Cannot find first rect.")
         }
-        let lineController = lineController(for: line)
+        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
         let lineContentsRect = lineController.firstRect(for: localRange)
         let visibleWidth = viewport.width - gutterWidth
@@ -524,18 +485,18 @@ extension LayoutManager {
         let adjustedXPosition = point.x - leadingLineSpacing
         let adjustedYPosition = point.y - textContainerInset.top
         let adjustedPoint = CGPoint(x: adjustedXPosition, y: adjustedYPosition)
-        if let line = lineManager.line(containingYOffset: adjustedPoint.y), let lineController = lineControllers[line.id] {
+        if let line = lineManager.line(containingYOffset: adjustedPoint.y), let lineController = lineControllerStorage[line.id] {
             return closestIndex(to: adjustedPoint, in: lineController, showing: line)
         } else if adjustedPoint.y <= 0 {
             let firstLine = lineManager.firstLine
-            if let textRenderer = lineControllers[firstLine.id] {
+            if let textRenderer = lineControllerStorage[firstLine.id] {
                 return closestIndex(to: adjustedPoint, in: textRenderer, showing: firstLine)
             } else {
                 return 0
             }
         } else {
             let lastLine = lineManager.lastLine
-            if adjustedPoint.y >= lastLine.yPosition, let textRenderer = lineControllers[lastLine.id] {
+            if adjustedPoint.y >= lastLine.yPosition, let textRenderer = lineControllerStorage[lastLine.id] {
                 return closestIndex(to: adjustedPoint, in: textRenderer, showing: lastLine)
             } else {
                 return stringView.string.length
@@ -644,7 +605,7 @@ extension LayoutManager {
         while let line = nextLine {
             let lineLocation = line.location
             let endTypesettingLocation = min(lineLocation + line.data.length, location) - lineLocation
-            let lineController = lineController(for: line)
+            let lineController = lineControllerStorage.getOrCreateLineController(for: line)
             lineController.constrainingWidth = constrainingLineWidth
             lineController.prepareToDisplayString(toLocation: endTypesettingLocation, syntaxHighlightAsynchronously: true)
             let lineSize = CGSize(width: lineController.lineWidth, height: lineController.lineHeight)
@@ -681,7 +642,7 @@ extension LayoutManager {
             appearedLineIDs.insert(line.id)
             // Prepare to line controller to display text.
             let lineLocalViewport = CGRect(x: 0, y: maxY, width: insetViewport.width, height: insetViewport.maxY - maxY)
-            let lineController = lineController(for: line)
+            let lineController = lineControllerStorage.getOrCreateLineController(for: line)
             let oldLineHeight = lineController.lineHeight
             lineController.constrainingWidth = constrainingLineWidth
             lineController.prepareToDisplayString(in: lineLocalViewport, syntaxHighlightAsynchronously: true)
@@ -729,7 +690,7 @@ extension LayoutManager {
             }
         }
         for disappearedLineID in disappearedLineIDs {
-            let lineController = lineControllers[disappearedLineID]
+            let lineController = lineControllerStorage[disappearedLineID]
             lineController?.cancelSyntaxHighlighting()
         }
         lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
@@ -751,7 +712,7 @@ extension LayoutManager {
         if lineNumberView.superview == nil {
             lineNumbersContainerView.addSubview(lineNumberView)
         }
-        let lineController = lineController(for: line)
+        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let fontLineHeight = theme.lineNumberFont.lineHeight
         let xPosition = safeAreaInset.left + gutterLeadingPadding
         var yPosition = textContainerInset.top + line.yPosition
@@ -885,7 +846,7 @@ extension LayoutManager {
             lineWidths = [:]
             if let longestLine = lineManager.initialLongestLine {
                 lineIDTrackingWidth = longestLine.id
-                let lineController = lineController(for: longestLine)
+                let lineController = lineControllerStorage.getOrCreateLineController(for: longestLine)
                 lineController.invalidateEverything()
                 lineWidths[longestLine.id] = lineController.lineWidth
                 if !isLineWrappingEnabled {
@@ -895,45 +856,13 @@ extension LayoutManager {
             }
         }
     }
-
-    private func lineController(for line: DocumentLineNode) -> LineController {
-        if let cachedLineController = lineControllers[line.id] {
-            return cachedLineController
-        } else {
-            let lineController = LineController(line: line, stringView: stringView)
-            lineController.delegate = self
-            lineController.constrainingWidth = constrainingLineWidth
-            lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
-            lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
-            lineController.tabWidth = tabWidth
-            lineController.theme = theme
-            lineController.lineBreakMode = lineBreakMode
-            lineControllers[line.id] = lineController
-            return lineController
-        }
-    }
-}
-
-// MARK: - Line Movement
-extension LayoutManager {
-    func numberOfLineFragments(in line: DocumentLineNode) -> Int {
-        return lineController(for: line).numberOfLineFragments
-    }
-
-    func lineFragmentNode(atIndex index: Int, in line: DocumentLineNode) -> LineFragmentNode {
-        return lineController(for: line).lineFragmentNode(atIndex: index)
-    }
-
-    func lineFragmentNode(containingCharacterAt location: Int, in line: DocumentLineNode) -> LineFragmentNode {
-        return lineController(for: line).lineFragmentNode(containingCharacterAt: location)
-    }
 }
 
 // MARK: - Marked Text
 private extension LayoutManager {
     private func updateMarkedTextOnVisibleLines() {
         for lineID in visibleLineIDs {
-            if let lineController = lineControllers[lineID] {
+            if let lineController = lineControllerStorage[lineID] {
                 if let markedRange = markedRange {
                     let localMarkedRange = NSRange(globalRange: markedRange, cappedLocalTo: lineController.line)
                     lineController.setMarkedTextOnLineFragments(localMarkedRange)
@@ -971,23 +900,6 @@ private extension LayoutManager {
 // MARK: - Memory Management
 private extension LayoutManager {
     @objc private func clearMemory() {
-        let allLineIDs = Set(lineControllers.keys)
-        let lineIDsToRelease = allLineIDs.subtracting(visibleLineIDs)
-        for lineID in lineIDsToRelease {
-            lineControllers.removeValue(forKey: lineID)
-        }
-    }
-}
-
-// MARK: - LineControllerDelegate
-extension LayoutManager: LineControllerDelegate {
-    func lineSyntaxHighlighter(for lineController: LineController) -> LineSyntaxHighlighter? {
-        let syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
-        syntaxHighlighter.kern = kern
-        return syntaxHighlighter
-    }
-
-    func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController) {
-        delegate?.layoutManagerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(self)
+        lineControllerStorage.removeAllLineControllers(exceptLinesWithID: visibleLineIDs)
     }
 }

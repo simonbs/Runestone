@@ -1,33 +1,14 @@
 import UIKit
 
-protocol LineMovementControllerDelegate: AnyObject {
-    func lineMovementController(_ controller: LineMovementController, numberOfLineFragmentsIn line: DocumentLineNode) -> Int
-    func lineMovementController(
-        _ controller: LineMovementController,
-        lineFragmentNodeContainingCharacterAt location: Int,
-        in line: DocumentLineNode) -> LineFragmentNode
-    func lineMovementController(
-        _ controller: LineMovementController,
-        lineFragmentNodeAtIndex index: Int,
-        in line: DocumentLineNode) -> LineFragmentNode
-}
-
 final class LineMovementController {
-    weak var delegate: LineMovementControllerDelegate?
     var lineManager: LineManager
     var stringView: StringView
+    let lineControllerStorage: LineControllerStorage
 
-    private var currentDelegate: LineMovementControllerDelegate {
-        if let delegate = delegate {
-            return delegate
-        } else {
-            fatalError("Delegate of \(type(of: self)) is unavailable")
-        }
-    }
-
-    init(lineManager: LineManager, stringView: StringView) {
+    init(lineManager: LineManager, stringView: StringView, lineControllerStorage: LineControllerStorage) {
         self.lineManager = lineManager
         self.stringView = stringView
+        self.lineControllerStorage = lineControllerStorage
     }
 
     func location(from location: Int, in direction: UITextLayoutDirection, offset: Int) -> Int? {
@@ -77,7 +58,7 @@ private extension LineMovementController {
             return location
         }
         let lineLocalLocation = max(min(location - line.location, line.data.totalLength), 0)
-        let lineFragmentNode = currentDelegate.lineMovementController(self, lineFragmentNodeContainingCharacterAt: lineLocalLocation, in: line)
+        let lineFragmentNode = lineFragmentNode(containingCharacterAt: lineLocalLocation, in: line)
         let lineFragmentLocalLocation = lineLocalLocation - lineFragmentNode.location
         return locationForMoving(lineOffset: lineOffset, fromLocation: lineFragmentLocalLocation, inLineFragmentAt: lineFragmentNode.index, of: line)
     }
@@ -93,7 +74,7 @@ private extension LineMovementController {
             return locationForMovingDownwards(lineOffset: lineOffset, fromLocation: location, inLineFragmentAt: lineFragmentIndex, of: line)
         } else {
             // lineOffset is 0 so we shouldn't change the line
-            let destinationLineFragmentNode = currentDelegate.lineMovementController(self, lineFragmentNodeAtIndex: lineFragmentIndex, in: line)
+            let destinationLineFragmentNode = lineFragmentNode(atIndex: lineFragmentIndex, in: line)
             let lineLocation = line.location
             let preferredLocation = lineLocation + destinationLineFragmentNode.location + location
             let lineFragmentMaximumLocation = lineLocation + destinationLineFragmentNode.location + destinationLineFragmentNode.value
@@ -119,7 +100,7 @@ private extension LineMovementController {
             return 0
         }
         let previousLine = lineManager.line(atRow: lineIndex - 1)
-        let numberOfLineFragments = currentDelegate.lineMovementController(self, numberOfLineFragmentsIn: previousLine)
+        let numberOfLineFragments = numberOfLineFragments(in: previousLine)
         let newLineFragmentIndex = numberOfLineFragments - 1
         return locationForMovingUpwards(
             lineOffset: remainingLineOffset - 1,
@@ -133,7 +114,7 @@ private extension LineMovementController {
         fromLocation location: Int,
         inLineFragmentAt lineFragmentIndex: Int,
         of line: DocumentLineNode) -> Int {
-        let numberOfLineFragments = currentDelegate.lineMovementController(self, numberOfLineFragmentsIn: line)
+        let numberOfLineFragments = numberOfLineFragments(in: line)
         let takeLineCount = min(numberOfLineFragments - lineFragmentIndex - 1, lineOffset)
         let remainingLineOffset = lineOffset - takeLineCount
         guard remainingLineOffset > 0 else {
@@ -146,5 +127,20 @@ private extension LineMovementController {
         }
         let nextLine = lineManager.line(atRow: lineIndex + 1)
         return locationForMovingDownwards(lineOffset: remainingLineOffset - 1, fromLocation: location, inLineFragmentAt: 0, of: nextLine)
+    }
+
+    private func numberOfLineFragments(in line: DocumentLineNode) -> Int {
+        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
+        return lineController.numberOfLineFragments
+    }
+
+    private func lineFragmentNode(atIndex index: Int, in line: DocumentLineNode) -> LineFragmentNode {
+        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
+        return lineController.lineFragmentNode(atIndex: index)
+    }
+
+    private func lineFragmentNode(containingCharacterAt location: Int, in line: DocumentLineNode) -> LineFragmentNode {
+        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
+        return lineController.lineFragmentNode(containingCharacterAt: location)
     }
 }

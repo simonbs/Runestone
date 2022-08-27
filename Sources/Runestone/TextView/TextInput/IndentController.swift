@@ -4,6 +4,7 @@ import UIKit
 protocol IndentControllerDelegate: AnyObject {
     func indentController(_ controller: IndentController, shouldInsert text: String, in range: NSRange)
     func indentController(_ controller: IndentController, shouldSelect range: NSRange)
+    func indentControllerDidUpdateTabWidth(_ controller: IndentController)
 }
 
 final class IndentController {
@@ -35,7 +36,10 @@ final class IndentController {
             let attributes: [NSAttributedString.Key: Any] = [.font: indentFont]
             let bounds = str.boundingRect(with: maxSize, options: options, attributes: attributes, context: nil)
             let tabWidth = round(bounds.size.width)
-            _tabWidth = tabWidth
+            if tabWidth != _tabWidth {
+                _tabWidth = tabWidth
+                delegate?.indentControllerDidUpdateTabWidth(self)
+            }
             return tabWidth
         }
     }
