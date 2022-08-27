@@ -41,7 +41,7 @@ final class TextInputView: UIView, UITextInput {
                     shouldNotifyInputDelegate = true
                     didCallPositionFromPositionInDirectionWithOffset = false
                 }
-                shouldNotifyInputDelegateAboutSelectionChangeInLayoutSubviews = !shouldNotifyInputDelegate
+                notifyInputDelegateAboutSelectionChangeInLayoutSubviews = !shouldNotifyInputDelegate
                 if shouldNotifyInputDelegate {
                     inputDelegate?.selectionWillChange(self)
                 }
@@ -556,8 +556,7 @@ final class TextInputView: UIView, UITextInput {
     }
     private var hasPendingFullLayout = false
     private let editMenuController = EditMenuController()
-    // swiftlint:disable:next identifier_name
-    private var shouldNotifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
+    private var notifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
     private var didCallPositionFromPositionInDirectionWithOffset = false
     private var shouldPreserveUndoStackWhenSettingString = false
 
@@ -627,7 +626,7 @@ final class TextInputView: UIView, UITextInput {
         // We notify the input delegate about selection changes in layoutSubviews so we have a chance of disabling notifying the input delegate during an editing operation.
         // We will sometimes disable notifying the input delegate when the user enters Korean text.
         // This workaround is inspired by a dialog with Alexander Blach (@lextar), developer of Textastic.
-        if shouldNotifyInputDelegateAboutSelectionChangeInLayoutSubviews {
+        if notifyInputDelegateAboutSelectionChangeInLayoutSubviews {
             inputDelegate?.selectionWillChange(self)
             inputDelegate?.selectionDidChange(self)
         }
@@ -1016,7 +1015,7 @@ extension TextInputView {
             return
         }
         // Disable notifying delegate in layout subviews to prevent issues when entering Korean text. This workaround is inspired by a dialog with Alexander Black (@lextar), developer of Textastic.
-        shouldNotifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
+        notifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
         // Just before calling deleteBackward(), UIKit will set the selected range to a range of length 1, if the selected range has a length of 0.
         // In that case we want to undo to a selected range of length 0, so we construct our range here and pass it all the way to the undo operation.
         let selectedRangeAfterUndo: NSRange
@@ -1314,7 +1313,7 @@ extension TextInputView {
         guard shouldChangeText(in: range, replacementText: markedText) else {
             return
         }
-        shouldNotifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
+        notifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
         markedRange = markedText.isEmpty ? nil : NSRange(location: range.location, length: markedText.utf16.count)
         replaceText(in: range, with: markedText)
         // The selected range passed to setMarkedText(_:selectedRange:) is local to the marked range.
