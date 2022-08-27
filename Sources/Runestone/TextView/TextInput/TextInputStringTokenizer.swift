@@ -80,8 +80,4 @@ private extension TextInputStringTokenizer {
     private func isBackward(_ direction: UITextDirection) -> Bool {
         return direction.rawValue == UITextStorageDirection.backward.rawValue || direction.rawValue == UITextLayoutDirection.left.rawValue
     }
-
-    private func isForward(_ direction: UITextDirection) -> Bool {
-        return direction.rawValue == UITextStorageDirection.forward.rawValue || direction.rawValue == UITextLayoutDirection.right.rawValue
-    }
 }
