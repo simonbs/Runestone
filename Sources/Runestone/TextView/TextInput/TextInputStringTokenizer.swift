@@ -24,14 +24,14 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         } else if granularity == .word, isCustomWordBoundry(at: indexedPosition.index) {
             return true
         } else {
-            return super.isPosition(position, atBoundary: granularity, inDirection: map(direction))
+            return super.isPosition(position, atBoundary: granularity, inDirection: direction)
         }
     }
 
     override func isPosition(_ position: UITextPosition,
                              withinTextUnit granularity: UITextGranularity,
                              inDirection direction: UITextDirection) -> Bool {
-        return super.isPosition(position, withinTextUnit: granularity, inDirection: map(direction))
+        return super.isPosition(position, withinTextUnit: granularity, inDirection: direction)
     }
 
     override func position(from position: UITextPosition,
@@ -47,14 +47,14 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
                 return IndexedPosition(index: line.location + line.data.length)
             }
         } else {
-            return super.position(from: position, toBoundary: granularity, inDirection: map(direction))
+            return super.position(from: position, toBoundary: granularity, inDirection: direction)
         }
     }
 
     override func rangeEnclosingPosition(_ position: UITextPosition,
                                          with granularity: UITextGranularity,
                                          inDirection direction: UITextDirection) -> UITextRange? {
-        return super.rangeEnclosingPosition(position, with: granularity, inDirection: map(direction))
+        return super.rangeEnclosingPosition(position, with: granularity, inDirection: direction)
     }
 }
 
@@ -65,16 +65,6 @@ private extension TextInputStringTokenizer {
         }
         let wordBoundryCharacterSet: CharacterSet = .punctuationCharacters
         return character.unicodeScalars.allSatisfy { wordBoundryCharacterSet.contains($0) }
-    }
-
-    private func map(_ direction: UITextDirection) -> UITextDirection {
-        if direction.rawValue == UITextLayoutDirection.left.rawValue {
-            return .storage(.backward)
-        } else if direction.rawValue == UITextLayoutDirection.right.rawValue {
-            return .storage(.forward)
-        } else {
-            return direction
-        }
     }
 
     private func isBackward(_ direction: UITextDirection) -> Bool {
