@@ -1566,7 +1566,7 @@ extension TextInputView: IndentControllerDelegate {
 // MARK: - EditMenuControllerDelegate
 extension TextInputView: EditMenuControllerDelegate {
     func editMenuController(_ controller: EditMenuController, caretRectAt location: Int) -> CGRect {
-        return caretRect(at: location)
+        return layoutManager.caretRect(at: location)
     }
 
     func editMenuControllerShouldReplaceText(_ controller: EditMenuController) {
