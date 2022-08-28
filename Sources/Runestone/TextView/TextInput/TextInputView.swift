@@ -120,15 +120,6 @@ final class TextInputView: UIView, UITextInput {
     override var undoManager: UndoManager? {
         return timedUndoManager
     }
-    override var keyCommands: [UIKeyCommand]? {
-        let goToLineBeginningCommand = UIKeyCommand(input: "a", modifierFlags: .control, action: #selector(goToLineBeginning))
-        let goToLineEndCommand = UIKeyCommand(input: "e", modifierFlags: .control, action: #selector(goToLineEnd))
-        if #available(iOS 15.0, *) {
-            goToLineBeginningCommand.wantsPriorityOverSystemBehavior = true
-            goToLineEndCommand.wantsPriorityOverSystemBehavior = true
-        }
-        return [goToLineBeginningCommand, goToLineEndCommand]
-    }
 
     // MARK: - Appearance
     var theme: Theme {
@@ -704,8 +695,6 @@ final class TextInputView: UIView, UITextInput {
             } else {
                 return false
             }
-        } else if action == #selector(goToLineBeginning) || action == #selector(goToLineEnd) {
-            return selectedRange != nil
         } else {
             return super.canPerformAction(action, withSender: sender)
         }
@@ -851,35 +840,6 @@ final class TextInputView: UIView, UITextInput {
 
 // MARK: - Navigation
 private extension TextInputView {
-    @objc private func goToLineBeginning() {
-        guard let selectedRange = selectedRange else {
-            return
-        }
-        guard let location = lineMovementController.locationForGoingToBeginningOfLine(
-            movingFrom: selectedRange.upperBound,
-            treatEndOfLineFragmentAsPreviousLineFragment: !didPlaceCaretAtNextLineFragmentForLastCharacter) else {
-            return
-        }
-        inputDelegate?.selectionWillChange(self)
-        _selectedRange = NSRange(location: location, length: 0)
-        inputDelegate?.selectionDidChange(self)
-    }
-
-    @objc private func goToLineEnd() {
-        guard let selectedRange = selectedRange else {
-            return
-        }
-        guard let location = lineMovementController.locationForGoingToEndOfLine(
-            movingFrom: selectedRange.upperBound,
-            treatEndOfLineFragmentAsPreviousLineFragment: !didPlaceCaretAtNextLineFragmentForLastCharacter) else {
-            return
-        }
-        placeCaretAtNextLineFragmentForLastCharacter = false
-        inputDelegate?.selectionWillChange(self)
-        _selectedRange = NSRange(location: location, length: 0)
-        inputDelegate?.selectionDidChange(self)
-    }
-
     private func handleKeyPressDuringMultistageTextInput(keyCode: UIKeyboardHIDUsage) {
         // When editing multistage text input (that is, we have a marked text) we let the user unmark the text
         // by pressing the arrow keys or Escape. This isn't common in iOS apps but it's the default behavior

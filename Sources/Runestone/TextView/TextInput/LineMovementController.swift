@@ -38,37 +38,6 @@ final class LineMovementController {
             return nil
         }
     }
-
-    func locationForGoingToBeginningOfLine(movingFrom sourceLocation: Int, treatEndOfLineFragmentAsPreviousLineFragment: Bool) -> Int? {
-        guard let line = lineManager.line(containingCharacterAt: sourceLocation) else {
-            return nil
-        }
-        let lineFragmentNode = referenceLineFragmentNodeForGoingToBeginningOrEndOfLine(
-            containingCharacterAt: sourceLocation,
-            treatEndOfLineFragmentAsPreviousLineFragment: treatEndOfLineFragmentAsPreviousLineFragment)
-        guard let lineFragment = lineFragmentNode?.data.lineFragment else {
-            return nil
-        }
-        return line.location + lineFragment.range.lowerBound
-    }
-
-    func locationForGoingToEndOfLine(movingFrom sourceLocation: Int, treatEndOfLineFragmentAsPreviousLineFragment: Bool) -> Int? {
-        guard let line = lineManager.line(containingCharacterAt: sourceLocation) else {
-            return nil
-        }
-        let lineFragmentNode = referenceLineFragmentNodeForGoingToBeginningOrEndOfLine(
-            containingCharacterAt: sourceLocation,
-            treatEndOfLineFragmentAsPreviousLineFragment: treatEndOfLineFragmentAsPreviousLineFragment)
-        guard let lineFragment = lineFragmentNode?.data.lineFragment else {
-            return nil
-        }
-        if lineFragment.range.upperBound == line.data.totalLength {
-            // Avoid navigating to after the delimiter for the line (e.g. \n)
-            return line.location + line.data.length
-        } else {
-            return line.location + lineFragment.range.upperBound
-        }
-    }
 }
 
 private extension LineMovementController {
