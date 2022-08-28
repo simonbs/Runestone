@@ -416,23 +416,21 @@ final class LayoutManager {
 
 // MARK: - UITextInput
 extension LayoutManager {
-    func caretRect(at location: Int, placeCaretAtNextLineFragmentForLastCharacter: Bool = false) -> CGRect {
+    func caretRect(at location: Int) -> CGRect {
         let safeLocation = min(max(location, 0), stringView.string.length)
         let line = lineManager.line(containingCharacterAt: safeLocation)!
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let lineLocalLocation = safeLocation - line.location
-        if placeCaretAtNextLineFragmentForLastCharacter && lineLocalLocation > 0 && lineLocalLocation < line.data.totalLength {
-            // Special case: When we would otherwise place the caret at the very end of the line fragment, we move it to the beginning of the next line fragment. This special case is implemented to align with UITextView.
-            let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation - 1)
-            if let lineFragment = lineFragmentNode.data.lineFragment, lineLocalLocation == lineFragment.range.upperBound {
-                let rect = caretRect(at: location + 1, placeCaretAtNextLineFragmentForLastCharacter: false)
-                return CGRect(x: leadingLineSpacing, y: rect.minY, width: rect.width, height: rect.height)
-            }
+        let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation)
+        if lineFragmentNode.index > 0, let lineFragment = lineFragmentNode.data.lineFragment, location == lineFragment.range.location {
+            let rect = caretRect(at: location + 1)
+            return CGRect(x: leadingLineSpacing, y: rect.minY, width: rect.width, height: rect.height)
+        } else {
+            let localCaretRect = lineController.caretRect(atIndex: lineLocalLocation)
+            let globalYPosition = line.yPosition + localCaretRect.minY
+            let globalRect = CGRect(x: localCaretRect.minX, y: globalYPosition, width: localCaretRect.width, height: localCaretRect.height)
+            return globalRect.offsetBy(dx: leadingLineSpacing, dy: textContainerInset.top)
         }
-        let localCaretRect = lineController.caretRect(atIndex: lineLocalLocation)
-        let globalYPosition = line.yPosition + localCaretRect.minY
-        let globalRect = CGRect(x: localCaretRect.minX, y: globalYPosition, width: localCaretRect.width, height: localCaretRect.height)
-        return globalRect.offsetBy(dx: leadingLineSpacing, dy: textContainerInset.top)
     }
 
     func firstRect(for range: NSRange) -> CGRect {
@@ -458,8 +456,8 @@ extension LayoutManager {
         }
         let selectsLineEnding = range.upperBound == endLine.location
         let adjustedRange = NSRange(location: range.location, length: selectsLineEnding ? range.length - 1 : range.length)
-        let startCaretRect = caretRect(at: adjustedRange.lowerBound, placeCaretAtNextLineFragmentForLastCharacter: true)
-        let endCaretRect = caretRect(at: adjustedRange.upperBound, placeCaretAtNextLineFragmentForLastCharacter: false)
+        let startCaretRect = caretRect(at: adjustedRange.lowerBound)
+        let endCaretRect = caretRect(at: adjustedRange.upperBound)
         let fullWidth = max(contentWidth, scrollViewWidth) - textContainerInset.right
         if startCaretRect.minY == endCaretRect.minY && startCaretRect.maxY == endCaretRect.maxY {
             // Selecting text in the same line fragment.

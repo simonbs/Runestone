@@ -11,10 +11,7 @@ final class LineMovementController {
         self.lineControllerStorage = lineControllerStorage
     }
 
-    func location(from location: Int,
-                  in direction: UITextLayoutDirection,
-                  offset: Int,
-                  treatEndOfLineFragmentAsPreviousLineFragment: Bool = false) -> Int? {
+    func location(from location: Int,in direction: UITextLayoutDirection, offset: Int) -> Int? {
         let newLocation: Int?
         switch direction {
         case .left:
@@ -22,13 +19,9 @@ final class LineMovementController {
         case .right:
             newLocation = locationForMoving(fromLocation: location, by: offset)
         case .up:
-            newLocation = locationForMoving(lineOffset: offset * -1,
-                                            fromLineContainingCharacterAt: location,
-                                            treatEndOfLineFragmentAsPreviousLineFragment: treatEndOfLineFragmentAsPreviousLineFragment)
+            newLocation = locationForMoving(lineOffset: offset * -1, fromLineContainingCharacterAt: location)
         case .down:
-            newLocation = locationForMoving(lineOffset: offset,
-                                            fromLineContainingCharacterAt: location,
-                                            treatEndOfLineFragmentAsPreviousLineFragment: treatEndOfLineFragmentAsPreviousLineFragment)
+            newLocation = locationForMoving(lineOffset: offset, fromLineContainingCharacterAt: location)
         @unknown default:
             newLocation = nil
         }
@@ -60,18 +53,15 @@ private extension LineMovementController {
         }
     }
 
-    private func locationForMoving(lineOffset: Int,
-                                   fromLineContainingCharacterAt location: Int,
-                                   treatEndOfLineFragmentAsPreviousLineFragment: Bool) -> Int {
+    private func locationForMoving(lineOffset: Int, fromLineContainingCharacterAt location: Int) -> Int {
         guard let line = lineManager.line(containingCharacterAt: location) else {
             return location
         }
-        guard let lineFragmentNode = referenceLineFragmentNodeForGoingToBeginningOrEndOfLine(
-            containingCharacterAt: location,
-            treatEndOfLineFragmentAsPreviousLineFragment: treatEndOfLineFragmentAsPreviousLineFragment) else {
+        guard let lineController = lineControllerStorage[line.id] else {
             return location
         }
         let lineLocalLocation = max(min(location - line.location, line.data.totalLength), 0)
+        let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation)
         let lineFragmentLocalLocation = lineLocalLocation - lineFragmentNode.location
         return locationForMoving(lineOffset: lineOffset, fromLocation: lineFragmentLocalLocation, inLineFragmentAt: lineFragmentNode.index, of: line)
     }
@@ -142,25 +132,5 @@ private extension LineMovementController {
     private func numberOfLineFragments(in line: DocumentLineNode) -> Int {
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         return lineController.numberOfLineFragments
-    }
-
-    private func referenceLineFragmentNodeForGoingToBeginningOrEndOfLine(containingCharacterAt location: Int,
-                                                                         treatEndOfLineFragmentAsPreviousLineFragment: Bool) -> LineFragmentNode? {
-        guard let line = lineManager.line(containingCharacterAt: location) else {
-            return nil
-        }
-        guard let lineController = lineControllerStorage[line.id] else {
-            return nil
-        }
-        let lineLocalLocation = location - line.location
-        let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation)
-        guard let lineFragment = lineFragmentNode.data.lineFragment else {
-            return nil
-        }
-        if treatEndOfLineFragmentAsPreviousLineFragment, location == lineFragment.range.lowerBound, lineFragmentNode.index > 0 {
-            return lineController.lineFragmentNode(atIndex: lineFragmentNode.index - 1)
-        } else {
-            return lineFragmentNode
-        }
     }
 }
