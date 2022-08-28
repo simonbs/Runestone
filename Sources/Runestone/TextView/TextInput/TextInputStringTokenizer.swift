@@ -16,7 +16,7 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         guard let indexedPosition = position as? IndexedPosition else {
             return super.isPosition(position, atBoundary: granularity, inDirection: direction)
         }
-        if granularity == .line || granularity == .paragraph {
+        if granularity == .line {
             if let location = lineBoundaryLocation(forLineContainingCharacterAt: indexedPosition.index, inDirection: direction) {
                 return indexedPosition.index == location
             } else {
@@ -47,7 +47,7 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         guard let indexedPosition = position as? IndexedPosition else {
             return super.position(from: position, toBoundary: granularity, inDirection: direction)
         }
-        if granularity == .line || granularity == .paragraph {
+        if granularity == .line {
             return lineBoundaryLocation(forLineContainingCharacterAt: indexedPosition.index, inDirection: direction).map(IndexedPosition.init)
         } else if granularity == .paragraph {
             return paragraphBoundaryLocation(forLineContainingCharacterAt: indexedPosition.index, inDirection: direction).map(IndexedPosition.init)
