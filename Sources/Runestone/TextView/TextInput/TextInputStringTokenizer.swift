@@ -27,11 +27,15 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         }
     }
 
-    override func isPosition(_ position: UITextPosition, withinTextUnit granularity: UITextGranularity, inDirection direction: UITextDirection) -> Bool {
+    override func isPosition(_ position: UITextPosition,
+                             withinTextUnit granularity: UITextGranularity,
+                             inDirection direction: UITextDirection) -> Bool {
         return super.isPosition(position, withinTextUnit: granularity, inDirection: direction)
     }
 
-    override func position(from position: UITextPosition, toBoundary granularity: UITextGranularity, inDirection direction: UITextDirection) -> UITextPosition? {
+    override func position(from position: UITextPosition,
+                           toBoundary granularity: UITextGranularity,
+                           inDirection direction: UITextDirection) -> UITextPosition? {
         if granularity == .line {
             return self.position(from: position, toLineBoundaryInDirection: direction)
         } else if granularity == .paragraph {
@@ -43,7 +47,9 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         }
     }
 
-    override func rangeEnclosingPosition(_ position: UITextPosition, with granularity: UITextGranularity, inDirection direction: UITextDirection) -> UITextRange? {
+    override func rangeEnclosingPosition(_ position: UITextPosition,
+                                         with granularity: UITextGranularity,
+                                         inDirection direction: UITextDirection) -> UITextRange? {
         return super.rangeEnclosingPosition(position, with: granularity, inDirection: direction)
     }
 }
@@ -187,6 +193,7 @@ private extension TextInputStringTokenizer {
         }
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func position(from position: UITextPosition, toWordBoundaryInDirection direction: UITextDirection) -> UITextPosition? {
         guard let indexedPosition = position as? IndexedPosition else {
             return nil
