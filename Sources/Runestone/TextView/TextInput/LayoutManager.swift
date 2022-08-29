@@ -421,8 +421,7 @@ extension LayoutManager {
         let line = lineManager.line(containingCharacterAt: safeLocation)!
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let lineLocalLocation = safeLocation - line.location
-        let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation)
-        if lineFragmentNode.index > 0, let lineFragment = lineFragmentNode.data.lineFragment, location == lineFragment.range.location {
+        if shouldMoveCaretToNextLineFragment(forLocation: lineLocalLocation, in: line) {
             let rect = caretRect(at: location + 1)
             return CGRect(x: leadingLineSpacing, y: rect.minY, width: rect.width, height: rect.height)
         } else {
@@ -518,6 +517,18 @@ extension LayoutManager {
         } else {
             return line.location + index
         }
+    }
+
+    private func shouldMoveCaretToNextLineFragment(forLocation location: Int, in line: DocumentLineNode) -> Bool {
+        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
+        guard lineController.numberOfLineFragments > 0 else {
+            return false
+        }
+        let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: location)
+        guard lineFragmentNode.index > 0 else {
+            return false
+        }
+        return location == lineFragmentNode.data.lineFragment?.range.location
     }
 }
 
