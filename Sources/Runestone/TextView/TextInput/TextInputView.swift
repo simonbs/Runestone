@@ -32,7 +32,7 @@ final class TextInputView: UIView, UITextInput {
         }
         set {
             // We should not use this setter. It's intended for UIKit to use. It'll invoke the setter in various scenarios, for example when navigating the text using the keyboard.
-            // On the iOS 16 beta UIKit may be an NSRange like {4, -2} when double tapping to select text. This will ultimately cause crashes when UIKit later attempts to use the selected range with NSString's -substringWithRange:. This can be tested with a string containing the following three lines:
+            // On the iOS 16 beta, UIKit may pass an NSRange with a negatives length (e.g. {4, -2}) when double tapping to select text. This will cause a crash when UIKit later attempts to use the selected range with NSString's -substringWithRange:. This can be tested with a string containing the following three lines:
             //    A
             //
             //    A
