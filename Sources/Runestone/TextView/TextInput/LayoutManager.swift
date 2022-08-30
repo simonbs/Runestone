@@ -471,9 +471,8 @@ extension LayoutManager {
             let endScaledHeight = endCaretRect.height * lineHeightMultiplier
             let endOffsetY = endCaretRect.minY - (endScaledHeight - endCaretRect.height) / 2
             let endRect = CGRect(x: leadingLineSpacing, y: endOffsetY, width: endWidth, height: endScaledHeight)
-            let middleWidth = fullWidth
             let middleHeight = endRect.minY - startRect.maxY
-            let middleRect = CGRect(x: leadingLineSpacing, y: startRect.maxY, width: middleWidth, height: middleHeight)
+            let middleRect = CGRect(x: leadingLineSpacing, y: startRect.maxY, width: fullWidth, height: middleHeight)
             let startSelectionRect = TextSelectionRect(rect: startRect, writingDirection: .natural, containsStart: true, containsEnd: false)
             let middleSelectionRect = TextSelectionRect(rect: middleRect, writingDirection: .natural, containsStart: false, containsEnd: false)
             let endSelectionRect = TextSelectionRect(rect: endRect, writingDirection: .natural, containsStart: false, containsEnd: true)
