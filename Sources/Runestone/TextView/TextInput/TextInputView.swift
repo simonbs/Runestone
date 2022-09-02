@@ -93,21 +93,21 @@ final class TextInputView: UIView, UITextInput {
     var keyboardType: UIKeyboardType = .default
     var keyboardAppearance: UIKeyboardAppearance = .default
     var returnKeyType: UIReturnKeyType = .default
-    @objc var insertionPointColor: UIColor = .black {
+    @objc var insertionPointColor: UIColor = .label {
         didSet {
             if insertionPointColor != oldValue {
                 updateCaretColor()
             }
         }
     }
-    @objc var selectionBarColor: UIColor = .black {
+    @objc var selectionBarColor: UIColor = .label {
         didSet {
             if selectionBarColor != oldValue {
                 updateCaretColor()
             }
         }
     }
-    @objc var selectionHighlightColor: UIColor = .black.withAlphaComponent(0.2) {
+    @objc var selectionHighlightColor: UIColor = .label.withAlphaComponent(0.2) {
         didSet {
             if selectionHighlightColor != oldValue {
                 updateCaretColor()
@@ -546,7 +546,7 @@ final class TextInputView: UIView, UITextInput {
         }
     }
     private var floatingCaretView: FloatingCaretView?
-    private var insertionPointColorBeforeFloatingBegan: UIColor = .black
+    private var insertionPointColorBeforeFloatingBegan: UIColor = .label
     private var maximumLeadingCharacterPairComponentLength = 0
     private var textSelectionView: UIView? {
         if let klass = NSClassFromString("UITextSelectionView") {

@@ -8,7 +8,7 @@ final class InvisibleCharacterConfiguration {
             }
         }
     }
-    var textColor: UIColor = .black
+    var textColor: UIColor = .label
     var showTabs = false
     var showSpaces = false
     var showNonBreakingSpaces = false
