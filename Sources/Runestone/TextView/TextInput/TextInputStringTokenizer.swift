@@ -70,36 +70,30 @@ private extension TextInputStringTokenizer {
         guard let line = lineManager.line(containingCharacterAt: location) else {
             return nil
         }
-        guard let lineController = lineControllerStorage[line.id] else {
-            return nil
-        }
+        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let lineLocation = line.location
         let lineLocalLocation = location - lineLocation
         let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation)
-        guard let lineFragment = lineFragmentNode.data.lineFragment else {
-            return nil
-        }
         if direction.isForward {
             if location == stringView.string.length {
                 return position
             } else {
-                let preferredLocation = lineLocation + lineFragment.range.upperBound
+                let lineFragmentRangeUpperBound = lineFragmentNode.location + lineFragmentNode.value
+                let preferredLocation = lineLocation + lineFragmentRangeUpperBound
                 let lineEndLocation = lineLocation + line.data.totalLength
                 if preferredLocation == lineEndLocation {
                     // Navigate to end of line but before the delimiter (\n etc.)
                     return IndexedPosition(index: preferredLocation - line.data.delimiterLength)
                 } else {
                     // Navigate to the end of the line but before the last character. This is a hack that avoids an issue where the caret is placed on the next line. The approach seems to be similar to what Textastic is doing.
-                    let lastCharacterRange = stringView.string.customRangeOfComposedCharacterSequence(at: lineFragment.range.upperBound)
-                    return IndexedPosition(index: lineLocation + lineFragment.range.upperBound - lastCharacterRange.length)
+                    let lastCharacterRange = stringView.string.customRangeOfComposedCharacterSequence(at: lineFragmentRangeUpperBound)
+                    return IndexedPosition(index: lineLocation + lineFragmentRangeUpperBound - lastCharacterRange.length)
                 }
             }
+        } else if location == 0 {
+            return position
         } else {
-            if location == 0 {
-                return position
-            } else {
-                return IndexedPosition(index: lineLocation + lineFragment.range.lowerBound)
-            }
+            return IndexedPosition(index: lineLocation + lineFragmentNode.location)
         }
     }
 }
