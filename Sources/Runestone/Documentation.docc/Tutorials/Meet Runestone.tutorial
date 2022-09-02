@@ -1,0 +1,16 @@
+@Tutorials(name: "Runestone") {
+    @Intro(title: "Meet Runestone") {
+        Explore Runestone, the performant code editor with syntax highlighting, line numbers, invisible characters, and much more through a series of interactive tutorials.
+        
+        @Image(source: hero.png, alt: "Syntax highlighted code snippets in a grid with the Runestone logo on top.")
+    }
+    
+    @Chapter(name: "Runestone Essentials") {
+        @Image(source: 01-runestone-essentials.png, alt: "Text forming an R.")
+        
+        Add Runestone to your project and then create and customize a text view.
+        
+        @TutorialReference(tutorial: "doc:Setting-up-a-TextView")
+        @TutorialReference(tutorial: "doc:Syntax-Highlighting-the-Text")
+    }
+}

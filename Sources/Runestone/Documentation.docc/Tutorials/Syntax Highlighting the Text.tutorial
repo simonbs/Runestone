@@ -1,0 +1,71 @@
+@Tutorial(time: 30) {
+    @Intro(title: "Syntax Highlighting the Text") {
+        This tutorial guides you through syntax highlighting text in a text view.
+        
+        In this guide we'll add support for syntax highlighting JavaScript code to the text view we configured in <doc:Setting-up-a-TextView>. We'll use the JavaScript syntax included in the [TreeSitterLanguages](https://github.com/simonbs/treesitterlanguages) Swift package.
+        
+        For more information on Tree-sitter languages and how they can be used without the TreeSitterLanguages package, please refer to <doc:AddingATreeSitterLanguage>.
+        
+        @Image(source: tutorials-header.png, alt: "Syntax highlighted code snippets.")
+    }
+    
+    @Section(title: "Add TreeSitterLanguages and set the language mode") {
+        @ContentAndMedia {
+            Start off by adding the TreeSitterLanguages package to your project. This package contains all the syntaxes used by the [Runestone Text Editor](https://apps.apple.com/us/app/runestone-editor/id1548193893) app. In this tutorial we'll only use the JavaScript syntax.
+        }
+        
+        @Steps {
+            @Step {
+                Add TreeSitterLanguages as a Swift Package to your project by right-clicking your project in the Project navigator and selecting "Add Packages..."
+                
+                @Image(source: 01-syntax-highlighting-the-text-01-01.png, alt: "A screenshot of the Project navigator, which shows right-click menu with the Add Packages menu item highlighted.")
+            }
+            
+            @Step {
+                Search for "https://github.com/simonbs/treesitterlanguages" and select TreeSitterLanguages in the search results. Specify a dependency rule, select the TextCompanion project under "Add to Project", and then select "Add Package".
+                
+                @Image(source: 01-syntax-highlighting-the-text-01-02.png, alt: "A screenshot of the Add Package sheet, which shows the URL for the TreeSitetrLanguages GitHub repository in the search field. The search field, the TreeSitterLanguages search result, the Dependency Rule, the Add to Project field, and the Add Package button are highlighted.")
+            }
+            
+            @Step {
+                Add TreeSitterLanguages' package product to the TextCompanion target and select "Add Package".
+                
+                @Image(source: 01-syntax-highlighting-the-text-01-03.png, alt: "A screenshot of the Add Package showing the TreeSitterLanguages package product being added to the TextCompanion target. TreeSitterLanguages' package product, the TextCompanion target, and the Add Package button are highlighted.")
+            }
+            
+            @Step {
+                Select the ViewController.swift in the Project navigator.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-01-01.swift)
+            }
+            
+            @Step {
+                Import the `TreeSitterJavaScriptRunestone` package.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-01-02.swift)
+            }
+            
+            @Step {
+                Finally, create an instance of `TreeSitterLanguageMode` and pass it to the text view.
+                
+                After running the app in the iPhone simulator you can now write JavaScript in the text view and it will become syntax highlighted.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-01-03.swift) {
+                    @Image(source: preview-01-syntax-highlighting-the-text-01-01.png, alt: "A screenshot of the iPhone simulator showing a screen with the TextView and a snippet of syntax highlighted JavaScript.")
+                }
+            }
+        }
+    }
+        
+    @Section(title: "Use TextViewState") {
+        @ContentAndMedia {
+            WIP
+        }
+            
+        @Steps {
+            @Step {
+                WIP
+            }
+        }
+    }
+}
