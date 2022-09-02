@@ -128,13 +128,7 @@ final class TextInputView: UIView, UITextInput {
     // MARK: - Appearance
     var theme: Theme {
         didSet {
-            lineManager.estimatedLineHeight = estimatedLineHeight
-            indentController.indentFont = theme.font
-            pageGuideController.font = theme.font
-            pageGuideController.guideView.hairlineWidth = theme.pageGuideHairlineWidth
-            pageGuideController.guideView.hairlineColor = theme.pageGuideHairlineColor
-            pageGuideController.guideView.backgroundColor = theme.pageGuideBackgroundColor
-            layoutManager.theme = theme
+            applyThemeToChildren()
         }
     }
     var showLineNumbers: Bool {
@@ -583,12 +577,11 @@ final class TextInputView: UIView, UITextInput {
                                                         stringView: stringView,
                                                         lineControllerStorage: lineControllerStorage)
         super.init(frame: .zero)
-        lineManager.estimatedLineHeight = estimatedLineHeight
+        applyThemeToChildren()
         indentController.delegate = self
         lineControllerStorage.delegate = self
         layoutManager.delegate = self
         layoutManager.textInputView = self
-        layoutManager.theme = theme
         editMenuController.delegate = self
         editMenuController.setupEditMenu(in: self)
     }
@@ -838,6 +831,19 @@ final class TextInputView: UIView, UITextInput {
                 handleKeyPressDuringMultistageTextInput(keyCode: keyCode)
             }
         }
+    }
+}
+
+// MARK: - Theming
+private extension TextInputView {
+    private func applyThemeToChildren() {
+        lineManager.estimatedLineHeight = estimatedLineHeight
+        indentController.indentFont = theme.font
+        pageGuideController.font = theme.font
+        pageGuideController.guideView.hairlineWidth = theme.pageGuideHairlineWidth
+        pageGuideController.guideView.hairlineColor = theme.pageGuideHairlineColor
+        pageGuideController.guideView.backgroundColor = theme.pageGuideBackgroundColor
+        layoutManager.theme = theme
     }
 }
 
