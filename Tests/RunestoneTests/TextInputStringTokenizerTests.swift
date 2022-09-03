@@ -211,7 +211,12 @@ extension TextInputStringTokenizerTests {
 
 private extension TextInputStringTokenizerTests {
     private var sampleText: String {
-        return "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras commodo pretium lorem et scelerisque. Sed urna massa, eleifend vel suscipit et, finibus ut nisi. Praesent ullamcorper justo ut lectus faucibus venenatis. Suspendisse lobortis libero sed odio iaculis, quis blandit ante accumsan.\n\nQuisque sed hendrerit diam. Quisque ut enim ligula.\nDonec laoreet, massa sed commodo tincidunt, dui neque ullamcorper sapien, laoreet efficitur nisi est semper velit."
+        return """
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras commodo pretium lorem et scelerisque. Sed urna massa, eleifend vel suscipit et, finibus ut nisi. Praesent ullamcorper justo ut lectus faucibus venenatis. Suspendisse lobortis libero sed odio iaculis, quis blandit ante accumsan.
+
+Quisque sed hendrerit diam. Quisque ut enim ligula.
+Donec laoreet, massa sed commodo tincidunt, dui neque ullamcorper sapien, laoreet efficitur nisi est semper velit.
+"""
     }
 
     private func makeTokenizer() -> UITextInputTokenizer {
