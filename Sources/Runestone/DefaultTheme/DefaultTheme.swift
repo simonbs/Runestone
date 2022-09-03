@@ -19,6 +19,7 @@ public final class DefaultTheme: Runestone.Theme {
 
     public init() {}
 
+    // swiftlint:disable:next cyclomatic_complexity
     public func textColor(for highlightName: String) -> UIColor? {
         guard let highlightName = HighlightName(highlightName) else {
             return nil
