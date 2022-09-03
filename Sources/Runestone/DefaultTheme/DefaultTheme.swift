@@ -56,6 +56,17 @@ public final class DefaultTheme: Runestone.Theme {
         }
     }
 
+    public func fontTraits(for highlightName: String) -> FontTraits {
+        guard let highlightName = HighlightName(highlightName) else {
+            return []
+        }
+        if highlightName == .keyword {
+            return .bold
+        } else {
+            return []
+        }
+    }
+
     @available(iOS 16.0, *)
     public func highlightedRange(forFoundTextRange foundTextRange: NSRange, ofStyle style: UITextSearchFoundTextStyle) -> HighlightedRange? {
         switch style {
