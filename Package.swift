@@ -13,7 +13,7 @@ let package = Package(
         .library(name: "Runestone", targets: ["Runestone"])
     ],
     targets: [
-        .target(name: "Runestone", dependencies: ["TreeSitter"]),
+        .target(name: "Runestone", dependencies: ["TreeSitter"], resources: [.process("Theme.xcassets")]),
         .target(name: "TreeSitter",
                 path: "tree-sitter/lib",
                 exclude: [
