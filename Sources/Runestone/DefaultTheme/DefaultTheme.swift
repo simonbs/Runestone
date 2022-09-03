@@ -12,8 +12,8 @@ public final class DefaultTheme: Runestone.Theme {
     public let selectedLinesLineNumberColor = UIColor(themeColorNamed: "line_number_current_line")
     public let selectedLinesGutterBackgroundColor = UIColor(themeColorNamed: "background")
     public let invisibleCharactersColor = UIColor(themeColorNamed: "invisible_characters")
-    public let pageGuideHairlineColor = UIColor(themeColorNamed: "background")
-    public let pageGuideBackgroundColor = UIColor(themeColorNamed: "background")
+    public let pageGuideHairlineColor = UIColor(themeColorNamed: "page_guide_hairline")
+    public let pageGuideBackgroundColor = UIColor(themeColorNamed: "page_guide_background")
     public let markedTextBackgroundColor = UIColor(themeColorNamed: "marked_text")
     public let selectionColor = UIColor(themeColorNamed: "selection")
 
