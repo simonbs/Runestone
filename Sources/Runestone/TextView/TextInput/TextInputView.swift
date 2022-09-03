@@ -414,7 +414,7 @@ final class TextInputView: UIView, UITextInput {
             if newValue != stringView.string {
                 stringView.string = newValue
                 languageMode.parse(newValue)
-                lineManager.rebuild(from: newValue)
+                lineManager.rebuild()
                 if let oldSelectedRange = selectedRange {
                     inputDelegate?.selectionWillChange(self)
                     selectedRange = safeSelectionRange(from: oldSelectedRange)
