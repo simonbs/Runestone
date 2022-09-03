@@ -223,12 +223,10 @@ private extension TextInputStringTokenizerTests {
         lineManager.rebuild()
         let lineControllerStorage = LineControllerStorage(stringView: stringView)
         lineControllerStorage.delegate = self
-        let entireStringRange = NSRange(location: 0, length: stringLength)
-        let allLines = lineManager.lines(in: entireStringRange)
-        for line in allLines {
+        for row in 0 ..< lineManager.lineCount {
+            let line = lineManager.line(atRow: row)
             let lineController = lineControllerStorage.getOrCreateLineController(for: line)
-            let location = lineController.line.data.totalLength
-            lineController.prepareToDisplayString(toLocation: location, syntaxHighlightAsynchronously: false)
+            lineController.prepareToDisplayString(toLocation: line.data.totalLength, syntaxHighlightAsynchronously: false)
         }
         return TextInputStringTokenizer(textInput: textInputView,
                                         stringView: stringView,
