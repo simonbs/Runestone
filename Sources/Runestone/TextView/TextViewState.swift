@@ -58,7 +58,7 @@ private extension TextViewState {
     private func prepare(with text: String) {
         let nsString = text as NSString
         lineManager.estimatedLineHeight = theme.font.totalLineHeight
-        lineManager.rebuild(from: nsString)
+        lineManager.rebuild()
         languageMode.parse(nsString)
         detectedIndentStrategy = languageMode.detectIndentStrategy()
         let lineEndingDetector = LineEndingDetector(lineManager: lineManager, stringView: stringView)
