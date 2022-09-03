@@ -87,7 +87,7 @@ private extension LineEndingDetectorTests {
     private func detectLineEndings(in string: String) -> LineEnding? {
         let stringView = StringView(string: string)
         let lineManager = LineManager(stringView: stringView)
-        lineManager.rebuild(from: string as NSString)
+        lineManager.rebuild()
         let detector = LineEndingDetector(lineManager: lineManager, stringView: stringView)
         return detector.detect()
     }
