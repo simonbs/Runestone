@@ -1,6 +1,5 @@
 import Runestone
 import RunestoneJavaScriptLanguage
-import RunestoneTomorrowTheme
 import UIKit
 
 final class MainViewController: UIViewController {
@@ -63,7 +62,9 @@ private extension MainViewController {
 
     private func setupTextView() {
         let text = UserDefaults.standard.text ?? ""
-        let state = TextViewState(text: text, theme: TomorrowTheme(), language: .javaScript)
+        let themeSetting = UserDefaults.standard.theme
+        let theme = themeSetting.makeTheme()
+        let state = TextViewState(text: text, theme: theme, language: .javaScript)
         contentView.textView.editorDelegate = self
         contentView.textView.setState(state)
     }
@@ -76,15 +77,15 @@ private extension MainViewController {
     }
 
     private func setupMenuButton() {
-        let menu = UIMenu(children: [makeFeaturesMenu(), makeSettingsMenu(), makeThemeMenu()])
+        let menu = UIMenu(children: makeFeaturesMenuElements() + makeSettingsMenuElements() + makeThemeMenuElements())
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), menu: menu)
     }
 
-    private func makeFeaturesMenu() -> UIMenu {
-        var children: [UIMenuElement] = []
+    private func makeFeaturesMenuElements() -> [UIMenuElement] {
+        var menuElements: [UIMenuElement] = []
 #if compiler(>=5.7)
         if #available(iOS 16, *) {
-            children += [
+            menuElements += [
                 UIMenu(options: .displayInline, children: [
                     UIAction(title: "Find") { [weak self] _ in
                         self?.presentFind()
@@ -96,17 +97,17 @@ private extension MainViewController {
             ]
         }
 #endif
-        children += [
+        menuElements += [
             UIAction(title: "Go to Line") { [weak self] _ in
                 self?.presentGoToLineAlert()
             }
         ]
-        return UIMenu(options: .displayInline, children: children)
+        return menuElements
     }
 
-    private func makeSettingsMenu() -> UIMenu {
+    private func makeSettingsMenuElements() -> [UIMenuElement] {
         let settings = UserDefaults.standard
-        return UIMenu(options: .displayInline, children: [
+        return [
             UIMenu(options: .displayInline, children: [
                 UIAction(title: "Show Line Numbers", state: settings.showLineNumbers ? .on : .off) { [weak self] _ in
                     settings.showLineNumbers.toggle()
@@ -146,15 +147,15 @@ private extension MainViewController {
                     self?.setupMenuButton()
                 }
             ])
-        ])
+        ]
     }
 
-    private func makeThemeMenu() -> UIMenu {
-        return UIMenu(options: .displayInline, children: [
+    private func makeThemeMenuElements() -> [UIMenuElement] {
+        return [
             UIAction(title: "Theme") { [weak self] _ in
                 self?.presentThemePicker()
             }
-        ])
+        ]
     }
 
     private func presentGoToLineAlert() {
