@@ -48,7 +48,8 @@ final class LineManager {
         rootData.node = documentLineTree.root
     }
 
-    func rebuild(from string: NSString) {
+    // swiftlint:disable:next function_body_length
+    func rebuild() {
         // Reset the tree so we only have a single line.
         let rootData = DocumentLineNodeData(lineHeight: estimatedLineHeight)
         documentLineTree.reset(rootValue: 0, rootData: rootData)
@@ -56,14 +57,15 @@ final class LineManager {
         initialLongestLine = nil
         // Iterate over lines in the string.
         var line = documentLineTree.node(atIndex: 0)
-        var workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: 0)
+        var workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: stringView.string, startingAt: 0)
         var lines: [DocumentLineNode] = []
         var lastDelimiterEnd = 0
         var totalLineHeight: CGFloat = 0
         var longestLineLength: Int = 0
         while let newLineRange = workingNewLineRange {
             let totalLength = newLineRange.location + newLineRange.length - lastDelimiterEnd
-            let substring = string.substring(with: NSRange(location: lastDelimiterEnd, length: totalLength))
+            let substringRange = NSRange(location: lastDelimiterEnd, length: totalLength)
+            let substring = stringView.string.substring(with: substringRange)
             line.value = totalLength
             line.data.totalLength = totalLength
             line.data.delimiterLength = newLineRange.length
@@ -79,11 +81,12 @@ final class LineManager {
             let data = DocumentLineNodeData(lineHeight: estimatedLineHeight)
             line = DocumentLineNode(tree: documentLineTree, value: 0, data: data)
             data.node = line
-            workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: lastDelimiterEnd)
+            workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: stringView.string, startingAt: lastDelimiterEnd)
             totalLineHeight += estimatedLineHeight
         }
-        let totalLength = string.length - lastDelimiterEnd
-        let substring = string.substring(with: NSRange(location: lastDelimiterEnd, length: totalLength))
+        let totalLength = stringView.string.length - lastDelimiterEnd
+        let substringRange = NSRange(location: lastDelimiterEnd, length: totalLength)
+        let substring = stringView.string.substring(with: substringRange)
         line.value = totalLength
         line.data.totalLength = totalLength
         line.data.byteCount = substring.byteCount
