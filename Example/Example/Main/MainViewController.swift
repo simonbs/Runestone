@@ -1,6 +1,5 @@
 import Runestone
 import RunestoneJavaScriptLanguage
-import RunestoneTomorrowTheme
 import UIKit
 
 final class MainViewController: UIViewController {
@@ -63,7 +62,9 @@ private extension MainViewController {
 
     private func setupTextView() {
         let text = UserDefaults.standard.text ?? ""
-        let state = TextViewState(text: text, theme: TomorrowTheme(), language: .javaScript)
+        let themeSetting = UserDefaults.standard.theme
+        let theme = themeSetting.makeTheme()
+        let state = TextViewState(text: text, theme: theme, language: .javaScript)
         contentView.textView.editorDelegate = self
         contentView.textView.setState(state)
     }

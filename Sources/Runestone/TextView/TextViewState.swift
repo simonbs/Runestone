@@ -27,7 +27,7 @@ public final class TextViewState {
     ///   - theme: The theme to use when syntax highlighting the text.
     ///   - language: The language to use when parsing the text.
     ///   - languageProvider: Object that can provide embedded languages on demand. A strong reference will be stored to the language provider.
-    public init(text: String, theme: Theme, language: TreeSitterLanguage, languageProvider: TreeSitterLanguageProvider? = nil) {
+    public init(text: String, theme: Theme = DefaultTheme(), language: TreeSitterLanguage, languageProvider: TreeSitterLanguageProvider? = nil) {
         self.theme = theme
         self.stringView = StringView(string: NSMutableString(string: text))
         self.lineManager = LineManager(stringView: stringView)
@@ -45,7 +45,7 @@ public final class TextViewState {
     /// - Parameters:
     ///   - text: The text to display in the text view.
     ///   - theme: The theme to use when syntax highlighting the text.
-    public init(text: String, theme: Theme) {
+    public init(text: String, theme: Theme = DefaultTheme()) {
         self.theme = theme
         self.stringView = StringView(string: NSMutableString(string: text))
         self.lineManager = LineManager(stringView: stringView)
