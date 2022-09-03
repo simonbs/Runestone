@@ -420,11 +420,16 @@ extension LayoutManager {
         let safeLocation = min(max(location, 0), stringView.string.length)
         let line = lineManager.line(containingCharacterAt: safeLocation)!
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
-        let localLocation = safeLocation - line.location
-        let localCaretRect = lineController.caretRect(atIndex: localLocation)
-        let globalYPosition = line.yPosition + localCaretRect.minY
-        let globalRect = CGRect(x: localCaretRect.minX, y: globalYPosition, width: localCaretRect.width, height: localCaretRect.height)
-        return globalRect.offsetBy(dx: leadingLineSpacing, dy: textContainerInset.top)
+        let lineLocalLocation = safeLocation - line.location
+        if shouldMoveCaretToNextLineFragment(forLocation: lineLocalLocation, in: line) {
+            let rect = caretRect(at: location + 1)
+            return CGRect(x: leadingLineSpacing, y: rect.minY, width: rect.width, height: rect.height)
+        } else {
+            let localCaretRect = lineController.caretRect(atIndex: lineLocalLocation)
+            let globalYPosition = line.yPosition + localCaretRect.minY
+            let globalRect = CGRect(x: localCaretRect.minX, y: globalYPosition, width: localCaretRect.width, height: localCaretRect.height)
+            return globalRect.offsetBy(dx: leadingLineSpacing, dy: textContainerInset.top)
+        }
     }
 
     func firstRect(for range: NSRange) -> CGRect {
@@ -511,6 +516,18 @@ extension LayoutManager {
         } else {
             return line.location + index
         }
+    }
+
+    private func shouldMoveCaretToNextLineFragment(forLocation location: Int, in line: DocumentLineNode) -> Bool {
+        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
+        guard lineController.numberOfLineFragments > 0 else {
+            return false
+        }
+        let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: location)
+        guard lineFragmentNode.index > 0 else {
+            return false
+        }
+        return location == lineFragmentNode.data.lineFragment?.range.location
     }
 }
 
