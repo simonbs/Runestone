@@ -79,7 +79,7 @@ After importing a Tree-sitter parser using the [TreeSitterLanguages](https://git
 
 ```swift
 let text = "let foo = \"Hello World\""
-let state = TextViewState(text: text, theme: TomorrowTheme(), language: .javaScript)
+let state = TextViewState(text: text, language: .javaScript)
 textView.setState(state)
 ```
 
@@ -90,6 +90,6 @@ let text = "let foo = \"Hello World\""
 let highlightsQuery = TreeSitterLanguage.Query(contentsOf: "queries/highlights.scm")
 let injectionsQuery = TreeSitterLanguage.Query(contentsOf: "queries/injections.scm")
 let language = TreeSitterLanguage(tree_sitter_javascript(), highlightsQuery: highlightsQuery, injectionsQuery: injectionsQuery)
-let state = TextViewState(text: text, theme: TomorrowTheme(), language: language)
+let state = TextViewState(text: text, language: language)
 textView.setState(state)
 ```
