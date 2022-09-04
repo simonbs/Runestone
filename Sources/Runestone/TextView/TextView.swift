@@ -1097,7 +1097,6 @@ private extension TextView {
             textInputView.moveCaret(to: point)
             if textInputView.selectedRange != oldSelectedRange {
                 layoutIfNeeded()
-                editorDelegate?.textViewDidChangeSelection(self)
             }
             installEditableInteraction()
             becomeFirstResponder()

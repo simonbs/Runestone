@@ -1,6 +1,6 @@
 # Getting Started
 
-Theis articles gets you started using Runestone in your project.
+This articles gets you started using Runestone in your project.
 
 ## Installation
 

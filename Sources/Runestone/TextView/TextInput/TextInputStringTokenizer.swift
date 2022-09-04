@@ -57,9 +57,27 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
 // MARK: - Lines
 private extension TextInputStringTokenizer {
     private func isPosition(_ position: UITextPosition, atLineBoundaryInDirection direction: UITextDirection) -> Bool {
-        // I can't seem to make Ctrl+A, Ctrl+E, Cmd+Left, and Cmd+Right work properly if this function returns anything but false.
-        // I've tried various ways of determining the line boundary but UIKit doesn't seem to be happy with anything I come up with ultimately leading to incorrect keyboard navigation. I haven't yet found any drawbacks to returning false in all cases.
-        return false
+        guard let indexedPosition = position as? IndexedPosition else {
+            return false
+        }
+        let location = indexedPosition.index
+        guard let line = lineManager.line(containingCharacterAt: location) else {
+            return false
+        }
+        let lineLocation = line.location
+        let lineLocalLocation = location - lineLocation
+        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
+        let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation)
+        if direction.isForward {
+            let isLastLineFragment = lineFragmentNode.index == lineController.numberOfLineFragments - 1
+            if isLastLineFragment {
+                return location == lineLocation + lineFragmentNode.location + lineFragmentNode.value - line.data.delimiterLength
+            } else {
+                return location == lineLocation + lineFragmentNode.location + lineFragmentNode.value
+            }
+        } else {
+            return location == lineLocation + lineFragmentNode.location
+        }
     }
 
     private func position(from position: UITextPosition, toLineBoundaryInDirection direction: UITextDirection) -> UITextPosition? {
