@@ -1,0 +1,131 @@
+@Tutorial(time: 30) {
+    @Intro(title: "Syntax Highlighting the Text") {
+        This tutorial guides you through syntax highlighting text in a text view.
+        
+        In this guide we'll add support for syntax highlighting JavaScript code to the text view we configured in <doc:Setting-up-a-TextView>. We'll use the JavaScript syntax included in the [TreeSitterLanguages](https://github.com/simonbs/treesitterlanguages) Swift package.
+        
+        For more information on Tree-sitter languages and how they can be used without the TreeSitterLanguages package, please refer to <doc:AddingATreeSitterLanguage>.
+        
+        @Image(source: tutorials-header.png, alt: "Syntax highlighted code snippets.")
+    }
+    
+    @Section(title: "Add TreeSitterLanguages and set the language mode") {
+        @ContentAndMedia {
+            Start off by adding the TreeSitterLanguages package to your project. This package contains all the syntaxes used by the [Runestone Text Editor](https://apps.apple.com/us/app/runestone-editor/id1548193893) app. In this tutorial we'll only use the JavaScript syntax.
+            
+            @Image(source: 01-syntax-highlighting-the-text-01.png, alt: "A MacBook Pro running Xcode.")
+        }
+        
+        @Steps {
+            @Step {
+                Add TreeSitterLanguages as a Swift Package to your project by right-clicking your project in the Project navigator and selecting "Add Packages..."
+                
+                @Image(source: 01-syntax-highlighting-the-text-01-01.png, alt: "A screenshot of the Project navigator, which shows right-click menu with the Add Packages menu item highlighted.")
+            }
+            
+            @Step {
+                Search for "https://github.com/simonbs/treesitterlanguages" and select TreeSitterLanguages in the search results. Specify a dependency rule, select the TextCompanion project under "Add to Project", and then select "Add Package".
+                
+                @Image(source: 01-syntax-highlighting-the-text-01-02.png, alt: "A screenshot of the Add Package sheet, which shows the URL for the TreeSitetrLanguages GitHub repository in the search field. The search field, the TreeSitterLanguages search result, the Dependency Rule, the Add to Project field, and the Add Package button are highlighted.")
+            }
+            
+            @Step {
+                Add TreeSitterLanguages' package product to the TextCompanion target and select "Add Package".
+                
+                @Image(source: 01-syntax-highlighting-the-text-01-03.png, alt: "A screenshot of the Add Package showing the TreeSitterLanguages package product being added to the TextCompanion target. TreeSitterLanguages' package product, the TextCompanion target, and the Add Package button are highlighted.")
+            }
+            
+            @Step {
+                Select the ViewController.swift in the Project navigator.
+                
+                This file was created in <doc:Setting-up-a-TextView> tutorial.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-01-01.swift)
+            }
+            
+            @Step {
+                Import the `TreeSitterJavaScriptRunestone` package.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-01-02.swift)
+            }
+            
+            @Step {
+                Finally, create an instance of `TreeSitterLanguageMode`, pass it the JavaScript language, and pass the language mode to the text view.
+                
+                After running the app in the iPhone simulator you can now write JavaScript in the text view and it will become syntax highlighted.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-01-03.swift) {
+                    @Image(source: preview-01-syntax-highlighting-the-text-01-01.png, alt: "A screenshot of the iPhone simulator showing a screen with the TextView and a snippet of syntax highlighted JavaScript.")
+                }
+            }
+        }
+    }
+        
+    @Section(title: "Setting the state with TextViewState") {
+        @ContentAndMedia {
+            Up until now we have set the text and language on the text view using the `text` property and and `setLanguageMode(_:)` functions. Setting the text or language on the text view requires an analysis to be performed on the text. This analysis can be an expensive operation for large documents.
+            
+            Because the `text` property and `setLanguageMode(_:)` function must be called on the main queue, the UI may hang for a while when calling any of those.
+            
+            We can use <doc:TextViewState>, a type that encapsulates the text, theme, and language, to avoid blocking the main queue. `TextViewState` will perform the analysis of the document when initialized and the state can be initialized on a background queue.
+            
+            The following section explains how to use `TextViewState` to improve the performance of the TextCompanion app.
+            
+            @Image(source: 01-syntax-highlighting-the-text-02.png, alt: "A MacBook Pro running Xcode.")
+        }
+            
+        @Steps {
+            @Step {
+                Select the ViewController.swift file in the Project navigator.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-02-01.swift)
+            }
+            
+            @Step {
+                Add a function called `setTextViewState(on:)`.
+                
+                We will add the implementation of this function later.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-02-02.swift)
+            }
+            
+            @Step {
+                Replace the lines where we previously set the text and the language mode on the text view with a call to `setTextViewState(_:)`.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-02-03.swift)
+            }
+            
+            @Step {
+                Dispatch to a background queue in the implementation of `setTextViewState(on:)`.
+                
+                This is where we will initialize `TextViewState` and ensure that the expensive analysis is performed on a background queue.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-02-04.swift)
+            }
+            
+            @Step {
+                Create an instance of `TextViewState` and pass the text stored in `UserDefaults` and the JavaScript language syntax.
+                
+                Initializing `TextViewState` on a background queue ensures that the expensive analysis does not cause the UI thread to hang.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-02-05.swift)
+            }
+            
+            @Step {
+                Dispatch back to the main queue.
+                
+                Before passing the instance of `TextViewState` to the text view, we must ensure that we are on the main queue.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-02-06.swift)
+            }
+            
+            @Step {
+                Finally, all `setState(_:)` to pass the state to the text view.
+                
+                All expensive operations are now performed on a background queue and we no longer risk the UI hanging when we pass the document to the text view.
+              
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-02-07.swift)
+            }
+        }
+    }
+}

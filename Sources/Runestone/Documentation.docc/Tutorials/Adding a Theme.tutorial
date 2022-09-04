@@ -1,0 +1,167 @@
+@Tutorial(time: 30) {
+    @Intro(title: "Adding a Theme") {
+        This tutorial guides you through adding a custom theme to your project. You will add the [Tomorrow](https://github.com/chriskempson/tomorrow-theme) theme to the TextCompanion app and use it when highlighting code.
+        
+        Before going through this tutorial, you should make sure to complete the <doc:Syntax-Highlighting-the-Text> tutorial.
+        
+        @Image(source: tutorials-header.png, alt: "Syntax highlighted code snippets.")
+    }
+    
+    @Section(title: "Create a theme") {
+        @ContentAndMedia {
+            Create a theme and start using it with the text view. 
+            
+            @Image(source: 01-adding-a-theme-01.png, alt: "A MacBook Pro running Xcode.")
+        }
+        
+        @Steps {
+            @Step {
+                Create a file named UIColor+Tomorrow.swift with an extension on UIColor.
+                
+                This file will contain the colors used in the Tomorrow theme.
+                
+                @Code(name: "UIColor+Tomorrow.swift", file: 01-adding-a-theme-01-01.swift)
+            }
+            
+            @Step {
+                Add the colors of the Tomorrow theme to the extension.
+                
+                This lets us refer to a color in the Tomorrow theme using `UIColor.tomorrow.foreground`.
+                
+                @Code(name: "UIColor+Tomorrow.swift", file: 01-adding-a-theme-01-02.swift)
+            }
+            
+            @Step {
+                Create a file named TomorrowTheme.swift containing a class named `TomorrowTheme`.
+                
+                @Code(name: "TomorrowTheme.swift", file: 01-adding-a-theme-01-03.swift)
+            }
+            
+            @Step {
+                Import the Runestone and UIKit packages.
+                
+                @Code(name: "TomorrowTheme.swift", file: 01-adding-a-theme-01-04.swift)
+            }
+            
+            @Step {
+                Make `TomorrowTheme` conform to the `Theme` protocol.
+                
+                Xcode will give an error as `TomorrowTheme` does not implement all the properties and functions required by the `Theme` protocol. We will correct that in the next steps.
+                
+                @Code(name: "TomorrowTheme.swift", file: 01-adding-a-theme-01-05.swift)
+            }
+            
+            @Step {
+                Add the fonts to use for the text in the text view and the line numbers in the gutter.
+                
+                Xcode will give an error saying that `TomorrowTheme` does not conform to the `Theme` protocol. We will fix that in the following steps.
+            
+                @Code(name: "TomorrowTheme.swift", file: 01-adding-a-theme-01-06.swift)
+            }
+            
+            @Step {
+                Add the colors to use for the text, line numbers, page guide, invisible characters, and more.
+                
+                Xcode will give an error saying that `TomorrowTheme` does not conform to the `Theme` protocol. We will fix that in the following steps. 
+            
+                @Code(name: "TomorrowTheme.swift", file: 01-adding-a-theme-01-07.swift)
+            }
+            
+            @Step {
+                Add the `textColor(for:)` function and return `nil`.
+                
+                We will add a proper implementation to this function in the following section. Xcode should no longer give an error.
+            
+                @Code(name: "TomorrowTheme.swift", file: 01-adding-a-theme-01-08.swift)
+            }
+            
+            @Step {
+                Select ViewController.swift in the Project navigator.
+                
+                This file was created in <doc:Setting-up-a-TextView> tutorial and updated through the <doc:Syntax-Highlighting-the-Text> tutorial.
+            
+                @Code(name: "ViewController.swift", file: 01-adding-a-theme-01-09.swift)
+            }
+            
+            @Step {
+                Create a `theme` variable and assign it an instance of `TomorrowTheme`.
+            
+                @Code(name: "ViewController.swift", file: 01-adding-a-theme-01-10.swift)
+            }
+            
+            @Step {
+                Pass the theme to the `TextViewState`.
+                
+                Run the app in the iPhone simulator to see the new theme. Notice that the text is not syntax highlighted because our implementation of `textColor(for:)` in TomorrowTheme.swift returns nil. We will address that in the next section. Also note that the theme only looks correct when running the app in light mode as we are not returning dynamic colors in UIColor+Tomorrow.swift.
+            
+                @Code(name: "ViewController.swift", file: 01-adding-a-theme-01-11.swift) {
+                    @Image(source: preview-01-adding-a-theme-01-01.png, alt: "A screenshot of the iPhone simulator showing a screen with a text view containing JavaScript code. The text is shown as all black text on a white background.")
+                }
+            }
+        }
+    }
+    
+    @Section(title: "Adding colors to the text") {
+        @ContentAndMedia {
+            Make the text syntax highlighted.
+            
+            @Image(source: 01-adding-a-theme-02.png, alt: "A MacBook Pro running Xcode.")
+        }
+            
+        @Steps {
+            @Step {
+                Create a file named HighlightName.swift and add an enum named `HighlightName`. Make its values backed by a String.
+                
+                The `HighligtName` enum will contain the syntax nodes that our theme will support highlighting. Please refer to the <doc:CreatingATheme> article for more information on this.
+                
+                @Code(name: "HighlightName.swift", file: 01-adding-a-theme-02-01.swift)
+            }
+            
+            @Step {
+                Add cases for the syntax nodes to highlight.
+                
+                The cases to support may vary from language to language. In this case we are adding support for the highlight names used by the JavaScript language.
+                
+                @Code(name: "HighlightName.swift", file: 01-adding-a-theme-02-02.swift)
+            }
+            
+            @Step {
+                Add the initializer that takes a raw highlight name as input and constructs an appropriate instance of `HighlightName` if possible.
+                
+                Highlight names are dot separated and we should use the longest matching name. This is described in detail in the <doc:CreatingATheme> article.
+                
+                @Code(name: "HighlightName.swift", file: 01-adding-a-theme-02-03.swift)
+            }
+            
+            @Step {
+                Select TomorrowTheme.swift in the Project navigator.
+                
+                @Code(name: "TomorrowTheme.swift", file: 01-adding-a-theme-02-04.swift)
+            }
+            
+            @Step {
+                Create an instance of `HighlightName` from the string representation of the highlight name passed to `textColor(for:)`.
+                
+                @Code(name: "TomorrowTheme.swift", file: 01-adding-a-theme-02-05.swift)
+            }
+            
+            @Step {
+                Switch over the `highlightName` property and return a color for all cases of the `HighlightName` enum.
+                
+                When running the app in the iPhone simulator, you will notice that the JavaScript code is now highlighted.
+                
+                @Code(name: "TomorrowTheme.swift", file: 01-adding-a-theme-02-06.swift) {
+                    @Image(source: preview-01-adding-a-theme-02-01.png, alt: "A screenshot of the iPhone simulator showing a screen with a text view containing JavaScript code. The text is shown in multiple colors.")
+                }
+            }
+            
+            @Step {
+                Finally, implement `fontTraits(for:)` similar to `textColor(for:)` to make keywords bold.
+                
+                @Code(name: "TomorrowTheme.swift", file: 01-adding-a-theme-02-07.swift) {
+                    @Image(source: preview-01-adding-a-theme-02-02.png, alt: "A screenshot of the iPhone simulator showing a screen with a text view containing JavaScript code. The text is shown in multiple colors and keywords are bold.")
+                }
+            }
+        }
+    }
+}

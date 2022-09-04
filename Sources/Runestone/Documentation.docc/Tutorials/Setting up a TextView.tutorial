@@ -1,0 +1,272 @@
+@Tutorial(time: 40) {
+    @Intro(title: "Setting up a TextView") {
+        This tutorial guides you through creating a TextView, adding it to your view hierarchy, and configuring the TextView.
+        
+        @Image(source: tutorials-header.png, alt: "Syntax highlighted code snippets.")
+    }
+    
+    @Section(title: "Create a new project and add Runestone") {
+        @ContentAndMedia {
+            Create and configure an Xcode project that uses Runstone.
+            
+            @Image(source: 01-setting-up-a-textview-01.png, alt: "A MacBook Pro running Xcode.")
+        }
+        
+        @Steps {
+            @Step {
+                Open Xcode and either click "Create a new Xcode project" in Xcode's startup window, or choose File > New > Project.
+                
+                @Image(source: 01-setting-up-a-textview-01-01.png, alt: "A screenshot of the Welcome to Xcode screen, which displays when you open Xcode. There are three options to choose from when you open Xcode: Create a new Xcode project, Clone an existing project, and Open a project or file. The first option — Create a new Xcode project — is highlighted.")
+            }
+            
+            @Step {
+                In the template selector, select iOS as the platform, select the App template, and then click Next.
+                
+                @Image(source: 01-setting-up-a-textview-01-02.png, alt: "A screenshot of the template selector sheet in Xcode. In the top row, iOS is selected as the platform. In the Application section, App is selected as the template; there is a highlight placed over the Next button at the lower-right of the sheet.")
+            }
+
+            @Step {
+                Enter "TextCompanion" as the product name, select "Storyboard" for the interface and "Swift" for the language, and click Next. Choose a location to save the TextCompanion project on your Mac.
+                
+                @Image(source: 01-setting-up-a-textview-01-03.png, alt: "A screenshot of the project sheet, which shows the Product Name for the app being built as TextCompanion. The interface is set to Storyboard, and the language is set to Swift.")
+            }
+            
+            @Step {
+                Add Runestone as a Swift Package to your project by right-clicking your project in the Project navigator and selecting "Add Packages..."
+                
+                @Image(source: 01-setting-up-a-textview-01-04.png, alt: "A screenshot of the Project navigator, which shows right-click menu with the Add Packages menu item highlighted.")
+            }
+            
+            @Step {
+                Search for "https://github.com/simonbs/Runestone" and select Runestone in the search results. Specify a dependency rule, select the TextCompanion project under "Add to Project", and then select "Add Package".
+                
+                It is recommended to specify the "Up to Next Major Version" dependency rule. This ensures that you get all bug fixes and new features of Runestone.
+                
+                @Image(source: 01-setting-up-a-textview-01-05.png, alt: "A screenshot of the Add Package sheet, which shows the URL for the Runestone GitHub repository in the search field. The search field, the Runestone search result, the Dependency Rule, the Add to Project field, and the Add Package button are highlighted.")
+            }
+            
+            @Step {
+                Add Runestone's package product to the TextCompanion target and select "Add Package".
+                
+                @Image(source: 01-setting-up-a-textview-01-06.png, alt: "A screenshot of the Add Package showing the Runestone package product being added to the TextCompanion target. Runestone's package product, the TextCompanion target, and the Add Package button are highlighted.")
+            }
+            
+            @Step {
+                Select the Main storyboard in the Project navigator and then select ViewController.
+                
+                @Image(source: 01-setting-up-a-textview-01-07.png, alt: "A screenshot of Xcode with the Main storyboard highlighted in the Project navigator and the ViewController highlighted in Interface Builder.")
+            }
+            
+            @Step {
+                In the menu bar select Editor > Embed In > Navigation Controller.
+                
+                @Image(source: 01-setting-up-a-textview-01-08.png, alt: "A screenshot Xcode's menu bar with the Editor, Embed In, and Navigation Controller menu items highlighted.")
+            }
+            
+            @Step {
+                Select ViewController.swift in the Project navigator.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-01-01.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-01-01.png, alt: "A screenshot of the iPhone simulator showing a blank screen.")
+                }
+            }
+            
+            @Step {
+                Set the title of the view controller to "TextCompanion".
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-01-02.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-01-02.png, alt: "A screenshot of the iPhone simulator showing a blank screen.")
+                }
+            }
+            
+            @Step {
+                Import the `Runestone` package.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-01-03.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-01-02.png, alt: "A screenshot of the iPhone simulator showing a blank screen.")
+                }
+            }
+            
+            @Step {
+                Finally, create a TextView and add it to the view hierarchy.
+                
+                After running the app in the iPhone simulator you can now write text in the text view.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-01-04.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-01-03.png, alt: "A screenshot of the iPhone simulator showing a screen with the text \"Hello world\" followed by the caret.")
+                }
+            }
+        }
+    }
+    
+    @Section(title: "Customizing the TextView") {
+        @ContentAndMedia {
+            With the TextView setup we can now start exploring some of the customizations that can be made to the TextView.
+            
+            @Image(source: 01-setting-up-a-textview-02.png, alt: "A MacBook Pro running Xcode.")
+        }
+        
+        @Steps {
+            @Step {
+                Select the ViewController.swift file in the Project navigator.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-01.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-02-01.png.png, alt: "A screenshot of the iPhone simulator showing a screen with the text \"Hello world\" followed by the caret.")
+                }
+            }
+            
+            @Step {
+                Add a background to the navigation bar when the text view is at the scroll edge.
+                        
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-02.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-02-02.png, alt: "A screenshot of the iPhone simulator showing our text view. The navigation bar now has a background even when the scroll view has not been scrolled downwards.")
+                }
+            }
+            
+            @Step {
+                Create a method on ViewController named `setCustomization(on:)`. Remember to call the method in `viewDidLoad()`.
+                
+                This function will contain all the customization we are doing to the text view.
+                        
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-03.swift)
+            }
+            
+            @Step {
+                Assign a value to the `textContainerInset` to have the text inset from the edges of the screen.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-04.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-02-03.png, alt: "A screenshot of the iPhone simulator showing a screen with the text \"Hello world\" followed by the caret. The text has additional spacing to the left side and the top of the screen.")
+                }
+            }
+            
+            @Step {
+                Enable line numbers.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-05.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-02-04.png, alt: "A screenshot of the iPhone simulator with our text view that now shows line numbers.")
+                }
+            }
+    
+            
+            @Step {
+                Show a background color behind the selected line.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-06.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-02-05.png, alt: "A screenshot of the iPhone simulator showing our text view with the selected line visually highlighted.")
+                }
+            }
+            
+            @Step {
+                Increase the line height by 25%.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-07.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-02-06.png, alt: "A screenshot of the iPhone simulator showing our text view. The spacing between lines has been increased.")
+                }
+            }
+            
+            @Step {
+                Increase spacing between characters by 0.3.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-08.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-02-07, alt: "A screenshot of the iPhone simulator showing our text view. The spacing between characters has been increased.")
+                }
+            }
+            
+            @Step {
+                Show spaces, tabs, and line breaks.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-09.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-02-08.png, alt: "A screenshot of the iPhone simulator showing our text view which now displays all invisible characters.")
+                }
+            }
+            
+            @Step {
+                Disable line wrapping. This will enable horizontal scrolling in the text view.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-10.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-02-09.png, alt: "A screenshot of the iPhone simulator showing our text view which no longer breaks lines.")
+                }
+            }
+            
+            @Step {
+                Show the page guide at column 80.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-11.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-02-10.png, alt: "A screenshot of the iPhone simulator showing our text view scrolled to the right until the page guide appears.")
+                }
+            }
+            
+            @Step {
+                Finally, disable auto-correction, automatic capitalization, smart quotes, and smart dashes.
+                
+                Later in this chapter we will extend our editor to support syntax highlighting JavaScript, and since we will be writing code in our text view, we will want these features to be disabled.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-12.swift)
+            }
+        }
+    }
+    
+    @Section(title: "Restoring text between app launches") {
+        @ContentAndMedia {
+            Let's persist the text we write in our text view and restore it when we launch the app.
+            
+            @Image(source: 01-setting-up-a-textview-03.png, alt: "A MacBook Pro running Xcode.")
+        }
+        
+        @Steps {
+            @Step {
+                Create a new file named UserDefaults+TextStorage.swift. This will contain an extension on the standard `UserDefaults` type that will help us store the text between app launches.
+                
+                Select UserDefaults+TextStorage.swift in the Project navigator.
+                
+                @Code(name: "UserDefaults+TextStorage.swift", file: 01-setting-up-a-textview-03-01.swift)
+            }
+            
+            @Step {
+                We will persist our text in `UserDefaults`, so we'll create an extension `UserDefaults` and a static variable containing the key we will associate the text with.
+                
+                @Code(name: "UserDefaults+TextStorage.swift", file: 01-setting-up-a-textview-03-02.swift)
+            }
+            
+            @Step {
+                Implement the `text` property that associates the text with our key.
+                
+                @Code(name: "UserDefaults+TextStorage.swift", file: 01-setting-up-a-textview-03-03.swift)
+            }
+            
+            @Step {
+                Select the ViewController.swift file in the Project navigator.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-03-04.swift)
+            }
+            
+            @Step {
+                Make the view controller conform to TextViewDelegate.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-03-05.swift)
+            }
+            
+            @Step {
+                Make the view controller a delegate of TextView by assigning `self` to the `editorDelegate` property on the text view.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-03-06.swift)
+            }
+            
+            @Step {
+                Implement the `textViewDidChange(_:)` delegate method to store the text when it changes.
+                
+                Most of the delegate methods in `TextViewDelegate` are similar to those of `UITextViewDelegate`.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-03-07.swift)
+            }
+            
+            @Step {
+                Finally, pass the text on the text view when the text view is created.
+                
+                The entered in the text view will now be restored whenever the app is launched.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-03-08.swift)
+            }
+        }
+    }
+}

@@ -1,6 +1,6 @@
 # ``Runestone``
 
-Performant code editor with syntax highlighting, line numbers, invisible characters and much more.
+Performant code editor with syntax highlighting, line numbers, invisible characters, and much more.
 
 ## Overview
 
@@ -28,14 +28,16 @@ The framework is [available on GitHub](https://github.com/simonbs/runestone).
 
 ![Syntax highlighted code snippets in a grid with the Runestone logo on top.](hero.png)
 
-The [Runestone Editor](https://apps.apple.com/us/app/runestone-editor/id1548193893) app was built on top of the Runestone framework and is free to download on the App Store.
+The [Runestone Text Editor](https://apps.apple.com/us/app/runestone-editor/id1548193893) app was built on top of the Runestone framework and is free to download on the App Store.
 
-[![Download Runestone Editor on the App Store](app-store-download.png)](https://apps.apple.com/us/app/runestone-editor/id1548193893)
+[![Download Runestone Text Editor on the App Store](app-store-download.png)](https://apps.apple.com/us/app/runestone-editor/id1548193893)
 
 ## Topics
 
 ### Essentials
 
+- <doc:Meet-Runestone>
+- <doc:Setting-up-a-TextView>
 - <doc:GettingStarted>
 - ``TextView``
 - ``TextViewDelegate``
@@ -45,6 +47,7 @@ The [Runestone Editor](https://apps.apple.com/us/app/runestone-editor/id15481938
 
 The appearance of <doc:TextView> can be customized using a <doc:Theme>. This is also for the text styling and colors used for syntax highlighting.
 
+- <doc:Adding-a-Theme>
 - <doc:CreatingATheme>
 - ``Theme``
 
@@ -52,6 +55,7 @@ The appearance of <doc:TextView> can be customized using a <doc:Theme>. This is 
 
 Syntax highlighting is based on GitHub's [Tree-sitter](https://github.com/tree-sitter/tree-sitter) parser generator. It has support for most popular programming languages.
 
+- <doc:Syntax-Highlighting-the-Text>
 - <doc:AddingATreeSitterLanguage>
 - ``FontTraits``
 - ``LanguageMode``

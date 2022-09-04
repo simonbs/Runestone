@@ -1,6 +1,6 @@
 # Getting Started
 
-Installing Runestone and setting up a text view.
+This articles gets you started using Runestone in your project.
 
 ## Installation
 

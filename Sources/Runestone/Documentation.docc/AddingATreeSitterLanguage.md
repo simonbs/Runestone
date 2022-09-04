@@ -34,7 +34,7 @@ Runestone abstracts everything related to parsing and syntax highlighting text a
 
 #### Using the TreeSitterLanguages Swift Package
 
-The easiest way to add a Tree-sitter parser to your project is by adding the [TreeSitterLanguages](https://github.com/simonbs/treesitterlanguages) Swift package. The package is used by the [Runestone Editor](https://apps.apple.com/us/app/runestone-editor/id1548193893) app and as such contains all languages supported by Runestone Editor.
+The easiest way to add a Tree-sitter parser to your project is by adding the [TreeSitterLanguages](https://github.com/simonbs/treesitterlanguages) Swift package. The package is used by the [Runestone Text Editor](https://apps.apple.com/us/app/runestone-editor/id1548193893) app and as such contains all languages supported by Runestone Text Editor.
 
 TreeSitterLanguages contain three Swift packages for each language. These are detailed in the [README](https://github.com/simonbs/TreeSitterLanguages/blob/main/README.md) in the repository but at a high level they serve the following purposes.
 
