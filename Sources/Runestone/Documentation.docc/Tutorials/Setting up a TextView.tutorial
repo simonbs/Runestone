@@ -189,9 +189,73 @@
             }
             
             @Step {
-                Finally, disable auto-correction, automatic capitalization, smart quotes, and smart dashes since we will start writing code in the text view in <doc:Syntax-Highlighting-the-Text>.
+                Finally, disable auto-correction, automatic capitalization, smart quotes, and smart dashes.
+                
+                Later in this chapter we will extend our editor to support syntax highlighting JavaScript, and since we will be writing code in our text view, we will want these features to be disabled.
                 
                 @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-11.swift)
+            }
+        }
+    }
+    
+    @Section(title: "Restoring text between app launches") {
+        @ContentAndMedia {
+            Let's persist the text we write in our text view and restore it when we launch the app.
+            
+            @Image(source: 01-setting-up-a-textview-03.png, alt: "A MacBook Pro running Xcode.")
+        }
+        
+        @Steps {
+            @Step {
+                Create a new file named UserDefaults+TextStorage.swift. This will contain an extension on the standard `UserDefaults` type that will help us store the text between app launches.
+                
+                Select UserDefaults+TextStorage.swift in the Project navigator.
+                
+                @Code(name: "UserDefaults+TextStorage.swift", file: 01-setting-up-a-textview-03-01.swift)
+            }
+            
+            @Step {
+                We will persist our text in `UserDefaults`, so we'll create an extension `UserDefaults` and a static variable containing the key we will associate the text with.
+                
+                @Code(name: "UserDefaults+TextStorage.swift", file: 01-setting-up-a-textview-03-02.swift)
+            }
+            
+            @Step {
+                Implement the `text` property that associates the text with our key.
+                
+                @Code(name: "UserDefaults+TextStorage.swift", file: 01-setting-up-a-textview-03-03.swift)
+            }
+            
+            @Step {
+                Select the ViewController.swift file in the Project navigator.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-03-04.swift)
+            }
+            
+            @Step {
+                Make the view controller conform to TextViewDelegate.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-03-05.swift)
+            }
+            
+            @Step {
+                Make the view controller a delegate of TextView by assigning `self` to the `editorDelegate` property on the text view.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-03-06.swift)
+            }
+            
+            @Step {
+                Implement the `textViewDidChange(_:)` delegate method to store the text when it changes.
+                
+                Most of the delegate methods in `TextViewDelegate` are similar to those of `UITextViewDelegate`.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-03-07.swift)
+            }
+            
+            @Step {
+                Finally, pass the text on the text view when the text view is created.
+                
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-03-08.swift)
             }
         }
     }
