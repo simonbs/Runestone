@@ -45,7 +45,7 @@ final class TextInputView: UIView, UITextInput {
                     shouldNotifyInputDelegate = true
                     didCallPositionFromPositionInDirectionWithOffset = false
                 }
-                shouldNotifyInputDelegateAboutSelectionChangeInLayoutSubviews = !shouldNotifyInputDelegate
+                notifyInputDelegateAboutSelectionChangeInLayoutSubviews = !shouldNotifyInputDelegate
                 if shouldNotifyInputDelegate {
                     inputDelegate?.selectionWillChange(self)
                 }
@@ -80,10 +80,10 @@ final class TextInputView: UIView, UITextInput {
     var hasText: Bool {
         return string.length > 0
     }
-    private(set) lazy var tokenizer: UITextInputTokenizer = TextInputStringTokenizer(
-        textInput: self,
-        lineManager: lineManager,
-        stringView: stringView)
+    private(set) lazy var tokenizer: UITextInputTokenizer = TextInputStringTokenizer(textInput: self,
+                                                                                     stringView: stringView,
+                                                                                     lineManager: lineManager,
+                                                                                     lineControllerStorage: lineControllerStorage)
     var autocorrectionType: UITextAutocorrectionType = .default
     var autocapitalizationType: UITextAutocapitalizationType = .sentences
     var smartQuotesType: UITextSmartQuotesType = .default
@@ -425,7 +425,7 @@ final class TextInputView: UIView, UITextInput {
                 invalidateLines()
                 layoutManager.setNeedsLayout()
                 layoutManager.layoutIfNeeded()
-                if !shouldPreserveUndoStackWhenSettingString {
+                if !preserveUndoStackWhenSettingString {
                     undoManager?.removeAllActions()
                 }
             }
@@ -554,10 +554,9 @@ final class TextInputView: UIView, UITextInput {
     }
     private var hasPendingFullLayout = false
     private let editMenuController = EditMenuController()
-    // swiftlint:disable:next identifier_name
-    private var shouldNotifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
+    private var notifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
     private var didCallPositionFromPositionInDirectionWithOffset = false
-    private var shouldPreserveUndoStackWhenSettingString = false
+    private var preserveUndoStackWhenSettingString = false
 
     // MARK: - Lifecycle
     init(theme: Theme) {
@@ -624,7 +623,7 @@ final class TextInputView: UIView, UITextInput {
         // We notify the input delegate about selection changes in layoutSubviews so we have a chance of disabling notifying the input delegate during an editing operation.
         // We will sometimes disable notifying the input delegate when the user enters Korean text.
         // This workaround is inspired by a dialog with Alexander Blach (@lextar), developer of Textastic.
-        if shouldNotifyInputDelegateAboutSelectionChangeInLayoutSubviews {
+        if notifyInputDelegateAboutSelectionChangeInLayoutSubviews {
             inputDelegate?.selectionWillChange(self)
             inputDelegate?.selectionDidChange(self)
         }
@@ -973,7 +972,7 @@ extension TextInputView {
         guard let indexedPosition = position as? IndexedPosition else {
             fatalError("Expected position to be of type \(IndexedPosition.self)")
         }
-        return caretRect(at: indexedPosition.index)
+        return layoutManager.caretRect(at: indexedPosition.index)
     }
 
     func caretRect(at location: Int) -> CGRect {
@@ -1026,7 +1025,7 @@ extension TextInputView {
             return
         }
         // Disable notifying delegate in layout subviews to prevent issues when entering Korean text. This workaround is inspired by a dialog with Alexander Black (@lextar), developer of Textastic.
-        shouldNotifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
+        notifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
         // Just before calling deleteBackward(), UIKit will set the selected range to a range of length 1, if the selected range has a length of 0.
         // In that case we want to undo to a selected range of length 0, so we construct our range here and pass it all the way to the undo operation.
         let selectedRangeAfterUndo: NSRange
@@ -1095,9 +1094,9 @@ extension TextInputView {
         }
         timedUndoManager.endUndoGrouping()
         let oldSelectedRange = selectedRange
-        shouldPreserveUndoStackWhenSettingString = true
+        preserveUndoStackWhenSettingString = true
         string = newString
-        shouldPreserveUndoStackWhenSettingString = false
+        preserveUndoStackWhenSettingString = false
         timedUndoManager.beginUndoGrouping()
         timedUndoManager.setActionName(L10n.Undo.ActionName.replaceAll)
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
@@ -1324,7 +1323,7 @@ extension TextInputView {
         guard shouldChangeText(in: range, replacementText: markedText) else {
             return
         }
-        shouldNotifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
+        notifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
         markedRange = markedText.isEmpty ? nil : NSRange(location: range.location, length: markedText.utf16.count)
         replaceText(in: range, with: markedText)
         // The selected range passed to setMarkedText(_:selectedRange:) is local to the marked range.
@@ -1363,10 +1362,10 @@ extension TextInputView {
             return nil
         }
         didCallPositionFromPositionInDirectionWithOffset = true
-        guard let location = lineMovementController.location(from: indexedPosition.index, in: direction, offset: offset) else {
+        guard let newLocation = lineMovementController.location(from: indexedPosition.index, in: direction, offset: offset) else {
             return nil
         }
-        return IndexedPosition(index: location)
+        return IndexedPosition(index: newLocation)
     }
 
     func characterRange(byExtending position: UITextPosition, in direction: UITextLayoutDirection) -> UITextRange? {
@@ -1576,7 +1575,7 @@ extension TextInputView: IndentControllerDelegate {
 // MARK: - EditMenuControllerDelegate
 extension TextInputView: EditMenuControllerDelegate {
     func editMenuController(_ controller: EditMenuController, caretRectAt location: Int) -> CGRect {
-        return caretRect(at: location)
+        return layoutManager.caretRect(at: location)
     }
 
     func editMenuControllerShouldReplaceText(_ controller: EditMenuController) {
