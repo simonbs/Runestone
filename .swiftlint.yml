@@ -1,6 +1,5 @@
 excluded:
-  - Runestone/Sources/TestTreeSitterLanguages
-  - Runestone/Sources/TreeSitter
+  - Sources/Runestone/Documentation.docc/Tutorials
   - Submodules
   - .build
 disabled_rules:
