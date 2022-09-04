@@ -111,39 +111,40 @@
                 Select the ViewController.swift file in the Project navigator.
                 
                 @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-01.swift) {
-                    @Image(source: preview-01-setting-up-a-textview-02-01.png, alt: "A screenshot of the iPhone simulator showing a screen with the text \"Hello world\" followed by the caret.")
+                    @Image(source: preview-01-setting-up-a-textview-02-01.png.png, alt: "A screenshot of the iPhone simulator showing a screen with the text \"Hello world\" followed by the caret.")
+                }
+            }
+            
+            @Step {
+                Add a background to the navigation bar when the text view is at the scroll edge.
+                        
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-02.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-02-02.png, alt: "A screenshot of the iPhone simulator showing our text view. The navigation bar now has a background even when the scroll view has not been scrolled downwards.")
                 }
             }
             
             @Step {
                 Assign a value to the `textContainerInset` to have the text inset from the edges of the screen.
                 
-                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-02.swift) {
-                    @Image(source: preview-01-setting-up-a-textview-02-02, alt: "A screenshot of the iPhone simulator showing a screen with the text \"Hello world\" followed by the caret. The text has additional spacing to the left side and the top of the screen.")
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-03.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-02-03.png, alt: "A screenshot of the iPhone simulator showing a screen with the text \"Hello world\" followed by the caret. The text has additional spacing to the left side and the top of the screen.")
                 }
             }
             
             @Step {
                 Enable line numbers.
                 
-                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-03.swift) {
-                    @Image(source: preview-01-setting-up-a-textview-02-03, alt: "A screenshot of the iPhone simulator with our text view that now shows line numbers.")
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-04.swift) {
+                    @Image(source: preview-01-setting-up-a-textview-02-04.png, alt: "A screenshot of the iPhone simulator with our text view that now shows line numbers.")
                 }
             }
     
-            @Step {
-                Add a background to the navigation bar when the text view is at the scroll edge.
-                
-                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-04.swift) {
-                    @Image(source: preview-01-setting-up-a-textview-02-04, alt: "A screenshot of the iPhone simulator showing our text view. The navigation bar now has a background even when the scroll view has not been scrolled downwards.")
-                }
-            }
             
             @Step {
                 Show a background color behind the selected line.
                 
                 @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-05.swift) {
-                    @Image(source: preview-01-setting-up-a-textview-02-05, alt: "A screenshot of the iPhone simulator showing our text view with the selected line visually highlighted.")
+                    @Image(source: preview-01-setting-up-a-textview-02-05.png, alt: "A screenshot of the iPhone simulator showing our text view with the selected line visually highlighted.")
                 }
             }
             
@@ -151,7 +152,7 @@
                 Increase the line height by 25%.
                 
                 @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-06.swift) {
-                    @Image(source: preview-01-setting-up-a-textview-02-06, alt: "A screenshot of the iPhone simulator showing our text view. The spacing between lines has been increased.")
+                    @Image(source: preview-01-setting-up-a-textview-02-06.png, alt: "A screenshot of the iPhone simulator showing our text view. The spacing between lines has been increased.")
                 }
             }
             
@@ -167,7 +168,7 @@
                 Show spaces, tabs, and line breaks.
                 
                 @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-08.swift) {
-                    @Image(source: preview-01-setting-up-a-textview-02-08, alt: "A screenshot of the iPhone simulator showing our text view which now displays all invisible characters.")
+                    @Image(source: preview-01-setting-up-a-textview-02-08.png, alt: "A screenshot of the iPhone simulator showing our text view which now displays all invisible characters.")
                 }
             }
             
@@ -175,7 +176,7 @@
                 Disable line wrapping. This will enable horizontal scrolling in the text view.
                 
                 @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-09.swift) {
-                    @Image(source: preview-01-setting-up-a-textview-02-09, alt: "A screenshot of the iPhone simulator showing our text view which no longer breaks lines.")
+                    @Image(source: preview-01-setting-up-a-textview-02-09.png, alt: "A screenshot of the iPhone simulator showing our text view which no longer breaks lines.")
                 }
             }
             
@@ -183,7 +184,7 @@
                 Show the page guide at column 80.
                 
                 @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-10.swift) {
-                    @Image(source: preview-01-setting-up-a-textview-02-10, alt: "A screenshot of the iPhone simulator showing our text view scrolled to the right until the page guide appears.")
+                    @Image(source: preview-01-setting-up-a-textview-02-10.png, alt: "A screenshot of the iPhone simulator showing our text view scrolled to the right until the page guide appears.")
                 }
             }
             

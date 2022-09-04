@@ -1,5 +1,5 @@
-import tree
 import Runestone
+import TreeSitterJavaScriptRunestone
 import UIKit
 
 class ViewController: UIViewController {

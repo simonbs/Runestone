@@ -46,7 +46,7 @@
             }
             
             @Step {
-                Finally, create an instance of `TreeSitterLanguageMode` and pass it to the text view.
+                Finally, create an instance of `TreeSitterLanguageMode`, pass it the JavaScript language, and pass the language mode to the text view.
                 
                 After running the app in the iPhone simulator you can now write JavaScript in the text view and it will become syntax highlighted.
                 
