@@ -2,15 +2,14 @@ import UIKit
 
 public final class DefaultTheme: Runestone.Theme {
     public let font: UIFont = .monospacedSystemFont(ofSize: 14, weight: .regular)
-    public let backgroundColor = UIColor(themeColorNamed: "background")
     public let textColor = UIColor(themeColorNamed: "foreground")
-    public let gutterBackgroundColor = UIColor(themeColorNamed: "background")
-    public let gutterHairlineColor = UIColor(themeColorNamed: "background")
+    public let gutterBackgroundColor = UIColor(themeColorNamed: "gutter_background")
+    public let gutterHairlineColor = UIColor(themeColorNamed: "gutter_hairline")
     public let lineNumberColor = UIColor(themeColorNamed: "line_number")
     public let lineNumberFont: UIFont = .monospacedSystemFont(ofSize: 14, weight: .regular)
     public let selectedLineBackgroundColor = UIColor(themeColorNamed: "current_line")
     public let selectedLinesLineNumberColor = UIColor(themeColorNamed: "line_number_current_line")
-    public let selectedLinesGutterBackgroundColor = UIColor(themeColorNamed: "background")
+    public let selectedLinesGutterBackgroundColor = UIColor(themeColorNamed: "gutter_background")
     public let invisibleCharactersColor = UIColor(themeColorNamed: "invisible_characters")
     public let pageGuideHairlineColor = UIColor(themeColorNamed: "page_guide_hairline")
     public let pageGuideBackgroundColor = UIColor(themeColorNamed: "page_guide_background")
