@@ -47,6 +47,7 @@ The [Runestone Text Editor](https://apps.apple.com/us/app/runestone-editor/id154
 
 The appearance of <doc:TextView> can be customized using a <doc:Theme>. This is also for the text styling and colors used for syntax highlighting.
 
+- <doc:Adding-a-Theme>
 - <doc:CreatingATheme>
 - ``Theme``
 

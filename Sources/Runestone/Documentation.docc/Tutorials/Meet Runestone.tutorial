@@ -12,5 +12,6 @@
         
         @TutorialReference(tutorial: "doc:Setting-up-a-TextView")
         @TutorialReference(tutorial: "doc:Syntax-Highlighting-the-Text")
+        @TutorialReference(tutorial: "doc:Adding-a-Theme")
     }
 }

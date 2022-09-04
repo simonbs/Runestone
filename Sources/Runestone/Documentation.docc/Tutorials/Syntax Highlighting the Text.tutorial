@@ -38,6 +38,8 @@
             @Step {
                 Select the ViewController.swift in the Project navigator.
                 
+                This file was created in <doc:Setting-up-a-TextView> tutorial.
+                
                 @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-01-01.swift)
             }
             
