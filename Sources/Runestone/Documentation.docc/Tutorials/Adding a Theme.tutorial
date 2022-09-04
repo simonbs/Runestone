@@ -10,6 +10,8 @@
     @Section(title: "Create a theme") {
         @ContentAndMedia {
             Create a theme and start using it with the text view. 
+            
+            @Image(source: 01-adding-a-theme-01.png, alt: "A MacBook Pro running Xcode.")
         }
         
         @Steps {
@@ -101,7 +103,9 @@
     
     @Section(title: "Adding colors to the text") {
         @ContentAndMedia {
-            Add syntax highlighting to the text by implementing the `textColor(for:)` function in TomorrowTheme.swift
+            Make the text syntax highlighted.
+            
+            @Image(source: 01-adding-a-theme-02.png, alt: "A MacBook Pro running Xcode.")
         }
             
         @Steps {
