@@ -39,6 +39,7 @@ final class TextInputView: UIView, UITextInput {
             // Placing the character on the second line, which is empty, and double tapping several times on the empty line to select text will cause the editor to crash. To work around this we take the non-negative value of the selected range. Last tested on August 30th, 2022.
             let newRange = (newValue as? IndexedRange)?.range.nonNegativeLength
             if newRange != _selectedRange {
+                notifyDelegateAboutSelectionChangeInLayoutSubviews = true
                 // The logic for determining whether or not to notify the input delegate is based on advice provided by Alexander Blach, developer of Textastic.
                 var shouldNotifyInputDelegate = false
                 if didCallPositionFromPositionInDirectionWithOffset {
@@ -53,7 +54,6 @@ final class TextInputView: UIView, UITextInput {
                 if shouldNotifyInputDelegate {
                     inputDelegate?.selectionDidChange(self)
                 }
-                delegate?.textInputViewDidChangeSelection(self)
             }
         }
     }
@@ -555,6 +555,7 @@ final class TextInputView: UIView, UITextInput {
     private var hasPendingFullLayout = false
     private let editMenuController = EditMenuController()
     private var notifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
+    private var notifyDelegateAboutSelectionChangeInLayoutSubviews = false
     private var didCallPositionFromPositionInDirectionWithOffset = false
     private var preserveUndoStackWhenSettingString = false
 
@@ -626,6 +627,9 @@ final class TextInputView: UIView, UITextInput {
         if notifyInputDelegateAboutSelectionChangeInLayoutSubviews {
             inputDelegate?.selectionWillChange(self)
             inputDelegate?.selectionDidChange(self)
+        }
+        if notifyDelegateAboutSelectionChangeInLayoutSubviews {
+            delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
@@ -1024,7 +1028,9 @@ extension TextInputView {
         guard shouldChangeText(in: deleteRange, replacementText: "") else {
             return
         }
-        // Disable notifying delegate in layout subviews to prevent issues when entering Korean text. This workaround is inspired by a dialog with Alexander Black (@lextar), developer of Textastic.
+        // Disable notifying delegate in layout subviews to prevent sending the selected range with length > 0 when deleting text. This aligns with the behavior of UITextView and was introduced to resolve issue #158: https://github.com/simonbs/Runestone/issues/158
+        notifyDelegateAboutSelectionChangeInLayoutSubviews = false
+        // Disable notifying input delegate in layout subviews to prevent issues when entering Korean text. This workaround is inspired by a dialog with Alexander Black (@lextar), developer of Textastic.
         notifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
         // Just before calling deleteBackward(), UIKit will set the selected range to a range of length 1, if the selected range has a length of 0.
         // In that case we want to undo to a selected range of length 0, so we construct our range here and pass it all the way to the undo operation.
