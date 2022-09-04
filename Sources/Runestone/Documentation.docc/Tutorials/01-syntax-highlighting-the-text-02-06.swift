@@ -1,4 +1,5 @@
 import Runestone
+import TreeSitterJavaScriptRunestone
 import UIKit
 
 class ViewController: UIViewController {
@@ -8,8 +9,10 @@ class ViewController: UIViewController {
         navigationController?.navigationBar.scrollEdgeAppearance = UINavigationBarAppearance()
         let textView = TextView()
         textView.translatesAutoresizingMaskIntoConstraints = false
+        textView.editorDelegate = self
         textView.backgroundColor = .systemBackground
         setCustomization(on: textView)
+        setTextViewState(on: textView)
         view.addSubview(textView)
         NSLayoutConstraint.activate([
             textView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -20,8 +23,22 @@ class ViewController: UIViewController {
     }
 
     private func setCustomization(on textView: TextView) {
-        textView.textContainerInset = UIEdgeInsets(top: 8, left: 5, bottom: 8, right: 5)
-        textView.showLineNumbers = true
-        textView.lineHeightMultiplier = 1.2
+        // ...
+    }
+
+    private func setTextViewState(on textView: TextView) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let text = UserDefaults.standard.text
+            let state = TextViewState(text: text, language: .javaScript)
+            DispatchQueue.main.async {
+
+            }
+        }
+    }
+}
+
+extension ViewController: TextViewDelegate {
+    func textViewDidChange(_ textView: TextView) {
+        UserDefaults.standard.text = textView.text
     }
 }

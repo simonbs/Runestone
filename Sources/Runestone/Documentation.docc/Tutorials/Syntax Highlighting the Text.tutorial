@@ -57,14 +57,68 @@
         }
     }
         
-    @Section(title: "Use TextViewState") {
+    @Section(title: "Setting the state with TextViewState") {
         @ContentAndMedia {
-            WIP
+            Up until now we have set the text and language on the text view using the `text` property and and `setLanguageMode(_:)` functions. Setting the text or language on the text view requires an analysis to be performed on the text. This analysis can be an expensive operation for large documents.
+            
+            Because the `text` property and `setLanguageMode(_:)` function must be called on the main queue, the UI may hang for a while when calling any of those.
+            
+            We can use <doc:TextViewState>, a type that encapsulates the text, theme, and language, to avoid blocking the main queue. `TextViewState` will perform the analysis of the document when initialized and the state can be initialized on a background queue.
+            
+            The following section explains how to use `TextViewState` to improve the performance of the TextCompanion app.
         }
             
         @Steps {
             @Step {
-                WIP
+                Select the ViewController.swift file in the Project navigator.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-02-01.swift)
+            }
+            
+            @Step {
+                Add a function called `setTextViewState(on:)`.
+                
+                We will add the implementation of this function later.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-02-02.swift)
+            }
+            
+            @Step {
+                Replace the lines where we previously set the text and the language mode on the text view with a call to `setTextViewState(_:)`.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-02-03.swift)
+            }
+            
+            @Step {
+                Dispatch to a background queue in the implementation of `setTextViewState(on:)`.
+                
+                This is where we will initialize `TextViewState` and ensure that the expensive analysis is performed on a background queue.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-02-04.swift)
+            }
+            
+            @Step {
+                Create an instance of `TextViewState` and pass the text stored in `UserDefaults` and the JavaScript language syntax.
+                
+                Initializing `TextViewState` on a background queue ensures that the expensive analysis does not cause the UI thread to hang.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-02-05.swift)
+            }
+            
+            @Step {
+                Dispatch back to the main queue.
+                
+                Before passing the instance of `TextViewState` to the text view, we must ensure that we are on the main queue.
+                
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-02-06.swift)
+            }
+            
+            @Step {
+                Finally, all `setState(_:)` to pass the state to the text view.
+                
+                All expensive operations are now performed on a background queue and we no longer risk the UI hanging when we pass the document to the text view.
+              
+                @Code(name: "ViewController.swift", file: 01-syntax-highlighting-the-text-02-07.swift)
             }
         }
     }

@@ -9,8 +9,7 @@ class ViewController: UIViewController {
         let textView = TextView()
         textView.translatesAutoresizingMaskIntoConstraints = false
         textView.backgroundColor = .systemBackground
-        textView.textContainerInset = UIEdgeInsets(top: 8, left: 5, bottom: 8, right: 5)
-        textView.showLineNumbers = true
+        setCustomization(on: textView)
         view.addSubview(textView)
         NSLayoutConstraint.activate([
             textView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -18,5 +17,9 @@ class ViewController: UIViewController {
             textView.topAnchor.constraint(equalTo: view.topAnchor),
             textView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+    }
+
+    private func setCustomization(on textView: TextView) {
+        textView.textContainerInset = UIEdgeInsets(top: 8, left: 5, bottom: 8, right: 5)
     }
 }

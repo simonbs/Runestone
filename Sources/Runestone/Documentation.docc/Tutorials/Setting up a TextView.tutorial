@@ -124,9 +124,17 @@
             }
             
             @Step {
+                Create a method on ViewController named `setCustomization(on:)`. Remember to call the method in `viewDidLoad()`.
+                
+                This function will contain all the customization we are doing to the text view.
+                        
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-03.swift)
+            }
+            
+            @Step {
                 Assign a value to the `textContainerInset` to have the text inset from the edges of the screen.
                 
-                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-03.swift) {
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-04.swift) {
                     @Image(source: preview-01-setting-up-a-textview-02-03.png, alt: "A screenshot of the iPhone simulator showing a screen with the text \"Hello world\" followed by the caret. The text has additional spacing to the left side and the top of the screen.")
                 }
             }
@@ -134,7 +142,7 @@
             @Step {
                 Enable line numbers.
                 
-                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-04.swift) {
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-05.swift) {
                     @Image(source: preview-01-setting-up-a-textview-02-04.png, alt: "A screenshot of the iPhone simulator with our text view that now shows line numbers.")
                 }
             }
@@ -143,7 +151,7 @@
             @Step {
                 Show a background color behind the selected line.
                 
-                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-05.swift) {
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-06.swift) {
                     @Image(source: preview-01-setting-up-a-textview-02-05.png, alt: "A screenshot of the iPhone simulator showing our text view with the selected line visually highlighted.")
                 }
             }
@@ -151,7 +159,7 @@
             @Step {
                 Increase the line height by 25%.
                 
-                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-06.swift) {
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-07.swift) {
                     @Image(source: preview-01-setting-up-a-textview-02-06.png, alt: "A screenshot of the iPhone simulator showing our text view. The spacing between lines has been increased.")
                 }
             }
@@ -159,7 +167,7 @@
             @Step {
                 Increase spacing between characters by 0.3.
                 
-                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-07.swift) {
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-08.swift) {
                     @Image(source: preview-01-setting-up-a-textview-02-07, alt: "A screenshot of the iPhone simulator showing our text view. The spacing between characters has been increased.")
                 }
             }
@@ -167,7 +175,7 @@
             @Step {
                 Show spaces, tabs, and line breaks.
                 
-                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-08.swift) {
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-09.swift) {
                     @Image(source: preview-01-setting-up-a-textview-02-08.png, alt: "A screenshot of the iPhone simulator showing our text view which now displays all invisible characters.")
                 }
             }
@@ -175,7 +183,7 @@
             @Step {
                 Disable line wrapping. This will enable horizontal scrolling in the text view.
                 
-                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-09.swift) {
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-10.swift) {
                     @Image(source: preview-01-setting-up-a-textview-02-09.png, alt: "A screenshot of the iPhone simulator showing our text view which no longer breaks lines.")
                 }
             }
@@ -183,7 +191,7 @@
             @Step {
                 Show the page guide at column 80.
                 
-                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-10.swift) {
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-11.swift) {
                     @Image(source: preview-01-setting-up-a-textview-02-10.png, alt: "A screenshot of the iPhone simulator showing our text view scrolled to the right until the page guide appears.")
                 }
             }
@@ -193,7 +201,7 @@
                 
                 Later in this chapter we will extend our editor to support syntax highlighting JavaScript, and since we will be writing code in our text view, we will want these features to be disabled.
                 
-                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-11.swift)
+                @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-02-12.swift)
             }
         }
     }
@@ -254,6 +262,8 @@
             
             @Step {
                 Finally, pass the text on the text view when the text view is created.
+                
+                The entered in the text view will now be restored whenever the app is launched.
                 
                 @Code(name: "ViewController.swift", file: 01-setting-up-a-textview-03-08.swift)
             }
