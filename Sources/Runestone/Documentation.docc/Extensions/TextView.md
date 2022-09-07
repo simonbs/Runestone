@@ -39,6 +39,7 @@
 ### Line Wrapping
 
 - ``isLineWrappingEnabled``
+- ``lineBreakMode``
 - ``lengthOfInitallyLongestLine``
 
 ### Invisible Characters
@@ -85,8 +86,9 @@
 
 ### Navigation
 
-- ``textLocation(at:)``
 - ``TextLocation``
+- ``textLocation(at:)``
+- ``location(at:)``
 - ``goToLine(_:select:)``
 - ``GoToLineSelection``
 - ``moveSelectedLinesUp()``
@@ -109,8 +111,10 @@
 - ``selectPreviousHighlightedRange()``
 - ``selectHighlightedRange(at:)``
 
-### Search and Replace
+### Supproting Find and Replace
 
+- ``isFindInteractionEnabled``
+- ``findInteraction``
 - ``search(for:)``
 - ``search(for:replacingMatchesWith:)``
 - ``textPreview(containing:)``
@@ -168,7 +172,6 @@
 - ``canBecomeFirstResponder``
 - ``becomeFirstResponder()``
 - ``resignFirstResponder()``
-- ``canPerformAction(_:withSender:)``
 
 ### UITextInput Conformace
 

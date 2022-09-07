@@ -566,6 +566,11 @@ open class TextView: UIScrollView {
         }
     }
     @available(iOS 16, *)
+    /// The text view’s built-in find interaction.
+    ///
+    /// Set <doc:isFindInteractionEnabled> to true to enable the text view's built-in find interaction. This method returns nil when the interaction isn't enabled.
+    ///
+    /// Call `presentFindNavigator(showingReplace:)` on the UIFindInteraction object to invoke the find interaction and display the find panel.
     public var findInteraction: UIFindInteraction? {
         return textSearchingHelper.findInteraction
     }
