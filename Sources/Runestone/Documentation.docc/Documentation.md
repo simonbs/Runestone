@@ -50,6 +50,7 @@ The appearance of <doc:TextView> can be customized using a <doc:Theme>. This is 
 - <doc:Adding-a-Theme>
 - <doc:CreatingATheme>
 - ``Theme``
+- ``DefaultTheme``
 
 ### Syntax Highlighting
 
