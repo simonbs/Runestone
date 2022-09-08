@@ -61,7 +61,9 @@ private extension LineMovementController {
             return location
         }
         let lineLocalLocation = max(min(location - line.location, line.data.totalLength), 0)
-        let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation)
+        guard let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation) else {
+            return location
+        }
         let lineFragmentLocalLocation = lineLocalLocation - lineFragmentNode.location
         return locationForMoving(lineOffset: lineOffset, fromLocation: lineFragmentLocalLocation, inLineFragmentAt: lineFragmentNode.index, of: line)
     }
