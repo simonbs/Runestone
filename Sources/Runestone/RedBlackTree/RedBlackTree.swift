@@ -38,7 +38,7 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNode
         guard location >= minimumValue && location <= root.nodeTotalValue else {
             #if DEBUG
             fatalError("\(location) is out of bounds. Valid range is \(minimumValue) - \(root.nodeTotalValue)."
-                       + " This issue is under investigation. Please open an issue at https://github.com/simonbs/Runestone/issues
+                       + " This issue is under investigation. Please open an issue at https://github.com/simonbs/Runestone/issues"
                        + " and include this stack trace and a sample text file if possible. This fatal error is only thrown in debug builds.")
             #else
             return nil
