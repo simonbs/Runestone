@@ -523,7 +523,9 @@ extension LayoutManager {
         guard lineController.numberOfLineFragments > 0 else {
             return false
         }
-        let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: location)
+        guard let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: location) else {
+            return false
+        }
         guard lineFragmentNode.index > 0 else {
             return false
         }

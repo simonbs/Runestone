@@ -34,17 +34,23 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNode
         root.color = .black
     }
 
-    func node(containingLocation location: NodeValue) -> Node {
-        assert(location >= minimumValue)
-        assert(location <= root.nodeTotalValue)
-        return node(containingLocation: location, minimumValue: minimumValue, valueKeyPath: \.value, totalValueKeyPath: \.nodeTotalValue)!
+    func node(containingLocation location: NodeValue) -> Node? {
+        guard location >= minimumValue && location <= root.nodeTotalValue else {
+            #if DEBUG
+            fatalError("\(location) is out of bounds. Valid range is \(minimumValue) - \(root.nodeTotalValue)."
+                       + " This issue is under investigation. Please open an issue at https://github.com/simonbs/Runestone/issues"
+                       + " and include this stack trace and a sample text file if possible. This fatal error is only thrown in debug builds.")
+            #else
+            return nil
+            #endif
+        }
+        return node(containingLocation: location, minimumValue: minimumValue, valueKeyPath: \.value, totalValueKeyPath: \.nodeTotalValue)
     }
 
-    func node<T: Comparable & AdditiveArithmetic>(
-        containingLocation location: T,
-        minimumValue: T,
-        valueKeyPath: KeyPath<Node, T>,
-        totalValueKeyPath: KeyPath<Node, T>) -> Node? {
+    func node<T: Comparable & AdditiveArithmetic>(containingLocation location: T,
+                                                  minimumValue: T,
+                                                  valueKeyPath: KeyPath<Node, T>,
+                                                  totalValueKeyPath: KeyPath<Node, T>) -> Node? {
         if location == root[keyPath: totalValueKeyPath] {
             return root.rightMost
         } else {

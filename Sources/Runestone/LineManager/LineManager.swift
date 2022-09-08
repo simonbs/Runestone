@@ -103,7 +103,9 @@ final class LineManager {
         guard range.length > 0 else {
             return LineChangeSet()
         }
-        let startLine = documentLineTree.node(containingLocation: range.location)
+        guard let startLine = documentLineTree.node(containingLocation: range.location) else {
+            return LineChangeSet()
+        }
         if range.location > Int(startLine.location) + startLine.data.length {
             // Deleting starting in the middle of a delimiter.
             let changeSet = LineChangeSet()
@@ -120,7 +122,9 @@ final class LineManager {
             // possibly removing lines in between if multiple delimeters were deleted.
             let charactersRemovedInStartLine = Int(startLine.location) + startLine.value - range.location
             assert(charactersRemovedInStartLine > 0)
-            let endLine = documentLineTree.node(containingLocation: range.location + range.length)
+            guard let endLine = documentLineTree.node(containingLocation: range.location + range.length) else {
+                return LineChangeSet()
+            }
             if endLine === startLine {
                 // Removing characters in the last line.
                 return setLength(of: startLine, to: startLine.value - range.length)
@@ -147,7 +151,9 @@ final class LineManager {
     @discardableResult
     func insert(_ string: NSString, at location: Int) -> LineChangeSet {
         let changeSet = LineChangeSet()
-        var line = documentLineTree.node(containingLocation: location)
+        guard var line = documentLineTree.node(containingLocation: location) else {
+            return LineChangeSet()
+        }
         var lineLocation = Int(line.location)
         assert(location <= lineLocation + line.value)
         if location > lineLocation + line.data.length {
