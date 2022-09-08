@@ -654,6 +654,7 @@ final class TextInputView: UIView, UITextInput {
     }
 
     override func selectAll(_ sender: Any?) {
+        notifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
         selectedRange = NSRange(location: 0, length: string.length)
     }
 
