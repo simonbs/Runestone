@@ -629,6 +629,7 @@ final class TextInputView: UIView, UITextInput {
             inputDelegate?.selectionDidChange(self)
         }
         if notifyDelegateAboutSelectionChangeInLayoutSubviews {
+            notifyDelegateAboutSelectionChangeInLayoutSubviews = false
             delegate?.textInputViewDidChangeSelection(self)
         }
     }
