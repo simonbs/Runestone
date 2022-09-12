@@ -111,7 +111,7 @@
 - ``selectPreviousHighlightedRange()``
 - ``selectHighlightedRange(at:)``
 
-### Supproting Find and Replace
+### Supporting Find and Replace
 
 - ``isFindInteractionEnabled``
 - ``findInteraction``
