@@ -14,4 +14,29 @@
         @TutorialReference(tutorial: "doc:Syntax-Highlighting-the-Text")
         @TutorialReference(tutorial: "doc:Adding-a-Theme")
     }
+    
+    @Resources {
+        Explore more resources for learning about integrating Runestone into your app.
+
+        @Documentation(destination: "https://docs.runestone.app") {
+            Browse and search detailed API documentation.
+
+            - [Getting Started](https://docs.runestone.app/documentation/runestone/gettingstarted)
+            - [Creating a Theme](https://docs.runestone.app/documentation/runestone/creatingatheme)
+            - [Adding a Tree-sitter Language](https://docs.runestone.app/documentation/runestone/addingatreesitterlanguage)
+        }
+        
+        @Forums(destination: "https://github.com/simonbs/Runestone/issues") {
+            Create pull requests and discuss issues.
+            
+            - [Open pull requests](https://github.com/simonbs/Runestone/pulls)
+            - [Open issues](https://github.com/simonbs/Runestone/issues)
+        }
+        
+        @SampleCode(destination: "https://github.com/simonbs/Runestone") {
+            Download and explore sample code to get to know Runestone.
+
+            - [Example app](https://github.com/simonbs/Runestone/tree/main/Example)
+        }
+    }
 }
