@@ -1,0 +1,5 @@
+"undo.action_name.typing" = "Kirjaimet";
+"undo.action_name.replace_all" = "Korvaa kaikki";
+"undo.action_name.move_lines_up" = "Siirrä rivit ylöspäin";
+"undo.action_name.move_lines_down" = "Siirrä rivejä alaspäin";
+"menu.item_title.replace" = "Korvaa";
