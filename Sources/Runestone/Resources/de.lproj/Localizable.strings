@@ -1,0 +1,5 @@
+"undo.action_name.typing" = "Tippen";
+"undo.action_name.replace_all" = "Alles Ersetzen";
+"undo.action_name.move_lines_up" = "Zeilen nach oben verschieben";
+"undo.action_name.move_lines_down" = "Zeilen nach unten verschieben";
+"menu.item_title.replace" = "Ersetzen";
