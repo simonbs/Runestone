@@ -566,6 +566,8 @@ open class TextView: UIScrollView {
     }
 #if compiler(>=5.7)
     /// A boolean value that enables a text view’s built-in find interaction.
+    ///
+    /// After enabling the find interaction, use [`presentFindNavigator(showingReplace:)`](https://developer.apple.com/documentation/uikit/uifindinteraction/3975832-presentfindnavigator) on <doc:findInteraction> to present the find navigator.
     @available(iOS 16, *)
     public var isFindInteractionEnabled: Bool {
         get {
@@ -575,12 +577,12 @@ open class TextView: UIScrollView {
             textSearchingHelper.isFindInteractionEnabled = newValue
         }
     }
-    @available(iOS 16, *)
     /// The text view’s built-in find interaction.
     ///
     /// Set <doc:isFindInteractionEnabled> to true to enable the text view's built-in find interaction. This method returns nil when the interaction isn't enabled.
     ///
-    /// Call `presentFindNavigator(showingReplace:)` on the UIFindInteraction object to invoke the find interaction and display the find panel.
+    /// Call [`presentFindNavigator(showingReplace:)`](https://developer.apple.com/documentation/uikit/uifindinteraction/3975832-presentfindnavigator) on the UIFindInteraction object to invoke the find interaction and display the find panel.
+    @available(iOS 16, *)
     public var findInteraction: UIFindInteraction? {
         return textSearchingHelper.findInteraction
     }
