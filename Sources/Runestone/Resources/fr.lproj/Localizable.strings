@@ -1,5 +1,5 @@
 "undo.action_name.typing" = "Saisie";
 "undo.action_name.replace_all" = "Remplacer tout";
-"undo.action_name.move_lines_up" = "Déplacer lignes vers le haut";
-"undo.action_name.move_lines_down" = "Déplacer lignes vers le bas";
+"undo.action_name.move_lines_up" = "Déplacer les lignes vers le haut";
+"undo.action_name.move_lines_down" = "Déplacer les lignes vers le bas";
 "menu.item_title.replace" = "Remplacer";
