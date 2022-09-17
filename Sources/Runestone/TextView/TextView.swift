@@ -646,7 +646,7 @@ open class TextView: UIScrollView {
         super.init(frame: frame)
         backgroundColor = .white
         textInputView.delegate = self
-        textInputView.scrollView = self
+        textInputView.gutterParentView = self
         editableTextInteraction.textInput = textInputView
         nonEditableTextInteraction.textInput = textInputView
         editableTextInteraction.delegate = self
@@ -680,6 +680,7 @@ open class TextView: UIScrollView {
     /// Called when the safe area of the view changes.
     override open func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
+        textInputView.scrollViewSafeAreaInsets = safeAreaInsets
         contentSize = preferredContentSize
         layoutIfNeeded()
     }

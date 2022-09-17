@@ -67,6 +67,17 @@ final class InvisibleCharacterConfiguration {
             return .zero
         }
     }
+    var maximumLineBreakSymbolWidth: CGFloat {
+        if showLineBreaks && showSoftLineBreaks {
+            return max(lineBreakSymbolSize.width, softLineBreakSymbolSize.width)
+        } else if showLineBreaks {
+            return lineBreakSymbolSize.width
+        } else if showSoftLineBreaks {
+            return softLineBreakSymbolSize.width
+        } else {
+            return 0
+        }
+    }
 
     private var _lineBreakSymbolSize: CGSize?
     private var _softLineBreakSymbolSize: CGSize?
