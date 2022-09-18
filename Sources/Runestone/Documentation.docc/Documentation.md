@@ -50,7 +50,10 @@ The appearance of <doc:TextView> can be customized using a <doc:Theme>. This is 
 - <doc:Adding-a-Theme>
 - <doc:CreatingATheme>
 - ``Theme``
+- ``FontTraits``
 - ``DefaultTheme``
+- ``LineBreakMode``
+- ``LineSelectionDisplayType``
 
 ### Syntax Highlighting
 
@@ -58,19 +61,12 @@ Syntax highlighting is based on GitHub's [Tree-sitter](https://github.com/tree-s
 
 - <doc:Syntax-Highlighting-the-Text>
 - <doc:AddingATreeSitterLanguage>
-- ``FontTraits``
 - ``LanguageMode``
 - ``PlainTextLanguageMode``
 - ``TreeSitterLanguageMode``
 - ``TreeSitterLanguage``
 - ``TreeSitterLanguageProvider``
 - ``SyntaxNode``
-
-### Selected Line
-
-Highlight selected the line containing the caret.
-
-- ``LineSelectionDisplayType``
 
 ### Indentation
 
@@ -98,6 +94,10 @@ Automatically insert and delete closing the closing component of a character pai
 
 - ``CharacterPair``
 - ``CharacterPairTrailingComponentDeletionMode``
+
+### Editing
+
+- ``LineEnding``
 
 ### Navigation
 
