@@ -195,7 +195,7 @@ final class LineController {
 private extension LineController {
     private func prepareToDisplayString(_ typesetAmount: TypesetAmount, syntaxHighlightAsynchronously: Bool) {
         prepareString(syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
-        justTypesetLineFragments(typesetAmount)
+        typesetLineFragments(typesetAmount)
     }
 
     private func prepareString(syntaxHighlightAsynchronously: Bool) {
@@ -207,7 +207,7 @@ private extension LineController {
         updateTypesetterIfNecessary()
     }
 
-    private func justTypesetLineFragments(_ typesetAmount: TypesetAmount) {
+    private func typesetLineFragments(_ typesetAmount: TypesetAmount) {
         let newLineFragments: [LineFragment]
         switch typesetAmount {
         case .inRect(let rect):
