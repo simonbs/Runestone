@@ -24,13 +24,7 @@ final class LayoutManager {
     }
     var lineManager: LineManager
     var stringView: StringView
-    var scrollViewWidth: CGFloat = 0 {
-        didSet {
-            if scrollViewWidth != oldValue && isLineWrappingEnabled {
-//                invalidateContentSize()
-            }
-        }
-    }
+    var scrollViewWidth: CGFloat = 0
     var viewport: CGRect = .zero
     var languageMode: InternalLanguageMode {
         didSet {
@@ -90,13 +84,7 @@ final class LayoutManager {
             }
         }
     }
-    var isLineWrappingEnabled = true {
-        didSet {
-            if isLineWrappingEnabled != oldValue {
-//                invalidateContentSize()
-            }
-        }
-    }
+    var isLineWrappingEnabled = true
     /// Spacing around the text. The left-side spacing defines the distance between the text and the gutter.
     var textContainerInset: UIEdgeInsets = .zero
     var safeAreaInsets: UIEdgeInsets = .zero

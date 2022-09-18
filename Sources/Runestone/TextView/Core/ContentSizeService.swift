@@ -6,7 +6,7 @@ final class ContentSizeService {
     var textContainerInset: UIEdgeInsets = .zero
     var scrollViewWidth: CGFloat = 0 {
         didSet {
-            if scrollViewWidth != oldValue {
+            if scrollViewWidth != oldValue && isLineWrappingEnabled {
                 invalidateContentSize()
             }
         }
@@ -60,6 +60,9 @@ final class ContentSizeService {
         } else if let lineIDTrackingWidth = lineIDTrackingWidth, let lineWidth = lineWidths[lineIDTrackingWidth] {
             let longestLineWidth = lineWidth
             _longestLineWidth = longestLineWidth
+            if _totalLinesHeight != nil {
+                isContentSizeInvalid = false
+            }
             return longestLineWidth
         } else {
             lineIDTrackingWidth = nil
@@ -76,6 +79,9 @@ final class ContentSizeService {
                 }
             }
             _longestLineWidth = longestLineWidth
+            if longestLineWidth != nil && _totalLinesHeight != nil {
+                isContentSizeInvalid = false
+            }
             return longestLineWidth
         }
     }
@@ -85,20 +91,23 @@ final class ContentSizeService {
         } else {
             let totalLinesHeight = lineManager.contentHeight
             _totalLinesHeight = totalLinesHeight
+            if _longestLineWidth != nil {
+                isContentSizeInvalid = false
+            }
             return totalLinesHeight
         }
     }
     private var _longestLineWidth: CGFloat? {
         didSet {
             if _longestLineWidth != oldValue {
-                updateInvalidateStateIfNeeded()
+                isContentSizeInvalid = _totalLinesHeight == nil || _longestLineWidth == nil
             }
         }
     }
     private var _totalLinesHeight: CGFloat? {
         didSet {
             if _totalLinesHeight != oldValue {
-                updateInvalidateStateIfNeeded()
+                isContentSizeInvalid = _totalLinesHeight == nil || _longestLineWidth == nil
             }
         }
     }
@@ -157,13 +166,6 @@ private extension ContentSizeService {
             if !isLineWrappingEnabled {
                 _longestLineWidth = nil
             }
-        }
-    }
-
-    private func updateInvalidateStateIfNeeded() {
-        let newIsContentSizeInvalid = _totalLinesHeight == nil || _longestLineWidth == nil
-        if isContentSizeInvalid != newIsContentSizeInvalid {
-            isContentSizeInvalid = newIsContentSizeInvalid
         }
     }
 }

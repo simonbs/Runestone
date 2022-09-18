@@ -454,7 +454,7 @@ final class TextInputView: UIView, UITextInput {
         }
     }
     var contentSize: CGSize {
-        return CGSize(width: contentSizeService.contentWidth, height: contentSizeService.contentHeight)
+        return contentSizeService.contentSize
     }
     var selectedRange: NSRange? {
         get {
@@ -971,8 +971,8 @@ private extension TextInputView {
     }
 
     private func setupContentSizeObserver() {
-        contentSizeService.$isContentSizeInvalid.sink { [weak self] isContentSizeInvalid in
-            if let self = self, isContentSizeInvalid {
+        contentSizeService.$isContentSizeInvalid.filter { $0 }.sink { [weak self] _ in
+            if let self = self {
                 self.delegate?.textInputViewDidInvalidateContentSize(self)
             }
         }.store(in: &cancellables)
