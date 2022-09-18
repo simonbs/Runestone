@@ -95,13 +95,7 @@ final class LayoutManager {
             }
         }
     }
-    var lineHeightMultiplier: CGFloat = 1 {
-        didSet {
-            if lineHeightMultiplier != oldValue {
-//                invalidateContentSize()
-            }
-        }
-    }
+    var lineHeightMultiplier: CGFloat = 1
     var constrainingLineWidth: CGFloat {
         if isLineWrappingEnabled {
             return scrollViewWidth - leadingLineSpacing - textContainerInset.right - safeAreaInsets.left - safeAreaInsets.right
@@ -417,7 +411,6 @@ extension LayoutManager {
         guard viewport.size.width > 0 && viewport.size.height > 0 else {
             return
         }
-//        let oldContentSize = contentSizeService.contentSize
         let oldVisibleLineIDs = visibleLineIDs
         let oldVisibleLineFragmentIDs = Set(lineFragmentViewReuseQueue.visibleViews.keys)
         // Layout lines until we have filled the viewport.
