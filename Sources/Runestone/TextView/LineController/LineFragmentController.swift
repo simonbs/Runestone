@@ -21,14 +21,6 @@ final class LineFragmentController {
             }
         }
     }
-    var invisibleCharacterConfiguration: InvisibleCharacterConfiguration {
-        get {
-            return renderer.invisibleCharacterConfiguration
-        }
-        set {
-            renderer.invisibleCharacterConfiguration = newValue
-        }
-    }
     var markedRange: NSRange? {
         didSet {
             if markedRange != oldValue {
@@ -62,9 +54,9 @@ final class LineFragmentController {
 
     private let renderer: LineFragmentRenderer
 
-    init(lineFragment: LineFragment) {
+    init(lineFragment: LineFragment, invisibleCharacterConfiguration: InvisibleCharacterConfiguration) {
         self.lineFragment = lineFragment
-        self.renderer = LineFragmentRenderer(lineFragment: lineFragment)
+        self.renderer = LineFragmentRenderer(lineFragment: lineFragment, invisibleCharacterConfiguration: invisibleCharacterConfiguration)
         self.renderer.delegate = self
     }
 }

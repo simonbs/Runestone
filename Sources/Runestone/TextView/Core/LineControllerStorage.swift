@@ -8,10 +8,6 @@ final class LineControllerStorage {
         return lineControllers[lineID]
     }
 
-    fileprivate var numberOfLineControllers: Int {
-        return lineControllers.count
-    }
-
     var stringView: StringView {
         didSet {
             if stringView !== oldValue {
@@ -19,17 +15,24 @@ final class LineControllerStorage {
             }
         }
     }
+
+    fileprivate var numberOfLineControllers: Int {
+        return lineControllers.count
+    }
+
+    private let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
     private var lineControllers: [DocumentLineNodeID: LineController] = [:]
 
-    init(stringView: StringView) {
+    init(stringView: StringView, invisibleCharacterConfiguration: InvisibleCharacterConfiguration) {
         self.stringView = stringView
+        self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
     }
 
     func getOrCreateLineController(for line: DocumentLineNode) -> LineController {
         if let cachedLineController = lineControllers[line.id] {
             return cachedLineController
         } else {
-            let lineController = LineController(line: line, stringView: stringView)
+            let lineController = LineController(line: line, stringView: stringView, invisibleCharacterConfiguration: invisibleCharacterConfiguration)
             lineControllers[line.id] = lineController
             delegate?.lineControllerStorage(self, didCreate: lineController)
             return lineController

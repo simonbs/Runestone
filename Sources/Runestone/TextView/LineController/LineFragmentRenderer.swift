@@ -13,7 +13,7 @@ final class LineFragmentRenderer {
 
     weak var delegate: LineFragmentRendererDelegate?
     var lineFragment: LineFragment
-    var invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
+    let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
     var markedRange: NSRange?
     var markedTextBackgroundColor: UIColor = .systemFill
     var markedTextBackgroundCornerRadius: CGFloat = 0
@@ -25,8 +25,9 @@ final class LineFragmentRenderer {
             || invisibleCharacterConfiguration.showSoftLineBreaks
     }
 
-    init(lineFragment: LineFragment) {
+    init(lineFragment: LineFragment, invisibleCharacterConfiguration: InvisibleCharacterConfiguration) {
         self.lineFragment = lineFragment
+        self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
     }
 
     func draw(to context: CGContext) {

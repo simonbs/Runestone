@@ -18,7 +18,7 @@ final class ContentSizeService {
             }
         }
     }
-    var invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
+    let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
     var lineManager: LineManager {
         didSet {
             if lineManager !== oldValue {
@@ -103,10 +103,14 @@ final class ContentSizeService {
         }
     }
 
-    init(lineManager: LineManager, lineControllerStorage: LineControllerStorage, gutterWidthService: GutterWidthService) {
+    init(lineManager: LineManager,
+         lineControllerStorage: LineControllerStorage,
+         gutterWidthService: GutterWidthService,
+         invisibleCharacterConfiguration: InvisibleCharacterConfiguration) {
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
         self.gutterWidthService = gutterWidthService
+        self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
     }
 
     func invalidateContentSize() {

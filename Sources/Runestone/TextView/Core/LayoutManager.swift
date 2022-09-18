@@ -100,7 +100,6 @@ final class LayoutManager {
             }
         }
     }
-    var invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
     var isLineWrappingEnabled = true {
         didSet {
             if isLineWrappingEnabled != oldValue {
@@ -189,6 +188,7 @@ final class LayoutManager {
     private let selectionRectService: SelectionRectService
 
     // MARK: - Rendering
+    private let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
     private let lineControllerStorage: LineControllerStorage
     private var needsLayout = false
     private var needsLayoutLineSelection = false
@@ -200,10 +200,12 @@ final class LayoutManager {
          contentSizeService: ContentSizeService,
          gutterWidthService: GutterWidthService,
          caretRectService: CaretRectService,
-         selectionRectService: SelectionRectService) {
+         selectionRectService: SelectionRectService,
+         invisibleCharacterConfiguration: InvisibleCharacterConfiguration) {
         self.lineManager = lineManager
         self.languageMode = languageMode
         self.stringView = stringView
+        self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
         self.lineControllerStorage = lineControllerStorage
         self.contentSizeService = contentSizeService
         self.gutterWidthService = gutterWidthService
@@ -547,7 +549,6 @@ extension LayoutManager {
         if lineFragmentView.superview == nil {
             linesContainerView.addSubview(lineFragmentView)
         }
-        lineFragmentController.invisibleCharacterConfiguration = invisibleCharacterConfiguration
         lineFragmentController.lineFragmentView = lineFragmentView
         let lineFragmentOrigin = CGPoint(x: leadingLineSpacing, y: textContainerInset.top + lineYPosition + lineFragment.yPosition)
         let lineFragmentWidth = lineFragment.scaledSize.width + invisibleCharacterConfiguration.maximumLineBreakSymbolWidth

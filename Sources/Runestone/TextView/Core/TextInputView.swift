@@ -153,44 +153,44 @@ final class TextInputView: UIView, UITextInput {
     }
     var showTabs: Bool {
         get {
-            return layoutManager.invisibleCharacterConfiguration.showTabs
+            return invisibleCharacterConfiguration.showTabs
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.showTabs {
-                layoutManager.invisibleCharacterConfiguration.showTabs = newValue
+            if newValue != invisibleCharacterConfiguration.showTabs {
+                invisibleCharacterConfiguration.showTabs = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
     var showSpaces: Bool {
         get {
-            return layoutManager.invisibleCharacterConfiguration.showSpaces
+            return invisibleCharacterConfiguration.showSpaces
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.showSpaces {
-                layoutManager.invisibleCharacterConfiguration.showSpaces = newValue
+            if newValue != invisibleCharacterConfiguration.showSpaces {
+                invisibleCharacterConfiguration.showSpaces = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
     var showNonBreakingSpaces: Bool {
         get {
-            return layoutManager.invisibleCharacterConfiguration.showNonBreakingSpaces
+            return invisibleCharacterConfiguration.showNonBreakingSpaces
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.showNonBreakingSpaces {
-                layoutManager.invisibleCharacterConfiguration.showNonBreakingSpaces = newValue
+            if newValue != invisibleCharacterConfiguration.showNonBreakingSpaces {
+                invisibleCharacterConfiguration.showNonBreakingSpaces = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
     var showLineBreaks: Bool {
         get {
-            return layoutManager.invisibleCharacterConfiguration.showLineBreaks
+            return invisibleCharacterConfiguration.showLineBreaks
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.showLineBreaks {
-                layoutManager.invisibleCharacterConfiguration.showLineBreaks = newValue
+            if newValue != invisibleCharacterConfiguration.showLineBreaks {
+                invisibleCharacterConfiguration.showLineBreaks = newValue
                 invalidateLines()
                 layoutManager.setNeedsLayout()
                 layoutManager.setNeedsDisplayOnLines()
@@ -200,11 +200,11 @@ final class TextInputView: UIView, UITextInput {
     }
     var showSoftLineBreaks: Bool {
         get {
-            return layoutManager.invisibleCharacterConfiguration.showSoftLineBreaks
+            return invisibleCharacterConfiguration.showSoftLineBreaks
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.showSoftLineBreaks {
-                layoutManager.invisibleCharacterConfiguration.showSoftLineBreaks = newValue
+            if newValue != invisibleCharacterConfiguration.showSoftLineBreaks {
+                invisibleCharacterConfiguration.showSoftLineBreaks = newValue
                 invalidateLines()
                 layoutManager.setNeedsLayout()
                 layoutManager.setNeedsDisplayOnLines()
@@ -214,55 +214,55 @@ final class TextInputView: UIView, UITextInput {
     }
     var tabSymbol: String {
         get {
-            return layoutManager.invisibleCharacterConfiguration.tabSymbol
+            return invisibleCharacterConfiguration.tabSymbol
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.tabSymbol {
-                layoutManager.invisibleCharacterConfiguration.tabSymbol = newValue
+            if newValue != invisibleCharacterConfiguration.tabSymbol {
+                invisibleCharacterConfiguration.tabSymbol = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
     var spaceSymbol: String {
         get {
-            return layoutManager.invisibleCharacterConfiguration.spaceSymbol
+            return invisibleCharacterConfiguration.spaceSymbol
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.spaceSymbol {
-                layoutManager.invisibleCharacterConfiguration.spaceSymbol = newValue
+            if newValue != invisibleCharacterConfiguration.spaceSymbol {
+                invisibleCharacterConfiguration.spaceSymbol = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
     var nonBreakingSpaceSymbol: String {
         get {
-            return layoutManager.invisibleCharacterConfiguration.nonBreakingSpaceSymbol
+            return invisibleCharacterConfiguration.nonBreakingSpaceSymbol
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.nonBreakingSpaceSymbol {
-                layoutManager.invisibleCharacterConfiguration.nonBreakingSpaceSymbol = newValue
+            if newValue != invisibleCharacterConfiguration.nonBreakingSpaceSymbol {
+                invisibleCharacterConfiguration.nonBreakingSpaceSymbol = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
     var lineBreakSymbol: String {
         get {
-            return layoutManager.invisibleCharacterConfiguration.lineBreakSymbol
+            return invisibleCharacterConfiguration.lineBreakSymbol
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.lineBreakSymbol {
-                layoutManager.invisibleCharacterConfiguration.lineBreakSymbol = newValue
+            if newValue != invisibleCharacterConfiguration.lineBreakSymbol {
+                invisibleCharacterConfiguration.lineBreakSymbol = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
     var softLineBreakSymbol: String {
         get {
-            return layoutManager.invisibleCharacterConfiguration.softLineBreakSymbol
+            return invisibleCharacterConfiguration.softLineBreakSymbol
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.softLineBreakSymbol {
-                layoutManager.invisibleCharacterConfiguration.softLineBreakSymbol = newValue
+            if newValue != invisibleCharacterConfiguration.softLineBreakSymbol {
+                invisibleCharacterConfiguration.softLineBreakSymbol = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
@@ -547,6 +547,7 @@ final class TextInputView: UIView, UITextInput {
     private let contentSizeService: ContentSizeService
     private let caretRectService: CaretRectService
     private let selectionRectService: SelectionRectService
+    private let invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
     private var markedRange: NSRange? {
         get {
             return layoutManager.markedRange
@@ -580,11 +581,12 @@ final class TextInputView: UIView, UITextInput {
     init(theme: Theme) {
         self.theme = theme
         lineManager = LineManager(stringView: stringView)
-        lineControllerStorage = LineControllerStorage(stringView: stringView)
+        lineControllerStorage = LineControllerStorage(stringView: stringView, invisibleCharacterConfiguration: invisibleCharacterConfiguration)
         gutterWidthService = GutterWidthService(lineManager: lineManager)
         contentSizeService = ContentSizeService(lineManager: lineManager,
-                                                  lineControllerStorage: lineControllerStorage,
-                                                  gutterWidthService: gutterWidthService)
+                                                lineControllerStorage: lineControllerStorage,
+                                                gutterWidthService: gutterWidthService,
+                                                invisibleCharacterConfiguration: invisibleCharacterConfiguration)
         caretRectService = CaretRectService(stringView: stringView,
                                               lineManager: lineManager,
                                               lineControllerStorage: lineControllerStorage,
@@ -600,7 +602,8 @@ final class TextInputView: UIView, UITextInput {
                                       contentSizeService: contentSizeService,
                                       gutterWidthService: gutterWidthService,
                                       caretRectService: caretRectService,
-                                      selectionRectService: selectionRectService)
+                                      selectionRectService: selectionRectService,
+                                      invisibleCharacterConfiguration: invisibleCharacterConfiguration)
         indentController = IndentController(stringView: stringView,
                                             lineManager: lineManager,
                                             languageMode: languageMode,

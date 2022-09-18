@@ -92,6 +92,7 @@ final class LineController {
     private(set) var attributedString: NSMutableAttributedString?
 
     private let stringView: StringView
+    private let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
     private let typesetter: LineTypesetter
     private var cachedSyntaxHighlighter: LineSyntaxHighlighter?
     private let textInputProxy = LineTextInputProxy()
@@ -115,9 +116,10 @@ final class LineController {
         }
     }
 
-    init(line: DocumentLineNode, stringView: StringView) {
+    init(line: DocumentLineNode, stringView: StringView, invisibleCharacterConfiguration: InvisibleCharacterConfiguration) {
         self.line = line
         self.stringView = stringView
+        self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
         self.typesetter = LineTypesetter(lineID: line.id.rawValue)
         self.textInputProxy.estimatedLineFragmentHeight = estimatedLineFragmentHeight
         let rootLineFragmentNodeData = LineFragmentNodeData(lineFragment: nil)
@@ -353,7 +355,8 @@ private extension LineController {
             lineFragmentController.lineFragment = lineFragment
             return lineFragmentController
         } else {
-            let lineFragmentController = LineFragmentController(lineFragment: lineFragment)
+            let lineFragmentController = LineFragmentController(lineFragment: lineFragment,
+                                                                invisibleCharacterConfiguration: invisibleCharacterConfiguration)
             lineFragmentController.delegate = self
             lineFragmentControllers[lineFragment.id] = lineFragmentController
             applyTheme(to: lineFragmentController)
