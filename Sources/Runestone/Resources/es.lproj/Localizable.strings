@@ -1,0 +1,5 @@
+"undo.action_name.typing" = "Escribir";
+"undo.action_name.replace_all" = "Reemplazar todo";
+"undo.action_name.move_lines_up" = "Mover líneas hacia arriba";
+"undo.action_name.move_lines_down" = "Mover líneas hacia abajo";
+"menu.item_title.replace" = "Reemplazar";
