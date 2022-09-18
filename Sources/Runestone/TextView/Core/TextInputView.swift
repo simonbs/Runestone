@@ -620,7 +620,7 @@ final class TextInputView: UIView, UITextInput {
         editMenuController.delegate = self
         editMenuController.setupEditMenu(in: self)
         contentSizeService.$isContentSizeInvalid.sink { [weak self] isContentSizeInvalid in
-            if let self = self {
+            if let self = self, isContentSizeInvalid {
                 self.delegate?.textInputViewDidInvalidateContentSize(self)
             }
         }.store(in: &cancellables)
