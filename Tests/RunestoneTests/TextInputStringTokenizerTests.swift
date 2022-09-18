@@ -267,9 +267,10 @@ Donec laoreet, massa sed commodo tincidunt, dui neque ullamcorper sapien, laoree
         let stringLength = textInputView.stringView.string.length
         textInputView.layoutLines(toLocation: stringLength)
         let stringView = StringView(string: sampleText)
+        let invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
         let lineManager = LineManager(stringView: stringView)
         lineManager.rebuild()
-        let lineControllerStorage = LineControllerStorage(stringView: stringView)
+        let lineControllerStorage = LineControllerStorage(stringView: stringView, invisibleCharacterConfiguration: invisibleCharacterConfiguration)
         lineControllerStorage.delegate = self
         for row in 0 ..< lineManager.lineCount {
             let line = lineManager.line(atRow: row)
