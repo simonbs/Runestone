@@ -57,10 +57,6 @@ final class LayoutManager {
                     lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
                     lineController.invalidateSyntaxHighlighting()
                 }
-//                updateLineNumberWidth()
-//                if theme.font != oldValue.font {
-//                    invalidateContentSize()
-//                }
                 // Clear the cached highlight rects as the font size might have changed, causing the position of the highlights to change.
                 highlightRectsForLineIDs = [:]
                 clearHighlightedViews()
@@ -82,9 +78,6 @@ final class LayoutManager {
         didSet {
             if showLineNumbers != oldValue {
                 updateShownViews()
-//                if showLineNumbers {
-//                    updateLineNumberWidth()
-//                }
             }
         }
     }
