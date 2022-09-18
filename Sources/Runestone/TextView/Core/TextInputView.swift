@@ -980,6 +980,10 @@ private extension TextInputView {
     private func setupGutterWidthObserver() {
         gutterWidthService.didUpdateGutterWidth.sink { [weak self] in
             if let self = self {
+                // Typeset lines again when the line number width changes since changing line number width may increase or reduce the number of line fragments in a line.
+                self.setNeedsLayout()
+                self.invalidateLines()
+                self.layoutManager.setNeedsLayout()
                 self.delegate?.textInputViewDidChangeGutterWidth(self)
             }
         }.store(in: &cancellables)
@@ -1606,15 +1610,6 @@ extension TextInputView: LayoutManagerDelegate {
     func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint) {
         delegate?.textInputView(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
     }
-
-//    func layoutManagerDidChangeGutterWidth(_ layoutManager: LayoutManager) {
-//        // Typeset lines again when the line number width changes.
-//        // Changing line number width may increase or reduce the number of line fragments in a line.
-//        setNeedsLayout()
-//        invalidateLines()
-//        layoutManager.setNeedsLayout()
-//        delegate?.textInputViewDidChangeGutterWidth(self)
-//    }
 }
 
 // MARK: - IndentControllerDelegate
