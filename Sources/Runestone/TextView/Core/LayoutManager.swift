@@ -6,7 +6,6 @@ protocol LayoutManagerDelegate: AnyObject {
     func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
 }
 
-// swiftlint:disable:next type_body_length
 final class LayoutManager {
     weak var delegate: LayoutManagerDelegate?
     weak var gutterParentView: UIView? {

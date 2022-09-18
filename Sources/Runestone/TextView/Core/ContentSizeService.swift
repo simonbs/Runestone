@@ -48,7 +48,7 @@ final class ContentSizeService {
     var contentSize: CGSize {
         return CGSize(width: contentWidth, height: contentHeight)
     }
-    @Published private(set) var isContentSizeInvalid = false 
+    @Published private(set) var isContentSizeInvalid = false
 
     private let lineControllerStorage: LineControllerStorage
     private let gutterWidthService: GutterWidthService

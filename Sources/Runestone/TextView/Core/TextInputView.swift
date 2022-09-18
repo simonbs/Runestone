@@ -578,6 +578,7 @@ final class TextInputView: UIView, UITextInput {
     private var cancellables: [AnyCancellable] = []
 
     // MARK: - Lifecycle
+    // swiftlint:disable:next function_body_length
     init(theme: Theme) {
         self.theme = theme
         lineManager = LineManager(stringView: stringView)
@@ -588,13 +589,13 @@ final class TextInputView: UIView, UITextInput {
                                                 gutterWidthService: gutterWidthService,
                                                 invisibleCharacterConfiguration: invisibleCharacterConfiguration)
         caretRectService = CaretRectService(stringView: stringView,
-                                              lineManager: lineManager,
-                                              lineControllerStorage: lineControllerStorage,
-                                              gutterWidthService: gutterWidthService)
+                                            lineManager: lineManager,
+                                            lineControllerStorage: lineControllerStorage,
+                                            gutterWidthService: gutterWidthService)
         selectionRectService = SelectionRectService(lineManager: lineManager,
-                                                      contentSizeService: contentSizeService,
-                                                      gutterWidthService: gutterWidthService,
-                                                      caretRectService: caretRectService)
+                                                    contentSizeService: contentSizeService,
+                                                    gutterWidthService: gutterWidthService,
+                                                    caretRectService: caretRectService)
         layoutManager = LayoutManager(lineManager: lineManager,
                                       languageMode: languageMode,
                                       stringView: stringView,
@@ -945,7 +946,7 @@ private extension TextInputView {
             // The width extension is used to make the page guide look "attached" to the right hand side, even when the scroll view bouncing on the right side.
             let maxContentOffsetX = contentSizeService.contentWidth - viewport.width
             let widthExtension = max(ceil(viewport.minX - maxContentOffsetX), 0)
-            let xPosition = gutterWidthService.gutterWidth  + textContainerInset.left + pageGuideController.columnOffset
+            let xPosition = gutterWidthService.gutterWidth + textContainerInset.left + pageGuideController.columnOffset
             let width = max(bounds.width - xPosition + widthExtension, 0)
             let orrigin = CGPoint(x: xPosition, y: viewport.minY)
             let pageGuideSize = CGSize(width: width, height: viewport.height)
