@@ -3,9 +3,7 @@
 import UIKit
 
 protocol LayoutManagerDelegate: AnyObject {
-//    func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager)
     func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
-    func layoutManagerDidChangeGutterWidth(_ layoutManager: LayoutManager)
 }
 
 // swiftlint:disable:next type_body_length
@@ -431,9 +429,6 @@ extension LayoutManager {
                 nextLine = nil
             }
         }
-//        if _textContentHeight == nil || _textContentWidth == nil {
-//            delegate?.layoutManagerDidInvalidateContentSize(self)
-//        }
     }
 
     // swiftlint:disable:next function_body_length
@@ -510,10 +505,6 @@ extension LayoutManager {
         lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
         lineFragmentViewReuseQueue.enqueueViews(withKeys: disappearedLineFragmentIDs)
         highlightViewReuseQueue.enqueueViews(withKeys: disappearedHighlightViewIDs)
-        // Update content size if necessary.
-//        if _textContentWidth != oldTextContentWidth || _textContentHeight != oldTextContentHeight {
-//            delegate?.layoutManagerDidInvalidateContentSize(self)
-//        }
         // Adjust the content offset on the Y-axis if necessary.
         if contentOffsetAdjustmentY != 0 {
             let contentOffsetAdjustment = CGPoint(x: 0, y: contentOffsetAdjustmentY)

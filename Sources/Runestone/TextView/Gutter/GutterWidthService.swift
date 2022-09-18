@@ -1,3 +1,4 @@
+import Combine
 import UIKit
 
 final class GutterWidthService {
@@ -36,13 +37,16 @@ final class GutterWidthService {
             _lineNumberWidth = lineNumberWidth
             previousFont = font
             previousLineCount = lineManager.lineCount
+            sendGutterWidthUpdatedIfNeeded()
             return lineNumberWidth
         }
     }
+    let didUpdateGutterWidth = PassthroughSubject<Void, Never>()
 
     private var _lineNumberWidth: CGFloat?
     private var previousLineCount = 0
     private var previousFont: UIFont?
+    private var previouslySentGutterWidth: CGFloat?
 
     init(lineManager: LineManager) {
         self.lineManager = lineManager
@@ -60,10 +64,12 @@ private extension GutterWidthService {
         let wideLineNumberNSString = wideLineNumberString as NSString
         let size = wideLineNumberNSString.size(withAttributes: [.font: font])
         return ceil(size.width)
-//        if width != oldLineNumberWidth {
-//            delegate?.layoutManagerDidChangeGutterWidth(self)
-//            _textContentWidth = nil
-//            delegate?.layoutManagerDidInvalidateContentSize(self)
-//        }
+    }
+
+    private func sendGutterWidthUpdatedIfNeeded() {
+        if gutterWidth != previouslySentGutterWidth {
+            didUpdateGutterWidth.send()
+            previouslySentGutterWidth = gutterWidth
+        }
     }
 }

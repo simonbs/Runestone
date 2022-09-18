@@ -622,11 +622,8 @@ final class TextInputView: UIView, UITextInput {
         layoutManager.textInputView = self
         editMenuController.delegate = self
         editMenuController.setupEditMenu(in: self)
-        contentSizeService.$isContentSizeInvalid.sink { [weak self] isContentSizeInvalid in
-            if let self = self, isContentSizeInvalid {
-                self.delegate?.textInputViewDidInvalidateContentSize(self)
-            }
-        }.store(in: &cancellables)
+        setupContentSizeObserver()
+        setupGutterWidthObserver()
     }
 
     override func becomeFirstResponder() -> Bool {
@@ -970,6 +967,22 @@ private extension TextInputView {
             lineController.lineBreakMode = lineBreakMode
             lineController.invalidateSyntaxHighlighting()
         }
+    }
+
+    private func setupContentSizeObserver() {
+        contentSizeService.$isContentSizeInvalid.sink { [weak self] isContentSizeInvalid in
+            if let self = self, isContentSizeInvalid {
+                self.delegate?.textInputViewDidInvalidateContentSize(self)
+            }
+        }.store(in: &cancellables)
+    }
+
+    private func setupGutterWidthObserver() {
+        gutterWidthService.didUpdateGutterWidth.sink { [weak self] in
+            if let self = self {
+                self.delegate?.textInputViewDidChangeGutterWidth(self)
+            }
+        }.store(in: &cancellables)
     }
 }
 
@@ -1590,22 +1603,18 @@ extension TextInputView: LineControllerDelegate {
 
 // MARK: - LayoutManagerDelegate
 extension TextInputView: LayoutManagerDelegate {
-//    func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager) {
-//        delegate?.textInputViewDidInvalidateContentSize(self)
-//    }
-
     func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint) {
         delegate?.textInputView(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
     }
 
-    func layoutManagerDidChangeGutterWidth(_ layoutManager: LayoutManager) {
-        // Typeset lines again when the line number width changes.
-        // Changing line number width may increase or reduce the number of line fragments in a line.
-        setNeedsLayout()
-        invalidateLines()
-        layoutManager.setNeedsLayout()
-        delegate?.textInputViewDidChangeGutterWidth(self)
-    }
+//    func layoutManagerDidChangeGutterWidth(_ layoutManager: LayoutManager) {
+//        // Typeset lines again when the line number width changes.
+//        // Changing line number width may increase or reduce the number of line fragments in a line.
+//        setNeedsLayout()
+//        invalidateLines()
+//        layoutManager.setNeedsLayout()
+//        delegate?.textInputViewDidChangeGutterWidth(self)
+//    }
 }
 
 // MARK: - IndentControllerDelegate
