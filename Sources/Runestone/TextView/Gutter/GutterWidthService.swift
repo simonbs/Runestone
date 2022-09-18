@@ -16,7 +16,13 @@ final class GutterWidthService {
             }
         }
     }
-    var showLineNumbers = false
+    var showLineNumbers = false {
+        didSet {
+            if showLineNumbers != oldValue {
+                sendGutterWidthUpdatedIfNeeded()
+            }
+        }
+    }
     var gutterLeadingPadding: CGFloat = 0
     var gutterTrailingPadding: CGFloat = 0
     var gutterWidth: CGFloat {
