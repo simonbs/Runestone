@@ -5,6 +5,7 @@ final class InvisibleCharacterConfiguration {
         didSet {
             if font != oldValue {
                 _lineBreakSymbolSize = nil
+                _softLineBreakSymbolSize = nil
             }
         }
     }
@@ -39,7 +40,7 @@ final class InvisibleCharacterConfiguration {
     var softLineBreakSymbol = "\u{00ac}" {
         didSet {
             if softLineBreakSymbol != oldValue {
-                _lineBreakSymbolSize = nil
+                _softLineBreakSymbolSize = nil
             }
         }
     }
