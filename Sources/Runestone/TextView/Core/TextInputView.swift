@@ -1,4 +1,5 @@
 // swiftlint:disable file_length
+import Combine
 import UIKit
 
 protocol TextInputViewDelegate: AnyObject {
@@ -131,13 +132,12 @@ final class TextInputView: UIView, UITextInput {
             applyThemeToChildren()
         }
     }
-    var showLineNumbers: Bool {
-        get {
-            return layoutManager.showLineNumbers
-        }
-        set {
-            if newValue != layoutManager.showLineNumbers {
-                layoutManager.showLineNumbers = newValue
+    var showLineNumbers = false {
+        didSet {
+            if showLineNumbers != oldValue {
+                caretRectService.showLineNumbers = showLineNumbers
+                gutterWidthService.showLineNumbers = showLineNumbers
+                layoutManager.showLineNumbers = showLineNumbers
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
             }
@@ -153,44 +153,44 @@ final class TextInputView: UIView, UITextInput {
     }
     var showTabs: Bool {
         get {
-            return layoutManager.invisibleCharacterConfiguration.showTabs
+            return invisibleCharacterConfiguration.showTabs
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.showTabs {
-                layoutManager.invisibleCharacterConfiguration.showTabs = newValue
+            if newValue != invisibleCharacterConfiguration.showTabs {
+                invisibleCharacterConfiguration.showTabs = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
     var showSpaces: Bool {
         get {
-            return layoutManager.invisibleCharacterConfiguration.showSpaces
+            return invisibleCharacterConfiguration.showSpaces
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.showSpaces {
-                layoutManager.invisibleCharacterConfiguration.showSpaces = newValue
+            if newValue != invisibleCharacterConfiguration.showSpaces {
+                invisibleCharacterConfiguration.showSpaces = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
     var showNonBreakingSpaces: Bool {
         get {
-            return layoutManager.invisibleCharacterConfiguration.showNonBreakingSpaces
+            return invisibleCharacterConfiguration.showNonBreakingSpaces
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.showNonBreakingSpaces {
-                layoutManager.invisibleCharacterConfiguration.showNonBreakingSpaces = newValue
+            if newValue != invisibleCharacterConfiguration.showNonBreakingSpaces {
+                invisibleCharacterConfiguration.showNonBreakingSpaces = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
     var showLineBreaks: Bool {
         get {
-            return layoutManager.invisibleCharacterConfiguration.showLineBreaks
+            return invisibleCharacterConfiguration.showLineBreaks
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.showLineBreaks {
-                layoutManager.invisibleCharacterConfiguration.showLineBreaks = newValue
+            if newValue != invisibleCharacterConfiguration.showLineBreaks {
+                invisibleCharacterConfiguration.showLineBreaks = newValue
                 invalidateLines()
                 layoutManager.setNeedsLayout()
                 layoutManager.setNeedsDisplayOnLines()
@@ -200,11 +200,11 @@ final class TextInputView: UIView, UITextInput {
     }
     var showSoftLineBreaks: Bool {
         get {
-            return layoutManager.invisibleCharacterConfiguration.showSoftLineBreaks
+            return invisibleCharacterConfiguration.showSoftLineBreaks
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.showSoftLineBreaks {
-                layoutManager.invisibleCharacterConfiguration.showSoftLineBreaks = newValue
+            if newValue != invisibleCharacterConfiguration.showSoftLineBreaks {
+                invisibleCharacterConfiguration.showSoftLineBreaks = newValue
                 invalidateLines()
                 layoutManager.setNeedsLayout()
                 layoutManager.setNeedsDisplayOnLines()
@@ -214,55 +214,55 @@ final class TextInputView: UIView, UITextInput {
     }
     var tabSymbol: String {
         get {
-            return layoutManager.invisibleCharacterConfiguration.tabSymbol
+            return invisibleCharacterConfiguration.tabSymbol
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.tabSymbol {
-                layoutManager.invisibleCharacterConfiguration.tabSymbol = newValue
+            if newValue != invisibleCharacterConfiguration.tabSymbol {
+                invisibleCharacterConfiguration.tabSymbol = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
     var spaceSymbol: String {
         get {
-            return layoutManager.invisibleCharacterConfiguration.spaceSymbol
+            return invisibleCharacterConfiguration.spaceSymbol
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.spaceSymbol {
-                layoutManager.invisibleCharacterConfiguration.spaceSymbol = newValue
+            if newValue != invisibleCharacterConfiguration.spaceSymbol {
+                invisibleCharacterConfiguration.spaceSymbol = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
     var nonBreakingSpaceSymbol: String {
         get {
-            return layoutManager.invisibleCharacterConfiguration.nonBreakingSpaceSymbol
+            return invisibleCharacterConfiguration.nonBreakingSpaceSymbol
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.nonBreakingSpaceSymbol {
-                layoutManager.invisibleCharacterConfiguration.nonBreakingSpaceSymbol = newValue
+            if newValue != invisibleCharacterConfiguration.nonBreakingSpaceSymbol {
+                invisibleCharacterConfiguration.nonBreakingSpaceSymbol = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
     var lineBreakSymbol: String {
         get {
-            return layoutManager.invisibleCharacterConfiguration.lineBreakSymbol
+            return invisibleCharacterConfiguration.lineBreakSymbol
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.lineBreakSymbol {
-                layoutManager.invisibleCharacterConfiguration.lineBreakSymbol = newValue
+            if newValue != invisibleCharacterConfiguration.lineBreakSymbol {
+                invisibleCharacterConfiguration.lineBreakSymbol = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
     }
     var softLineBreakSymbol: String {
         get {
-            return layoutManager.invisibleCharacterConfiguration.softLineBreakSymbol
+            return invisibleCharacterConfiguration.softLineBreakSymbol
         }
         set {
-            if newValue != layoutManager.invisibleCharacterConfiguration.softLineBreakSymbol {
-                layoutManager.invisibleCharacterConfiguration.softLineBreakSymbol = newValue
+            if newValue != invisibleCharacterConfiguration.softLineBreakSymbol {
+                invisibleCharacterConfiguration.softLineBreakSymbol = newValue
                 layoutManager.setNeedsDisplayOnLines()
             }
         }
@@ -277,25 +277,19 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
-    var gutterLeadingPadding: CGFloat {
-        get {
-            return layoutManager.gutterLeadingPadding
-        }
-        set {
-            if newValue != layoutManager.gutterLeadingPadding {
-                layoutManager.gutterLeadingPadding = newValue
+    var gutterLeadingPadding: CGFloat = 3 {
+        didSet {
+            if gutterLeadingPadding != oldValue {
+                gutterWidthService.gutterLeadingPadding = gutterLeadingPadding
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
             }
         }
     }
-    var gutterTrailingPadding: CGFloat {
-        get {
-            return layoutManager.gutterTrailingPadding
-        }
-        set {
-            if newValue != layoutManager.gutterTrailingPadding {
-                layoutManager.gutterTrailingPadding = newValue
+    var gutterTrailingPadding: CGFloat = 3 {
+        didSet {
+            if gutterTrailingPadding != oldValue {
+                gutterWidthService.gutterTrailingPadding = gutterTrailingPadding
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
             }
@@ -307,6 +301,9 @@ final class TextInputView: UIView, UITextInput {
         }
         set {
             if newValue != layoutManager.textContainerInset {
+                caretRectService.textContainerInset = newValue
+                selectionRectService.textContainerInset = newValue
+                contentSizeService.textContainerInset = newValue
                 layoutManager.textContainerInset = newValue
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
@@ -319,6 +316,7 @@ final class TextInputView: UIView, UITextInput {
         }
         set {
             if newValue != layoutManager.isLineWrappingEnabled {
+                contentSizeService.isLineWrappingEnabled = newValue
                 layoutManager.isLineWrappingEnabled = newValue
                 invalidateLines()
                 layoutManager.setNeedsLayout()
@@ -330,18 +328,19 @@ final class TextInputView: UIView, UITextInput {
         didSet {
             if lineBreakMode != oldValue {
                 invalidateLines()
-                layoutManager.invalidateContentSize()
+                contentSizeService.invalidateContentSize()
                 layoutManager.setNeedsLayout()
                 layoutManager.layoutIfNeeded()
             }
         }
     }
     var gutterWidth: CGFloat {
-        return layoutManager.gutterWidth
+        return gutterWidthService.gutterWidth
     }
     var lineHeightMultiplier: CGFloat = 1 {
         didSet {
             if lineHeightMultiplier != oldValue {
+                selectionRectService.lineHeightMultiplier = lineHeightMultiplier
                 layoutManager.lineHeightMultiplier = lineHeightMultiplier
                 invalidateLines()
                 lineManager.estimatedLineHeight = estimatedLineHeight
@@ -355,7 +354,7 @@ final class TextInputView: UIView, UITextInput {
             if kern != oldValue {
                 invalidateLines()
                 pageGuideController.kern = kern
-                layoutManager.invalidateContentSize()
+                contentSizeService.invalidateContentSize()
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
             }
@@ -420,8 +419,8 @@ final class TextInputView: UIView, UITextInput {
                     selectedRange = safeSelectionRange(from: oldSelectedRange)
                     inputDelegate?.selectionDidChange(self)
                 }
-                layoutManager.invalidateContentSize()
-                layoutManager.updateLineNumberWidth()
+                contentSizeService.invalidateContentSize()
+                gutterWidthService.invalidateLineNumberWidth()
                 invalidateLines()
                 layoutManager.setNeedsLayout()
                 layoutManager.layoutIfNeeded()
@@ -446,6 +445,7 @@ final class TextInputView: UIView, UITextInput {
     var scrollViewWidth: CGFloat = 0 {
         didSet {
             if scrollViewWidth != oldValue {
+                contentSizeService.scrollViewWidth = scrollViewWidth
                 layoutManager.scrollViewWidth = scrollViewWidth
                 if isLineWrappingEnabled {
                     invalidateLines()
@@ -454,7 +454,7 @@ final class TextInputView: UIView, UITextInput {
         }
     }
     var contentSize: CGSize {
-        return layoutManager.contentSize
+        return contentSizeService.contentSize
     }
     var selectedRange: NSRange? {
         get {
@@ -479,12 +479,19 @@ final class TextInputView: UIView, UITextInput {
     override var canBecomeFirstResponder: Bool {
         return true
     }
-    weak var scrollView: UIScrollView? {
+    weak var gutterParentView: UIView? {
         get {
-            return layoutManager.scrollView
+            return layoutManager.gutterParentView
         }
         set {
-            layoutManager.scrollView = newValue
+            layoutManager.gutterParentView = newValue
+        }
+    }
+    var scrollViewSafeAreaInsets: UIEdgeInsets = .zero {
+        didSet {
+            if scrollViewSafeAreaInsets != oldValue {
+                layoutManager.safeAreaInsets = scrollViewSafeAreaInsets
+            }
         }
     }
     var gutterContainerView: UIView {
@@ -493,6 +500,7 @@ final class TextInputView: UIView, UITextInput {
     private(set) var stringView = StringView() {
         didSet {
             if stringView !== oldValue {
+                caretRectService.stringView = stringView
                 lineManager.stringView = stringView
                 lineControllerStorage.stringView = stringView
                 layoutManager.stringView = stringView
@@ -506,6 +514,10 @@ final class TextInputView: UIView, UITextInput {
             if lineManager !== oldValue {
                 indentController.lineManager = lineManager
                 lineMovementController.lineManager = lineManager
+                gutterWidthService.lineManager = lineManager
+                contentSizeService.lineManager = lineManager
+                caretRectService.lineManager = lineManager
+                selectionRectService.lineManager = lineManager
             }
         }
     }
@@ -531,6 +543,11 @@ final class TextInputView: UIView, UITextInput {
     private let indentController: IndentController
     private let lineMovementController: LineMovementController
     private let pageGuideController = PageGuideController()
+    private let gutterWidthService: GutterWidthService
+    private let contentSizeService: ContentSizeService
+    private let caretRectService: CaretRectService
+    private let selectionRectService: SelectionRectService
+    private let invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
     private var markedRange: NSRange? {
         get {
             return layoutManager.markedRange
@@ -558,16 +575,36 @@ final class TextInputView: UIView, UITextInput {
     private var notifyDelegateAboutSelectionChangeInLayoutSubviews = false
     private var didCallPositionFromPositionInDirectionWithOffset = false
     private var preserveUndoStackWhenSettingString = false
+    private var cancellables: [AnyCancellable] = []
 
     // MARK: - Lifecycle
+    // swiftlint:disable:next function_body_length
     init(theme: Theme) {
         self.theme = theme
         lineManager = LineManager(stringView: stringView)
-        lineControllerStorage = LineControllerStorage(stringView: stringView)
+        lineControllerStorage = LineControllerStorage(stringView: stringView, invisibleCharacterConfiguration: invisibleCharacterConfiguration)
+        gutterWidthService = GutterWidthService(lineManager: lineManager)
+        contentSizeService = ContentSizeService(lineManager: lineManager,
+                                                lineControllerStorage: lineControllerStorage,
+                                                gutterWidthService: gutterWidthService,
+                                                invisibleCharacterConfiguration: invisibleCharacterConfiguration)
+        caretRectService = CaretRectService(stringView: stringView,
+                                            lineManager: lineManager,
+                                            lineControllerStorage: lineControllerStorage,
+                                            gutterWidthService: gutterWidthService)
+        selectionRectService = SelectionRectService(lineManager: lineManager,
+                                                    contentSizeService: contentSizeService,
+                                                    gutterWidthService: gutterWidthService,
+                                                    caretRectService: caretRectService)
         layoutManager = LayoutManager(lineManager: lineManager,
                                       languageMode: languageMode,
                                       stringView: stringView,
-                                      lineControllerStorage: lineControllerStorage)
+                                      lineControllerStorage: lineControllerStorage,
+                                      contentSizeService: contentSizeService,
+                                      gutterWidthService: gutterWidthService,
+                                      caretRectService: caretRectService,
+                                      selectionRectService: selectionRectService,
+                                      invisibleCharacterConfiguration: invisibleCharacterConfiguration)
         indentController = IndentController(stringView: stringView,
                                             lineManager: lineManager,
                                             languageMode: languageMode,
@@ -580,10 +617,14 @@ final class TextInputView: UIView, UITextInput {
         applyThemeToChildren()
         indentController.delegate = self
         lineControllerStorage.delegate = self
+        gutterWidthService.gutterLeadingPadding = gutterLeadingPadding
+        gutterWidthService.gutterTrailingPadding = gutterTrailingPadding
         layoutManager.delegate = self
         layoutManager.textInputView = self
         editMenuController.delegate = self
         editMenuController.setupEditMenu(in: self)
+        setupContentSizeObserver()
+        setupGutterWidthObserver()
     }
 
     override func becomeFirstResponder() -> Bool {
@@ -715,8 +756,8 @@ final class TextInputView: UIView, UITextInput {
         lineManager.estimatedLineHeight = estimatedLineHeight
         layoutManager.languageMode = state.languageMode
         layoutManager.lineManager = state.lineManager
-        layoutManager.invalidateContentSize()
-        layoutManager.updateLineNumberWidth()
+        contentSizeService.invalidateContentSize()
+        gutterWidthService.invalidateLineNumberWidth()
         if addUndoAction {
             if newText != oldText {
                 let newRange = NSRange(location: 0, length: newText.length)
@@ -842,6 +883,7 @@ final class TextInputView: UIView, UITextInput {
 // MARK: - Theming
 private extension TextInputView {
     private func applyThemeToChildren() {
+        gutterWidthService.font = theme.lineNumberFont
         lineManager.estimatedLineHeight = estimatedLineHeight
         indentController.indentFont = theme.font
         pageGuideController.font = theme.font
@@ -902,9 +944,9 @@ private extension TextInputView {
     private func layoutPageGuideIfNeeded() {
         if showPageGuide {
             // The width extension is used to make the page guide look "attached" to the right hand side, even when the scroll view bouncing on the right side.
-            let maxContentOffsetX = layoutManager.contentSize.width - viewport.width
+            let maxContentOffsetX = contentSizeService.contentWidth - viewport.width
             let widthExtension = max(ceil(viewport.minX - maxContentOffsetX), 0)
-            let xPosition = layoutManager.gutterWidth + textContainerInset.left + pageGuideController.columnOffset
+            let xPosition = gutterWidthService.gutterWidth + textContainerInset.left + pageGuideController.columnOffset
             let width = max(bounds.width - xPosition + widthExtension, 0)
             let orrigin = CGPoint(x: xPosition, y: viewport.minY)
             let pageGuideSize = CGSize(width: width, height: viewport.height)
@@ -926,6 +968,26 @@ private extension TextInputView {
             lineController.lineBreakMode = lineBreakMode
             lineController.invalidateSyntaxHighlighting()
         }
+    }
+
+    private func setupContentSizeObserver() {
+        contentSizeService.$isContentSizeInvalid.filter { $0 }.sink { [weak self] _ in
+            if let self = self {
+                self.delegate?.textInputViewDidInvalidateContentSize(self)
+            }
+        }.store(in: &cancellables)
+    }
+
+    private func setupGutterWidthObserver() {
+        gutterWidthService.didUpdateGutterWidth.sink { [weak self] in
+            if let self = self {
+                // Typeset lines again when the line number width changes since changing line number width may increase or reduce the number of line fragments in a line.
+                self.setNeedsLayout()
+                self.invalidateLines()
+                self.layoutManager.setNeedsLayout()
+                self.delegate?.textInputViewDidChangeGutterWidth(self)
+            }
+        }.store(in: &cancellables)
     }
 }
 
@@ -978,11 +1040,11 @@ extension TextInputView {
         guard let indexedPosition = position as? IndexedPosition else {
             fatalError("Expected position to be of type \(IndexedPosition.self)")
         }
-        return layoutManager.caretRect(at: indexedPosition.index)
+        return caretRectService.caretRect(at: indexedPosition.index)
     }
 
     func caretRect(at location: Int) -> CGRect {
-        return layoutManager.caretRect(at: location)
+        return caretRectService.caretRect(at: location)
     }
 
     func firstRect(for range: UITextRange) -> CGRect {
@@ -1168,15 +1230,16 @@ extension TextInputView {
     private func applyLineChangesToLayoutManager(_ lineChangeSet: LineChangeSet) {
         let didAddOrRemoveLines = !lineChangeSet.insertedLines.isEmpty || !lineChangeSet.removedLines.isEmpty
         if didAddOrRemoveLines {
-            layoutManager.invalidateContentSize()
+            contentSizeService.invalidateContentSize()
             for removedLine in lineChangeSet.removedLines {
-                layoutManager.removeLine(withID: removedLine.id)
+                lineControllerStorage.removeLineController(withID: removedLine.id)
+                contentSizeService.removeLine(withID: removedLine.id)
             }
         }
         let editedLineIDs = Set(lineChangeSet.editedLines.map(\.id))
         layoutManager.redisplayLines(withIDs: editedLineIDs)
         if didAddOrRemoveLines {
-            layoutManager.updateLineNumberWidth()
+            gutterWidthService.invalidateLineNumberWidth()
         }
         layoutManager.setNeedsLayout()
         layoutManager.layoutIfNeeded()
@@ -1216,7 +1279,7 @@ extension TextInputView {
 extension TextInputView {
     func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
         if let indexedRange = range as? IndexedRange {
-            return layoutManager.selectionRects(in: indexedRange.range.nonNegativeLength)
+            return selectionRectService.selectionRects(in: indexedRange.range.nonNegativeLength)
         } else {
             return []
         }
@@ -1545,21 +1608,8 @@ extension TextInputView: LineControllerDelegate {
 
 // MARK: - LayoutManagerDelegate
 extension TextInputView: LayoutManagerDelegate {
-    func layoutManagerDidInvalidateContentSize(_ layoutManager: LayoutManager) {
-        delegate?.textInputViewDidInvalidateContentSize(self)
-    }
-
     func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint) {
         delegate?.textInputView(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
-    }
-
-    func layoutManagerDidChangeGutterWidth(_ layoutManager: LayoutManager) {
-        // Typeset lines again when the line number width changes.
-        // Changing line number width may increase or reduce the number of line fragments in a line.
-        setNeedsLayout()
-        invalidateLines()
-        layoutManager.setNeedsLayout()
-        delegate?.textInputViewDidChangeGutterWidth(self)
     }
 }
 
@@ -1583,7 +1633,7 @@ extension TextInputView: IndentControllerDelegate {
 // MARK: - EditMenuControllerDelegate
 extension TextInputView: EditMenuControllerDelegate {
     func editMenuController(_ controller: EditMenuController, caretRectAt location: Int) -> CGRect {
-        return layoutManager.caretRect(at: location)
+        return caretRectService.caretRect(at: location)
     }
 
     func editMenuControllerShouldReplaceText(_ controller: EditMenuController) {
