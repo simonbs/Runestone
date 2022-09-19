@@ -396,10 +396,14 @@ final class TextInputView: UIView, UITextInput {
     }
     var highlightedRanges: [HighlightedRange] {
         get {
-            return layoutManager.highlightedRanges
+            return highlightRectService.highlightedRanges
         }
         set {
-            layoutManager.highlightedRanges = newValue
+            if newValue != highlightRectService.highlightedRanges {
+                highlightRectService.highlightedRanges = newValue
+                layoutManager.setNeedsLayout()
+                layoutManager.layoutIfNeeded()
+            }
         }
     }
 
@@ -518,6 +522,7 @@ final class TextInputView: UIView, UITextInput {
                 contentSizeService.lineManager = lineManager
                 caretRectService.lineManager = lineManager
                 selectionRectService.lineManager = lineManager
+                highlightRectService.lineManager = lineManager
             }
         }
     }
@@ -547,6 +552,7 @@ final class TextInputView: UIView, UITextInput {
     private let contentSizeService: ContentSizeService
     private let caretRectService: CaretRectService
     private let selectionRectService: SelectionRectService
+    private let highlightRectService: HighlightRectService
     private let invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
     private var markedRange: NSRange? {
         get {
@@ -596,6 +602,9 @@ final class TextInputView: UIView, UITextInput {
                                                     contentSizeService: contentSizeService,
                                                     gutterWidthService: gutterWidthService,
                                                     caretRectService: caretRectService)
+        highlightRectService = HighlightRectService(lineManager: lineManager,
+                                                    lineControllerStorage: lineControllerStorage,
+                                                    selectionRectService: selectionRectService)
         layoutManager = LayoutManager(lineManager: lineManager,
                                       languageMode: languageMode,
                                       stringView: stringView,
@@ -604,6 +613,7 @@ final class TextInputView: UIView, UITextInput {
                                       gutterWidthService: gutterWidthService,
                                       caretRectService: caretRectService,
                                       selectionRectService: selectionRectService,
+                                      highlightRectService: highlightRectService,
                                       invisibleCharacterConfiguration: invisibleCharacterConfiguration)
         indentController = IndentController(stringView: stringView,
                                             lineManager: lineManager,
@@ -1603,6 +1613,14 @@ extension TextInputView: LineControllerDelegate {
     func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController) {
         setNeedsLayout()
         layoutManager.setNeedsLayout()
+    }
+
+    func lineControllerDidInvalidateLineHeightDuringAsyncSyntaxHighlight(_ lineController: LineController) {
+        UIView.performWithoutAnimation {
+            highlightRectService.invalidateCachedRectanglesBelowLine(atIndex: lineController.line.index)
+            setNeedsLayout()
+            layoutManager.setNeedsLayout()
+        }
     }
 }
 

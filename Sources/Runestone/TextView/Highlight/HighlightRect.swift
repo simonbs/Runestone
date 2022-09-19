@@ -1,7 +1,7 @@
 import UIKit
 
-struct CachedHighlightRect {
-    let id = UUID().uuidString
+struct HighlightRect {
+    let id: String
     let rect: CGRect
     let containsStart: Bool
     let containsEnd: Bool
@@ -9,6 +9,7 @@ struct CachedHighlightRect {
     let cornerRadius: CGFloat
 
     init(highlightedRange: HighlightedRange, selectionRect: TextSelectionRect) {
+        self.id = highlightedRange.id
         self.rect = selectionRect.rect
         self.containsStart = selectionRect.containsStart
         self.containsEnd = selectionRect.containsEnd

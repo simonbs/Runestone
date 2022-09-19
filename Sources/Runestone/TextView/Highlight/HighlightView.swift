@@ -1,7 +1,7 @@
 import UIKit
 
 final class HighlightView: UIView, ReusableView {
-    func update(with highlightRect: CachedHighlightRect) {
+    func update(with highlightRect: HighlightRect) {
         frame = highlightRect.rect
         backgroundColor = highlightRect.color
         layer.cornerCurve = .continuous
