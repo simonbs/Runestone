@@ -270,7 +270,11 @@ Donec laoreet, massa sed commodo tincidunt, dui neque ullamcorper sapien, laoree
         let invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
         let lineManager = LineManager(stringView: stringView)
         lineManager.rebuild()
-        let lineControllerStorage = LineControllerStorage(stringView: stringView, invisibleCharacterConfiguration: invisibleCharacterConfiguration)
+        let highlightService = HighlightService(lineManager: lineManager)
+        let lineControllerFactory = LineControllerFactory(stringView: stringView,
+                                                          highlightService: highlightService,
+                                                          invisibleCharacterConfiguration: invisibleCharacterConfiguration)
+        let lineControllerStorage = LineControllerStorage(stringView: stringView, lineControllerFactory: lineControllerFactory)
         lineControllerStorage.delegate = self
         for row in 0 ..< lineManager.lineCount {
             let line = lineManager.line(atRow: row)

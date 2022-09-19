@@ -8,7 +8,6 @@ typealias LineFragmentTree = RedBlackTree<LineFragmentNodeID, Int, LineFragmentN
 protocol LineControllerDelegate: AnyObject {
     func lineSyntaxHighlighter(for lineController: LineController) -> LineSyntaxHighlighter?
     func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController)
-    func lineControllerDidInvalidateLineHeightDuringAsyncSyntaxHighlight(_ lineController: LineController)
 }
 
 final class LineController {
@@ -94,6 +93,7 @@ final class LineController {
 
     private let stringView: StringView
     private let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
+    private let highlightService: HighlightService
     private let typesetter: LineTypesetter
     private var cachedSyntaxHighlighter: LineSyntaxHighlighter?
     private let textInputProxy = LineTextInputProxy()
@@ -117,10 +117,14 @@ final class LineController {
         }
     }
 
-    init(line: DocumentLineNode, stringView: StringView, invisibleCharacterConfiguration: InvisibleCharacterConfiguration) {
+    init(line: DocumentLineNode,
+         stringView: StringView,
+         invisibleCharacterConfiguration: InvisibleCharacterConfiguration,
+         highlightService: HighlightService) {
         self.line = line
         self.stringView = stringView
         self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
+        self.highlightService = highlightService
         self.typesetter = LineTypesetter(lineID: line.id.rawValue)
         self.textInputProxy.estimatedLineFragmentHeight = estimatedLineFragmentHeight
         let rootLineFragmentNodeData = LineFragmentNodeData(lineFragment: nil)
@@ -197,6 +201,7 @@ private extension LineController {
     private func prepareToDisplayString(_ typesetAmount: TypesetAmount, syntaxHighlightAsynchronously: Bool) {
         prepareString(syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
         typesetLineFragments(typesetAmount)
+        updateHighlightedRangeFragments()
     }
 
     private func prepareString(syntaxHighlightAsynchronously: Bool) {
@@ -295,15 +300,11 @@ private extension LineController {
             syntaxHighlighter.syntaxHighlight(input) { [weak self] result in
                 if case .success = result, let self = self {
                     let oldWidth = self.lineWidth
-                    let oldHeight = self.lineHeight
                     self.isSyntaxHighlightingInvalid = false
                     self.isTypesetterInvalid = true
                     self.redisplayLineFragments()
                     if abs(self.lineWidth - oldWidth) > CGFloat.ulpOfOne {
                         self.delegate?.lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(self)
-                    }
-                    if abs(self.lineHeight - oldHeight) > CGFloat.ulpOfOne {
-                        self.delegate?.lineControllerDidInvalidateLineHeightDuringAsyncSyntaxHighlight(self)
                     }
                 }
             }
@@ -410,6 +411,14 @@ private extension LineController {
     private func applyTheme(to lineFragmentController: LineFragmentController) {
         lineFragmentController.markedTextBackgroundColor = theme.markedTextBackgroundColor
         lineFragmentController.markedTextBackgroundCornerRadius = theme.markedTextBackgroundCornerRadius
+    }
+
+    private func updateHighlightedRangeFragments() {
+        for (_, lineFragmentController) in lineFragmentControllers {
+            let lineFragment = lineFragmentController.lineFragment
+            let highlightedRangeFragments = highlightService.highlightedRangeFragments(for: lineFragment, inLineWithID: line.id)
+            lineFragmentController.highlightedRangeFragments = highlightedRangeFragments
+        }
     }
 }
 

@@ -20,19 +20,19 @@ final class LineControllerStorage {
         return lineControllers.count
     }
 
-    private let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
     private var lineControllers: [DocumentLineNodeID: LineController] = [:]
+    private let lineControllerFactory: LineControllerFactory
 
-    init(stringView: StringView, invisibleCharacterConfiguration: InvisibleCharacterConfiguration) {
+    init(stringView: StringView, lineControllerFactory: LineControllerFactory) {
         self.stringView = stringView
-        self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
+        self.lineControllerFactory = lineControllerFactory
     }
 
     func getOrCreateLineController(for line: DocumentLineNode) -> LineController {
         if let cachedLineController = lineControllers[line.id] {
             return cachedLineController
         } else {
-            let lineController = LineController(line: line, stringView: stringView, invisibleCharacterConfiguration: invisibleCharacterConfiguration)
+            let lineController = lineControllerFactory.makeLineController(for: line)
             lineControllers[line.id] = lineController
             delegate?.lineControllerStorage(self, didCreate: lineController)
             return lineController

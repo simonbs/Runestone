@@ -22,9 +22,12 @@ final class LineFragmentController {
         }
     }
     var markedRange: NSRange? {
-        didSet {
-            if markedRange != oldValue {
-                renderer.markedRange = markedRange
+        get {
+            return renderer.markedRange
+        }
+        set {
+            if newValue != renderer.markedRange {
+                renderer.markedRange = newValue
                 lineFragmentView?.setNeedsDisplay()
             }
         }
@@ -47,6 +50,17 @@ final class LineFragmentController {
         set {
             if newValue != renderer.markedTextBackgroundCornerRadius {
                 renderer.markedTextBackgroundCornerRadius = newValue
+                lineFragmentView?.setNeedsDisplay()
+            }
+        }
+    }
+    var highlightedRangeFragments: [HighlightedRangeFragment] {
+        get {
+            return renderer.highlightedRangeFragments
+        }
+        set {
+            if newValue != renderer.highlightedRangeFragments {
+                renderer.highlightedRangeFragments = newValue
                 lineFragmentView?.setNeedsDisplay()
             }
         }
