@@ -73,6 +73,10 @@ private extension ReplacementStringParser {
             collectedString.removeLast()
             collectedString += "\n"
             state = .default
+        case "r":
+            collectedString.removeLast()
+            collectedString += "\r"
+            state = .default
         case "t":
             collectedString.removeLast()
             collectedString += "\t"
