@@ -396,10 +396,14 @@ final class TextInputView: UIView, UITextInput {
     }
     var highlightedRanges: [HighlightedRange] {
         get {
-            return layoutManager.highlightedRanges
+            return highlightService.highlightedRanges
         }
         set {
-            layoutManager.highlightedRanges = newValue
+            if newValue != highlightService.highlightedRanges {
+                highlightService.highlightedRanges = newValue
+                layoutManager.setNeedsLayout()
+                layoutManager.layoutIfNeeded()
+            }
         }
     }
 
@@ -502,6 +506,7 @@ final class TextInputView: UIView, UITextInput {
             if stringView !== oldValue {
                 caretRectService.stringView = stringView
                 lineManager.stringView = stringView
+                lineControllerFactory.stringView = stringView
                 lineControllerStorage.stringView = stringView
                 layoutManager.stringView = stringView
                 indentController.stringView = stringView
@@ -518,6 +523,7 @@ final class TextInputView: UIView, UITextInput {
                 contentSizeService.lineManager = lineManager
                 caretRectService.lineManager = lineManager
                 selectionRectService.lineManager = lineManager
+                highlightService.lineManager = lineManager
             }
         }
     }
@@ -537,6 +543,7 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
+    private let lineControllerFactory: LineControllerFactory
     private let lineControllerStorage: LineControllerStorage
     private let layoutManager: LayoutManager
     private let timedUndoManager = TimedUndoManager()
@@ -547,6 +554,7 @@ final class TextInputView: UIView, UITextInput {
     private let contentSizeService: ContentSizeService
     private let caretRectService: CaretRectService
     private let selectionRectService: SelectionRectService
+    private let highlightService: HighlightService
     private let invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
     private var markedRange: NSRange? {
         get {
@@ -582,7 +590,11 @@ final class TextInputView: UIView, UITextInput {
     init(theme: Theme) {
         self.theme = theme
         lineManager = LineManager(stringView: stringView)
-        lineControllerStorage = LineControllerStorage(stringView: stringView, invisibleCharacterConfiguration: invisibleCharacterConfiguration)
+        highlightService = HighlightService(lineManager: lineManager)
+        lineControllerFactory = LineControllerFactory(stringView: stringView,
+                                                      highlightService: highlightService,
+                                                      invisibleCharacterConfiguration: invisibleCharacterConfiguration)
+        lineControllerStorage = LineControllerStorage(stringView: stringView, lineControllerFactory: lineControllerFactory)
         gutterWidthService = GutterWidthService(lineManager: lineManager)
         contentSizeService = ContentSizeService(lineManager: lineManager,
                                                 lineControllerStorage: lineControllerStorage,
@@ -604,6 +616,7 @@ final class TextInputView: UIView, UITextInput {
                                       gutterWidthService: gutterWidthService,
                                       caretRectService: caretRectService,
                                       selectionRectService: selectionRectService,
+                                      highlightService: highlightService,
                                       invisibleCharacterConfiguration: invisibleCharacterConfiguration)
         indentController = IndentController(stringView: stringView,
                                             lineManager: lineManager,

@@ -51,9 +51,6 @@ final class LayoutManager {
                     lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
                     lineController.invalidateSyntaxHighlighting()
                 }
-                // Clear the cached highlight rects as the font size might have changed, causing the position of the highlights to change.
-                highlightRectsForLineIDs = [:]
-                clearHighlightedViews()
                 setNeedsLayout()
                 setNeedsLayoutLineSelection()
                 layoutIfNeeded()
@@ -112,32 +109,17 @@ final class LayoutManager {
             }
         }
     }
-    var highlightedRanges: [HighlightedRange] = [] {
-        didSet {
-            if highlightedRanges != oldValue {
-                highlightRectsForLineIDs = [:]
-                clearHighlightedViews()
-                recreateHighlightedRangesMap()
-                setNeedsLayout()
-                layoutIfNeeded()
-            }
-        }
-    }
-    private var highlightedRangesMap: [DocumentLineNodeID: [HighlightedRange]] = [:]
 
     // MARK: - Views
     let gutterContainerView = UIView()
     private var lineFragmentViewReuseQueue = ViewReuseQueue<LineFragmentID, LineFragmentView>()
     private var lineNumberLabelReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineNumberView>()
-    private var highlightViewReuseQueue = ViewReuseQueue<String, HighlightView>()
-    private var highlightRectsForLineIDs: [DocumentLineNodeID: [CachedHighlightRect]] = [:]
     private var visibleLineIDs: Set<DocumentLineNodeID> = []
     private let linesContainerView = UIView()
     private let gutterBackgroundView = GutterBackgroundView()
     private let lineNumbersContainerView = UIView()
     private let gutterSelectionBackgroundView = UIView()
     private let lineSelectionBackgroundView = UIView()
-    private let highlightsContainerBackgroundView = UIView()
 
     // MARK: - Sizing
     private var leadingLineSpacing: CGFloat {
@@ -158,6 +140,7 @@ final class LayoutManager {
     private let gutterWidthService: GutterWidthService
     private let caretRectService: CaretRectService
     private let selectionRectService: SelectionRectService
+    private let highlightService: HighlightService
 
     // MARK: - Rendering
     private let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
@@ -173,6 +156,7 @@ final class LayoutManager {
          gutterWidthService: GutterWidthService,
          caretRectService: CaretRectService,
          selectionRectService: SelectionRectService,
+         highlightService: HighlightService,
          invisibleCharacterConfiguration: InvisibleCharacterConfiguration) {
         self.lineManager = lineManager
         self.languageMode = languageMode
@@ -183,13 +167,13 @@ final class LayoutManager {
         self.gutterWidthService = gutterWidthService
         self.caretRectService = caretRectService
         self.selectionRectService = selectionRectService
+        self.highlightService = highlightService
         self.linesContainerView.isUserInteractionEnabled = false
         self.lineNumbersContainerView.isUserInteractionEnabled = false
         self.gutterContainerView.isUserInteractionEnabled = false
         self.gutterBackgroundView.isUserInteractionEnabled = false
         self.gutterSelectionBackgroundView.isUserInteractionEnabled = false
         self.lineSelectionBackgroundView.isUserInteractionEnabled = false
-        self.highlightsContainerBackgroundView.isUserInteractionEnabled = false
         self.updateShownViews()
         let memoryWarningNotificationName = UIApplication.didReceiveMemoryWarningNotification
         NotificationCenter.default.addObserver(self, selector: #selector(clearMemory), name: memoryWarningNotificationName, object: nil)
@@ -316,7 +300,6 @@ extension LayoutManager {
             layoutLineSelection()
             layoutLinesInViewport()
             updateLineNumberColors()
-            highlightsContainerBackgroundView.frame = textInputView?.frame ?? .zero
             CATransaction.commit()
         }
     }
@@ -440,12 +423,12 @@ extension LayoutManager {
             }
             // The line fragments have now been created and we can set the marked and highlighted ranges on them.
             if let markedRange = markedRange {
-                let localMarkedRange = NSRange(globalRange: markedRange, cappedLocalTo: lineController.line)
+                let lineRange = NSRange(location: lineController.line.location, length: lineController.line.data.totalLength)
+                let localMarkedRange = markedRange.local(to: lineRange)
                 lineController.setMarkedTextOnLineFragments(localMarkedRange)
             } else {
                 lineController.setMarkedTextOnLineFragments(nil)
             }
-            layoutHighlightViews(forLineWithID: line.id)
             let stoppedGeneratingLineFragments = lineFragmentControllers.isEmpty
             let lineSize = CGSize(width: lineController.lineWidth, height: lineController.lineHeight)
             contentSizeService.setSize(of: lineController.line, to: lineSize)
@@ -465,19 +448,12 @@ extension LayoutManager {
         visibleLineIDs = appearedLineIDs
         let disappearedLineIDs = oldVisibleLineIDs.subtracting(appearedLineIDs)
         let disappearedLineFragmentIDs = oldVisibleLineFragmentIDs.subtracting(appearedLineFragmentIDs)
-        let disappearedHighlightViewIDs: Set<String> = disappearedLineIDs.reduce(into: []) { partialResult, lineID in
-            if let highlightRects = highlightRectsForLineIDs[lineID] {
-                let ids = Set(highlightRects.map(\.id))
-                partialResult.formUnion(ids)
-            }
-        }
         for disappearedLineID in disappearedLineIDs {
             let lineController = lineControllerStorage[disappearedLineID]
             lineController?.cancelSyntaxHighlighting()
         }
         lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
         lineFragmentViewReuseQueue.enqueueViews(withKeys: disappearedLineFragmentIDs)
-        highlightViewReuseQueue.enqueueViews(withKeys: disappearedHighlightViewIDs)
         // Adjust the content offset on the Y-axis if necessary.
         if contentOffsetAdjustmentY != 0 {
             let contentOffsetAdjustment = CGPoint(x: 0, y: contentOffsetAdjustmentY)
@@ -495,7 +471,7 @@ extension LayoutManager {
         let xPosition = safeAreaInsets.left + gutterWidthService.gutterLeadingPadding
         var yPosition = textContainerInset.top + line.yPosition
         if lineController.numberOfLineFragments > 1 {
-            // There are more than one line fragments, so we align the line number number at the top.
+            // There are more than one line fragments, so we align the line number at the top.
             yPosition += (fontLineHeight * lineHeightMultiplier - fontLineHeight) / 2
         } else {
             // There's a single line fragment, so we center the line number in the height of the line.
@@ -515,42 +491,9 @@ extension LayoutManager {
         }
         lineFragmentController.lineFragmentView = lineFragmentView
         let lineFragmentOrigin = CGPoint(x: leadingLineSpacing, y: textContainerInset.top + lineYPosition + lineFragment.yPosition)
-        let lineFragmentWidth = lineFragment.scaledSize.width + invisibleCharacterConfiguration.maximumLineBreakSymbolWidth
-        let lineFragmentSize = CGSize(width: lineFragmentWidth, height: lineFragment.scaledSize.height)
+        let lineFragmentSize = CGSize(width: contentSizeService.contentWidth - leadingLineSpacing, height: lineFragment.scaledSize.height)
         lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragmentSize)
         lineFragmentView.frame = lineFragmentFrame
-    }
-
-    private func layoutHighlightViews(forLineWithID lineID: DocumentLineNodeID) {
-        let highlightRects = highlightRects(forLineWithID: lineID)
-        for highlightRect in highlightRects {
-            let view = highlightViewReuseQueue.dequeueView(forKey: highlightRect.id)
-            view.update(with: highlightRect)
-            if view.superview == nil {
-                highlightsContainerBackgroundView.addSubview(view)
-            }
-        }
-    }
-
-    private func highlightRects(forLineWithID lineID: DocumentLineNodeID) -> [CachedHighlightRect] {
-        if let rects = highlightRectsForLineIDs[lineID] {
-            return rects
-        } else {
-            let highlightedRanges = highlightedRangesMap[lineID] ?? []
-            let rects: [CachedHighlightRect] = highlightedRanges.flatMap { highlightedRange -> [CachedHighlightRect] in
-                let selectionRects = selectionRectService.selectionRects(in: highlightedRange.range)
-                return selectionRects.map { selectionRect in
-                    return CachedHighlightRect(highlightedRange: highlightedRange, selectionRect: selectionRect)
-                }
-            }
-            highlightRectsForLineIDs[lineID] = rects
-            return rects
-        }
-    }
-
-    private func clearHighlightedViews() {
-        let keys = Set(highlightViewReuseQueue.visibleViews.keys)
-        highlightViewReuseQueue.enqueueViews(withKeys: keys)
     }
 
     private func updateLineNumberColors() {
@@ -571,7 +514,6 @@ extension LayoutManager {
     private func setupViewHierarchy() {
         // Remove views from view hierarchy
         lineSelectionBackgroundView.removeFromSuperview()
-        highlightsContainerBackgroundView.removeFromSuperview()
         linesContainerView.removeFromSuperview()
         gutterContainerView.removeFromSuperview()
         gutterBackgroundView.removeFromSuperview()
@@ -581,7 +523,6 @@ extension LayoutManager {
         lineFragmentViewReuseQueue.enqueueViews(withKeys: Set(allLineNumberKeys))
         // Add views to view hierarchy
         textInputView?.addSubview(lineSelectionBackgroundView)
-        textInputView?.addSubview(highlightsContainerBackgroundView)
         textInputView?.addSubview(linesContainerView)
         gutterParentView?.addSubview(gutterContainerView)
         gutterContainerView.addSubview(gutterBackgroundView)
@@ -604,33 +545,11 @@ private extension LayoutManager {
         for lineID in visibleLineIDs {
             if let lineController = lineControllerStorage[lineID] {
                 if let markedRange = markedRange {
-                    let localMarkedRange = NSRange(globalRange: markedRange, cappedLocalTo: lineController.line)
+                    let lineRange = NSRange(location: lineController.line.location, length: lineController.line.data.totalLength)
+                    let localMarkedRange = markedRange.local(to: lineRange)
                     lineController.setMarkedTextOnLineFragments(localMarkedRange)
                 } else {
                     lineController.setMarkedTextOnLineFragments(nil)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Highlight
-private extension LayoutManager {
-    private func recreateHighlightedRangesMap() {
-        highlightedRangesMap.removeAll()
-        for highlightedRange in highlightedRanges where highlightedRange.range.length > 0 {
-            let lines = lineManager.lines(in: highlightedRange.range)
-            for line in lines {
-                if let cappedRange = NSRange(globalRange: highlightedRange.range, cappedTo: line) {
-                    let id = highlightedRange.id
-                    let color = highlightedRange.color
-                    let cornerRadius = highlightedRange.cornerRadius
-                    let highlightedRange = HighlightedRange(id: id, range: cappedRange, color: color, cornerRadius: cornerRadius)
-                    if let existingHighlightedRanges = highlightedRangesMap[line.id] {
-                        highlightedRangesMap[line.id] = existingHighlightedRanges + [highlightedRange]
-                    } else {
-                        highlightedRangesMap[line.id] = [highlightedRange]
-                    }
                 }
             }
         }

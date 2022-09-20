@@ -9,45 +9,6 @@ extension NSRange {
         self.init(location: location, length: length)
     }
 
-    /// Takes a range in the global string range and returns it as a range capped and local to the string in the line.
-    /// Returns nil if the line does not contain the range.
-    /// - Parameters:
-    ///   - globalRange: Range in the global string.
-    ///   - line: Line which range should be capped by and local to.
-    init?(globalRange: NSRange, cappedLocalTo line: DocumentLineNode) {
-        self.init(globalRange: globalRange, cappedTo: line, localToLine: true)
-    }
-
-    /// Takes a range in the global string range and returns it as a range capped to the string in the line.
-    /// The returned range is still relative to the global string. Returns nil if the line does not contain the range.
-    /// - Parameters:
-    ///   - globalRange: Range in the global string.
-    ///   - line: Line range should be capped by.
-    init?(globalRange: NSRange, cappedTo line: DocumentLineNode) {
-        self.init(globalRange: globalRange, cappedTo: line, localToLine: false)
-    }
-
-    private init?(globalRange: NSRange, cappedTo line: DocumentLineNode, localToLine: Bool) {
-        let lineLocation = line.location
-        let lineLength = line.data.totalLength
-        let globalLineRange = NSRange(location: lineLocation, length: lineLength)
-        guard globalRange.upperBound > lineLocation else {
-            return nil
-        }
-        guard globalRange.overlaps(globalLineRange) else {
-            return nil
-        }
-        if localToLine {
-            let cappedLocation = max(globalRange.location - lineLocation, 0)
-            let cappedLength = min(globalRange.length, lineLength - cappedLocation)
-            self = NSRange(location: cappedLocation, length: cappedLength)
-        } else {
-            let cappedLocation = max(globalRange.location, lineLocation)
-            let cappedLength = min(globalRange.length, lineLength)
-            self = NSRange(location: cappedLocation, length: cappedLength)
-        }
-    }
-
     /// Checks if range overlaps another range.
     /// - Parameter range: Range to check against.
     /// - Returns: True if the ranges overlap otherwise false.
@@ -57,8 +18,7 @@ extension NSRange {
         return r1.overlaps(r2)
     }
 
-    /// Returns a range that is guaranteed not to have a negative length. As an example the range (20, -4) will be converted to (16, 4)
-    /// and the range (20, -25) will be converted to (0, 20).
+    /// Returns a range that is guaranteed not to have a negative length. As an example the range (20, -4) will be converted to (16, 4) and the range (20, -25) will be converted to (0, 20).
     var nonNegativeLength: NSRange {
         if length < 0 {
             let absoluteLength = abs(length)
@@ -67,5 +27,26 @@ extension NSRange {
         } else {
             return self
         }
+    }
+
+    /// Ensures the range fits within the specified range.
+    /// - Parameter cappingRange: The target range.
+    /// - Returns: A range that fits within the target range.
+    func capped(to cappingRange: NSRange) -> NSRange {
+        let newLowerBound = min(max(lowerBound, cappingRange.lowerBound), cappingRange.upperBound)
+        let tmpNewUpperBound = newLowerBound + length - (newLowerBound - lowerBound)
+        let newUpperBound = min(max(tmpNewUpperBound, cappingRange.lowerBound), cappingRange.upperBound)
+        let newLength = min(newUpperBound - newLowerBound, cappingRange.length)
+        return NSRange(location: newLowerBound, length: newLength)
+    }
+
+    /// Crates a range that is local to the specified range.
+    /// - Parameter parentRange: The parent range.
+    /// - Returns: A range that is local to the parent range.
+    func local(to parentRange: NSRange) -> NSRange {
+        let localLowerBound = lowerBound - parentRange.lowerBound
+        let localUpperBound = upperBound - parentRange.lowerBound
+        let length = localUpperBound - localLowerBound
+        return NSRange(location: localLowerBound, length: length)
     }
 }

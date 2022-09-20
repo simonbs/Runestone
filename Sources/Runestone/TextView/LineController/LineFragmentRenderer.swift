@@ -17,6 +17,7 @@ final class LineFragmentRenderer {
     var markedRange: NSRange?
     var markedTextBackgroundColor: UIColor = .systemFill
     var markedTextBackgroundCornerRadius: CGFloat = 0
+    var highlightedRangeFragments: [HighlightedRangeFragment] = []
 
     private var showInvisibleCharacters: Bool {
         return invisibleCharacterConfiguration.showTabs
@@ -30,7 +31,8 @@ final class LineFragmentRenderer {
         self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
     }
 
-    func draw(to context: CGContext) {
+    func draw(to context: CGContext, inCanvasOfSize canvasSize: CGSize) {
+        drawHighlightedRanges(to: context, inCanvasOfSize: canvasSize)
         drawMarkedRange(to: context)
         drawInvisibleCharacters(to: context)
         drawText(to: context)
@@ -38,6 +40,34 @@ final class LineFragmentRenderer {
 }
 
 private extension LineFragmentRenderer {
+    private func drawHighlightedRanges(to context: CGContext, inCanvasOfSize canvasSize: CGSize) {
+        guard !highlightedRangeFragments.isEmpty else {
+            return
+        }
+        context.saveGState()
+        for highlightedRange in highlightedRangeFragments {
+            let startX = CTLineGetOffsetForStringIndex(lineFragment.line, highlightedRange.range.lowerBound, nil)
+            let endX: CGFloat
+            if shouldHighlightLineEnding(for: highlightedRange) {
+                endX = canvasSize.width
+            } else {
+                endX = CTLineGetOffsetForStringIndex(lineFragment.line, highlightedRange.range.upperBound, nil)
+            }
+            let rect = CGRect(x: startX, y: 0, width: endX - startX, height: lineFragment.scaledSize.height)
+            let roundedCorners = highlightedRange.roundedCorners
+            context.setFillColor(highlightedRange.color.cgColor)
+            if !roundedCorners.isEmpty && highlightedRange.cornerRadius > 0 {
+                let cornerRadii = CGSize(width: highlightedRange.cornerRadius, height: highlightedRange.cornerRadius)
+                let bezierPath = UIBezierPath(roundedRect: rect, byRoundingCorners: roundedCorners, cornerRadii: cornerRadii)
+                context.addPath(bezierPath.cgPath)
+                context.fillPath()
+            } else {
+                context.fill(rect)
+            }
+        }
+        context.restoreGState()
+    }
+
     private func drawMarkedRange(to context: CGContext) {
         if let markedRange = markedRange {
             context.saveGState()
@@ -113,6 +143,16 @@ private extension LineFragmentRenderer {
         case .endOfLine:
             return CGFloat(CTLineGetTypographicBounds(lineFragment.line, nil, nil, nil))
         }
+    }
+
+    private func shouldHighlightLineEnding(for highlightedRangeFragment: HighlightedRangeFragment) -> Bool {
+        guard highlightedRangeFragment.range.upperBound == lineFragment.range.upperBound else {
+            return false
+        }
+        guard let string = delegate?.string(in: self), let lastCharacter = string.last else {
+            return false
+        }
+        return isLineBreak(lastCharacter)
     }
 
     private func isLineBreak(_ string: String.Element) -> Bool {

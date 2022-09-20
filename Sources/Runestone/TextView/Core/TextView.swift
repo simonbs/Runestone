@@ -1379,11 +1379,11 @@ extension TextView: HighlightNavigationControllerDelegate {
     func highlightNavigationController(_ controller: HighlightNavigationController,
                                        shouldNavigateTo highlightNavigationRange: HighlightNavigationRange) {
         let range = highlightNavigationRange.range
-        _ = textInputView.becomeFirstResponder()
         // Layout lines up until the location of the range so we can scroll to it immediately after.
         textInputView.layoutLines(toLocation: range.upperBound)
         scroll(to: range)
-        textInputView.selectedRange = range
+        textInputView.selectedTextRange = IndexedRange(range)
+        _ = textInputView.becomeFirstResponder()
         textInputView.presentEditMenuForText(in: range)
         switch highlightNavigationRange.loopMode {
         case .previousGoesToLast:

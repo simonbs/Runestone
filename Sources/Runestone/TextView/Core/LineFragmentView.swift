@@ -31,7 +31,7 @@ final class LineFragmentView: UIView, ReusableView {
     override func draw(_ rect: CGRect) {
         super.draw(rect)
         if let context = UIGraphicsGetCurrentContext() {
-            renderer?.draw(to: context)
+            renderer?.draw(to: context, inCanvasOfSize: bounds.size)
         }
     }
 
