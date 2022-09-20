@@ -201,17 +201,13 @@ final class LineManager {
         return changeSet
     }
 
-    func lineDetails(at location: Int) -> LineDetails? {
-        if let nodePosition = documentLineTree.nodePosition(at: location) {
-            let linePosition = LinePosition(row: nodePosition.index, column: nodePosition.offset)
-            return LineDetails(startLocation: nodePosition.nodeStartLocation, totalLength: nodePosition.value, position: linePosition)
+    func linePosition(at location: Int) -> LinePosition? {
+        if let line = line(containingCharacterAt: location) {
+            let column = location - line.location
+            return LinePosition(row: line.index, column: column)
         } else {
             return nil
         }
-    }
-
-    func linePosition(at location: Int) -> LinePosition? {
-        return lineDetails(at: location)?.position
     }
 
     func line(containingCharacterAt location: Int) -> DocumentLineNode? {
