@@ -1391,6 +1391,7 @@ extension TextInputView {
             replaceText(in: insertRange, with: text, undoActionName: undoActionName)
             // Update the selected range to match the old one but at the new lines.
             let locationOffset = insertLocation - removeLocation
+            notifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
             selectedRange = NSRange(location: oldSelectedRange.location + locationOffset, length: oldSelectedRange.length)
             timedUndoManager.endUndoGrouping()
         }
