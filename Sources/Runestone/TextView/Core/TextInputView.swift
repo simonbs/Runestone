@@ -1378,23 +1378,37 @@ extension TextInputView {
         if isMovingDown {
             insertLocation += targetLine.data.totalLength - removeLength
         }
+        // Update the selected range to match the old one but at the new lines.
+        var locationOffset = insertLocation - removeLocation
         // Perform the remove and insert operations.
-        let removeRange = NSRange(location: removeLocation, length: removeLength)
+        var removeRange = NSRange(location: removeLocation, length: removeLength)
         let insertRange = NSRange(location: insertLocation, length: 0)
-        if var text = stringView.substring(in: removeRange) {
-            timedUndoManager.endUndoGrouping()
-            timedUndoManager.beginUndoGrouping()
-            if lastLine.data.delimiterLength == 0 {
-                text += lineEndings.symbol
+        var text = stringView.substring(in: removeRange) ?? ""
+        if isMovingDown && targetLine.data.delimiterLength == 0 {
+            if lastLine.data.delimiterLength > 0 {
+                // We're moving to a line with no line break so we'll remove the last line break from the text we're moving.
+                // This behavior matches the one of Nova.
+                text.removeLast(lastLine.data.delimiterLength)
             }
-            replaceText(in: removeRange, with: "", undoActionName: undoActionName)
-            replaceText(in: insertRange, with: text, undoActionName: undoActionName)
-            // Update the selected range to match the old one but at the new lines.
-            let locationOffset = insertLocation - removeLocation
-            notifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
-            selectedRange = NSRange(location: oldSelectedRange.location + locationOffset, length: oldSelectedRange.length)
-            timedUndoManager.endUndoGrouping()
+            // Since the line we're moving to has no line break, we should add one in the beginning of the text.
+            text = lineEndings.symbol + text
+            locationOffset += lineEndings.symbol.count
+        } else if !isMovingDown && lastLine.data.delimiterLength == 0 {
+            // The last line we're moving has no line break, so we'll add one.
+            text += lineEndings.symbol
+            // Adjust the removal range to remove the line break of the line we're moving to.
+            if targetLine.data.delimiterLength > 0 {
+                removeRange.location -= targetLine.data.delimiterLength
+                removeRange.length += targetLine.data.delimiterLength
+            }
         }
+        timedUndoManager.endUndoGrouping()
+        timedUndoManager.beginUndoGrouping()
+        replaceText(in: removeRange, with: "", undoActionName: undoActionName)
+        replaceText(in: insertRange, with: text, undoActionName: undoActionName)
+        notifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
+        selectedRange = NSRange(location: oldSelectedRange.location + locationOffset, length: oldSelectedRange.length)
+        timedUndoManager.endUndoGrouping()
     }
 }
 
