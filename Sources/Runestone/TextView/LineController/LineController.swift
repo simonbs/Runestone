@@ -461,9 +461,7 @@ extension LineController {
         let localLocation = min(CTLineGetStringIndexForPosition(closestLineFragment.line, point), line.data.length)
         if closestLineFragment === typesetter.lineFragments.last {
             let lastCharacterRect = caretRect(atIndex: closestLineFragment.range.upperBound)
-            let distanceFromLastCharacterToLineEnd = constrainingWidth - lastCharacterRect.maxX
-            let selectEntireLineOffset = lastCharacterRect.maxX + distanceFromLastCharacterToLineEnd / 2
-            if point.x >= selectEntireLineOffset {
+            if point.x >= lastCharacterRect.maxX + 50 {
                 // Location is significantly far from the last character and therefore we select the entire line, including the delimiter.
                 return line.location + line.data.length + line.data.delimiterLength
             } else {
