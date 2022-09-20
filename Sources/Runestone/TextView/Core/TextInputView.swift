@@ -1343,58 +1343,20 @@ extension TextInputView {
     }
 
     private func moveSelectedLine(byOffset lineOffset: Int, undoActionName: String) {
-        // This implementation of moving lines is naive, as it first removes the selected lines and then insertes the text at the target line.
-        // That requires two parses of the syntax tree and two operations on our line manager. Ideally we would do this in one operation.
-        let isMovingDown = lineOffset > 0
         guard let oldSelectedRange = selectedRange else {
             return
         }
-        let selectedLines = lineManager.lines(in: oldSelectedRange)
-        guard !selectedLines.isEmpty else {
+        let moveLinesService = MoveLinesService(stringView: stringView, lineManager: lineManager, lineEndingSymbol: lineEndings.symbol)
+        guard let operation = moveLinesService.operationForMovingLines(in: oldSelectedRange, byOffset: lineOffset) else {
             return
         }
-        let firstLine = selectedLines[0]
-        let lastLine = selectedLines[selectedLines.count - 1]
-        let firstLineIndex = firstLine.index
-        var targetLineIndex = firstLineIndex + lineOffset
-        if isMovingDown {
-            targetLineIndex += selectedLines.count - 1
-        }
-        guard targetLineIndex >= 0 && targetLineIndex < lineManager.lineCount else {
-            return
-        }
-        // Find the line to move the selected text to.
-        let targetLine = lineManager.line(atRow: targetLineIndex)
-        // Find the range of text to remove. That's the range encapsulating selected lines.
-        let removeLocation = firstLine.location
-        let removeLength: Int
-        if firstLine === lastLine {
-            removeLength = firstLine.data.totalLength
-        } else {
-            removeLength = lastLine.location + lastLine.data.totalLength - removeLocation
-        }
-        // Find the location to insert the text at.
-        var insertLocation = targetLine.location
-        if isMovingDown {
-            insertLocation += targetLine.data.totalLength - removeLength
-        }
-        // Perform the remove and insert operations.
-        let removeRange = NSRange(location: removeLocation, length: removeLength)
-        let insertRange = NSRange(location: insertLocation, length: 0)
-        if var text = stringView.substring(in: removeRange) {
-            timedUndoManager.endUndoGrouping()
-            timedUndoManager.beginUndoGrouping()
-            if lastLine.data.delimiterLength == 0 {
-                text += lineEndings.symbol
-            }
-            replaceText(in: removeRange, with: "", undoActionName: undoActionName)
-            replaceText(in: insertRange, with: text, undoActionName: undoActionName)
-            // Update the selected range to match the old one but at the new lines.
-            let locationOffset = insertLocation - removeLocation
-            notifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
-            selectedRange = NSRange(location: oldSelectedRange.location + locationOffset, length: oldSelectedRange.length)
-            timedUndoManager.endUndoGrouping()
-        }
+        timedUndoManager.endUndoGrouping()
+        timedUndoManager.beginUndoGrouping()
+        replaceText(in: operation.removeRange, with: "", undoActionName: undoActionName)
+        replaceText(in: operation.replacementRange, with: operation.replacementString, undoActionName: undoActionName)
+        notifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
+        selectedRange = operation.selectedRange
+        timedUndoManager.endUndoGrouping()
     }
 }
 
