@@ -137,7 +137,13 @@ final class ReplacementStringParserTests: XCTestCase {
     func testStringContainingTwoBackslashes() {
         let parser = ReplacementStringParser(string: "hello \\\\ world")
         let parsedReplacementString = parser.parse()
-        XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello \\\\ world")]))
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello \\ world")]))
+    }
+
+    func testEscapedModifier() {
+        let parser = ReplacementStringParser(string: "hello \\\\u world")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello \\u world")]))
     }
 
     func testModifierWithNoMeaning() {
@@ -208,5 +214,53 @@ final class ReplacementStringParserTests: XCTestCase {
         let parser = ReplacementStringParser(string: "\\u\\l\\A")
         let parsedReplacementString = parser.parse()
         XCTAssertEqual(parsedReplacementString, .init(components: [.text("\\u\\l\\A")]))
+    }
+
+    func testStringContainingLineFeed() {
+        let parser = ReplacementStringParser(string: "hello \\n world")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello \n world")]))
+    }
+
+    func testStringContainingCarriageReturn() {
+        let parser = ReplacementStringParser(string: "hello \\r world")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello \r world")]))
+    }
+
+    func testStringContainingCarriageReturnLineFeed() {
+        let parser = ReplacementStringParser(string: "hello \\r\\n world")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello \r\n world")]))
+    }
+
+    func testStringContainingTab() {
+        let parser = ReplacementStringParser(string: "hello \\t world")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello \t world")]))
+    }
+
+    func testStringContainingEscapedLineFeed() {
+        let parser = ReplacementStringParser(string: "hello \\\\n world")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello \\n world")]))
+    }
+
+    func testStringContainingEscapedCarriageReturn() {
+        let parser = ReplacementStringParser(string: "hello \\\\r world")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello \\r world")]))
+    }
+
+    func testStringContainingEscapedCarriageReturnLineFeed() {
+        let parser = ReplacementStringParser(string: "hello \\\\r\\\\n world")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello \\r\\n world")]))
+    }
+
+    func testStringContainingEscapedTab() {
+        let parser = ReplacementStringParser(string: "hello \\\\t world")
+        let parsedReplacementString = parser.parse()
+        XCTAssertEqual(parsedReplacementString, .init(components: [.text("hello \\t world")]))
     }
 }

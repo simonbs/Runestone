@@ -25,9 +25,6 @@ final class SearchController {
         }
         let replacementStringParser = ReplacementStringParser(string: replacementText)
         let parsedReplacementString = replacementStringParser.parse()
-        guard parsedReplacementString.containsPlaceholder else {
-            return search(for: query, replacingWithPlainText: replacementText)
-        }
         return search(for: query) { textCheckingResult in
             let replacementText = parsedReplacementString.string(byMatching: textCheckingResult, in: stringView.string)
             return searchReplaceResult(in: textCheckingResult.range, replacementText: replacementText)
