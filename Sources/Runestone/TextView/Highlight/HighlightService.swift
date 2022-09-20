@@ -52,8 +52,8 @@ private extension HighlightService {
                 }
                 let cappedRange = highlightedRange.range.capped(to: lineRange)
                 let cappedLocalRange = cappedRange.local(to: lineRange)
-                let containsStart = cappedRange.lowerBound <= highlightedRange.range.lowerBound
-                let containsEnd = cappedRange.upperBound >= highlightedRange.range.upperBound
+                let containsStart = cappedRange.lowerBound == highlightedRange.range.lowerBound
+                let containsEnd = cappedRange.upperBound == highlightedRange.range.upperBound
                 let highlightedRangeFragment = HighlightedRangeFragment(range: cappedLocalRange,
                                                                         containsStart: containsStart,
                                                                         containsEnd: containsEnd,
@@ -79,8 +79,8 @@ private extension HighlightService {
                 return nil
             }
             let cappedRange = lineHighlightedRangeFragment.range.capped(to: lineFragment.range)
-            let containsStart = cappedRange.lowerBound <= lineHighlightedRangeFragment.range.lowerBound
-            let containsEnd = cappedRange.upperBound >= lineHighlightedRangeFragment.range.upperBound
+            let containsStart = lineHighlightedRangeFragment.containsStart && cappedRange.lowerBound == lineHighlightedRangeFragment.range.lowerBound
+            let containsEnd = lineHighlightedRangeFragment.containsEnd && cappedRange.upperBound == lineHighlightedRangeFragment.range.upperBound
             return HighlightedRangeFragment(range: cappedRange,
                                             containsStart: containsStart,
                                             containsEnd: containsEnd,
