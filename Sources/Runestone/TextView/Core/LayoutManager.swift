@@ -486,7 +486,8 @@ extension LayoutManager {
         }
         lineFragmentController.lineFragmentView = lineFragmentView
         let lineFragmentOrigin = CGPoint(x: leadingLineSpacing, y: textContainerInset.top + lineYPosition + lineFragment.yPosition)
-        let lineFragmentSize = CGSize(width: contentSizeService.contentWidth - leadingLineSpacing, height: lineFragment.scaledSize.height)
+        let lineFragmentWidth = contentSizeService.contentWidth - leadingLineSpacing - textContainerInset.right
+        let lineFragmentSize = CGSize(width: lineFragmentWidth, height: lineFragment.scaledSize.height)
         lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragmentSize)
         lineFragmentView.frame = lineFragmentFrame
     }
