@@ -1152,6 +1152,7 @@ extension TextInputView {
         let newString = textEditHelper.string(byApplying: batchReplaceSet)
         setStringWithUndoAction(newString)
         if let oldLinePosition = oldLinePosition {
+            // By restoring the selected range using the old line position we can better preserve the old selected language.
             moveCaret(to: oldLinePosition)
         }
     }
@@ -1306,10 +1307,13 @@ extension TextInputView {
     }
 
     private func moveCaret(to linePosition: LinePosition) {
-        // By restoring the selected range using the old line position we can better preserve the old selected language.
-        let line = lineManager.line(atRow: linePosition.row)
-        let location = line.location + min(linePosition.column, line.data.length)
-        selectedRange = NSRange(location: location, length: 0)
+        if linePosition.row < lineManager.lineCount {
+            let line = lineManager.line(atRow: linePosition.row)
+            let location = line.location + min(linePosition.column, line.data.length)
+            selectedRange = NSRange(location: location, length: 0)
+        } else {
+            selectedRange = nil
+        }
     }
 }
 
