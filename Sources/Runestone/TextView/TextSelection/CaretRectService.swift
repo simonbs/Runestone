@@ -5,6 +5,7 @@ final class CaretRectService {
     var lineManager: LineManager
     var textContainerInset: UIEdgeInsets = .zero
     var showLineNumbers = false
+    var isSelectionEmpty = true
 
     private let lineControllerStorage: LineControllerStorage
     private let gutterWidthService: GutterWidthService
@@ -45,6 +46,9 @@ final class CaretRectService {
 
 private extension CaretRectService {
     private func shouldMoveCaretToNextLineFragment(forLocation location: Int, in line: DocumentLineNode) -> Bool {
+        guard isSelectionEmpty else {
+            return false
+        }
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         guard lineController.numberOfLineFragments > 0 else {
             return false

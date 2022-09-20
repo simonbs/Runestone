@@ -474,6 +474,7 @@ final class TextInputView: UIView, UITextInput {
     private var _selectedRange: NSRange? {
         didSet {
             if _selectedRange != oldValue {
+                caretRectService.isSelectionEmpty = (_selectedRange?.length ?? 0) == 0
                 layoutManager.selectedRange = _selectedRange
                 layoutManager.setNeedsLayoutLineSelection()
                 setNeedsLayout()
