@@ -29,17 +29,19 @@ final class ContentSizeService {
         }
     }
     var contentWidth: CGFloat {
+        let minimumWidth = scrollViewWidth - safeAreaInset.left - safeAreaInset.right
         if isLineWrappingEnabled {
-            return scrollViewWidth - safeAreaInset.left - safeAreaInset.right
+            return minimumWidth
         } else {
             let textContentWidth = longestLineWidth ?? scrollViewWidth
-            return ceil(
+            let preferredWidth = ceil(
                 textContentWidth
                 + gutterWidthService.gutterWidth
                 + textContainerInset.left
                 + textContainerInset.right
                 + invisibleCharacterConfiguration.maximumLineBreakSymbolWidth
             )
+            return max(preferredWidth, minimumWidth)
         }
     }
     var contentHeight: CGFloat {
