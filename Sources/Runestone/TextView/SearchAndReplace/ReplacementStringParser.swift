@@ -65,6 +65,18 @@ private extension ReplacementStringParser {
 
     private func takeCharacterInEscapeSequence(_ character: Character) {
         switch character {
+        case "\\":
+            collectedString.removeLast()
+            collectedString += String(character)
+            state = .default
+        case "n":
+            collectedString.removeLast()
+            collectedString += "\n"
+            state = .default
+        case "t":
+            collectedString.removeLast()
+            collectedString += "\t"
+            state = .default
         case "u":
             collectedString.removeLast()
             collectedModifiers.append(.uppercaseLetter)
