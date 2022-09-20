@@ -276,12 +276,7 @@ extension LayoutManager {
 
     private func closestIndex(to point: CGPoint, in lineController: LineController, showing line: DocumentLineNode) -> Int {
         let localPoint = CGPoint(x: point.x, y: point.y - line.yPosition)
-        let index = lineController.closestIndex(to: localPoint)
-        if index >= line.data.length && index <= line.data.totalLength && line != lineManager.lastLine {
-            return line.location + line.data.length
-        } else {
-            return line.location + index
-        }
+        return lineController.closestIndex(to: localPoint)
     }
 }
 
@@ -356,8 +351,8 @@ extension LayoutManager {
             let height = (realEndLine.yPosition + realEndLine.data.lineHeight) - minY
             return CGRect(x: 0, y: textContainerInset.top + minY, width: scrollViewWidth, height: height)
         case .lineFragment:
-            let startCaretRect = caretRectService.caretRect(at: selectedRange.lowerBound)
-            let endCaretRect = caretRectService.caretRect(at: selectedRange.upperBound)
+            let startCaretRect = caretRectService.caretRect(at: selectedRange.lowerBound, allowMovingCaretToNextLineFragment: false)
+            let endCaretRect = caretRectService.caretRect(at: selectedRange.upperBound, allowMovingCaretToNextLineFragment: false)
             let startLineFragmentHeight = startCaretRect.height * lineHeightMultiplier
             let endLineFragmentHeight = endCaretRect.height * lineHeightMultiplier
             let minY = startCaretRect.minY - (startLineFragmentHeight - startCaretRect.height) / 2
