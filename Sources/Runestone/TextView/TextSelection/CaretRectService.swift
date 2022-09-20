@@ -26,13 +26,13 @@ final class CaretRectService {
         self.gutterWidthService = gutterWidthService
     }
 
-    func caretRect(at location: Int) -> CGRect {
+    func caretRect(at location: Int, allowMovingCaretToNextLineFragment: Bool) -> CGRect {
         let safeLocation = min(max(location, 0), stringView.string.length)
         let line = lineManager.line(containingCharacterAt: safeLocation)!
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let lineLocalLocation = safeLocation - line.location
-        if shouldMoveCaretToNextLineFragment(forLocation: lineLocalLocation, in: line) {
-            let rect = caretRect(at: location + 1)
+        if allowMovingCaretToNextLineFragment && shouldMoveCaretToNextLineFragment(forLocation: lineLocalLocation, in: line) {
+            let rect = caretRect(at: location + 1, allowMovingCaretToNextLineFragment: false)
             return CGRect(x: leadingLineSpacing, y: rect.minY, width: rect.width, height: rect.height)
         } else {
             let localCaretRect = lineController.caretRect(atIndex: lineLocalLocation)

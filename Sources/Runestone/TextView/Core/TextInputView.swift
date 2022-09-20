@@ -1053,11 +1053,11 @@ extension TextInputView {
         guard let indexedPosition = position as? IndexedPosition else {
             fatalError("Expected position to be of type \(IndexedPosition.self)")
         }
-        return caretRectService.caretRect(at: indexedPosition.index)
+        return caretRectService.caretRect(at: indexedPosition.index, allowMovingCaretToNextLineFragment: true)
     }
 
     func caretRect(at location: Int) -> CGRect {
-        return caretRectService.caretRect(at: location)
+        return caretRectService.caretRect(at: location, allowMovingCaretToNextLineFragment: true)
     }
 
     func firstRect(for range: UITextRange) -> CGRect {
@@ -1646,7 +1646,7 @@ extension TextInputView: IndentControllerDelegate {
 // MARK: - EditMenuControllerDelegate
 extension TextInputView: EditMenuControllerDelegate {
     func editMenuController(_ controller: EditMenuController, caretRectAt location: Int) -> CGRect {
-        return caretRectService.caretRect(at: location)
+        return caretRectService.caretRect(at: location, allowMovingCaretToNextLineFragment: false)
     }
 
     func editMenuControllerShouldReplaceText(_ controller: EditMenuController) {
