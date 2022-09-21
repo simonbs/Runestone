@@ -11,7 +11,7 @@ final class ContentSizeService {
             }
         }
     }
-    var isLineWrappingEnabled = false {
+    var isLineWrappingEnabled = true {
         didSet {
             if isLineWrappingEnabled != oldValue {
                 invalidateContentSize()
