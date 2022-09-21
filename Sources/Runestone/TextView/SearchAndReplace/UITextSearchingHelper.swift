@@ -131,7 +131,7 @@ extension UITextSearchingHelper: UITextSearching {
 
     func scrollRangeToVisible(_ range: UITextRange, inDocument: AnyHashable??) {
         if let indexedRange = range as? IndexedRange {
-            _textView.scroll(to: indexedRange.range)
+            _textView.scrollRangeToVisible(indexedRange.range)
         }
     }
 }

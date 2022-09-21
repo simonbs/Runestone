@@ -879,7 +879,7 @@ open class TextView: UIScrollView {
         becomeFirstResponder()
         let line = textInputView.lineManager.line(atRow: lineIndex)
         textInputView.layoutLines(toLocation: line.location)
-        scroll(to: line.location)
+        scrollLocationToVisible(line.location)
         layoutIfNeeded()
         switch selection {
         case .beginning:
@@ -1085,22 +1085,22 @@ extension TextView {
     public var hasText: Bool {
         return textInputView.hasText
     }
-}
 
-extension TextView {
-    func scroll(to range: NSRange) {
-        let upperCaretRect = textInputView.caretRect(at: range.upperBound)
-        let lowerContentOffset = contentOffset(forScrollingToLocation: range.lowerBound)
-        let viewportWidth = frame.width - gutterWidth
-        let distanceOutOfScreen = upperCaretRect.minX - (lowerContentOffset.x + viewportWidth)
-        if distanceOutOfScreen > 0 {
-            // Scroll to reveal the entire range on the X-axis.
-            let offsetX = lowerContentOffset.x + min(distanceOutOfScreen, viewportWidth)
-            let cappedOffsetX = min(max(offsetX, minimumContentOffset.x), maximumContentOffset.x)
-            contentOffset = CGPoint(x: cappedOffsetX, y: lowerContentOffset.y)
-        } else {
-            contentOffset = lowerContentOffset
-        }
+    /// Scrolls the text view until the text in the specified range is visible.
+    ///
+    /// The function calculates the rectangle surrounding the specified range and calls UIScrollView's `scrollRectToVisible(_:animated:)` to perform the scroll.
+    /// - Parameters:
+    ///   - range: The range of text to scroll into view.
+    ///   - animated: Whether the scroll should be performed animated. Defaults to false.
+    public func scrollRangeToVisible(_ range: NSRange, animated: Bool = false) {
+        let lowerBoundRect = textInputView.caretRect(at: range.lowerBound)
+        let upperBoundRect = range.length == 0 ? lowerBoundRect : textInputView.caretRect(at: range.upperBound)
+        let minX = min(lowerBoundRect.minX, upperBoundRect.minX)
+        let maxX = max(lowerBoundRect.maxX, upperBoundRect.maxX)
+        let minY = min(lowerBoundRect.minY, upperBoundRect.minY)
+        let maxY = max(lowerBoundRect.maxY, upperBoundRect.maxY)
+        let rect = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+        scrollRectToVisible(rect, animated: animated)
     }
 }
 
@@ -1128,10 +1128,10 @@ private extension TextView {
         } else if gestureRecognizer.state == .changed, let previousSelectedRange = previousSelectedRangeDuringGestureHandling {
             if selectedRange.lowerBound != previousSelectedRange.lowerBound {
                 // User is adjusting the lower bound (location) of the selected range.
-                scroll(to: selectedRange.lowerBound)
+                scrollLocationToVisible(selectedRange.lowerBound)
             } else if selectedRange.upperBound != previousSelectedRange.upperBound {
                 // User is adjusting the upper bound (length) of the selected range.
-                scroll(to: selectedRange.upperBound)
+                scrollLocationToVisible(selectedRange.upperBound)
             }
             previousSelectedRangeDuringGestureHandling = selectedRange
         }
@@ -1205,42 +1205,9 @@ private extension TextView {
         }
     }
 
-    private func scroll(to location: Int) {
-        let newContentOffset = contentOffset(forScrollingToLocation: location)
-        if newContentOffset != contentOffset {
-            setContentOffset(newContentOffset, animated: false)
-        }
-    }
-
-    private func contentOffset(forScrollingToLocation location: Int) -> CGPoint {
-        let caretRect = textInputView.caretRect(at: location)
-        let viewportMinX = contentOffset.x + automaticScrollInset.left + gutterWidth
-        let viewportMinY = contentOffset.y + automaticScrollInset.top
-        let viwportHeight = frame.height - automaticScrollInset.top - automaticScrollInset.bottom
-        let viewportWidth = frame.width - gutterWidth - automaticScrollInset.left - automaticScrollInset.right
-        let viewport = CGRect(x: viewportMinX, y: viewportMinY, width: viewportWidth, height: viwportHeight)
-        var preferredContentOffset = contentOffset
-        if caretRect.minX < viewport.minX {
-            preferredContentOffset.x = caretRect.minX - gutterWidth - automaticScrollInset.left
-        }
-        if caretRect.maxX > viewport.maxX {
-            preferredContentOffset.x = caretRect.maxX - viewport.width - gutterWidth + automaticScrollInset.right
-        }
-        if caretRect.minY < viewport.minY {
-            preferredContentOffset.y = caretRect.minY - automaticScrollInset.top
-        }
-        if caretRect.maxY > viewport.maxY {
-            preferredContentOffset.y = caretRect.maxY - viewport.height - automaticScrollInset.top
-        }
-        if preferredContentOffset.x <= textContainerInset.left - adjustedContentInset.left {
-            preferredContentOffset.x = adjustedContentInset.left * -1
-        }
-        if preferredContentOffset.y <= textContainerInset.top - adjustedContentInset.top {
-            preferredContentOffset.y = adjustedContentInset.top * -1
-        }
-        let cappedXOffset = min(max(preferredContentOffset.x, minimumContentOffset.x), maximumContentOffset.x)
-        let cappedYOffset = min(max(preferredContentOffset.y, minimumContentOffset.y), maximumContentOffset.y)
-        return CGPoint(x: cappedXOffset, y: cappedYOffset)
+    private func scrollLocationToVisible(_ location: Int) {
+        let range = NSRange(location: location, length: 0)
+        scrollRangeToVisible(range)
     }
 
     private func installEditableInteraction() {
@@ -1304,7 +1271,7 @@ extension TextView: TextInputViewDelegate {
 
     func textInputViewDidChange(_ view: TextInputView) {
         if isAutomaticScrollEnabled, let newRange = textInputView.selectedRange, newRange.length == 0 {
-            scroll(to: newRange.location)
+            scrollLocationToVisible(newRange.location)
         }
         editorDelegate?.textViewDidChange(self)
     }
@@ -1313,7 +1280,7 @@ extension TextView: TextInputViewDelegate {
         UIMenuController.shared.hideMenu(from: self)
         highlightNavigationController.selectedRange = view.selectedRange
         if isAutomaticScrollEnabled, let newRange = textInputView.selectedRange, newRange.length == 0 {
-            scroll(to: newRange.location)
+            scrollLocationToVisible(newRange.location)
         }
         editorDelegate?.textViewDidChangeSelection(self)
     }
@@ -1381,7 +1348,7 @@ extension TextView: HighlightNavigationControllerDelegate {
         let range = highlightNavigationRange.range
         // Layout lines up until the location of the range so we can scroll to it immediately after.
         textInputView.layoutLines(toLocation: range.upperBound)
-        scroll(to: range)
+        scrollRangeToVisible(range)
         textInputView.selectedTextRange = IndexedRange(range)
         _ = textInputView.becomeFirstResponder()
         textInputView.presentEditMenuForText(in: range)
@@ -1431,7 +1398,7 @@ extension TextView: KeyboardObserverDelegate {
                           keyboardWillShowWithHeight keyboardHeight: CGFloat,
                           animation: KeyboardObserver.Animation?) {
         if isAutomaticScrollEnabled, let newRange = textInputView.selectedRange, newRange.length == 0 {
-            scroll(to: newRange)
+            scrollRangeToVisible(newRange)
         }
     }
 }
