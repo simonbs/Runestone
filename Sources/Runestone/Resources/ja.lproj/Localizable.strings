@@ -1,0 +1,5 @@
+"undo.action_name.typing" = "タイピング";
+"undo.action_name.replace_all" = "すべて置き換え";
+"undo.action_name.move_lines_up" = "行を上に移動";
+"undo.action_name.move_lines_down" = "行を下に移動";
+"menu.item_title.replace" = "置換";
