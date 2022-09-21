@@ -6,6 +6,7 @@ extension TextView {
     static func makeConfigured(usingSettings settings: UserDefaults) -> TextView {
         let textView = TextView()
         textView.alwaysBounceVertical = true
+        textView.contentInsetAdjustmentBehavior = .always
         textView.autocorrectionType = .no
         textView.autocapitalizationType = .none
         textView.smartDashesType = .no
