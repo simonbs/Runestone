@@ -160,7 +160,6 @@
 
 - ``contentOffset``
 - ``isAutomaticScrollEnabled``
-- ``automaticScrollInset``
 
 ### Laying Out Subviews
 
