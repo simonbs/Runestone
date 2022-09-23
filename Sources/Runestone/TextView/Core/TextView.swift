@@ -1086,9 +1086,10 @@ extension TextView {
         return textInputView.hasText
     }
 
-    /// Scrolls the text view until the text in the specified range is visible.
+    /// Scrolls the text view to reveal the text in the specified range.
     ///
-    /// The function calculates the rectangle surrounding the specified range and calls UIScrollView's `scrollRectToVisible(_:animated:)` to perform the scroll.
+    /// The function will scroll the text view as little as possible while revealing as much as possible of the specified range. It is not guaranteed that the entire range is visible after performing the scroll.
+    ///
     /// - Parameters:
     ///   - range: The range of text to scroll into view.
     ///   - animated: Whether the scroll should be performed animated. Defaults to false.
@@ -1096,12 +1097,12 @@ extension TextView {
         textInputView.layoutLines(toLocation: range.upperBound)
         let lowerBoundRect = textInputView.caretRect(at: range.lowerBound)
         let upperBoundRect = range.length == 0 ? lowerBoundRect : textInputView.caretRect(at: range.upperBound)
-        let minX = min(lowerBoundRect.minX, upperBoundRect.minX)
-        let maxX = max(lowerBoundRect.maxX, upperBoundRect.maxX)
-        let minY = min(lowerBoundRect.minY, upperBoundRect.minY)
-        let maxY = max(lowerBoundRect.maxY, upperBoundRect.maxY)
-        let rect = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
-        scrollRectToVisible(rect, animated: animated)
+        let rectMinX = min(lowerBoundRect.minX, upperBoundRect.minX)
+        let rectMaxX = max(lowerBoundRect.maxX, upperBoundRect.maxX)
+        let rectMinY = min(lowerBoundRect.minY, upperBoundRect.minY)
+        let rectMaxY = max(lowerBoundRect.maxY, upperBoundRect.maxY)
+        let rect = CGRect(x: rectMinX, y: rectMinY, width: rectMaxX - rectMinX, height: rectMaxY - rectMinY)
+        contentOffset = contentOffsetForScrollingToVisibleRect(rect)
     }
 }
 
@@ -1228,6 +1229,41 @@ private extension TextView {
                 gestureRecognizer.require(toFail: tapGestureRecognizer)
             }
         }
+    }
+
+    /// Computes a content offset to scroll to in order to reveal the specified rectangle.
+    ///
+    /// The function will return a rectangle that scrolls the text view a minimum amount while revealing as much as possible of the rectangle. It is not guaranteed that the entire rectangle can be revealed.
+    /// - Parameter rect: The rectangle to reveal.
+    /// - Returns: The content offset to scroll to.
+    private func contentOffsetForScrollingToVisibleRect(_ rect: CGRect) -> CGPoint {
+        // Create the viewport: a rectangle containing the content that is visible to the user.
+        var viewport = CGRect(x: contentOffset.x, y: contentOffset.y, width: frame.width, height: frame.height)
+        viewport.origin.y += safeAreaInsets.top
+        viewport.origin.x += safeAreaInsets.left + gutterWidth
+        viewport.size.width -= safeAreaInsets.left + safeAreaInsets.right + gutterWidth
+        viewport.size.height -= safeAreaInsets.top + safeAreaInsets.bottom
+        // Construct the best possible content offset.
+        var newContentOffset = contentOffset
+        if rect.minX < viewport.minX {
+            newContentOffset.x -= viewport.minX - rect.minX
+        } else if rect.maxX > viewport.maxX && rect.width <= viewport.width {
+            // The end of the rectangle is not visible and the rect fits within the screen so we'll scroll to reveal the entire rect.
+            newContentOffset.x += rect.maxX - viewport.maxX
+        } else if rect.maxX > viewport.maxX {
+            newContentOffset.x += rect.minX
+        }
+        if rect.minY < viewport.minY {
+            newContentOffset.y -= viewport.minY - rect.minY
+        } else if rect.maxY > viewport.maxY && rect.height <= viewport.height {
+            // The end of the rectangle is not visible and the rect fits within the screen so we'll scroll to reveal the entire rect.
+            newContentOffset.y += rect.maxY - viewport.maxY
+        } else if rect.maxY > viewport.maxY {
+            newContentOffset.y += rect.minY
+        }
+        let cappedXOffset = min(max(newContentOffset.x, minimumContentOffset.x), maximumContentOffset.x)
+        let cappedYOffset = min(max(newContentOffset.y, minimumContentOffset.y), maximumContentOffset.y)
+        return CGPoint(x: cappedXOffset, y: cappedYOffset)
     }
 }
 
