@@ -491,10 +491,6 @@ open class TextView: UIScrollView {
     }
     /// Automatically scrolls the text view to show the caret when typing or moving the caret.
     public var isAutomaticScrollEnabled = true
-    /// When automatic scrolling is enabled and the caret leaves the viewport, the text view will automatically scroll the content.
-    ///
-    /// The `automaticScrollInset` is applied to the viewport before scrolling. The inset can be used to adjust when the text view should scroll the content. For example it can be used to account for views overlaying the content. The text view will does account for the keyboard or the status bar.
-    public var automaticScrollInset: UIEdgeInsets = .zero
     /// Amount of overscroll to add in the vertical direction.
     ///
     /// The overscroll is a factor of the scrollable area height and will not take into account any insets. 0 means no overscroll and 1 means an amount equal to the height of the text view. Detaults to 0.
