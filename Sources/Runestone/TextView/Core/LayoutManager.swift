@@ -277,7 +277,8 @@ extension LayoutManager {
     private func closestIndex(to point: CGPoint, in lineController: LineController) -> Int {
         let line = lineController.line
         let localPoint = CGPoint(x: point.x, y: point.y - line.yPosition)
-        return lineController.closestIndex(to: localPoint)
+        let allowEasySelectionOfDelimiter = (selectedRange?.length ?? 0) > 0
+        return lineController.closestIndex(to: localPoint, allowEasySelectionOfDelimiter: allowEasySelectionOfDelimiter)
     }
 }
 
