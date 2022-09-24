@@ -256,27 +256,29 @@ extension LayoutManager {
         let adjustedYPosition = point.y - textContainerInset.top
         let adjustedPoint = CGPoint(x: adjustedXPosition, y: adjustedYPosition)
         if let line = lineManager.line(containingYOffset: adjustedPoint.y), let lineController = lineControllerStorage[line.id] {
-            return closestIndex(to: adjustedPoint, in: lineController, showing: line)
+            return closestIndex(to: adjustedPoint, in: lineController)
         } else if adjustedPoint.y <= 0 {
             let firstLine = lineManager.firstLine
-            if let textRenderer = lineControllerStorage[firstLine.id] {
-                return closestIndex(to: adjustedPoint, in: textRenderer, showing: firstLine)
+            if let lineController = lineControllerStorage[firstLine.id] {
+                return closestIndex(to: adjustedPoint, in: lineController)
             } else {
                 return 0
             }
         } else {
             let lastLine = lineManager.lastLine
-            if adjustedPoint.y >= lastLine.yPosition, let textRenderer = lineControllerStorage[lastLine.id] {
-                return closestIndex(to: adjustedPoint, in: textRenderer, showing: lastLine)
+            if adjustedPoint.y >= lastLine.yPosition, let lineController = lineControllerStorage[lastLine.id] {
+                return closestIndex(to: adjustedPoint, in: lineController)
             } else {
                 return stringView.string.length
             }
         }
     }
 
-    private func closestIndex(to point: CGPoint, in lineController: LineController, showing line: DocumentLineNode) -> Int {
+    private func closestIndex(to point: CGPoint, in lineController: LineController) -> Int {
+        let line = lineController.line
         let localPoint = CGPoint(x: point.x, y: point.y - line.yPosition)
-        return lineController.closestIndex(to: localPoint)
+        let allowEasySelectionOfDelimiter = (selectedRange?.length ?? 0) > 0
+        return lineController.closestIndex(to: localPoint, allowEasySelectionOfDelimiter: allowEasySelectionOfDelimiter)
     }
 }
 
