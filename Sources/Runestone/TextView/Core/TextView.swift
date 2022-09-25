@@ -901,7 +901,7 @@ open class TextView: UIScrollView {
     ///
     /// When searching for a regular expression this function will perform pattern matching and take the matched groups into account in the returned results.
     ///
-    /// The code below examplifies how the returned search results can be used to perform a replace operation.
+    /// The code below exemplifies how the returned search results can be used to perform a replace operation.
     ///
     /// ```swift
     /// let query = SearchQuery(text: "foo", matchMethod: .contains, isCaseSensitive: false)
