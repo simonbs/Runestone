@@ -889,6 +889,14 @@ open class TextView: UIScrollView {
     }
 
     /// Search for the specified query.
+    ///
+    /// The code below shows how a ``SearchQuery`` can be constructed and passed to ``search(for:)``.
+    ///
+    /// ```swift
+    /// let query = SearchQuery(text: "foo", matchMethod: .contains, isCaseSensitive: false)
+    /// let results = textView.search(for: query)
+    /// ```
+    ///
     /// - Parameter query: Query to find matches for.
     /// - Returns: Results matching the query.
     public func search(for query: SearchQuery) -> [SearchResult] {
@@ -901,7 +909,7 @@ open class TextView: UIScrollView {
     ///
     /// When searching for a regular expression this function will perform pattern matching and take the matched groups into account in the returned results.
     ///
-    /// The code below exemplifies how the returned search results can be used to perform a replace operation.
+    /// The code below shows how a ``SearchQuery`` can be constructed and passed to ``search(for:replacingMatchesWith:)`` and how the returned search results can be used to perform a replace operation.
     ///
     /// ```swift
     /// let query = SearchQuery(text: "foo", matchMethod: .contains, isCaseSensitive: false)
