@@ -899,7 +899,17 @@ open class TextView: UIScrollView {
 
     /// Search for the specified query and return results that take a replacement string into account.
     ///
-    /// When searching for a regular expression this function will perform pattern matching and take matched groups into account in the returned results.
+    /// When searching for a regular expression this function will perform pattern matching and take the matched groups into account in the returned results.
+    ///
+    /// The code below examplifies how the returned search results can be used to perform a replace operation.
+    ///
+    /// ```swift
+    /// let query = SearchQuery(text: "foo", matchMethod: .contains, isCaseSensitive: false)
+    /// let results = textView.search(for: query, replacingMatchesWith: "bar")
+    /// let replacements = results.map { BatchReplaceSet.Replacement(range: $0.range, text: $0.replacementText) }
+    /// let batchReplaceSet = BatchReplaceSet(replacements: replacements)
+    /// textView.replaceText(in: batchReplaceSet)
+    /// ```
     ///
     /// - Parameters:
     ///   - query: Query to find matches for.
