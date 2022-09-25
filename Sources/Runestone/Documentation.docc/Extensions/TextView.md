@@ -93,6 +93,7 @@
 - ``GoToLineSelection``
 - ``moveSelectedLinesUp()``
 - ``moveSelectedLinesDown()``
+- ``scrollRangeToVisible(_:animated:)``
 
 ### Indenting Text
 
