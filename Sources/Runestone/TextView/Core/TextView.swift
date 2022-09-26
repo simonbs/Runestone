@@ -1106,8 +1106,7 @@ extension TextView {
     ///
     /// - Parameters:
     ///   - range: The range of text to scroll into view.
-    ///   - animated: Whether the scroll should be performed animated. Defaults to false.
-    public func scrollRangeToVisible(_ range: NSRange, animated: Bool = false) {
+    public func scrollRangeToVisible(_ range: NSRange) {
         textInputView.layoutLines(toLocation: range.upperBound)
         let lowerBoundRect = textInputView.caretRect(at: range.lowerBound)
         let upperBoundRect = range.length == 0 ? lowerBoundRect : textInputView.caretRect(at: range.upperBound)
