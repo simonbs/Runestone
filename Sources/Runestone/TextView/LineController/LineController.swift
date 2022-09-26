@@ -454,22 +454,12 @@ extension LineController {
         return CGRect(x: 0, y: 0, width: 0, height: estimatedLineFragmentHeight * lineFragmentHeightMultiplier)
     }
 
-    func closestIndex(to point: CGPoint, allowEasySelectionOfDelimiter: Bool) -> Int {
+    func closestIndex(to point: CGPoint) -> Int {
         guard let closestLineFragment = lineFragment(closestTo: point) else {
             return 0
         }
         let localLocation = min(CTLineGetStringIndexForPosition(closestLineFragment.line, point), line.data.length)
-        if allowEasySelectionOfDelimiter && closestLineFragment === typesetter.lineFragments.last {
-            let lastCharacterRect = caretRect(atIndex: closestLineFragment.range.upperBound)
-            if point.x >= lastCharacterRect.maxX + 50 {
-                // Location is significantly far from the last character and therefore we select the entire line, including the delimiter.
-                return line.location + line.data.length + line.data.delimiterLength
-            } else {
-                return line.location + localLocation
-            }
-        } else {
-            return line.location + localLocation
-        }
+        return line.location + localLocation
     }
 }
 
