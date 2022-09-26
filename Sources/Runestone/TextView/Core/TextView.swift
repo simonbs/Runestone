@@ -1108,14 +1108,7 @@ extension TextView {
     ///   - range: The range of text to scroll into view.
     public func scrollRangeToVisible(_ range: NSRange) {
         textInputView.layoutLines(toLocation: range.upperBound)
-        let lowerBoundRect = textInputView.caretRect(at: range.lowerBound)
-        let upperBoundRect = range.length == 0 ? lowerBoundRect : textInputView.caretRect(at: range.upperBound)
-        let rectMinX = min(lowerBoundRect.minX, upperBoundRect.minX)
-        let rectMaxX = max(lowerBoundRect.maxX, upperBoundRect.maxX)
-        let rectMinY = min(lowerBoundRect.minY, upperBoundRect.minY)
-        let rectMaxY = max(lowerBoundRect.maxY, upperBoundRect.maxY)
-        let rect = CGRect(x: rectMinX, y: rectMinY, width: rectMaxX - rectMinX, height: rectMaxY - rectMinY)
-        contentOffset = contentOffsetForScrollingToVisibleRect(rect)
+        justScrollRangeToVisible(range)
     }
 }
 
@@ -1220,9 +1213,20 @@ private extension TextView {
         }
     }
 
+    private func justScrollRangeToVisible(_ range: NSRange) {
+        let lowerBoundRect = textInputView.caretRect(at: range.lowerBound)
+        let upperBoundRect = range.length == 0 ? lowerBoundRect : textInputView.caretRect(at: range.upperBound)
+        let rectMinX = min(lowerBoundRect.minX, upperBoundRect.minX)
+        let rectMaxX = max(lowerBoundRect.maxX, upperBoundRect.maxX)
+        let rectMinY = min(lowerBoundRect.minY, upperBoundRect.minY)
+        let rectMaxY = max(lowerBoundRect.maxY, upperBoundRect.maxY)
+        let rect = CGRect(x: rectMinX, y: rectMinY, width: rectMaxX - rectMinX, height: rectMaxY - rectMinY)
+        contentOffset = contentOffsetForScrollingToVisibleRect(rect)
+    }
+
     private func scrollLocationToVisible(_ location: Int) {
         let range = NSRange(location: location, length: 0)
-        scrollRangeToVisible(range)
+        justScrollRangeToVisible(range)
     }
 
     private func installEditableInteraction() {
@@ -1396,8 +1400,6 @@ extension TextView: HighlightNavigationControllerDelegate {
     func highlightNavigationController(_ controller: HighlightNavigationController,
                                        shouldNavigateTo highlightNavigationRange: HighlightNavigationRange) {
         let range = highlightNavigationRange.range
-        // Layout lines up until the location of the range so we can scroll to it immediately after.
-        textInputView.layoutLines(toLocation: range.upperBound)
         scrollRangeToVisible(range)
         textInputView.selectedTextRange = IndexedRange(range)
         _ = textInputView.becomeFirstResponder()
