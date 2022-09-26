@@ -377,7 +377,7 @@ extension LayoutManager {
             let lineSize = CGSize(width: lineController.lineWidth, height: lineController.lineHeight)
             contentSizeService.setSize(of: lineController.line, to: lineSize)
             let lineEndLocation = lineLocation + line.data.length
-            if (lineEndLocation < location) || (lineLocation == location && !isLocationEndOfString) {
+            if ((lineEndLocation < location) || (lineLocation == location && !isLocationEndOfString)) && line.index < lineManager.lineCount - 1 {
                 nextLine = lineManager.line(atRow: line.index + 1)
             } else {
                 nextLine = nil
