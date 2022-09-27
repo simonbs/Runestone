@@ -60,7 +60,8 @@ final class IndentController {
         var newSelectedRange = selectedRange
         var replacementString: String?
         let indentString = indentStrategy.string(indentLevel: 1)
-        let indentLength = indentString.utf16.count
+        let utf8IndentLength = indentString.count
+        let utf16IndentLength = indentString.utf16.count
         for (lineIndex, line) in lines.enumerated() {
             let lineRange = NSRange(location: line.location, length: line.data.totalLength)
             let lineString = stringView.substring(in: lineRange) ?? ""
@@ -68,14 +69,14 @@ final class IndentController {
                 replacementString = (replacementString ?? "") + lineString
                 continue
             }
-            let startIndex = lineString.index(lineString.startIndex, offsetBy: indentLength)
+            let startIndex = lineString.index(lineString.startIndex, offsetBy: utf8IndentLength)
             let endIndex = lineString.endIndex
             replacementString = (replacementString ?? "") + lineString[startIndex ..< endIndex]
             if lineIndex == 0 {
                 // We don't want the selection to move to the previous line when we can't shift left anymore.
                 // Therefore we keep it to the minimum location, which is the location the line starts on.
                 // If we try to exceed that, we need to adjust the length of the selected range.
-                let preferredLocation = newSelectedRange.location - indentLength
+                let preferredLocation = newSelectedRange.location - utf16IndentLength
                 let newLocation = max(preferredLocation, originalRange.location)
                 newSelectedRange.location = newLocation
                 if newLocation > preferredLocation {
@@ -83,7 +84,7 @@ final class IndentController {
                     newSelectedRange.length = max(preferredLength, 0)
                 }
             } else {
-                newSelectedRange.length -= indentLength
+                newSelectedRange.length -= utf16IndentLength
             }
         }
         if let replacementString = replacementString {
