@@ -7,7 +7,7 @@
     
     @Section(title: "Create a new project and add Runestone") {
         @ContentAndMedia {
-            Create and configure an Xcode project that uses Runstone.
+            Create and configure an Xcode project that uses Runestone.
             
             @Image(source: 01-setting-up-a-textview-01.png, alt: "A MacBook Pro running Xcode.")
         }
