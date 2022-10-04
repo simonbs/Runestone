@@ -38,6 +38,7 @@ jobs:
             --output-path _site \
             --hosting-base-path /
       - name: Create Custom index.html
+        run: |
           rm _site/index.html
           cat > _site/index.html <<- EOM
           <!DOCTYPE html>
