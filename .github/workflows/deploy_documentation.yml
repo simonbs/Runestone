@@ -44,10 +44,10 @@ jobs:
           <!DOCTYPE html>
           <html>
             <head>
-              <meta http-equiv="refresh" content="0; url='https://newdocs.runestone.app/documentation/runestone/'" />
+              <meta http-equiv="refresh" content="0; url='https://docs.runestone.app/documentation/runestone/'" />
             </head>
            <body>
-              <p>Please follow <a href="https://newdocs.runestone.app/documentation/runestone/">this link</a>.</p>
+              <p>Please follow <a href="https://docs.runestone.app/documentation/runestone/">this link</a>.</p>
             </body>
           </html>
           EOM
