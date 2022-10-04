@@ -28,8 +28,8 @@ jobs:
             -scheme Runestone\
             -destination 'platform=iOS Simulator,name=iPhone 13'\
             -derivedDataPath DerivedData
-          mkdir ../_site
-          cp -r ../DerivedData/Build/Products/Debug-iphonesimulator/Runestone.doccarchive/* ../_site
+          mkdir _site
+          cp -r DerivedData/Build/Products/Debug-iphonesimulator/Runestone.doccarchive/* _site
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
 
