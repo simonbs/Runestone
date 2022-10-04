@@ -34,7 +34,7 @@ jobs:
         run: |
           mkdir _site
           $(xcrun --find docc) process-archive \
-            transform-for-static-hosting ../DerivedData/Build/Products/Debug-iphonesimulator/Runestone.doccarchive \
+            transform-for-static-hosting ../DerivedData/Build/Products/Debug-iphoneos/Runestone.doccarchive \
             --output-path _site \
             --hosting-base-path /
       - name: Create Custom index.html
