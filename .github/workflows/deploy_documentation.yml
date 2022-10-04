@@ -24,6 +24,10 @@ jobs:
           submodules: recursive
       - name: Setup Pages
         uses: actions/configure-pages@v2
+      - name: List Folder Contents
+        run: ls -la
+      - name: List Schemes
+        run: xcodebuild docbuild -list
       - name: Build Documentation
         run: |
           xcodebuild docbuild\
