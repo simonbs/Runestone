@@ -1,4 +1,4 @@
-name: Deploy documentation
+name: Deploy Documentation
 
 on:
   workflow_dispatch:
