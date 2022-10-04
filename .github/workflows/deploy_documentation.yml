@@ -34,18 +34,18 @@ jobs:
         run: |
           mkdir _site
           cp -r ../DerivedData/Build/Products/Debug-iphonesimulator/Runestone.doccarchive/* _site
-          rm _site/index.html
-          cat > _site/index.html <<- EOM
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta http-equiv="refresh" content="0; url='https://newdocs.runestone.app/documentation/runestone/'" />
-            </head>
-            <body>
-              <p>Please follow <a href="https://newdocs.runestone.app/documentation/runestone/">this link</a>.</p>
-            </body>
-          </html>
-          EOM
+          # rm _site/index.html
+          # cat > _site/index.html <<- EOM
+          # <!DOCTYPE html>
+          # <html>
+          #   <head>
+          #     <meta http-equiv="refresh" content="0; url='https://newdocs.runestone.app/documentation/runestone/'" />
+          #   </head>
+          #   <body>
+          #     <p>Please follow <a href="https://newdocs.runestone.app/documentation/runestone/">this link</a>.</p>
+          #   </body>
+          # </html>
+          # EOM
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
 
