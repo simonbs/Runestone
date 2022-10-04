@@ -35,7 +35,7 @@ jobs:
           mkdir _site
           # cp -r ../DerivedData/Build/Products/Debug-iphonesimulator/Runestone.doccarchive/* _site
           $(xcrun --find docc) process-archive \
-            transform-for-static-hosting DerivedData/Build/Products/Debug-iphonesimulator/Runestone.doccarchive \
+            transform-for-static-hosting ../DerivedData/Build/Products/Debug-iphonesimulator/Runestone.doccarchive \
             --output-path _site \
             --hosting-base-path /
           rm _site/index.html
