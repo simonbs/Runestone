@@ -30,14 +30,14 @@ jobs:
             -scheme Runestone\
             -destination 'platform=iOS Simulator,name=iPhone 13'\
             -derivedDataPath ../DerivedData
-      - name: Copy Static Site
+      - name: Process Archive
         run: |
           mkdir _site
-          # cp -r ../DerivedData/Build/Products/Debug-iphonesimulator/Runestone.doccarchive/* _site
           $(xcrun --find docc) process-archive \
             transform-for-static-hosting ../DerivedData/Build/Products/Debug-iphonesimulator/Runestone.doccarchive \
             --output-path _site \
             --hosting-base-path /
+      - name: Create Custom index.html
           rm _site/index.html
           cat > _site/index.html <<- EOM
           <!DOCTYPE html>
@@ -50,7 +50,7 @@ jobs:
             </body>
           </html>
           EOM
-      - name: Upload artifact
+      - name: Upload Artifact
         uses: actions/upload-pages-artifact@v1
 
   deploy:
