@@ -28,7 +28,7 @@ jobs:
         run: |
           xcodebuild docbuild\
             -scheme Runestone\
-            -destination 'platform=iOS Simulator,name=iPhone 13'\
+            -destination 'generic/platform=iOS'\
             -derivedDataPath ../DerivedData
       - name: Process Archive
         run: |
