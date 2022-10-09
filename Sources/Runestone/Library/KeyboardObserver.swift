@@ -1,27 +1,23 @@
 import UIKit
 
 protocol KeyboardObserverDelegate: AnyObject {
-    func keyboardObserver(
-        _ keyboardObserver: KeyboardObserver,
-        keyboardWillShowWithHeight keyboardHeight: CGFloat,
-        animation: KeyboardObserver.Animation?)
+    func keyboardObserver(_ keyboardObserver: KeyboardObserver,
+                          keyboardWillShowWithHeight keyboardHeight: CGFloat,
+                          animation: KeyboardObserver.Animation?)
     func keyboardObserver(_ keyboardObserver: KeyboardObserver, keyboardWillHideWith animation: KeyboardObserver.Animation?)
-    func keyboardObserver(
-        _ keyboardObserver: KeyboardObserver,
-        keyboardWillChangeHeightTo keyboardHeight: CGFloat,
-        animation: KeyboardObserver.Animation?)
+    func keyboardObserver(_ keyboardObserver: KeyboardObserver,
+                          keyboardWillChangeHeightTo keyboardHeight: CGFloat,
+                          animation: KeyboardObserver.Animation?)
 }
 
 extension KeyboardObserverDelegate {
-    func keyboardObserver(
-        _ keyboardObserver: KeyboardObserver,
-        keyboardWillShowWithHeight keyboardHeight: CGFloat,
-        animation: KeyboardObserver.Animation?) {}
+    func keyboardObserver(_ keyboardObserver: KeyboardObserver,
+                          keyboardWillShowWithHeight keyboardHeight: CGFloat,
+                          animation: KeyboardObserver.Animation?) {}
     func keyboardObserver(_ keyboardObserver: KeyboardObserver, keyboardWillHideWith animation: KeyboardObserver.Animation?) {}
-    func keyboardObserver(
-        _ keyboardObserver: KeyboardObserver,
-        keyboardWillChangeHeightTo keyboardHeight: CGFloat,
-        animation: KeyboardObserver.Animation?) {}
+    func keyboardObserver(_ keyboardObserver: KeyboardObserver,
+                          keyboardWillChangeHeightTo keyboardHeight: CGFloat,
+                          animation: KeyboardObserver.Animation?) {}
 }
 
 final class KeyboardObserver {
