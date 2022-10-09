@@ -1,5 +1,4 @@
 // swiftlint:disable file_length
-
 import Foundation
 
 final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNodeValue, NodeData> {
