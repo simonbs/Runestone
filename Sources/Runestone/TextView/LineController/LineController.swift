@@ -192,7 +192,6 @@ private extension LineController {
     private func prepareToDisplayString(_ typesetAmount: TypesetAmount, syntaxHighlightAsynchronously: Bool) {
         prepareString(syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
         typesetLineFragments(typesetAmount)
-        updateHighlightedRangeFragments()
     }
 
     private func prepareString(syntaxHighlightAsynchronously: Bool) {
@@ -400,14 +399,6 @@ private extension LineController {
     private func applyTheme(to lineFragmentController: LineFragmentController) {
         lineFragmentController.markedTextBackgroundColor = theme.markedTextBackgroundColor
         lineFragmentController.markedTextBackgroundCornerRadius = theme.markedTextBackgroundCornerRadius
-    }
-
-    private func updateHighlightedRangeFragments() {
-        for (_, lineFragmentController) in lineFragmentControllers {
-            let lineFragment = lineFragmentController.lineFragment
-            let highlightedRangeFragments = highlightService.highlightedRangeFragments(for: lineFragment, inLineWithID: line.id)
-            lineFragmentController.highlightedRangeFragments = highlightedRangeFragments
-        }
     }
 
     private func lineFragment(closestTo point: CGPoint) -> LineFragment? {
