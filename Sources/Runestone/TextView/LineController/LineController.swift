@@ -447,7 +447,7 @@ extension LineController {
 
     func closestIndex(to point: CGPoint) -> Int {
         guard let closestLineFragment = lineFragment(closestTo: point) else {
-            return 0
+            return line.location
         }
         let localLocation = min(CTLineGetStringIndexForPosition(closestLineFragment.line, point), line.data.length)
         return line.location + localLocation
