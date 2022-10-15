@@ -696,8 +696,10 @@ final class TextInputView: UIView, UITextInput {
 
     override func paste(_ sender: Any?) {
         if let selectedTextRange = selectedTextRange, let string = UIPasteboard.general.string {
+            inputDelegate?.selectionWillChange(self)
             let preparedText = prepareTextForInsertion(string)
             replace(selectedTextRange, withText: preparedText)
+            inputDelegate?.selectionDidChange(self)
         }
     }
 
