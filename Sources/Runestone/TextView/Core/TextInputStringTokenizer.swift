@@ -67,7 +67,7 @@ private extension TextInputStringTokenizer {
         let lineLocation = line.location
         let lineLocalLocation = location - lineLocation
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
-        guard lineLocalLocation >= 0 && lineLocalLocation < line.data.totalLength else {
+        guard lineLocalLocation >= 0 && lineLocalLocation <= line.data.totalLength else {
             return false
         }
         guard let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation) else {
