@@ -30,6 +30,8 @@ jobs:
         run: xcrun simctl create "${SIMULATOR_NAME}" "iPhone 8"
       - name: Boot Simulator
         run: xcrun simctl bootstatus "${SIMULATOR_NAME}" -b
+      - name: Open Simulator.app
+        run: open -a Simulator
       - name: Build
         run: xcodebuild build-for-testing -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "platform=iOS Simulator,name=${SIMULATOR_NAME}"
       - name: Set Korean Keyboard
