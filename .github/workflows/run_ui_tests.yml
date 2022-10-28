@@ -14,13 +14,27 @@ on:
       - 'Example/ExampleUITests/**'
 
 jobs:
-  build:
+  test:
     name: Run tests
-    runs-on: macOS-11
+    runs-on: macOS-12
+    env:
+      SIMULATOR_NAME: UI Test (Korean)
+      SCHEME: Example
+      PROJECT_PATH: Example/Example.xcodeproj
     steps:
       - name: Checkout
         uses: actions/checkout@v2
         with:
           submodules: recursive
-      - name: Run script
-        run: bash Scripts/run-ui-tests.sh
+      - name: Create Simulator
+        run: |
+          xcrun simctl create "${SIMULATOR_NAME}" "iPhone 8"
+          xcrun simctl bootstatus "${SIMULATOR_NAME}" -b
+      - name: Build
+        run: xcodebuild build-for-testing -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "platform=iOS Simulator,name=${SIMULATOR_NAME}"
+      - name: Set Keyboard
+        run: xcrun simctl spawn "${SIMULATOR_NAME}" defaults write .GlobalPreferences AppleKeyboards -array ko_KR@sw=Korean;hw=Automatic
+      - name: Run Tests
+        run: xcodebuild test-without-building -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "${DESTINATION}"
+      - name: Delete Simulator
+        run: xcrun simctl delete "${SIMULATOR_NAME}"
