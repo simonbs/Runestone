@@ -1124,7 +1124,10 @@ extension TextInputView {
             timedUndoManager.endUndoGrouping()
             timedUndoManager.beginUndoGrouping()
         }
+        // We've set shouldNotifyInputDelegateAboutSelectionChange to false so we must notify the input delegate ourselves.
+        inputDelegate?.selectionWillChange(self)
         replaceText(in: deleteRange, with: "", selectedRangeAfterUndo: selectedRangeAfterUndo)
+        inputDelegate?.selectionDidChange(self)
         if isDeletingMultipleCharacters {
             timedUndoManager.endUndoGrouping()
         }
