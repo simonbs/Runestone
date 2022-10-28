@@ -1,0 +1,43 @@
+name: Run UI Tests
+
+concurrency: 
+  group: ui-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'Sources/**'
+      - '!Sources/Runestone/Documentation.docc/**'
+      - 'Example/ExampleUITests/**'
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: macOS-12
+    env:
+      SIMULATOR_NAME: UI Test (Korean)
+      SCHEME: Example
+      PROJECT_PATH: Example/Example.xcodeproj
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Create Simulator
+        run: xcrun simctl create "${SIMULATOR_NAME}" "iPhone 8"
+      - name: Boot Simulator
+        run: xcrun simctl bootstatus "${SIMULATOR_NAME}" -b
+      - name: Open Simulator.app
+        run: open -a Simulator
+      - name: Build
+        run: xcodebuild build-for-testing -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "platform=iOS Simulator,name=${SIMULATOR_NAME}"
+      - name: Set Korean Keyboard
+        run: xcrun simctl spawn "${SIMULATOR_NAME}" defaults write .GlobalPreferences AppleKeyboards -array ko_KR@sw=Korean;hw=Automatic
+      - name: Run Tests
+        run: xcodebuild test-without-building -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "platform=iOS Simulator,name=${SIMULATOR_NAME}"
+      - name: Delete Simulator
+        if: always()
+        run: xcrun simctl delete "${SIMULATOR_NAME}"
