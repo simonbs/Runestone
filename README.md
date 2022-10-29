@@ -7,8 +7,9 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fsimonbs%2FRunestone%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/simonbs/Runestone)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fsimonbs%2FRunestone%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/simonbs/Runestone)
 [![Build and Test](https://github.com/simonbs/Runestone/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/simonbs/Runestone/actions/workflows/build_and_test.yml)
+[![UI Tests](https://github.com/simonbs/Runestone/actions/workflows/ui_tests.yml/badge.svg)](https://github.com/simonbs/Runestone/actions/workflows/ui_tests.yml)
 [![SwiftLint](https://github.com/simonbs/Runestone/actions/workflows/swiftlint.yml/badge.svg)](https://github.com/simonbs/Runestone/actions/workflows/swiftlint.yml)
-[![](https://img.shields.io/badge/twitter-@simonbs-blue.svg?style=flat)]([https://swiftpackageindex.com/simonbs/Runestone](https://twitter.com/simonbs))
+[![Twitter](https://img.shields.io/badge/twitter-@simonbs-blue.svg?style=flat)](https://twitter.com/simonbs)
 
 ## ✨ Features
 
