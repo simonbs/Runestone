@@ -33,17 +33,17 @@ jobs:
       - name: Find Simulator UDID
         run: SIMULATOR_UDID=`xcrun simctl list --json devices | jq -r ".devices | flatten | .[] | select(.name == \"${SIMULATOR_NAME}\").udid"`
       - name: Modify .GlobalPreferences.plist
-        run: |
+        run: >
           find ~/Library/Developer/CoreSimulator/Devices/$SIMULATOR_UDID -type d -maxdepth 0\
-          -exec /usr/libexec/PlistBuddy\
-          -c "Add :AppleKeyboardsExpanded integer 1"\
-          -c "Delete :AppleLanguages"\
-          -c "Add :AppleLanguages array"\
-          -c "Add :AppleLanguages:0 string en-US"\
-          -c "Delete :AppleKeyboards"\
-          -c "Add :AppleKeyboards array"\
-          -c "Add :AppleKeyboards:0 string ko_KR@Sw=Korean;hw=Automatic"\
-          {}/data/Library/Preferences/.GlobalPreferences.plist \;
+            -exec /usr/libexec/PlistBuddy\
+            -c "Add :AppleKeyboardsExpanded integer 1"\
+            -c "Delete :AppleLanguages"\
+            -c "Add :AppleLanguages array"\
+            -c "Add :AppleLanguages:0 string en-US"\
+            -c "Delete :AppleKeyboards"\
+            -c "Add :AppleKeyboards array"\
+            -c "Add :AppleKeyboards:0 string ko_KR@Sw=Korean;hw=Automatic"\
+            {}/data/Library/Preferences/.GlobalPreferences.plist \;
       - name: Build
         run: xcodebuild build-for-testing -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
       - name: Run Tests
