@@ -1,4 +1,4 @@
-name: Run UI Tests
+name: UI Tests
 
 concurrency: 
   group: ui-tests-${{ github.ref }}
