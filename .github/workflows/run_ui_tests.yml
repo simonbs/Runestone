@@ -31,7 +31,9 @@ jobs:
       - name: Create Simulator
         run: xcrun simctl create "${SIMULATOR_NAME}" "iPhone 8"
       - name: Find Simulator UDID
-        run: echo "SIMULATOR_UDID=$(xcrun simctl list --json devices | jq -r '.devices | flatten | .[] | select(.name == \"${SIMULATOR_NAME}\").udid')"" >> $GITHUB_ENV
+        run: |
+          TMP_SIMULATOR_UDID=`xcrun simctl list --json devices | jq -r ".devices | flatten | .[] | select(.name == \"${SIMULATOR_NAME}\").udid"`
+          echo "SIMULATOR_UDID=$(echo $TMP_SIMULATOR_UDID)" >> $GITHUB_ENV
       - name: Modify .GlobalPreferences.plist
         run: >
           find ~/Library/Developer/CoreSimulator/Devices/$SIMULATOR_UDID -type d -maxdepth 0\
