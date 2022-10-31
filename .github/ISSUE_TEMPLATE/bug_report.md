@@ -1,23 +1,38 @@
----
-name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: bug
-assignees: ''
-
----
-
-**Describe the bug**
-A clear and concise description of what the bug is.
-
-**To Reproduce**
-Steps to reproduce the behavior. Please specify the settings you have enabled on your text view, and provide a text snippet to reproduce the issue.
-
-**Expected behavior**
-A clear and concise description of what you expected to happen.
-
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
-
-**Additional context**
-Add any other context about the problem here.
+name: Bug Report
+description: File a bug report
+title: ""
+labels: ["bug"]
+assignees:
+  - simonbs
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: What happened?
+      description: Please describe the bug.
+      placeholder: Description of the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: What are the steps to reproduce?
+      description: Please describe the steps to reproduce the bug.
+      placeholder: |
+        Step 1: ...
+        Step 2: ...
+        Step 3: ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: What is the expected behavior?
+      description: Please describe the behavior you expect of Runestone.
+      placeholder: I expect that Runestone would...
+    validations:
+      required: true
