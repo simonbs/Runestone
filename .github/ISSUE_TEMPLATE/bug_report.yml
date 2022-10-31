@@ -1,5 +1,5 @@
 name: Bug Report
-description: File a bug report. Please only file bug reports related to the open source Runestone framework. Bug reports related to the Runestone app should be sent to support through the contact details on [runestone.app](https://runestone.app).
+description: File a bug report.
 labels: ["bug"]
 assignees:
   - simonbs
