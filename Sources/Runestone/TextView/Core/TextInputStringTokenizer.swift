@@ -1,8 +1,9 @@
 import UIKit
 
 final class TextInputStringTokenizer: UITextInputStringTokenizer {
-    private let stringView: StringView
-    private let lineManager: LineManager
+    var lineManager: LineManager
+    var stringView: StringView
+
     private let lineControllerStorage: LineControllerStorage
     private var newlineCharacters: [Character] {
         return [Symbol.Character.lineFeed, Symbol.Character.carriageReturn, Symbol.Character.carriageReturnLineFeed]

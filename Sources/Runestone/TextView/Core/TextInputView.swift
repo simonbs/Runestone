@@ -81,10 +81,13 @@ final class TextInputView: UIView, UITextInput {
     var hasText: Bool {
         return string.length > 0
     }
-    private(set) lazy var tokenizer: UITextInputTokenizer = TextInputStringTokenizer(textInput: self,
-                                                                                     stringView: stringView,
-                                                                                     lineManager: lineManager,
-                                                                                     lineControllerStorage: lineControllerStorage)
+    var tokenizer: UITextInputTokenizer {
+        return customTokenizer
+    }
+    private lazy var customTokenizer = TextInputStringTokenizer(textInput: self,
+                                                                stringView: stringView,
+                                                                lineManager: lineManager,
+                                                                lineControllerStorage: lineControllerStorage)
     var autocorrectionType: UITextAutocorrectionType = .default
     var autocapitalizationType: UITextAutocapitalizationType = .sentences
     var smartQuotesType: UITextSmartQuotesType = .default
@@ -511,6 +514,7 @@ final class TextInputView: UIView, UITextInput {
                 layoutManager.stringView = stringView
                 indentController.stringView = stringView
                 lineMovementController.stringView = stringView
+                customTokenizer.stringView = stringView
             }
         }
     }
@@ -524,6 +528,7 @@ final class TextInputView: UIView, UITextInput {
                 caretRectService.lineManager = lineManager
                 selectionRectService.lineManager = lineManager
                 highlightService.lineManager = lineManager
+                customTokenizer.lineManager = lineManager
             }
         }
     }
