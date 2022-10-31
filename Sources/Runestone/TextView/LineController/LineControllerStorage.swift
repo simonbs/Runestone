@@ -43,6 +43,10 @@ final class LineControllerStorage {
         lineControllers.removeValue(forKey: lineID)
     }
 
+    func removeAllLineControllers() {
+        lineControllers.removeAll()
+    }
+
     func removeAllLineControllers(exceptLinesWithID exceptionLineIDs: Set<DocumentLineNodeID>) {
         let allLineIDs = Set(lineControllers.keys)
         let lineIDsToRelease = allLineIDs.subtracting(exceptionLineIDs)

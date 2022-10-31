@@ -767,6 +767,7 @@ final class TextInputView: UIView, UITextInput {
         stringView = state.stringView
         theme = state.theme
         languageMode = state.languageMode
+        lineControllerStorage.removeAllLineControllers()
         lineManager = state.lineManager
         lineManager.estimatedLineHeight = estimatedLineHeight
         layoutManager.languageMode = state.languageMode
