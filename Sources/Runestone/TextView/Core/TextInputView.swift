@@ -575,13 +575,10 @@ final class TextInputView: UIView, UITextInput {
     private var maximumLeadingCharacterPairComponentLength = 0
     private var textSelectionView: UIView? {
         if let klass = NSClassFromString("UITextSelectionView") {
-            for subview in subviews {
-                if subview.isKind(of: klass) {
-                    return subview
-                }
-            }
+            return subviews.first { $0.isKind(of: klass) }
+        } else {
+            return nil
         }
-        return nil
     }
     private var hasPendingFullLayout = false
     private let editMenuController = EditMenuController()
