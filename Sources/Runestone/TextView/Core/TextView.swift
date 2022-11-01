@@ -1356,7 +1356,8 @@ extension TextView: TextInputViewDelegate {
         if textInputView.isRestoringPreviouslyDeletedText {
             // UIKit is inserting text to combine characters, for example to combine two Korean characters into one, and we do not want to interfere with that.
             return editorDelegate?.textView(self, shouldChangeTextIn: range, replacementText: text) ?? true
-        } else if let characterPair = characterPairs.first(where: { $0.trailing == text }), skipInsertingTrailingComponent(of: characterPair, in: range) {
+        } else if let characterPair = characterPairs.first(where: { $0.trailing == text }),
+                    skipInsertingTrailingComponent(of: characterPair, in: range) {
             return false
         } else if let characterPair = characterPairs.first(where: { $0.leading == text }), insertLeadingComponent(of: characterPair, in: range) {
             return false
