@@ -82,6 +82,18 @@ final class KoreanInputTests: XCTestCase {
         app.keys["ㄹ"].tap()
         XCTAssertEqual(app.textView?.value as? String, "강물")
     }
+
+    func testEnteringKoreanBetweenQuotationMarks() throws {
+        let app = XCUIApplication()
+        app.launch()
+        app.clearTextView()
+        app.keys["more"].tap()
+        app.keys["\""].tap()
+        app.keys["more"].tap()
+        app.keys["ㅇ"].tap()
+        app.keys["ㅓ"].tap()
+        XCTAssertEqual(app.textView?.value as? String, "\"어\"")
+    }
 }
 
 private extension XCUIApplication {

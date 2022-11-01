@@ -536,6 +536,7 @@ final class TextInputView: UIView, UITextInput {
         return textSelectionView?.subviews.count == 1
     }
     var lineEndings: LineEnding = .lf
+    private(set) var isRestoringPreviouslyDeletedText = false
 
     // MARK: - Private
     private var languageMode: InternalLanguageMode = PlainTextInternalLanguageMode() {
@@ -584,6 +585,7 @@ final class TextInputView: UIView, UITextInput {
     private var notifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
     private var notifyDelegateAboutSelectionChangeInLayoutSubviews = false
     private var didCallPositionFromPositionInDirectionWithOffset = false
+    private var hasDeletedTextWithPendingLayoutSubviews = false
     private var preserveUndoStackWhenSettingString = false
     private var cancellables: [AnyCancellable] = []
 
@@ -674,6 +676,7 @@ final class TextInputView: UIView, UITextInput {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        hasDeletedTextWithPendingLayoutSubviews = false
         layoutManager.layoutIfNeeded()
         layoutManager.layoutLineSelectionIfNeeded()
         layoutPageGuideIfNeeded()
@@ -1077,9 +1080,15 @@ extension TextInputView {
 extension TextInputView {
     func insertText(_ text: String) {
         let preparedText = prepareTextForInsertion(text)
+        isRestoringPreviouslyDeletedText = hasDeletedTextWithPendingLayoutSubviews
+        hasDeletedTextWithPendingLayoutSubviews = false
+        defer {
+            isRestoringPreviouslyDeletedText = false
+        }
         // If there is no marked range or selected range then we fallback to appending text to the end of our string.
         let selectedRange = markedRange ?? selectedRange ?? NSRange(location: stringView.string.length, length: 0)
         guard shouldChangeText(in: selectedRange, replacementText: preparedText) else {
+            isRestoringPreviouslyDeletedText = false
             return
         }
         // If we're inserting text then we can't have a marked range. However, UITextInput doesn't always clear the marked range
@@ -1089,7 +1098,6 @@ extension TextInputView {
         markedRange = nil
         if LineEnding(symbol: text) != nil {
             indentController.insertLineBreak(in: selectedRange, using: lineEndings)
-            layoutIfNeeded()
             delegate?.textInputViewDidChangeSelection(self)
         } else {
             replaceText(in: selectedRange, with: preparedText)
@@ -1110,6 +1118,13 @@ extension TextInputView {
         guard shouldChangeText(in: deleteRange, replacementText: "") else {
             return
         }
+        // Set a flag indicating that we have deleted text. This is reset in -layoutSubviews() but if this has not been reset before insertText() is called, then UIKit deleted characters prior to inserting combined characters. This happens when UIKit turns Korean characters into a single character. E.g. when typing ㅇ followed by ㅓ UIKit will perform the following operations:
+        // 1. Delete ㅇ.
+        // 2. Delete the character before ㅇ. I'm unsure why this is needed.
+        // 3. Insert the character that was previously before ㅇ.
+        // 4. Insert the ㅇ and ㅓ but combined into the single character delete ㅇ and then insert 어.
+        // We can detect this case in insertText() by checking if this variable is true.
+        hasDeletedTextWithPendingLayoutSubviews = true
         // Disable notifying delegate in layout subviews to prevent sending the selected range with length > 0 when deleting text. This aligns with the behavior of UITextView and was introduced to resolve issue #158: https://github.com/simonbs/Runestone/issues/158
         notifyDelegateAboutSelectionChangeInLayoutSubviews = false
         // Disable notifying input delegate in layout subviews to prevent issues when entering Korean text. This workaround is inspired by a dialog with Alexander Black (@lextar), developer of Textastic.
@@ -1236,7 +1251,6 @@ extension TextInputView {
         lineChangeSet.union(with: languageModeLineChangeSet)
         applyLineChangesToLayoutManager(lineChangeSet)
         let updatedTextEditResult = TextEditResult(textChange: textChange, lineChangeSet: lineChangeSet)
-        layoutIfNeeded()
         delegate?.textInputViewDidChange(self)
         if updatedTextEditResult.didAddOrRemoveLines {
             delegate?.textInputViewDidInvalidateContentSize(self)
