@@ -536,7 +536,7 @@ final class TextInputView: UIView, UITextInput {
         return textSelectionView?.subviews.count == 1
     }
     var lineEndings: LineEnding = .lf
-    private(set) var isRestoringPreviosulyDeletedText = false
+    private(set) var isRestoringPreviouslyDeletedText = false
 
     // MARK: - Private
     private var languageMode: InternalLanguageMode = PlainTextInternalLanguageMode() {
@@ -1083,15 +1083,15 @@ extension TextInputView {
 extension TextInputView {
     func insertText(_ text: String) {
         let preparedText = prepareTextForInsertion(text)
-        isRestoringPreviosulyDeletedText = hasDeletedTextWithPendingLayoutSubviews
+        isRestoringPreviouslyDeletedText = hasDeletedTextWithPendingLayoutSubviews
         hasDeletedTextWithPendingLayoutSubviews = false
         defer {
-            isRestoringPreviosulyDeletedText = false
+            isRestoringPreviouslyDeletedText = false
         }
         // If there is no marked range or selected range then we fallback to appending text to the end of our string.
         let selectedRange = markedRange ?? selectedRange ?? NSRange(location: stringView.string.length, length: 0)
         guard shouldChangeText(in: selectedRange, replacementText: preparedText) else {
-            isRestoringPreviosulyDeletedText = false
+            isRestoringPreviouslyDeletedText = false
             return
         }
         // If we're inserting text then we can't have a marked range. However, UITextInput doesn't always clear the marked range
