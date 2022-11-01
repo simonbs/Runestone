@@ -46,7 +46,7 @@ final class SelectionRectService {
             let startScaledHeight = startCaretRect.height * lineHeightMultiplier
             let startOffsetY = startCaretRect.minY - (startScaledHeight - startCaretRect.height) / 2
             let startRect = CGRect(x: startCaretRect.minX, y: startOffsetY, width: startWidth, height: startScaledHeight)
-            let endWidth = selectsLineEnding ? fullWidth  : endCaretRect.minX - leadingLineSpacing
+            let endWidth = selectsLineEnding ? fullWidth : endCaretRect.minX - leadingLineSpacing
             let endScaledHeight = endCaretRect.height * lineHeightMultiplier
             let endOffsetY = endCaretRect.minY - (endScaledHeight - endCaretRect.height) / 2
             let endRect = CGRect(x: leadingLineSpacing, y: endOffsetY, width: endWidth, height: endScaledHeight)
