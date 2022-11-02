@@ -1098,9 +1098,11 @@ extension TextInputView {
         markedRange = nil
         if LineEnding(symbol: text) != nil {
             indentController.insertLineBreak(in: selectedRange, using: lineEndings)
+            layoutIfNeeded()
             delegate?.textInputViewDidChangeSelection(self)
         } else {
             replaceText(in: selectedRange, with: preparedText)
+            layoutIfNeeded()
             delegate?.textInputViewDidChangeSelection(self)
         }
     }
