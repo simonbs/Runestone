@@ -2,9 +2,9 @@ import XCTest
 
 final class KoreanInputTests: XCTestCase {
     func testEnteringCombinedCharacter() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication().disablingTextPersistance()
         app.launch()
-        app.clearTextView()
+        app.textView?.tap()
         app.keys["ㅇ"].tap()
         app.keys["ㅓ"].tap()
         app.keys["ㅍ"].tap()
@@ -12,9 +12,9 @@ final class KoreanInputTests: XCTestCase {
     }
 
     func testEnteringTwoCombinedCharacters() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication().disablingTextPersistance()
         app.launch()
-        app.clearTextView()
+        app.textView?.tap()
         app.keys["ㅇ"].tap()
         app.keys["ㅓ"].tap()
         app.keys["ㅍ"].tap()
@@ -25,9 +25,9 @@ final class KoreanInputTests: XCTestCase {
     }
 
     func testEnteringThreeCombinedCharacters() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication().disablingTextPersistance()
         app.launch()
-        app.clearTextView()
+        app.textView?.tap()
         app.keys["ㅇ"].tap()
         app.keys["ㅓ"].tap()
         app.keys["ㅍ"].tap()
@@ -41,9 +41,9 @@ final class KoreanInputTests: XCTestCase {
     }
 
     func testEnteringTwoCombinedCharactersSeparatedBySpace() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication().disablingTextPersistance()
         app.launch()
-        app.clearTextView()
+        app.textView?.tap()
         app.keys["ㅇ"].tap()
         app.keys["ㅓ"].tap()
         app.keys["ㅍ"].tap()
@@ -55,9 +55,9 @@ final class KoreanInputTests: XCTestCase {
     }
 
     func testEnteringTwoCombinedCharactersSeparatedByTwoLineBreaks() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication().disablingTextPersistance()
         app.launch()
-        app.clearTextView()
+        app.textView?.tap()
         app.keys["ㅇ"].tap()
         app.keys["ㅓ"].tap()
         app.keys["ㅍ"].tap()
@@ -71,9 +71,9 @@ final class KoreanInputTests: XCTestCase {
     func testEnteringTwoDifferentCombinedCharacters() throws {
         // Test case inspired by a bug report in the Textastic forums:
         // https://feedback.textasticapp.com/communities/1/topics/3570-korean-text-typing-error
-        let app = XCUIApplication()
+        let app = XCUIApplication().disablingTextPersistance()
         app.launch()
-        app.clearTextView()
+        app.textView?.tap()
         app.keys["ㄱ"].tap()
         app.keys["ㅏ"].tap()
         app.keys["ㅇ"].tap()
@@ -84,9 +84,9 @@ final class KoreanInputTests: XCTestCase {
     }
 
     func testEnteringKoreanBetweenQuotationMarks() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication().disablingTextPersistance()
         app.launch()
-        app.clearTextView()
+        app.textView?.tap()
         app.keys["more"].tap()
         app.keys["\""].tap()
         app.keys["more"].tap()
@@ -101,9 +101,10 @@ private extension XCUIApplication {
         return scrollViews.children(matching: .textView).element
     }
 
-    func clearTextView() {
-        textView?.doubleTap()
-        collectionViews.staticTexts["Select All"].tap()
-        textView?.typeText(XCUIKeyboardKey.delete.rawValue)
+    func tap(at point: CGPoint) {
+        let normalized = coordinate(withNormalizedOffset: .zero)
+        let offset = CGVector(dx: point.x, dy: point.y)
+        let coordinate = normalized.withOffset(offset)
+        coordinate.tap()
     }
 }
