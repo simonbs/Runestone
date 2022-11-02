@@ -14,6 +14,8 @@
 		7216EAD02829A3C6001B6D39 /* RunestoneTomorrowTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EACF2829A3C6001B6D39 /* RunestoneTomorrowTheme */; };
 		7244DB2C290BFDEA007C99B5 /* KoreanInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7244DB2B290BFDEA007C99B5 /* KoreanInputTests.swift */; };
 		72AC54812826B2A90037ED21 /* Runestone in Frameworks */ = {isa = PBXBuildFile; productRef = 72AC54802826B2A90037ED21 /* Runestone */; };
+		72D2718229126F190070FA88 /* ProcessInfo+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D2718129126F190070FA88 /* ProcessInfo+Helpers.swift */; };
+		72D2718429126FC60070FA88 /* XCUIApplication+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D2718329126FC60070FA88 /* XCUIApplication+Helpers.swift */; };
 		AC480601279EE0180015F712 /* BasicCharacterPair.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC480600279EE0180015F712 /* BasicCharacterPair.swift */; };
 		AC5F0253279C74A1001D1E43 /* UserDefaults+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */; };
 		AC85537927A83D2000F7916D /* ThemeSetting.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537827A83D2000F7916D /* ThemeSetting.swift */; };
@@ -48,6 +50,8 @@
 		7244DB34290BFF48007C99B5 /* Example.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; name = Example.xctestplan; path = Example/Example.xctestplan; sourceTree = SOURCE_ROOT; };
 		72AC54762826B1F00037ED21 /* Languages */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Languages; sourceTree = "<group>"; };
 		72AC54772826B23D0037ED21 /* Runestone */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Runestone; path = ..; sourceTree = "<group>"; };
+		72D2718129126F190070FA88 /* ProcessInfo+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProcessInfo+Helpers.swift"; sourceTree = "<group>"; };
+		72D2718329126FC60070FA88 /* XCUIApplication+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "XCUIApplication+Helpers.swift"; sourceTree = "<group>"; };
 		AC480600279EE0180015F712 /* BasicCharacterPair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasicCharacterPair.swift; sourceTree = "<group>"; };
 		AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserDefaults+Helpers.swift"; sourceTree = "<group>"; };
 		AC85537827A83D2000F7916D /* ThemeSetting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSetting.swift; sourceTree = "<group>"; };
@@ -94,6 +98,7 @@
 			isa = PBXGroup;
 			children = (
 				7244DB2B290BFDEA007C99B5 /* KoreanInputTests.swift */,
+				72D2718329126FC60070FA88 /* XCUIApplication+Helpers.swift */,
 			);
 			path = ExampleUITests;
 			sourceTree = "<group>";
@@ -132,6 +137,7 @@
 			children = (
 				AC480600279EE0180015F712 /* BasicCharacterPair.swift */,
 				AC85537C27A845BB00F7916D /* CodeSample.swift */,
+				72D2718129126F190070FA88 /* ProcessInfo+Helpers.swift */,
 				AC85538427A84CF600F7916D /* TextView+Helpers.swift */,
 				AC85537827A83D2000F7916D /* ThemeSetting.swift */,
 				AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */,
@@ -325,6 +331,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7244DB2C290BFDEA007C99B5 /* KoreanInputTests.swift in Sources */,
+				72D2718429126FC60070FA88 /* XCUIApplication+Helpers.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -342,6 +349,7 @@
 				AC85537927A83D2000F7916D /* ThemeSetting.swift in Sources */,
 				AC85538527A84CF600F7916D /* TextView+Helpers.swift in Sources */,
 				ACB08AD527A81ADF00EB6819 /* ThemePickerPreviewCell.swift in Sources */,
+				72D2718229126F190070FA88 /* ProcessInfo+Helpers.swift in Sources */,
 				AC5F0253279C74A1001D1E43 /* UserDefaults+Helpers.swift in Sources */,
 				AC480601279EE0180015F712 /* BasicCharacterPair.swift in Sources */,
 			);

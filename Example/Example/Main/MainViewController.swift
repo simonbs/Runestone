@@ -61,7 +61,10 @@ private extension MainViewController {
 #endif
 
     private func setupTextView() {
-        let text = UserDefaults.standard.text ?? ""
+        var text = ""
+        if !ProcessInfo.processInfo.disableTextPersistance, let persistedText = UserDefaults.standard.text {
+            text = persistedText
+        }
         let themeSetting = UserDefaults.standard.theme
         let theme = themeSetting.makeTheme()
         let state = TextViewState(text: text, theme: theme, language: .javaScript)
@@ -203,7 +206,9 @@ private extension MainViewController {
 
 extension MainViewController: TextViewDelegate {
     func textViewDidChange(_ textView: TextView) {
-        UserDefaults.standard.text = textView.text
+        if !ProcessInfo.processInfo.disableTextPersistance {
+            UserDefaults.standard.text = textView.text
+        }
     }
 
     func textView(_ textView: TextView, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool {
