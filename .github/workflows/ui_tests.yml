@@ -46,10 +46,22 @@ jobs:
             -c "Add :AppleKeyboards array"\
             -c "Add :AppleKeyboards:0 string ko_KR@Sw=Korean;hw=Automatic"\
             {}/data/Library/Preferences/.GlobalPreferences.plist \;
+      - name: Disable "Connect Hardware Keyboard" in the simulator.
+        run: >
+          /usr/libexec/PlistBuddy\
+          -c "Add :DevicePreferences dict"\
+          -c "Add :DevicePreferences:${SIMULATOR_UDID} dict"\
+          -c "Add :DevicePreferences:${SIMULATOR_UDID}:ConnectHardwareKeyboard bool false"\
+          ~/Library/Preferences/com.apple.iphonesimulator.plist
       - name: Build
         run: xcodebuild build-for-testing -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
       - name: Run Tests
         run: xcodebuild test-without-building -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
+      - name: Remove Simulator Preferences
+        run: >
+          /usr/libexec/PlistBuddy\
+          -c "Delete :DevicePreferences:${SIMULATOR_UDID}"\
+          ~/Library/Preferences/com.apple.iphonesimulator.plist
       - name: Delete Simulator
         if: always()
         run: xcrun simctl delete $SIMULATOR_UDID
