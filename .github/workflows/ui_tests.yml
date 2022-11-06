@@ -14,8 +14,8 @@ on:
       - 'Example/ExampleUITests/**'
 
 jobs:
-  test:
-    name: Run tests
+  run_korean_tests:
+    name: Run Korean tests
     runs-on: macOS-12
     env:
       SIMULATOR_NAME: UI Test (Korean)
