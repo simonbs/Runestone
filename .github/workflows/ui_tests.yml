@@ -55,9 +55,20 @@ jobs:
             -c "Add :DevicePreferences:${SIMULATOR_UDID}:ConnectHardwareKeyboard bool false"\
             {} \;
       - name: Build
-        run: xcodebuild build-for-testing -only-testing:ExampleUITests/KoreanInputTests -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
+        run: >
+          xcodebuild build-for-testing\
+            -project $PROJECT_PATH\
+            -scheme $SCHEME\
+            -sdk iphonesimulator\
+            -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
       - name: Run Tests
-        run: xcodebuild test-without-building -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
+        run: >
+          xcodebuild test-without-building\
+            -only-testing:ExampleUITests/KoreanInputTests\
+            -project $PROJECT_PATH\
+            -scheme $SCHEME\
+            -sdk iphonesimulator\
+            -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
       - name: Remove Simulator Preferences
         run: >
           find ~/Library/Preferences/com.apple.iphonesimulator.plist\
@@ -108,9 +119,19 @@ jobs:
             -c "Add :DevicePreferences:${SIMULATOR_UDID}:ConnectHardwareKeyboard bool false"\
             {} \;
       - name: Build
-        run: xcodebuild build-for-testing -only-testing:ExampleUITests/ChineseInputTests -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
+        run: >
+          xcodebuild build-for-testing -project\
+            $PROJECT_PATH -scheme $SCHEME\
+            -sdk iphonesimulator\
+            -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
       - name: Run Tests
-        run: xcodebuild test-without-building -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
+        run: >
+          xcodebuild test-without-building\
+            -only-testing:ExampleUITests/ChineseInputTests\
+            -project $PROJECT_PATH\
+            -scheme $SCHEME\
+            -sdk iphonesimulator\
+            -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
       - name: Remove Simulator Preferences
         run: >
           find ~/Library/Preferences/com.apple.iphonesimulator.plist\
