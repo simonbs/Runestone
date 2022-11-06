@@ -14,8 +14,8 @@ on:
       - 'Example/ExampleUITests/**'
 
 jobs:
-  test:
-    name: Run tests
+  run_korean_tests:
+    name: Run Korean tests
     runs-on: macOS-12
     env:
       SIMULATOR_NAME: UI Test (Korean)
@@ -55,9 +55,83 @@ jobs:
             -c "Add :DevicePreferences:${SIMULATOR_UDID}:ConnectHardwareKeyboard bool false"\
             {} \;
       - name: Build
-        run: xcodebuild build-for-testing -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
+        run: >
+          xcodebuild build-for-testing\
+            -project $PROJECT_PATH\
+            -scheme $SCHEME\
+            -sdk iphonesimulator\
+            -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
       - name: Run Tests
-        run: xcodebuild test-without-building -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
+        run: >
+          xcodebuild test-without-building\
+            -only-testing:ExampleUITests/KoreanInputTests\
+            -project $PROJECT_PATH\
+            -scheme $SCHEME\
+            -sdk iphonesimulator\
+            -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
+      - name: Remove Simulator Preferences
+        run: >
+          find ~/Library/Preferences/com.apple.iphonesimulator.plist\
+            -exec /usr/libexec/PlistBuddy\
+            -c "Delete :DevicePreferences:${SIMULATOR_UDID}"\
+            {} \;
+      - name: Delete Simulator
+        if: always()
+        run: xcrun simctl delete $SIMULATOR_UDID
+  run_chinese_tests:
+    name: Run Chinese tests
+    runs-on: macOS-12
+    env:
+      SIMULATOR_NAME: UI Test (Chinese)
+      SCHEME: Example
+      PROJECT_PATH: Example/Example.xcodeproj
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Disable "Use the Same Keyboard Language as macOS"
+        run: defaults write com.apple.iphonesimulator EnableKeyboardSync -bool NO
+      - name: Create Simulator
+        run: xcrun simctl create "${SIMULATOR_NAME}" "iPhone 8"
+      - name: Find Simulator UDID
+        run: |
+          TMP_SIMULATOR_UDID=`xcrun simctl list --json devices | jq -r ".devices | flatten | .[] | select(.name == \"${SIMULATOR_NAME}\").udid"`
+          echo "SIMULATOR_UDID=$(echo $TMP_SIMULATOR_UDID)" >> $GITHUB_ENV
+      - name: Modify .GlobalPreferences.plist
+        run: >
+          find ~/Library/Developer/CoreSimulator/Devices/$SIMULATOR_UDID -type d -maxdepth 0\
+            -exec /usr/libexec/PlistBuddy\
+            -c "Add :AppleKeyboardsExpanded integer 1"\
+            -c "Delete :AppleLanguages"\
+            -c "Add :AppleLanguages array"\
+            -c "Add :AppleLanguages:0 string en-US"\
+            -c "Delete :AppleKeyboards"\
+            -c "Add :AppleKeyboards array"\
+            -c "Add :AppleKeyboards:0 string zh_Hant-Sucheng@sw=Sucheng;hw=Automatic"\
+            {}/data/Library/Preferences/.GlobalPreferences.plist \;
+      - name: Disable "Connect Hardware Keyboard" in the simulator.
+        run: >
+          find ~/Library/Preferences/com.apple.iphonesimulator.plist\
+            -exec /usr/libexec/PlistBuddy\
+            -c "Add :DevicePreferences dict"\
+            -c "Add :DevicePreferences:${SIMULATOR_UDID} dict"\
+            -c "Add :DevicePreferences:${SIMULATOR_UDID}:ConnectHardwareKeyboard bool false"\
+            {} \;
+      - name: Build
+        run: >
+          xcodebuild build-for-testing -project\
+            $PROJECT_PATH -scheme $SCHEME\
+            -sdk iphonesimulator\
+            -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
+      - name: Run Tests
+        run: >
+          xcodebuild test-without-building\
+            -only-testing:ExampleUITests/ChineseInputTests\
+            -project $PROJECT_PATH\
+            -scheme $SCHEME\
+            -sdk iphonesimulator\
+            -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
       - name: Remove Simulator Preferences
         run: >
           find ~/Library/Preferences/com.apple.iphonesimulator.plist\

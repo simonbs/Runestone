@@ -12,6 +12,7 @@
 		7216EACC2829A3C6001B6D39 /* RunestonePlainTextTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EACB2829A3C6001B6D39 /* RunestonePlainTextTheme */; };
 		7216EACE2829A3C6001B6D39 /* RunestoneTomorrowNightTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EACD2829A3C6001B6D39 /* RunestoneTomorrowNightTheme */; };
 		7216EAD02829A3C6001B6D39 /* RunestoneTomorrowTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EACF2829A3C6001B6D39 /* RunestoneTomorrowTheme */; };
+		72190768291818BD0054847B /* ChineseInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72190767291818BD0054847B /* ChineseInputTests.swift */; };
 		7244DB2C290BFDEA007C99B5 /* KoreanInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7244DB2B290BFDEA007C99B5 /* KoreanInputTests.swift */; };
 		72AC54812826B2A90037ED21 /* Runestone in Frameworks */ = {isa = PBXBuildFile; productRef = 72AC54802826B2A90037ED21 /* Runestone */; };
 		72D2718229126F190070FA88 /* ProcessInfo+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D2718129126F190070FA88 /* ProcessInfo+Helpers.swift */; };
@@ -44,6 +45,7 @@
 
 /* Begin PBXFileReference section */
 		7216EAC62829A16C001B6D39 /* Themes */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Themes; sourceTree = "<group>"; };
+		72190767291818BD0054847B /* ChineseInputTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChineseInputTests.swift; sourceTree = "<group>"; };
 		7243F9BA282D73E9005AAABF /* Example.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Example.entitlements; sourceTree = "<group>"; };
 		7244DB29290BFDEA007C99B5 /* ExampleUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ExampleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7244DB2B290BFDEA007C99B5 /* KoreanInputTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KoreanInputTests.swift; sourceTree = "<group>"; };
@@ -97,6 +99,7 @@
 		7244DB2A290BFDEA007C99B5 /* ExampleUITests */ = {
 			isa = PBXGroup;
 			children = (
+				72190767291818BD0054847B /* ChineseInputTests.swift */,
 				7244DB2B290BFDEA007C99B5 /* KoreanInputTests.swift */,
 				72D2718329126FC60070FA88 /* XCUIApplication+Helpers.swift */,
 			);
@@ -332,6 +335,7 @@
 			files = (
 				7244DB2C290BFDEA007C99B5 /* KoreanInputTests.swift in Sources */,
 				72D2718429126FC60070FA88 /* XCUIApplication+Helpers.swift in Sources */,
+				72190768291818BD0054847B /* ChineseInputTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
