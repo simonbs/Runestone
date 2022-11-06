@@ -27,8 +27,17 @@ find ~/Library/Developer/CoreSimulator/Devices/${SIMULATOR_UDID} -type d -maxdep
   -c "Add :DevicePreferences:${SIMULATOR_UDID}:ConnectHardwareKeyboard bool false"\
   ~/Library/Preferences/com.apple.iphonesimulator.plist
 # Build the project and run the tests.
-xcodebuild build-for-testing -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
-xcodebuild test-without-building -project $PROJECT_PATH -scheme $SCHEME -sdk iphonesimulator -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
+xcodebuild build-for-testing\
+  -project $PROJECT_PATH\
+  -scheme $SCHEME\
+  -sdk iphonesimulator\
+  -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
+xcodebuild test-without-building\
+  -only-testing:ExampleUITests/KoreanInputTests\
+  -project $PROJECT_PATH\
+  -scheme $SCHEME\
+  -sdk iphonesimulator\
+  -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
 # Remove preferences specific to the simulator.
 /usr/libexec/PlistBuddy\
   -c "Delete :DevicePreferences:${SIMULATOR_UDID}"\
