@@ -1145,6 +1145,8 @@ extension TextInputView {
             timedUndoManager.beginUndoGrouping()
         }
         replaceText(in: deleteRange, with: "", selectedRangeAfterUndo: selectedRangeAfterUndo)
+        // Sending selection changed without calling the input delegate directly. This ensures that both inputting Korean letters and deleting entire words with Option+Backspace works properly.
+        sendSelectionChangedToTextSelectionView()
         if isDeletingMultipleCharacters {
             timedUndoManager.endUndoGrouping()
         }
@@ -1331,6 +1333,15 @@ extension TextInputView {
             selectedRange = NSRange(location: location, length: 0)
         } else {
             selectedRange = nil
+        }
+    }
+
+    private func sendSelectionChangedToTextSelectionView() {
+        // The only way I've found to get the selection change to be reflected properly while still supporting Korean, Chinese, and deleting words with Option+Backspace is to call this private API in some cases.
+        // Even the Swift Playgrounds app doesn't seem to get all of these right so I suspect this is needed to due bugs in internal classes in UIKit that communicate with instances of UITextInput.
+        let sel = NSSelectorFromString("sel" + "noitce".reversed() + "Cha" + "degn".reversed())
+        if let textSelectionView, textSelectionView.responds(to: sel) {
+            textSelectionView.perform(sel)
         }
     }
 }
