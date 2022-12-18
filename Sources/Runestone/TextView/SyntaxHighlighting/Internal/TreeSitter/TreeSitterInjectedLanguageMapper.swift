@@ -47,9 +47,9 @@ final class TreeSitterInjectedLanguageMapper {
 
 private extension TreeSitterCapture {
     var isTextLanguageName: Bool {
-        return name == "language"
+        return name == "language" || name == "injection.language"
     }
     var isTextContent: Bool {
-        return name == "content"
+        return name == "content" || name == "injection.content"
     }
 }
