@@ -48,7 +48,6 @@ final class LineManager {
         rootData.node = documentLineTree.root
     }
 
-    // swiftlint:disable:next function_body_length
     func rebuild() {
         // Reset the tree so we only have a single line.
         let rootData = DocumentLineNodeData(lineHeight: estimatedLineHeight)

@@ -63,7 +63,6 @@ private extension ReplacementStringParser {
         }
     }
 
-    // swiftlint:disable:next function_body_length
     private func takeCharacterInEscapeSequence(_ character: Character) {
         switch character {
         case "\\":
