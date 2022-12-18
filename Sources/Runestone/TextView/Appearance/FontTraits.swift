@@ -5,9 +5,9 @@ import Foundation
 /// The font traits can be used with a ``Theme`` to change the appearance of the font when syntax highlighting text.
 public struct FontTraits: OptionSet {
     /// Attribute creating a bold font.
-    public static let bold = FontTraits(rawValue: 1 << 0)
+    public static let bold = Self(rawValue: 1 << 0)
     /// Attribute creating an italic font.
-    public static let italic = FontTraits(rawValue: 1 << 1)
+    public static let italic = Self(rawValue: 1 << 1)
 
     /// The corresponding value of the raw type.
     public let rawValue: Int

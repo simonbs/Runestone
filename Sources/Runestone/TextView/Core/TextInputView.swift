@@ -590,7 +590,6 @@ final class TextInputView: UIView, UITextInput {
     private var cancellables: [AnyCancellable] = []
 
     // MARK: - Lifecycle
-    // swiftlint:disable:next function_body_length
     init(theme: Theme) {
         self.theme = theme
         lineManager = LineManager(stringView: stringView)
