@@ -298,6 +298,15 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
+    var gutterMinimumCharacterCount: Int = 1 {
+        didSet {
+            if gutterMinimumCharacterCount != oldValue {
+                gutterWidthService.gutterMinimumCharacterCount = gutterMinimumCharacterCount
+                layoutManager.setNeedsLayout()
+                setNeedsLayout()
+            }
+        }
+    }
     var textContainerInset: UIEdgeInsets {
         get {
             return layoutManager.textContainerInset
