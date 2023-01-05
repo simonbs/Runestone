@@ -39,7 +39,6 @@ final class GutterWidthService {
             }
         }
     }
-    
     var lineNumberWidth: CGFloat {
         let lineCount = lineManager.lineCount
         let hasLineCountChanged = lineCount != previousLineCount
