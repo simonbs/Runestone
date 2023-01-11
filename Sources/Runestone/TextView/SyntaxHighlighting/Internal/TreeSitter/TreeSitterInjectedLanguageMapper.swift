@@ -5,6 +5,15 @@ protocol TreeSitterInjectedLanguageMapperDelegate: AnyObject {
 }
 
 final class TreeSitterInjectedLanguageMapper {
+    private enum CaptureName {
+        static let language = "language"
+        static let injectionLanguage = "injection.language"
+    }
+
+    private enum CaptureProperty {
+        static let injectionLanguage = "injection.language"
+    }
+
     weak var delegate: TreeSitterInjectedLanguageMapperDelegate?
 
     private let captures: [TreeSitterCapture]
@@ -18,38 +27,20 @@ final class TreeSitterInjectedLanguageMapper {
     func map() -> [TreeSitterInjectedLanguage] {
         var result: [TreeSitterInjectedLanguage] = []
         for capture in captures {
-            if capture.isTextLanguageName {
+            if capture.name == CaptureName.language || capture.name == CaptureName.injectionLanguage {
                 languageNamePendingContent = nil
                 if let text = delegate?.treeSitterInjectedLanguageMapper(self, textIn: capture.node.textRange) {
                     languageNamePendingContent = text
                 }
-            } else if capture.isTextContent {
-                if let languagePendingContent = languageNamePendingContent {
-                    let id = capture.node.rawValue.id!
-                    let textRange = capture.node.textRange
-                    let injectedLanguage = TreeSitterInjectedLanguage(id: id, languageName: languagePendingContent, textRange: textRange)
-                    result.append(injectedLanguage)
-                }
-                languageNamePendingContent = nil
             } else {
-                let languageName = capture.properties["injection.language"] ?? capture.name
+                let languageName = languageNamePendingContent ?? capture.properties[CaptureProperty.injectionLanguage] ?? capture.name
                 let id = capture.node.rawValue.id!
                 let textRange = capture.node.textRange
                 let injectedLanguage = TreeSitterInjectedLanguage(id: id, languageName: languageName, textRange: textRange)
                 result.append(injectedLanguage)
-                // If we have a pending language we get rid of it. I'm not sure if this is necessary but as of writing this it seems like the safest thing to do.
                 languageNamePendingContent = nil
             }
         }
         return result
-    }
-}
-
-private extension TreeSitterCapture {
-    var isTextLanguageName: Bool {
-        return name == "language" || name == "injection.language"
-    }
-    var isTextContent: Bool {
-        return name == "content" || name == "injection.content"
     }
 }
