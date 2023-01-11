@@ -419,6 +419,15 @@ open class TextView: UIScrollView {
             textInputView.gutterTrailingPadding = newValue
         }
     }
+    /// The minimum amount of characters to use for width calculation inside the gutter.
+    public var gutterMinimumCharacterCount: Int {
+        get {
+            return textInputView.gutterMinimumCharacterCount
+        }
+        set {
+            textInputView.gutterMinimumCharacterCount = newValue
+        }
+    }
     /// The amount of spacing surrounding the lines.
     public var textContainerInset: UIEdgeInsets {
         get {
