@@ -1345,12 +1345,10 @@ extension TextInputView {
     }
 
     private func sendSelectionChangedToTextSelectionView() {
-        // The only way I've found to get the selection change to be reflected properly while still supporting Korean, Chinese, and deleting words with Option+Backspace is to call this private API in some cases.
-        // Even the Swift Playgrounds app doesn't seem to get all of these right so I suspect this is needed to due bugs in internal classes in UIKit that communicate with instances of UITextInput.
-        let sel = NSSelectorFromString("sel" + "noitce".reversed() + "Cha" + "degn".reversed())
-        if let textSelectionView, textSelectionView.responds(to: sel) {
-            textSelectionView.perform(sel)
-        }
+        // The only way I've found to get the selection change to be reflected properly while still supporting Korean, Chinese, and deleting words with Option+Backspace is to call a private API in some cases. However, as pointed out by Alexander Blach in the following PR, there is another workaround to the issue.
+        // When passing nil to the input delete, the text selection is update but the text input ignores it.
+        // Even the Swift Playgrounds app does not get this right for all languages in all cases, so there seems to be some workarounds needed to due bugs in internal classes in UIKit that communicate with instances of UITextInput.
+        inputDelegate?.selectionDidChange(nil)
     }
 }
 
