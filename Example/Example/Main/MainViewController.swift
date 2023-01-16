@@ -68,6 +68,9 @@ private extension MainViewController {
         let themeSetting = UserDefaults.standard.theme
         let theme = themeSetting.makeTheme()
         let state = TextViewState(text: text, theme: theme, language: .javaScript)
+        if ProcessInfo.processInfo.useCRLFLineEndings {
+            contentView.textView.lineEndings = .crlf
+        }
         contentView.textView.editorDelegate = self
         contentView.textView.setState(state)
     }
