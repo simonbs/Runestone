@@ -125,4 +125,18 @@ final class KoreanInputTests: XCTestCase {
         app.keys["ㅓ"].tap()
         XCTAssertEqual(app.textView?.value as? String, "어어어\n\"어어어\"\n어어어")
     }
+
+    func testInsertingKoreanCharactersInTextWithCRLFLineEndings() throws {
+        let app = XCUIApplication().disablingTextPersistance().usingCRLFLineEndings()
+        app.launch()
+        app.textView?.tap()
+        app.typeText("테스트")
+        app.buttons["Return"].tap()
+        app.typeText("TEST")
+        app.buttons["Return"].tap()
+        app.keys["ㅇ"].tap()
+        app.keys["ㅓ"].tap()
+        app.keys["ㅍ"].tap()
+        XCTAssertEqual(app.textView?.value as? String, "테스트\r\nTEST\r\n엎")
+    }
 }
