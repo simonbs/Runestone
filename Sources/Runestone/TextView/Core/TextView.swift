@@ -568,6 +568,8 @@ open class TextView: UIScrollView {
             textInputView.lineEndings = newValue
         }
     }
+    /// When enabled the text view will present a menu with actions actions such as Copy and Replace after navigating to a highlighted range.
+    public var showMenuAfterNavigatingToHighlightedRange = true
 #if compiler(>=5.7)
     /// A boolean value that enables a text view’s built-in find interaction.
     ///
@@ -1415,7 +1417,9 @@ extension TextView: HighlightNavigationControllerDelegate {
         scrollRangeToVisible(range)
         textInputView.selectedTextRange = IndexedRange(range)
         _ = textInputView.becomeFirstResponder()
-        textInputView.presentEditMenuForText(in: range)
+        if showEditMenuOnSelectRange {
+            textInputView.presentEditMenuForText(in: range)            
+        }
         switch highlightNavigationRange.loopMode {
         case .previousGoesToLast:
             editorDelegate?.textViewDidLoopToLastHighlightedRange(self)
