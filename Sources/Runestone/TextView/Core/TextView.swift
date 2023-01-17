@@ -569,7 +569,7 @@ open class TextView: UIScrollView {
         }
     }
     /// If this flag is enable the TextView will present the edit menu when select a range 
-    public var showEditMenuOnSelectRange: Bool = true
+    public var showMenuAfterNavigatingToHighlightedRange = true
 #if compiler(>=5.7)
     /// A boolean value that enables a text view’s built-in find interaction.
     ///
