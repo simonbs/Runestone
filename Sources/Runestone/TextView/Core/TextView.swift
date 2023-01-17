@@ -568,7 +568,7 @@ open class TextView: UIScrollView {
             textInputView.lineEndings = newValue
         }
     }
-    /// If this flag is enable the TextView will present the edit menu when select a range 
+    /// When enabled the text view will present a menu with actions actions such as Copy and Replace after navigating to a highlighted range.
     public var showMenuAfterNavigatingToHighlightedRange = true
 #if compiler(>=5.7)
     /// A boolean value that enables a text view’s built-in find interaction.
