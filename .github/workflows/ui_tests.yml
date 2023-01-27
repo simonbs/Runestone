@@ -11,7 +11,7 @@ on:
     paths:
       - 'Sources/**'
       - '!Sources/Runestone/Documentation.docc/**'
-      - 'Example/ExampleUITests/**'
+      - 'UITests/HostUITests/**'
 
 jobs:
   run_korean_tests:
@@ -19,8 +19,8 @@ jobs:
     runs-on: macOS-12
     env:
       SIMULATOR_NAME: UI Test (Korean)
-      SCHEME: Example
-      PROJECT_PATH: Example/Example.xcodeproj
+      SCHEME: Host
+      PROJECT_PATH: UITests/UITests.xcodeproj
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -64,7 +64,7 @@ jobs:
       - name: Run Tests
         run: >
           xcodebuild test-without-building\
-            -only-testing:ExampleUITests/KoreanInputTests\
+            -only-testing:HostUITests/KoreanInputTests\
             -project $PROJECT_PATH\
             -scheme $SCHEME\
             -sdk iphonesimulator\
@@ -83,8 +83,8 @@ jobs:
     runs-on: macOS-12
     env:
       SIMULATOR_NAME: UI Test (Chinese)
-      SCHEME: Example
-      PROJECT_PATH: Example/Example.xcodeproj
+      SCHEME: Host
+      PROJECT_PATH: UITests/UITests.xcodeproj
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -127,7 +127,7 @@ jobs:
       - name: Run Tests
         run: >
           xcodebuild test-without-building\
-            -only-testing:ExampleUITests/ChineseInputTests\
+            -only-testing:HostUITests/ChineseInputTests\
             -project $PROJECT_PATH\
             -scheme $SCHEME\
             -sdk iphonesimulator\

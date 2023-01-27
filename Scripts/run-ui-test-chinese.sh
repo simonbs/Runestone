@@ -1,8 +1,8 @@
 #!/bin/bash
 SIMULATOR_NAME="UI Test (Chinese)"
-SCHEME="Example"
+SCHEME="Host"
 SCRIPT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
-PROJECT_PATH="${SCRIPT_PATH}/../Example/Example.xcodeproj"
+PROJECT_PATH="${SCRIPT_PATH}/../UITests/UITests.xcodeproj"
 # Disable "Use the Same Keyboard Language as macOS" in Simulator.app.
 defaults write com.apple.iphonesimulator EnableKeyboardSync -bool NO
 # Create the simulator we will use for the tests.
@@ -33,7 +33,7 @@ xcodebuild build-for-testing\
   -sdk iphonesimulator\
   -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}"
 xcodebuild test-without-building\
-  -only-testing:ExampleUITests/ChineseInputTests\
+  -only-testing:HostUITests/ChineseInputTests\
   -project $PROJECT_PATH\
   -scheme $SCHEME\
   -sdk iphonesimulator\
