@@ -7,7 +7,6 @@ disabled_rules:
 opt_in_rules:
   - anonymous_argument_in_multiline_closure
   - array_init
-  - capture_variable
   - collection_alignment
   - conditional_returns_on_newline
   - contains_over_filter_count
@@ -61,6 +60,8 @@ opt_in_rules:
   - untyped_error_in_catch
   - vertical_parameter_alignment_on_call
   - yoda_condition
+analyzer_rules:
+  - capture_variable
 line_length:
   warning: 150
   error: 175
