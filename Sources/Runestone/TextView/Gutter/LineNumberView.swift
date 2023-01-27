@@ -28,6 +28,19 @@ final class LineNumberView: MultiPlatformView, ReusableView {
         }
     }
 
+    init() {
+        super.init(frame: .zero)
+        #if os(iOS)
+        isOpaque = false
+        #else
+        layer?.isOpaque = false
+        #endif
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     #if os(iOS)
     override func draw(_ rect: CGRect) {
         super.draw(rect)
@@ -43,12 +56,13 @@ final class LineNumberView: MultiPlatformView, ReusableView {
 
 private extension LineNumberView {
     private func _drawRect() {
-        guard let text = text as? NSString else {
+        guard let text else {
             return
         }
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: textColor]
-        let size = text.size(withAttributes: attributes)
+        let attributedString = NSAttributedString(string: text, attributes: attributes)
+        let size = attributedString.size()
         let offset = CGPoint(x: bounds.width - size.width, y: (bounds.height - size.height) / 2)
-        text.draw(at: offset)
+        attributedString.draw(at: offset)
     }
 }
