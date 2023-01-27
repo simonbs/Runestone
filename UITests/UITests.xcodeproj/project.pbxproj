@@ -8,20 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		7216EAC82829A3C6001B6D39 /* RunestoneJavaScriptLanguage in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EAC72829A3C6001B6D39 /* RunestoneJavaScriptLanguage */; };
-		7216EACA2829A3C6001B6D39 /* RunestoneOneDarkTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EAC92829A3C6001B6D39 /* RunestoneOneDarkTheme */; };
-		7216EACC2829A3C6001B6D39 /* RunestonePlainTextTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EACB2829A3C6001B6D39 /* RunestonePlainTextTheme */; };
-		7216EACE2829A3C6001B6D39 /* RunestoneTomorrowNightTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EACD2829A3C6001B6D39 /* RunestoneTomorrowNightTheme */; };
-		7216EAD02829A3C6001B6D39 /* RunestoneTomorrowTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EACF2829A3C6001B6D39 /* RunestoneTomorrowTheme */; };
+		72190768291818BD0054847B /* ChineseInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72190767291818BD0054847B /* ChineseInputTests.swift */; };
+		7244DB2C290BFDEA007C99B5 /* KoreanInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7244DB2B290BFDEA007C99B5 /* KoreanInputTests.swift */; };
+		729ECE472983E82A0049AFF5 /* ProcessInfo+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729ECE462983E82A0049AFF5 /* ProcessInfo+Helpers.swift */; };
 		72AC54812826B2A90037ED21 /* Runestone in Frameworks */ = {isa = PBXBuildFile; productRef = 72AC54802826B2A90037ED21 /* Runestone */; };
-		72D2718229126F190070FA88 /* ProcessInfo+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D2718129126F190070FA88 /* ProcessInfo+Helpers.swift */; };
+		72D2718429126FC60070FA88 /* XCUIApplication+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D2718329126FC60070FA88 /* XCUIApplication+Helpers.swift */; };
 		AC480601279EE0180015F712 /* BasicCharacterPair.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC480600279EE0180015F712 /* BasicCharacterPair.swift */; };
-		AC5F0253279C74A1001D1E43 /* UserDefaults+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */; };
-		AC85537927A83D2000F7916D /* ThemeSetting.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537827A83D2000F7916D /* ThemeSetting.swift */; };
-		AC85537D27A845BB00F7916D /* CodeSample.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537C27A845BB00F7916D /* CodeSample.swift */; };
-		AC85537F27A849DF00F7916D /* KeyboardToolsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85537E27A849DF00F7916D /* KeyboardToolsView.swift */; };
-		AC85538527A84CF600F7916D /* TextView+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC85538427A84CF600F7916D /* TextView+Helpers.swift */; };
-		ACB08AD327A8113E00EB6819 /* ThemePickerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACB08AD227A8113E00EB6819 /* ThemePickerViewController.swift */; };
-		ACB08AD527A81ADF00EB6819 /* ThemePickerPreviewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACB08AD427A81ADF00EB6819 /* ThemePickerPreviewCell.swift */; };
 		ACFDF4B127983BAA00059A1B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACFDF4B027983BAA00059A1B /* AppDelegate.swift */; };
 		ACFDF4B327983BAA00059A1B /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACFDF4B227983BAA00059A1B /* SceneDelegate.swift */; };
 		ACFDF4B527983BAA00059A1B /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACFDF4B427983BAA00059A1B /* MainViewController.swift */; };
@@ -30,21 +22,28 @@
 		ACFDF4C527983C2700059A1B /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACFDF4C427983C2700059A1B /* MainView.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		7244DB2F290BFDEA007C99B5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = ACFDF4A527983BAA00059A1B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ACFDF4AC27983BAA00059A1B;
+			remoteInfo = Example;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		7216EAC62829A16C001B6D39 /* Themes */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Themes; sourceTree = "<group>"; };
-		7243F9BA282D73E9005AAABF /* Example.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Example.entitlements; sourceTree = "<group>"; };
+		72190767291818BD0054847B /* ChineseInputTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChineseInputTests.swift; sourceTree = "<group>"; };
+		72414C092983E749001EF494 /* Host.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = Host.entitlements; sourceTree = "<group>"; };
+		72414C0A2983E749001EF494 /* Host.xctestplan */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Host.xctestplan; sourceTree = "<group>"; };
+		7244DB29290BFDEA007C99B5 /* HostUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HostUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7244DB2B290BFDEA007C99B5 /* KoreanInputTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KoreanInputTests.swift; sourceTree = "<group>"; };
+		729ECE462983E82A0049AFF5 /* ProcessInfo+Helpers.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "ProcessInfo+Helpers.swift"; sourceTree = "<group>"; };
 		72AC54762826B1F00037ED21 /* Languages */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Languages; sourceTree = "<group>"; };
 		72AC54772826B23D0037ED21 /* Runestone */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Runestone; path = ..; sourceTree = "<group>"; };
-		72D2718129126F190070FA88 /* ProcessInfo+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProcessInfo+Helpers.swift"; sourceTree = "<group>"; };
+		72D2718329126FC60070FA88 /* XCUIApplication+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "XCUIApplication+Helpers.swift"; sourceTree = "<group>"; };
 		AC480600279EE0180015F712 /* BasicCharacterPair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasicCharacterPair.swift; sourceTree = "<group>"; };
-		AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserDefaults+Helpers.swift"; sourceTree = "<group>"; };
-		AC85537827A83D2000F7916D /* ThemeSetting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSetting.swift; sourceTree = "<group>"; };
-		AC85537C27A845BB00F7916D /* CodeSample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeSample.swift; sourceTree = "<group>"; };
-		AC85537E27A849DF00F7916D /* KeyboardToolsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardToolsView.swift; sourceTree = "<group>"; };
-		AC85538427A84CF600F7916D /* TextView+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TextView+Helpers.swift"; sourceTree = "<group>"; };
-		ACB08AD227A8113E00EB6819 /* ThemePickerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePickerViewController.swift; sourceTree = "<group>"; };
-		ACB08AD427A81ADF00EB6819 /* ThemePickerPreviewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePickerPreviewCell.swift; sourceTree = "<group>"; };
-		ACFDF4AD27983BAA00059A1B /* Example.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Example.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		ACFDF4AD27983BAA00059A1B /* Host.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Host.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		ACFDF4B027983BAA00059A1B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		ACFDF4B227983BAA00059A1B /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		ACFDF4B427983BAA00059A1B /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
@@ -55,78 +54,63 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		7244DB26290BFDEA007C99B5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		ACFDF4AA27983BAA00059A1B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7216EACA2829A3C6001B6D39 /* RunestoneOneDarkTheme in Frameworks */,
 				72AC54812826B2A90037ED21 /* Runestone in Frameworks */,
-				7216EACC2829A3C6001B6D39 /* RunestonePlainTextTheme in Frameworks */,
 				7216EAC82829A3C6001B6D39 /* RunestoneJavaScriptLanguage in Frameworks */,
-				7216EACE2829A3C6001B6D39 /* RunestoneTomorrowNightTheme in Frameworks */,
-				7216EAD02829A3C6001B6D39 /* RunestoneTomorrowTheme in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		7244DB2A290BFDEA007C99B5 /* HostUITests */ = {
+			isa = PBXGroup;
+			children = (
+				72190767291818BD0054847B /* ChineseInputTests.swift */,
+				7244DB2B290BFDEA007C99B5 /* KoreanInputTests.swift */,
+				72D2718329126FC60070FA88 /* XCUIApplication+Helpers.swift */,
+			);
+			path = HostUITests;
+			sourceTree = "<group>";
+		};
 		72AC54722826B0E40037ED21 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
 				72AC54762826B1F00037ED21 /* Languages */,
 				72AC54772826B23D0037ED21 /* Runestone */,
-				7216EAC62829A16C001B6D39 /* Themes */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
 		};
-		AC832D582798C72A00EC6832 /* Application */ = {
+		AC832D582798C72A00EC6832 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
 				ACFDF4B027983BAA00059A1B /* AppDelegate.swift */,
 				ACFDF4B227983BAA00059A1B /* SceneDelegate.swift */,
-			);
-			path = Application;
-			sourceTree = "<group>";
-		};
-		AC832D592798C73300EC6832 /* Main */ = {
-			isa = PBXGroup;
-			children = (
 				ACFDF4C427983C2700059A1B /* MainView.swift */,
 				ACFDF4B427983BAA00059A1B /* MainViewController.swift */,
-				AC85537E27A849DF00F7916D /* KeyboardToolsView.swift */,
-			);
-			path = Main;
-			sourceTree = "<group>";
-		};
-		AC832D5A2798C73B00EC6832 /* Library */ = {
-			isa = PBXGroup;
-			children = (
+				729ECE462983E82A0049AFF5 /* ProcessInfo+Helpers.swift */,
 				AC480600279EE0180015F712 /* BasicCharacterPair.swift */,
-				AC85537C27A845BB00F7916D /* CodeSample.swift */,
-				72D2718129126F190070FA88 /* ProcessInfo+Helpers.swift */,
-				AC85538427A84CF600F7916D /* TextView+Helpers.swift */,
-				AC85537827A83D2000F7916D /* ThemeSetting.swift */,
-				AC5F0252279C74A1001D1E43 /* UserDefaults+Helpers.swift */,
 			);
-			path = Library;
-			sourceTree = "<group>";
-		};
-		ACB08ACF27A8112600EB6819 /* ThemePicker */ = {
-			isa = PBXGroup;
-			children = (
-				ACB08AD427A81ADF00EB6819 /* ThemePickerPreviewCell.swift */,
-				ACB08AD227A8113E00EB6819 /* ThemePickerViewController.swift */,
-			);
-			path = ThemePicker;
+			path = Sources;
 			sourceTree = "<group>";
 		};
 		ACFDF4A427983BAA00059A1B = {
 			isa = PBXGroup;
 			children = (
 				72AC54722826B0E40037ED21 /* Packages */,
-				ACFDF4AF27983BAA00059A1B /* Example */,
+				ACFDF4AF27983BAA00059A1B /* Host */,
+				7244DB2A290BFDEA007C99B5 /* HostUITests */,
 				ACFDF4AE27983BAA00059A1B /* Products */,
 				ACFDF4C827983DA900059A1B /* Frameworks */,
 			);
@@ -135,24 +119,23 @@
 		ACFDF4AE27983BAA00059A1B /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				ACFDF4AD27983BAA00059A1B /* Example.app */,
+				ACFDF4AD27983BAA00059A1B /* Host.app */,
+				7244DB29290BFDEA007C99B5 /* HostUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		ACFDF4AF27983BAA00059A1B /* Example */ = {
+		ACFDF4AF27983BAA00059A1B /* Host */ = {
 			isa = PBXGroup;
 			children = (
-				7243F9BA282D73E9005AAABF /* Example.entitlements */,
+				72414C092983E749001EF494 /* Host.entitlements */,
+				72414C0A2983E749001EF494 /* Host.xctestplan */,
 				ACFDF4BE27983BAB00059A1B /* Info.plist */,
 				ACFDF4B927983BAB00059A1B /* Assets.xcassets */,
 				ACFDF4BB27983BAB00059A1B /* LaunchScreen.storyboard */,
-				AC832D582798C72A00EC6832 /* Application */,
-				AC832D5A2798C73B00EC6832 /* Library */,
-				AC832D592798C73300EC6832 /* Main */,
-				ACB08ACF27A8112600EB6819 /* ThemePicker */,
+				AC832D582798C72A00EC6832 /* Sources */,
 			);
-			path = Example;
+			path = Host;
 			sourceTree = "<group>";
 		};
 		ACFDF4C827983DA900059A1B /* Frameworks */ = {
@@ -165,9 +148,27 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		ACFDF4AC27983BAA00059A1B /* Example */ = {
+		7244DB28290BFDEA007C99B5 /* HostUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = ACFDF4C127983BAB00059A1B /* Build configuration list for PBXNativeTarget "Example" */;
+			buildConfigurationList = 7244DB33290BFDEA007C99B5 /* Build configuration list for PBXNativeTarget "HostUITests" */;
+			buildPhases = (
+				7244DB25290BFDEA007C99B5 /* Sources */,
+				7244DB26290BFDEA007C99B5 /* Frameworks */,
+				7244DB27290BFDEA007C99B5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7244DB30290BFDEA007C99B5 /* PBXTargetDependency */,
+			);
+			name = HostUITests;
+			productName = ExampleUITests;
+			productReference = 7244DB29290BFDEA007C99B5 /* HostUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		ACFDF4AC27983BAA00059A1B /* Host */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ACFDF4C127983BAB00059A1B /* Build configuration list for PBXNativeTarget "Host" */;
 			buildPhases = (
 				ACFDF4A927983BAA00059A1B /* Sources */,
 				ACFDF4AA27983BAA00059A1B /* Frameworks */,
@@ -178,17 +179,13 @@
 			);
 			dependencies = (
 			);
-			name = Example;
+			name = Host;
 			packageProductDependencies = (
 				72AC54802826B2A90037ED21 /* Runestone */,
 				7216EAC72829A3C6001B6D39 /* RunestoneJavaScriptLanguage */,
-				7216EAC92829A3C6001B6D39 /* RunestoneOneDarkTheme */,
-				7216EACB2829A3C6001B6D39 /* RunestonePlainTextTheme */,
-				7216EACD2829A3C6001B6D39 /* RunestoneTomorrowNightTheme */,
-				7216EACF2829A3C6001B6D39 /* RunestoneTomorrowTheme */,
 			);
 			productName = Example;
-			productReference = ACFDF4AD27983BAA00059A1B /* Example.app */;
+			productReference = ACFDF4AD27983BAA00059A1B /* Host.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -201,12 +198,16 @@
 				LastSwiftUpdateCheck = 1410;
 				LastUpgradeCheck = 1320;
 				TargetAttributes = {
+					7244DB28290BFDEA007C99B5 = {
+						CreatedOnToolsVersion = 14.1;
+						TestTargetID = ACFDF4AC27983BAA00059A1B;
+					};
 					ACFDF4AC27983BAA00059A1B = {
 						CreatedOnToolsVersion = 13.2;
 					};
 				};
 			};
-			buildConfigurationList = ACFDF4A827983BAA00059A1B /* Build configuration list for PBXProject "Example" */;
+			buildConfigurationList = ACFDF4A827983BAA00059A1B /* Build configuration list for PBXProject "UITests" */;
 			compatibilityVersion = "Xcode 13.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -221,12 +222,20 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				ACFDF4AC27983BAA00059A1B /* Example */,
+				ACFDF4AC27983BAA00059A1B /* Host */,
+				7244DB28290BFDEA007C99B5 /* HostUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		7244DB27290BFDEA007C99B5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		ACFDF4AB27983BAA00059A1B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -261,27 +270,38 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		7244DB25290BFDEA007C99B5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7244DB2C290BFDEA007C99B5 /* KoreanInputTests.swift in Sources */,
+				72D2718429126FC60070FA88 /* XCUIApplication+Helpers.swift in Sources */,
+				72190768291818BD0054847B /* ChineseInputTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		ACFDF4A927983BAA00059A1B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				ACFDF4B527983BAA00059A1B /* MainViewController.swift in Sources */,
+				729ECE472983E82A0049AFF5 /* ProcessInfo+Helpers.swift in Sources */,
 				ACFDF4C527983C2700059A1B /* MainView.swift in Sources */,
-				AC85537F27A849DF00F7916D /* KeyboardToolsView.swift in Sources */,
 				ACFDF4B127983BAA00059A1B /* AppDelegate.swift in Sources */,
-				ACB08AD327A8113E00EB6819 /* ThemePickerViewController.swift in Sources */,
 				ACFDF4B327983BAA00059A1B /* SceneDelegate.swift in Sources */,
-				AC85537D27A845BB00F7916D /* CodeSample.swift in Sources */,
-				AC85537927A83D2000F7916D /* ThemeSetting.swift in Sources */,
-				AC85538527A84CF600F7916D /* TextView+Helpers.swift in Sources */,
-				ACB08AD527A81ADF00EB6819 /* ThemePickerPreviewCell.swift in Sources */,
-				72D2718229126F190070FA88 /* ProcessInfo+Helpers.swift in Sources */,
-				AC5F0253279C74A1001D1E43 /* UserDefaults+Helpers.swift in Sources */,
 				AC480601279EE0180015F712 /* BasicCharacterPair.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7244DB30290BFDEA007C99B5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = ACFDF4AC27983BAA00059A1B /* Host */;
+			targetProxy = 7244DB2F290BFDEA007C99B5 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		ACFDF4BB27983BAB00059A1B /* LaunchScreen.storyboard */ = {
@@ -295,6 +315,44 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		7244DB31290BFDEA007C99B5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8NQFWJHC63;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dk.simonbs.RunestoneUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Host;
+			};
+			name = Debug;
+		};
+		7244DB32290BFDEA007C99B5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8NQFWJHC63;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dk.simonbs.RunestoneUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Host;
+			};
+			name = Release;
+		};
 		ACFDF4BF27983BAB00059A1B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -416,12 +474,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Example/Example.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Host/Host.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 8NQFWJHC63;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Example/Info.plist;
+				INFOPLIST_FILE = Host/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -431,7 +489,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dk.simonbs.Example;
+				PRODUCT_BUNDLE_IDENTIFIER = dk.simonbs.RunestoneHost;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -446,12 +504,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Example/Example.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Host/Host.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 8NQFWJHC63;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Example/Info.plist;
+				INFOPLIST_FILE = Host/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -461,7 +519,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dk.simonbs.Example;
+				PRODUCT_BUNDLE_IDENTIFIER = dk.simonbs.RunestoneHost;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -474,7 +532,16 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		ACFDF4A827983BAA00059A1B /* Build configuration list for PBXProject "Example" */ = {
+		7244DB33290BFDEA007C99B5 /* Build configuration list for PBXNativeTarget "HostUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7244DB31290BFDEA007C99B5 /* Debug */,
+				7244DB32290BFDEA007C99B5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		ACFDF4A827983BAA00059A1B /* Build configuration list for PBXProject "UITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				ACFDF4BF27983BAB00059A1B /* Debug */,
@@ -483,7 +550,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		ACFDF4C127983BAB00059A1B /* Build configuration list for PBXNativeTarget "Example" */ = {
+		ACFDF4C127983BAB00059A1B /* Build configuration list for PBXNativeTarget "Host" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				ACFDF4C227983BAB00059A1B /* Debug */,
@@ -498,22 +565,6 @@
 		7216EAC72829A3C6001B6D39 /* RunestoneJavaScriptLanguage */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = RunestoneJavaScriptLanguage;
-		};
-		7216EAC92829A3C6001B6D39 /* RunestoneOneDarkTheme */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = RunestoneOneDarkTheme;
-		};
-		7216EACB2829A3C6001B6D39 /* RunestonePlainTextTheme */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = RunestonePlainTextTheme;
-		};
-		7216EACD2829A3C6001B6D39 /* RunestoneTomorrowNightTheme */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = RunestoneTomorrowNightTheme;
-		};
-		7216EACF2829A3C6001B6D39 /* RunestoneTomorrowTheme */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = RunestoneTomorrowTheme;
 		};
 		72AC54802826B2A90037ED21 /* Runestone */ = {
 			isa = XCSwiftPackageProductDependency;

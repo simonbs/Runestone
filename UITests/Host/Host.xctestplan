@@ -19,9 +19,9 @@
   "testTargets" : [
     {
       "target" : {
-        "containerPath" : "container:Example.xcodeproj",
+        "containerPath" : "container:UITests.xcodeproj",
         "identifier" : "7244DB28290BFDEA007C99B5",
-        "name" : "ExampleUITests"
+        "name" : "HostUITests"
       }
     }
   ],
