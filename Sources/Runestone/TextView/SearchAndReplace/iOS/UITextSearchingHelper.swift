@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 final class UITextSearchingHelper: NSObject {
@@ -199,4 +200,5 @@ private extension SearchQuery.MatchMethod {
         }
     }
 }
+#endif
 #endif

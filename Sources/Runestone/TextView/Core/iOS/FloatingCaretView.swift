@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 final class FloatingCaretView: UIView {
@@ -6,3 +7,4 @@ final class FloatingCaretView: UIView {
         layer.cornerRadius = floor(bounds.width / 2)
     }
 }
+#endif

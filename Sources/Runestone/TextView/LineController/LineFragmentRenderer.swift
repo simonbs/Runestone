@@ -1,5 +1,5 @@
 import CoreText
-import UIKit
+import Foundation
 
 protocol LineFragmentRendererDelegate: AnyObject {
     func string(in lineFragmentRenderer: LineFragmentRenderer) -> String?
@@ -15,7 +15,7 @@ final class LineFragmentRenderer {
     var lineFragment: LineFragment
     let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
     var markedRange: NSRange?
-    var markedTextBackgroundColor: UIColor = .systemFill
+    var markedTextBackgroundColor: MultiPlatformColor = .systemFill
     var markedTextBackgroundCornerRadius: CGFloat = 0
     var highlightedRangeFragments: [HighlightedRangeFragment] = []
 
@@ -54,16 +54,10 @@ private extension LineFragmentRenderer {
                 endX = CTLineGetOffsetForStringIndex(lineFragment.line, highlightedRange.range.upperBound, nil)
             }
             let rect = CGRect(x: startX, y: 0, width: endX - startX, height: lineFragment.scaledSize.height)
-            let roundedCorners = highlightedRange.roundedCorners
+            let path = highlightedRange.path(in: rect)
             context.setFillColor(highlightedRange.color.cgColor)
-            if !roundedCorners.isEmpty && highlightedRange.cornerRadius > 0 {
-                let cornerRadii = CGSize(width: highlightedRange.cornerRadius, height: highlightedRange.cornerRadius)
-                let bezierPath = UIBezierPath(roundedRect: rect, byRoundingCorners: roundedCorners, cornerRadii: cornerRadii)
-                context.addPath(bezierPath.cgPath)
-                context.fillPath()
-            } else {
-                context.fill(rect)
-            }
+            context.addPath(path)
+            context.fillPath()
         }
         context.restoreGState()
     }
@@ -157,5 +151,26 @@ private extension LineFragmentRenderer {
 
     private func isLineBreak(_ string: String.Element) -> Bool {
         return string == Symbol.Character.lineFeed || string == Symbol.Character.carriageReturn || string == Symbol.Character.carriageReturnLineFeed
+    }
+}
+
+private extension HighlightedRangeFragment {
+    func path(in rect: CGRect) -> CGPath {
+        guard containsStart || containsEnd else {
+            return CGPath(rect: rect, transform: nil)
+        }
+        var path = CGPath(roundedRect: rect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
+        // Union start and end paths if we should not round the edges.
+        if !containsStart {
+            let startRect = CGRect(x: 0, y: 0, width: cornerRadius, height: rect.height)
+            let startPath = CGPath(rect: startRect, transform: nil)
+            path = path.union(startPath)
+        }
+        if !containsStart {
+            let startRect = CGRect(x: 0, y: 0, width: cornerRadius, height: rect.height)
+            let startPath = CGPath(rect: startRect, transform: nil)
+            path = path.union(startPath)
+        }
+        return path
     }
 }

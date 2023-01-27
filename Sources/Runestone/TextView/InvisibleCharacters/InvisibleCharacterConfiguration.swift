@@ -1,7 +1,13 @@
+#if os(macOS)
+import AppKit
+#endif
+import CoreGraphics
+#if os(iOS)
 import UIKit
+#endif
 
 final class InvisibleCharacterConfiguration {
-    var font: UIFont = .systemFont(ofSize: 12) {
+    var font: MultiPlatformFont = .systemFont(ofSize: 12) {
         didSet {
             if font != oldValue {
                 _lineBreakSymbolSize = nil
@@ -9,7 +15,7 @@ final class InvisibleCharacterConfiguration {
             }
         }
     }
-    var textColor: UIColor = .label
+    var textColor: MultiPlatformColor = .label
     var showTabs = false
     var showSpaces = false
     var showNonBreakingSpaces = false

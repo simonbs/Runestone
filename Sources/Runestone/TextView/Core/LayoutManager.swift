@@ -1,20 +1,22 @@
-// swiftlint:disable file_length
-import UIKit
+import CoreGraphics
+import Foundation
+import QuartzCore
 
+// swiftlint:disable file_length
 protocol LayoutManagerDelegate: AnyObject {
     func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
 }
 
 final class LayoutManager {
     weak var delegate: LayoutManagerDelegate?
-    weak var gutterParentView: UIView? {
+    weak var gutterParentView: MultiPlatformView? {
         didSet {
             if gutterParentView != oldValue {
                 setupViewHierarchy()
             }
         }
     }
-    weak var textInputView: UIView? {
+    weak var textInputView: MultiPlatformView? {
         didSet {
             if textInputView != oldValue {
                 setupViewHierarchy()
@@ -82,8 +84,8 @@ final class LayoutManager {
     }
     var isLineWrappingEnabled = true
     /// Spacing around the text. The left-side spacing defines the distance between the text and the gutter.
-    var textContainerInset: UIEdgeInsets = .zero
-    var safeAreaInsets: UIEdgeInsets = .zero
+    var textContainerInset: MultiPlatformEdgeInsets = .zero
+    var safeAreaInsets: MultiPlatformEdgeInsets = .zero
     var selectedRange: NSRange? {
         didSet {
             if selectedRange != oldValue {
@@ -110,15 +112,15 @@ final class LayoutManager {
     }
 
     // MARK: - Views
-    let gutterContainerView = UIView()
+    let gutterContainerView = MultiPlatformView()
     private var lineFragmentViewReuseQueue = ViewReuseQueue<LineFragmentID, LineFragmentView>()
     private var lineNumberLabelReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineNumberView>()
     private var visibleLineIDs: Set<DocumentLineNodeID> = []
-    private let linesContainerView = UIView()
+    private let linesContainerView = MultiPlatformView()
     private let gutterBackgroundView = GutterBackgroundView()
-    private let lineNumbersContainerView = UIView()
-    private let gutterSelectionBackgroundView = UIView()
-    private let lineSelectionBackgroundView = UIView()
+    private let lineNumbersContainerView = MultiPlatformView()
+    private let gutterSelectionBackgroundView = MultiPlatformView()
+    private let lineSelectionBackgroundView = MultiPlatformView()
 
     // MARK: - Sizing
     private var leadingLineSpacing: CGFloat {
@@ -167,15 +169,18 @@ final class LayoutManager {
         self.caretRectService = caretRectService
         self.selectionRectService = selectionRectService
         self.highlightService = highlightService
+        #if os(iOS)
         self.linesContainerView.isUserInteractionEnabled = false
         self.lineNumbersContainerView.isUserInteractionEnabled = false
         self.gutterContainerView.isUserInteractionEnabled = false
         self.gutterBackgroundView.isUserInteractionEnabled = false
         self.gutterSelectionBackgroundView.isUserInteractionEnabled = false
         self.lineSelectionBackgroundView.isUserInteractionEnabled = false
+        #endif
         self.updateShownViews()
-        let memoryWarningNotificationName = UIApplication.didReceiveMemoryWarningNotification
-        NotificationCenter.default.addObserver(self, selector: #selector(clearMemory), name: memoryWarningNotificationName, object: nil)
+        #if os(iOS)
+        subscribeToMemoryWarningNotification()
+        #endif
     }
 
     func redisplayVisibleLines() {
@@ -555,8 +560,15 @@ private extension LayoutManager {
 }
 
 // MARK: - Memory Management
+#if os(iOS)
 private extension LayoutManager {
+    private func subscribeToMemoryWarningNotification() {
+        let memoryWarningNotificationName = UIApplication.didReceiveMemoryWarningNotification
+        NotificationCenter.default.addObserver(self, selector: #selector(clearMemory), name: memoryWarningNotificationName, object: nil)
+    }
+
     @objc private func clearMemory() {
         lineControllerStorage.removeAllLineControllers(exceptLinesWithID: visibleLineIDs)
     }
 }
+#endif

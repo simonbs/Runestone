@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 final class IndexedPosition: UITextPosition {
@@ -7,3 +8,4 @@ final class IndexedPosition: UITextPosition {
         self.index = index
     }
 }
+#endif

@@ -1,5 +1,6 @@
 import Combine
-import UIKit
+import CoreGraphics
+import Foundation
 
 final class GutterWidthService {
     var lineManager: LineManager {
@@ -9,7 +10,7 @@ final class GutterWidthService {
             }
         }
     }
-    var font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular) {
+    var font = MultiPlatformFont.monospacedSystemFont(ofSize: 14, weight: .regular) {
         didSet {
             if font != oldValue {
                 _lineNumberWidth = nil
@@ -58,7 +59,7 @@ final class GutterWidthService {
 
     private var _lineNumberWidth: CGFloat?
     private var previousLineCount = 0
-    private var previousFont: UIFont?
+    private var previousFont: MultiPlatformFont?
     private var previouslySentGutterWidth: CGFloat?
 
     init(lineManager: LineManager) {

@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 final class IndexedRange: UITextRange {
@@ -21,3 +22,4 @@ final class IndexedRange: UITextRange {
         self.init(range)
     }
 }
+#endif

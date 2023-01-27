@@ -1,8 +1,17 @@
+#if os(macOS)
+import AppKit
+#endif
+#if os(iOS)
 import UIKit
+#endif
 
 final class PageGuideController {
+    #if os(macOS)
+    private typealias NSStringDrawingOptions = NSString.DrawingOptions
+    #endif
+
     let guideView = PageGuideView()
-    var font: UIFont = .systemFont(ofSize: 14) {
+    var font: MultiPlatformFont = .systemFont(ofSize: 14) {
         didSet {
             if font != oldValue {
                 _columnOffset = nil

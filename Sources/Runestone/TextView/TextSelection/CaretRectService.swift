@@ -1,9 +1,9 @@
-import UIKit
+import CoreGraphics
 
 final class CaretRectService {
     var stringView: StringView
     var lineManager: LineManager
-    var textContainerInset: UIEdgeInsets = .zero
+    var textContainerInset: MultiPlatformEdgeInsets = .zero
     var showLineNumbers = false
 
     private let lineControllerStorage: LineControllerStorage

@@ -1,3 +1,4 @@
+#if os(iOS)
 // swiftlint:disable file_length
 import Combine
 import UIKit
@@ -1668,3 +1669,4 @@ extension TextInputView: EditMenuControllerDelegate {
         return selectedRange
     }
 }
+#endif

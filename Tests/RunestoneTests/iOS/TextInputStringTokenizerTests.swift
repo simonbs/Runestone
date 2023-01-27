@@ -1,3 +1,4 @@
+#if os(iOS)
 // swiftlint:disable force_cast
 @testable import Runestone
 import XCTest
@@ -304,3 +305,4 @@ extension TextInputStringTokenizerTests: LineControllerDelegate {
 
     func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController) {}
 }
+#endif

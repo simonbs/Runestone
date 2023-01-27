@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 final class QuickTapGestureRecognizer: UITapGestureRecognizer {
@@ -33,3 +34,4 @@ final class QuickTapGestureRecognizer: UITapGestureRecognizer {
         cancelTimer = nil
     }
 }
+#endif

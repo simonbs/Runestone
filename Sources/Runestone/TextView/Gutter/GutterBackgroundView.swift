@@ -1,6 +1,6 @@
-import UIKit
+import Foundation
 
-final class GutterBackgroundView: UIView {
+final class GutterBackgroundView: MultiPlatformView {
     var hairlineWidth: CGFloat = 1 {
         didSet {
             if hairlineWidth != oldValue {
@@ -8,7 +8,7 @@ final class GutterBackgroundView: UIView {
             }
         }
     }
-    var hairlineColor: UIColor? {
+    var hairlineColor: MultiPlatformColor? {
         get {
             return hairlineView.backgroundColor
         }
@@ -17,7 +17,7 @@ final class GutterBackgroundView: UIView {
         }
     }
 
-    private let hairlineView = UIView()
+    private let hairlineView = MultiPlatformView()
 
     override init(frame: CGRect = .zero) {
         super.init(frame: .zero)
@@ -28,8 +28,21 @@ final class GutterBackgroundView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    #if os(iOS)
     override func layoutSubviews() {
         super.layoutSubviews()
+        _layoutSubviews()
+    }
+    #else
+    override func resizeSubviews(withOldSize oldSize: NSSize) {
+        super.resizeSubviews(withOldSize: oldSize)
+        _layoutSubviews()
+    }
+    #endif
+}
+
+private extension GutterBackgroundView {
+    private func _layoutSubviews() {
         hairlineView.frame = CGRect(x: bounds.width - hairlineWidth, y: 0, width: hairlineWidth, height: bounds.height)
     }
 }

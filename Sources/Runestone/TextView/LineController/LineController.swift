@@ -1,7 +1,13 @@
 // swiftlint:disable file_length
+#if os(macOS)
+import AppKit
+#endif
 import CoreGraphics
 import CoreText
+import Foundation
+#if os(iOS)
 import UIKit
+#endif
 
 typealias LineFragmentTree = RedBlackTree<LineFragmentNodeID, Int, LineFragmentNodeData>
 

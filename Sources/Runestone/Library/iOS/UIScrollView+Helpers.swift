@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 extension UIScrollView {
@@ -11,3 +12,4 @@ extension UIScrollView {
         return CGPoint(x: maxX, y: maxY)
     }
 }
+#endif

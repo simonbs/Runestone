@@ -1,4 +1,4 @@
-import UIKit
+import Foundation
 
 protocol LineFragmentControllerDelegate: AnyObject {
     func string(in controller: LineFragmentController) -> String?
@@ -32,7 +32,7 @@ final class LineFragmentController {
             }
         }
     }
-    var markedTextBackgroundColor: UIColor {
+    var markedTextBackgroundColor: MultiPlatformColor {
         get {
             return renderer.markedTextBackgroundColor
         }

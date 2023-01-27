@@ -1,16 +1,21 @@
+#if os(macOS)
+import AppKit
+#endif
+#if os(iOS)
 import UIKit
+#endif
 
 final class TreeSitterSyntaxHighlightToken {
     let range: NSRange
-    let textColor: UIColor?
+    let textColor: MultiPlatformColor?
     let shadow: NSShadow?
-    let font: UIFont?
+    let font: MultiPlatformFont?
     let fontTraits: FontTraits
     var isEmpty: Bool {
         return range.length == 0 || (textColor == nil && font == nil && shadow == nil)
     }
 
-    init(range: NSRange, textColor: UIColor?, shadow: NSShadow?, font: UIFont?, fontTraits: FontTraits) {
+    init(range: NSRange, textColor: MultiPlatformColor?, shadow: NSShadow?, font: MultiPlatformFont?, fontTraits: FontTraits) {
         self.range = range
         self.textColor = textColor
         self.shadow = shadow

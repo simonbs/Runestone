@@ -1,24 +1,13 @@
-import UIKit
+import Foundation
 
 final class HighlightedRangeFragment: Equatable {
     let range: NSRange
     let containsStart: Bool
     let containsEnd: Bool
-    let color: UIColor
+    let color: MultiPlatformColor
     let cornerRadius: CGFloat
-    var roundedCorners: UIRectCorner {
-        if containsStart && containsEnd {
-            return .allCorners
-        } else if containsStart {
-            return [.topLeft, .bottomLeft]
-        } else if containsEnd {
-            return [.topRight, .bottomRight]
-        } else {
-            return []
-        }
-    }
 
-    init(range: NSRange, containsStart: Bool, containsEnd: Bool, color: UIColor, cornerRadius: CGFloat) {
+    init(range: NSRange, containsStart: Bool, containsEnd: Bool, color: MultiPlatformColor, cornerRadius: CGFloat) {
         self.range = range
         self.containsStart = containsStart
         self.containsEnd = containsEnd

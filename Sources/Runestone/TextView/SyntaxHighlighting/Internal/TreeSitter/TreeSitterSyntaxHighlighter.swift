@@ -1,4 +1,4 @@
-import UIKit
+import Foundation
 
 enum TreeSitterSyntaxHighlighterError: LocalizedError {
     case cancelled
@@ -97,16 +97,24 @@ private extension TreeSitterSyntaxHighlighter {
             if token.fontTraits.contains(.italic) {
                 attributedString.addAttribute(.isItalic, value: true, range: token.range)
             }
-            var symbolicTraits: UIFontDescriptor.SymbolicTraits = []
+            var symbolicTraits: MultiPlatformFontDescriptor.SymbolicTraits = []
             if let isBold = attributedString.attribute(.isBold, at: token.range.location, effectiveRange: nil) as? Bool, isBold {
+                #if os(iOS)
                 symbolicTraits.insert(.traitBold)
+                #else
+                symbolicTraits.insert(.bold)
+                #endif
             }
             if let isItalic = attributedString.attribute(.isItalic, at: token.range.location, effectiveRange: nil) as? Bool, isItalic {
+                #if os(iOS)
                 symbolicTraits.insert(.traitItalic)
+                #else
+                symbolicTraits.insert(.italic)
+                #endif
             }
-            let currentFont = attributedString.attribute(.font, at: token.range.location, effectiveRange: nil) as? UIFont
+            let currentFont = attributedString.attribute(.font, at: token.range.location, effectiveRange: nil) as? MultiPlatformFont
             let baseFont = token.font ?? theme.font
-            let newFont: UIFont
+            let newFont: MultiPlatformFont
             if !symbolicTraits.isEmpty {
                 newFont = baseFont.withSymbolicTraits(symbolicTraits) ?? baseFont
             } else {
@@ -154,12 +162,17 @@ private extension TreeSitterSyntaxHighlighter {
     }
 }
 
-private extension UIFont {
-    func withSymbolicTraits(_ symbolicTraits: UIFontDescriptor.SymbolicTraits) -> UIFont? {
+private extension MultiPlatformFont {
+    func withSymbolicTraits(_ symbolicTraits: MultiPlatformFontDescriptor.SymbolicTraits) -> MultiPlatformFont? {
+        #if os(iOS)
         if let newFontDescriptor = fontDescriptor.withSymbolicTraits(symbolicTraits) {
-            return UIFont(descriptor: newFontDescriptor, size: pointSize)
+            return MultiPlatformFont(descriptor: newFontDescriptor, size: pointSize)
         } else {
             return nil
         }
+        #else
+        let newFontDescriptor = fontDescriptor.withSymbolicTraits(symbolicTraits)
+        return MultiPlatformFont(descriptor: newFontDescriptor, size: pointSize)
+        #endif
     }
 }

@@ -1,9 +1,9 @@
 import Combine
-import UIKit
+import Foundation
 
 final class ContentSizeService {
-    var safeAreaInset: UIEdgeInsets = .zero
-    var textContainerInset: UIEdgeInsets = .zero
+    var safeAreaInset: MultiPlatformEdgeInsets = .zero
+    var textContainerInset: MultiPlatformEdgeInsets = .zero
     var scrollViewWidth: CGFloat = 0 {
         didSet {
             if scrollViewWidth != oldValue && isLineWrappingEnabled {

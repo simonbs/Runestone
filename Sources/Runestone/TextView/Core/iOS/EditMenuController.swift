@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 protocol EditMenuControllerDelegate: AnyObject {
@@ -113,4 +114,5 @@ extension EditMenuController: UIEditMenuInteractionDelegate {
         }
     }
 }
+#endif
 #endif

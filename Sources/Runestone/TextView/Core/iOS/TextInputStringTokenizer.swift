@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 final class TextInputStringTokenizer: UITextInputStringTokenizer {
@@ -278,3 +279,4 @@ private extension CharacterSet {
         return character.unicodeScalars.allSatisfy(contains(_:))
     }
 }
+#endif

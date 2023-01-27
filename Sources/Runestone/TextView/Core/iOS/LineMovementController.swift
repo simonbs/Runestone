@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 final class LineMovementController {
@@ -136,3 +137,4 @@ private extension LineMovementController {
         return lineController.numberOfLineFragments
     }
 }
+#endif

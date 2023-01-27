@@ -1,49 +1,54 @@
+#if os(macOS)
+import AppKit
+#endif
+#if os(iOS)
 import UIKit
+#endif
 
-final class LineNumberView: UIView, ReusableView {
-    var textColor: UIColor {
-        get {
-            return titleLabel.textColor
-        }
-        set {
-            titleLabel.textColor = newValue
+final class LineNumberView: MultiPlatformView, ReusableView {
+    var textColor: MultiPlatformColor = .black {
+        didSet {
+            if textColor != oldValue {
+                setNeedsDisplay()
+            }
         }
     }
-    var font: UIFont {
-        get {
-            return titleLabel.font
-        }
-        set {
-            titleLabel.font = newValue
+    var font: MultiPlatformFont = .systemFont(ofSize: 14) {
+        didSet {
+            if font != oldValue {
+                setNeedsDisplay()
+            }
         }
     }
     var text: String? {
-        get {
-            return titleLabel.text
+        didSet {
+            if text != oldValue {
+                setNeedsDisplay()
+            }
         }
-        set {
-            titleLabel.text = newValue
+    }
+
+    #if os(iOS)
+    override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        _drawRect()
+    }
+    #else
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        _drawRect()
+    }
+    #endif
+}
+
+private extension LineNumberView {
+    private func _drawRect() {
+        guard let text = text as? NSString else {
+            return
         }
-    }
-
-    private let titleLabel: UILabel = {
-        let this = UILabel()
-        this.textAlignment = .right
-        return this
-    }()
-
-    override init(frame: CGRect = .zero) {
-        super.init(frame: frame)
-        addSubview(titleLabel)
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        let size = titleLabel.intrinsicContentSize
-        titleLabel.frame = CGRect(x: 0, y: 0, width: bounds.width, height: size.height)
+        let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: textColor]
+        let size = text.size(withAttributes: attributes)
+        let offset = CGPoint(x: bounds.width - size.width, y: (bounds.height - size.height) / 2)
+        text.draw(at: offset)
     }
 }

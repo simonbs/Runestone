@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 protocol KeyboardObserverDelegate: AnyObject {
@@ -107,3 +108,4 @@ private extension KeyboardObserver {
         }
     }
 }
+#endif

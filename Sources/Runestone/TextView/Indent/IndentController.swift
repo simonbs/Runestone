@@ -1,5 +1,4 @@
 import Foundation
-import UIKit
 
 protocol IndentControllerDelegate: AnyObject {
     func indentController(_ controller: IndentController, shouldInsert text: String, in range: NSRange)
@@ -8,11 +7,15 @@ protocol IndentControllerDelegate: AnyObject {
 }
 
 final class IndentController {
+    #if os(macOS)
+    private typealias NSStringDrawingOptions = NSString.DrawingOptions
+    #endif
+
     weak var delegate: IndentControllerDelegate?
     var stringView: StringView
     var lineManager: LineManager
     var languageMode: InternalLanguageMode
-    var indentFont: UIFont {
+    var indentFont: MultiPlatformFont {
         didSet {
             if indentFont != oldValue {
                 _tabWidth = nil
@@ -46,7 +49,7 @@ final class IndentController {
 
     private var _tabWidth: CGFloat?
 
-    init(stringView: StringView, lineManager: LineManager, languageMode: InternalLanguageMode, indentStrategy: IndentStrategy, indentFont: UIFont) {
+    init(stringView: StringView, lineManager: LineManager, languageMode: InternalLanguageMode, indentStrategy: IndentStrategy, indentFont: MultiPlatformFont) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.languageMode = languageMode
