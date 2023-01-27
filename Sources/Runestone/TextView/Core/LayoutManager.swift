@@ -1,6 +1,9 @@
 import CoreGraphics
 import Foundation
 import QuartzCore
+#if os(iOS)
+import UIKit
+#endif
 
 // swiftlint:disable file_length
 protocol LayoutManagerDelegate: AnyObject {

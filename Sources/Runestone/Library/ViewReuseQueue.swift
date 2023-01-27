@@ -1,3 +1,7 @@
+#if os(iOS)
+import UIKit
+#endif
+
 protocol ReusableView {
     func prepareForReuse()
 }

@@ -1,3 +1,7 @@
+#if os(iOS)
+import UIKit
+#endif
+
 /// Default theme used by Runestone when no other theme has been set.
 public final class DefaultTheme: Runestone.Theme {
     public let font: MultiPlatformFont = .monospacedSystemFont(ofSize: 14, weight: .regular)

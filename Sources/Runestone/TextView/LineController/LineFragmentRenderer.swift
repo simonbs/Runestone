@@ -53,11 +53,25 @@ private extension LineFragmentRenderer {
             } else {
                 endX = CTLineGetOffsetForStringIndex(lineFragment.line, highlightedRange.range.upperBound, nil)
             }
+            let cornerRadius = highlightedRange.cornerRadius
             let rect = CGRect(x: startX, y: 0, width: endX - startX, height: lineFragment.scaledSize.height)
-            let path = highlightedRange.path(in: rect)
+            let roundedPath = CGPath(roundedRect: rect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
             context.setFillColor(highlightedRange.color.cgColor)
-            context.addPath(path)
+            context.addPath(roundedPath)
             context.fillPath()
+            // Draw non-rounded edges if needed.
+            if !highlightedRange.containsStart {
+                let startRect = CGRect(x: 0, y: 0, width: cornerRadius, height: rect.height)
+                let startPath = CGPath(rect: startRect, transform: nil)
+                context.addPath(startPath)
+                context.fillPath()
+            }
+            if !highlightedRange.containsEnd {
+                let endRect = CGRect(x: 0, y: 0, width: rect.width - cornerRadius, height: rect.height)
+                let endPath = CGPath(rect: endRect, transform: nil)
+                context.addPath(endPath)
+                context.fillPath()
+            }
         }
         context.restoreGState()
     }
@@ -151,26 +165,5 @@ private extension LineFragmentRenderer {
 
     private func isLineBreak(_ string: String.Element) -> Bool {
         return string == Symbol.Character.lineFeed || string == Symbol.Character.carriageReturn || string == Symbol.Character.carriageReturnLineFeed
-    }
-}
-
-private extension HighlightedRangeFragment {
-    func path(in rect: CGRect) -> CGPath {
-        guard containsStart || containsEnd else {
-            return CGPath(rect: rect, transform: nil)
-        }
-        var path = CGPath(roundedRect: rect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
-        // Union start and end paths if we should not round the edges.
-        if !containsStart {
-            let startRect = CGRect(x: 0, y: 0, width: cornerRadius, height: rect.height)
-            let startPath = CGPath(rect: startRect, transform: nil)
-            path = path.union(startPath)
-        }
-        if !containsStart {
-            let startRect = CGRect(x: 0, y: 0, width: cornerRadius, height: rect.height)
-            let startPath = CGPath(rect: startRect, transform: nil)
-            path = path.union(startPath)
-        }
-        return path
     }
 }

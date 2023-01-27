@@ -1,4 +1,7 @@
 import Foundation
+#if os(iOS)
+import UIKit
+#endif
 
 protocol IndentControllerDelegate: AnyObject {
     func indentController(_ controller: IndentController, shouldInsert text: String, in range: NSRange)
