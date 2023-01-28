@@ -69,7 +69,7 @@ public final class DefaultTheme: Runestone.Theme {
         }
     }
 
-#if compiler(>=5.7) && os(iOS)
+#if os(iOS)
     @available(iOS 16.0, *)
     public func highlightedRange(forFoundTextRange foundTextRange: NSRange, ofStyle style: UITextSearchFoundTextStyle) -> HighlightedRange? {
         switch style {
