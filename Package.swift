@@ -8,7 +8,7 @@ let package = Package(
     defaultLocalization: "en",
     platforms: [
         .iOS(.v14),
-        .macOS(.v13)
+        .macOS(.v11)
     ],
     products: [
         .library(name: "Runestone", targets: ["Runestone"])

@@ -496,14 +496,14 @@ final class TextInputView: UIView, UITextInput {
     override var canBecomeFirstResponder: Bool {
         return true
     }
-    weak var gutterParentView: UIView? {
-        get {
-            return layoutManager.gutterParentView
-        }
-        set {
-            layoutManager.gutterParentView = newValue
-        }
-    }
+//    weak var gutterParentView: UIView? {
+//        get {
+//            return layoutManager.gutterParentView
+//        }
+//        set {
+//            layoutManager.gutterParentView = newValue
+//        }
+//    }
     var scrollViewSafeAreaInsets: UIEdgeInsets = .zero {
         didSet {
             if scrollViewSafeAreaInsets != oldValue {
@@ -646,9 +646,9 @@ final class TextInputView: UIView, UITextInput {
         gutterWidthService.gutterLeadingPadding = gutterLeadingPadding
         gutterWidthService.gutterTrailingPadding = gutterTrailingPadding
         layoutManager.delegate = self
-        layoutManager.textInputView = self
-        editMenuController.delegate = self
-        editMenuController.setupEditMenu(in: self)
+//        layoutManager.textInputView = self
+//        editMenuController.delegate = self
+//        editMenuController.setupEditMenu(in: self)
         setupContentSizeObserver()
         setupGutterWidthObserver()
     }
@@ -815,53 +815,53 @@ final class TextInputView: UIView, UITextInput {
         selectedRange = nil
     }
 
-    func moveCaret(to point: CGPoint) {
-        if let index = layoutManager.closestIndex(to: point) {
-            selectedRange = NSRange(location: index, length: 0)
-        }
-    }
+//    func moveCaret(to point: CGPoint) {
+//        if let index = layoutManager.closestIndex(to: point) {
+//            selectedRange = NSRange(location: index, length: 0)
+//        }
+//    }
 
-    func setLanguageMode(_ languageMode: LanguageMode, completion: ((Bool) -> Void)? = nil) {
-        let internalLanguageMode = InternalLanguageModeFactory.internalLanguageMode(
-            from: languageMode,
-            stringView: stringView,
-            lineManager: lineManager)
-        self.languageMode = internalLanguageMode
-        layoutManager.languageMode = internalLanguageMode
-        internalLanguageMode.parse(string) { [weak self] finished in
-            if let self = self, finished {
-                self.invalidateLines()
-                self.layoutManager.setNeedsLayout()
-                self.layoutManager.layoutIfNeeded()
-            }
-            completion?(finished)
-        }
-    }
+//    func setLanguageMode(_ languageMode: LanguageMode, completion: ((Bool) -> Void)? = nil) {
+//        let internalLanguageMode = InternalLanguageModeFactory.internalLanguageMode(
+//            from: languageMode,
+//            stringView: stringView,
+//            lineManager: lineManager)
+//        self.languageMode = internalLanguageMode
+//        layoutManager.languageMode = internalLanguageMode
+//        internalLanguageMode.parse(string) { [weak self] finished in
+//            if let self = self, finished {
+//                self.invalidateLines()
+//                self.layoutManager.setNeedsLayout()
+//                self.layoutManager.layoutIfNeeded()
+//            }
+//            completion?(finished)
+//        }
+//    }
 
-    func syntaxNode(at location: Int) -> SyntaxNode? {
-        if let linePosition = lineManager.linePosition(at: location) {
-            return languageMode.syntaxNode(at: linePosition)
-        } else {
-            return nil
-        }
-    }
+//    func syntaxNode(at location: Int) -> SyntaxNode? {
+//        if let linePosition = lineManager.linePosition(at: location) {
+//            return languageMode.syntaxNode(at: linePosition)
+//        } else {
+//            return nil
+//        }
+//    }
 
-    func isIndentation(at location: Int) -> Bool {
-        guard let line = lineManager.line(containingCharacterAt: location) else {
-            return false
-        }
-        let localLocation = location - line.location
-        guard localLocation >= 0 else {
-            return false
-        }
-        let indentLevel = languageMode.currentIndentLevel(of: line, using: indentStrategy)
-        let indentString = indentStrategy.string(indentLevel: indentLevel)
-        return localLocation <= indentString.utf16.count
-    }
+//    func isIndentation(at location: Int) -> Bool {
+//        guard let line = lineManager.line(containingCharacterAt: location) else {
+//            return false
+//        }
+//        let localLocation = location - line.location
+//        guard localLocation >= 0 else {
+//            return false
+//        }
+//        let indentLevel = languageMode.currentIndentLevel(of: line, using: indentStrategy)
+//        let indentString = indentStrategy.string(indentLevel: indentLevel)
+//        return localLocation <= indentString.utf16.count
+//    }
 
-    func detectIndentStrategy() -> DetectedIndentStrategy {
-        return languageMode.detectIndentStrategy()
-    }
+//    func detectIndentStrategy() -> DetectedIndentStrategy {
+//        return languageMode.detectIndentStrategy()
+//    }
 
     func textPreview(containing range: NSRange) -> TextPreview? {
         return layoutManager.textPreview(containing: range)
@@ -1354,23 +1354,23 @@ extension TextInputView {
 }
 
 // MARK: - Indent and Outdent
-extension TextInputView {
-    func shiftLeft() {
-        if let selectedRange = selectedRange {
-            inputDelegate?.textWillChange(self)
-            indentController.shiftLeft(in: selectedRange)
-            inputDelegate?.textDidChange(self)
-        }
-    }
-
-    func shiftRight() {
-        if let selectedRange = selectedRange {
-            inputDelegate?.textWillChange(self)
-            indentController.shiftRight(in: selectedRange)
-            inputDelegate?.textDidChange(self)
-        }
-    }
-}
+//extension TextInputView {
+//    func shiftLeft() {
+//        if let selectedRange = selectedRange {
+//            inputDelegate?.textWillChange(self)
+//            indentController.shiftLeft(in: selectedRange)
+//            inputDelegate?.textDidChange(self)
+//        }
+//    }
+//
+//    func shiftRight() {
+//        if let selectedRange = selectedRange {
+//            inputDelegate?.textWillChange(self)
+//            indentController.shiftRight(in: selectedRange)
+//            inputDelegate?.textDidChange(self)
+//        }
+//    }
+//}
 
 // MARK: - Move Lines
 extension TextInputView {
@@ -1564,9 +1564,9 @@ extension TextInputView {
         return editMenuController.editMenu(for: textRange, suggestedActions: suggestedActions)
     }
 
-    func presentEditMenuForText(in range: NSRange) {
-        editMenuController.presentEditMenu(from: self, forTextIn: range)
-    }
+//    func presentEditMenuForText(in range: NSRange) {
+//        editMenuController.presentEditMenu(from: self, forTextIn: range)
+//    }
 
     @objc private func replaceTextInSelectedHighlightedRange() {
         if let selectedRange = selectedRange, let highlightedRange = highlightedRange(for: selectedRange) {

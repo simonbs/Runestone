@@ -12,16 +12,9 @@ protocol LayoutManagerDelegate: AnyObject {
 
 final class LayoutManager {
     weak var delegate: LayoutManagerDelegate?
-    weak var gutterParentView: MultiPlatformView? {
+    weak var containerView: MultiPlatformView? {
         didSet {
-            if gutterParentView != oldValue {
-                setupViewHierarchy()
-            }
-        }
-    }
-    weak var textInputView: MultiPlatformView? {
-        didSet {
-            if textInputView != oldValue {
+            if containerView != oldValue {
                 setupViewHierarchy()
             }
         }
@@ -538,9 +531,9 @@ extension LayoutManager {
         let allLineNumberKeys = lineFragmentViewReuseQueue.visibleViews.keys
         lineFragmentViewReuseQueue.enqueueViews(withKeys: Set(allLineNumberKeys))
         // Add views to view hierarchy
-        textInputView?.addSubview(lineSelectionBackgroundView)
-        textInputView?.addSubview(linesContainerView)
-        gutterParentView?.addSubview(gutterContainerView)
+        containerView?.addSubview(lineSelectionBackgroundView)
+        containerView?.addSubview(linesContainerView)
+        containerView?.addSubview(gutterContainerView)
         gutterContainerView.addSubview(gutterBackgroundView)
         gutterContainerView.addSubview(gutterSelectionBackgroundView)
         gutterContainerView.addSubview(lineNumbersContainerView)
