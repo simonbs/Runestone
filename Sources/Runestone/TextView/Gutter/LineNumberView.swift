@@ -27,6 +27,13 @@ final class LineNumberView: MultiPlatformView, ReusableView {
             }
         }
     }
+    override var frame: CGRect {
+        didSet {
+            if frame != oldValue {
+                setNeedsDisplay()
+            }
+        }
+    }
 
     init() {
         super.init(frame: .zero)
