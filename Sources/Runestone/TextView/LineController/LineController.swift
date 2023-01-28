@@ -445,7 +445,8 @@ extension LineController {
                 let finalIndex = min(lineRange.location + lineRange.length, range.location + range.length)
                 let xStart = CTLineGetOffsetForStringIndex(line, index, nil)
                 let xEnd = CTLineGetOffsetForStringIndex(line, finalIndex, nil)
-                return CGRect(x: xStart, y: lineFragment.yPosition, width: xEnd - xStart, height: lineFragment.scaledSize.height)
+                let yPosition = lineFragment.yPosition + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
+                return CGRect(x: xStart, y: yPosition, width: xEnd - xStart, height: lineFragment.baseSize.height)
             }
         }
         return CGRect(x: 0, y: 0, width: 0, height: estimatedLineFragmentHeight * lineFragmentHeightMultiplier)
