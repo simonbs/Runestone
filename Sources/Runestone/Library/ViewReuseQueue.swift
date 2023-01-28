@@ -15,14 +15,14 @@ final class ViewReuseQueue<Key: Hashable, View: MultiPlatformView & ReusableView
 
     private var queuedViews: Set<View> = []
 
-
     init() {
         #if os(iOS)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(clearMemory),
             name: UIApplication.didReceiveMemoryWarningNotification,
-            object: nil)
+            object: nil
+        )
         #endif
     }
 
