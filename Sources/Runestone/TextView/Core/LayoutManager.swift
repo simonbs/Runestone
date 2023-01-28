@@ -152,16 +152,18 @@ final class LayoutManager {
     private var needsLayout = false
     private var needsLayoutLineSelection = false
 
-    init(lineManager: LineManager,
-         languageMode: InternalLanguageMode,
-         stringView: StringView,
-         lineControllerStorage: LineControllerStorage,
-         contentSizeService: ContentSizeService,
-         gutterWidthService: GutterWidthService,
-         caretRectService: CaretRectService,
-         selectionRectService: SelectionRectService,
-         highlightService: HighlightService,
-         invisibleCharacterConfiguration: InvisibleCharacterConfiguration) {
+    init(
+        lineManager: LineManager,
+        languageMode: InternalLanguageMode,
+        stringView: StringView,
+        lineControllerStorage: LineControllerStorage,
+        contentSizeService: ContentSizeService,
+        gutterWidthService: GutterWidthService,
+        caretRectService: CaretRectService,
+        selectionRectService: SelectionRectService,
+        highlightService: HighlightService,
+        invisibleCharacterConfiguration: InvisibleCharacterConfiguration
+    ) {
         self.lineManager = lineManager
         self.languageMode = languageMode
         self.stringView = stringView
@@ -235,10 +237,12 @@ final class LayoutManager {
         let localNeedleLocation = needleRange.location - startLocation
         let localNeedleLength = min(needleRange.length, previewRange.length)
         let needleInPreviewRange = NSRange(location: localNeedleLocation, length: localNeedleLength)
-        return TextPreview(needleRange: needleRange,
-                           previewRange: previewRange,
-                           needleInPreviewRange: needleInPreviewRange,
-                           lineControllers: lineControllers)
+        return TextPreview(
+            needleRange: needleRange,
+            previewRange: previewRange,
+            needleInPreviewRange: needleInPreviewRange,
+            lineControllers: lineControllers
+        )
     }
 }
 
@@ -421,8 +425,10 @@ extension LayoutManager {
                 let lineFragment = lineFragmentController.lineFragment
                 var lineFragmentFrame: CGRect = .zero
                 appearedLineFragmentIDs.insert(lineFragment.id)
-                lineFragmentController.highlightedRangeFragments = highlightService.highlightedRangeFragments(for: lineFragment,
-                                                                                                              inLineWithID: line.id)
+                lineFragmentController.highlightedRangeFragments = highlightService.highlightedRangeFragments(
+                    for: lineFragment,
+                    inLineWithID: line.id
+                )
                 layoutLineFragmentView(for: lineFragmentController, lineYPosition: lineYPosition, lineFragmentFrame: &lineFragmentFrame)
                 maxY = lineFragmentFrame.maxY
             }
@@ -488,7 +494,11 @@ extension LayoutManager {
         lineNumberView.frame = CGRect(x: xPosition, y: yPosition, width: gutterWidthService.lineNumberWidth, height: fontLineHeight)
     }
 
-    private func layoutLineFragmentView(for lineFragmentController: LineFragmentController, lineYPosition: CGFloat, lineFragmentFrame: inout CGRect) {
+    private func layoutLineFragmentView(
+        for lineFragmentController: LineFragmentController,
+        lineYPosition: CGFloat,
+        lineFragmentFrame: inout CGRect
+    ) {
         let lineFragment = lineFragmentController.lineFragment
         let lineFragmentView = lineFragmentViewReuseQueue.dequeueView(forKey: lineFragment.id)
         if lineFragmentView.superview == nil {
