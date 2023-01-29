@@ -943,6 +943,17 @@ open class TextView: UIScrollView {
         textViewController.scrollRangeToVisible(range)
     }
 
+    /// Replaces the text that is in the specified range.
+     /// - Parameters:
+     ///   - range: A range of text in the document.
+     ///   - text: A string to replace the text in range.
+    public func replace(_ range: NSRange, withText text: String) {
+        inputDelegate?.selectionWillChange(self)
+        let indexedRange = IndexedRange(range)
+        replace(indexedRange, withText: text)
+        inputDelegate?.selectionDidChange(self)
+    }
+
     /// Returns the text in the specified range.
     /// - Parameter range: A range of text in the document.
     /// - Returns: The substring that falls within the specified range.
