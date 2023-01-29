@@ -1,13 +1,12 @@
 import XCTest
 
 private enum EnvironmentKey {
-    static let disableTextPersistance = "disableTextPersistance"
     static let crlfLineEndings = "crlfLineEndings"
 }
 
 extension XCUIApplication {
     var textView: XCUIElement? {
-        return scrollViews.children(matching: .textView).element
+        textViews["RunestoneTextView"]
     }
 
     func tap(at point: CGPoint) {
@@ -15,13 +14,6 @@ extension XCUIApplication {
         let offset = CGVector(dx: point.x, dy: point.y)
         let coordinate = normalized.withOffset(offset)
         coordinate.tap()
-    }
-
-    func disablingTextPersistance() -> Self {
-        var newLaunchEnvironment = launchEnvironment
-        newLaunchEnvironment[EnvironmentKey.disableTextPersistance] = "1"
-        launchEnvironment = newLaunchEnvironment
-        return self
     }
 
     func usingCRLFLineEndings() -> Self {

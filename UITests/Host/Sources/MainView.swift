@@ -6,6 +6,8 @@ final class MainView: UIView {
         let this = TextView()
         this.alwaysBounceVertical = true
         this.contentInsetAdjustmentBehavior = .always
+        this.translatesAutoresizingMaskIntoConstraints = false
+        this.accessibilityIdentifier = "RunestoneTextView"
         this.autocorrectionType = .no
         this.autocapitalizationType = .none
         this.smartDashesType = .no
@@ -23,7 +25,6 @@ final class MainView: UIView {
             BasicCharacterPair(leading: "\"", trailing: "\""),
             BasicCharacterPair(leading: "'", trailing: "'")
         ]
-        this.translatesAutoresizingMaskIntoConstraints = false
         return this
     }()
 

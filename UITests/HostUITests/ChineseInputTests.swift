@@ -2,7 +2,7 @@ import XCTest
 
 final class ChineseInputTests: XCTestCase {
     func testEnteringMarkedText() throws {
-        let app = XCUIApplication().disablingTextPersistance()
+        let app = XCUIApplication()
         app.launch()
         app.textView?.tap()
         app.keys["日"].tap()
@@ -12,7 +12,7 @@ final class ChineseInputTests: XCTestCase {
     }
 
     func testEnteringMarkedTextTwoTimes() throws {
-        let app = XCUIApplication().disablingTextPersistance()
+        let app = XCUIApplication()
         app.launch()
         app.textView?.tap()
         app.keys["日"].tap()
