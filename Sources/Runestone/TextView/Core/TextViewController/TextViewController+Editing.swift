@@ -1,6 +1,11 @@
 import Foundation
 
 extension TextViewController {
+    var rangeForInsertingText: NSRange {
+        // If there is no marked range or selected range then we fallback to appending text to the end of our string.
+        markedRange ?? selectedRange ?? NSRange(location: stringView.string.length, length: 0)
+    }
+
     func text(in range: NSRange) -> String? {
         stringView.substring(in: range.nonNegativeLength)
     }
@@ -24,12 +29,26 @@ extension TextViewController {
         lineChangeSet.union(with: languageModeLineChangeSet)
         applyLineChangesToLayoutManager(lineChangeSet)
         let updatedTextEditResult = TextEditResult(textChange: textChange, lineChangeSet: lineChangeSet)
-        if isAutomaticScrollEnabled, let newRange = selectedRange, newRange.length == 0 {
-            scrollLocationToVisible(newRange.location)
-        }
-        textView.editorDelegate?.textViewDidChange(textView)
+        textDidChange()
         if updatedTextEditResult.didAddOrRemoveLines {
             invalidateContentSizeIfNeeded()
+        }
+    }
+
+    func replaceText(in batchReplaceSet: BatchReplaceSet) {
+        guard !batchReplaceSet.replacements.isEmpty else {
+            return
+        }
+        var oldLinePosition: LinePosition?
+        if let oldSelectedRange = selectedRange {
+            oldLinePosition = lineManager.linePosition(at: oldSelectedRange.location)
+        }
+        let textEditHelper = TextEditHelper(stringView: stringView, lineManager: lineManager, lineEndings: lineEndings)
+        let newString = textEditHelper.string(byApplying: batchReplaceSet)
+        setStringWithUndoAction(newString)
+        if let oldLinePosition = oldLinePosition {
+            // By restoring the selected range using the old line position we can better preserve the old selected language.
+            moveCaret(to: oldLinePosition)
         }
     }
 
@@ -72,7 +91,7 @@ extension TextViewController {
             // UIKit is inserting text to combine characters, for example to combine two Korean characters into one, and we do not want to interfere with that.
             return textView.editorDelegate?.textView(textView, shouldChangeTextIn: range, replacementText: text) ?? true
         } else if let characterPair = characterPairs.first(where: { $0.trailing == text }),
-                    skipInsertingTrailingComponent(of: characterPair, in: range) {
+                  skipInsertingTrailingComponent(of: characterPair, in: range) {
             return false
         } else if let characterPair = characterPairs.first(where: { $0.leading == text }), insertLeadingComponent(of: characterPair, in: range) {
             return false
@@ -104,13 +123,12 @@ private extension TextViewController {
             return false
         }
         if selectedRange.length == 0 {
-            insertText(characterPair.leading + characterPair.trailing)
+            replaceText(in: selectedRange, with: characterPair.leading + characterPair.trailing)
             self.selectedRange = NSRange(location: range.location + characterPair.leading.count, length: 0)
             return true
         } else if let text = text(in: selectedRange) {
             let modifiedText = characterPair.leading + text + characterPair.trailing
-            let indexedRange = IndexedRange(selectedRange)
-            replace(indexedRange, withText: modifiedText)
+            replaceText(in: selectedRange, with: modifiedText)
             self.selectedRange = NSRange(location: range.location + characterPair.leading.count, length: range.length)
             return true
         } else {
@@ -136,5 +154,46 @@ private extension TextViewController {
             self.selectedRange = NSRange(location: selectedRange.location + offset, length: 0)
         }
         return true
+    }
+
+    private func setStringWithUndoAction(_ newString: NSString) {
+        guard newString != stringView.string else {
+            return
+        }
+        guard let oldString = stringView.string.copy() as? NSString else {
+            return
+        }
+        timedUndoManager.endUndoGrouping()
+        let oldSelectedRange = selectedRange
+        preserveUndoStackWhenSettingString = true
+        text = newString as String
+        preserveUndoStackWhenSettingString = false
+        timedUndoManager.beginUndoGrouping()
+        timedUndoManager.setActionName(L10n.Undo.ActionName.replaceAll)
+        timedUndoManager.registerUndo(withTarget: self) { textInputView in
+            textInputView.setStringWithUndoAction(oldString)
+        }
+        timedUndoManager.endUndoGrouping()
+        textDidChange()
+        if let oldSelectedRange = oldSelectedRange {
+            selectedRange = safeSelectionRange(from: oldSelectedRange)
+        }
+    }
+
+    private func textDidChange() {
+        if isAutomaticScrollEnabled, let newRange = selectedRange, newRange.length == 0 {
+            scrollLocationToVisible(newRange.location)
+        }
+        textView.editorDelegate?.textViewDidChange(textView)
+    }
+
+    private func moveCaret(to linePosition: LinePosition) {
+        if linePosition.row < lineManager.lineCount {
+            let line = lineManager.line(atRow: linePosition.row)
+            let location = line.location + min(linePosition.column, line.data.length)
+            selectedRange = NSRange(location: location, length: 0)
+        } else {
+            selectedRange = nil
+        }
     }
 }

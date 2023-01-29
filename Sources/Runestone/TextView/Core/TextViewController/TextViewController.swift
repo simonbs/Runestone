@@ -499,12 +499,12 @@ final class TextViewController {
     }
     var isAutomaticScrollEnabled = false
     var hasPendingFullLayout = false
+    var preserveUndoStackWhenSettingString = false
     private(set) var maximumLeadingCharacterPairComponentLength = 0
 
     private var estimatedLineHeight: CGFloat {
         theme.font.totalLineHeight * lineHeightMultiplier
     }
-    private var preserveUndoStackWhenSettingString = false
     private var cancellables: Set<AnyCancellable> = []
 
     init(textView: TextView) {
