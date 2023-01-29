@@ -983,6 +983,9 @@ open class TextView: UIScrollView {
     ///   - event: The event that warranted a call to this method. If you are calling this method from outside your event-handling code, you may specify nil.
     /// - Returns: The view object that is the farthest descendent of the current view and contains point. Returns nil if the point lies completely outside the receiver’s view hierarchy.
     open override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        guard isSelectable else {
+            return nil
+        }
         // We end our current undo group when the user touches the view.
         let result = super.hitTest(point, with: event)
         if result === self {

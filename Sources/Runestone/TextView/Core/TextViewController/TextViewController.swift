@@ -46,17 +46,14 @@ final class TextViewController {
     }
     var isSelectable = true {
         didSet {
-            if isSelectable != oldValue {
-                textView.isUserInteractionEnabled = isSelectable
-                if !isSelectable && isEditing {
-                    textView.resignFirstResponder()
-                    selectedRange = nil
-                    #if os(iOS)
-                    textView.handleTextSelectionChange()
-                    #endif
-                    isEditing = false
-                    textView.editorDelegate?.textViewDidEndEditing(textView)
-                }
+            if isSelectable != oldValue && !isSelectable && isEditing {
+                textView.resignFirstResponder()
+                selectedRange = nil
+                #if os(iOS)
+                textView.handleTextSelectionChange()
+                #endif
+                isEditing = false
+                textView.editorDelegate?.textViewDidEndEditing(textView)
             }
         }
     }
