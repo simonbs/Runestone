@@ -785,7 +785,7 @@ open class TextView: UIScrollView {
     /// - Parameters:
     ///   - batchReplaceSet: Set of ranges to replace with a text.
     public func replaceText(in batchReplaceSet: BatchReplaceSet) {
-        //        textInputView.replaceText(in: batchReplaceSet)
+        textViewController.replaceText(in: batchReplaceSet)
     }
 
     /// Returns the syntax node at the specified location in the document.
