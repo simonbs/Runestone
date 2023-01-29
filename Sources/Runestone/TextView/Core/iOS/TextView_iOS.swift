@@ -1177,7 +1177,7 @@ private extension TextView {
         }
     }
 
-    private func moveCaret(_ direction: UITextLayoutDirection) {
+    private func moveCaret(_ direction: LineMovementController.Direction) {
         guard let selectedRange = textViewController.selectedRange else {
             return
         }
