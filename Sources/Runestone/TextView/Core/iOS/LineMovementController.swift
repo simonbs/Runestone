@@ -111,10 +111,12 @@ private extension LineMovementController {
         let previousLine = lineManager.line(atRow: lineIndex - 1)
         let numberOfLineFragments = numberOfLineFragments(in: previousLine)
         let newLineFragmentIndex = numberOfLineFragments - 1
-        return locationForMovingUpwards(lineOffset: remainingLineOffset - 1,
-                                        fromLocation: location,
-                                        inLineFragmentAt: newLineFragmentIndex,
-                                        of: previousLine)
+        return locationForMovingUpwards(
+            lineOffset: remainingLineOffset - 1,
+            fromLocation: location,
+            inLineFragmentAt: newLineFragmentIndex,
+            of: previousLine
+        )
     }
 
     private func locationForMovingDownwards(
