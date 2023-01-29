@@ -1,7 +1,16 @@
+import Foundation
 #if os(iOS)
 import UIKit
+#endif
 
 final class LineMovementController {
+    enum Direction {
+        case left
+        case right
+        case up
+        case down
+    }
+
     var lineManager: LineManager
     var stringView: StringView
     let lineControllerStorage: LineControllerStorage
@@ -12,8 +21,8 @@ final class LineMovementController {
         self.lineControllerStorage = lineControllerStorage
     }
 
-    func location(from location: Int, in direction: UITextLayoutDirection, offset: Int) -> Int? {
-        let newLocation: Int?
+    func location(from location: Int, in direction: Direction, offset: Int) -> Int? {
+        let newLocation: Int
         switch direction {
         case .left:
             newLocation = locationForMoving(fromLocation: location, by: offset * -1)
@@ -23,10 +32,8 @@ final class LineMovementController {
             newLocation = locationForMoving(lineOffset: offset * -1, fromLineContainingCharacterAt: location)
         case .down:
             newLocation = locationForMoving(lineOffset: offset, fromLineContainingCharacterAt: location)
-        @unknown default:
-            newLocation = nil
         }
-        if let newLocation = newLocation, newLocation >= 0 && newLocation <= stringView.string.length {
+        if newLocation >= 0 && newLocation <= stringView.string.length {
             return newLocation
         } else {
             return nil
@@ -143,6 +150,24 @@ private extension LineMovementController {
     private func numberOfLineFragments(in line: DocumentLineNode) -> Int {
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         return lineController.numberOfLineFragments
+    }
+}
+
+#if os(iOS)
+extension LineMovementController.Direction {
+    init(_ direction: UITextLayoutDirection) {
+        switch direction {
+        case .right:
+            self = .right
+        case .left:
+            self = .left
+        case .up:
+            self = .up
+        case .down:
+            self = .down
+        @unknown default:
+            self = .down
+        }
     }
 }
 #endif

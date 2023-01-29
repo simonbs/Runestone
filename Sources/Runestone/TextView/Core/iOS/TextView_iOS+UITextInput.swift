@@ -284,6 +284,7 @@ public extension TextView {
             return nil
         }
         didCallPositionFromPositionInDirectionWithOffset = true
+        let direction = LineMovementController.Direction(direction)
         guard let newLocation = textViewController.lineMovementController.location(
             from: indexedPosition.index,
             in: direction,
