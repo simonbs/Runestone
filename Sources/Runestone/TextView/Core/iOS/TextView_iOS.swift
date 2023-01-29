@@ -861,7 +861,8 @@ open class TextView: UIScrollView {
     /// - Returns: True if the text view could navigate to the specified line index, otherwise false.
     @discardableResult
     public func goToLine(_ lineIndex: Int, select selection: GoToLineSelection = .beginning) -> Bool {
-        textViewController.goToLine(lineIndex, select: selection)
+        notifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
+        return textViewController.goToLine(lineIndex, select: selection)
     }
 
     /// Search for the specified query.
