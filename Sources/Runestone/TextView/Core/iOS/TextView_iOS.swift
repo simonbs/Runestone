@@ -943,6 +943,13 @@ open class TextView: UIScrollView {
         textViewController.scrollRangeToVisible(range)
     }
 
+    /// Returns the text in the specified range.
+    /// - Parameter range: A range of text in the document.
+    /// - Returns: The substring that falls within the specified range.
+    public func text(in range: NSRange) -> String? {
+        textViewController.text(in: range)
+    }
+
     /// Called when the iOS interface environment changes.
     open override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
