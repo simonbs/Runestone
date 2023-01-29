@@ -34,7 +34,7 @@ final class LineFragmentRenderer {
     func draw(to context: CGContext, inCanvasOfSize canvasSize: CGSize) {
         drawHighlightedRanges(to: context, inCanvasOfSize: canvasSize)
         drawMarkedRange(to: context)
-        drawInvisibleCharacters(to: context)
+        drawInvisibleCharacters()
         drawText(to: context)
     }
 }
@@ -95,11 +95,9 @@ private extension LineFragmentRenderer {
         }
     }
 
-    private func drawInvisibleCharacters(to context: CGContext) {
-        if showInvisibleCharacters {
-            if let string = delegate?.string(in: self) {
-                drawInvisibleCharacters(in: string, to: context)
-            }
+    private func drawInvisibleCharacters() {
+        if showInvisibleCharacters, let string = delegate?.string(in: self) {
+            drawInvisibleCharacters(in: string)
         }
     }
 
@@ -114,7 +112,7 @@ private extension LineFragmentRenderer {
         context.restoreGState()
     }
 
-    private func drawInvisibleCharacters(in string: String, to context: CGContext) {
+    private func drawInvisibleCharacters(in string: String) {
         let textRange = CTLineGetStringRange(lineFragment.line)
         for (indexInLineFragment, substring) in string.enumerated() {
             let indexInLine = textRange.location + indexInLineFragment
