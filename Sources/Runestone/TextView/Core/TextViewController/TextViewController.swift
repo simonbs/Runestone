@@ -3,18 +3,21 @@ import Foundation
 
 final class TextViewController {
     var textView: TextView {
-        get {
-            if let textView = _textView {
-                return textView
-            } else {
-                fatalError("Text view has been deallocated or has not been assigned")
-            }
+        if let textView = _textView {
+            return textView
+        } else {
+            fatalError("The text view has been deallocated or has not been assigned")
         }
-        set {
-            _textView = newValue
+    }
+    var scrollView: MultiPlatformScrollView {
+        if let scrollView = _scrollView {
+            return scrollView
+        } else {
+            fatalError("The scroll view has been deallocated or has not been assigned")
         }
     }
     private weak var _textView: TextView?
+    private weak var _scrollView: MultiPlatformScrollView?
     var selectedRange: NSRange? {
         didSet {
             if selectedRange != oldValue {
@@ -507,8 +510,9 @@ final class TextViewController {
     }
     private var cancellables: Set<AnyCancellable> = []
 
-    init(textView: TextView) {
+    init(textView: TextView, scrollView: MultiPlatformScrollView) {
         _textView = textView
+        _scrollView = scrollView
         lineManager = LineManager(stringView: stringView)
         highlightService = HighlightService(lineManager: lineManager)
         lineControllerFactory = LineControllerFactory(
@@ -688,12 +692,11 @@ extension TextViewController: TreeSitterLanguageModeDelegate {
 // MARK: - LayoutManagerDelegate
 extension TextViewController: LayoutManagerDelegate {
     func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint) {
-        let isScrolling = textView.isDragging || textView.isDecelerating
+        let isScrolling = scrollView.isDragging || scrollView.isDecelerating
         if contentOffsetAdjustment != .zero && isScrolling {
-            textView.contentOffset = CGPoint(
-                x: textView.contentOffset.x + contentOffsetAdjustment.x,
-                y: textView.contentOffset.y + contentOffsetAdjustment.y
-            )
+            let newXOffset = scrollView.contentOffset.x + contentOffsetAdjustment.x
+            let newYOffset = scrollView.contentOffset.y + contentOffsetAdjustment.y
+            scrollView.contentOffset = CGPoint(x: newXOffset, y: newYOffset)
         }
     }
 }

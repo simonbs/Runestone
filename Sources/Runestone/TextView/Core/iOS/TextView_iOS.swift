@@ -507,7 +507,7 @@ open class TextView: UIScrollView {
         }
     }
 
-    private(set) lazy var textViewController = TextViewController(textView: self)
+    private(set) lazy var textViewController = TextViewController(textView: self, scrollView: self)
     private(set) lazy var customTokenizer = TextInputStringTokenizer(
         textInput: self,
         stringView: textViewController.stringView,
@@ -561,7 +561,6 @@ open class TextView: UIScrollView {
     public override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .white
-        textViewController.textView = self
         editableTextInteraction.textInput = self
         nonEditableTextInteraction.textInput = self
         editableTextInteraction.delegate = self

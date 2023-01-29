@@ -11,7 +11,7 @@ extension TextViewController {
     }
 
     func invalidateContentSizeIfNeeded() {
-        if textView.contentSize != contentSize {
+        if scrollView.contentSize != contentSize {
             hasPendingContentSizeUpdate = true
             handleContentSizeUpdateIfNeeded()
         }
@@ -25,18 +25,20 @@ extension TextViewController {
         // or at the end of a line since it causes flickering when updating the content size while scrolling.
         // However, we do allow updating the content size if the text view is scrolled far enough on
         // the y-axis as that means it will soon run out of text to display.
-        let isBouncingAtGutter = textView.contentOffset.x < -textView.contentInset.left
-        let isBouncingAtLineEnd = textView.contentOffset.x > textView.contentSize.width - textView.frame.size.width + textView.contentInset.right
+        let gutterBounceOffset = scrollView.contentInset.left * -1
+        let lineEndBounceOffset = scrollView.contentSize.width - scrollView.frame.size.width + scrollView.contentInset.right
+        let isBouncingAtGutter = scrollView.contentOffset.x < gutterBounceOffset
+        let isBouncingAtLineEnd = scrollView.contentOffset.x > lineEndBounceOffset
         let isBouncingHorizontally = isBouncingAtGutter || isBouncingAtLineEnd
-        let isCriticalUpdate = textView.contentOffset.y > textView.contentSize.height - textView.frame.height * 1.5
-        let isScrolling = textView.isDragging || textView.isDecelerating
+        let isCriticalUpdate = scrollView.contentOffset.y > scrollView.contentSize.height - scrollView.frame.height * 1.5
+        let isScrolling = scrollView.isDragging || scrollView.isDecelerating
         guard !isBouncingHorizontally || isCriticalUpdate || !isScrolling else {
             return
         }
         hasPendingContentSizeUpdate = false
-        let oldContentOffset = textView.contentOffset
-        textView.contentSize = contentSize
-        textView.contentOffset = oldContentOffset
+        let oldContentOffset = scrollView.contentOffset
+        scrollView.contentSize = contentSize
+        scrollView.contentOffset = oldContentOffset
         textView.setNeedsLayout()
     }
 }
