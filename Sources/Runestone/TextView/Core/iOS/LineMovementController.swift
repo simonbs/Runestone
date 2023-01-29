@@ -69,10 +69,12 @@ private extension LineMovementController {
         return locationForMoving(lineOffset: lineOffset, fromLocation: lineFragmentLocalLocation, inLineFragmentAt: lineFragmentNode.index, of: line)
     }
 
-    private func locationForMoving(lineOffset: Int,
-                                   fromLocation location: Int,
-                                   inLineFragmentAt lineFragmentIndex: Int,
-                                   of line: DocumentLineNode) -> Int {
+    private func locationForMoving(
+        lineOffset: Int,
+        fromLocation location: Int,
+        inLineFragmentAt lineFragmentIndex: Int,
+        of line: DocumentLineNode
+    ) -> Int {
         if lineOffset < 0 {
             return locationForMovingUpwards(lineOffset: abs(lineOffset), fromLocation: location, inLineFragmentAt: lineFragmentIndex, of: line)
         } else if lineOffset > 0 {
@@ -90,10 +92,12 @@ private extension LineMovementController {
         }
     }
 
-    private func locationForMovingUpwards(lineOffset: Int,
-                                          fromLocation location: Int,
-                                          inLineFragmentAt lineFragmentIndex: Int,
-                                          of line: DocumentLineNode) -> Int {
+    private func locationForMovingUpwards(
+        lineOffset: Int,
+        fromLocation location: Int,
+        inLineFragmentAt lineFragmentIndex: Int,
+        of line: DocumentLineNode
+    ) -> Int {
         let takeLineCount = min(lineFragmentIndex, lineOffset)
         let remainingLineOffset = lineOffset - takeLineCount
         guard remainingLineOffset > 0 else {
@@ -113,10 +117,12 @@ private extension LineMovementController {
                                         of: previousLine)
     }
 
-    private func locationForMovingDownwards(lineOffset: Int,
-                                            fromLocation location: Int,
-                                            inLineFragmentAt lineFragmentIndex: Int,
-                                            of line: DocumentLineNode) -> Int {
+    private func locationForMovingDownwards(
+        lineOffset: Int,
+        fromLocation location: Int,
+        inLineFragmentAt lineFragmentIndex: Int,
+        of line: DocumentLineNode
+    ) -> Int {
         let numberOfLineFragments = numberOfLineFragments(in: line)
         let takeLineCount = min(numberOfLineFragments - lineFragmentIndex - 1, lineOffset)
         let remainingLineOffset = lineOffset - takeLineCount
