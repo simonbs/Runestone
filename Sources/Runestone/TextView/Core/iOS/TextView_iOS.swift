@@ -333,7 +333,7 @@ open class TextView: UIScrollView {
         }
     }
     /// The amount of spacing surrounding the lines.
-    public var textContainerInset: UIEdgeInsets {
+    public var textContainerInset: MultiPlatformEdgeInsets {
         get {
             return textViewController.textContainerInset
         }
