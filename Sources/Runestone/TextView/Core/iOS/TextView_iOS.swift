@@ -461,7 +461,14 @@ open class TextView: UIScrollView {
     /// The value only affects new line breaks inserted in the text view and changing this value does not change the line endings of the text in the text view. Defaults to Unix (LF).
     ///
     /// The TextView will only update the line endings when text is modified through an external event, such as when the user typing on the keyboard, when the user is replacing selected text, and when pasting text into the text view. In all other cases, you should make sure that the text provided to the text view uses the desired line endings. This includes when calling ``TextView/setState(_:addUndoAction:)`` and ``TextView/replaceText(in:)``.
-    public var lineEndings: LineEnding = .lf
+    public var lineEndings: LineEnding {
+        get {
+            return textViewController.lineEndings
+        }
+        set {
+            textViewController.lineEndings = newValue
+        }
+    }
     /// When enabled the text view will present a menu with actions actions such as Copy and Replace after navigating to a highlighted range.
     public var showMenuAfterNavigatingToHighlightedRange = true
     /// A boolean value that enables a text view’s built-in find interaction.
