@@ -272,9 +272,11 @@ Donec laoreet, massa sed commodo tincidunt, dui neque ullamcorper sapien, laoree
         let lineManager = LineManager(stringView: stringView)
         lineManager.rebuild()
         let highlightService = HighlightService(lineManager: lineManager)
-        let lineControllerFactory = LineControllerFactory(stringView: stringView,
-                                                          highlightService: highlightService,
-                                                          invisibleCharacterConfiguration: invisibleCharacterConfiguration)
+        let lineControllerFactory = LineControllerFactory(
+            stringView: stringView,
+            highlightService: highlightService,
+            invisibleCharacterConfiguration: invisibleCharacterConfiguration
+        )
         let lineControllerStorage = LineControllerStorage(stringView: stringView, lineControllerFactory: lineControllerFactory)
         lineControllerStorage.delegate = self
         for row in 0 ..< lineManager.lineCount {
@@ -282,10 +284,12 @@ Donec laoreet, massa sed commodo tincidunt, dui neque ullamcorper sapien, laoree
             let lineController = lineControllerStorage.getOrCreateLineController(for: line)
             lineController.prepareToDisplayString(toLocation: line.data.totalLength, syntaxHighlightAsynchronously: false)
         }
-        return TextInputStringTokenizer(textInput: textInputView,
-                                        stringView: stringView,
-                                        lineManager: lineManager,
-                                        lineControllerStorage: lineControllerStorage)
+        return TextInputStringTokenizer(
+            textInput: textInputView,
+            stringView: stringView,
+            lineManager: lineManager,
+            lineControllerStorage: lineControllerStorage
+        )
     }
 }
 
