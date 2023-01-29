@@ -1,51 +1,61 @@
 {
   "images" : [
     {
+      "filename" : "ExampleProjectMac_16x16.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "16x16"
     },
     {
+      "filename" : "ExampleProjectMac_16x16@2x.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "16x16"
     },
     {
+      "filename" : "ExampleProjectMac_32x32.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "32x32"
     },
     {
+      "filename" : "ExampleProjectMac_32x32@2x.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "32x32"
     },
     {
+      "filename" : "ExampleProjectMac_128x128.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "128x128"
     },
     {
+      "filename" : "ExampleProjectMac_128x128@2x.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "128x128"
     },
     {
+      "filename" : "ExampleProjectMac_256x256.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "256x256"
     },
     {
+      "filename" : "ExampleProjectMac_256x256@2x.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "256x256"
     },
     {
+      "filename" : "ExampleProjectMac_512x512.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "512x512"
     },
     {
+      "filename" : "ExampleProjectMac_512x512@2x.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "512x512"
