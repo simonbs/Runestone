@@ -31,6 +31,10 @@ extension NSView {
     func setNeedsLayout() {
         needsLayout = true
     }
+
+    func layoutIfNeeded() {
+        layoutSubtreeIfNeeded()
+    }
 }
 
 func UIGraphicsGetCurrentContext() -> CGContext? {
