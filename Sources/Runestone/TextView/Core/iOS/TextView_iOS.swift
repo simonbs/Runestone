@@ -1,3 +1,4 @@
+#if os(iOS)
 // swiftlint:disable file_length type_body_length
 import CoreText
 import UIKit
@@ -1318,3 +1319,4 @@ extension TextView: HighlightNavigationControllerDelegate {
         }
     }
 }
+#endif
