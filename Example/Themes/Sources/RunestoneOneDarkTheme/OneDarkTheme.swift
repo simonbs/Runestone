@@ -48,7 +48,7 @@ public final class OneDarkTheme: EditorTheme {
             return UIColor(namedInModule: "OneDarkYellow")
         case .keyword:
             return UIColor(namedInModule: "OneDarkPurple")
-        case .variableBuiltin:
+        case .variableBuiltin, .constantBuiltin:
             return UIColor(namedInModule: "OneDarkRed")
         }
     }

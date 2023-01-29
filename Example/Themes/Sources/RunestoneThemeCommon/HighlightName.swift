@@ -14,6 +14,7 @@ public enum HighlightName: String {
     case punctuation
     case string
     case variableBuiltin = "variable.builtin"
+    case constantBuiltin = "constant.builtin"
 
     public init?(_ rawHighlightName: String) {
         var comps = rawHighlightName.split(separator: ".")

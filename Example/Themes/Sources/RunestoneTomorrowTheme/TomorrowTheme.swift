@@ -48,7 +48,7 @@ public final class TomorrowTheme: EditorTheme {
             return UIColor(namedInModule: "TomorrowOrange")
         case .keyword:
             return UIColor(namedInModule: "TomorrowPurple")
-        case .variableBuiltin:
+        case .variableBuiltin, .constantBuiltin:
             return UIColor(namedInModule: "TomorrowRed")
         }
     }
