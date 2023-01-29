@@ -521,7 +521,8 @@ open class TextView: UIScrollView {
     private var isInputAccessoryViewEnabled = false
     private var _inputAccessoryView: UIView?
     private let tapGestureRecognizer = QuickTapGestureRecognizer()
-    
+    var floatingCaretView: FloatingCaretView?
+    var insertionPointColorBeforeFloatingBegan: UIColor = .label
     // Store a reference to instances of the private type UITextRangeAdjustmentGestureRecognizer in order to track adjustments
     // to the selected text range and scroll the text view when the handles approach the bottom.
     // The approach is based on the one described in Steve Shephard's blog post "Adventures with UITextInteraction".
@@ -655,7 +656,7 @@ open class TextView: UIScrollView {
     open override func paste(_ sender: Any?) {
         if let selectedTextRange = selectedTextRange, let string = UIPasteboard.general.string {
             inputDelegate?.selectionWillChange(self)
-            let preparedText = prepareTextForInsertion(string)
+            let preparedText = textViewController.prepareTextForInsertion(string)
             replace(selectedTextRange, withText: preparedText)
             inputDelegate?.selectionDidChange(self)
         }
@@ -934,6 +935,40 @@ open class TextView: UIScrollView {
     public func scrollRangeToVisible(_ range: NSRange) {
         textViewController.scrollRangeToVisible(range)
     }
+
+    /// Called when the iOS interface environment changes.
+    open override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+            textViewController.invalidateLines()
+            textViewController.layoutManager.setNeedsLayout()
+        }
+    }
+
+    /// Returns the farthest descendant of the receiver in the view hierarchy (including itself) that contains a specified point.
+    /// - Parameters:
+    ///   - point: A point specified in the receiver’s local coordinate system (bounds).
+    ///   - event: The event that warranted a call to this method. If you are calling this method from outside your event-handling code, you may specify nil.
+    /// - Returns: The view object that is the farthest descendent of the current view and contains point. Returns nil if the point lies completely outside the receiver’s view hierarchy.
+    open override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        // We end our current undo group when the user touches the view.
+        let result = super.hitTest(point, with: event)
+        if result === self {
+            undoManager?.endUndoGrouping()
+        }
+        return result
+    }
+
+    /// Tells the object when a button is released.
+    /// - Parameters:
+    ///   - presses: A set of UIPress instances that represent the buttons that the user is no longer pressing.
+    ///   - event: The event to which the presses belong.
+    open override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        super.pressesEnded(presses, with: event)
+        if let keyCode = presses.first?.key?.keyCode, presses.count == 1, textViewController.markedRange != nil {
+            handleKeyPressDuringMultistageTextInput(keyCode: keyCode)
+        }
+    }
 }
 
 extension TextView {
@@ -1017,14 +1052,6 @@ private extension TextView {
         installNonEditableInteraction()
         editorDelegate?.textViewDidEndEditing(self)
     }
-
-    private func updateCaretColor() {
-        // Removing the UITextSelectionView and re-adding it forces it to query the insertion point color.
-        if let textSelectionView = textSelectionView {
-            textSelectionView.removeFromSuperview()
-            addSubview(textSelectionView)
-        }
-    }
     
     private func installEditableInteraction() {
         if editableTextInteraction.view == nil {
@@ -1081,6 +1108,50 @@ private extension TextView {
         if let selectedRange = textViewController.selectedRange, let highlightedRange = textViewController.highlightedRange(for: selectedRange) {
             editorDelegate?.textView(self, replaceTextIn: highlightedRange)
         }
+    }
+
+    private func handleKeyPressDuringMultistageTextInput(keyCode: UIKeyboardHIDUsage) {
+        // When editing multistage text input (that is, we have a marked text) we let the user unmark the text
+        // by pressing the arrow keys or Escape. This isn't common in iOS apps but it's the default behavior
+        // on macOS and I think that works quite well for plain text editors on iOS too.
+        guard let markedRange = textViewController.markedRange, let markedText = textViewController.stringView.substring(in: markedRange) else {
+            return
+        }
+        // We only unmark the text if the marked text contains specific characters only.
+        // Some languages use multistage text input extensively and for those iOS presents a UI when
+        // navigating with the arrow keys. We do not want to interfere with that interaction.
+        let characterSet = CharacterSet(charactersIn: "`´^¨")
+        guard markedText.rangeOfCharacter(from: characterSet.inverted) == nil else {
+            return
+        }
+        switch keyCode {
+        case .keyboardUpArrow:
+            moveCaret(.up)
+            unmarkText()
+        case .keyboardRightArrow:
+            moveCaret(.right)
+            unmarkText()
+        case .keyboardDownArrow:
+            moveCaret(.down)
+            unmarkText()
+        case .keyboardLeftArrow:
+            moveCaret(.left)
+            unmarkText()
+        case .keyboardEscape:
+            unmarkText()
+        default:
+            break
+        }
+    }
+
+    private func moveCaret(_ direction: UITextLayoutDirection) {
+        guard let selectedRange = textViewController.selectedRange else {
+            return
+        }
+        guard let location = textViewController.lineMovementController.location(from: selectedRange.location, in: direction, offset: 1) else {
+            return
+        }
+        self.selectedRange = NSRange(location: location, length: 0)
     }
 }
 

@@ -29,6 +29,47 @@ public extension TextView {
             allowMovingCaretToNextLineFragment: true
         )
     }
+
+    func beginFloatingCursor(at point: CGPoint) {
+        guard floatingCaretView == nil, let position = closestPosition(to: point) else {
+            return
+        }
+        insertionPointColorBeforeFloatingBegan = insertionPointColor
+        insertionPointColor = insertionPointColorBeforeFloatingBegan.withAlphaComponent(0.5)
+        updateCaretColor()
+        let caretRect = self.caretRect(for: position)
+        let caretOrigin = CGPoint(x: point.x - caretRect.width / 2, y: point.y - caretRect.height / 2)
+        let floatingCaretView = FloatingCaretView()
+        floatingCaretView.backgroundColor = insertionPointColorBeforeFloatingBegan
+        floatingCaretView.frame = CGRect(origin: caretOrigin, size: caretRect.size)
+        addSubview(floatingCaretView)
+        self.floatingCaretView = floatingCaretView
+        editorDelegate?.textViewDidBeginFloatingCursor(self)
+    }
+
+    func updateFloatingCursor(at point: CGPoint) {
+        if let floatingCaretView = floatingCaretView {
+            let caretSize = floatingCaretView.frame.size
+            let caretOrigin = CGPoint(x: point.x - caretSize.width / 2, y: point.y - caretSize.height / 2)
+            floatingCaretView.frame = CGRect(origin: caretOrigin, size: caretSize)
+        }
+    }
+
+    func endFloatingCursor() {
+        insertionPointColor = insertionPointColorBeforeFloatingBegan
+        updateCaretColor()
+        floatingCaretView?.removeFromSuperview()
+        floatingCaretView = nil
+        editorDelegate?.textViewDidEndFloatingCursor(self)
+    }
+
+    func updateCaretColor() {
+        // Removing the UITextSelectionView and re-adding it forces it to query the insertion point color.
+        if let textSelectionView = textSelectionView {
+            textSelectionView.removeFromSuperview()
+            addSubview(textSelectionView)
+        }
+    }
 }
 
 // MARK: - Editing
@@ -42,26 +83,25 @@ public extension TextView {
     }
 
     func replace(_ range: UITextRange, withText text: String) {
-        let preparedText = prepareTextForInsertion(text)
-        if let indexedRange = range as? IndexedRange, shouldChangeText(in: indexedRange.range.nonNegativeLength, replacementText: preparedText) {
-            textViewController.replaceText(in: indexedRange.range.nonNegativeLength, with: preparedText)
-            handleTextSelectionChange()
+        let preparedText = textViewController.prepareTextForInsertion(text)
+        guard let indexedRange = range as? IndexedRange else {
+            return
         }
+        guard textViewController.shouldChangeText(in: indexedRange.range.nonNegativeLength, replacementText: preparedText) else {
+            return
+        }
+        textViewController.replaceText(in: indexedRange.range.nonNegativeLength, with: preparedText)
+        handleTextSelectionChange()
     }
 
     func insertText(_ text: String) {
-        let preparedText = prepareTextForInsertion(text)
         isRestoringPreviouslyDeletedText = hasDeletedTextWithPendingLayoutSubviews
         hasDeletedTextWithPendingLayoutSubviews = false
         defer {
             isRestoringPreviouslyDeletedText = false
         }
-        // If there is no marked range or selected range then we fallback to appending text to the end of our string.
-        let selectedRange = textViewController.markedRange
-        ?? textViewController.selectedRange
-        ?? NSRange(location: textViewController.stringView.string.length, length: 0)
-        guard shouldChangeText(in: selectedRange, replacementText: preparedText) else {
-            isRestoringPreviouslyDeletedText = false
+        let preparedText = textViewController.prepareTextForInsertion(text)
+        guard textViewController.shouldChangeText(in: selectedRange, replacementText: preparedText) else {
             return
         }
         // If we're inserting text then we can't have a marked range. However, UITextInput doesn't always clear the marked range
@@ -71,13 +111,11 @@ public extension TextView {
         textViewController.markedRange = nil
         if LineEnding(symbol: text) != nil {
             textViewController.indentController.insertLineBreak(in: selectedRange, using: lineEndings)
-            layoutIfNeeded()
-            handleTextSelectionChange()
         } else {
             textViewController.replaceText(in: selectedRange, with: preparedText)
-            layoutIfNeeded()
-            handleTextSelectionChange()
         }
+        layoutIfNeeded()
+        handleTextSelectionChange()
     }
 
     func deleteBackward() {
@@ -90,7 +128,7 @@ public extension TextView {
         if deleteRange == textViewController.markedRange {
             textViewController.markedRange = nil
         }
-        guard shouldChangeText(in: deleteRange, replacementText: "") else {
+        guard textViewController.shouldChangeText(in: deleteRange, replacementText: "") else {
             return
         }
         // Set a flag indicating that we have deleted text. This is reset in -layoutSubviews() but if this has not been reset before insertText() is called, then UIKit deleted characters prior to inserting combined characters. This happens when UIKit turns Korean characters into a single character. E.g. when typing ㅇ followed by ㅓ UIKit will perform the following operations:
@@ -199,7 +237,7 @@ public extension TextView {
             return
         }
         let markedText = markedText ?? ""
-        guard shouldChangeText(in: range, replacementText: markedText) else {
+        guard textViewController.shouldChangeText(in: range, replacementText: markedText) else {
             return
         }
         textViewController.markedRange = markedText.isEmpty ? nil : NSRange(location: range.location, length: markedText.utf16.count)
