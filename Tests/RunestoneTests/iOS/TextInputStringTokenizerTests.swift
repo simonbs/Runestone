@@ -264,9 +264,7 @@ Donec laoreet, massa sed commodo tincidunt, dui neque ullamcorper sapien, laoree
     }
 
     private func makeTokenizer() -> UITextInputTokenizer {
-        let textInputView = TextInputView(theme: DefaultTheme())
-        let stringLength = textInputView.stringView.string.length
-        textInputView.layoutLines(toLocation: stringLength)
+        let textView = TextView()
         let stringView = StringView(string: sampleText)
         let invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
         let lineManager = LineManager(stringView: stringView)
@@ -285,7 +283,7 @@ Donec laoreet, massa sed commodo tincidunt, dui neque ullamcorper sapien, laoree
             lineController.prepareToDisplayString(toLocation: line.data.totalLength, syntaxHighlightAsynchronously: false)
         }
         return TextInputStringTokenizer(
-            textInput: textInputView,
+            textInput: textView,
             stringView: stringView,
             lineManager: lineManager,
             lineControllerStorage: lineControllerStorage
