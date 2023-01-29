@@ -915,18 +915,24 @@ open class TextView: UIScrollView {
 
     /// Selects a highlighted range behind the selected range if possible.
     public func selectPreviousHighlightedRange() {
+        inputDelegate?.selectionWillChange(self)
         textViewController.highlightNavigationController.selectPreviousRange()
+        inputDelegate?.selectionDidChange(self)
     }
 
     /// Selects a highlighted range after the selected range if possible.
     public func selectNextHighlightedRange() {
+        inputDelegate?.selectionWillChange(self)
         textViewController.highlightNavigationController.selectNextRange()
+        inputDelegate?.selectionDidChange(self)
     }
 
     /// Selects the highlighed range at the specified index.
     /// - Parameter index: Index of highlighted range to select.
     public func selectHighlightedRange(at index: Int) {
+        inputDelegate?.selectionWillChange(self)
         textViewController.highlightNavigationController.selectRange(at: index)
+        inputDelegate?.selectionDidChange(self)
     }
 
     /// Synchronously displays the visible lines. This can be used to immediately update the visible lines after setting the theme. Use with caution as redisplaying the visible lines can be a costly operation.
