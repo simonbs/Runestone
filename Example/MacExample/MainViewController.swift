@@ -9,7 +9,7 @@ final class MainViewController: NSViewController {
     }()
 
     override var acceptsFirstResponder: Bool {
-        return true
+        true
     }
 
     override func viewDidLoad() {
