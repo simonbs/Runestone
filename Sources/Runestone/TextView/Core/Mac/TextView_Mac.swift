@@ -468,6 +468,7 @@ private extension TextView {
         if isWindowKey && isFirstResponder {
             caretView.isHidden = false
             caretView.isBlinkingEnabled = true
+            caretView.delayBlinkIfNeeded()
         } else {
             caretView.isHidden = true
             caretView.isBlinkingEnabled = false
