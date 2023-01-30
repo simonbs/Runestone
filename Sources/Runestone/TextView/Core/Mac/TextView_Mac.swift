@@ -344,17 +344,35 @@ public final class TextView: NSView {
 
     private let scrollView = NSScrollView()
     private let scrollContentView = FlippedView()
+    private let caretView = CaretView()
+    private var isWindowKey = false {
+        didSet {
+            if isWindowKey != oldValue {
+                updateCaretVisibility()
+            }
+        }
+    }
+    private var isFirstResponder = false {
+        didSet {
+            if isFirstResponder != oldValue {
+                updateCaretVisibility()
+            }
+        }
+    }
 
     public init() {
         super.init(frame: .zero)
+        textViewController.delegate = self
         scrollView.borderType = .noBorder
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
         scrollView.documentView = scrollContentView
         scrollView.contentView.postsBoundsChangedNotifications = true
+        scrollContentView.addSubview(caretView)
         addSubview(scrollView)
         setNeedsLayout()
-        subscribeToScrollViewBoundsDidChangeNotification()
+        setupWindowObservers()
+        setupScrollViewBoundsDidChangeObserver()
     }
 
     required init?(coder: NSCoder) {
@@ -365,6 +383,22 @@ public final class TextView: NSView {
         NotificationCenter.default.removeObserver(self)
     }
 
+    public override func becomeFirstResponder() -> Bool {
+        let result = super.becomeFirstResponder()
+        if result {
+            isFirstResponder = true
+        }
+        return result
+    }
+
+    public override func resignFirstResponder() -> Bool {
+        let result = super.resignFirstResponder()
+        if result {
+            isFirstResponder = false
+        }
+        return result
+    }
+
     public override func resizeSubviews(withOldSize oldSize: NSSize) {
         super.resizeSubviews(withOldSize: oldSize)
         scrollView.frame = bounds
@@ -372,6 +406,7 @@ public final class TextView: NSView {
         textViewController.layoutIfNeeded()
         textViewController.handleContentSizeUpdateIfNeeded()
         textViewController.viewport = CGRect(origin: scrollView.contentOffset, size: frame.size)
+        updateCaretFrame()
     }
 
     public override func viewDidMoveToWindow() {
@@ -389,7 +424,26 @@ public final class TextView: NSView {
 }
 
 private extension TextView {
-    private func subscribeToScrollViewBoundsDidChangeNotification() {
+    private func setupWindowObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowKeyStateDidChange),
+            name: NSWindow.didBecomeKeyNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowKeyStateDidChange),
+            name: NSWindow.didResignKeyNotification,
+            object: nil
+        )
+    }
+
+    @objc private func windowKeyStateDidChange() {
+        isWindowKey = window?.isKeyWindow ?? false
+    }
+
+    private func setupScrollViewBoundsDidChangeObserver() {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(scrollViewBoundsDidChange),
@@ -402,6 +456,35 @@ private extension TextView {
         textViewController.viewport = CGRect(origin: scrollView.contentOffset, size: frame.size)
         textViewController.layoutIfNeeded()
         print(textViewController.viewport)
+    }
+
+    private func updateCaretFrame() {
+        let selectedRange = selectedRange()
+        let caretRect = textViewController.caretRectService.caretRect(at: selectedRange.upperBound, allowMovingCaretToNextLineFragment: true)
+        caretView.frame = caretRect
+    }
+
+    private func updateCaretVisibility() {
+        if isWindowKey && isFirstResponder {
+            caretView.isHidden = false
+            caretView.isBlinkingEnabled = true
+        } else {
+            caretView.isHidden = true
+            caretView.isBlinkingEnabled = false
+        }
+    }
+}
+
+// MARK: - TextViewControllerDelegate
+extension TextView: TextViewControllerDelegate {
+    func textViewControllerDidChangeText(_ textViewController: TextViewController) {
+        caretView.delayBlinkIfNeeded()
+        updateCaretFrame()
+    }
+
+    func textViewController(_ textViewController: TextViewController, didUpdateSelectedRange selectedRange: NSRange?) {
+        caretView.delayBlinkIfNeeded()
+        updateCaretFrame()
     }
 }
 #endif

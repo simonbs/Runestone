@@ -564,6 +564,7 @@ open class TextView: UIScrollView {
     /// - Parameter frame: The frame rectangle of the text view.
     public override init(frame: CGRect) {
         super.init(frame: frame)
+        textViewController.delegate = self
         backgroundColor = .white
         editableTextInteraction.textInput = self
         nonEditableTextInteraction.textInput = self
@@ -1194,15 +1195,12 @@ private extension TextView {
     }
 }
 
-//// MARK: - TextInputViewDelegate
-//extension TextView: TextInputViewDelegate {
-//    func textInputViewDidChange(_ view: TextInputView) {
-//        if isAutomaticScrollEnabled, let newRange = textInputView.selectedRange, newRange.length == 0 {
-//            scrollLocationToVisible(newRange.location)
-//        }
-//        editorDelegate?.textViewDidChange(self)
-//    }
-//}
+// MARK: - TextViewControllerDelegate
+extension TextView: TextViewControllerDelegate {
+    func textViewControllerDidChangeText(_ textViewController: TextViewController) {
+        editorDelegate?.textViewDidChange(self)
+    }
+}
 
 // MARK: - SearchControllerDelegate
 extension TextView: SearchControllerDelegate {

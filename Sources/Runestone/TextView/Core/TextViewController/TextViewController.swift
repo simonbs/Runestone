@@ -1,7 +1,17 @@
 import Combine
 import Foundation
 
+protocol TextViewControllerDelegate: AnyObject {
+    func textViewControllerDidChangeText(_ textViewController: TextViewController)
+    func textViewController(_ textViewController: TextViewController, didUpdateSelectedRange selectedRange: NSRange?)
+}
+
+extension TextViewControllerDelegate {
+    func textViewController(_ textViewController: TextViewController, didUpdateSelectedRange selectedRange: NSRange?) {}
+}
+
 final class TextViewController {
+    weak var delegate: TextViewControllerDelegate?
     var textView: TextView {
         if let textView = _textView {
             return textView
@@ -32,6 +42,7 @@ final class TextViewController {
                 layoutManager.selectedRange = selectedRange
                 layoutManager.setNeedsLayoutLineSelection()
                 textView.setNeedsLayout()
+                delegate?.textViewController(self, didUpdateSelectedRange: selectedRange)
             }
         }
     }

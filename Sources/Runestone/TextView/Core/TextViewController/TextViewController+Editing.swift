@@ -184,7 +184,7 @@ private extension TextViewController {
         if isAutomaticScrollEnabled, let newRange = selectedRange, newRange.length == 0 {
             scrollLocationToVisible(newRange.location)
         }
-        textView.editorDelegate?.textViewDidChange(textView)
+        delegate?.textViewControllerDidChangeText(self)
     }
 
     private func moveCaret(to linePosition: LinePosition) {
