@@ -112,7 +112,7 @@ final class LayoutManager {
     private var lineFragmentViewReuseQueue = ViewReuseQueue<LineFragmentID, LineFragmentView>()
     private var lineNumberLabelReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineNumberView>()
     private var visibleLineIDs: Set<DocumentLineNodeID> = []
-    private let linesContainerView = MultiPlatformView()
+    private let linesContainerView = FlippedView()
     private let gutterBackgroundView = GutterBackgroundView()
     private let lineNumbersContainerView = MultiPlatformView()
     private let gutterSelectionBackgroundView = MultiPlatformView()

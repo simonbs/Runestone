@@ -5,6 +5,7 @@ final class MainViewController: NSViewController {
     private let textView: TextView = {
         let this = TextView()
         this.translatesAutoresizingMaskIntoConstraints = false
+        this.textContainerInset = NSEdgeInsets(top: 5, left: 5, bottom: 5, right: 5)
         return this
     }()
 

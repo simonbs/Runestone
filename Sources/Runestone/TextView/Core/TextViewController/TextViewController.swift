@@ -437,8 +437,12 @@ final class TextViewController {
         didSet {
             if showPageGuide != oldValue {
                 if showPageGuide {
+                    #if os(iOS)
                     textView.addSubview(pageGuideController.guideView)
                     textView.sendSubviewToBack(pageGuideController.guideView)
+                    #else
+                    textView.addSubview(pageGuideController.guideView, positioned: .below, relativeTo: nil)
+                    #endif
                     textView.setNeedsLayout()
                 } else {
                     pageGuideController.guideView.removeFromSuperview()

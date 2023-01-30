@@ -5,7 +5,7 @@ import AppKit
 import UIKit
 #endif
 
-final class LineFragmentView: MultiPlatformView, ReusableView {
+final class LineFragmentView: FlippedView, ReusableView {
     var renderer: LineFragmentRenderer? {
         didSet {
             if renderer !== oldValue {
