@@ -14,7 +14,7 @@ extension TextViewController {
         }
     }
     
-    func layout() {
+    func layoutIfNeeded() {
         layoutManager.layoutIfNeeded()
         layoutManager.layoutLineSelectionIfNeeded()
         layoutPageGuideIfNeeded()

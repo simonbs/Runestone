@@ -597,7 +597,7 @@ open class TextView: UIScrollView {
         super.layoutSubviews()
         hasDeletedTextWithPendingLayoutSubviews = false
         textViewController.scrollViewWidth = frame.width
-        textViewController.layout()
+        textViewController.layoutIfNeeded()
         // We notify the input delegate about selection changes in layoutSubviews so we have a chance of disabling notifying the input delegate during an editing operation.
         // We will sometimes disable notifying the input delegate when the user enters Korean text.
         // This workaround is inspired by a dialog with Alexander Blach (@lextar), developer of Textastic.
