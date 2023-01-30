@@ -507,7 +507,11 @@ open class TextView: UIScrollView {
         }
     }
 
-    private(set) lazy var textViewController = TextViewController(textView: self, scrollView: self)
+    private(set) lazy var textViewController = TextViewController(
+        textView: self,
+        scrollView: self,
+        scrollContentView: self
+    )
     private(set) lazy var customTokenizer = TextInputStringTokenizer(
         textInput: self,
         stringView: textViewController.stringView,

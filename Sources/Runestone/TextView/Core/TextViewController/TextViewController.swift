@@ -16,8 +16,16 @@ final class TextViewController {
             fatalError("The scroll view has been deallocated or has not been assigned")
         }
     }
+    var scrollContentView: MultiPlatformView {
+        if let scrollContentView = _scrollContentView {
+            return scrollContentView
+        } else {
+            fatalError("The scroll content view has been deallocated or has not been assigned")
+        }
+    }
     private weak var _textView: TextView?
     private weak var _scrollView: MultiPlatformScrollView?
+    private weak var _scrollContentView: MultiPlatformView?
     var selectedRange: NSRange? {
         didSet {
             if selectedRange != oldValue {
@@ -507,9 +515,10 @@ final class TextViewController {
     }
     private var cancellables: Set<AnyCancellable> = []
 
-    init(textView: TextView, scrollView: MultiPlatformScrollView) {
+    init(textView: TextView, scrollView: MultiPlatformScrollView, scrollContentView: MultiPlatformView) {
         _textView = textView
         _scrollView = scrollView
+        _scrollContentView = scrollContentView
         lineManager = LineManager(stringView: stringView)
         highlightService = HighlightService(lineManager: lineManager)
         lineControllerFactory = LineControllerFactory(
@@ -565,7 +574,7 @@ final class TextViewController {
             lineControllerStorage: lineControllerStorage
         )
         layoutManager.delegate = self
-        layoutManager.containerView = textView
+        layoutManager.containerView = scrollContentView
         applyThemeToChildren()
         indentController.delegate = self
         lineControllerStorage.delegate = self
