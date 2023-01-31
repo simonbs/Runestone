@@ -17,7 +17,7 @@ final class StringTokenizer {
 
     private let lineControllerStorage: LineControllerStorage
     private var newlineCharacters: [Character] {
-        return [Symbol.Character.lineFeed, Symbol.Character.carriageReturn, Symbol.Character.carriageReturnLineFeed]
+        [Symbol.Character.lineFeed, Symbol.Character.carriageReturn, Symbol.Character.carriageReturnLineFeed]
     }
 
     init(stringView: StringView, lineManager: LineManager, lineControllerStorage: LineControllerStorage) {
