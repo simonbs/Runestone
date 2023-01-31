@@ -1,35 +1,42 @@
+#if os(macOS)
+import AppKit
+#endif
 import Runestone
 import RunestoneThemeCommon
+#if os(iOS)
 import UIKit
+#endif
 
 public final class PlainTextTheme: EditorTheme {
-    public let backgroundColor: UIColor = .white
+    public let backgroundColor: MultiPlatformColor = .white
+    #if os(iOS)
     public let userInterfaceStyle: UIUserInterfaceStyle = .light
+    #endif
 
-    public let font: UIFont = .monospacedSystemFont(ofSize: 14, weight: .regular)
-    public let textColor: UIColor = .black
+    public let font: MultiPlatformFont = .monospacedSystemFont(ofSize: 14, weight: .regular)
+    public let textColor: MultiPlatformColor = .black
 
-    public let gutterBackgroundColor: UIColor = .white
-    public let gutterHairlineColor: UIColor = .white
+    public let gutterBackgroundColor: MultiPlatformColor = .white
+    public let gutterHairlineColor: MultiPlatformColor = .white
 
-    public let lineNumberColor: UIColor = .black.withAlphaComponent(0.5)
-    public let lineNumberFont: UIFont = .monospacedSystemFont(ofSize: 14, weight: .regular)
+    public let lineNumberColor: MultiPlatformColor = .black.withAlphaComponent(0.5)
+    public let lineNumberFont: MultiPlatformFont = .monospacedSystemFont(ofSize: 14, weight: .regular)
 
-    public let selectedLineBackgroundColor: UIColor = .black.withAlphaComponent(0.07)
-    public let selectedLinesLineNumberColor: UIColor = .black
-    public let selectedLinesGutterBackgroundColor: UIColor = .black.withAlphaComponent(0.07)
+    public let selectedLineBackgroundColor: MultiPlatformColor = .black.withAlphaComponent(0.07)
+    public let selectedLinesLineNumberColor: MultiPlatformColor = .black
+    public let selectedLinesGutterBackgroundColor: MultiPlatformColor = .black.withAlphaComponent(0.07)
 
-    public let invisibleCharactersColor: UIColor = .black.withAlphaComponent(0.5)
+    public let invisibleCharactersColor: MultiPlatformColor = .black.withAlphaComponent(0.5)
 
-    public let pageGuideHairlineColor: UIColor = .black.withAlphaComponent(0.1)
-    public let pageGuideBackgroundColor: UIColor = .black.withAlphaComponent(0.06)
+    public let pageGuideHairlineColor: MultiPlatformColor = .black.withAlphaComponent(0.1)
+    public let pageGuideBackgroundColor: MultiPlatformColor = .black.withAlphaComponent(0.06)
 
-    public let markedTextBackgroundColor: UIColor = .black.withAlphaComponent(0.1)
+    public let markedTextBackgroundColor: MultiPlatformColor = .black.withAlphaComponent(0.1)
     public let markedTextBackgroundCornerRadius: CGFloat = 4
 
     public init() {}
 
-    public func textColor(for rawHighlightName: String) -> UIColor? {
+    public func textColor(for rawHighlightName: String) -> MultiPlatformColor? {
         return nil
     }
 
