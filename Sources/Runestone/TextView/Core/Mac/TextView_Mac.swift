@@ -20,6 +20,15 @@ public final class TextView: NSView {
             scrollView.contentSize = textViewController.contentSize
         }
     }
+    /// Colors and fonts to be used by the editor.
+    public var theme: Theme {
+        get {
+            return textViewController.theme
+        }
+        set {
+            textViewController.theme = newValue
+        }
+    }
     /// Character pairs are used by the editor to automatically insert a trailing character when the user types the leading character.
     ///
     /// Common usages of this includes the \" character to surround strings and { } to surround a scope.
