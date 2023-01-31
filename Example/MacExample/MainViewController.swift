@@ -14,6 +14,8 @@ final class MainViewController: NSViewController {
         this.showSpaces = true
         this.showLineBreaks = true
         this.showSoftLineBreaks = true
+        this.lineHeightMultiplier = 1.2
+        this.kern = 0.3
         return this
     }()
 
