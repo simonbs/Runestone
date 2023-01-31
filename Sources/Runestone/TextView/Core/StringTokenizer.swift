@@ -1,10 +1,11 @@
 import Foundation
 
 final class StringTokenizer {
-    enum Granularity {
+    enum Boundary {
+        case word
         case line
         case paragraph
-        case word
+        case document
     }
 
     enum Direction {
@@ -26,25 +27,29 @@ final class StringTokenizer {
         self.lineControllerStorage = lineControllerStorage
     }
 
-    func isLocation(_ location: Int, atBoundary granularity: Granularity, inDirection direction: Direction) -> Bool {
-        switch granularity {
+    func isLocation(_ location: Int, atBoundary boundary: Boundary, inDirection direction: Direction) -> Bool {
+        switch boundary {
+        case .word:
+            return isLocation(location, atWordBoundaryInDirection: direction)
         case .line:
             return isLocation(location, atLineBoundaryInDirection: direction)
         case .paragraph:
             return isLocation(location, atParagraphBoundaryInDirection: direction)
-        case .word:
-            return isLocation(location, atWordBoundaryInDirection: direction)
+        case .document:
+            return isLocation(location, atDocumentBoundaryInDirection: direction)
         }
     }
 
-    func location(from location: Int, toBoundary granularity: Granularity, inDirection direction: Direction) -> Int? {
-        switch granularity {
+    func location(from location: Int, toBoundary boundary: Boundary, inDirection direction: Direction) -> Int? {
+        switch boundary {
+        case .word:
+            return self.location(from: location, toWordBoundaryInDirection: direction)
         case .line:
             return self.location(from: location, toLineBoundaryInDirection: direction)
         case .paragraph:
             return self.location(from: location, toParagraphBoundaryInDirection: direction)
-        case .word:
-            return self.location(from: location, toWordBoundaryInDirection: direction)
+        case .document:
+            return self.location(toDocumentBoundaryInDirection: direction)
         }
     }
 }
@@ -235,6 +240,27 @@ private extension StringTokenizer {
             } else {
                 return nil
             }
+        }
+    }
+}
+
+// MARK: - Document
+private extension StringTokenizer {
+    private func isLocation(_ location: Int, atDocumentBoundaryInDirection direction: Direction) -> Bool {
+        switch direction {
+        case .backward:
+            return location == 0
+        case .forward:
+            return location == stringView.string.length
+        }
+    }
+
+    private func location(toDocumentBoundaryInDirection direction: Direction) -> Int {
+        switch direction {
+        case .backward:
+            return 0
+        case .forward:
+            return stringView.string.length
         }
     }
 }

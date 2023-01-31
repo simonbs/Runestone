@@ -7,6 +7,17 @@ final class NavigationService {
         case word
     }
 
+    enum Boundary {
+        case line
+        case paragraph
+        case document
+    }
+
+    enum Direction {
+        case forward
+        case backward
+    }
+
     var stringView: StringView
     var lineManager: LineManager {
         get {
@@ -43,13 +54,25 @@ final class NavigationService {
     func location(movingFrom sourceLocation: Int, by granularity: Granularity, offset: Int) -> Int {
         switch granularity {
         case .character:
-            previousLineMovementOperation = nil
             return location(movingFrom: sourceLocation, byCharacterCount: offset)
         case .word:
-            previousLineMovementOperation = nil
             return location(movingFrom: sourceLocation, byWordCount: offset)
         case .line:
             return location(movingFrom: sourceLocation, byLineCount: offset)
+        }
+    }
+
+    func location(movingFrom sourceLocation: Int, toBoundary boundary: Boundary, inDirection direction: Direction) -> Int {
+        switch boundary {
+        case .line:
+            let mappedDirection = StringTokenizer.Direction(direction)
+            return stringTokenizer.location(from: sourceLocation, toBoundary: .line, inDirection: mappedDirection) ?? sourceLocation
+        case .paragraph:
+            let mappedDirection = StringTokenizer.Direction(direction)
+            return stringTokenizer.location(from: sourceLocation, toBoundary: .paragraph, inDirection: mappedDirection) ?? sourceLocation
+        case .document:
+            let mappedDirection = StringTokenizer.Direction(direction)
+            return stringTokenizer.location(from: sourceLocation, toBoundary: .document, inDirection: mappedDirection) ?? sourceLocation
         }
     }
 
@@ -127,6 +150,15 @@ private extension NavigationService {
 }
 
 private extension StringTokenizer.Direction {
+    init(_ direction: NavigationService.Direction) {
+        switch direction {
+        case .forward:
+            self = .forward
+        case .backward:
+            self = .backward
+        }
+    }
+
     var opposite: StringTokenizer.Direction {
         switch self {
         case .forward:

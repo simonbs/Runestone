@@ -490,12 +490,44 @@ public extension TextView {
         textViewController.moveDown()
     }
 
+    override func moveForward(_ sender: Any?) {
+        textViewController.moveRight()
+    }
+
+    override func moveBackward(_ sender: Any?) {
+        textViewController.moveLeft()
+    }
+
     override func moveWordLeft(_ sender: Any?) {
         textViewController.moveWordLeft()
     }
 
     override func moveWordRight(_ sender: Any?) {
         textViewController.moveWordRight()
+    }
+
+    override func moveToBeginningOfLine(_ sender: Any?) {
+        textViewController.moveToBeginningOfLine()
+    }
+
+    override func moveToEndOfLine(_ sender: Any?) {
+        textViewController.moveToEndOfLine()
+    }
+
+    override func moveToBeginningOfParagraph(_ sender: Any?) {
+        textViewController.moveToBeginningOfParagraph()
+    }
+
+    override func moveToEndOfParagraph(_ sender: Any?) {
+        textViewController.moveToEndOfParagraph()
+    }
+
+    override func moveToBeginningOfDocument(_ sender: Any?) {
+        textViewController.moveToBeginningOfDocument()
+    }
+
+    override func moveToEndOfDocument(_ sender: Any?) {
+        textViewController.moveToEndOfDocument()
     }
 }
 
