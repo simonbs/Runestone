@@ -3,16 +3,10 @@ import AppKit
 
 extension TextView: NSTextInputClient {
     public override func doCommand(by selector: Selector) {
-        if selector == NSSelectorFromString("deleteBackward:") {
-            deleteBackward()
-        } else if selector == NSSelectorFromString("insertNewline:") {
-            textViewController.indentController.insertLineBreak(in: textViewController.rangeForInsertingText, using: lineEndings)
-        } else {
-            #if DEBUG
-            print(NSStringFromSelector(selector))
-            #endif
-            super.doCommand(by: selector)
-        }
+        #if DEBUG
+        print(NSStringFromSelector(selector))
+        #endif
+        super.doCommand(by: selector)
     }
 
     public func insertText(_ string: Any, replacementRange: NSRange) {
@@ -56,36 +50,6 @@ extension TextView: NSTextInputClient {
 
     public func characterIndex(for point: NSPoint) -> Int {
         0
-    }
-}
-
-private extension TextView {
-    private func deleteBackward() {
-        guard var selectedRange = textViewController.markedRange ?? textViewController.selectedRange else {
-            return
-        }
-        if selectedRange.length == 0 {
-            selectedRange.location -= 1
-            selectedRange.length = 1
-        }
-        let deleteRange = textViewController.rangeForDeletingText(in: selectedRange)
-        // If we're deleting everything in the marked range then we clear the marked range. UITextInput doesn't do that for us.
-        // Can be tested by entering a backtick (`) in an empty document and deleting it.
-        if deleteRange == textViewController.markedRange {
-            textViewController.markedRange = nil
-        }
-        guard textViewController.shouldChangeText(in: deleteRange, replacementText: "") else {
-            return
-        }
-        let isDeletingMultipleCharacters = selectedRange.length > 1
-        if isDeletingMultipleCharacters {
-            undoManager?.endUndoGrouping()
-            undoManager?.beginUndoGrouping()
-        }
-        textViewController.replaceText(in: deleteRange, with: "", selectedRangeAfterUndo: selectedRange)
-        if isDeletingMultipleCharacters {
-            undoManager?.endUndoGrouping()
-        }
     }
 }
 #endif

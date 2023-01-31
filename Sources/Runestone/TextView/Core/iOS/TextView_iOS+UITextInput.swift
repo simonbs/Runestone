@@ -284,15 +284,23 @@ public extension TextView {
             return nil
         }
         didCallPositionFromPositionInDirectionWithOffset = true
-        let direction = LineMovementController.Direction(direction)
-        guard let newLocation = textViewController.lineMovementController.location(
-            from: indexedPosition.index,
-            in: direction,
-            offset: offset
-        ) else {
+        let navigationService = textViewController.navigationService
+        switch direction {
+        case .right:
+            let newLocation = navigationService.location(movingFrom: indexedPosition.index, by: .character, offset: offset)
+            return IndexedPosition(index: newLocation)
+        case .left:
+            let newLocation = navigationService.location(movingFrom: indexedPosition.index, by: .character, offset: offset * -1)
+            return IndexedPosition(index: newLocation)
+        case .up:
+            let newLocation = navigationService.location(movingFrom: indexedPosition.index, by: .line, offset: offset * -1)
+            return IndexedPosition(index: newLocation)
+        case .down:
+            let newLocation = navigationService.location(movingFrom: indexedPosition.index, by: .line, offset: offset)
+            return IndexedPosition(index: newLocation)
+        @unknown default:
             return nil
         }
-        return IndexedPosition(index: newLocation)
     }
 
     func compare(_ position: UITextPosition, to other: UITextPosition) -> ComparisonResult {

@@ -440,6 +440,58 @@ public final class TextView: NSView {
     }
 }
 
+// MARK: - Commands
+public extension TextView {
+    override func deleteBackward(_ sender: Any?) {
+        guard var selectedRange = textViewController.markedRange ?? textViewController.selectedRange else {
+            return
+        }
+        if selectedRange.length == 0 {
+            selectedRange.location -= 1
+            selectedRange.length = 1
+        }
+        let deleteRange = textViewController.rangeForDeletingText(in: selectedRange)
+        // If we're deleting everything in the marked range then we clear the marked range. UITextInput doesn't do that for us.
+        // Can be tested by entering a backtick (`) in an empty document and deleting it.
+        if deleteRange == textViewController.markedRange {
+            textViewController.markedRange = nil
+        }
+        guard textViewController.shouldChangeText(in: deleteRange, replacementText: "") else {
+            return
+        }
+        let isDeletingMultipleCharacters = selectedRange.length > 1
+        if isDeletingMultipleCharacters {
+            undoManager?.endUndoGrouping()
+            undoManager?.beginUndoGrouping()
+        }
+        textViewController.replaceText(in: deleteRange, with: "", selectedRangeAfterUndo: selectedRange)
+        if isDeletingMultipleCharacters {
+            undoManager?.endUndoGrouping()
+        }
+    }
+
+    override func insertNewline(_ sender: Any?) {
+        textViewController.indentController.insertLineBreak(in: textViewController.rangeForInsertingText, using: lineEndings)
+    }
+
+    override func moveLeft(_ sender: Any?) {
+        textViewController.moveLeft()
+    }
+
+    override func moveRight(_ sender: Any?) {
+        textViewController.moveRight()
+    }
+
+    override func moveUp(_ sender: Any?) {
+        textViewController.moveUp()
+    }
+
+    override func moveDown(_ sender: Any?) {
+        textViewController.moveDown()
+    }
+}
+
+// MARK: - Window
 private extension TextView {
     private func setupWindowObservers() {
         NotificationCenter.default.addObserver(
@@ -459,7 +511,10 @@ private extension TextView {
     @objc private func windowKeyStateDidChange() {
         isWindowKey = window?.isKeyWindow ?? false
     }
+}
 
+// MARK: - Scroll Bounds
+private extension TextView {
     private func setupScrollViewBoundsDidChangeObserver() {
         NotificationCenter.default.addObserver(
             self,
@@ -474,7 +529,10 @@ private extension TextView {
         textViewController.layoutIfNeeded()
         print(textViewController.viewport)
     }
+}
 
+// MARK: - Caret
+private extension TextView {
     private func updateCaretFrame() {
         let selectedRange = selectedRange()
         let caretRect = textViewController.caretRectService.caretRect(at: selectedRange.upperBound, allowMovingCaretToNextLineFragment: true)

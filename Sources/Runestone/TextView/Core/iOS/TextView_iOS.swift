@@ -1166,32 +1166,22 @@ private extension TextView {
         }
         switch keyCode {
         case .keyboardUpArrow:
-            moveCaret(.up)
+            textViewController.moveUp()
             unmarkText()
         case .keyboardRightArrow:
-            moveCaret(.right)
+            textViewController.moveRight()
             unmarkText()
         case .keyboardDownArrow:
-            moveCaret(.down)
+            textViewController.moveDown()
             unmarkText()
         case .keyboardLeftArrow:
-            moveCaret(.left)
+            textViewController.moveLeft()
             unmarkText()
         case .keyboardEscape:
             unmarkText()
         default:
             break
         }
-    }
-
-    private func moveCaret(_ direction: LineMovementController.Direction) {
-        guard let selectedRange = textViewController.selectedRange else {
-            return
-        }
-        guard let location = textViewController.lineMovementController.location(from: selectedRange.location, in: direction, offset: 1) else {
-            return
-        }
-        self.selectedRange = NSRange(location: location, length: 0)
     }
 }
 

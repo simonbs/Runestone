@@ -147,7 +147,7 @@ final class TextViewController {
                 lineControllerStorage.stringView = stringView
                 layoutManager.stringView = stringView
                 indentController.stringView = stringView
-                lineMovementController.stringView = stringView
+                navigationService.stringView = stringView
             }
         }
     }
@@ -156,11 +156,11 @@ final class TextViewController {
         didSet {
             if lineManager !== oldValue {
                 indentController.lineManager = lineManager
-                lineMovementController.lineManager = lineManager
                 gutterWidthService.lineManager = lineManager
                 contentSizeService.lineManager = lineManager
                 caretRectService.lineManager = lineManager
                 selectionRectService.lineManager = lineManager
+                navigationService.lineManager = lineManager
                 highlightService.lineManager = lineManager
             }
         }
@@ -172,9 +172,9 @@ final class TextViewController {
     let contentSizeService: ContentSizeService
     let caretRectService: CaretRectService
     let selectionRectService: SelectionRectService
+    let navigationService: NavigationService
     let layoutManager: LayoutManager
     let indentController: IndentController
-    let lineMovementController: LineMovementController
     let pageGuideController = PageGuideController()
     let highlightNavigationController = HighlightNavigationController()
     let timedUndoManager = TimedUndoManager()
@@ -564,6 +564,11 @@ final class TextViewController {
             gutterWidthService: gutterWidthService,
             caretRectService: caretRectService
         )
+        navigationService = NavigationService(
+            stringView: stringView,
+            lineManager: lineManager,
+            lineControllerStorage: lineControllerStorage
+        )
         layoutManager = LayoutManager(
             lineManager: lineManager,
             languageMode: languageMode,
@@ -582,11 +587,6 @@ final class TextViewController {
             languageMode: languageMode,
             indentStrategy: indentStrategy,
             indentFont: theme.font
-        )
-        lineMovementController = LineMovementController(
-            lineManager: lineManager,
-            stringView: stringView,
-            lineControllerStorage: lineControllerStorage
         )
         layoutManager.delegate = self
         layoutManager.containerView = scrollContentView
