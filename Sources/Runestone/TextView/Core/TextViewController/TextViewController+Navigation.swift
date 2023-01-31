@@ -16,6 +16,14 @@ extension TextViewController {
     func moveDown() {
         move(by: .line, offset: 1)
     }
+
+    func moveWordLeft() {
+        move(by: .word, offset: -1)
+    }
+
+    func moveWordRight() {
+        move(by: .word, offset: 1)
+    }
 }
 
 private extension TextViewController {

@@ -489,6 +489,14 @@ public extension TextView {
     override func moveDown(_ sender: Any?) {
         textViewController.moveDown()
     }
+
+    override func moveWordLeft(_ sender: Any?) {
+        textViewController.moveWordLeft()
+    }
+
+    override func moveWordRight(_ sender: Any?) {
+        textViewController.moveWordRight()
+    }
 }
 
 // MARK: - Window
