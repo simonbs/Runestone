@@ -419,10 +419,10 @@ public final class TextView: NSView {
     public override func resizeSubviews(withOldSize oldSize: NSSize) {
         super.resizeSubviews(withOldSize: oldSize)
         scrollView.frame = bounds
-        textViewController.scrollViewWidth = frame.width
+        textViewController.viewport = CGRect(origin: scrollView.contentOffset, size: frame.size)
+        textViewController.scrollViewWidth = scrollView.frame.width
         textViewController.layoutIfNeeded()
         textViewController.handleContentSizeUpdateIfNeeded()
-        textViewController.viewport = CGRect(origin: scrollView.contentOffset, size: frame.size)
         updateCaretFrame()
     }
 
