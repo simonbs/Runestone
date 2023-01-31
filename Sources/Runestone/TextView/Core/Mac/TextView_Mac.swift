@@ -392,6 +392,7 @@ public final class TextView: NSView {
         textViewController.delegate = self
         textViewController.selectedRange = NSRange(location: 0, length: 0)
         scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
         scrollView.documentView = scrollContentView
