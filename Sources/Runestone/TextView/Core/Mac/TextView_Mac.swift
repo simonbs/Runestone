@@ -363,6 +363,7 @@ public final class TextView: NSView {
     public init() {
         super.init(frame: .zero)
         textViewController.delegate = self
+        textViewController.selectedRange = NSRange(location: 0, length: 0)
         scrollView.borderType = .noBorder
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
