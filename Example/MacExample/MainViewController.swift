@@ -10,6 +10,10 @@ final class MainViewController: NSViewController {
         let this = TextView()
         this.translatesAutoresizingMaskIntoConstraints = false
         this.textContainerInset = NSEdgeInsets(top: 5, left: 5, bottom: 5, right: 5)
+        this.showTabs = true
+        this.showSpaces = true
+        this.showLineBreaks = true
+        this.showSoftLineBreaks = true
         return this
     }()
 
