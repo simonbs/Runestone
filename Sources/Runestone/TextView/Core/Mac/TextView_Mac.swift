@@ -6,6 +6,20 @@ public final class TextView: NSView {
     public override var acceptsFirstResponder: Bool {
         true
     }
+    /// Whether the text view is in a state where the contents can be edited.
+    public var isEditing: Bool {
+        textViewController.isEditing
+    }
+    /// The text that the text view displays.
+    public var text: String {
+        get {
+            return textViewController.text
+        }
+        set {
+            textViewController.text = newValue
+            scrollView.contentSize = textViewController.contentSize
+        }
+    }
     /// Character pairs are used by the editor to automatically insert a trailing character when the user types the leading character.
     ///
     /// Common usages of this includes the \" character to surround strings and { } to surround a scope.
