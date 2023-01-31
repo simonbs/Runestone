@@ -125,10 +125,10 @@ private extension StringTokenizer {
             } else {
                 var currentIndex = location
                 while currentIndex < stringView.string.length {
-                    guard let currentCharacter = stringView.character(at: currentIndex) else {
+                    guard let currentString = stringView.composedSubstring(at: currentIndex) else {
                         break
                     }
-                    if newlineCharacters.contains(currentCharacter) {
+                    if currentString.count == 1, let character = currentString.first, newlineCharacters.contains(character) {
                         break
                     }
                     currentIndex += 1
@@ -141,10 +141,10 @@ private extension StringTokenizer {
             } else {
                 var currentIndex = location - 1
                 while currentIndex > 0 {
-                    guard let currentCharacter = stringView.character(at: currentIndex) else {
+                    guard let currentString = stringView.composedSubstring(at: currentIndex) else {
                         break
                     }
-                    if newlineCharacters.contains(currentCharacter) {
+                    if currentString.count == 1, let character = currentString.first, newlineCharacters.contains(character) {
                         currentIndex += 1
                         break
                     }
@@ -163,11 +163,11 @@ private extension StringTokenizer {
         if direction == .forward {
             if location == 0 {
                 return false
-            } else if let previousCharacter = stringView.character(at: location - 1) {
+            } else if let previousCharacter = stringView.composedSubstring(at: location - 1) {
                 if location == stringView.string.length {
-                    return alphanumerics.contains(previousCharacter)
-                } else if let character = stringView.character(at: location) {
-                    return alphanumerics.contains(previousCharacter) && !alphanumerics.contains(character)
+                    return alphanumerics.containsAllCharacters(of: previousCharacter)
+                } else if let character = stringView.composedSubstring(at: location) {
+                    return alphanumerics.containsAllCharacters(of: previousCharacter) && !alphanumerics.containsAllCharacters(of: character)
                 } else {
                     return false
                 }
@@ -177,11 +177,11 @@ private extension StringTokenizer {
         } else {
             if location == stringView.string.length {
                 return false
-            } else if let character = stringView.character(at: location) {
+            } else if let string = stringView.composedSubstring(at: location) {
                 if location == 0 {
-                    return alphanumerics.contains(character)
-                } else if let previousCharacter = stringView.character(at: location - 1) {
-                    return alphanumerics.contains(character) && !alphanumerics.contains(previousCharacter)
+                    return alphanumerics.containsAllCharacters(of: string)
+                } else if let previousCharacter = stringView.composedSubstring(at: location - 1) {
+                    return alphanumerics.containsAllCharacters(of: string) && !alphanumerics.containsAllCharacters(of: previousCharacter)
                 } else {
                     return false
                 }
@@ -197,15 +197,15 @@ private extension StringTokenizer {
         if direction == .forward {
             if location == stringView.string.length {
                 return location
-            } else if let referenceCharacter = stringView.character(at: location) {
-                let isReferenceCharacterAlphanumeric = alphanumerics.contains(referenceCharacter)
+            } else if let referenceString = stringView.composedSubstring(at: location) {
+                let isReferenceStringAlphanumeric = alphanumerics.containsAllCharacters(of: referenceString)
                 var currentIndex = location + 1
                 while currentIndex < stringView.string.length {
-                    guard let currentCharacter = stringView.character(at: currentIndex) else {
+                    guard let currentString = stringView.composedSubstring(at: currentIndex) else {
                         break
                     }
-                    let isCurrentCharacterAlphanumeric = alphanumerics.contains(currentCharacter)
-                    if isReferenceCharacterAlphanumeric != isCurrentCharacterAlphanumeric {
+                    let isCurrentStringAlphanumeric = alphanumerics.containsAllCharacters(of: currentString)
+                    if isReferenceStringAlphanumeric != isCurrentStringAlphanumeric {
                         break
                     }
                     currentIndex += 1
@@ -217,15 +217,15 @@ private extension StringTokenizer {
         } else {
             if location == 0 {
                 return location
-            } else if let referenceCharacter = stringView.character(at: location - 1) {
-                let isReferenceCharacterAlphanumeric = alphanumerics.contains(referenceCharacter)
+            } else if let referenceString = stringView.composedSubstring(at: location - 1) {
+                let isReferenceStringAlphanumeric = alphanumerics.containsAllCharacters(of: referenceString)
                 var currentIndex = location - 1
                 while currentIndex > 0 {
-                    guard let currentCharacter = stringView.character(at: currentIndex) else {
+                    guard let currentString = stringView.composedSubstring(at: currentIndex) else {
                         break
                     }
-                    let isCurrentCharacterAlphanumeric = alphanumerics.contains(currentCharacter)
-                    if isReferenceCharacterAlphanumeric != isCurrentCharacterAlphanumeric {
+                    let isCurrentStringAlphanumeric = alphanumerics.containsAllCharacters(of: currentString)
+                    if isReferenceStringAlphanumeric != isCurrentStringAlphanumeric {
                         currentIndex += 1
                         break
                     }
@@ -242,5 +242,28 @@ private extension StringTokenizer {
 private extension CharacterSet {
     func contains(_ character: Character) -> Bool {
         return character.unicodeScalars.allSatisfy(contains(_:))
+    }
+}
+
+private extension StringView {
+    func composedSubstring(at location: Int) -> String? {
+        guard location >= 0 && location < string.length else {
+            return nil
+        }
+        let range = string.customRangeOfComposedCharacterSequence(at: location)
+        return substring(in: range)
+    }
+}
+
+private extension CharacterSet {
+    func containsAllCharacters(of string: String) -> Bool {
+        var containsAllCharacters = true
+        for char in string.unicodeScalars {
+            if !contains(char) {
+                containsAllCharacters = false
+                break
+            }
+        }
+        return containsAllCharacters
     }
 }

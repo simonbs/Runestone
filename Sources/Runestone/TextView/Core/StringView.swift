@@ -55,14 +55,6 @@ final class StringView {
         }
     }
 
-    func character(at location: Int) -> Character? {
-        if location >= 0 && location < string.length, let scalar = Unicode.Scalar(internalString.character(at: location)) {
-            return Character(scalar)
-        } else {
-            return nil
-        }
-    }
-
     func replaceText(in range: NSRange, with string: String) {
         internalString.replaceCharacters(in: range, with: string)
         invalidate()
