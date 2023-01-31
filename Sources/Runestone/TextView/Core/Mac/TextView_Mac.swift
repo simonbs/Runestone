@@ -356,6 +356,10 @@ public final class TextView: NSView {
         scrollContentView: scrollContentView
     )
 
+    public override var isFlipped: Bool {
+        true
+    }
+
     private let scrollView = NSScrollView()
     private let scrollContentView = FlippedView()
     private let caretView = CaretView()
@@ -528,6 +532,11 @@ public extension TextView {
 
     override func moveToEndOfDocument(_ sender: Any?) {
         textViewController.moveToEndOfDocument()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        textViewController.moveToLocation(closestTo: point)
     }
 }
 

@@ -58,6 +58,13 @@ extension TextViewController {
         navigationService.resetPreviousLineMovementOperation()
         move(toBoundary: .document, inDirection: .forward)
     }
+
+    func moveToLocation(closestTo point: CGPoint) {
+        if let location = layoutManager.closestIndex(to: point) {
+            navigationService.resetPreviousLineMovementOperation()
+            selectedRange = NSRange(location: location, length: 0)
+        }
+    }
 }
 
 private extension TextViewController {
