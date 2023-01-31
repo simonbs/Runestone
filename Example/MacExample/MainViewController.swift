@@ -1,5 +1,9 @@
 import Cocoa
 import Runestone
+import RunestoneOneDarkTheme
+import RunestoneThemeCommon
+import RunestoneTomorrowNightTheme
+import RunestoneTomorrowTheme
 
 final class MainViewController: NSViewController {
     private let textView: TextView = {
@@ -16,6 +20,7 @@ final class MainViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupTextView()
+        applyTheme(OneDarkTheme())
     }
 }
 
@@ -28,5 +33,11 @@ private extension MainViewController {
             textView.topAnchor.constraint(equalTo: view.topAnchor),
             textView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+    }
+
+    private func applyTheme(_ theme: EditorTheme) {
+        textView.theme = theme
+        textView.wantsLayer = true
+        textView.layer?.backgroundColor = theme.backgroundColor.cgColor
     }
 }
