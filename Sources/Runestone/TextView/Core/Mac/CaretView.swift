@@ -2,7 +2,7 @@
 import AppKit
 
 final class CaretView: NSView {
-    var color: NSColor = .white {
+    var color: NSColor = .label {
         didSet {
             if color != oldValue {
                 setNeedsDisplay()
