@@ -488,6 +488,10 @@ public extension TextView {
         textViewController.indentController.insertLineBreak(in: textViewController.rangeForInsertingText, using: lineEndings)
     }
 
+    override func insertTab(_ sender: Any?) {
+        textViewController.replaceText(in: textViewController.rangeForInsertingText, with: "\t")
+    }
+
     override func moveLeft(_ sender: Any?) {
         textViewController.moveLeft()
     }
