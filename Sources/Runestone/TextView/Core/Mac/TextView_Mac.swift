@@ -383,6 +383,7 @@ public final class TextView: NSView {
         NotificationCenter.default.removeObserver(self)
     }
 
+    @discardableResult
     public override func becomeFirstResponder() -> Bool {
         let result = super.becomeFirstResponder()
         if result {
@@ -391,6 +392,7 @@ public final class TextView: NSView {
         return result
     }
 
+    @discardableResult
     public override func resignFirstResponder() -> Bool {
         let result = super.resignFirstResponder()
         if result {
