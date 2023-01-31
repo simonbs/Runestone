@@ -86,8 +86,13 @@ private extension NavigationService {
         if let previousLineMovementOperation {
             let newOffset = previousLineMovementOperation.offset + offset
             let overridenSourceLocation = previousLineMovementOperation.sourceLocation
-            self.previousLineMovementOperation = LineMovementOperation(sourceLocation: overridenSourceLocation, offset: newOffset)
-            return lineNavigationService.location(movingFrom: overridenSourceLocation, byOffset: newOffset)
+            let destinationLocation = lineNavigationService.location(movingFrom: overridenSourceLocation, byOffset: newOffset)
+            // Only store the updated offset if the destination location is different from the source location.
+            // Otherwise the user can jump to the end of the document multiple times by pressing the down key and will need to press the up key multiple times to jump back.
+            if destinationLocation != sourceLocation {
+                self.previousLineMovementOperation = LineMovementOperation(sourceLocation: overridenSourceLocation, offset: newOffset)
+            }
+            return destinationLocation
         } else {
             previousLineMovementOperation = LineMovementOperation(sourceLocation: sourceLocation, offset: offset)
             return lineNavigationService.location(movingFrom: sourceLocation, byOffset: offset)
