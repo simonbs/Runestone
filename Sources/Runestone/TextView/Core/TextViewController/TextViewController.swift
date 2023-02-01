@@ -515,7 +515,7 @@ final class TextViewController {
             }
         }
     }
-    var isAutomaticScrollEnabled = false
+    var isAutomaticScrollEnabled = true
     var hasPendingFullLayout = false
     var preserveUndoStackWhenSettingString = false
     private(set) var maximumLeadingCharacterPairComponentLength = 0
