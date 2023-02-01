@@ -50,5 +50,6 @@ private extension MainViewController {
         textView.theme = theme
         textView.wantsLayer = true
         textView.layer?.backgroundColor = theme.backgroundColor.cgColor
+        textView.insertionPointColor = theme.textColor
     }
 }
