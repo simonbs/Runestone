@@ -6,6 +6,7 @@ import RunestoneTomorrowNightTheme
 import RunestoneTomorrowTheme
 
 final class MainViewController: NSViewController {
+    private let theme: EditorTheme = OneDarkTheme()
     private let textView: TextView = {
         let this = TextView()
         this.translatesAutoresizingMaskIntoConstraints = false
@@ -31,7 +32,12 @@ final class MainViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupTextView()
-        applyTheme(OneDarkTheme())
+        applyTheme(theme)
+    }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        view.window?.backgroundColor = theme.backgroundColor
     }
 }
 
