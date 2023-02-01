@@ -55,6 +55,9 @@ open class TextView: UIScrollView {
         set {
             if newValue != isSelectable {
                 textViewController.isSelectable = newValue
+                if !isSelectable && isEditing {
+                    handleTextSelectionChange()
+                }
                 if !newValue {
                     installNonEditableInteraction()
                 }
@@ -1023,12 +1026,9 @@ extension TextView {
         }
     }
 
-    func handleTextSelectionChange() {
+    private func handleTextSelectionChange() {
         UIMenuController.shared.hideMenu(from: self)
-        textViewController.highlightNavigationController.selectedRange = textViewController.selectedRange
-        if isAutomaticScrollEnabled, let newRange = textViewController.selectedRange, newRange.length == 0 {
-            textViewController.scrollLocationToVisible(newRange.location)
-        }
+        scrollToVisibleLocationIfNeeded()
         editorDelegate?.textViewDidChangeSelection(self)
     }
 
@@ -1183,12 +1183,22 @@ private extension TextView {
             break
         }
     }
+
+    private func scrollToVisibleLocationIfNeeded() {
+        if isAutomaticScrollEnabled, let newRange = textViewController.selectedRange, newRange.length == 0 {
+            textViewController.scrollLocationToVisible(newRange.location)
+        }
+    }
 }
 
 // MARK: - TextViewControllerDelegate
 extension TextView: TextViewControllerDelegate {
     func textViewControllerDidChangeText(_ textViewController: TextViewController) {
         editorDelegate?.textViewDidChange(self)
+    }
+
+    func textViewController(_ textViewController: TextViewController, didUpdateSelectedRange selectedRange: NSRange?) {
+        handleTextSelectionChange()
     }
 }
 
@@ -1230,9 +1240,7 @@ extension TextView: KeyboardObserverDelegate {
         keyboardWillShowWithHeight keyboardHeight: CGFloat,
         animation: KeyboardObserver.Animation?
     ) {
-        if isAutomaticScrollEnabled, let newRange = textViewController.selectedRange, newRange.length == 0 {
-            textViewController.scrollRangeToVisible(newRange)
-        }
+        scrollToVisibleLocationIfNeeded()
     }
 }
 

@@ -91,7 +91,6 @@ public extension TextView {
             return
         }
         textViewController.replaceText(in: indexedRange.range.nonNegativeLength, with: preparedText)
-        handleTextSelectionChange()
     }
 
     func insertText(_ text: String) {
@@ -115,7 +114,6 @@ public extension TextView {
             textViewController.replaceText(in: selectedRange, with: preparedText)
         }
         layoutIfNeeded()
-        handleTextSelectionChange()
     }
 
     func deleteBackward() {
@@ -161,7 +159,6 @@ public extension TextView {
         if isDeletingMultipleCharacters {
             undoManager?.endUndoGrouping()
         }
-        handleTextSelectionChange()
     }
 }
 

@@ -627,7 +627,7 @@ private extension TextView {
     }
 }
 
-// MARK: - Scroll Bounds
+// MARK: - Scrolling
 private extension TextView {
     private func setupScrollViewBoundsDidChangeObserver() {
         NotificationCenter.default.addObserver(
@@ -641,6 +641,12 @@ private extension TextView {
     @objc private func scrollViewBoundsDidChange() {
         textViewController.viewport = CGRect(origin: scrollView.contentOffset, size: frame.size)
         textViewController.layoutIfNeeded()
+    }
+
+    private func scrollToVisibleLocationIfNeeded() {
+        if isAutomaticScrollEnabled, let newRange = textViewController.selectedRange, newRange.length == 0 {
+            textViewController.scrollLocationToVisible(newRange.location)
+        }
     }
 }
 
@@ -672,8 +678,10 @@ extension TextView: TextViewControllerDelegate {
     }
 
     func textViewController(_ textViewController: TextViewController, didUpdateSelectedRange selectedRange: NSRange?) {
+        layoutIfNeeded()
         caretView.delayBlinkIfNeeded()
         updateCaretFrame()
+        scrollToVisibleLocationIfNeeded()
     }
 }
 #endif

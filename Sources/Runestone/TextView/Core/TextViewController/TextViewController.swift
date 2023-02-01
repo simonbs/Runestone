@@ -33,10 +33,8 @@ final class TextViewController {
             if selectedRange != oldValue {
                 layoutManager.selectedRange = selectedRange
                 layoutManager.setNeedsLayoutLineSelection()
+                highlightNavigationController.selectedRange = selectedRange
                 textView.setNeedsLayout()
-                #if os(macOS)
-                textView.layoutIfNeeded()
-                #endif
                 delegate?.textViewController(self, didUpdateSelectedRange: selectedRange)
             }
         }
@@ -63,9 +61,6 @@ final class TextViewController {
             if isSelectable != oldValue && !isSelectable && isEditing {
                 textView.resignFirstResponder()
                 selectedRange = nil
-                #if os(iOS)
-                textView.handleTextSelectionChange()
-                #endif
                 isEditing = false
                 textView.editorDelegate?.textViewDidEndEditing(textView)
             }
