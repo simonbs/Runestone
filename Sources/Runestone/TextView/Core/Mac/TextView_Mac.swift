@@ -386,6 +386,23 @@ public final class TextView: NSView {
             }
         }
     }
+    private var shouldBeginEditing: Bool {
+        guard isEditable else {
+            return false
+        }
+        if let editorDelegate = editorDelegate {
+            return editorDelegate.textViewShouldBeginEditing(self)
+        } else {
+            return true
+        }
+    }
+    private var shouldEndEditing: Bool {
+        if let editorDelegate = editorDelegate {
+            return editorDelegate.textViewShouldEndEditing(self)
+        } else {
+            return true
+        }
+    }
 
     public init() {
         super.init(frame: .zero)
@@ -413,21 +430,33 @@ public final class TextView: NSView {
     }
 
     @discardableResult
-    public override func becomeFirstResponder() -> Bool {
-        let result = super.becomeFirstResponder()
-        if result {
-            isFirstResponder = true
+    override open func becomeFirstResponder() -> Bool {
+        guard !isEditing && shouldBeginEditing else {
+            return false
         }
-        return result
+        let didBecomeFirstResponder = super.becomeFirstResponder()
+        if didBecomeFirstResponder {
+            isFirstResponder = true
+            textViewController.isEditing = true
+            editorDelegate?.textViewDidBeginEditing(self)
+        } else {
+            textViewController.isEditing = false
+        }
+        return didBecomeFirstResponder
     }
 
     @discardableResult
-    public override func resignFirstResponder() -> Bool {
-        let result = super.resignFirstResponder()
-        if result {
-            isFirstResponder = false
+    override open func resignFirstResponder() -> Bool {
+        guard isEditing && shouldEndEditing else {
+            return false
         }
-        return result
+        let didResignFirstResponder = super.resignFirstResponder()
+        if didResignFirstResponder {
+            isFirstResponder = false
+            textViewController.isEditing = false
+            editorDelegate?.textViewDidEndEditing(self)
+        }
+        return didResignFirstResponder
     }
 
     public override func resizeSubviews(withOldSize oldSize: NSSize) {
