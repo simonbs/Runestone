@@ -1,7 +1,7 @@
 #if os(macOS)
 import AppKit
 
-public final class TextView: NSView {
+open class TextView: NSView {
     public weak var editorDelegate: TextViewDelegate?
     public override var acceptsFirstResponder: Bool {
         true
@@ -421,7 +421,7 @@ public final class TextView: NSView {
         setupScrollViewBoundsDidChangeObserver()
     }
 
-    required init?(coder: NSCoder) {
+    required public init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
