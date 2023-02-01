@@ -549,7 +549,7 @@ public extension TextView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        let point = convert(event.locationInWindow, from: nil)
+        let point = scrollContentView.convert(event.locationInWindow, from: nil)
         textViewController.moveToLocation(closestTo: point)
     }
 }
