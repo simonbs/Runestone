@@ -6,6 +6,20 @@ open class TextView: NSView {
     public override var acceptsFirstResponder: Bool {
         true
     }
+    public override var isFlipped: Bool {
+        true
+    }
+    /// A Boolean value that indicates whether the text view is editable.
+    public var isEditable: Bool {
+        get {
+            return textViewController.isEditable
+        }
+        set {
+            if newValue != isEditable {
+                textViewController.isEditable = newValue
+            }
+        }
+    }
     /// Whether the text view is in a state where the contents can be edited.
     public var isEditing: Bool {
         textViewController.isEditing
@@ -358,16 +372,16 @@ open class TextView: NSView {
             textViewController.lineEndings = newValue
         }
     }
-
-    private(set) lazy var textViewController = TextViewController(
-        textView: self,
-        scrollView: scrollView,
-        scrollContentView: scrollContentView
-    )
-
-    public override var isFlipped: Bool {
-        true
+    /// The color of the insertion point. This can be used to control the color of the caret.
+    public var insertionPointColor: NSColor = .label {
+        didSet {
+            if insertionPointColor != oldValue {
+                caretView.color = insertionPointColor
+            }
+        }
     }
+
+    private(set) lazy var textViewController = TextViewController(textView: self, scrollView: scrollView)
 
     private let scrollView = NSScrollView()
     private let scrollContentView = FlippedView()
@@ -414,7 +428,10 @@ open class TextView: NSView {
         scrollView.hasHorizontalScroller = true
         scrollView.documentView = scrollContentView
         scrollView.contentView.postsBoundsChangedNotifications = true
+        scrollContentView.addSubview(textViewController.layoutManager.linesContainerView)
         scrollContentView.addSubview(caretView)
+        scrollView.addSubview(textViewController.layoutManager.gutterContainerView, positioned: .below, relativeTo: scrollView.horizontalScroller)
+        addSubview(textViewController.layoutManager.lineSelectionBackgroundView)
         addSubview(scrollView)
         setNeedsLayout()
         setupWindowObservers()
@@ -467,6 +484,11 @@ open class TextView: NSView {
         textViewController.layoutIfNeeded()
         textViewController.handleContentSizeUpdateIfNeeded()
         updateCaretFrame()
+    }
+
+    public override func layoutSubtreeIfNeeded() {
+        super.layoutSubtreeIfNeeded()
+        textViewController.layoutIfNeeded()
     }
 
     public override func viewDidMoveToWindow() {

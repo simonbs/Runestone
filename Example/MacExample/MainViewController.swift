@@ -9,13 +9,18 @@ final class MainViewController: NSViewController {
     private let textView: TextView = {
         let this = TextView()
         this.translatesAutoresizingMaskIntoConstraints = false
-        this.textContainerInset = NSEdgeInsets(top: 5, left: 5, bottom: 5, right: 5)
+        this.textContainerInset = NSEdgeInsets(top: 0, left: 5, bottom: 0, right: 5)
+        this.showLineNumbers = true
         this.showTabs = true
         this.showSpaces = true
         this.showLineBreaks = true
         this.showSoftLineBreaks = true
         this.lineHeightMultiplier = 1.2
         this.kern = 0.3
+        this.lineSelectionDisplayType = .line
+        this.gutterLeadingPadding = 4
+        this.gutterTrailingPadding = 4
+        this.isLineWrappingEnabled = false
         return this
     }()
 

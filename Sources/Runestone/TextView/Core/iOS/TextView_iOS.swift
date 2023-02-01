@@ -507,11 +507,7 @@ open class TextView: UIScrollView {
         }
     }
 
-    private(set) lazy var textViewController = TextViewController(
-        textView: self,
-        scrollView: self,
-        scrollContentView: self
-    )
+    private(set) lazy var textViewController = TextViewController(textView: self, scrollView: self)
     private(set) lazy var customTokenizer = TextInputStringTokenizer(
         textInput: self,
         stringView: textViewController.stringView,
@@ -579,6 +575,9 @@ open class TextView: UIScrollView {
         editMenuController.delegate = self
         editMenuController.setupEditMenu(in: self)
         textViewController.highlightNavigationController.delegate = self
+        addSubview(textViewController.layoutManager.lineSelectionBackgroundView)
+        addSubview(textViewController.layoutManager.linesContainerView)
+        addSubview(textViewController.layoutManager.gutterContainerView)
     }
 
     /// The initializer has not been implemented.
@@ -612,6 +611,7 @@ open class TextView: UIScrollView {
         }
         textViewController.handleContentSizeUpdateIfNeeded()
         textViewController.viewport = CGRect(origin: contentOffset, size: frame.size)
+        textViewController.layoutManager.bringGutterToFront()
     }
 
     /// Called when the safe area of the view changes.

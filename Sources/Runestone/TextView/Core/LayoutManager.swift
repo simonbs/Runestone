@@ -12,13 +12,6 @@ protocol LayoutManagerDelegate: AnyObject {
 
 final class LayoutManager {
     weak var delegate: LayoutManagerDelegate?
-    weak var containerView: MultiPlatformView? {
-        didSet {
-            if containerView != oldValue {
-                setupViewHierarchy()
-            }
-        }
-    }
     var lineManager: LineManager
     var stringView: StringView
     var scrollViewWidth: CGFloat = 0
@@ -92,7 +85,7 @@ final class LayoutManager {
     var lineHeightMultiplier: CGFloat = 1
     var constrainingLineWidth: CGFloat {
         if isLineWrappingEnabled {
-            return scrollViewWidth - leadingLineSpacing - textContainerInset.right - safeAreaInsets.left - safeAreaInsets.right
+            return scrollViewWidth - textContainerInset.left - textContainerInset.right - safeAreaInsets.left - safeAreaInsets.right
         } else {
             // Rendering multiple very long lines is very expensive. In order to let the editor remain useable,
             // we set a very high maximum line width when line wrapping is disabled.
@@ -108,24 +101,17 @@ final class LayoutManager {
     }
 
     // MARK: - Views
-    let gutterContainerView = MultiPlatformView()
+    let linesContainerView = FlippedView()
+    let lineSelectionBackgroundView = FlippedView()
+    let gutterContainerView = FlippedView()
     private var lineFragmentViewReuseQueue = ViewReuseQueue<LineFragmentID, LineFragmentView>()
     private var lineNumberLabelReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineNumberView>()
     private var visibleLineIDs: Set<DocumentLineNodeID> = []
-    private let linesContainerView = FlippedView()
     private let gutterBackgroundView = GutterBackgroundView()
-    private let lineNumbersContainerView = MultiPlatformView()
-    private let gutterSelectionBackgroundView = MultiPlatformView()
-    private let lineSelectionBackgroundView = MultiPlatformView()
+    private let gutterSelectionBackgroundView = FlippedView()
+    private let lineNumbersContainerView = FlippedView()
 
     // MARK: - Sizing
-    private var leadingLineSpacing: CGFloat {
-        if showLineNumbers {
-            return gutterWidthService.gutterWidth + textContainerInset.left
-        } else {
-            return textContainerInset.left
-        }
-    }
     private var insetViewport: CGRect {
         let x = viewport.minX - textContainerInset.left
         let y = viewport.minY - textContainerInset.top
@@ -170,15 +156,19 @@ final class LayoutManager {
         #if os(iOS)
         self.linesContainerView.isUserInteractionEnabled = false
         self.lineNumbersContainerView.isUserInteractionEnabled = false
-        self.gutterContainerView.isUserInteractionEnabled = false
         self.gutterBackgroundView.isUserInteractionEnabled = false
         self.gutterSelectionBackgroundView.isUserInteractionEnabled = false
         self.lineSelectionBackgroundView.isUserInteractionEnabled = false
+        #else
+        self.gutterBackgroundView.wantsLayer = true
+        self.gutterSelectionBackgroundView.wantsLayer = true
+        self.lineSelectionBackgroundView.wantsLayer = true
         #endif
         self.updateShownViews()
         #if os(iOS)
         subscribeToMemoryWarningNotification()
         #endif
+        setupViewHierarchy()
     }
 
     func redisplayVisibleLines() {
@@ -256,7 +246,7 @@ extension LayoutManager {
     }
 
     func closestIndex(to point: CGPoint) -> Int? {
-        let adjustedXPosition = point.x - leadingLineSpacing
+        let adjustedXPosition = point.x - textContainerInset.left
         let adjustedYPosition = point.y - textContainerInset.top
         let adjustedPoint = CGPoint(x: adjustedXPosition, y: adjustedYPosition)
         if let line = lineManager.line(containingYOffset: adjustedPoint.y), let lineController = lineControllerStorage[line.id] {
@@ -319,20 +309,38 @@ extension LayoutManager {
         }
     }
 
+    #if os(iOS)
+    func bringGutterToFront() {
+        gutterContainerView.superview?.bringSubviewToFront(gutterContainerView)
+    }
+    #endif
+
     private func layoutGutter() {
         let totalGutterWidth = safeAreaInsets.left + gutterWidthService.gutterWidth
         let contentSize = contentSizeService.contentSize
-        gutterContainerView.frame = CGRect(x: viewport.minX, y: 0, width: totalGutterWidth, height: contentSize.height)
-        gutterBackgroundView.frame = CGRect(x: 0, y: viewport.minY, width: totalGutterWidth, height: viewport.height)
-        lineNumbersContainerView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: contentSize.height)
+        gutterContainerView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: viewport.height)
+        #if os(iOS)
+        // Offset gutter background and line numbers on iOS as it is a child of the scroll view and we want it to appear static.
+        gutterBackgroundView.frame = CGRect(x: viewport.minX, y: viewport.minY, width: totalGutterWidth, height: viewport.height)
+        lineNumbersContainerView.frame = CGRect(x: viewport.minX, y: 0, width: totalGutterWidth, height: contentSize.height)
+        #else
+        gutterBackgroundView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: viewport.height)
+        // Manually offset line numbers on macOS as the container is not a child of the scroll view.
+        lineNumbersContainerView.frame = CGRect(x: 0, y: viewport.minY * -1, width: totalGutterWidth, height: contentSize.height)
+        #endif
     }
 
     private func layoutLineSelection() {
         if let rect = getLineSelectionRect() {
             let totalGutterWidth = safeAreaInsets.left + gutterWidthService.gutterWidth
             gutterSelectionBackgroundView.frame = CGRect(x: 0, y: rect.minY, width: totalGutterWidth, height: rect.height)
-            let lineSelectionBackgroundOrigin = CGPoint(x: viewport.minX + totalGutterWidth, y: rect.minY)
-            let lineSelectionBackgroundSize = CGSize(width: scrollViewWidth - gutterWidthService.gutterWidth, height: rect.height)
+            #if os(iOS)
+            let lineSelectionBackgroundOrigin = CGPoint(x: totalGutterWidth, y: rect.minY)
+            #else
+            // Manually offset selection background on macOS as it is not a child of the scroll view.
+            let lineSelectionBackgroundOrigin = CGPoint(x: totalGutterWidth, y: rect.minY + viewport.minY * -1)
+            #endif
+            let lineSelectionBackgroundSize = CGSize(width: scrollViewWidth - totalGutterWidth, height: rect.height)
             lineSelectionBackgroundView.frame = CGRect(origin: lineSelectionBackgroundOrigin, size: lineSelectionBackgroundSize)
         }
     }
@@ -447,7 +455,8 @@ extension LayoutManager {
             }
         }
         let contentSize = contentSizeService.contentSize
-        linesContainerView.frame = CGRect(x: 0, y: 0, width: contentSize.width, height: contentSize.height)
+        let totalGutterWidth = safeAreaInsets.left + gutterWidthService.gutterWidth
+        linesContainerView.frame = CGRect(x: max(viewport.minX, 0) + totalGutterWidth, y: 0, width: contentSize.width, height: contentSize.height)
         // Update the visible lines and line fragments. Clean up everything that is not in the viewport anymore.
         visibleLineIDs = appearedLineIDs
         let disappearedLineIDs = oldVisibleLineIDs.subtracting(appearedLineIDs)
@@ -498,8 +507,11 @@ extension LayoutManager {
             linesContainerView.addSubview(lineFragmentView)
         }
         lineFragmentController.lineFragmentView = lineFragmentView
-        let lineFragmentOrigin = CGPoint(x: leadingLineSpacing, y: textContainerInset.top + lineYPosition + lineFragment.yPosition)
-        let lineFragmentWidth = contentSizeService.contentWidth - leadingLineSpacing - textContainerInset.right
+        let lineFragmentOrigin = CGPoint(
+            x: max(viewport.minX, 0) * -1 + textContainerInset.left,
+            y: textContainerInset.top + lineYPosition + lineFragment.yPosition
+        )
+        let lineFragmentWidth = contentSizeService.contentWidth - textContainerInset.left - textContainerInset.right
         let lineFragmentSize = CGSize(width: lineFragmentWidth, height: lineFragment.scaledSize.height)
         lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragmentSize)
         lineFragmentView.frame = lineFragmentFrame
@@ -524,16 +536,12 @@ extension LayoutManager {
         // Remove views from view hierarchy
         lineSelectionBackgroundView.removeFromSuperview()
         linesContainerView.removeFromSuperview()
-        gutterContainerView.removeFromSuperview()
         gutterBackgroundView.removeFromSuperview()
         gutterSelectionBackgroundView.removeFromSuperview()
         lineNumbersContainerView.removeFromSuperview()
         let allLineNumberKeys = lineFragmentViewReuseQueue.visibleViews.keys
         lineFragmentViewReuseQueue.enqueueViews(withKeys: Set(allLineNumberKeys))
         // Add views to view hierarchy
-        containerView?.addSubview(lineSelectionBackgroundView)
-        containerView?.addSubview(linesContainerView)
-        containerView?.addSubview(gutterContainerView)
         gutterContainerView.addSubview(gutterBackgroundView)
         gutterContainerView.addSubview(gutterSelectionBackgroundView)
         gutterContainerView.addSubview(lineNumbersContainerView)
