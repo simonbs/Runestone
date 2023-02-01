@@ -590,7 +590,6 @@ private extension TextView {
     @objc private func scrollViewBoundsDidChange() {
         textViewController.viewport = CGRect(origin: scrollView.contentOffset, size: frame.size)
         textViewController.layoutIfNeeded()
-        print(textViewController.viewport)
     }
 }
 
