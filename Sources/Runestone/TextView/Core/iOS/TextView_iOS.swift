@@ -542,7 +542,7 @@ open class TextView: UIScrollView {
     private var textRangeAdjustmentGestureRecognizers: Set<UIGestureRecognizer> = []
     private var previousSelectedRangeDuringGestureHandling: NSRange?
     private var isPerformingNonEditableTextInteraction = false
-    private var delegateAllowsEditingToBegin: Bool {
+    private var shouldBeginEditing: Bool {
         guard isEditable else {
             return false
         }
@@ -625,7 +625,7 @@ open class TextView: UIScrollView {
     /// Asks UIKit to make this object the first responder in its window.
     @discardableResult
     override open func becomeFirstResponder() -> Bool {
-        guard !isEditing && delegateAllowsEditingToBegin else {
+        guard !isEditing && shouldBeginEditing else {
             return false
         }
         if canBecomeFirstResponder {
@@ -1203,7 +1203,7 @@ extension TextView: SearchControllerDelegate {
 extension TextView: UIGestureRecognizerDelegate {
     override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         if gestureRecognizer === tapGestureRecognizer {
-            return !isEditing && !isDragging && !isDecelerating && delegateAllowsEditingToBegin
+            return !isEditing && !isDragging && !isDecelerating && shouldBeginEditing
         } else {
             return super.gestureRecognizerShouldBegin(gestureRecognizer)
         }
