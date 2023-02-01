@@ -36,10 +36,17 @@ private extension TextViewController {
     private func contentOffsetForScrollingToVisibleRect(_ rect: CGRect) -> CGPoint {
         // Create the viewport: a rectangle containing the content that is visible to the user.
         var viewport = CGRect(origin: scrollView.contentOffset, size: textView.frame.size)
-        viewport.origin.y += scrollView.adjustedContentInset.top
-        viewport.origin.x += scrollView.adjustedContentInset.left + gutterWidth
-        viewport.size.width -= scrollView.adjustedContentInset.left + scrollView.adjustedContentInset.right + gutterWidth
-        viewport.size.height -= scrollView.adjustedContentInset.top + scrollView.adjustedContentInset.bottom
+        viewport.origin.y += scrollView.adjustedContentInset.top + textContainerInset.top
+        viewport.origin.x += scrollView.adjustedContentInset.left + gutterWidth + textContainerInset.left
+        viewport.size.width -= scrollView.adjustedContentInset.left
+        + scrollView.adjustedContentInset.right
+        + gutterWidth
+        + textContainerInset.left
+        + textContainerInset.right
+        viewport.size.height -= scrollView.adjustedContentInset.top
+        + scrollView.adjustedContentInset.bottom
+        + textContainerInset.top
+        + textContainerInset.bottom
         // Construct the best possible content offset.
         var newContentOffset = scrollView.contentOffset
         if rect.minX < viewport.minX {
