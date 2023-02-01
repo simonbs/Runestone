@@ -21,6 +21,9 @@ final class GutterBackgroundView: MultiPlatformView {
 
     override init(frame: CGRect = .zero) {
         super.init(frame: .zero)
+        #if os(macOS)
+        hairlineView.wantsLayer = true
+        #endif
         addSubview(hairlineView)
     }
 
