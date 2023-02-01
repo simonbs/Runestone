@@ -39,11 +39,11 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         guard let indexedPosition = position as? IndexedPosition else {
             return false
         }
-        guard let granularity = StringTokenizer.Granularity(granularity) else {
+        guard let boundary = StringTokenizer.Boundary(granularity) else {
             return super.isPosition(position, atBoundary: granularity, inDirection: direction)
         }
         let direction = StringTokenizer.Direction(direction)
-        return stringTokenizer.isLocation(indexedPosition.index, atBoundary: granularity, inDirection: direction)
+        return stringTokenizer.isLocation(indexedPosition.index, atBoundary: boundary, inDirection: direction)
     }
 
     override func isPosition(
@@ -62,11 +62,11 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         guard let indexedPosition = position as? IndexedPosition else {
             return nil
         }
-        guard let granularity = StringTokenizer.Granularity(granularity) else {
+        guard let boundary = StringTokenizer.Boundary(granularity) else {
             return super.position(from: position, toBoundary: granularity, inDirection: direction)
         }
         let direction = StringTokenizer.Direction(direction)
-        guard let location = stringTokenizer.location(from: indexedPosition.index, toBoundary: granularity, inDirection: direction) else {
+        guard let location = stringTokenizer.location(from: indexedPosition.index, toBoundary: boundary, inDirection: direction) else {
             return nil
         }
         return IndexedPosition(index: location)
@@ -81,7 +81,7 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
     }
 }
 
-private extension StringTokenizer.Granularity {
+private extension StringTokenizer.Boundary {
     init?(_ granularity: UITextGranularity) {
         switch granularity {
         case .word:
