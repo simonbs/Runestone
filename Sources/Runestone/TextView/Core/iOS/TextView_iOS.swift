@@ -1298,11 +1298,9 @@ extension TextView: HighlightNavigationControllerDelegate {
         scrollRangeToVisible(range)
         selectedTextRange = IndexedRange(range)
         _ = becomeFirstResponder()
-        #if os(iOS)
         if showMenuAfterNavigatingToHighlightedRange {
             editMenuController.presentEditMenu(from: self, forTextIn: range)
         }
-        #endif
         switch highlightNavigationRange.loopMode {
         case .previousGoesToLast:
             editorDelegate?.textViewDidLoopToLastHighlightedRange(self)

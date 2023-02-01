@@ -51,7 +51,6 @@ final class UITextSearchingHelper: NSObject {
     }
 }
 
-#if compiler(>=5.7)
 @available(iOS 16, *)
 extension UITextSearchingHelper: UITextSearching {
     var supportsTextReplacement: Bool {
@@ -198,5 +197,4 @@ private extension SearchQuery.MatchMethod {
         }
     }
 }
-#endif
 #endif
