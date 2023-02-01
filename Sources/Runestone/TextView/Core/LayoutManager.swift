@@ -331,18 +331,20 @@ extension LayoutManager {
     }
 
     private func layoutLineSelection() {
-        if let rect = getLineSelectionRect() {
-            let totalGutterWidth = safeAreaInsets.left + gutterWidthService.gutterWidth
-            gutterSelectionBackgroundView.frame = CGRect(x: 0, y: rect.minY, width: totalGutterWidth, height: rect.height)
-            #if os(iOS)
-            let lineSelectionBackgroundOrigin = CGPoint(x: totalGutterWidth, y: rect.minY)
-            #else
-            // Manually offset selection background on macOS as it is not a child of the scroll view.
-            let lineSelectionBackgroundOrigin = CGPoint(x: totalGutterWidth, y: rect.minY + viewport.minY * -1)
-            #endif
-            let lineSelectionBackgroundSize = CGSize(width: scrollViewWidth - totalGutterWidth, height: rect.height)
-            lineSelectionBackgroundView.frame = CGRect(origin: lineSelectionBackgroundOrigin, size: lineSelectionBackgroundSize)
+        guard let rect = getLineSelectionRect() else {
+            return
         }
+        let totalGutterWidth = safeAreaInsets.left + gutterWidthService.gutterWidth
+        gutterSelectionBackgroundView.frame = CGRect(x: 0, y: rect.minY, width: totalGutterWidth, height: rect.height)
+        #if os(iOS)
+        // Adjust x-offset to make it appear static as it is added to the scroll view.
+        let lineSelectionBackgroundOrigin = CGPoint(x: viewport.minX + totalGutterWidth, y: rect.minY)
+        #else
+        // Adjust y-offset on macOS to make it scroll as it is not a child of the scroll view.
+        let lineSelectionBackgroundOrigin = CGPoint(x: totalGutterWidth, y: rect.minY + viewport.minY * -1)
+        #endif
+        let lineSelectionBackgroundSize = CGSize(width: scrollViewWidth - totalGutterWidth, height: rect.height)
+        lineSelectionBackgroundView.frame = CGRect(origin: lineSelectionBackgroundOrigin, size: lineSelectionBackgroundSize)
     }
 
     private func getLineSelectionRect() -> CGRect? {
