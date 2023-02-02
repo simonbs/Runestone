@@ -45,10 +45,10 @@ final class ContentSizeService {
         }
     }
     var contentHeight: CGFloat {
-        return ceil(totalLinesHeight + textContainerInset.top + textContainerInset.bottom)
+        ceil(totalLinesHeight + textContainerInset.top + textContainerInset.bottom)
     }
     var contentSize: CGSize {
-        return CGSize(width: contentWidth, height: contentHeight)
+        CGSize(width: contentWidth, height: contentHeight)
     }
     @Published private(set) var isContentSizeInvalid = false
 
@@ -114,10 +114,12 @@ final class ContentSizeService {
         }
     }
 
-    init(lineManager: LineManager,
-         lineControllerStorage: LineControllerStorage,
-         gutterWidthService: GutterWidthService,
-         invisibleCharacterConfiguration: InvisibleCharacterConfiguration) {
+    init(
+        lineManager: LineManager,
+        lineControllerStorage: LineControllerStorage,
+        gutterWidthService: GutterWidthService,
+        invisibleCharacterConfiguration: InvisibleCharacterConfiguration
+    ) {
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
         self.gutterWidthService = gutterWidthService
@@ -163,15 +165,16 @@ final class ContentSizeService {
 
 private extension ContentSizeService {
     private func storeWidthOfInitiallyLongestLine() {
-        if let longestLine = lineManager.initialLongestLine {
-            lineIDTrackingWidth = longestLine.id
-            let lineController = lineControllerStorage.getOrCreateLineController(for: longestLine)
-            lineController.invalidateEverything()
-            lineWidths[longestLine.id] = lineController.lineWidth
-            if !isLineWrappingEnabled {
-                _longestLineWidth = nil
-                isContentSizeInvalid = true
-            }
+        guard let longestLine = lineManager.initialLongestLine else {
+            return
+        }
+        lineIDTrackingWidth = longestLine.id
+        let lineController = lineControllerStorage.getOrCreateLineController(for: longestLine)
+        lineController.invalidateEverything()
+        lineWidths[longestLine.id] = lineController.lineWidth
+        if !isLineWrappingEnabled {
+            _longestLineWidth = nil
+            isContentSizeInvalid = true
         }
     }
 }
