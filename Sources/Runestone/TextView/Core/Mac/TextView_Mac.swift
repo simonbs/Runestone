@@ -430,12 +430,14 @@ open class TextView: NSView {
         scrollView.contentView.postsBoundsChangedNotifications = true
         scrollContentView.addSubview(textViewController.layoutManager.linesContainerView)
         scrollContentView.addSubview(caretView)
-        scrollView.addSubview(textViewController.layoutManager.gutterContainerView, positioned: .below, relativeTo: scrollView.horizontalScroller)
+        scrollView.addSubview(textViewController.layoutManager.gutterContainerView)
         addSubview(textViewController.layoutManager.lineSelectionBackgroundView)
         addSubview(scrollView)
         setNeedsLayout()
         setupWindowObservers()
         setupScrollViewBoundsDidChangeObserver()
+        scrollView.horizontalScroller?.layer?.zPosition = 1000
+        scrollView.verticalScroller?.layer?.zPosition = 1000
     }
 
     required public init?(coder: NSCoder) {
