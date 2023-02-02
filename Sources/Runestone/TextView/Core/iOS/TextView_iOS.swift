@@ -605,6 +605,7 @@ open class TextView: UIScrollView {
         // We will sometimes disable notifying the input delegate when the user enters Korean text.
         // This workaround is inspired by a dialog with Alexander Blach (@lextar), developer of Textastic.
         if notifyInputDelegateAboutSelectionChangeInLayoutSubviews {
+            notifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
             inputDelegate?.selectionWillChange(self)
             inputDelegate?.selectionDidChange(self)
         }
