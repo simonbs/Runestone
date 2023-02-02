@@ -146,14 +146,17 @@ final class ContentSizeService {
                 if line.id == lineIDTrackingWidth || lineWidth > maximumLineWidth {
                     self.lineIDTrackingWidth = line.id
                     _longestLineWidth = nil
+                    isContentSizeInvalid = true
                 }
             } else if !isLineWrappingEnabled {
                 _longestLineWidth = nil
+                isContentSizeInvalid = true
             }
         }
         let didUpdateHeight = lineManager.setHeight(of: line, to: newSize.height)
         if didUpdateHeight {
             _totalLinesHeight = nil
+            isContentSizeInvalid = true
         }
     }
 }
@@ -167,6 +170,7 @@ private extension ContentSizeService {
             lineWidths[longestLine.id] = lineController.lineWidth
             if !isLineWrappingEnabled {
                 _longestLineWidth = nil
+                isContentSizeInvalid = true
             }
         }
     }
