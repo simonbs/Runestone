@@ -1,5 +1,6 @@
 import Cocoa
 import Runestone
+import RunestoneJavaScriptLanguage
 import RunestoneOneDarkTheme
 import RunestoneThemeCommon
 import RunestoneTomorrowNightTheme
