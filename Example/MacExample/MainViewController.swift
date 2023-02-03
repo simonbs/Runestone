@@ -31,6 +31,7 @@ final class MainViewController: NSViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        view.appearance = NSAppearance(named: .vibrantDark)
         setupTextView()
         applyTheme(theme)
     }
