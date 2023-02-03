@@ -31,5 +31,11 @@ extension TextViewController {
         scrollView.contentSize = contentSizeService.contentSize
         scrollView.contentOffset = oldContentOffset
         textView.setNeedsLayout()
+        #if os(macOS)
+        scrollView.hasVerticalScroller = scrollView.contentSize.height > scrollView.frame.height
+        scrollView.hasHorizontalScroller = scrollView.contentSize.width > scrollView.frame.width
+        scrollView.horizontalScroller?.layer?.zPosition = 1000
+        scrollView.verticalScroller?.layer?.zPosition = 1000
+        #endif
     }
 }

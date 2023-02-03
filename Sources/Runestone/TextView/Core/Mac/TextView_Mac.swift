@@ -423,8 +423,6 @@ open class TextView: NSView {
         textViewController.selectedRange = NSRange(location: 0, length: 0)
         scrollView.borderType = .noBorder
         scrollView.drawsBackground = false
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = true
         scrollView.documentView = scrollContentView
         scrollView.contentView.postsBoundsChangedNotifications = true
         scrollContentView.addSubview(textViewController.layoutManager.linesContainerView)
@@ -435,8 +433,6 @@ open class TextView: NSView {
         setNeedsLayout()
         setupWindowObservers()
         setupScrollViewBoundsDidChangeObserver()
-        scrollView.horizontalScroller?.layer?.zPosition = 1000
-        scrollView.verticalScroller?.layer?.zPosition = 1000
     }
 
     required public init?(coder: NSCoder) {
