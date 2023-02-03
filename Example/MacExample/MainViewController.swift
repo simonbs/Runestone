@@ -16,7 +16,7 @@ final class MainViewController: NSViewController {
         this.showSpaces = true
         this.showLineBreaks = true
         this.showSoftLineBreaks = true
-        this.lineHeightMultiplier = 1.2
+        this.lineHeightMultiplier = 1.3
         this.kern = 0.3
         this.lineSelectionDisplayType = .line
         this.gutterLeadingPadding = 4
