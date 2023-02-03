@@ -500,6 +500,20 @@ open class TextView: NSView {
             super.keyDown(with: event)
         }
     }
+
+    /// Sets the current _state_ of the editor. The state contains the text to be displayed by the editor and
+    /// various additional information about the text that the editor needs to show the text.
+    ///
+    /// It is safe to create an instance of <code>TextViewState</code> in the background, and as such it can be
+    /// created before presenting the editor to the user, e.g. when opening the document from an instance of
+    /// <code>UIDocumentBrowserViewController</code>.
+    ///
+    /// This is the preferred way to initially set the text, language and theme on the <code>TextView</code>.
+    /// - Parameter state: The new state to be used by the editor.
+    /// - Parameter addUndoAction: Whether the state change can be undone. Defaults to false.
+    public func setState(_ state: TextViewState, addUndoAction: Bool = false) {
+        textViewController.setState(state, addUndoAction: addUndoAction)
+    }
 }
 
 // MARK: - Commands
