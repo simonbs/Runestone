@@ -35,6 +35,8 @@ final class MainViewController: NSViewController {
         view.appearance = NSAppearance(named: .vibrantDark)
         setupTextView()
         applyTheme(theme)
+        let state = TextViewState(text: "", theme: theme, language: .javaScript)
+        textView.setState(state)
     }
 
     override func viewDidAppear() {
