@@ -22,6 +22,7 @@ final class MainViewController: NSViewController {
         this.gutterLeadingPadding = 4
         this.gutterTrailingPadding = 4
         this.isLineWrappingEnabled = false
+        this.indentStrategy = .space(length: 2)
         return this
     }()
 
