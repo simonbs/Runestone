@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		720F5F75298D1B8F00C64EC3 /* CharacterPair.swift in Sources */ = {isa = PBXBuildFile; fileRef = 720F5F74298D1B8F00C64EC3 /* CharacterPair.swift */; };
 		721103592989ACDD00DDFE48 /* RunestoneOneDarkTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 721103582989ACDD00DDFE48 /* RunestoneOneDarkTheme */; };
 		7211035B2989ACDD00DDFE48 /* RunestonePlainTextTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7211035A2989ACDD00DDFE48 /* RunestonePlainTextTheme */; };
 		7211035D2989ACDD00DDFE48 /* RunestoneThemeCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 7211035C2989ACDD00DDFE48 /* RunestoneThemeCommon */; };
@@ -42,6 +43,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		720F5F74298D1B8F00C64EC3 /* CharacterPair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterPair.swift; sourceTree = "<group>"; };
 		7216EAC62829A16C001B6D39 /* Themes */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Themes; sourceTree = "<group>"; };
 		7243F9BA282D73E9005AAABF /* iOSExample.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = iOSExample.entitlements; sourceTree = "<group>"; };
 		729ECE4C2983F5B60049AFF5 /* MacExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -105,11 +107,12 @@
 		729ECE4D2983F5B60049AFF5 /* MacExample */ = {
 			isa = PBXGroup;
 			children = (
+				729ECE572983F5B60049AFF5 /* MacExample.entitlements */,
 				729ECE4E2983F5B60049AFF5 /* AppDelegate.swift */,
+				720F5F74298D1B8F00C64EC3 /* CharacterPair.swift */,
 				729ECE502983F5B60049AFF5 /* MainViewController.swift */,
 				729ECE522983F5B60049AFF5 /* Assets.xcassets */,
 				729ECE542983F5B60049AFF5 /* Main.storyboard */,
-				729ECE572983F5B60049AFF5 /* MacExample.entitlements */,
 			);
 			path = MacExample;
 			sourceTree = "<group>";
@@ -369,6 +372,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				720F5F75298D1B8F00C64EC3 /* CharacterPair.swift in Sources */,
 				729ECE512983F5B60049AFF5 /* MainViewController.swift in Sources */,
 				729ECE4F2983F5B60049AFF5 /* AppDelegate.swift in Sources */,
 			);
