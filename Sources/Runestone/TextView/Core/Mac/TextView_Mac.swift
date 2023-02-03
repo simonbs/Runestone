@@ -551,7 +551,8 @@ public extension TextView {
     }
 
     override func insertTab(_ sender: Any?) {
-        textViewController.replaceText(in: textViewController.rangeForInsertingText, with: "\t")
+        let indentString = indentStrategy.string(indentLevel: 1)
+        textViewController.replaceText(in: textViewController.rangeForInsertingText, with: indentString)
     }
 
     override func moveLeft(_ sender: Any?) {
