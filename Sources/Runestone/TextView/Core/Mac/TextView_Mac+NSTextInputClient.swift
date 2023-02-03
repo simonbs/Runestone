@@ -13,10 +13,9 @@ extension TextView: NSTextInputClient {
         guard let string = string as? String else {
             return
         }
-        if replacementRange.location == NSNotFound {
-            textViewController.replaceText(in: textViewController.rangeForInsertingText, with: string)
-        } else {
-            textViewController.replaceText(in: replacementRange, with: string)
+        let range = replacementRange.location == NSNotFound ? textViewController.rangeForInsertingText : replacementRange
+        if textViewController.shouldChangeText(in: range, replacementText: string) {
+            textViewController.replaceText(in: range, with: string)
         }
     }
 

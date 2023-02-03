@@ -547,12 +547,16 @@ public extension TextView {
     }
 
     override func insertNewline(_ sender: Any?) {
-        textViewController.indentController.insertLineBreak(in: textViewController.rangeForInsertingText, using: lineEndings)
+        if textViewController.shouldChangeText(in: textViewController.rangeForInsertingText, replacementText: lineEndings.symbol) {
+            textViewController.indentController.insertLineBreak(in: textViewController.rangeForInsertingText, using: lineEndings.symbol)
+        }
     }
 
     override func insertTab(_ sender: Any?) {
         let indentString = indentStrategy.string(indentLevel: 1)
-        textViewController.replaceText(in: textViewController.rangeForInsertingText, with: indentString)
+        if textViewController.shouldChangeText(in: textViewController.rangeForInsertingText, replacementText: indentString) {
+            textViewController.replaceText(in: textViewController.rangeForInsertingText, with: indentString)
+        }
     }
 
     override func moveLeft(_ sender: Any?) {

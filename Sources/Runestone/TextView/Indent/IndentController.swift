@@ -122,8 +122,7 @@ final class IndentController {
         }
     }
 
-    func insertLineBreak(in range: NSRange, using lineEnding: LineEnding) {
-        let symbol = lineEnding.symbol
+    func insertLineBreak(in range: NSRange, using symbol: String) {
         if let startLinePosition = lineManager.linePosition(at: range.lowerBound),
             let endLinePosition = lineManager.linePosition(at: range.upperBound) {
             let strategy = languageMode.strategyForInsertingLineBreak(from: startLinePosition, to: endLinePosition, using: indentStrategy)
