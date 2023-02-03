@@ -109,11 +109,11 @@ final class TextViewController {
         }
     }
     var hasPendingContentSizeUpdate = false
-    var scrollViewWidth: CGFloat = 0 {
+    var scrollViewSize: CGSize = .zero {
         didSet {
-            if scrollViewWidth != oldValue {
-                contentSizeService.scrollViewWidth = scrollViewWidth
-                layoutManager.scrollViewWidth = scrollViewWidth
+            if scrollViewSize != oldValue {
+                contentSizeService.scrollViewSize = scrollViewSize
+                layoutManager.scrollViewWidth = scrollViewSize.width
                 if isLineWrappingEnabled {
                     invalidateLines()
                 }
@@ -463,16 +463,24 @@ final class TextViewController {
             }
         }
     }
-    var verticalOverscrollFactor: CGFloat = 0 {
-        didSet {
-            if verticalOverscrollFactor != oldValue {
+    var verticalOverscrollFactor: CGFloat {
+        get {
+            return contentSizeService.verticalOverscrollFactor
+        }
+        set {
+            if newValue != contentSizeService.verticalOverscrollFactor {
+                contentSizeService.verticalOverscrollFactor = newValue
                 invalidateContentSizeIfNeeded()
             }
         }
     }
-    var horizontalOverscrollFactor: CGFloat = 0 {
-        didSet {
-            if horizontalOverscrollFactor != oldValue {
+    var horizontalOverscrollFactor: CGFloat {
+        get {
+            return contentSizeService.horizontalOverscrollFactor
+        }
+        set {
+            if newValue != contentSizeService.horizontalOverscrollFactor {
+                contentSizeService.horizontalOverscrollFactor = newValue
                 invalidateContentSizeIfNeeded()
             }
         }

@@ -3,17 +3,31 @@ import Foundation
 
 final class ContentSizeService {
     var safeAreaInset: MultiPlatformEdgeInsets = .zero
-    var textContainerInset: MultiPlatformEdgeInsets = .zero
-    var scrollViewWidth: CGFloat = 0 {
+    var scrollViewSize: CGSize = .zero {
         didSet {
-            if scrollViewWidth != oldValue && isLineWrappingEnabled {
+            if scrollViewSize != oldValue && isLineWrappingEnabled {
                 invalidateContentSize()
             }
         }
     }
+    var textContainerInset: MultiPlatformEdgeInsets = .zero
     var isLineWrappingEnabled = true {
         didSet {
             if isLineWrappingEnabled != oldValue {
+                invalidateContentSize()
+            }
+        }
+    }
+    var horizontalOverscrollFactor: CGFloat = 0 {
+        didSet {
+            if horizontalOverscrollFactor != oldValue && !isLineWrappingEnabled {
+                invalidateContentSize()
+            }
+        }
+    }
+    var verticalOverscrollFactor: CGFloat = 0 {
+        didSet {
+            if verticalOverscrollFactor != oldValue {
                 invalidateContentSize()
             }
         }
@@ -29,11 +43,11 @@ final class ContentSizeService {
         }
     }
     var contentWidth: CGFloat {
-        let minimumWidth = scrollViewWidth - safeAreaInset.left - safeAreaInset.right
+        let minimumWidth = scrollViewSize.width - safeAreaInset.left - safeAreaInset.right
         if isLineWrappingEnabled {
             return minimumWidth
         } else {
-            let textContentWidth = longestLineWidth ?? scrollViewWidth
+            let textContentWidth = longestLineWidth ?? scrollViewSize.width
             let preferredWidth = ceil(
                 textContentWidth
                 + gutterWidthService.gutterWidth
@@ -48,7 +62,11 @@ final class ContentSizeService {
         ceil(totalLinesHeight + textContainerInset.top + textContainerInset.bottom)
     }
     var contentSize: CGSize {
-        CGSize(width: contentWidth, height: contentHeight)
+        let horizontalOverscrollLength = max(scrollViewSize.width * horizontalOverscrollFactor, 0)
+        let verticalOverscrollLength = max(scrollViewSize.height * verticalOverscrollFactor, 0)
+        let width = contentWidth + (isLineWrappingEnabled ? 0 : horizontalOverscrollLength)
+        let height = contentHeight + verticalOverscrollLength
+        return CGSize(width: width, height: height)
     }
     @Published private(set) var isContentSizeInvalid = false
 

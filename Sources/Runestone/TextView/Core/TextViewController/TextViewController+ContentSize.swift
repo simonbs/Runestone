@@ -1,17 +1,8 @@
 import Foundation
 
 extension TextViewController {
-    var contentSize: CGSize {
-        let horizontalOverscrollLength = max(textView.frame.width * horizontalOverscrollFactor, 0)
-        let verticalOverscrollLength = max(textView.frame.height * verticalOverscrollFactor, 0)
-        let baseContentSize = contentSizeService.contentSize
-        let width = isLineWrappingEnabled ? baseContentSize.width : baseContentSize.width + horizontalOverscrollLength
-        let height = baseContentSize.height + verticalOverscrollLength
-        return CGSize(width: width, height: height)
-    }
-
     func invalidateContentSizeIfNeeded() {
-        if scrollView.contentSize != contentSize {
+        if scrollView.contentSize != contentSizeService.contentSize {
             hasPendingContentSizeUpdate = true
             handleContentSizeUpdateIfNeeded()
         }
@@ -37,7 +28,7 @@ extension TextViewController {
         }
         hasPendingContentSizeUpdate = false
         let oldContentOffset = scrollView.contentOffset
-        scrollView.contentSize = contentSize
+        scrollView.contentSize = contentSizeService.contentSize
         scrollView.contentOffset = oldContentOffset
         textView.setNeedsLayout()
     }

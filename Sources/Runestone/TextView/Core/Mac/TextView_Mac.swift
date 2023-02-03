@@ -31,7 +31,6 @@ open class TextView: NSView {
         }
         set {
             textViewController.text = newValue
-            scrollView.contentSize = textViewController.contentSize
         }
     }
     /// Colors and fonts to be used by the editor.
@@ -482,7 +481,7 @@ open class TextView: NSView {
         super.resizeSubviews(withOldSize: oldSize)
         scrollView.frame = bounds
         textViewController.viewport = CGRect(origin: scrollView.contentOffset, size: frame.size)
-        textViewController.scrollViewWidth = scrollView.frame.width
+        textViewController.scrollViewSize = scrollView.frame.size
         textViewController.layoutIfNeeded()
         textViewController.handleContentSizeUpdateIfNeeded()
         updateCaretFrame()

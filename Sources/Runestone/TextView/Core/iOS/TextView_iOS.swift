@@ -30,7 +30,6 @@ open class TextView: UIScrollView {
         }
         set {
             textViewController.text = newValue
-            contentSize = textViewController.contentSize
         }
     }
     /// A Boolean value that indicates whether the text view is editable.
@@ -599,7 +598,7 @@ open class TextView: UIScrollView {
     open override func layoutSubviews() {
         super.layoutSubviews()
         hasDeletedTextWithPendingLayoutSubviews = false
-        textViewController.scrollViewWidth = frame.width
+        textViewController.scrollViewSize = frame.size
         textViewController.layoutIfNeeded()
         // We notify the input delegate about selection changes in layoutSubviews so we have a chance of disabling notifying the input delegate during an editing operation.
         // We will sometimes disable notifying the input delegate when the user enters Korean text.
@@ -622,7 +621,6 @@ open class TextView: UIScrollView {
     override open func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
         textViewController.safeAreaInsets = safeAreaInsets
-        contentSize = textViewController.contentSize
         layoutIfNeeded()
     }
 
@@ -758,7 +756,6 @@ open class TextView: UIScrollView {
     /// - Parameter addUndoAction: Whether the state change can be undone. Defaults to false.
     public func setState(_ state: TextViewState, addUndoAction: Bool = false) {
         textViewController.setState(state, addUndoAction: addUndoAction)
-        contentSize = textViewController.contentSize
     }
 
     /// Returns the row and column at the specified location in the text.
