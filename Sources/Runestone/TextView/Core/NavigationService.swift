@@ -18,7 +18,13 @@ final class NavigationService {
         case backward
     }
 
-    var stringView: StringView
+    var stringView: StringView {
+        didSet {
+            if stringView !== oldValue {
+                stringTokenizer.stringView = stringView
+            }
+        }
+    }
     var lineManager: LineManager {
         get {
             return lineNavigationService.lineManager
