@@ -176,7 +176,7 @@ private extension TextViewController {
         timedUndoManager.endUndoGrouping()
         textDidChange()
         if let oldSelectedRange = oldSelectedRange {
-            selectedRange = safeSelectionRange(from: oldSelectedRange)
+            selectedRange = oldSelectedRange.capped(to: stringView.string.length)
         }
     }
 

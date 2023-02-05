@@ -260,7 +260,7 @@ public extension TextView {
         // The selected range passed to setMarkedText(_:selectedRange:) is local to the marked range.
         let preferredSelectedRange = NSRange(location: range.location + selectedRange.location, length: selectedRange.length)
         inputDelegate?.selectionWillChange(self)
-        textViewController._selectedRange = textViewController.safeSelectionRange(from: preferredSelectedRange)
+        textViewController._selectedRange = preferredSelectedRange.capped(to: textViewController.stringView.string.length)
         inputDelegate?.selectionDidChange(self)
         removeAndAddEditableTextInteraction()
     }

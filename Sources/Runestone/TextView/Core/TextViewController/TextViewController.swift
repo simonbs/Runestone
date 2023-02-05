@@ -102,7 +102,7 @@ final class TextViewController {
                     #if os(iOS)
                     textView.inputDelegate?.selectionWillChange(textView)
                     #endif
-                    selectedRange = safeSelectionRange(from: oldSelectedRange)
+                    selectedRange = oldSelectedRange.capped(to: stringView.string.length)
                     #if os(iOS)
                     textView.inputDelegate?.selectionDidChange(textView)
                     #endif

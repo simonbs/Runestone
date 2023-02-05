@@ -40,6 +40,13 @@ extension NSRange {
         return NSRange(location: newLowerBound, length: newLength)
     }
 
+    /// Ensures the range fits within a range from zero to the specified length.
+    /// - Parameter length: The maximum upper bound.
+    /// - Returns: A range that that fits within zero to the specified length.
+    func capped(to length: Int) -> NSRange {
+        capped(to: NSRange(location: 0, length: length))
+    }
+
     /// Crates a range that is local to the specified range.
     /// - Parameter parentRange: The parent range.
     /// - Returns: A range that is local to the parent range.
