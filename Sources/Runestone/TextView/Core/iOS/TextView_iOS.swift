@@ -615,6 +615,10 @@ open class TextView: UIScrollView {
         textViewController.handleContentSizeUpdateIfNeeded()
         textViewController.viewport = CGRect(origin: contentOffset, size: frame.size)
         textViewController.layoutManager.bringGutterToFront()
+        // Setting the frame of the text selection view fixes a bug where UIKit assigns an incorrect
+        // Y-position to the selection rects the first time the user selects text.
+        // After the initial selection the rectangles would be placed correctly.
+        textSelectionView?.frame = .zero
     }
 
     /// Called when the safe area of the view changes.
