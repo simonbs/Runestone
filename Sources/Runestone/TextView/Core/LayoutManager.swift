@@ -122,7 +122,6 @@ final class LayoutManager {
     private let contentSizeService: ContentSizeService
     private let gutterWidthService: GutterWidthService
     private let caretRectService: CaretRectService
-    private let selectionRectService: SelectionRectService
     private let highlightService: HighlightService
 
     // MARK: - Rendering
@@ -139,7 +138,6 @@ final class LayoutManager {
         contentSizeService: ContentSizeService,
         gutterWidthService: GutterWidthService,
         caretRectService: CaretRectService,
-        selectionRectService: SelectionRectService,
         highlightService: HighlightService,
         invisibleCharacterConfiguration: InvisibleCharacterConfiguration
     ) {
@@ -151,7 +149,6 @@ final class LayoutManager {
         self.contentSizeService = contentSizeService
         self.gutterWidthService = gutterWidthService
         self.caretRectService = caretRectService
-        self.selectionRectService = selectionRectService
         self.highlightService = highlightService
         #if os(iOS)
         self.linesContainerView.isUserInteractionEnabled = false

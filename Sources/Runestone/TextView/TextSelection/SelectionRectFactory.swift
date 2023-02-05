@@ -1,26 +1,29 @@
 import CoreGraphics
 import Foundation
 
-final class SelectionRectService {
-    var lineManager: LineManager
-    var textContainerInset: MultiPlatformEdgeInsets = .zero
-    var lineHeightMultiplier: CGFloat = 1
-
+final class SelectionRectFactory {
+    private let lineManager: LineManager
     private let contentSizeService: ContentSizeService
     private let gutterWidthService: GutterWidthService
     private let caretRectService: CaretRectService
 
-    init(lineManager: LineManager,
-         contentSizeService: ContentSizeService,
-         gutterWidthService: GutterWidthService,
-         caretRectService: CaretRectService) {
+    init(
+        lineManager: LineManager,
+        contentSizeService: ContentSizeService,
+        gutterWidthService: GutterWidthService,
+        caretRectService: CaretRectService
+    ) {
         self.lineManager = lineManager
         self.contentSizeService = contentSizeService
         self.gutterWidthService = gutterWidthService
         self.caretRectService = caretRectService
     }
 
-    func selectionRects(in range: NSRange) -> [TextSelectionRect] {
+    func selectionRects(
+        in range: NSRange,
+        textContainerInset: MultiPlatformEdgeInsets = .zero,
+        lineHeightMultiplier: CGFloat = 1
+    ) -> [TextSelectionRect] {
         guard range.length > 0 else {
             return []
         }

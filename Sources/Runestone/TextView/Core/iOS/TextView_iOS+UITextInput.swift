@@ -201,11 +201,20 @@ public extension TextView {
     }
 
     func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
-        if let indexedRange = range as? IndexedRange {
-            return textViewController.selectionRectService.selectionRects(in: indexedRange.range.nonNegativeLength)
-        } else {
+        guard let indexedRange = range as? IndexedRange else {
             return []
         }
+        let selectionRectFactory = SelectionRectFactory(
+            lineManager: textViewController.lineManager,
+            contentSizeService: textViewController.contentSizeService,
+            gutterWidthService: textViewController.gutterWidthService,
+            caretRectService: textViewController.caretRectService
+        )
+        return selectionRectFactory.selectionRects(
+            in: indexedRange.range,
+            textContainerInset: textContainerInset,
+            lineHeightMultiplier: lineHeightMultiplier
+        )
     }
 }
 

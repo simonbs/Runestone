@@ -149,7 +149,6 @@ final class TextViewController {
                 gutterWidthService.lineManager = lineManager
                 contentSizeService.lineManager = lineManager
                 caretRectService.lineManager = lineManager
-                selectionRectService.lineManager = lineManager
                 navigationService.lineManager = lineManager
                 highlightService.lineManager = lineManager
             }
@@ -161,7 +160,6 @@ final class TextViewController {
     let gutterWidthService: GutterWidthService
     let contentSizeService: ContentSizeService
     let caretRectService: CaretRectService
-    let selectionRectService: SelectionRectService
     let navigationService: NavigationService
     let layoutManager: LayoutManager
     let indentController: IndentController
@@ -376,7 +374,6 @@ final class TextViewController {
         set {
             if newValue != layoutManager.textContainerInset {
                 caretRectService.textContainerInset = newValue
-                selectionRectService.textContainerInset = newValue
                 contentSizeService.textContainerInset = newValue
                 layoutManager.textContainerInset = newValue
                 layoutManager.setNeedsLayout()
@@ -414,7 +411,6 @@ final class TextViewController {
     var lineHeightMultiplier: CGFloat = 1 {
         didSet {
             if lineHeightMultiplier != oldValue {
-                selectionRectService.lineHeightMultiplier = lineHeightMultiplier
                 layoutManager.lineHeightMultiplier = lineHeightMultiplier
                 invalidateLines()
                 lineManager.estimatedLineHeight = estimatedLineHeight
@@ -555,12 +551,6 @@ final class TextViewController {
             lineControllerStorage: lineControllerStorage,
             gutterWidthService: gutterWidthService
         )
-        selectionRectService = SelectionRectService(
-            lineManager: lineManager,
-            contentSizeService: contentSizeService,
-            gutterWidthService: gutterWidthService,
-            caretRectService: caretRectService
-        )
         navigationService = NavigationService(
             stringView: stringView,
             lineManager: lineManager,
@@ -574,7 +564,6 @@ final class TextViewController {
             contentSizeService: contentSizeService,
             gutterWidthService: gutterWidthService,
             caretRectService: caretRectService,
-            selectionRectService: selectionRectService,
             highlightService: highlightService,
             invisibleCharacterConfiguration: invisibleCharacterConfiguration
         )
