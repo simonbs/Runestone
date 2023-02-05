@@ -3,11 +3,11 @@ import Foundation
 
 protocol TextViewControllerDelegate: AnyObject {
     func textViewControllerDidChangeText(_ textViewController: TextViewController)
-    func textViewController(_ textViewController: TextViewController, didUpdateSelectedRange selectedRange: NSRange?)
+    func textViewController(_ textViewController: TextViewController, didChangeSelectedRange selectedRange: NSRange?)
 }
 
 extension TextViewControllerDelegate {
-    func textViewController(_ textViewController: TextViewController, didUpdateSelectedRange selectedRange: NSRange?) {}
+    func textViewController(_ textViewController: TextViewController, didChangeSelectedRange selectedRange: NSRange?) {}
 }
 
 final class TextViewController {
@@ -29,13 +29,23 @@ final class TextViewController {
     private weak var _textView: TextView?
     private weak var _scrollView: MultiPlatformScrollView?
     var selectedRange: NSRange? {
+        get {
+            return _selectedRange
+        }
+        set {
+            if newValue != _selectedRange {
+                _selectedRange = newValue
+                delegate?.textViewController(self, didChangeSelectedRange: newValue)
+            }
+        }
+    }
+    var _selectedRange: NSRange? {
         didSet {
-            if selectedRange != oldValue {
-                layoutManager.selectedRange = selectedRange
+            if _selectedRange != oldValue {
+                layoutManager.selectedRange = _selectedRange
                 layoutManager.setNeedsLayoutLineSelection()
-                highlightNavigationController.selectedRange = selectedRange
+                highlightNavigationController.selectedRange = _selectedRange
                 textView.setNeedsLayout()
-                delegate?.textViewController(self, didUpdateSelectedRange: selectedRange)
             }
         }
     }

@@ -693,7 +693,7 @@ extension TextView: TextViewControllerDelegate {
         updateCaretFrame()
     }
 
-    func textViewController(_ textViewController: TextViewController, didUpdateSelectedRange selectedRange: NSRange?) {
+    func textViewController(_ textViewController: TextViewController, didChangeSelectedRange selectedRange: NSRange?) {
         layoutIfNeeded()
         caretView.delayBlinkIfNeeded()
         updateCaretFrame()

@@ -192,7 +192,7 @@ public extension TextView {
                 if shouldNotifyInputDelegate {
                     inputDelegate?.selectionWillChange(self)
                 }
-                textViewController.selectedRange = newRange
+                textViewController._selectedRange = newRange
                 if shouldNotifyInputDelegate {
                     inputDelegate?.selectionDidChange(self)
                 }
@@ -251,7 +251,7 @@ public extension TextView {
         // The selected range passed to setMarkedText(_:selectedRange:) is local to the marked range.
         let preferredSelectedRange = NSRange(location: range.location + selectedRange.location, length: selectedRange.length)
         inputDelegate?.selectionWillChange(self)
-        textViewController.selectedRange = textViewController.safeSelectionRange(from: preferredSelectedRange)
+        textViewController._selectedRange = textViewController.safeSelectionRange(from: preferredSelectedRange)
         inputDelegate?.selectionDidChange(self)
         removeAndAddEditableTextInteraction()
     }

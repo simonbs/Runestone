@@ -54,9 +54,6 @@ open class TextView: UIScrollView {
         set {
             if newValue != isSelectable {
                 textViewController.isSelectable = newValue
-                if !isSelectable && isEditing {
-                    handleTextSelectionChange()
-                }
                 if !newValue {
                     installNonEditableInteraction()
                 }
@@ -76,7 +73,6 @@ open class TextView: UIScrollView {
         set {
             if newValue != textViewController.selectedRange {
                 textViewController.selectedRange = newValue
-                handleTextSelectionChange()
             }
         }
     }
@@ -1199,8 +1195,10 @@ extension TextView: TextViewControllerDelegate {
         editorDelegate?.textViewDidChange(self)
     }
 
-    func textViewController(_ textViewController: TextViewController, didUpdateSelectedRange selectedRange: NSRange?) {
-        handleTextSelectionChange()
+    func textViewController(_ textViewController: TextViewController, didChangeSelectedRange selectedRange: NSRange?) {
+        UIMenuController.shared.hideMenu(from: self)
+        scrollToVisibleLocationIfNeeded()
+        editorDelegate?.textViewDidChangeSelection(self)
     }
 }
 
