@@ -1282,7 +1282,7 @@ extension TextView: EditMenuControllerDelegate {
     }
 
     func editMenuController(_ controller: EditMenuController, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool {
-        return editorDelegate?.textView(self, canReplaceTextIn: highlightedRange) ?? false
+        editorDelegate?.textView(self, canReplaceTextIn: highlightedRange) ?? false
     }
 
     func editMenuController(_ controller: EditMenuController, highlightedRangeFor range: NSRange) -> HighlightedRange? {
