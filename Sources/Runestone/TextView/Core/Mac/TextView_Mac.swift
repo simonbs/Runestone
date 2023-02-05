@@ -669,9 +669,15 @@ private extension TextView {
 // MARK: - Caret
 private extension TextView {
     private func updateCaretFrame() {
+        let caretRectFactory = CaretRectFactory(
+            stringView: textViewController.stringView,
+            lineManager: textViewController.lineManager,
+            lineControllerStorage: textViewController.lineControllerStorage,
+            gutterWidthService: textViewController.gutterWidthService,
+            textContainerInset: textContainerInset
+        )
         let selectedRange = selectedRange()
-        let caretRect = textViewController.caretRectService.caretRect(at: selectedRange.upperBound, allowMovingCaretToNextLineFragment: true)
-        caretView.frame = caretRect
+        caretView.frame = caretRectFactory.caretRect(at: selectedRange.upperBound, allowMovingCaretToNextLineFragment: true)
     }
 
     private func updateCaretVisibility() {
