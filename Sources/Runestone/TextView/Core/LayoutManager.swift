@@ -342,7 +342,7 @@ extension LayoutManager {
     }
 
     private func getLineSelectionRect() -> CGRect? {
-        guard lineSelectionDisplayType.shouldShowLineSelection, var selectedRange = selectedRange else {
+        guard lineSelectionDisplayType.shouldShowLineSelection, var selectedRange = selectedRange?.nonNegativeLength else {
             return nil
         }
         guard let (startLine, endLine) = lineManager.startAndEndLine(in: selectedRange) else {

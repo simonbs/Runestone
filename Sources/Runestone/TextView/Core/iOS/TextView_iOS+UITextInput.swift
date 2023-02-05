@@ -302,16 +302,16 @@ public extension TextView {
         let navigationService = textViewController.navigationService
         switch direction {
         case .right:
-            let newLocation = navigationService.location(movingFrom: indexedPosition.index, by: .character, offset: offset)
+            let newLocation = navigationService.location(movingFrom: indexedPosition.index, by: offset, granularity: .character)
             return IndexedPosition(index: newLocation)
         case .left:
-            let newLocation = navigationService.location(movingFrom: indexedPosition.index, by: .character, offset: offset * -1)
+            let newLocation = navigationService.location(movingFrom: indexedPosition.index, by: offset * -1, granularity: .character)
             return IndexedPosition(index: newLocation)
         case .up:
-            let newLocation = navigationService.location(movingFrom: indexedPosition.index, by: .line, offset: offset * -1)
+            let newLocation = navigationService.location(movingFrom: indexedPosition.index, by: offset * -1, granularity: .line)
             return IndexedPosition(index: newLocation)
         case .down:
-            let newLocation = navigationService.location(movingFrom: indexedPosition.index, by: .line, offset: offset)
+            let newLocation = navigationService.location(movingFrom: indexedPosition.index, by: offset, granularity: .line)
             return IndexedPosition(index: newLocation)
         @unknown default:
             return nil

@@ -1,23 +1,6 @@
 import Foundation
 
 final class NavigationService {
-    enum Granularity {
-        case character
-        case line
-        case word
-    }
-
-    enum Boundary {
-        case line
-        case paragraph
-        case document
-    }
-
-    enum Direction {
-        case forward
-        case backward
-    }
-
     var stringView: StringView {
         didSet {
             if stringView !== oldValue {
@@ -57,7 +40,7 @@ final class NavigationService {
         self.stringTokenizer = StringTokenizer(stringView: stringView, lineManager: lineManager, lineControllerStorage: lineControllerStorage)
     }
 
-    func location(movingFrom sourceLocation: Int, by granularity: Granularity, offset: Int) -> Int {
+    func location(movingFrom sourceLocation: Int, by offset: Int, granularity: TextGranularity) -> Int {
         switch granularity {
         case .character:
             return location(movingFrom: sourceLocation, byCharacterCount: offset)
@@ -68,7 +51,7 @@ final class NavigationService {
         }
     }
 
-    func location(movingFrom sourceLocation: Int, toBoundary boundary: Boundary, inDirection direction: Direction) -> Int {
+    func location(movingFrom sourceLocation: Int, toBoundary boundary: TextBoundary, inDirection direction: TextDirection) -> Int {
         switch boundary {
         case .line:
             let mappedDirection = StringTokenizer.Direction(direction)
@@ -156,7 +139,7 @@ private extension NavigationService {
 }
 
 private extension StringTokenizer.Direction {
-    init(_ direction: NavigationService.Direction) {
+    init(_ direction: TextDirection) {
         switch direction {
         case .forward:
             self = .forward

@@ -13,6 +13,7 @@ extension TextView: NSTextInputClient {
         guard let string = string as? String else {
             return
         }
+        textViewController.selectionService.resetPreviouslySelectedRange()
         let range = replacementRange.location == NSNotFound ? textViewController.rangeForInsertingText : replacementRange
         if textViewController.shouldChangeText(in: range, replacementText: string) {
             textViewController.replaceText(in: range, with: string)
@@ -24,7 +25,7 @@ extension TextView: NSTextInputClient {
     public func unmarkText() {}
 
     public func selectedRange() -> NSRange {
-        textViewController.selectedRange ?? NSRange(location: 0, length: 0)
+        textViewController.selectedRange?.nonNegativeLength ?? NSRange(location: 0, length: 0)
     }
 
     public func markedRange() -> NSRange {

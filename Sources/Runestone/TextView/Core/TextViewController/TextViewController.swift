@@ -168,6 +168,9 @@ final class TextViewController {
     let gutterWidthService: GutterWidthService
     let contentSizeService: ContentSizeService
     let navigationService: NavigationService
+    #if os(macOS)
+    let selectionService: SelectionService
+    #endif
     let layoutManager: LayoutManager
     let indentController: IndentController
     let pageGuideController = PageGuideController()
@@ -555,6 +558,9 @@ final class TextViewController {
             lineManager: lineManager,
             lineControllerStorage: lineControllerStorage
         )
+        #if os(macOS)
+        selectionService = SelectionService(navigationService: navigationService)
+        #endif
         layoutManager = LayoutManager(
             lineManager: lineManager,
             languageMode: languageMode,

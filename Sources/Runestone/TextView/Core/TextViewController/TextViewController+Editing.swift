@@ -3,7 +3,7 @@ import Foundation
 extension TextViewController {
     var rangeForInsertingText: NSRange {
         // If there is no marked range or selected range then we fallback to appending text to the end of our string.
-        markedRange ?? selectedRange ?? NSRange(location: stringView.string.length, length: 0)
+        markedRange ?? selectedRange?.nonNegativeLength ?? NSRange(location: stringView.string.length, length: 0)
     }
 
     func text(in range: NSRange) -> String? {

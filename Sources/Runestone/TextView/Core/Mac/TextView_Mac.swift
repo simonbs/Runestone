@@ -379,12 +379,26 @@ open class TextView: NSView {
             }
         }
     }
+    /// The color of the selection highlight. It is most common to set this to the same color as the color used for the insertion point.
+    public var selectionHighlightColor: NSColor = .label.withAlphaComponent(0.2) {
+        didSet {
+            if selectionHighlightColor != oldValue {
+                for (_, view) in selectionViewReuseQueue.visibleViews {
+                    view.backgroundColor = selectionHighlightColor
+                }
+            }
+        }
+    }
+    open override var undoManager: UndoManager? {
+        textViewController.timedUndoManager
+    }
 
     private(set) lazy var textViewController = TextViewController(textView: self, scrollView: scrollView)
 
     private let scrollView = NSScrollView()
     private let scrollContentView = FlippedView()
     private let caretView = CaretView()
+    private let selectionViewReuseQueue = ViewReuseQueue<String, LineSelectionView>()
     private var isWindowKey = false {
         didSet {
             if isWindowKey != oldValue {
@@ -519,9 +533,10 @@ open class TextView: NSView {
 // MARK: - Commands
 public extension TextView {
     override func deleteBackward(_ sender: Any?) {
-        guard var selectedRange = textViewController.markedRange ?? textViewController.selectedRange else {
+        guard var selectedRange = textViewController.markedRange ?? textViewController.selectedRange?.nonNegativeLength else {
             return
         }
+        textViewController.selectionService.resetPreviouslySelectedRange()
         if selectedRange.length == 0 {
             selectedRange.location -= 1
             selectedRange.length = 1
@@ -567,14 +582,6 @@ public extension TextView {
         textViewController.moveRight()
     }
 
-    override func moveUp(_ sender: Any?) {
-        textViewController.moveUp()
-    }
-
-    override func moveDown(_ sender: Any?) {
-        textViewController.moveDown()
-    }
-
     override func moveForward(_ sender: Any?) {
         textViewController.moveRight()
     }
@@ -583,12 +590,28 @@ public extension TextView {
         textViewController.moveLeft()
     }
 
+    override func moveUp(_ sender: Any?) {
+        textViewController.moveUp()
+    }
+
+    override func moveDown(_ sender: Any?) {
+        textViewController.moveDown()
+    }
+
     override func moveWordLeft(_ sender: Any?) {
         textViewController.moveWordLeft()
     }
 
     override func moveWordRight(_ sender: Any?) {
         textViewController.moveWordRight()
+    }
+
+    override func moveWordForward(_ sender: Any?) {
+        textViewController.moveWordRight()
+    }
+
+    override func moveWordBackward(_ sender: Any?) {
+        textViewController.moveWordLeft()
     }
 
     override func moveToBeginningOfLine(_ sender: Any?) {
@@ -615,9 +638,114 @@ public extension TextView {
         textViewController.moveToEndOfDocument()
     }
 
+    override func moveLeftAndModifySelection(_ sender: Any?) {
+        textViewController.moveLeftAndModifySelection()
+    }
+
+    override func moveRightAndModifySelection(_ sender: Any?) {
+        textViewController.moveRightAndModifySelection()
+    }
+
+    override func moveForwardAndModifySelection(_ sender: Any?) {
+        textViewController.moveRightAndModifySelection()
+    }
+
+    override func moveBackwardAndModifySelection(_ sender: Any?) {
+        textViewController.moveLeftAndModifySelection()
+    }
+
+    override func moveUpAndModifySelection(_ sender: Any?) {
+        textViewController.moveUpAndModifySelection()
+    }
+
+    override func moveDownAndModifySelection(_ sender: Any?) {
+        textViewController.moveDownAndModifySelection()
+    }
+
+    override func moveWordLeftAndModifySelection(_ sender: Any?) {
+        textViewController.moveWordLeftAndModifySelection()
+    }
+
+    override func moveWordRightAndModifySelection(_ sender: Any?) {
+        textViewController.moveWordRightAndModifySelection()
+    }
+
+    override func moveWordBackwardAndModifySelection(_ sender: Any?) {
+        textViewController.moveWordLeftAndModifySelection()
+    }
+
+    override func moveWordForwardAndModifySelection(_ sender: Any?) {
+        textViewController.moveWordRightAndModifySelection()
+    }
+
+    override func moveToBeginningOfLineAndModifySelection(_ sender: Any?) {
+        textViewController.moveToBeginningOfLineAndModifySelection()
+    }
+
+    override func moveToEndOfLineAndModifySelection(_ sender: Any?) {
+        textViewController.moveToEndOfLineAndModifySelection()
+    }
+
+    override func moveToBeginningOfParagraphAndModifySelection(_ sender: Any?) {
+        textViewController.moveToBeginningOfParagraphAndModifySelection()
+    }
+
+    override func moveToEndOfParagraphAndModifySelection(_ sender: Any?) {
+        textViewController.moveToEndOfParagraphAndModifySelection()
+    }
+
+    override func moveToBeginningOfDocumentAndModifySelection(_ sender: Any?) {
+        textViewController.moveToBeginningOfDocumentAndModifySelection()
+    }
+
+    override func moveToEndOfDocumentAndModifySelection(_ sender: Any?) {
+        textViewController.moveToEndOfDocumentAndModifySelection()
+    }
+
     override func mouseDown(with event: NSEvent) {
         let point = scrollContentView.convert(event.locationInWindow, from: nil)
         textViewController.moveToLocation(closestTo: point)
+    }
+
+    /// Copy the selected text.
+    ///
+    /// - Parameter sender: The object calling this method.
+    @objc func copy(_ sender: Any?) {
+        let selectedRange = selectedRange()
+        if selectedRange.length > 0, let text = textViewController.text(in: selectedRange) {
+            NSPasteboard.general.declareTypes([.string], owner: nil)
+            NSPasteboard.general.setString(text, forType: .string)
+        }
+    }
+
+    /// Paste text from the pasteboard.
+    ///
+    /// - Parameter sender: The object calling this method.
+    @objc func paste(_ sender: Any?) {
+        let selectedRange = selectedRange()
+        if let string = NSPasteboard.general.string(forType: .string) {
+            print(string)
+            let preparedText = textViewController.prepareTextForInsertion(string)
+            textViewController.replaceText(in: selectedRange, with: preparedText)
+        }
+    }
+
+    /// Cut text  to the pasteboard.
+    ///
+    /// - Parameter sender: The object calling this method.
+    @objc func cut(_ sender: Any?) {
+        let selectedRange = selectedRange()
+        if selectedRange.length > 0, let text = textViewController.text(in: selectedRange) {
+            NSPasteboard.general.setString(text, forType: .string)
+            textViewController.replaceText(in: selectedRange, with: "")
+        }
+    }
+
+    /// Select all text in the text view.
+    ///
+    /// - Parameter sender: The object calling this method.
+    override func selectAll(_ sender: Any?) {
+        textViewController.selectedRange = NSRange(location: 0, length: textViewController.stringView.string.length)
     }
 }
 
@@ -692,6 +820,57 @@ private extension TextView {
     }
 }
 
+// MARK: - Selection
+private extension TextView {
+    private func updateSelectedRectangles() {
+        let selectedRange = selectedRange()
+        guard selectedRange.length != 0 else {
+            removeAllLineSelectionViews()
+            return
+        }
+        let caretRectFactory = CaretRectFactory(
+            stringView: textViewController.stringView,
+            lineManager: textViewController.lineManager,
+            lineControllerStorage: textViewController.lineControllerStorage,
+            gutterWidthService: textViewController.gutterWidthService,
+            textContainerInset: textContainerInset
+        )
+        let selectionRectFactory = SelectionRectFactory(
+            lineManager: textViewController.lineManager,
+            gutterWidthService: textViewController.gutterWidthService,
+            contentSizeService: textViewController.contentSizeService,
+            caretRectFactory: caretRectFactory,
+            textContainerInset: textContainerInset,
+            lineHeightMultiplier: lineHeightMultiplier
+        )
+        let selectionRects = selectionRectFactory.selectionRects(in: selectedRange)
+        addLineSelectionViews(for: selectionRects)
+    }
+
+    private func removeAllLineSelectionViews() {
+        for (_, view) in selectionViewReuseQueue.visibleViews {
+            view.removeFromSuperview()
+        }
+        let keys = Set(selectionViewReuseQueue.visibleViews.keys)
+        selectionViewReuseQueue.enqueueViews(withKeys: keys)
+    }
+
+    private func addLineSelectionViews(for selectionRects: [TextSelectionRect]) {
+        var appearedViewKeys = Set<String>()
+        for (idx, selectionRect) in selectionRects.enumerated() {
+            let key = String(describing: idx)
+            let view = selectionViewReuseQueue.dequeueView(forKey: key)
+            view.frame = selectionRect.rect
+            view.wantsLayer = true
+            view.backgroundColor = selectionHighlightColor
+            scrollContentView.addSubview(view)
+            appearedViewKeys.insert(key)
+        }
+        let disappearedViewKeys = Set(selectionViewReuseQueue.visibleViews.keys).subtracting(appearedViewKeys)
+        selectionViewReuseQueue.enqueueViews(withKeys: disappearedViewKeys)
+    }
+}
+
 // MARK: - TextViewControllerDelegate
 extension TextView: TextViewControllerDelegate {
     func textViewControllerDidChangeText(_ textViewController: TextViewController) {
@@ -702,7 +881,9 @@ extension TextView: TextViewControllerDelegate {
     func textViewController(_ textViewController: TextViewController, didChangeSelectedRange selectedRange: NSRange?) {
         layoutIfNeeded()
         caretView.delayBlinkIfNeeded()
+        updateCaretVisibility()
         updateCaretFrame()
+        updateSelectedRectangles()
         scrollToVisibleLocationIfNeeded()
     }
 }
