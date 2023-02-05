@@ -24,10 +24,14 @@ public extension TextView {
         guard let indexedPosition = position as? IndexedPosition else {
             fatalError("Expected position to be of type \(IndexedPosition.self)")
         }
-        return textViewController.caretRectService.caretRect(
-            at: indexedPosition.index,
-            allowMovingCaretToNextLineFragment: true
+        let caretFactory = CaretRectFactory(
+            stringView: textViewController.stringView,
+            lineManager: textViewController.lineManager,
+            lineControllerStorage: textViewController.lineControllerStorage,
+            gutterWidthService: textViewController.gutterWidthService,
+            textContainerInset: textContainerInset
         )
+        return caretFactory.caretRect(at: indexedPosition.index, allowMovingCaretToNextLineFragment: true)
     }
 
     func beginFloatingCursor(at point: CGPoint) {
@@ -204,17 +208,22 @@ public extension TextView {
         guard let indexedRange = range as? IndexedRange else {
             return []
         }
+        let caretRectFactory = CaretRectFactory(
+            stringView: textViewController.stringView,
+            lineManager: textViewController.lineManager,
+            lineControllerStorage: textViewController.lineControllerStorage,
+            gutterWidthService: textViewController.gutterWidthService,
+            textContainerInset: textContainerInset
+        )
         let selectionRectFactory = SelectionRectFactory(
             lineManager: textViewController.lineManager,
-            contentSizeService: textViewController.contentSizeService,
             gutterWidthService: textViewController.gutterWidthService,
-            caretRectService: textViewController.caretRectService
-        )
-        return selectionRectFactory.selectionRects(
-            in: indexedRange.range,
+            contentSizeService: textViewController.contentSizeService,
+            caretRectFactory: caretRectFactory,
             textContainerInset: textContainerInset,
             lineHeightMultiplier: lineHeightMultiplier
         )
+        return selectionRectFactory.selectionRects(in: indexedRange.range)
     }
 }
 

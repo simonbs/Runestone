@@ -121,7 +121,6 @@ final class LayoutManager {
     }
     private let contentSizeService: ContentSizeService
     private let gutterWidthService: GutterWidthService
-    private let caretRectService: CaretRectService
     private let highlightService: HighlightService
 
     // MARK: - Rendering
@@ -137,7 +136,6 @@ final class LayoutManager {
         lineControllerStorage: LineControllerStorage,
         contentSizeService: ContentSizeService,
         gutterWidthService: GutterWidthService,
-        caretRectService: CaretRectService,
         highlightService: HighlightService,
         invisibleCharacterConfiguration: InvisibleCharacterConfiguration
     ) {
@@ -148,7 +146,6 @@ final class LayoutManager {
         self.lineControllerStorage = lineControllerStorage
         self.contentSizeService = contentSizeService
         self.gutterWidthService = gutterWidthService
-        self.caretRectService = caretRectService
         self.highlightService = highlightService
         #if os(iOS)
         self.linesContainerView.isUserInteractionEnabled = false
@@ -363,8 +360,15 @@ extension LayoutManager {
             let height = (realEndLine.yPosition + realEndLine.data.lineHeight) - minY
             return CGRect(x: 0, y: textContainerInset.top + minY, width: scrollViewWidth, height: height)
         case .lineFragment:
-            let startCaretRect = caretRectService.caretRect(at: selectedRange.lowerBound, allowMovingCaretToNextLineFragment: false)
-            let endCaretRect = caretRectService.caretRect(at: selectedRange.upperBound, allowMovingCaretToNextLineFragment: false)
+            let caretRectFactory = CaretRectFactory(
+                stringView: stringView,
+                lineManager: lineManager,
+                lineControllerStorage: lineControllerStorage,
+                gutterWidthService: gutterWidthService,
+                textContainerInset: textContainerInset
+            )
+            let startCaretRect = caretRectFactory.caretRect(at: selectedRange.lowerBound, allowMovingCaretToNextLineFragment: false)
+            let endCaretRect = caretRectFactory.caretRect(at: selectedRange.upperBound, allowMovingCaretToNextLineFragment: false)
             let startLineFragmentHeight = startCaretRect.height * lineHeightMultiplier
             let endLineFragmentHeight = endCaretRect.height * lineHeightMultiplier
             let minY = startCaretRect.minY - (startLineFragmentHeight - startCaretRect.height) / 2

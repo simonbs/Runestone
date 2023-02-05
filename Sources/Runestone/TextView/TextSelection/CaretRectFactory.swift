@@ -1,32 +1,28 @@
 import CoreGraphics
 
-final class CaretRectService {
-    var stringView: StringView
-    var lineManager: LineManager
-    var textContainerInset: MultiPlatformEdgeInsets = .zero
-    var showLineNumbers = false
-
+final class CaretRectFactory {
+    private let stringView: StringView
+    private let lineManager: LineManager
     private let lineControllerStorage: LineControllerStorage
     private let gutterWidthService: GutterWidthService
-    private var leadingLineSpacing: CGFloat {
-        if showLineNumbers {
-            return gutterWidthService.gutterWidth + textContainerInset.left
-        } else {
-            return textContainerInset.left
-        }
-    }
+    private let textContainerInset: MultiPlatformEdgeInsets
 
-    init(stringView: StringView,
-         lineManager: LineManager,
-         lineControllerStorage: LineControllerStorage,
-         gutterWidthService: GutterWidthService) {
+    init(
+        stringView: StringView,
+        lineManager: LineManager,
+        lineControllerStorage: LineControllerStorage,
+        gutterWidthService: GutterWidthService,
+        textContainerInset: MultiPlatformEdgeInsets
+    ) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
         self.gutterWidthService = gutterWidthService
+        self.textContainerInset = textContainerInset
     }
 
     func caretRect(at location: Int, allowMovingCaretToNextLineFragment: Bool) -> CGRect {
+        let leadingLineSpacing = gutterWidthService.gutterWidth + textContainerInset.left
         let safeLocation = min(max(location, 0), stringView.string.length)
         let line = lineManager.line(containingCharacterAt: safeLocation)!
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
@@ -43,7 +39,7 @@ final class CaretRectService {
     }
 }
 
-private extension CaretRectService {
+private extension CaretRectFactory {
     private func shouldMoveCaretToNextLineFragment(forLocation location: Int, in line: DocumentLineNode) -> Bool {
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         guard lineController.numberOfLineFragments > 0 else {

@@ -25,7 +25,14 @@ private extension TextViewController {
     }
 
     private func caretRect(at location: Int) -> CGRect {
-        caretRectService.caretRect(at: location, allowMovingCaretToNextLineFragment: true)
+        let caretRectFactory = CaretRectFactory(
+            stringView: stringView,
+            lineManager: lineManager,
+            lineControllerStorage: lineControllerStorage,
+            gutterWidthService: gutterWidthService,
+            textContainerInset: textContainerInset
+        )
+        return caretRectFactory.caretRect(at: location, allowMovingCaretToNextLineFragment: true)
     }
 
     /// Computes a content offset to scroll to in order to reveal the specified rectangle.

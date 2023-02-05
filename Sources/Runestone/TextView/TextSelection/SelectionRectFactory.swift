@@ -3,27 +3,29 @@ import Foundation
 
 final class SelectionRectFactory {
     private let lineManager: LineManager
-    private let contentSizeService: ContentSizeService
     private let gutterWidthService: GutterWidthService
-    private let caretRectService: CaretRectService
+    private let contentSizeService: ContentSizeService
+    private let caretRectFactory: CaretRectFactory
+    private let textContainerInset: MultiPlatformEdgeInsets
+    private let lineHeightMultiplier: CGFloat
 
     init(
         lineManager: LineManager,
-        contentSizeService: ContentSizeService,
         gutterWidthService: GutterWidthService,
-        caretRectService: CaretRectService
+        contentSizeService: ContentSizeService,
+        caretRectFactory: CaretRectFactory,
+        textContainerInset: MultiPlatformEdgeInsets,
+        lineHeightMultiplier: CGFloat
     ) {
         self.lineManager = lineManager
-        self.contentSizeService = contentSizeService
         self.gutterWidthService = gutterWidthService
-        self.caretRectService = caretRectService
+        self.contentSizeService = contentSizeService
+        self.caretRectFactory = caretRectFactory
+        self.textContainerInset = textContainerInset
+        self.lineHeightMultiplier = lineHeightMultiplier
     }
 
-    func selectionRects(
-        in range: NSRange,
-        textContainerInset: MultiPlatformEdgeInsets = .zero,
-        lineHeightMultiplier: CGFloat = 1
-    ) -> [TextSelectionRect] {
+    func selectionRects(in range: NSRange) -> [TextSelectionRect] {
         guard range.length > 0 else {
             return []
         }
@@ -33,8 +35,8 @@ final class SelectionRectFactory {
         let leadingLineSpacing = gutterWidthService.gutterWidth + textContainerInset.left
         let selectsLineEnding = range.upperBound == endLine.location
         let adjustedRange = NSRange(location: range.location, length: selectsLineEnding ? range.length - 1 : range.length)
-        let startCaretRect = caretRectService.caretRect(at: adjustedRange.lowerBound, allowMovingCaretToNextLineFragment: true)
-        let endCaretRect = caretRectService.caretRect(at: adjustedRange.upperBound, allowMovingCaretToNextLineFragment: false)
+        let startCaretRect = caretRectFactory.caretRect(at: adjustedRange.lowerBound,allowMovingCaretToNextLineFragment: true)
+        let endCaretRect = caretRectFactory.caretRect(at: adjustedRange.upperBound,allowMovingCaretToNextLineFragment: false)
         let fullWidth = max(contentSizeService.contentWidth, contentSizeService.scrollViewSize.width) - leadingLineSpacing - textContainerInset.right
         if startCaretRect.minY == endCaretRect.minY && startCaretRect.maxY == endCaretRect.maxY {
             // Selecting text in the same line fragment.
