@@ -681,7 +681,7 @@ private extension TextView {
     }
 
     private func updateCaretVisibility() {
-        if isWindowKey && isFirstResponder {
+        if isWindowKey && isFirstResponder && selectedRange().length == 0 {
             caretView.isHidden = false
             caretView.isBlinkingEnabled = true
             caretView.delayBlinkIfNeeded()
