@@ -72,17 +72,17 @@ final class TextInputView: UIView, UITextInput {
     }
     var markedTextStyle: [NSAttributedString.Key: Any]?
     var beginningOfDocument: UITextPosition {
-        return IndexedPosition(index: 0)
+        IndexedPosition(index: 0)
     }
     var endOfDocument: UITextPosition {
-        return IndexedPosition(index: string.length)
+        IndexedPosition(index: string.length)
     }
     weak var inputDelegate: UITextInputDelegate?
     var hasText: Bool {
-        return string.length > 0
+        string.length > 0
     }
     var tokenizer: UITextInputTokenizer {
-        return customTokenizer
+        customTokenizer
     }
     private lazy var customTokenizer = TextInputStringTokenizer(textInput: self,
                                                                 stringView: stringView,
@@ -126,7 +126,7 @@ final class TextInputView: UIView, UITextInput {
         }
     }
     override var undoManager: UndoManager? {
-        return timedUndoManager
+        timedUndoManager
     }
 
     // MARK: - Appearance
@@ -148,7 +148,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var lineSelectionDisplayType: LineSelectionDisplayType {
         get {
-            return layoutManager.lineSelectionDisplayType
+            layoutManager.lineSelectionDisplayType
         }
         set {
             layoutManager.lineSelectionDisplayType = newValue
@@ -156,7 +156,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var showTabs: Bool {
         get {
-            return invisibleCharacterConfiguration.showTabs
+            invisibleCharacterConfiguration.showTabs
         }
         set {
             if newValue != invisibleCharacterConfiguration.showTabs {
@@ -167,7 +167,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var showSpaces: Bool {
         get {
-            return invisibleCharacterConfiguration.showSpaces
+            invisibleCharacterConfiguration.showSpaces
         }
         set {
             if newValue != invisibleCharacterConfiguration.showSpaces {
@@ -178,7 +178,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var showNonBreakingSpaces: Bool {
         get {
-            return invisibleCharacterConfiguration.showNonBreakingSpaces
+            invisibleCharacterConfiguration.showNonBreakingSpaces
         }
         set {
             if newValue != invisibleCharacterConfiguration.showNonBreakingSpaces {
@@ -189,7 +189,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var showLineBreaks: Bool {
         get {
-            return invisibleCharacterConfiguration.showLineBreaks
+            invisibleCharacterConfiguration.showLineBreaks
         }
         set {
             if newValue != invisibleCharacterConfiguration.showLineBreaks {
@@ -203,7 +203,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var showSoftLineBreaks: Bool {
         get {
-            return invisibleCharacterConfiguration.showSoftLineBreaks
+            invisibleCharacterConfiguration.showSoftLineBreaks
         }
         set {
             if newValue != invisibleCharacterConfiguration.showSoftLineBreaks {
@@ -217,7 +217,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var tabSymbol: String {
         get {
-            return invisibleCharacterConfiguration.tabSymbol
+            invisibleCharacterConfiguration.tabSymbol
         }
         set {
             if newValue != invisibleCharacterConfiguration.tabSymbol {
@@ -228,7 +228,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var spaceSymbol: String {
         get {
-            return invisibleCharacterConfiguration.spaceSymbol
+            invisibleCharacterConfiguration.spaceSymbol
         }
         set {
             if newValue != invisibleCharacterConfiguration.spaceSymbol {
@@ -239,7 +239,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var nonBreakingSpaceSymbol: String {
         get {
-            return invisibleCharacterConfiguration.nonBreakingSpaceSymbol
+            invisibleCharacterConfiguration.nonBreakingSpaceSymbol
         }
         set {
             if newValue != invisibleCharacterConfiguration.nonBreakingSpaceSymbol {
@@ -250,7 +250,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var lineBreakSymbol: String {
         get {
-            return invisibleCharacterConfiguration.lineBreakSymbol
+            invisibleCharacterConfiguration.lineBreakSymbol
         }
         set {
             if newValue != invisibleCharacterConfiguration.lineBreakSymbol {
@@ -261,7 +261,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var softLineBreakSymbol: String {
         get {
-            return invisibleCharacterConfiguration.softLineBreakSymbol
+            invisibleCharacterConfiguration.softLineBreakSymbol
         }
         set {
             if newValue != invisibleCharacterConfiguration.softLineBreakSymbol {
@@ -309,7 +309,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var textContainerInset: UIEdgeInsets {
         get {
-            return layoutManager.textContainerInset
+            layoutManager.textContainerInset
         }
         set {
             if newValue != layoutManager.textContainerInset {
@@ -324,7 +324,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var isLineWrappingEnabled: Bool {
         get {
-            return layoutManager.isLineWrappingEnabled
+            layoutManager.isLineWrappingEnabled
         }
         set {
             if newValue != layoutManager.isLineWrappingEnabled {
@@ -347,7 +347,7 @@ final class TextInputView: UIView, UITextInput {
         }
     }
     var gutterWidth: CGFloat {
-        return gutterWidthService.gutterWidth
+        gutterWidthService.gutterWidth
     }
     var lineHeightMultiplier: CGFloat = 1 {
         didSet {
@@ -394,7 +394,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var pageGuideColumn: Int {
         get {
-            return pageGuideController.column
+            pageGuideController.column
         }
         set {
             if newValue != pageGuideController.column {
@@ -404,11 +404,11 @@ final class TextInputView: UIView, UITextInput {
         }
     }
     private var estimatedLineHeight: CGFloat {
-        return theme.font.totalLineHeight * lineHeightMultiplier
+        theme.font.totalLineHeight * lineHeightMultiplier
     }
     var highlightedRanges: [HighlightedRange] {
         get {
-            return highlightService.highlightedRanges
+            highlightService.highlightedRanges
         }
         set {
             if newValue != highlightService.highlightedRanges {
@@ -423,7 +423,7 @@ final class TextInputView: UIView, UITextInput {
     weak var delegate: TextInputViewDelegate?
     var string: NSString {
         get {
-            return stringView.string
+            stringView.string
         }
         set {
             if newValue != stringView.string {
@@ -448,7 +448,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var viewport: CGRect {
         get {
-            return layoutManager.viewport
+            layoutManager.viewport
         }
         set {
             if newValue != layoutManager.viewport {
@@ -470,11 +470,11 @@ final class TextInputView: UIView, UITextInput {
         }
     }
     var contentSize: CGSize {
-        return contentSizeService.contentSize
+        contentSizeService.contentSize
     }
     var selectedRange: NSRange? {
         get {
-            return _selectedRange
+            _selectedRange
         }
         set {
             if newValue != _selectedRange {
@@ -493,11 +493,11 @@ final class TextInputView: UIView, UITextInput {
         }
     }
     override var canBecomeFirstResponder: Bool {
-        return true
+        true
     }
     weak var gutterParentView: UIView? {
         get {
-            return layoutManager.gutterParentView
+            layoutManager.gutterParentView
         }
         set {
             layoutManager.gutterParentView = newValue
@@ -511,7 +511,7 @@ final class TextInputView: UIView, UITextInput {
         }
     }
     var gutterContainerView: UIView {
-        return layoutManager.gutterContainerView
+        layoutManager.gutterContainerView
     }
     private(set) var stringView = StringView() {
         didSet {
@@ -542,7 +542,7 @@ final class TextInputView: UIView, UITextInput {
         }
     }
     var viewHierarchyContainsCaret: Bool {
-        return textSelectionView?.subviews.count == 1
+        textSelectionView?.subviews.count == 1
     }
     var lineEndings: LineEnding = .lf
     private(set) var isRestoringPreviouslyDeletedText = false
@@ -573,7 +573,7 @@ final class TextInputView: UIView, UITextInput {
     private let invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
     private var markedRange: NSRange? {
         get {
-            return layoutManager.markedRange
+            layoutManager.markedRange
         }
         set {
             layoutManager.markedRange = newValue
@@ -771,7 +771,7 @@ final class TextInputView: UIView, UITextInput {
     }
 
     func linePosition(at location: Int) -> LinePosition? {
-        return lineManager.linePosition(at: location)
+        lineManager.linePosition(at: location)
     }
 
     func setState(_ state: TextViewState, addUndoAction: Bool = false) {
@@ -859,11 +859,11 @@ final class TextInputView: UIView, UITextInput {
     }
 
     func detectIndentStrategy() -> DetectedIndentStrategy {
-        return languageMode.detectIndentStrategy()
+        languageMode.detectIndentStrategy()
     }
 
     func textPreview(containing range: NSRange) -> TextPreview? {
-        return layoutManager.textPreview(containing: range)
+        layoutManager.textPreview(containing: range)
     }
 
     func layoutLines(toLocation location: Int) {
@@ -1073,7 +1073,7 @@ extension TextInputView {
     }
 
     func caretRect(at location: Int) -> CGRect {
-        return caretRectService.caretRect(at: location, allowMovingCaretToNextLineFragment: true)
+        caretRectService.caretRect(at: location, allowMovingCaretToNextLineFragment: true)
     }
 
     func firstRect(for range: UITextRange) -> CGRect {
@@ -1195,7 +1195,7 @@ extension TextInputView {
     }
 
     func text(in range: NSRange) -> String? {
-        return stringView.substring(in: range)
+        stringView.substring(in: range)
     }
 
     private func setStringWithUndoAction(_ newString: NSString) {
@@ -1288,7 +1288,7 @@ extension TextInputView {
     }
 
     private func shouldChangeText(in range: NSRange, replacementText text: String) -> Bool {
-        return delegate?.textInputView(self, shouldChangeTextIn: range, replacementText: text) ?? true
+        delegate?.textInputView(self, shouldChangeTextIn: range, replacementText: text) ?? true
     }
 
     private func addUndoOperation(replacing range: NSRange,
@@ -1551,7 +1551,7 @@ extension TextInputView {
 // MARK: - Writing Direction
 extension TextInputView {
     func baseWritingDirection(for position: UITextPosition, in direction: UITextStorageDirection) -> NSWritingDirection {
-        return .natural
+        .natural
     }
 
     func setBaseWritingDirection(_ writingDirection: NSWritingDirection, for range: UITextRange) {}
@@ -1560,7 +1560,7 @@ extension TextInputView {
 // MARK: - UIEditMenuInteraction
 extension TextInputView {
     func editMenu(for textRange: UITextRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
-        return editMenuController.editMenu(for: textRange, suggestedActions: suggestedActions)
+        editMenuController.editMenu(for: textRange, suggestedActions: suggestedActions)
     }
 
     func presentEditMenuForText(in range: NSRange) {
@@ -1574,7 +1574,7 @@ extension TextInputView {
     }
 
     private func highlightedRange(for range: NSRange) -> HighlightedRange? {
-        return highlightedRanges.first { $0.range == range }
+        highlightedRanges.first { $0.range == range }
     }
 }
 
@@ -1649,7 +1649,7 @@ extension TextInputView: IndentControllerDelegate {
 // MARK: - EditMenuControllerDelegate
 extension TextInputView: EditMenuControllerDelegate {
     func editMenuController(_ controller: EditMenuController, caretRectAt location: Int) -> CGRect {
-        return caretRectService.caretRect(at: location, allowMovingCaretToNextLineFragment: false)
+        caretRectService.caretRect(at: location, allowMovingCaretToNextLineFragment: false)
     }
 
     func editMenuControllerShouldReplaceText(_ controller: EditMenuController) {
@@ -1657,14 +1657,14 @@ extension TextInputView: EditMenuControllerDelegate {
     }
 
     func editMenuController(_ controller: EditMenuController, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool {
-        return delegate?.textInputView(self, canReplaceTextIn: highlightedRange) ?? false
+        delegate?.textInputView(self, canReplaceTextIn: highlightedRange) ?? false
     }
 
     func editMenuController(_ controller: EditMenuController, highlightedRangeFor range: NSRange) -> HighlightedRange? {
-        return highlightedRange(for: range)
+        highlightedRange(for: range)
     }
 
     func selectedRange(for controller: EditMenuController) -> NSRange? {
-        return selectedRange
+        selectedRange
     }
 }

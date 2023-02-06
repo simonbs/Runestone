@@ -2,7 +2,7 @@ import Foundation
 
 enum CodeSample {
     static var `default`: String {
-        return """
+        """
         /**
          * This is a Runestone text view with syntax highlighting
          * for the JavaScript programming language.

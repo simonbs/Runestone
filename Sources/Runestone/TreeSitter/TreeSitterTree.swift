@@ -3,7 +3,7 @@ import TreeSitter
 final class TreeSitterTree {
     let pointer: OpaquePointer
     var rootNode: TreeSitterNode {
-        return TreeSitterNode(node: ts_tree_root_node(pointer))
+        TreeSitterNode(node: ts_tree_root_node(pointer))
     }
 
     init(_ tree: OpaquePointer) {
@@ -35,6 +35,6 @@ final class TreeSitterTree {
 
 extension TreeSitterTree: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TreeSitterTree rootNode=\(rootNode)]"
+        "[TreeSitterTree rootNode=\(rootNode)]"
     }
 }

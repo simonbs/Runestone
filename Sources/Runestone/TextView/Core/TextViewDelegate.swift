@@ -105,11 +105,11 @@ public protocol TextViewDelegate: AnyObject {
 
 public extension TextViewDelegate {
     func textViewShouldBeginEditing(_ textView: TextView) -> Bool {
-        return true
+        true
     }
 
     func textViewShouldEndEditing(_ textView: TextView) -> Bool {
-        return true
+        true
     }
 
     func textViewDidBeginEditing(_ textView: TextView) {}
@@ -121,15 +121,15 @@ public extension TextViewDelegate {
     func textViewDidChangeSelection(_ textView: TextView) {}
 
     func textView(_ textView: TextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
-        return true
+        true
     }
 
     func textView(_ textView: TextView, shouldInsert characterPair: CharacterPair, in range: NSRange) -> Bool {
-        return true
+        true
     }
 
     func textView(_ textView: TextView, shouldSkipTrailingComponentOf characterPair: CharacterPair, in range: NSRange) -> Bool {
-        return true
+        true
     }
 
     func textViewDidChangeGutterWidth(_ textView: TextView) {}
@@ -143,7 +143,7 @@ public extension TextViewDelegate {
     func textViewDidLoopToFirstHighlightedRange(_ textView: TextView) {}
 
     func textView(_ textView: TextView, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool {
-        return false
+        false
     }
 
     func textView(_ textView: TextView, replaceTextIn highlightedRange: HighlightedRange) {}

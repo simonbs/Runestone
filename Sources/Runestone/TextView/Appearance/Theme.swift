@@ -66,27 +66,27 @@ public protocol Theme: AnyObject {
 
 public extension Theme {
     var gutterHairlineWidth: CGFloat {
-        return 1 / UIScreen.main.scale
+        1 / UIScreen.main.scale
     }
 
     var pageGuideHairlineWidth: CGFloat {
-        return 1 / UIScreen.main.scale
+        1 / UIScreen.main.scale
     }
 
     var markedTextBackgroundCornerRadius: CGFloat {
-        return 0
+        0
     }
 
     func font(for highlightName: String) -> UIFont? {
-        return nil
+        nil
     }
 
     func fontTraits(for highlightName: String) -> FontTraits {
-        return []
+        []
     }
 
     func shadow(for highlightName: String) -> NSShadow? {
-        return nil
+        nil
     }
 
 #if compiler(>=5.7)

@@ -7,7 +7,7 @@ private enum EnvironmentKey {
 
 extension XCUIApplication {
     var textView: XCUIElement? {
-        return scrollViews.children(matching: .textView).element
+        scrollViews.children(matching: .textView).element
     }
 
     func tap(at point: CGPoint) {

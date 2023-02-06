@@ -27,12 +27,12 @@ public final class HighlightedRange {
 
 extension HighlightedRange: Equatable {
     public static func == (lhs: HighlightedRange, rhs: HighlightedRange) -> Bool {
-        return lhs.id == rhs.id && lhs.range == rhs.range && lhs.color == rhs.color
+        lhs.id == rhs.id && lhs.range == rhs.range && lhs.color == rhs.color
     }
 }
 
 extension HighlightedRange: CustomDebugStringConvertible {
     public var debugDescription: String {
-        return "[HighightedRange range=\(range)]"
+        "[HighightedRange range=\(range)]"
     }
 }

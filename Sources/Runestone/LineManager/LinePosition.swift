@@ -16,7 +16,7 @@ final class LinePosition: Hashable, Equatable {
     }
 
     static func == (lhs: LinePosition, rhs: LinePosition) -> Bool {
-        return lhs.row == rhs.row && lhs.column == rhs.column
+        lhs.row == rhs.row && lhs.column == rhs.column
     }
 
     func hash(into hasher: inout Hasher) {
@@ -27,6 +27,6 @@ final class LinePosition: Hashable, Equatable {
 
 extension LinePosition: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[LinePosition row=\(row) column=\(column)]"
+        "[LinePosition row=\(row) column=\(column)]"
     }
 }

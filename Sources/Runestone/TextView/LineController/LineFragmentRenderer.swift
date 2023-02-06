@@ -20,7 +20,7 @@ final class LineFragmentRenderer {
     var highlightedRangeFragments: [HighlightedRangeFragment] = []
 
     private var showInvisibleCharacters: Bool {
-        return invisibleCharacterConfiguration.showTabs
+        invisibleCharacterConfiguration.showTabs
             || invisibleCharacterConfiguration.showSpaces
             || invisibleCharacterConfiguration.showLineBreaks
             || invisibleCharacterConfiguration.showSoftLineBreaks
@@ -154,6 +154,6 @@ private extension LineFragmentRenderer {
     }
 
     private func isLineBreak(_ string: String.Element) -> Bool {
-        return string == Symbol.Character.lineFeed || string == Symbol.Character.carriageReturn || string == Symbol.Character.carriageReturnLineFeed
+        string == Symbol.Character.lineFeed || string == Symbol.Character.carriageReturn || string == Symbol.Character.carriageReturnLineFeed
     }
 }

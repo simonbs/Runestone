@@ -6,7 +6,7 @@ final class TreeSitterLanguageLayer {
     let language: TreeSitterInternalLanguage
     private(set) var tree: TreeSitterTree?
     var canHighlight: Bool {
-        return parser.language != nil && tree != nil
+        parser.language != nil && tree != nil
     }
 
     private let lineManager: LineManager
@@ -253,7 +253,7 @@ extension TreeSitterLanguageLayer {
 
 extension TreeSitterLanguageLayer: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TreeSitterLanguageLayer node=\(tree?.rootNode.debugDescription ?? "") childLanguageLayers=\(childLanguageLayers)]"
+        "[TreeSitterLanguageLayer node=\(tree?.rootNode.debugDescription ?? "") childLanguageLayers=\(childLanguageLayers)]"
     }
 }
 

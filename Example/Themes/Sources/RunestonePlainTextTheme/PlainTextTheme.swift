@@ -30,7 +30,7 @@ public final class PlainTextTheme: EditorTheme {
     public init() {}
 
     public func textColor(for rawHighlightName: String) -> UIColor? {
-        return nil
+        nil
     }
 
     public func fontTraits(for rawHighlightName: String) -> FontTraits {

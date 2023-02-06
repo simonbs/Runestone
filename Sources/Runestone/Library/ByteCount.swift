@@ -3,7 +3,7 @@ import Foundation
 struct ByteCount: Hashable {
     private(set) var value: Int
     var utf16Length: Int {
-        return value / 2
+        value / 2
     }
 
     init(_ value: Int) {
@@ -21,19 +21,19 @@ struct ByteCount: Hashable {
 
 extension ByteCount: Comparable {
     static func < (lhs: ByteCount, rhs: ByteCount) -> Bool {
-        return lhs.value < rhs.value
+        lhs.value < rhs.value
     }
 
     static func <= (lhs: ByteCount, rhs: ByteCount) -> Bool {
-        return lhs.value <= rhs.value
+        lhs.value <= rhs.value
     }
 
     static func >= (lhs: ByteCount, rhs: ByteCount) -> Bool {
-        return lhs.value >= rhs.value
+        lhs.value >= rhs.value
     }
 
     static func > (lhs: ByteCount, rhs: ByteCount) -> Bool {
-        return lhs.value > rhs.value
+        lhs.value > rhs.value
     }
 }
 
@@ -42,11 +42,11 @@ extension ByteCount: Numeric {
     typealias IntegerLiteralType = Int
 
     static var zero: ByteCount {
-        return ByteCount(0)
+        ByteCount(0)
     }
 
     var magnitude: Int {
-        return value
+        value
     }
 
     init?<T>(exactly source: T) where T: BinaryInteger {
@@ -58,7 +58,7 @@ extension ByteCount: Numeric {
     }
 
     static func - (lhs: ByteCount, rhs: ByteCount) -> ByteCount {
-        return ByteCount(lhs.value - rhs.value)
+        ByteCount(lhs.value - rhs.value)
     }
 
     static func -= (lhs: inout ByteCount, rhs: ByteCount) {
@@ -66,7 +66,7 @@ extension ByteCount: Numeric {
     }
 
     static func + (lhs: ByteCount, rhs: ByteCount) -> ByteCount {
-        return ByteCount(lhs.value + rhs.value)
+        ByteCount(lhs.value + rhs.value)
     }
 
     static func += (lhs: inout ByteCount, rhs: ByteCount) {
@@ -74,7 +74,7 @@ extension ByteCount: Numeric {
     }
 
     static func * (lhs: ByteCount, rhs: ByteCount) -> ByteCount {
-        return ByteCount(lhs.value * rhs.value)
+        ByteCount(lhs.value * rhs.value)
     }
 
     static func *= (lhs: inout ByteCount, rhs: ByteCount) {
@@ -84,12 +84,12 @@ extension ByteCount: Numeric {
 
 extension ByteCount: CustomStringConvertible {
     var description: String {
-        return "\(value)"
+        "\(value)"
     }
 }
 
 extension ByteCount: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "\(value)"
+        "\(value)"
     }
 }
