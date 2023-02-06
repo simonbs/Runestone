@@ -4,7 +4,7 @@ import Foundation
 final class MockTreeSitterParserDelegate: TreeSitterParserDelegate {
     var string: NSString {
         get {
-            return stringView.string
+            stringView.string
         }
         set {
             stringView.string = newValue

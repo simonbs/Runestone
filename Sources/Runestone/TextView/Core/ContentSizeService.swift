@@ -45,10 +45,10 @@ final class ContentSizeService {
         }
     }
     var contentHeight: CGFloat {
-        return ceil(totalLinesHeight + textContainerInset.top + textContainerInset.bottom)
+        ceil(totalLinesHeight + textContainerInset.top + textContainerInset.bottom)
     }
     var contentSize: CGSize {
-        return CGSize(width: contentWidth, height: contentHeight)
+        CGSize(width: contentWidth, height: contentHeight)
     }
     @Published private(set) var isContentSizeInvalid = false
 

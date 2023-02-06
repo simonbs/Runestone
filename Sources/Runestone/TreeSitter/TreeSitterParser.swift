@@ -14,7 +14,7 @@ final class TreeSitterParser {
         }
     }
     var canParse: Bool {
-        return language != nil
+        language != nil
     }
 
     private var pointer: OpaquePointer
@@ -67,7 +67,7 @@ final class TreeSitterParser {
     func setIncludedRanges(_ ranges: [TreeSitterTextRange]) -> Bool {
         let rawRanges = ranges.map { $0.rawValue }
         return rawRanges.withUnsafeBufferPointer { rangesPointer in
-            return ts_parser_set_included_ranges(pointer, rangesPointer.baseAddress, UInt32(rawRanges.count))
+            ts_parser_set_included_ranges(pointer, rangesPointer.baseAddress, UInt32(rawRanges.count))
         }
     }
 

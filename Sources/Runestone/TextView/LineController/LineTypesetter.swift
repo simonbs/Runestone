@@ -45,10 +45,10 @@ final class LineTypesetter {
         }
     }
     var isFinishedTypesetting: Bool {
-        return startOffset >= stringLength
+        startOffset >= stringLength
     }
     var typesetLength: Int {
-        return startOffset
+        startOffset
     }
 
     private let lineID: String

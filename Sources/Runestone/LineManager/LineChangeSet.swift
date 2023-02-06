@@ -32,6 +32,6 @@ final class LineChangeSet {
 
 extension LineChangeSet: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[LineChangeSet insertedLines=\(insertedLines) removedLines=\(removedLines) editedLines=\(editedLines)]"
+        "[LineChangeSet insertedLines=\(insertedLines) removedLines=\(removedLines) editedLines=\(editedLines)]"
     }
 }

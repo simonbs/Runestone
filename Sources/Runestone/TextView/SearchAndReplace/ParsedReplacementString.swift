@@ -33,7 +33,7 @@ struct ParsedReplacementString: Equatable {
     let components: [Component]
 
     var containsPlaceholder: Bool {
-        return components.contains { component in
+        components.contains { component in
             switch component {
             case .text:
                 return false

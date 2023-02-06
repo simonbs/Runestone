@@ -299,7 +299,7 @@ extension TextInputStringTokenizerTests: LineControllerStorageDelegate {
 
 extension TextInputStringTokenizerTests: LineControllerDelegate {
     func lineSyntaxHighlighter(for lineController: LineController) -> LineSyntaxHighlighter? {
-        return PlainTextSyntaxHighlighter()
+        PlainTextSyntaxHighlighter()
     }
 
     func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController) {}

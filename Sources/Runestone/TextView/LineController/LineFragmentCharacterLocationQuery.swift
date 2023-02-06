@@ -13,11 +13,11 @@ final class LineFragmentCharacterLocationQuery: RedBlackTreeSearchQuery {
     }
 
     func shouldTraverseLeftChildren(of node: RedBlackTreeNode<LineFragmentNodeID, Int, LineFragmentNodeData>) -> Bool {
-        return node.nodeTotalValue >= range.lowerBound
+        node.nodeTotalValue >= range.lowerBound
     }
 
     func shouldTraverseRightChildren(of node: RedBlackTreeNode<LineFragmentNodeID, Int, LineFragmentNodeData>) -> Bool {
-        return node.nodeTotalValue <= range.upperBound
+        node.nodeTotalValue <= range.upperBound
     }
 
     func shouldInclude(_ node: RedBlackTreeNode<LineFragmentNodeID, Int, LineFragmentNodeData>) -> Bool {

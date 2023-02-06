@@ -11,7 +11,7 @@ struct LineFragmentID: Identifiable, Hashable {
 
 extension LineFragmentID: CustomDebugStringConvertible {
     var debugDescription: String {
-        return id
+        id
     }
 }
 
@@ -39,6 +39,6 @@ final class LineFragment {
 
 extension LineFragment: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[LineFragment id=\(id) descent=\(descent) baseSize=\(baseSize) scaledSize=\(scaledSize) yPosition=\(yPosition)]"
+        "[LineFragment id=\(id) descent=\(descent) baseSize=\(baseSize) scaledSize=\(scaledSize) yPosition=\(yPosition)]"
     }
 }

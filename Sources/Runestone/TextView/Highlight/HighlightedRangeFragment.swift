@@ -29,7 +29,7 @@ final class HighlightedRangeFragment: Equatable {
 
 extension HighlightedRangeFragment {
     static func == (lhs: HighlightedRangeFragment, rhs: HighlightedRangeFragment) -> Bool {
-        return lhs.range == rhs.range
+        lhs.range == rhs.range
         && lhs.containsStart == rhs.containsStart
         && lhs.containsEnd == rhs.containsEnd
         && lhs.color == rhs.color

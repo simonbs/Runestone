@@ -3,13 +3,13 @@ import UIKit
 final class IndexedRange: UITextRange {
     let range: NSRange
     override var start: UITextPosition {
-        return IndexedPosition(index: range.location)
+        IndexedPosition(index: range.location)
     }
     override var end: UITextPosition {
-        return IndexedPosition(index: range.location + range.length)
+        IndexedPosition(index: range.location + range.length)
     }
     override var isEmpty: Bool {
-        return range.length == 0
+        range.length == 0
     }
 
     init(_ range: NSRange) {

@@ -25,7 +25,7 @@ final class TreeSitterInputEdit {
 
 extension TreeSitterInputEdit: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TreeSitterInputEdit startByte=\(startByte) oldEndByte=\(oldEndByte) newEndByte=\(newEndByte)"
+        "[TreeSitterInputEdit startByte=\(startByte) oldEndByte=\(oldEndByte) newEndByte=\(newEndByte)"
             + " startPoint=\(startPoint) oldEndPoint=\(oldEndPoint) newEndPoint=\(newEndPoint)]"
     }
 }

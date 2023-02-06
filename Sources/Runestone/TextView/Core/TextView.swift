@@ -24,7 +24,7 @@ open class TextView: UIScrollView {
     /// The text that the text view displays.
     public var text: String {
         get {
-            return textInputView.string as String
+            textInputView.string as String
         }
         set {
             textInputView.string = newValue as NSString
@@ -56,7 +56,7 @@ open class TextView: UIScrollView {
     /// Colors and fonts to be used by the editor.
     public var theme: Theme {
         get {
-            return textInputView.theme
+            textInputView.theme
         }
         set {
             textInputView.theme = newValue
@@ -65,7 +65,7 @@ open class TextView: UIScrollView {
     /// The autocorrection style for the text view.
     public var autocorrectionType: UITextAutocorrectionType {
         get {
-            return textInputView.autocorrectionType
+            textInputView.autocorrectionType
         }
         set {
             textInputView.autocorrectionType = newValue
@@ -74,7 +74,7 @@ open class TextView: UIScrollView {
     /// The autocapitalization style for the text view.
     public var autocapitalizationType: UITextAutocapitalizationType {
         get {
-            return textInputView.autocapitalizationType
+            textInputView.autocapitalizationType
         }
         set {
             textInputView.autocapitalizationType = newValue
@@ -83,7 +83,7 @@ open class TextView: UIScrollView {
     /// The spell-checking style for the text view.
     public var smartQuotesType: UITextSmartQuotesType {
         get {
-            return textInputView.smartQuotesType
+            textInputView.smartQuotesType
         }
         set {
             textInputView.smartQuotesType = newValue
@@ -92,7 +92,7 @@ open class TextView: UIScrollView {
     /// The configuration state for smart dashes.
     public var smartDashesType: UITextSmartDashesType {
         get {
-            return textInputView.smartDashesType
+            textInputView.smartDashesType
         }
         set {
             textInputView.smartDashesType = newValue
@@ -101,7 +101,7 @@ open class TextView: UIScrollView {
     /// The configuration state for the smart insertion and deletion of space characters.
     public var smartInsertDeleteType: UITextSmartInsertDeleteType {
         get {
-            return textInputView.smartInsertDeleteType
+            textInputView.smartInsertDeleteType
         }
         set {
             textInputView.smartInsertDeleteType = newValue
@@ -110,7 +110,7 @@ open class TextView: UIScrollView {
     /// The spell-checking style for the text object.
     public var spellCheckingType: UITextSpellCheckingType {
         get {
-            return textInputView.spellCheckingType
+            textInputView.spellCheckingType
         }
         set {
             textInputView.spellCheckingType = newValue
@@ -119,7 +119,7 @@ open class TextView: UIScrollView {
     /// The keyboard type for the text view.
     public var keyboardType: UIKeyboardType {
         get {
-            return textInputView.keyboardType
+            textInputView.keyboardType
         }
         set {
             textInputView.keyboardType = newValue
@@ -128,7 +128,7 @@ open class TextView: UIScrollView {
     /// The appearance style of the keyboard for the text view.
     public var keyboardAppearance: UIKeyboardAppearance {
         get {
-            return textInputView.keyboardAppearance
+            textInputView.keyboardAppearance
         }
         set {
             textInputView.keyboardAppearance = newValue
@@ -137,7 +137,7 @@ open class TextView: UIScrollView {
     /// The display of the return key.
     public var returnKeyType: UIReturnKeyType {
         get {
-            return textInputView.returnKeyType
+            textInputView.returnKeyType
         }
         set {
             textInputView.returnKeyType = newValue
@@ -145,12 +145,12 @@ open class TextView: UIScrollView {
     }
     /// Returns the undo manager used by the text view.
     override public var undoManager: UndoManager? {
-        return textInputView.undoManager
+        textInputView.undoManager
     }
     /// The color of the insertion point. This can be used to control the color of the caret.
     public var insertionPointColor: UIColor {
         get {
-            return textInputView.insertionPointColor
+            textInputView.insertionPointColor
         }
         set {
             textInputView.insertionPointColor = newValue
@@ -159,7 +159,7 @@ open class TextView: UIScrollView {
     /// The color of the selection bar. It is most common to set this to the same color as the color used for the insertion point.
     public var selectionBarColor: UIColor {
         get {
-            return textInputView.selectionBarColor
+            textInputView.selectionBarColor
         }
         set {
             textInputView.selectionBarColor = newValue
@@ -168,7 +168,7 @@ open class TextView: UIScrollView {
     /// The color of the selection highlight. It is most common to set this to the same color as the color used for the insertion point.
     public var selectionHighlightColor: UIColor {
         get {
-            return textInputView.selectionHighlightColor
+            textInputView.selectionHighlightColor
         }
         set {
             textInputView.selectionHighlightColor = newValue
@@ -191,7 +191,7 @@ open class TextView: UIScrollView {
     /// The current selection range of the text view as a UITextRange.
     public var selectedTextRange: UITextRange? {
         get {
-            return textInputView.selectedTextRange
+            textInputView.selectedTextRange
         }
         set {
             textInputView.selectedTextRange = newValue
@@ -212,16 +212,16 @@ open class TextView: UIScrollView {
     }
     /// The input assistant to use when configuring the keyboard's shortcuts bar.
     override public var inputAssistantItem: UITextInputAssistantItem {
-        return textInputView.inputAssistantItem
+        textInputView.inputAssistantItem
     }
     /// Returns a Boolean value indicating whether this object can become the first responder.
     override public var canBecomeFirstResponder: Bool {
-        return !textInputView.isFirstResponder && isEditable
+        !textInputView.isFirstResponder && isEditable
     }
     /// The text view's background color.
     override public var backgroundColor: UIColor? {
         get {
-            return textInputView.backgroundColor
+            textInputView.backgroundColor
         }
         set {
             super.backgroundColor = newValue
@@ -241,7 +241,7 @@ open class TextView: UIScrollView {
     /// Common usages of this includes the \" character to surround strings and { } to surround a scope.
     public var characterPairs: [CharacterPair] {
         get {
-            return textInputView.characterPairs
+            textInputView.characterPairs
         }
         set {
             textInputView.characterPairs = newValue
@@ -250,7 +250,7 @@ open class TextView: UIScrollView {
     /// Determines what should happen to the trailing component of a character pair when deleting the leading component. Defaults to `disabled` meaning that nothing will happen.
     public var characterPairTrailingComponentDeletionMode: CharacterPairTrailingComponentDeletionMode {
         get {
-            return textInputView.characterPairTrailingComponentDeletionMode
+            textInputView.characterPairTrailingComponentDeletionMode
         }
         set {
             textInputView.characterPairTrailingComponentDeletionMode = newValue
@@ -259,7 +259,7 @@ open class TextView: UIScrollView {
     /// Enable to show line numbers in the gutter.
     public var showLineNumbers: Bool {
         get {
-            return textInputView.showLineNumbers
+            textInputView.showLineNumbers
         }
         set {
             textInputView.showLineNumbers = newValue
@@ -268,7 +268,7 @@ open class TextView: UIScrollView {
     /// Enable to show highlight the selected lines. The selection is only shown in the gutter when multiple lines are selected.
     public var lineSelectionDisplayType: LineSelectionDisplayType {
         get {
-            return textInputView.lineSelectionDisplayType
+            textInputView.lineSelectionDisplayType
         }
         set {
             textInputView.lineSelectionDisplayType = newValue
@@ -277,7 +277,7 @@ open class TextView: UIScrollView {
     /// The text view renders invisible tabs when enabled. The `tabsSymbol` is used to render tabs.
     public var showTabs: Bool {
         get {
-            return textInputView.showTabs
+            textInputView.showTabs
         }
         set {
             textInputView.showTabs = newValue
@@ -288,7 +288,7 @@ open class TextView: UIScrollView {
     /// he `spaceSymbol` is used to render spaces.
     public var showSpaces: Bool {
         get {
-            return textInputView.showSpaces
+            textInputView.showSpaces
         }
         set {
             textInputView.showSpaces = newValue
@@ -299,7 +299,7 @@ open class TextView: UIScrollView {
     /// The `nonBreakingSpaceSymbol` is used to render spaces.
     public var showNonBreakingSpaces: Bool {
         get {
-            return textInputView.showNonBreakingSpaces
+            textInputView.showNonBreakingSpaces
         }
         set {
             textInputView.showNonBreakingSpaces = newValue
@@ -310,7 +310,7 @@ open class TextView: UIScrollView {
     /// The `lineBreakSymbol` is used to render line breaks.
     public var showLineBreaks: Bool {
         get {
-            return textInputView.showLineBreaks
+            textInputView.showLineBreaks
         }
         set {
             textInputView.showLineBreaks = newValue
@@ -321,7 +321,7 @@ open class TextView: UIScrollView {
     /// The `softLineBreakSymbol` is used to render line breaks. These line breaks are typically represented by the U+2028 unicode character. Runestone does not provide any key commands for inserting these but supports rendering them.
     public var showSoftLineBreaks: Bool {
         get {
-            return textInputView.showSoftLineBreaks
+            textInputView.showSoftLineBreaks
         }
         set {
             textInputView.showSoftLineBreaks = newValue
@@ -334,7 +334,7 @@ open class TextView: UIScrollView {
     /// Common characters for this symbol include ▸, ⇥, ➜, ➞, and ❯.
     public var tabSymbol: String {
         get {
-            return textInputView.tabSymbol
+            textInputView.tabSymbol
         }
         set {
             textInputView.tabSymbol = newValue
@@ -347,7 +347,7 @@ open class TextView: UIScrollView {
     /// Common characters for this symbol include ·, •, and _.
     public var spaceSymbol: String {
         get {
-            return textInputView.spaceSymbol
+            textInputView.spaceSymbol
         }
         set {
             textInputView.spaceSymbol = newValue
@@ -360,7 +360,7 @@ open class TextView: UIScrollView {
     /// Common characters for this symbol include ·, •, and _.
     public var nonBreakingSpaceSymbol: String {
         get {
-            return textInputView.nonBreakingSpaceSymbol
+            textInputView.nonBreakingSpaceSymbol
         }
         set {
             textInputView.nonBreakingSpaceSymbol = newValue
@@ -373,7 +373,7 @@ open class TextView: UIScrollView {
     /// Common characters for this symbol include ¬, ↵, ↲, ⤶, and ¶.
     public var lineBreakSymbol: String {
         get {
-            return textInputView.lineBreakSymbol
+            textInputView.lineBreakSymbol
         }
         set {
             textInputView.lineBreakSymbol = newValue
@@ -386,7 +386,7 @@ open class TextView: UIScrollView {
     /// Common characters for this symbol include ¬, ↵, ↲, ⤶, and ¶.
     public var softLineBreakSymbol: String {
         get {
-            return textInputView.softLineBreakSymbol
+            textInputView.softLineBreakSymbol
         }
         set {
             textInputView.softLineBreakSymbol = newValue
@@ -395,7 +395,7 @@ open class TextView: UIScrollView {
     /// The strategy used when indenting text.
     public var indentStrategy: IndentStrategy {
         get {
-            return textInputView.indentStrategy
+            textInputView.indentStrategy
         }
         set {
             textInputView.indentStrategy = newValue
@@ -404,7 +404,7 @@ open class TextView: UIScrollView {
     /// The amount of padding before the line numbers inside the gutter.
     public var gutterLeadingPadding: CGFloat {
         get {
-            return textInputView.gutterLeadingPadding
+            textInputView.gutterLeadingPadding
         }
         set {
             textInputView.gutterLeadingPadding = newValue
@@ -413,7 +413,7 @@ open class TextView: UIScrollView {
     /// The amount of padding after the line numbers inside the gutter.
     public var gutterTrailingPadding: CGFloat {
         get {
-            return textInputView.gutterTrailingPadding
+            textInputView.gutterTrailingPadding
         }
         set {
             textInputView.gutterTrailingPadding = newValue
@@ -422,7 +422,7 @@ open class TextView: UIScrollView {
     /// The minimum amount of characters to use for width calculation inside the gutter.
     public var gutterMinimumCharacterCount: Int {
         get {
-            return textInputView.gutterMinimumCharacterCount
+            textInputView.gutterMinimumCharacterCount
         }
         set {
             textInputView.gutterMinimumCharacterCount = newValue
@@ -431,7 +431,7 @@ open class TextView: UIScrollView {
     /// The amount of spacing surrounding the lines.
     public var textContainerInset: UIEdgeInsets {
         get {
-            return textInputView.textContainerInset
+            textInputView.textContainerInset
         }
         set {
             textInputView.textContainerInset = newValue
@@ -442,7 +442,7 @@ open class TextView: UIScrollView {
     /// Line wrapping is enabled by default.
     public var isLineWrappingEnabled: Bool {
         get {
-            return textInputView.isLineWrappingEnabled
+            textInputView.isLineWrappingEnabled
         }
         set {
             textInputView.isLineWrappingEnabled = newValue
@@ -451,7 +451,7 @@ open class TextView: UIScrollView {
     /// Line break mode for text view. The default value is .byWordWrapping meaning that wrapping occurs on word boundaries.
     public var lineBreakMode: LineBreakMode {
         get {
-            return textInputView.lineBreakMode
+            textInputView.lineBreakMode
         }
         set {
             textInputView.lineBreakMode = newValue
@@ -459,12 +459,12 @@ open class TextView: UIScrollView {
     }
     /// Width of the gutter.
     public var gutterWidth: CGFloat {
-        return textInputView.gutterWidth
+        textInputView.gutterWidth
     }
     /// The line-height is multiplied with the value.
     public var lineHeightMultiplier: CGFloat {
         get {
-            return textInputView.lineHeightMultiplier
+            textInputView.lineHeightMultiplier
         }
         set {
             textInputView.lineHeightMultiplier = newValue
@@ -473,7 +473,7 @@ open class TextView: UIScrollView {
     /// The number of points by which to adjust kern. The default value is 0 meaning that kerning is disabled.
     public var kern: CGFloat {
         get {
-            return textInputView.kern
+            textInputView.kern
         }
         set {
             textInputView.kern = newValue
@@ -482,7 +482,7 @@ open class TextView: UIScrollView {
     /// The text view shows a page guide when enabled. Use `pageGuideColumn` to specify the location of the page guide.
     public var showPageGuide: Bool {
         get {
-            return textInputView.showPageGuide
+            textInputView.showPageGuide
         }
         set {
             textInputView.showPageGuide = newValue
@@ -491,7 +491,7 @@ open class TextView: UIScrollView {
     /// Specifies the location of the page guide. Use `showPageGuide` to specify if the page guide should be shown.
     public var pageGuideColumn: Int {
         get {
-            return textInputView.pageGuideColumn
+            textInputView.pageGuideColumn
         }
         set {
             textInputView.pageGuideColumn = newValue
@@ -525,12 +525,12 @@ open class TextView: UIScrollView {
     ///
     /// This will return nil if the line is no longer available. The value will not be kept updated as the text is changed. The value can be used to determine if a document contains a very long line in which case the performance may be degraded when editing the line.
     public var lengthOfInitallyLongestLine: Int? {
-        return textInputView.lineManager.initialLongestLine?.data.totalLength
+        textInputView.lineManager.initialLongestLine?.data.totalLength
     }
     /// Ranges in the text to be highlighted. The color defined by the background will be drawen behind the text.
     public var highlightedRanges: [HighlightedRange] {
         get {
-            return textInputView.highlightedRanges
+            textInputView.highlightedRanges
         }
         set {
             textInputView.highlightedRanges = newValue
@@ -562,7 +562,7 @@ open class TextView: UIScrollView {
     /// The TextView will only update the line endings when text is modified through an external event, such as when the user typing on the keyboard, when the user is replacing selected text, and when pasting text into the text view. In all other cases, you should make sure that the text provided to the text view uses the desired line endings. This includes when calling ``TextView/setState(_:addUndoAction:)`` and ``TextView/replaceText(in:)``.
     public var lineEndings: LineEnding {
         get {
-            return textInputView.lineEndings
+            textInputView.lineEndings
         }
         set {
             textInputView.lineEndings = newValue
@@ -577,7 +577,7 @@ open class TextView: UIScrollView {
     @available(iOS 16, *)
     public var isFindInteractionEnabled: Bool {
         get {
-            return textSearchingHelper.isFindInteractionEnabled
+            textSearchingHelper.isFindInteractionEnabled
         }
         set {
             textSearchingHelper.isFindInteractionEnabled = newValue
@@ -590,7 +590,7 @@ open class TextView: UIScrollView {
     /// Call [`presentFindNavigator(showingReplace:)`](https://developer.apple.com/documentation/uikit/uifindinteraction/3975832-presentfindnavigator) on the UIFindInteraction object to invoke the find interaction and display the find panel.
     @available(iOS 16, *)
     public var findInteraction: UIFindInteraction? {
-        return textSearchingHelper.findInteraction
+        textSearchingHelper.findInteraction
     }
 #endif
 
@@ -600,7 +600,7 @@ open class TextView: UIScrollView {
 #if compiler(>=5.7)
     @available(iOS 16.0, *)
     private var editMenuInteraction: UIEditMenuInteraction? {
-        return _editMenuInteraction as? UIEditMenuInteraction
+        _editMenuInteraction as? UIEditMenuInteraction
     }
     private var _editMenuInteraction: Any?
 #endif
@@ -814,7 +814,7 @@ open class TextView: UIScrollView {
     /// - Parameter range: A range of text in the document.
     /// - Returns: The substring that falls within the specified range.
     public func text(in range: NSRange) -> String? {
-        return textInputView.text(in: range)
+        textInputView.text(in: range)
     }
 
     /// Returns the syntax node at the specified location in the document.
@@ -827,7 +827,7 @@ open class TextView: UIScrollView {
     /// - Parameter location: A location in the document.
     /// - Returns: The syntax node at the location.
     public func syntaxNode(at location: Int) -> SyntaxNode? {
-        return textInputView.syntaxNode(at: location)
+        textInputView.syntaxNode(at: location)
     }
 
     /// Checks if the specified locations is within the indentation of the line.
@@ -835,7 +835,7 @@ open class TextView: UIScrollView {
     /// - Parameter location: A location in the document.
     /// - Returns: True if the location is within the indentation of the line, otherwise false.
     public func isIndentation(at location: Int) -> Bool {
-        return textInputView.isIndentation(at: location)
+        textInputView.isIndentation(at: location)
     }
 
     /// Decreases the indentation level of the selected lines.
@@ -865,7 +865,7 @@ open class TextView: UIScrollView {
     /// Attempts to detect the indent strategy used in the document. This may return an unknown strategy even
     /// when the document contains indentation.
     public func detectIndentStrategy() -> DetectedIndentStrategy {
-        return textInputView.detectIndentStrategy()
+        textInputView.detectIndentStrategy()
     }
 
     /// Go to the beginning of the line at the specified index.
@@ -943,7 +943,7 @@ open class TextView: UIScrollView {
     /// - Parameter range: Range of text to include in text view. The returned result may span a larger range than the one specified.
     /// - Returns: Text preview containing the specified range.
     public func textPreview(containing range: NSRange) -> TextPreview? {
-        return textInputView.textPreview(containing: range)
+        textInputView.textPreview(containing: range)
     }
 
     /// Selects a highlighted range behind the selected range if possible.
@@ -972,17 +972,17 @@ open class TextView: UIScrollView {
 extension TextView {
     /// The range of currently marked text in a document.
     public var markedTextRange: UITextRange? {
-        return textInputView.markedTextRange
+        textInputView.markedTextRange
     }
 
     /// The text position for the beginning of a document.
     public var beginningOfDocument: UITextPosition {
-        return textInputView.beginningOfDocument
+        textInputView.beginningOfDocument
     }
 
     /// The text position for the end of a document.
     public var endOfDocument: UITextPosition {
-        return textInputView.endOfDocument
+        textInputView.endOfDocument
     }
 
     /// Returns the range between two text positions.
@@ -991,7 +991,7 @@ extension TextView {
     ///   - toPosition: An object that represents another location in a document.
     /// - Returns: An object that represents the range between fromPosition and toPosition.
     public func textRange(from fromPosition: UITextPosition, to toPosition: UITextPosition) -> UITextRange? {
-        return textInputView.textRange(from: fromPosition, to: toPosition)
+        textInputView.textRange(from: fromPosition, to: toPosition)
     }
 
     /// Returns the text position at a specified offset from another text position.
@@ -1000,7 +1000,7 @@ extension TextView {
     ///   - offset: A character offset from position. It can be a positive or negative value.
     /// - Returns: A custom UITextPosition object that represents the location in a document that is at the specified offset from position. Returns nil if the computed text position is less than 0 or greater than the length of the backing string.
     public func position(from position: UITextPosition, offset: Int) -> UITextPosition? {
-        return textInputView.position(from: position, offset: offset)
+        textInputView.position(from: position, offset: offset)
     }
 
     /// Returns the text position at a specified offset in a specified direction from another text position.
@@ -1010,7 +1010,7 @@ extension TextView {
     ///   - offset: A character offset from position.
     /// - Returns: Returns the text position at a specified offset in a specified direction from another text position. Returns nil if the computed text position is less than 0 or greater than the length of the backing string.
     public func position(from position: UITextPosition, in direction: UITextLayoutDirection, offset: Int) -> UITextPosition? {
-        return textInputView.position(from: position, in: direction, offset: offset)
+        textInputView.position(from: position, in: direction, offset: offset)
     }
 
     /// Returns how one text position compares to another text position.
@@ -1019,7 +1019,7 @@ extension TextView {
     ///   - other: A custom object that represents another location within a document.
     /// - Returns: A value that indicates whether the two text positions are identical or whether one is before the other.
     public func compare(_ position: UITextPosition, to other: UITextPosition) -> ComparisonResult {
-        return textInputView.compare(position, to: other)
+        textInputView.compare(position, to: other)
     }
 
     /// Returns the number of UTF-16 characters between one text position and another text position.
@@ -1028,12 +1028,12 @@ extension TextView {
     ///   - toPosition: A custom object that represents another location within document.
     /// - Returns: The number of UTF-16 characters between fromPosition and toPosition.
     public func offset(from: UITextPosition, to toPosition: UITextPosition) -> Int {
-        return textInputView.offset(from: from, to: toPosition)
+        textInputView.offset(from: from, to: toPosition)
     }
 
     /// An input tokenizer that provides information about the granularity of text units.
     public var tokenizer: UITextInputTokenizer {
-        return textInputView.tokenizer
+        textInputView.tokenizer
     }
 
     /// Returns the text position that is at the farthest extent in a specified layout direction within a range of text.
@@ -1042,7 +1042,7 @@ extension TextView {
     ///   - direction: A constant that indicates a direction of layout (right, left, up, down).
     /// - Returns: A text-position object that identifies a location in the visible text.
     public func position(within range: UITextRange, farthestIn direction: UITextLayoutDirection) -> UITextPosition? {
-        return textInputView.position(within: range, farthestIn: direction)
+        textInputView.position(within: range, farthestIn: direction)
     }
 
     /// Returns a text range from a specified text position to its farthest extent in a certain direction of layout.
@@ -1051,35 +1051,35 @@ extension TextView {
     ///   - direction: A constant that indicates a direction of layout (right, left, up, down).
     /// - Returns: A text-range object that represents the distance from position to the farthest extent in direction.
     public func characterRange(byExtending position: UITextPosition, in direction: UITextLayoutDirection) -> UITextRange? {
-        return textInputView.characterRange(byExtending: position, in: direction)
+        textInputView.characterRange(byExtending: position, in: direction)
     }
 
     /// Returns the first rectangle that encloses a range of text in a document.
     /// - Parameter range: An object that represents a range of text in a document.
     /// - Returns: The first rectangle in a range of text. You might use this rectangle to draw a correction rectangle. The “first” in the name refers the rectangle enclosing the first line when the range encompasses multiple lines of text.
     public func firstRect(for range: UITextRange) -> CGRect {
-        return textInputView.firstRect(for: range)
+        textInputView.firstRect(for: range)
     }
 
     /// Returns a rectangle to draw the caret at a specified insertion point.
     /// - Parameter position: An object that identifies a location in a text input area.
     /// - Returns: A rectangle that defines the area for drawing the caret.
     public func caretRect(for position: UITextPosition) -> CGRect {
-        return textInputView.caretRect(for: position)
+        textInputView.caretRect(for: position)
     }
 
     /// Returns an array of selection rects corresponding to the range of text.
     /// - Parameter range: An object representing a range in a document’s text.
     /// - Returns: An array of UITextSelectionRect objects that encompass the selection.
     public func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
-        return textInputView.selectionRects(for: range)
+        textInputView.selectionRects(for: range)
     }
 
     /// Returns the position in a document that is closest to a specified point.
     /// - Parameter point: A point in the view that is drawing a document’s text.
     /// - Returns: An object locating a position in a document that is closest to point.
     public func closestPosition(to point: CGPoint) -> UITextPosition? {
-        return textInputView.closestPosition(to: point)
+        textInputView.closestPosition(to: point)
     }
 
     /// Returns the position in a document that is closest to a specified point in a specified range.
@@ -1088,26 +1088,26 @@ extension TextView {
     ///   - range: An object representing a range in a document’s text.
     /// - Returns: An object representing the character position in range that is closest to point.
     public func closestPosition(to point: CGPoint, within range: UITextRange) -> UITextPosition? {
-        return textInputView.closestPosition(to: point, within: range)
+        textInputView.closestPosition(to: point, within: range)
     }
 
     /// Returns the character or range of characters that is at a specified point in a document.
     /// - Parameter point: A point in the view that is drawing a document’s text.
     /// - Returns: An object representing a range that encloses a character (or characters) at point.
     public func characterRange(at point: CGPoint) -> UITextRange? {
-        return textInputView.characterRange(at: point)
+        textInputView.characterRange(at: point)
     }
 
     /// Returns the text in the specified range.
     /// - Parameter range: A range of text in a document.
     /// - Returns: A substring of a document that falls within the specified range.
     public func text(in range: UITextRange) -> String? {
-        return textInputView.text(in: range)
+        textInputView.text(in: range)
     }
 
     /// A Boolean value that indicates whether the text-entry object has any text.
     public var hasText: Bool {
-        return textInputView.hasText
+        textInputView.hasText
     }
 
     /// Scrolls the text view to reveal the text in the specified range.
@@ -1401,7 +1401,7 @@ extension TextView: TextInputViewDelegate {
     }
 
     func textInputView(_ view: TextInputView, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool {
-        return editorDelegate?.textView(self, canReplaceTextIn: highlightedRange) ?? false
+        editorDelegate?.textView(self, canReplaceTextIn: highlightedRange) ?? false
     }
 
     func textInputView(_ view: TextInputView, replaceTextIn highlightedRange: HighlightedRange) {
@@ -1434,7 +1434,7 @@ extension TextView: HighlightNavigationControllerDelegate {
 // MARK: - SearchControllerDelegate
 extension TextView: SearchControllerDelegate {
     func searchController(_ searchController: SearchController, linePositionAt location: Int) -> LinePosition? {
-        return textInputView.lineManager.linePosition(at: location)
+        textInputView.lineManager.linePosition(at: location)
     }
 }
 

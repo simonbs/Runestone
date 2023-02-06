@@ -5,7 +5,7 @@ protocol LineControllerStorageDelegate: AnyObject {
 final class LineControllerStorage {
     weak var delegate: LineControllerStorageDelegate?
     subscript(_ lineID: DocumentLineNodeID) -> LineController? {
-        return lineControllers[lineID]
+        lineControllers[lineID]
     }
 
     var stringView: StringView {
@@ -17,7 +17,7 @@ final class LineControllerStorage {
     }
 
     fileprivate var numberOfLineControllers: Int {
-        return lineControllers.count
+        lineControllers.count
     }
 
     private var lineControllers: [DocumentLineNodeID: LineController] = [:]

@@ -7,10 +7,10 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNode
     // swiftlint:disable:next implicitly_unwrapped_optional
     private(set) var root: Node!
     var nodeTotalCount: Int {
-        return root.nodeTotalCount
+        root.nodeTotalCount
     }
     var nodeTotalValue: NodeValue {
-        return root.nodeTotalValue
+        root.nodeTotalValue
     }
     var childrenUpdater: RedBlackTreeChildrenUpdater<NodeID, NodeValue, NodeData>?
 
@@ -119,7 +119,7 @@ final class RedBlackTree<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTreeNode
     }
 
     func location(of node: Node) -> NodeValue {
-        return offset(of: node, valueKeyPath: \.value, totalValueKeyPath: \.nodeTotalValue, minimumValue: minimumValue)
+        offset(of: node, valueKeyPath: \.value, totalValueKeyPath: \.nodeTotalValue, minimumValue: minimumValue)
     }
 
     func offset<T: AdditiveArithmetic>(of node: Node, valueKeyPath: KeyPath<Node, T>, totalValueKeyPath: KeyPath<Node, T>, minimumValue: T) -> T {
@@ -482,7 +482,7 @@ private extension RedBlackTree {
     }
 
     private func getColor(of node: Node?) -> RedBlackTreeNodeColor {
-        return node?.color ?? .black
+        node?.color ?? .black
     }
 
     private func buildTree(from nodes: [Node], start: Int, end: Int, subtreeHeight: Int) -> Node? {
@@ -514,7 +514,7 @@ private extension RedBlackTree {
 
 extension RedBlackTree: CustomDebugStringConvertible {
     var debugDescription: String {
-        return append(root, to: "", indent: 0)
+        append(root, to: "", indent: 0)
     }
 
     private func append(_ node: Node, to string: String, indent: Int) -> String {
@@ -552,6 +552,6 @@ extension RedBlackTree where NodeData == Void {
 
     @discardableResult
     func insertNode(value: NodeValue, after existingNode: Node) -> Node {
-        return insertNode(value: value, data: (), after: existingNode)
+        insertNode(value: value, data: (), after: existingNode)
     }
 }

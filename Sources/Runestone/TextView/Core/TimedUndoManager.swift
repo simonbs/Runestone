@@ -4,7 +4,7 @@ final class TimedUndoManager: UndoManager {
     private let endGroupingInterval: TimeInterval = 1
     private var endGroupingTimer: Timer?
     private var hasOpenGroup: Bool {
-        return groupingLevel > 0
+        groupingLevel > 0
     }
 
     override init() {

@@ -23,7 +23,7 @@ final class LineFragmentController {
     }
     var markedRange: NSRange? {
         get {
-            return renderer.markedRange
+            renderer.markedRange
         }
         set {
             if newValue != renderer.markedRange {
@@ -34,7 +34,7 @@ final class LineFragmentController {
     }
     var markedTextBackgroundColor: UIColor {
         get {
-            return renderer.markedTextBackgroundColor
+            renderer.markedTextBackgroundColor
         }
         set {
             if newValue != renderer.markedTextBackgroundColor {
@@ -45,7 +45,7 @@ final class LineFragmentController {
     }
     var markedTextBackgroundCornerRadius: CGFloat {
         get {
-            return renderer.markedTextBackgroundCornerRadius
+            renderer.markedTextBackgroundCornerRadius
         }
         set {
             if newValue != renderer.markedTextBackgroundCornerRadius {
@@ -56,7 +56,7 @@ final class LineFragmentController {
     }
     var highlightedRangeFragments: [HighlightedRangeFragment] {
         get {
-            return renderer.highlightedRangeFragments
+            renderer.highlightedRangeFragments
         }
         set {
             if newValue != renderer.highlightedRangeFragments {
@@ -78,6 +78,6 @@ final class LineFragmentController {
 // MARK: - LineFragmentRendererDelegate
 extension LineFragmentController: LineFragmentRendererDelegate {
     func string(in lineFragmentRenderer: LineFragmentRenderer) -> String? {
-        return delegate?.string(in: self)
+        delegate?.string(in: self)
     }
 }
