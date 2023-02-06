@@ -2,10 +2,12 @@
 import AppKit
 
 extension TextView: NSTextInputClient {
+    // swiftlint:disable:next prohibited_super_call
     override public func doCommand(by selector: Selector) {
         #if DEBUG
         print(NSStringFromSelector(selector))
         #endif
+        super.doCommand(by: selector)
     }
 
     public func insertText(_ string: Any, replacementRange: NSRange) {
