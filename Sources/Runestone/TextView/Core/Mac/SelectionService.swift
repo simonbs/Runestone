@@ -17,11 +17,8 @@ final class SelectionService {
     }
 
     func range(movingFrom currentlySelectedRange: NSRange, toBoundary boundary: TextBoundary, inDirection direction: TextDirection) -> NSRange {
-        print(previouslySelectedRange)
-        print(currentlySelectedRange)
         let selectedRange = previouslySelectedRange ?? currentlySelectedRange
         let newSelectedRange = move(selectedRange, toBoundary: boundary, inDirection: direction)
-        print(newSelectedRange)
         previouslySelectedRange = newSelectedRange
         return newSelectedRange
     }
