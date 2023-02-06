@@ -17,7 +17,6 @@ final class UITextSearchingHelper: NSObject {
     @available(iOS 16, *)
     var findInteraction: UIFindInteraction? {
         get {
-            // swiftlint:disable implicit_return
             guard let _findInteraction = _findInteraction else {
                 return nil
             }
@@ -25,7 +24,6 @@ final class UITextSearchingHelper: NSObject {
                 fatalError("Expected _findInteraction to be of type \(UIFindInteraction.self)")
             }
             return findInteraction
-            // swiftlint:enable implicit_return
         }
         set {
             _findInteraction = newValue
