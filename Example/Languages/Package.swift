@@ -13,7 +13,17 @@ let package = Package(
         .package(path: "../Runestone")
     ],
     targets: [
-        .target(name: "RunestoneJavaScriptLanguage", dependencies: ["TreeSitterJavaScript", "Runestone"], resources: [.copy("queries")]),
+        .target(
+            name: "RunestoneJavaScriptLanguage",
+            dependencies: [
+                "TreeSitterJavaScript",
+                "Runestone"
+            ],
+            resources: [
+                .copy("highlights.scm"),
+                .copy("injections.scm")
+            ]
+        ),
         .target(name: "TreeSitterJavaScript", cSettings: [.headerSearchPath("src")])
     ]
 )
