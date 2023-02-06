@@ -18,7 +18,8 @@ final class UITextSearchingHelper: NSObject {
     var findInteraction: UIFindInteraction? {
         get {
             guard let _findInteraction = _findInteraction else {
-                nil
+                // swiftlint:disable:next implicit_return
+                return nil
             }
             guard let findInteraction = _findInteraction as? UIFindInteraction else {
                 fatalError("Expected _findInteraction to be of type \(UIFindInteraction.self)")
