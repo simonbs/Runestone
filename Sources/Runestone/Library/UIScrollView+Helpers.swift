@@ -2,7 +2,7 @@ import UIKit
 
 extension UIScrollView {
     var minimumContentOffset: CGPoint {
-        return CGPoint(x: adjustedContentInset.left * -1, y: adjustedContentInset.top * -1)
+        CGPoint(x: adjustedContentInset.left * -1, y: adjustedContentInset.top * -1)
     }
 
     var maximumContentOffset: CGPoint {

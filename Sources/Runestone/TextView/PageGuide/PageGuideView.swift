@@ -10,7 +10,7 @@ final class PageGuideView: UIView {
     }
     var hairlineColor: UIColor? {
         get {
-            return hairlineView.backgroundColor
+            hairlineView.backgroundColor
         }
         set {
             hairlineView.backgroundColor = newValue

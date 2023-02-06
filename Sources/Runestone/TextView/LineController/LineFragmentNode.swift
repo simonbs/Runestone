@@ -8,7 +8,7 @@ struct LineFragmentNodeID: RedBlackTreeNodeID {
 final class LineFragmentNodeData {
     var lineFragment: LineFragment?
     var lineFragmentHeight: CGFloat {
-        return lineFragment?.scaledSize.height ?? 0
+        lineFragment?.scaledSize.height ?? 0
     }
     var totalLineFragmentHeight: CGFloat = 0
 

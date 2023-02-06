@@ -3,7 +3,7 @@ import UIKit
 final class LineNumberView: UIView, ReusableView {
     var textColor: UIColor {
         get {
-            return titleLabel.textColor
+            titleLabel.textColor
         }
         set {
             titleLabel.textColor = newValue
@@ -11,7 +11,7 @@ final class LineNumberView: UIView, ReusableView {
     }
     var font: UIFont {
         get {
-            return titleLabel.font
+            titleLabel.font
         }
         set {
             titleLabel.font = newValue
@@ -19,7 +19,7 @@ final class LineNumberView: UIView, ReusableView {
     }
     var text: String? {
         get {
-            return titleLabel.text
+            titleLabel.text
         }
         set {
             titleLabel.text = newValue

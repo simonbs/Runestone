@@ -13,11 +13,11 @@ final class RedBlackTreeNode<NodeID: RedBlackTreeNodeID, NodeValue: RedBlackTree
     var nodeTotalValue: NodeValue
     var nodeTotalCount: Int
     var location: NodeValue {
-        return tree.location(of: self)
+        tree.location(of: self)
     }
     var value: NodeValue
     var index: Int {
-        return tree.index(of: self)
+        tree.index(of: self)
     }
     var left: RedBlackTreeNode?
     var right: RedBlackTreeNode?
@@ -88,7 +88,7 @@ extension RedBlackTreeNode {
 
 extension RedBlackTreeNode: Hashable {
     static func == (lhs: RedBlackTreeNode<NodeID, NodeValue, NodeData>, rhs: RedBlackTreeNode<NodeID, NodeValue, NodeData>) -> Bool {
-        return lhs.id == rhs.id
+        lhs.id == rhs.id
     }
 
     func hash(into hasher: inout Hasher) {
@@ -104,6 +104,6 @@ extension RedBlackTreeNode where NodeData == Void {
 
 extension RedBlackTreeNode: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[RedBlackTreeNode index=\(index) location=\(location) nodeTotalCount=\(nodeTotalCount)]"
+        "[RedBlackTreeNode index=\(index) location=\(location) nodeTotalCount=\(nodeTotalCount)]"
     }
 }

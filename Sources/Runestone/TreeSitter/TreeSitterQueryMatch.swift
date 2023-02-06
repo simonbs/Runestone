@@ -8,12 +8,12 @@ final class TreeSitterQueryMatch {
     }
 
     func capture(forIndex index: UInt32) -> TreeSitterCapture? {
-        return captures.first { $0.index == index }
+        captures.first { $0.index == index }
     }
 }
 
 extension TreeSitterQueryMatch: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TreeSitterQueryMatch captures=\(captures.count)]"
+        "[TreeSitterQueryMatch captures=\(captures.count)]"
     }
 }
