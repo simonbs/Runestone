@@ -9,11 +9,11 @@ final class NavigationService {
         }
     }
     var lineManager: LineManager {
-        get {
-            return lineNavigationService.lineManager
-        }
-        set {
-            lineNavigationService.lineManager = newValue
+        didSet {
+            if lineManager !== oldValue {
+                lineNavigationService.lineManager = lineManager
+                stringTokenizer.lineManager = lineManager
+            }
         }
     }
     var lineControllerStorage: LineControllerStorage {
@@ -36,6 +36,7 @@ final class NavigationService {
 
     init(stringView: StringView, lineManager: LineManager, lineControllerStorage: LineControllerStorage) {
         self.stringView = stringView
+        self.lineManager = lineManager
         self.lineNavigationService = LineNavigationService(lineManager: lineManager, lineControllerStorage: lineControllerStorage)
         self.stringTokenizer = StringTokenizer(stringView: stringView, lineManager: lineManager, lineControllerStorage: lineControllerStorage)
     }
