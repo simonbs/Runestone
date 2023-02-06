@@ -14,7 +14,7 @@ final class StringViewBytesResult {
 final class StringView {
     var string: NSString {
         get {
-            return internalString
+            internalString
         }
         set {
             internalString = NSMutableString(string: newValue)

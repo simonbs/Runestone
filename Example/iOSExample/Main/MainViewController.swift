@@ -155,7 +155,7 @@ private extension MainViewController {
     }
 
     private func makeThemeMenuElements() -> [UIMenuElement] {
-        return [
+        [
             UIAction(title: "Theme") { [weak self] _ in
                 self?.presentThemePicker()
             }
@@ -213,7 +213,7 @@ extension MainViewController: TextViewDelegate {
     }
 
     func textView(_ textView: TextView, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool {
-        return true
+        true
     }
 }
 

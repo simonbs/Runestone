@@ -17,7 +17,7 @@ final class TreeSitterPredicate {
 
 extension TreeSitterPredicate: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TreeSitterPredicate name=\(name) steps=\(steps)]"
+        "[TreeSitterPredicate name=\(name) steps=\(steps)]"
     }
 }
 

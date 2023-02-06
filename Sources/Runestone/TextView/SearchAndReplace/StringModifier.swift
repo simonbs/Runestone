@@ -19,7 +19,7 @@ enum StringModifier {
         }
     }
     var string: String {
-        return "\\" + String(character)
+        "\\" + String(character)
     }
 
     private var terminatesStringModification: Bool {

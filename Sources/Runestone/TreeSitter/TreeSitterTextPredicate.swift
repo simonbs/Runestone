@@ -53,13 +53,13 @@ enum TreeSitterTextPredicate {
 
 extension TreeSitterTextPredicate.CaptureEqualsStringParameters: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TreeSitterTextPredicate.CaptureEqualsStringParameters captureIndex=\(captureIndex) string=\(string) isPositive=\(isPositive)]"
+        "[TreeSitterTextPredicate.CaptureEqualsStringParameters captureIndex=\(captureIndex) string=\(string) isPositive=\(isPositive)]"
     }
 }
 
 extension TreeSitterTextPredicate.CaptureEqualsCaptureParameters: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TreeSitterTextPredicate.CaptureEqualsCaptureParameters lhsCaptureIndex=\(lhsCaptureIndex)"
+        "[TreeSitterTextPredicate.CaptureEqualsCaptureParameters lhsCaptureIndex=\(lhsCaptureIndex)"
         + " rhsCaptureIndex=\(rhsCaptureIndex)"
         + " isPositive=\(isPositive)]"
     }
@@ -67,6 +67,6 @@ extension TreeSitterTextPredicate.CaptureEqualsCaptureParameters: CustomDebugStr
 
 extension TreeSitterTextPredicate.CaptureMatchesPatternParameters: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TreeSitterTextPredicate.CaptureMatchesPatternParameters captureIndex=\(captureIndex) pattern=\(pattern) isPositive=\(isPositive)]"
+        "[TreeSitterTextPredicate.CaptureMatchesPatternParameters captureIndex=\(captureIndex) pattern=\(pattern) isPositive=\(isPositive)]"
     }
 }

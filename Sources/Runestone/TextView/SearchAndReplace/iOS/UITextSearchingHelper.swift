@@ -54,11 +54,11 @@ final class UITextSearchingHelper: NSObject {
 @available(iOS 16, *)
 extension UITextSearchingHelper: UITextSearching {
     var supportsTextReplacement: Bool {
-        return true
+        true
     }
 
     var selectedTextRange: UITextRange? {
-        return _textView.selectedTextRange
+        _textView.selectedTextRange
     }
 
     func compare(_ foundRange: UITextRange, toRange: UITextRange, document: AnyHashable??) -> ComparisonResult {
@@ -169,7 +169,7 @@ private extension UITextSearchingHelper {
 extension UITextSearchingHelper: UIFindInteractionDelegate {
     @available(iOS 16, *)
     func findInteraction(_ interaction: UIFindInteraction, sessionFor view: UIView) -> UIFindSession? {
-        return UITextSearchingFindSession(searchableObject: self)
+        UITextSearchingFindSession(searchableObject: self)
     }
 }
 

@@ -13,7 +13,7 @@ extension MultiPlatformScrollView {
 
     var contentOffset: CGPoint {
         get {
-            return documentVisibleRect.origin
+            documentVisibleRect.origin
         }
         set {
             documentView?.scroll(newValue)

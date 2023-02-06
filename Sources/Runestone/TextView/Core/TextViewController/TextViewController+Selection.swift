@@ -62,7 +62,7 @@ extension TextViewController {
 }
 
 private extension TextViewController {
-    private func move(by granularity: TextGranularity, inDirection directon: TextDirection)  {
+    private func move(by granularity: TextGranularity, inDirection directon: TextDirection) {
         if let currentlySelectedRange = selectedRange {
             selectedRange = selectionService.range(movingFrom: currentlySelectedRange, by: granularity, inDirection: directon)
         }

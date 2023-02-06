@@ -27,6 +27,6 @@ final class TreeSitterCapture {
 
 extension TreeSitterCapture: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TreeSitterCapture byteRange=\(byteRange) name=\(name) properties=\(properties) textPredicates=\(textPredicates)]"
+        "[TreeSitterCapture byteRange=\(byteRange) name=\(name) properties=\(properties) textPredicates=\(textPredicates)]"
     }
 }

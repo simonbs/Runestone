@@ -15,7 +15,7 @@ final class PageGuideView: MultiPlatformView {
     }
     var hairlineColor: MultiPlatformColor? {
         get {
-            return hairlineView.backgroundColor
+            hairlineView.backgroundColor
         }
         set {
             hairlineView.backgroundColor = newValue

@@ -47,7 +47,7 @@ final class TreeSitterQueryCursor {
             let match = TreeSitterQueryMatch(captures: captures)
             let evaluator = TreeSitterTextPredicatesEvaluator(match: match, stringView: stringView)
             result += captures.filter { capture in
-                return capture.byteRange.length > 0 && evaluator.evaluatePredicates(in: capture)
+                capture.byteRange.length > 0 && evaluator.evaluatePredicates(in: capture)
             }
         }
         return result

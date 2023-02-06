@@ -9,6 +9,6 @@ extension String {
     }
 
     var byteCount: ByteCount {
-        return ByteCount(utf16.count * 2)
+        ByteCount(utf16.count * 2)
     }
 }

@@ -4,13 +4,13 @@ struct ByteRange: Hashable {
     let location: ByteCount
     let length: ByteCount
     var lowerBound: ByteCount {
-        return location
+        location
     }
     var upperBound: ByteCount {
-        return location + length
+        location + length
     }
     var isEmpty: Bool {
-        return length == 0
+        length == 0
     }
 
     init(location: ByteCount, length: ByteCount) {
@@ -37,12 +37,12 @@ struct ByteRange: Hashable {
 
 extension ByteRange: CustomStringConvertible {
     var description: String {
-        return "{\(location), \(length)}"
+        "{\(location), \(length)}"
     }
 }
 
 extension ByteRange: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "{\(location), \(length)}"
+        "{\(location), \(length)}"
     }
 }

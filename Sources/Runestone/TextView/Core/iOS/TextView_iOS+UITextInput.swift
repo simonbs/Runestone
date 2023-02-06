@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 #if os(iOS)
 import UIKit
 
@@ -229,10 +230,12 @@ public extension TextView {
 
 // MARK: - Marking
 public extension TextView {
-    var markedTextStyle: [NSAttributedString.Key : Any]? {
-        get { return nil }
+    // swiftlint:disable unused_setter_value
+    var markedTextStyle: [NSAttributedString.Key: Any]? {
+        get { nil }
         set {}
     }
+    // swiftlint:enable unused_setter_value
 
     var markedTextRange: UITextRange? {
         get {

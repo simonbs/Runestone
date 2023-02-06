@@ -4,7 +4,7 @@ import UIKit
 final class TextInputStringTokenizer: UITextInputStringTokenizer {
     var lineManager: LineManager {
         get {
-            return stringTokenizer.lineManager
+            stringTokenizer.lineManager
         }
         set {
             stringTokenizer.lineManager = newValue
@@ -12,7 +12,7 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
     }
     var stringView: StringView {
         get {
-            return stringTokenizer.stringView
+            stringTokenizer.stringView
         }
         set {
             stringTokenizer.stringView = newValue
@@ -51,7 +51,7 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         withinTextUnit granularity: UITextGranularity,
         inDirection direction: UITextDirection
     ) -> Bool {
-        return super.isPosition(position, withinTextUnit: granularity, inDirection: direction)
+        super.isPosition(position, withinTextUnit: granularity, inDirection: direction)
     }
 
     override func position(
@@ -77,7 +77,7 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         with granularity: UITextGranularity,
         inDirection direction: UITextDirection
     ) -> UITextRange? {
-        return super.rangeEnclosingPosition(position, with: granularity, inDirection: direction)
+        super.rangeEnclosingPosition(position, with: granularity, inDirection: direction)
     }
 }
 
@@ -110,7 +110,7 @@ private extension StringTokenizer.Direction {
 
 private extension UITextDirection {
     var isForward: Bool {
-        return rawValue == UITextStorageDirection.forward.rawValue
+        rawValue == UITextStorageDirection.forward.rawValue
         || rawValue == UITextLayoutDirection.right.rawValue
         || rawValue == UITextLayoutDirection.down.rawValue
     }

@@ -13,7 +13,7 @@ extension TextViewController {
             performFullLayout()
         }
     }
-    
+
     func layoutIfNeeded() {
         layoutManager.layoutIfNeeded()
         layoutManager.layoutLineSelectionIfNeeded()

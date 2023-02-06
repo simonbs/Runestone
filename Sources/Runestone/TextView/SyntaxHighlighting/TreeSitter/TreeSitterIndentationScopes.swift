@@ -61,7 +61,7 @@ public final class TreeSitterIndentationScopes {
 
 extension TreeSitterIndentationScopes: CustomDebugStringConvertible {
     public var debugDescription: String {
-        return "[TreeSitterIndentationScopes indent=\(indent)"
+        "[TreeSitterIndentationScopes indent=\(indent)"
         + " inheritIndent=\(inheritIndent)"
         + " outdent=\(outdent)"
         + " whitespaceDenotesBlocks=\(whitespaceDenotesBlocks)]"

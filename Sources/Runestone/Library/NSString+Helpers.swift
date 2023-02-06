@@ -2,7 +2,7 @@ import Foundation
 
 extension NSString {
     var byteCount: ByteCount {
-        return ByteCount(length * 2)
+        ByteCount(length * 2)
     }
 
     func getAllBytes(withEncoding encoding: String.Encoding, usedLength: inout Int) -> UnsafePointer<Int8>? {
@@ -48,6 +48,6 @@ extension NSString {
 
 private extension NSString {
     private func isCRLFLineEnding(in range: NSRange) -> Bool {
-        return substring(with: range) == Symbol.carriageReturnLineFeed
+        substring(with: range) == Symbol.carriageReturnLineFeed
     }
 }

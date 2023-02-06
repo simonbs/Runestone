@@ -41,14 +41,14 @@ final class LineController {
     var tabWidth: CGFloat = 10
     var constrainingWidth: CGFloat {
         get {
-            return typesetter.constrainingWidth
+            typesetter.constrainingWidth
         }
         set {
             typesetter.constrainingWidth = newValue
         }
     }
     var lineWidth: CGFloat {
-        return ceil(typesetter.maximumLineWidth)
+        ceil(typesetter.maximumLineWidth)
     }
     var lineHeight: CGFloat {
         if let lineHeight = _lineHeight {
@@ -76,17 +76,17 @@ final class LineController {
     }
     var lineBreakMode: LineBreakMode {
         get {
-            return typesetter.lineBreakMode
+            typesetter.lineBreakMode
         }
         set {
             typesetter.lineBreakMode = newValue
         }
     }
     var numberOfLineFragments: Int {
-        return typesetter.lineFragments.count
+        typesetter.lineFragments.count
     }
     var isFinishedTypesetting: Bool {
-        return typesetter.isFinishedTypesetting
+        typesetter.isFinishedTypesetting
     }
     private(set) var attributedString: NSMutableAttributedString?
 
@@ -169,11 +169,11 @@ final class LineController {
     }
 
     func lineFragmentNode(containingCharacterAt location: Int) -> LineFragmentNode? {
-        return lineFragmentTree.node(containingLocation: location)
+        lineFragmentTree.node(containingLocation: location)
     }
 
     func lineFragmentNode(atIndex index: Int) -> LineFragmentNode {
-        return lineFragmentTree.node(atIndex: index)
+        lineFragmentTree.node(atIndex: index)
     }
 
     func setNeedsDisplayOnLineFragmentViews() {

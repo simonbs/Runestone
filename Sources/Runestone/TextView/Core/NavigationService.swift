@@ -18,7 +18,7 @@ final class NavigationService {
     }
     var lineControllerStorage: LineControllerStorage {
         get {
-            return lineNavigationService.lineControllerStorage
+            lineNavigationService.lineControllerStorage
         }
         set {
             lineNavigationService.lineControllerStorage = newValue

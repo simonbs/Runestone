@@ -12,7 +12,7 @@ final class TreeSitterSyntaxHighlightToken {
     let font: MultiPlatformFont?
     let fontTraits: FontTraits
     var isEmpty: Bool {
-        return range.length == 0 || (textColor == nil && font == nil && shadow == nil)
+        range.length == 0 || (textColor == nil && font == nil && shadow == nil)
     }
 
     init(range: NSRange, textColor: MultiPlatformColor?, shadow: NSShadow?, font: MultiPlatformFont?, fontTraits: FontTraits) {
@@ -26,7 +26,7 @@ final class TreeSitterSyntaxHighlightToken {
 
 extension TreeSitterSyntaxHighlightToken: Equatable {
     static func == (lhs: TreeSitterSyntaxHighlightToken, rhs: TreeSitterSyntaxHighlightToken) -> Bool {
-        return lhs.range == rhs.range && lhs.textColor == rhs.textColor && lhs.font == rhs.font
+        lhs.range == rhs.range && lhs.textColor == rhs.textColor && lhs.font == rhs.font
     }
 }
 
@@ -42,6 +42,6 @@ extension TreeSitterSyntaxHighlightToken {
 
 extension TreeSitterSyntaxHighlightToken: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TreeSitterSyntaxHighlightToken: \(range.location) - \(range.length)]"
+        "[TreeSitterSyntaxHighlightToken: \(range.location) - \(range.length)]"
     }
 }

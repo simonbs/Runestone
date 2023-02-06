@@ -10,7 +10,7 @@ public typealias MultiPlatformFontDescriptor = UIFontDescriptor
 
 extension MultiPlatformFont {
     var totalLineHeight: CGFloat {
-        return ascender + abs(descender) + leading
+        ascender + abs(descender) + leading
     }
 }
 

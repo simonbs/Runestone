@@ -9,11 +9,11 @@ final class ClosedRangeValueSearchQuery<NodeID: RedBlackTreeNodeID, NodeValue: R
     }
 
     func shouldTraverseLeftChildren(of node: RedBlackTreeNode<NodeID, NodeValue, NodeData>) -> Bool {
-        return location(of: node) > range.upperBound
+        location(of: node) > range.upperBound
     }
 
     func shouldTraverseRightChildren(of node: RedBlackTreeNode<NodeID, NodeValue, NodeData>) -> Bool {
-        return location(of: node) + node.value < range.upperBound
+        location(of: node) + node.value < range.upperBound
     }
 
     func shouldInclude(_ node: RedBlackTreeNode<NodeID, NodeValue, NodeData>) -> Bool {

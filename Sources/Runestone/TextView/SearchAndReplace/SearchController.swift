@@ -14,8 +14,8 @@ final class SearchController {
     }
 
     func search(for query: SearchQuery) -> [SearchResult] {
-        return search(for: query) { textCheckingResult in
-            return searchResult(in: textCheckingResult.range)
+        search(for: query) { textCheckingResult in
+            searchResult(in: textCheckingResult.range)
         }
     }
 
@@ -34,8 +34,8 @@ final class SearchController {
 
 private extension SearchController {
     private func search(for query: SearchQuery, replacingWithPlainText replacementText: String) -> [SearchReplaceResult] {
-        return search(for: query) { textCheckingResult in
-            return searchReplaceResult(in: textCheckingResult.range, replacementText: replacementText)
+        search(for: query) { textCheckingResult in
+            searchReplaceResult(in: textCheckingResult.range, replacementText: replacementText)
         }
     }
 

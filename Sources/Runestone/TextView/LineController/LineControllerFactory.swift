@@ -11,9 +11,9 @@ final class LineControllerFactory {
     }
 
     func makeLineController(for line: DocumentLineNode) -> LineController {
-        return LineController(line: line,
-                              stringView: stringView,
-                              invisibleCharacterConfiguration: invisibleCharacterConfiguration,
-                              highlightService: highlightService)
+        LineController(line: line,
+                       stringView: stringView,
+                       invisibleCharacterConfiguration: invisibleCharacterConfiguration,
+                       highlightService: highlightService)
     }
 }

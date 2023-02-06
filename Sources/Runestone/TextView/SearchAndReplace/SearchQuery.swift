@@ -46,7 +46,7 @@ public struct SearchQuery: Hashable, Equatable {
         }
     }
     private var escapedText: String {
-        return NSRegularExpression.escapedPattern(for: text)
+        NSRegularExpression.escapedPattern(for: text)
     }
     private var regularExpressionOptions: NSRegularExpression.Options {
         var options: NSRegularExpression.Options = [.anchorsMatchLines]

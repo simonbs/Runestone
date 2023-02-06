@@ -88,19 +88,19 @@ public extension Theme {
     }
 
     var markedTextBackgroundCornerRadius: CGFloat {
-        return 0
+        0
     }
 
     func font(for highlightName: String) -> MultiPlatformFont? {
-        return nil
+        nil
     }
 
     func fontTraits(for highlightName: String) -> FontTraits {
-        return []
+        []
     }
 
     func shadow(for highlightName: String) -> NSShadow? {
-        return nil
+        nil
     }
 
 #if os(iOS)

@@ -8,37 +8,37 @@ final class PlainTextInternalLanguageMode: InternalLanguageMode {
     }
 
     func textDidChange(_ change: TextChange) -> LineChangeSet {
-        return LineChangeSet()
+        LineChangeSet()
     }
 
     func tokenType(at location: Int) -> String? {
-        return nil
+        nil
     }
 
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter {
-        return PlainTextSyntaxHighlighter()
+        PlainTextSyntaxHighlighter()
     }
 
     func highestSyntaxNode(at linePosition: LinePosition) -> SyntaxNode? {
-        return nil
+        nil
     }
 
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode? {
-        return nil
+        nil
     }
 
     func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
-        return 0
+        0
     }
 
     func strategyForInsertingLineBreak(
         from startLinePosition: LinePosition,
         to endLinePosition: LinePosition,
         using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
-        return InsertLineBreakIndentStrategy(indentLevel: 0, insertExtraLineBreak: false)
+        InsertLineBreakIndentStrategy(indentLevel: 0, insertExtraLineBreak: false)
     }
 
     func detectIndentStrategy() -> DetectedIndentStrategy {
-        return .unknown
+        .unknown
     }
 }

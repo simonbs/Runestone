@@ -2,11 +2,10 @@
 import AppKit
 
 extension TextView: NSTextInputClient {
-    public override func doCommand(by selector: Selector) {
+    override public func doCommand(by selector: Selector) {
         #if DEBUG
         print(NSStringFromSelector(selector))
         #endif
-        super.doCommand(by: selector)
     }
 
     public func insertText(_ string: Any, replacementRange: NSRange) {

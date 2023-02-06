@@ -19,34 +19,34 @@ final class TreeSitterNode {
         }
     }
     var startByte: ByteCount {
-        return ByteCount(ts_node_start_byte(rawValue))
+        ByteCount(ts_node_start_byte(rawValue))
     }
     var endByte: ByteCount {
-        return ByteCount(ts_node_end_byte(rawValue))
+        ByteCount(ts_node_end_byte(rawValue))
     }
     var startPoint: TreeSitterTextPoint {
-        return TreeSitterTextPoint(ts_node_start_point(rawValue))
+        TreeSitterTextPoint(ts_node_start_point(rawValue))
     }
     var endPoint: TreeSitterTextPoint {
-        return TreeSitterTextPoint(ts_node_end_point(rawValue))
+        TreeSitterTextPoint(ts_node_end_point(rawValue))
     }
     var byteRange: ByteRange {
-        return ByteRange(from: startByte, to: endByte)
+        ByteRange(from: startByte, to: endByte)
     }
     var parent: TreeSitterNode? {
-        return getRelationship(using: ts_node_parent)
+        getRelationship(using: ts_node_parent)
     }
     var previousSibling: TreeSitterNode? {
-        return getRelationship(using: ts_node_prev_sibling)
+        getRelationship(using: ts_node_prev_sibling)
     }
     var nextSibling: TreeSitterNode? {
-        return getRelationship(using: ts_node_next_sibling)
+        getRelationship(using: ts_node_next_sibling)
     }
     var textRange: TreeSitterTextRange {
-        return TreeSitterTextRange(startPoint: startPoint, endPoint: endPoint, startByte: startByte, endByte: endByte)
+        TreeSitterTextRange(startPoint: startPoint, endPoint: endPoint, startByte: startByte, endByte: endByte)
     }
     var childCount: Int {
-        return Int(ts_node_child_count(rawValue))
+        Int(ts_node_child_count(rawValue))
     }
 
     init(node: TSNode) {
@@ -81,7 +81,7 @@ private extension TreeSitterNode {
 
 extension TreeSitterNode: Hashable {
     static func == (lhs: TreeSitterNode, rhs: TreeSitterNode) -> Bool {
-        return lhs.rawValue.id == rhs.rawValue.id
+        lhs.rawValue.id == rhs.rawValue.id
     }
 
     func hash(into hasher: inout Hasher) {
@@ -91,6 +91,6 @@ extension TreeSitterNode: Hashable {
 
 extension TreeSitterNode: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "[TreeSitterNode startByte=\(startByte) endByte=\(endByte) startPoint=\(startPoint) endPoint=\(endPoint)]"
+        "[TreeSitterNode startByte=\(startByte) endByte=\(endByte) startPoint=\(startPoint) endPoint=\(endPoint)]"
     }
 }

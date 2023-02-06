@@ -52,7 +52,13 @@ final class IndentController {
 
     private var _tabWidth: CGFloat?
 
-    init(stringView: StringView, lineManager: LineManager, languageMode: InternalLanguageMode, indentStrategy: IndentStrategy, indentFont: MultiPlatformFont) {
+    init(
+        stringView: StringView,
+        lineManager: LineManager,
+        languageMode: InternalLanguageMode,
+        indentStrategy: IndentStrategy,
+        indentFont: MultiPlatformFont
+    ) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.languageMode = languageMode

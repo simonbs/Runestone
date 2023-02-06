@@ -9,19 +9,19 @@ import UIKit
 #if os(iOS)
 final class TextSelectionRect: UITextSelectionRect {
     override var rect: CGRect {
-        return _rect
+        _rect
     }
     override var writingDirection: NSWritingDirection {
-        return _writingDirection
+        _writingDirection
     }
     override var containsStart: Bool {
-        return _containsStart
+        _containsStart
     }
     override var containsEnd: Bool {
-        return _containsEnd
+        _containsEnd
     }
     override var isVertical: Bool {
-        return _isVertical
+        _isVertical
     }
 
     private let _rect: CGRect

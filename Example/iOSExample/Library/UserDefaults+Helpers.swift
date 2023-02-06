@@ -15,7 +15,7 @@ extension UserDefaults {
 
     var text: String? {
         get {
-            return string(forKey: Key.text)
+            string(forKey: Key.text)
         }
         set {
             set(newValue, forKey: Key.text)
@@ -23,7 +23,7 @@ extension UserDefaults {
     }
     var showLineNumbers: Bool {
         get {
-            return bool(forKey: Key.showLineNumbers)
+            bool(forKey: Key.showLineNumbers)
         }
         set {
             set(newValue, forKey: Key.showLineNumbers)
@@ -31,7 +31,7 @@ extension UserDefaults {
     }
     var showInvisibleCharacters: Bool {
         get {
-            return bool(forKey: Key.showInvisibleCharacters)
+            bool(forKey: Key.showInvisibleCharacters)
         }
         set {
             set(newValue, forKey: Key.showInvisibleCharacters)
@@ -39,7 +39,7 @@ extension UserDefaults {
     }
     var wrapLines: Bool {
         get {
-            return bool(forKey: Key.wrapLines)
+            bool(forKey: Key.wrapLines)
         }
         set {
             set(newValue, forKey: Key.wrapLines)
@@ -47,7 +47,7 @@ extension UserDefaults {
     }
     var highlightSelectedLine: Bool {
         get {
-            return bool(forKey: Key.highlightSelectedLine)
+            bool(forKey: Key.highlightSelectedLine)
         }
         set {
             set(newValue, forKey: Key.highlightSelectedLine)
@@ -55,7 +55,7 @@ extension UserDefaults {
     }
     var showPageGuide: Bool {
         get {
-            return bool(forKey: Key.showPageGuide)
+            bool(forKey: Key.showPageGuide)
         }
         set {
             set(newValue, forKey: Key.showPageGuide)
@@ -76,7 +76,7 @@ extension UserDefaults {
 
     var isEditable: Bool {
         get {
-            return bool(forKey: Key.isEditable)
+            bool(forKey: Key.isEditable)
         }
         set {
             set(newValue, forKey: Key.isEditable)
@@ -85,7 +85,7 @@ extension UserDefaults {
 
     var isSelectable: Bool {
         get {
-            return bool(forKey: Key.isSelectable)
+            bool(forKey: Key.isSelectable)
         }
         set {
             set(newValue, forKey: Key.isSelectable)

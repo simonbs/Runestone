@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Combine
 import Foundation
 
@@ -10,6 +11,7 @@ extension TextViewControllerDelegate {
     func textViewController(_ textViewController: TextViewController, didChangeSelectedRange selectedRange: NSRange?) {}
 }
 
+// swiftlint:disable:next type_body_length
 final class TextViewController {
     weak var delegate: TextViewControllerDelegate?
     var textView: TextView {
@@ -30,7 +32,7 @@ final class TextViewController {
     private weak var _scrollView: MultiPlatformScrollView?
     var selectedRange: NSRange? {
         get {
-            return _selectedRange
+            _selectedRange
         }
         set {
             if newValue != _selectedRange {
@@ -78,7 +80,7 @@ final class TextViewController {
     }
     var viewport: CGRect {
         get {
-            return layoutManager.viewport
+            layoutManager.viewport
         }
         set {
             if newValue != layoutManager.viewport {
@@ -90,7 +92,7 @@ final class TextViewController {
     }
     var text: String {
         get {
-            return stringView.string as String
+            stringView.string as String
         }
         set {
             let nsString = newValue as NSString
@@ -176,7 +178,7 @@ final class TextViewController {
     let pageGuideController = PageGuideController()
     let highlightNavigationController = HighlightNavigationController()
     let timedUndoManager = TimedUndoManager()
-    
+
     var languageMode: InternalLanguageMode = PlainTextInternalLanguageMode() {
         didSet {
             if languageMode !== oldValue {
@@ -217,7 +219,7 @@ final class TextViewController {
     }
     var lineSelectionDisplayType: LineSelectionDisplayType {
         get {
-            return layoutManager.lineSelectionDisplayType
+            layoutManager.lineSelectionDisplayType
         }
         set {
             layoutManager.lineSelectionDisplayType = newValue
@@ -225,7 +227,7 @@ final class TextViewController {
     }
     var showTabs: Bool {
         get {
-            return invisibleCharacterConfiguration.showTabs
+            invisibleCharacterConfiguration.showTabs
         }
         set {
             if newValue != invisibleCharacterConfiguration.showTabs {
@@ -236,7 +238,7 @@ final class TextViewController {
     }
     var showSpaces: Bool {
         get {
-            return invisibleCharacterConfiguration.showSpaces
+            invisibleCharacterConfiguration.showSpaces
         }
         set {
             if newValue != invisibleCharacterConfiguration.showSpaces {
@@ -247,7 +249,7 @@ final class TextViewController {
     }
     var showNonBreakingSpaces: Bool {
         get {
-            return invisibleCharacterConfiguration.showNonBreakingSpaces
+            invisibleCharacterConfiguration.showNonBreakingSpaces
         }
         set {
             if newValue != invisibleCharacterConfiguration.showNonBreakingSpaces {
@@ -258,7 +260,7 @@ final class TextViewController {
     }
     var showLineBreaks: Bool {
         get {
-            return invisibleCharacterConfiguration.showLineBreaks
+            invisibleCharacterConfiguration.showLineBreaks
         }
         set {
             if newValue != invisibleCharacterConfiguration.showLineBreaks {
@@ -272,7 +274,7 @@ final class TextViewController {
     }
     var showSoftLineBreaks: Bool {
         get {
-            return invisibleCharacterConfiguration.showSoftLineBreaks
+            invisibleCharacterConfiguration.showSoftLineBreaks
         }
         set {
             if newValue != invisibleCharacterConfiguration.showSoftLineBreaks {
@@ -286,7 +288,7 @@ final class TextViewController {
     }
     var tabSymbol: String {
         get {
-            return invisibleCharacterConfiguration.tabSymbol
+            invisibleCharacterConfiguration.tabSymbol
         }
         set {
             if newValue != invisibleCharacterConfiguration.tabSymbol {
@@ -297,7 +299,7 @@ final class TextViewController {
     }
     var spaceSymbol: String {
         get {
-            return invisibleCharacterConfiguration.spaceSymbol
+            invisibleCharacterConfiguration.spaceSymbol
         }
         set {
             if newValue != invisibleCharacterConfiguration.spaceSymbol {
@@ -308,7 +310,7 @@ final class TextViewController {
     }
     var nonBreakingSpaceSymbol: String {
         get {
-            return invisibleCharacterConfiguration.nonBreakingSpaceSymbol
+            invisibleCharacterConfiguration.nonBreakingSpaceSymbol
         }
         set {
             if newValue != invisibleCharacterConfiguration.nonBreakingSpaceSymbol {
@@ -319,7 +321,7 @@ final class TextViewController {
     }
     var lineBreakSymbol: String {
         get {
-            return invisibleCharacterConfiguration.lineBreakSymbol
+            invisibleCharacterConfiguration.lineBreakSymbol
         }
         set {
             if newValue != invisibleCharacterConfiguration.lineBreakSymbol {
@@ -330,7 +332,7 @@ final class TextViewController {
     }
     var softLineBreakSymbol: String {
         get {
-            return invisibleCharacterConfiguration.softLineBreakSymbol
+            invisibleCharacterConfiguration.softLineBreakSymbol
         }
         set {
             if newValue != invisibleCharacterConfiguration.softLineBreakSymbol {
@@ -378,7 +380,7 @@ final class TextViewController {
     }
     var textContainerInset: MultiPlatformEdgeInsets {
         get {
-            return layoutManager.textContainerInset
+            layoutManager.textContainerInset
         }
         set {
             if newValue != layoutManager.textContainerInset {
@@ -391,7 +393,7 @@ final class TextViewController {
     }
     var isLineWrappingEnabled: Bool {
         get {
-            return layoutManager.isLineWrappingEnabled
+            layoutManager.isLineWrappingEnabled
         }
         set {
             if newValue != layoutManager.isLineWrappingEnabled {
@@ -458,7 +460,7 @@ final class TextViewController {
     }
     var pageGuideColumn: Int {
         get {
-            return pageGuideController.column
+            pageGuideController.column
         }
         set {
             if newValue != pageGuideController.column {
@@ -469,7 +471,7 @@ final class TextViewController {
     }
     var verticalOverscrollFactor: CGFloat {
         get {
-            return contentSizeService.verticalOverscrollFactor
+            contentSizeService.verticalOverscrollFactor
         }
         set {
             if newValue != contentSizeService.verticalOverscrollFactor {
@@ -480,7 +482,7 @@ final class TextViewController {
     }
     var horizontalOverscrollFactor: CGFloat {
         get {
-            return contentSizeService.horizontalOverscrollFactor
+            contentSizeService.horizontalOverscrollFactor
         }
         set {
             if newValue != contentSizeService.horizontalOverscrollFactor {
@@ -494,7 +496,7 @@ final class TextViewController {
     }
     var highlightedRanges: [HighlightedRange] {
         get {
-            return highlightService.highlightedRanges
+            highlightService.highlightedRanges
         }
         set {
             if newValue != highlightService.highlightedRanges {
@@ -532,6 +534,7 @@ final class TextViewController {
     }
     private var cancellables: Set<AnyCancellable> = []
 
+    // swiftlint:disable:next function_body_length
     init(textView: TextView, scrollView: MultiPlatformScrollView) {
         _textView = textView
         _scrollView = scrollView
@@ -645,7 +648,7 @@ final class TextViewController {
     }
 
     func highlightedRange(for range: NSRange) -> HighlightedRange? {
-        highlightedRanges.first(where: { $0.range == selectedRange })
+        highlightedRanges.first { $0.range == selectedRange }
     }
 }
 

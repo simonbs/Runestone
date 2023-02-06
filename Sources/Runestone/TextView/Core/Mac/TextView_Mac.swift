@@ -1,18 +1,20 @@
+// swiftlint:disable file_length
 #if os(macOS)
 import AppKit
 
+// swiftlint:disable:next type_body_length
 open class TextView: NSView {
     public weak var editorDelegate: TextViewDelegate?
-    public override var acceptsFirstResponder: Bool {
+    override public var acceptsFirstResponder: Bool {
         true
     }
-    public override var isFlipped: Bool {
+    override public var isFlipped: Bool {
         true
     }
     /// A Boolean value that indicates whether the text view is editable.
     public var isEditable: Bool {
         get {
-            return textViewController.isEditable
+            textViewController.isEditable
         }
         set {
             if newValue != isEditable {
@@ -27,7 +29,7 @@ open class TextView: NSView {
     /// The text that the text view displays.
     public var text: String {
         get {
-            return textViewController.text
+            textViewController.text
         }
         set {
             textViewController.text = newValue
@@ -36,7 +38,7 @@ open class TextView: NSView {
     /// Colors and fonts to be used by the editor.
     public var theme: Theme {
         get {
-            return textViewController.theme
+            textViewController.theme
         }
         set {
             textViewController.theme = newValue
@@ -47,7 +49,7 @@ open class TextView: NSView {
     /// Common usages of this includes the \" character to surround strings and { } to surround a scope.
     public var characterPairs: [CharacterPair] {
         get {
-            return textViewController.characterPairs
+            textViewController.characterPairs
         }
         set {
             textViewController.characterPairs = newValue
@@ -56,7 +58,7 @@ open class TextView: NSView {
     /// Determines what should happen to the trailing component of a character pair when deleting the leading component. Defaults to `disabled` meaning that nothing will happen.
     public var characterPairTrailingComponentDeletionMode: CharacterPairTrailingComponentDeletionMode {
         get {
-            return textViewController.characterPairTrailingComponentDeletionMode
+            textViewController.characterPairTrailingComponentDeletionMode
         }
         set {
             textViewController.characterPairTrailingComponentDeletionMode = newValue
@@ -65,7 +67,7 @@ open class TextView: NSView {
     /// Enable to show line numbers in the gutter.
     public var showLineNumbers: Bool {
         get {
-            return textViewController.showLineNumbers
+            textViewController.showLineNumbers
         }
         set {
             textViewController.showLineNumbers = newValue
@@ -74,7 +76,7 @@ open class TextView: NSView {
     /// Enable to show highlight the selected lines. The selection is only shown in the gutter when multiple lines are selected.
     public var lineSelectionDisplayType: LineSelectionDisplayType {
         get {
-            return textViewController.lineSelectionDisplayType
+            textViewController.lineSelectionDisplayType
         }
         set {
             textViewController.lineSelectionDisplayType = newValue
@@ -83,7 +85,7 @@ open class TextView: NSView {
     /// The text view renders invisible tabs when enabled. The `tabsSymbol` is used to render tabs.
     public var showTabs: Bool {
         get {
-            return textViewController.showTabs
+            textViewController.showTabs
         }
         set {
             textViewController.showTabs = newValue
@@ -94,7 +96,7 @@ open class TextView: NSView {
     /// The `spaceSymbol` is used to render spaces.
     public var showSpaces: Bool {
         get {
-            return textViewController.showSpaces
+            textViewController.showSpaces
         }
         set {
             textViewController.showSpaces = newValue
@@ -105,7 +107,7 @@ open class TextView: NSView {
     /// The `nonBreakingSpaceSymbol` is used to render spaces.
     public var showNonBreakingSpaces: Bool {
         get {
-            return textViewController.showNonBreakingSpaces
+            textViewController.showNonBreakingSpaces
         }
         set {
             textViewController.showNonBreakingSpaces = newValue
@@ -116,7 +118,7 @@ open class TextView: NSView {
     /// The `lineBreakSymbol` is used to render line breaks.
     public var showLineBreaks: Bool {
         get {
-            return textViewController.showLineBreaks
+            textViewController.showLineBreaks
         }
         set {
             textViewController.showLineBreaks = newValue
@@ -127,7 +129,7 @@ open class TextView: NSView {
     /// The `softLineBreakSymbol` is used to render line breaks. These line breaks are typically represented by the U+2028 unicode character. Runestone does not provide any key commands for inserting these but supports rendering them.
     public var showSoftLineBreaks: Bool {
         get {
-            return textViewController.showSoftLineBreaks
+            textViewController.showSoftLineBreaks
         }
         set {
             textViewController.showSoftLineBreaks = newValue
@@ -140,7 +142,7 @@ open class TextView: NSView {
     /// Common characters for this symbol include ▸, ⇥, ➜, ➞, and ❯.
     public var tabSymbol: String {
         get {
-            return textViewController.tabSymbol
+            textViewController.tabSymbol
         }
         set {
             textViewController.tabSymbol = newValue
@@ -153,7 +155,7 @@ open class TextView: NSView {
     /// Common characters for this symbol include ·, •, and _.
     public var spaceSymbol: String {
         get {
-            return textViewController.spaceSymbol
+            textViewController.spaceSymbol
         }
         set {
             textViewController.spaceSymbol = newValue
@@ -166,7 +168,7 @@ open class TextView: NSView {
     /// Common characters for this symbol include ·, •, and _.
     public var nonBreakingSpaceSymbol: String {
         get {
-            return textViewController.nonBreakingSpaceSymbol
+            textViewController.nonBreakingSpaceSymbol
         }
         set {
             textViewController.nonBreakingSpaceSymbol = newValue
@@ -179,7 +181,7 @@ open class TextView: NSView {
     /// Common characters for this symbol include ¬, ↵, ↲, ⤶, and ¶.
     public var lineBreakSymbol: String {
         get {
-            return textViewController.lineBreakSymbol
+            textViewController.lineBreakSymbol
         }
         set {
             textViewController.lineBreakSymbol = newValue
@@ -192,7 +194,7 @@ open class TextView: NSView {
     /// Common characters for this symbol include ¬, ↵, ↲, ⤶, and ¶.
     public var softLineBreakSymbol: String {
         get {
-            return textViewController.softLineBreakSymbol
+            textViewController.softLineBreakSymbol
         }
         set {
             textViewController.softLineBreakSymbol = newValue
@@ -201,7 +203,7 @@ open class TextView: NSView {
     /// The strategy used when indenting text.
     public var indentStrategy: IndentStrategy {
         get {
-            return textViewController.indentStrategy
+            textViewController.indentStrategy
         }
         set {
             textViewController.indentStrategy = newValue
@@ -210,7 +212,7 @@ open class TextView: NSView {
     /// The amount of padding before the line numbers inside the gutter.
     public var gutterLeadingPadding: CGFloat {
         get {
-            return textViewController.gutterLeadingPadding
+            textViewController.gutterLeadingPadding
         }
         set {
             textViewController.gutterLeadingPadding = newValue
@@ -219,7 +221,7 @@ open class TextView: NSView {
     /// The amount of padding after the line numbers inside the gutter.
     public var gutterTrailingPadding: CGFloat {
         get {
-            return textViewController.gutterTrailingPadding
+            textViewController.gutterTrailingPadding
         }
         set {
             textViewController.gutterTrailingPadding = newValue
@@ -228,7 +230,7 @@ open class TextView: NSView {
     /// The minimum amount of characters to use for width calculation inside the gutter.
     public var gutterMinimumCharacterCount: Int {
         get {
-            return textViewController.gutterMinimumCharacterCount
+            textViewController.gutterMinimumCharacterCount
         }
         set {
             textViewController.gutterMinimumCharacterCount = newValue
@@ -237,7 +239,7 @@ open class TextView: NSView {
     /// The amount of spacing surrounding the lines.
     public var textContainerInset: NSEdgeInsets {
         get {
-            return textViewController.textContainerInset
+            textViewController.textContainerInset
         }
         set {
             textViewController.textContainerInset = newValue
@@ -248,7 +250,7 @@ open class TextView: NSView {
     /// Line wrapping is enabled by default.
     public var isLineWrappingEnabled: Bool {
         get {
-            return textViewController.isLineWrappingEnabled
+            textViewController.isLineWrappingEnabled
         }
         set {
             textViewController.isLineWrappingEnabled = newValue
@@ -257,7 +259,7 @@ open class TextView: NSView {
     /// Line break mode for text view. The default value is .byWordWrapping meaning that wrapping occurs on word boundaries.
     public var lineBreakMode: LineBreakMode {
         get {
-            return textViewController.lineBreakMode
+            textViewController.lineBreakMode
         }
         set {
             textViewController.lineBreakMode = newValue
@@ -270,7 +272,7 @@ open class TextView: NSView {
     /// The line-height is multiplied with the value.
     public var lineHeightMultiplier: CGFloat {
         get {
-            return textViewController.lineHeightMultiplier
+            textViewController.lineHeightMultiplier
         }
         set {
             textViewController.lineHeightMultiplier = newValue
@@ -279,7 +281,7 @@ open class TextView: NSView {
     /// The number of points by which to adjust kern. The default value is 0 meaning that kerning is disabled.
     public var kern: CGFloat {
         get {
-            return textViewController.kern
+            textViewController.kern
         }
         set {
             textViewController.kern = newValue
@@ -288,7 +290,7 @@ open class TextView: NSView {
     /// The text view shows a page guide when enabled. Use `pageGuideColumn` to specify the location of the page guide.
     public var showPageGuide: Bool {
         get {
-            return textViewController.showPageGuide
+            textViewController.showPageGuide
         }
         set {
             textViewController.showPageGuide = newValue
@@ -297,7 +299,7 @@ open class TextView: NSView {
     /// Specifies the location of the page guide. Use `showPageGuide` to specify if the page guide should be shown.
     public var pageGuideColumn: Int {
         get {
-            return textViewController.pageGuideColumn
+            textViewController.pageGuideColumn
         }
         set {
             textViewController.pageGuideColumn = newValue
@@ -306,7 +308,7 @@ open class TextView: NSView {
     /// Automatically scrolls the text view to show the caret when typing or moving the caret.
     public var isAutomaticScrollEnabled: Bool {
         get {
-            return textViewController.isAutomaticScrollEnabled
+            textViewController.isAutomaticScrollEnabled
         }
         set {
             textViewController.isAutomaticScrollEnabled = newValue
@@ -317,7 +319,7 @@ open class TextView: NSView {
     /// The overscroll is a factor of the scrollable area height and will not take into account any insets. 0 means no overscroll and 1 means an amount equal to the height of the text view. Detaults to 0.
     public var verticalOverscrollFactor: CGFloat {
         get {
-            return textViewController.verticalOverscrollFactor
+            textViewController.verticalOverscrollFactor
         }
         set {
             textViewController.verticalOverscrollFactor = newValue
@@ -328,7 +330,7 @@ open class TextView: NSView {
     /// The overscroll is a factor of the scrollable area height and will not take into account any insets or the width of the gutter. 0 means no overscroll and 1 means an amount equal to the width of the text view. Detaults to 0.
     public var horizontalOverscrollFactor: CGFloat {
         get {
-            return textViewController.horizontalOverscrollFactor
+            textViewController.horizontalOverscrollFactor
         }
         set {
             textViewController.horizontalOverscrollFactor = newValue
@@ -343,7 +345,7 @@ open class TextView: NSView {
     /// Ranges in the text to be highlighted. The color defined by the background will be drawen behind the text.
     public var highlightedRanges: [HighlightedRange] {
         get {
-            return textViewController.highlightedRanges
+            textViewController.highlightedRanges
         }
         set {
             textViewController.highlightedRanges = newValue
@@ -352,7 +354,7 @@ open class TextView: NSView {
     /// Wheter the text view should loop when navigating through highlighted ranges using `selectPreviousHighlightedRange` or `selectNextHighlightedRange` on the text view.
     public var highlightedRangeLoopingMode: HighlightedRangeLoopingMode {
         get {
-            return textViewController.highlightedRangeLoopingMode
+            textViewController.highlightedRangeLoopingMode
         }
         set {
             textViewController.highlightedRangeLoopingMode = newValue
@@ -365,7 +367,7 @@ open class TextView: NSView {
     /// The TextView will only update the line endings when text is modified through an external event, such as when the user typing on the keyboard, when the user is replacing selected text, and when pasting text into the text view. In all other cases, you should make sure that the text provided to the text view uses the desired line endings. This includes when calling ``TextView/setState(_:addUndoAction:)`` and ``TextView/replaceText(in:)``.
     public var lineEndings: LineEnding {
         get {
-            return textViewController.lineEndings
+            textViewController.lineEndings
         }
         set {
             textViewController.lineEndings = newValue
@@ -389,7 +391,7 @@ open class TextView: NSView {
             }
         }
     }
-    open override var undoManager: UndoManager? {
+    override open var undoManager: UndoManager? {
         textViewController.timedUndoManager
     }
 
@@ -449,7 +451,7 @@ open class TextView: NSView {
         setupScrollViewBoundsDidChangeObserver()
     }
 
-    required public init?(coder: NSCoder) {
+    public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
@@ -487,7 +489,7 @@ open class TextView: NSView {
         return didResignFirstResponder
     }
 
-    public override func resizeSubviews(withOldSize oldSize: NSSize) {
+    override public func resizeSubviews(withOldSize oldSize: NSSize) {
         super.resizeSubviews(withOldSize: oldSize)
         scrollView.frame = bounds
         textViewController.viewport = CGRect(origin: scrollView.contentOffset, size: frame.size)
@@ -497,17 +499,17 @@ open class TextView: NSView {
         updateCaretFrame()
     }
 
-    public override func layoutSubtreeIfNeeded() {
+    override public func layoutSubtreeIfNeeded() {
         super.layoutSubtreeIfNeeded()
         textViewController.layoutIfNeeded()
     }
 
-    public override func viewDidMoveToWindow() {
+    override public func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         textViewController.performFullLayoutIfNeeded()
     }
 
-    public override func keyDown(with event: NSEvent) {
+    override public func keyDown(with event: NSEvent) {
         NSCursor.setHiddenUntilMouseMoves(true)
         let didInputContextHandleEvent = inputContext?.handleEvent(event) ?? false
         if !didInputContextHandleEvent {
