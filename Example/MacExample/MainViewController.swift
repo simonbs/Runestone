@@ -22,7 +22,7 @@ final class MainViewController: NSViewController {
         this.lineSelectionDisplayType = .line
         this.gutterLeadingPadding = 4
         this.gutterTrailingPadding = 4
-        this.isLineWrappingEnabled = false
+        this.isLineWrappingEnabled = true
         this.indentStrategy = .space(length: 2)
         this.characterPairs = [
             BasicCharacterPair(leading: "(", trailing: ")"),
