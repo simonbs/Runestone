@@ -3,12 +3,12 @@ import Foundation
 
 extension TextViewController {
     func moveLeftAndModifySelection() {
-        navigationService.resetPreviousLineMovementOperation()
+        navigationService.resetPreviousLineNavigationOperation()
         move(by: .character, inDirection: .backward)
     }
 
     func moveRightAndModifySelection() {
-        navigationService.resetPreviousLineMovementOperation()
+        navigationService.resetPreviousLineNavigationOperation()
         move(by: .character, inDirection: .forward)
     }
 
@@ -21,56 +21,64 @@ extension TextViewController {
     }
 
     func moveWordLeftAndModifySelection() {
-        navigationService.resetPreviousLineMovementOperation()
+        navigationService.resetPreviousLineNavigationOperation()
         move(by: .word, inDirection: .backward)
     }
 
     func moveWordRightAndModifySelection() {
-        navigationService.resetPreviousLineMovementOperation()
+        navigationService.resetPreviousLineNavigationOperation()
         move(by: .word, inDirection: .forward)
     }
 
     func moveToBeginningOfLineAndModifySelection() {
-        navigationService.resetPreviousLineMovementOperation()
+        navigationService.resetPreviousLineNavigationOperation()
         move(toBoundary: .line, inDirection: .backward)
     }
 
     func moveToEndOfLineAndModifySelection() {
-        navigationService.resetPreviousLineMovementOperation()
+        navigationService.resetPreviousLineNavigationOperation()
         move(toBoundary: .line, inDirection: .forward)
     }
 
     func moveToBeginningOfParagraphAndModifySelection() {
-        navigationService.resetPreviousLineMovementOperation()
+        navigationService.resetPreviousLineNavigationOperation()
         move(toBoundary: .paragraph, inDirection: .backward)
     }
 
     func moveToEndOfParagraphAndModifySelection() {
-        navigationService.resetPreviousLineMovementOperation()
+        navigationService.resetPreviousLineNavigationOperation()
         move(toBoundary: .paragraph, inDirection: .forward)
     }
 
     func moveToBeginningOfDocumentAndModifySelection() {
-        navigationService.resetPreviousLineMovementOperation()
+        navigationService.resetPreviousLineNavigationOperation()
         move(toBoundary: .document, inDirection: .backward)
     }
 
     func moveToEndOfDocumentAndModifySelection() {
-        navigationService.resetPreviousLineMovementOperation()
+        navigationService.resetPreviousLineNavigationOperation()
         move(toBoundary: .document, inDirection: .forward)
+    }
+
+    func startDraggingSelection(from location: Int) {
+        selectedRange = selectionService.rangeByStartDraggingSelection(from: location)
+    }
+
+    func extendDraggedSelection(to location: Int) {
+        selectedRange = selectionService.rangeByExtendingDraggedSelection(to: location)
     }
 }
 
 private extension TextViewController {
-    private func move(by granularity: TextGranularity, inDirection directon: TextDirection) {
-        if let currentlySelectedRange = selectedRange {
-            selectedRange = selectionService.range(movingFrom: currentlySelectedRange, by: granularity, inDirection: directon)
+    private func move(by granularity: TextGranularity, inDirection direction: TextDirection) {
+        if let selectedRange {
+            self.selectedRange = selectionService.range(moving: selectedRange, by: granularity, inDirection: direction)
         }
     }
 
-    private func move(toBoundary boundary: TextBoundary, inDirection directon: TextDirection) {
-        if let currentlySelectedRange = selectedRange {
-            selectedRange = selectionService.range(movingFrom: currentlySelectedRange, toBoundary: boundary, inDirection: directon)
+    private func move(toBoundary boundary: TextBoundary, inDirection direction: TextDirection) {
+        if let selectedRange {
+            self.selectedRange = selectionService.range(moving: selectedRange, toBoundary: boundary, inDirection: direction)
         }
     }
 }

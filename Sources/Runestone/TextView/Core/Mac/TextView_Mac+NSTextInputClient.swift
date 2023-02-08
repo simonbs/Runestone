@@ -4,9 +4,9 @@ import AppKit
 extension TextView: NSTextInputClient {
     // swiftlint:disable:next prohibited_super_call
     override public func doCommand(by selector: Selector) {
-        #if DEBUG
-        print(NSStringFromSelector(selector))
-        #endif
+//        #if DEBUG
+//        print(NSStringFromSelector(selector))
+//        #endif
         super.doCommand(by: selector)
     }
 
@@ -14,7 +14,6 @@ extension TextView: NSTextInputClient {
         guard let string = string as? String else {
             return
         }
-        textViewController.selectionService.resetPreviouslySelectedRange()
         let range = replacementRange.location == NSNotFound ? textViewController.rangeForInsertingText : replacementRange
         if textViewController.shouldChangeText(in: range, replacementText: string) {
             textViewController.replaceText(in: range, with: string)

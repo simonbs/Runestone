@@ -1,18 +1,6 @@
 import Foundation
 
 final class StringTokenizer {
-    enum Boundary {
-        case word
-        case line
-        case paragraph
-        case document
-    }
-
-    enum Direction {
-        case forward
-        case backward
-    }
-
     var lineManager: LineManager
     var stringView: StringView
 
@@ -27,7 +15,7 @@ final class StringTokenizer {
         self.lineControllerStorage = lineControllerStorage
     }
 
-    func isLocation(_ location: Int, atBoundary boundary: Boundary, inDirection direction: Direction) -> Bool {
+    func isLocation(_ location: Int, atBoundary boundary: TextBoundary, inDirection direction: TextDirection) -> Bool {
         switch boundary {
         case .word:
             return isLocation(location, atWordBoundaryInDirection: direction)
@@ -40,7 +28,7 @@ final class StringTokenizer {
         }
     }
 
-    func location(from location: Int, toBoundary boundary: Boundary, inDirection direction: Direction) -> Int? {
+    func location(from location: Int, toBoundary boundary: TextBoundary, inDirection direction: TextDirection) -> Int? {
         switch boundary {
         case .word:
             return self.location(from: location, toWordBoundaryInDirection: direction)
@@ -56,7 +44,7 @@ final class StringTokenizer {
 
 // MARK: - Lines
 private extension StringTokenizer {
-    private func isLocation(_ location: Int, atLineBoundaryInDirection direction: Direction) -> Bool {
+    private func isLocation(_ location: Int, atLineBoundaryInDirection direction: TextDirection) -> Bool {
         guard let line = lineManager.line(containingCharacterAt: location) else {
             return false
         }
@@ -69,19 +57,20 @@ private extension StringTokenizer {
         guard let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation) else {
             return false
         }
-        if direction == .forward {
+        switch direction {
+        case .forward:
             let isLastLineFragment = lineFragmentNode.index == lineController.numberOfLineFragments - 1
             if isLastLineFragment {
                 return location == lineLocation + lineFragmentNode.location + lineFragmentNode.value - line.data.delimiterLength
             } else {
                 return location == lineLocation + lineFragmentNode.location + lineFragmentNode.value
             }
-        } else {
+        case .backward:
             return location == lineLocation + lineFragmentNode.location
         }
     }
 
-    private func location(from location: Int, toLineBoundaryInDirection direction: Direction) -> Int? {
+    private func location(from location: Int, toLineBoundaryInDirection direction: TextDirection) -> Int? {
         guard let line = lineManager.line(containingCharacterAt: location) else {
             return nil
         }
@@ -117,14 +106,15 @@ private extension StringTokenizer {
 
 // MARK: - Paragraphs
 private extension StringTokenizer {
-    private func isLocation(_ location: Int, atParagraphBoundaryInDirection direction: Direction) -> Bool {
+    private func isLocation(_ location: Int, atParagraphBoundaryInDirection direction: TextDirection) -> Bool {
         // I can't seem to make Ctrl+A, Ctrl+E, Cmd+Left, and Cmd+Right work properly if this function returns anything but false.
         // I've tried various ways of determining the paragraph boundary but UIKit doesn't seem to be happy with anything I come up with ultimately leading to incorrect keyboard navigation. I haven't yet found any drawbacks to returning false in all cases.
         return false
     }
 
-    private func location(from location: Int, toParagraphBoundaryInDirection direction: Direction) -> Int? {
-        if direction == .forward {
+    private func location(from location: Int, toParagraphBoundaryInDirection direction: TextDirection) -> Int? {
+        switch direction {
+        case .forward:
             if location == stringView.string.length {
                 return location
             } else {
@@ -140,7 +130,7 @@ private extension StringTokenizer {
                 }
                 return currentIndex
             }
-        } else {
+        case .backward:
             if location == 0 {
                 return location
             } else {
@@ -163,9 +153,10 @@ private extension StringTokenizer {
 
 // MARK: - Words
 private extension StringTokenizer {
-    private func isLocation(_ location: Int, atWordBoundaryInDirection direction: Direction) -> Bool {
+    private func isLocation(_ location: Int, atWordBoundaryInDirection direction: TextDirection) -> Bool {
         let alphanumerics: CharacterSet = .alphanumerics
-        if direction == .forward {
+        switch direction {
+        case .forward:
             if location == 0 {
                 return false
             } else if let previousCharacter = stringView.composedSubstring(at: location - 1) {
@@ -179,7 +170,7 @@ private extension StringTokenizer {
             } else {
                 return false
             }
-        } else {
+        case .backward:
             if location == stringView.string.length {
                 return false
             } else if let string = stringView.composedSubstring(at: location) {
@@ -197,56 +188,31 @@ private extension StringTokenizer {
     }
 
     // swiftlint:disable:next cyclomatic_complexity
-    private func location(from location: Int, toWordBoundaryInDirection direction: Direction) -> Int? {
-        let alphanumerics: CharacterSet = .alphanumerics
-        if direction == .forward {
-            if location == stringView.string.length {
-                return location
-            } else if let referenceString = stringView.composedSubstring(at: location) {
-                let isReferenceStringAlphanumeric = alphanumerics.containsAllCharacters(of: referenceString)
-                var currentIndex = location + 1
-                while currentIndex < stringView.string.length {
-                    guard let currentString = stringView.composedSubstring(at: currentIndex) else {
-                        break
-                    }
-                    let isCurrentStringAlphanumeric = alphanumerics.containsAllCharacters(of: currentString)
-                    if isReferenceStringAlphanumeric != isCurrentStringAlphanumeric {
-                        break
-                    }
-                    currentIndex += 1
-                }
-                return currentIndex
-            } else {
-                return nil
+    private func location(from location: Int, toWordBoundaryInDirection direction: TextDirection) -> Int? {
+        func advanceIndex(_ index: Int) -> Int {
+            let preferredIndex: Int
+            switch direction {
+            case .forward:
+                preferredIndex = index + 1
+            case .backward:
+                preferredIndex = index - 1
             }
-        } else {
-            if location == 0 {
-                return location
-            } else if let referenceString = stringView.composedSubstring(at: location - 1) {
-                let isReferenceStringAlphanumeric = alphanumerics.containsAllCharacters(of: referenceString)
-                var currentIndex = location - 1
-                while currentIndex > 0 {
-                    guard let currentString = stringView.composedSubstring(at: currentIndex) else {
-                        break
-                    }
-                    let isCurrentStringAlphanumeric = alphanumerics.containsAllCharacters(of: currentString)
-                    if isReferenceStringAlphanumeric != isCurrentStringAlphanumeric {
-                        currentIndex += 1
-                        break
-                    }
-                    currentIndex -= 1
-                }
-                return currentIndex
-            } else {
-                return nil
-            }
+            return min(max(preferredIndex, 0), stringView.string.length - 1)
         }
+        var index = location
+        if isLocation(index, atBoundary: .word, inDirection: direction) {
+            index = advanceIndex(index)
+        }
+        while !isLocation(index, atBoundary: .word, inDirection: direction) && index >= 0 && index < stringView.string.length {
+            index = advanceIndex(index)
+        }
+        return index
     }
 }
 
 // MARK: - Document
 private extension StringTokenizer {
-    private func isLocation(_ location: Int, atDocumentBoundaryInDirection direction: Direction) -> Bool {
+    private func isLocation(_ location: Int, atDocumentBoundaryInDirection direction: TextDirection) -> Bool {
         switch direction {
         case .backward:
             return location == 0
@@ -255,7 +221,7 @@ private extension StringTokenizer {
         }
     }
 
-    private func location(toDocumentBoundaryInDirection direction: Direction) -> Int {
+    private func location(toDocumentBoundaryInDirection direction: TextDirection) -> Int {
         switch direction {
         case .backward:
             return 0

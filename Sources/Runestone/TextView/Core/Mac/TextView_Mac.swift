@@ -517,6 +517,33 @@ open class TextView: NSView {
         }
     }
 
+    override public func mouseDown(with event: NSEvent) {
+        super.mouseDown(with: event)
+        if let location = locationClosestToPoint(in: event) {
+            textViewController.move(to: location)
+            textViewController.startDraggingSelection(from: location)
+        }
+    }
+
+    override public func mouseDragged(with event: NSEvent) {
+        super.mouseDragged(with: event)
+        if let location = locationClosestToPoint(in: event) {
+            textViewController.extendDraggedSelection(to: location)
+        }
+    }
+
+    override public func mouseUp(with event: NSEvent) {
+        super.mouseUp(with: event)
+        if let location = locationClosestToPoint(in: event) {
+            textViewController.extendDraggedSelection(to: location)
+        }
+    }
+
+    open override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .iBeam)
+    }
+
     /// Sets the current _state_ of the editor. The state contains the text to be displayed by the editor and
     /// various additional information about the text that the editor needs to show the text.
     ///
@@ -538,7 +565,6 @@ public extension TextView {
         guard var selectedRange = textViewController.markedRange ?? textViewController.selectedRange?.nonNegativeLength else {
             return
         }
-        textViewController.selectionService.resetPreviouslySelectedRange()
         if selectedRange.length == 0 {
             selectedRange.location -= 1
             selectedRange.length = 1
@@ -704,11 +730,6 @@ public extension TextView {
         textViewController.moveToEndOfDocumentAndModifySelection()
     }
 
-    override func mouseDown(with event: NSEvent) {
-        let point = scrollContentView.convert(event.locationInWindow, from: nil)
-        textViewController.moveToLocation(closestTo: point)
-    }
-
     /// Copy the selected text.
     ///
     /// - Parameter sender: The object calling this method.
@@ -726,7 +747,6 @@ public extension TextView {
     @objc func paste(_ sender: Any?) {
         let selectedRange = selectedRange()
         if let string = NSPasteboard.general.string(forType: .string) {
-            print(string)
             let preparedText = textViewController.prepareTextForInsertion(string)
             textViewController.replaceText(in: selectedRange, with: preparedText)
         }
@@ -870,6 +890,15 @@ private extension TextView {
         }
         let disappearedViewKeys = Set(selectionViewReuseQueue.visibleViews.keys).subtracting(appearedViewKeys)
         selectionViewReuseQueue.enqueueViews(withKeys: disappearedViewKeys)
+    }
+}
+
+// MARK: - Location
+private extension TextView {
+    private func locationClosestToPoint(in event: NSEvent) -> Int? {
+        let point = scrollContentView.convert(event.locationInWindow, from: nil)
+        let adjustedPoint = CGPoint(x: point.x - gutterWidth - textContainerInset.left, y: point.y)
+        return textViewController.layoutManager.closestIndex(to: adjustedPoint)
     }
 }
 

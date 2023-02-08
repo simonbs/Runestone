@@ -39,10 +39,10 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         guard let indexedPosition = position as? IndexedPosition else {
             return false
         }
-        guard let boundary = StringTokenizer.Boundary(granularity) else {
+        guard let boundary = TextBoundary(granularity) else {
             return super.isPosition(position, atBoundary: granularity, inDirection: direction)
         }
-        let direction = StringTokenizer.Direction(direction)
+        let direction = TextDirection(direction)
         return stringTokenizer.isLocation(indexedPosition.index, atBoundary: boundary, inDirection: direction)
     }
 
@@ -62,10 +62,10 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         guard let indexedPosition = position as? IndexedPosition else {
             return nil
         }
-        guard let boundary = StringTokenizer.Boundary(granularity) else {
+        guard let boundary = TextBoundary(granularity) else {
             return super.position(from: position, toBoundary: granularity, inDirection: direction)
         }
-        let direction = StringTokenizer.Direction(direction)
+        let direction = TextDirection(direction)
         guard let location = stringTokenizer.location(from: indexedPosition.index, toBoundary: boundary, inDirection: direction) else {
             return nil
         }
@@ -81,7 +81,7 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
     }
 }
 
-private extension StringTokenizer.Boundary {
+private extension TextBoundary {
     init?(_ granularity: UITextGranularity) {
         switch granularity {
         case .word:
@@ -90,7 +90,9 @@ private extension StringTokenizer.Boundary {
             self = .paragraph
         case .line:
             self = .line
-        case .character, .document, .sentence:
+        case .document:
+            self = .document
+        case .character, .sentence:
             return nil
         @unknown default:
             return nil
@@ -98,7 +100,7 @@ private extension StringTokenizer.Boundary {
     }
 }
 
-private extension StringTokenizer.Direction {
+private extension TextDirection {
     init(_ direction: UITextDirection) {
         if direction.isForward {
             self = .forward

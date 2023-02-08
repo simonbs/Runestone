@@ -149,6 +149,7 @@ final class TextViewController {
                 layoutManager.stringView = stringView
                 indentController.stringView = stringView
                 navigationService.stringView = stringView
+                selectionService.stringView = stringView
             }
         }
     }
@@ -159,8 +160,9 @@ final class TextViewController {
                 indentController.lineManager = lineManager
                 gutterWidthService.lineManager = lineManager
                 contentSizeService.lineManager = lineManager
-                navigationService.lineManager = lineManager
                 highlightService.lineManager = lineManager
+                navigationService.lineManager = lineManager
+                selectionService.lineManager = lineManager
             }
         }
     }
@@ -562,7 +564,11 @@ final class TextViewController {
             lineControllerStorage: lineControllerStorage
         )
         #if os(macOS)
-        selectionService = SelectionService(navigationService: navigationService)
+        selectionService = SelectionService(
+            stringView: stringView,
+            lineManager: lineManager,
+            lineControllerStorage: lineControllerStorage
+        )
         #endif
         layoutManager = LayoutManager(
             lineManager: lineManager,
