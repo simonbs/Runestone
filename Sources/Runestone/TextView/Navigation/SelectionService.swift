@@ -80,7 +80,9 @@ final class SelectionService {
 
 private extension SelectionService {
     private func anchoringDirection(moving range: NSRange, inDirection direction: TextDirection) -> TextDirection {
-        if range.upperBound == selectionOrigin {
+        if range.length == 0 {
+            return direction.opposite
+        } else if range.upperBound == selectionOrigin {
             return .forward
         } else {
             return .backward
