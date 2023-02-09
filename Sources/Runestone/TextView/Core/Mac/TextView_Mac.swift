@@ -770,6 +770,27 @@ public extension TextView {
     override func selectAll(_ sender: Any?) {
         textViewController.selectedRange = NSRange(location: 0, length: textViewController.stringView.string.length)
     }
+
+    override func scrollPageUp(_ sender: Any?) {
+        var newOffset = scrollView.contentOffset.applying(.init(translationX: 0, y: -frame.size.height))
+        if newOffset.y < 0 {
+            newOffset.y = 0
+        }
+        textViewController.viewport = CGRect(origin: newOffset, size: frame.size)
+        textViewController.layoutIfNeeded()
+        scrollView.contentOffset = newOffset
+    }
+
+    override func scrollPageDown(_ sender: Any?) {
+        let newOffset = scrollView.contentOffset.applying(.init(translationX: 0, y: frame.size.height))
+        var newViewPort = CGRect(origin: newOffset, size: frame.size)
+        if newViewPort.maxY > scrollView.contentSize.height {
+            newViewPort = CGRect(origin: CGPoint(x: newOffset.x, y: scrollView.contentSize.height - frame.size.height), size: frame.size)
+        }
+        textViewController.viewport = newViewPort
+        textViewController.layoutIfNeeded()
+        scrollView.contentOffset = newOffset
+    }
 }
 
 // MARK: - Window
