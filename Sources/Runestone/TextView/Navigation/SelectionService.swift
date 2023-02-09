@@ -89,13 +89,13 @@ private extension SelectionService {
 }
 
 private extension NSRange {
-    func withLowerBound(_ newLowerBound: Int) -> NSRange {
-        let newLength = upperBound - newLowerBound
-        return NSRange(location: newLowerBound, length: newLength)
+    func withLowerBound(_ lowerBound: Int) -> NSRange {
+        let newLength = upperBound - lowerBound
+        return NSRange(location: lowerBound, length: newLength)
     }
 
-    func withUpperBound(_ newUpperBound: Int) -> NSRange {
-        let newLength = newUpperBound - lowerBound
+    func withUpperBound(_ upperBound: Int) -> NSRange {
+        let newLength = upperBound - lowerBound
         return NSRange(location: lowerBound, length: newLength)
     }
 }
