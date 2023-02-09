@@ -85,7 +85,10 @@ final class LayoutManager {
     var lineHeightMultiplier: CGFloat = 1
     var constrainingLineWidth: CGFloat {
         if isLineWrappingEnabled {
-            return scrollViewWidth - textContainerInset.left - textContainerInset.right - safeAreaInsets.left - safeAreaInsets.right
+            return scrollViewWidth
+            - gutterWidthService.gutterWidth
+            - textContainerInset.left - textContainerInset.right
+            - safeAreaInsets.left - safeAreaInsets.right
         } else {
             // Rendering multiple very long lines is very expensive. In order to let the editor remain useable,
             // we set a very high maximum line width when line wrapping is disabled.
