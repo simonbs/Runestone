@@ -1,6 +1,6 @@
 import Foundation
 
-final class ConsiderateLineNavigationLocationFactory {
+final class StatefulLineNavigationLocationFactory {
     private struct MoveOperation {
         let location: Int
         let offset: DirectionedOffset
@@ -68,7 +68,7 @@ final class ConsiderateLineNavigationLocationFactory {
     }
 }
 
-private extension ConsiderateLineNavigationLocationFactory {
+private extension StatefulLineNavigationLocationFactory {
     private func operation(movingFrom location: Int, byLineCount offset: Int, inDirection direction: TextDirection) -> MoveOperation {
         let directionedOffset = DirectionedOffset(offset: offset, inDirection: direction)
         let destinationLocation = lineNavigationLocationFactory.location(movingFrom: location, byLineCount: offset, inDirection: direction)
@@ -76,7 +76,7 @@ private extension ConsiderateLineNavigationLocationFactory {
     }
 }
 
-extension ConsiderateLineNavigationLocationFactory.DirectionedOffset {
+extension StatefulLineNavigationLocationFactory.DirectionedOffset {
     static func +(lhs: Self, rhs: Self) -> Self {
         Self(rawValue: lhs.rawValue + rhs.rawValue)
     }

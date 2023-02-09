@@ -20,13 +20,13 @@ final class NavigationService {
     private var wordNavigationLocationService: WordNavigationLocationFactory {
         WordNavigationLocationFactory(stringTokenizer: stringTokenizer)
     }
-    private var lineNavigationLocationService: ConsiderateLineNavigationLocationFactory
+    private var lineNavigationLocationService: StatefulLineNavigationLocationFactory
 
     init(stringView: StringView, lineManager: LineManager, lineControllerStorage: LineControllerStorage) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
-        self.lineNavigationLocationService = ConsiderateLineNavigationLocationFactory(
+        self.lineNavigationLocationService = StatefulLineNavigationLocationFactory(
             lineManager: lineManager,
             lineControllerStorage: lineControllerStorage
         )
