@@ -497,6 +497,7 @@ open class TextView: NSView {
         textViewController.layoutIfNeeded()
         textViewController.handleContentSizeUpdateIfNeeded()
         updateCaretFrame()
+        updateSelectedRectangles()
     }
 
     override public func layoutSubtreeIfNeeded() {
