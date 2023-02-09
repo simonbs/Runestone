@@ -43,7 +43,7 @@ final class ConsiderateLineNavigationLocationFactory {
         self.lineControllerStorage = lineControllerStorage
     }
 
-    func location(movingFrom location: Int, byLineCount offset: Int, inDirection direction: TextDirection) -> Int {
+    func location(movingFrom location: Int, byLineCount offset: Int = 1, inDirection direction: TextDirection) -> Int {
         if let previousOperation {
             let directionedOffset = DirectionedOffset(offset: offset, inDirection: direction)
             let newDirectionedOffset = previousOperation.offset + directionedOffset
