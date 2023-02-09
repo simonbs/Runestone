@@ -31,8 +31,8 @@ final class ConsiderateLineNavigationLocationFactory {
     }
 
     var lineManager: LineManager
-    var lineControllerStorage: LineControllerStorage
 
+    private let lineControllerStorage: LineControllerStorage
     private var previousOperation: MoveOperation?
     private var lineNavigationLocationFactory: LineNavigationLocationFactory {
         LineNavigationLocationFactory(lineManager: lineManager, lineControllerStorage: lineControllerStorage)
