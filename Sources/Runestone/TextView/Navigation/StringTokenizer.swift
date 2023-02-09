@@ -187,7 +187,6 @@ private extension StringTokenizer {
         }
     }
 
-    // swiftlint:disable:next cyclomatic_complexity
     private func location(from location: Int, toWordBoundaryInDirection direction: TextDirection) -> Int? {
         func advanceIndex(_ index: Int) -> Int {
             let preferredIndex: Int

@@ -540,7 +540,7 @@ open class TextView: NSView {
         }
     }
 
-    open override func resetCursorRects() {
+    override public func resetCursorRects() {
         super.resetCursorRects()
         addCursorRect(bounds, cursor: .iBeam)
     }

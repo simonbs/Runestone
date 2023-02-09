@@ -77,7 +77,7 @@ private extension StatefulLineNavigationLocationFactory {
 }
 
 extension StatefulLineNavigationLocationFactory.DirectionedOffset {
-    static func +(lhs: Self, rhs: Self) -> Self {
+    static func + (lhs: Self, rhs: Self) -> Self {
         Self(rawValue: lhs.rawValue + rhs.rawValue)
     }
 }
