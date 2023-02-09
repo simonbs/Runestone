@@ -3,9 +3,15 @@ import Foundation
 
 final class SelectionService {
     var stringView: StringView
-    var lineManager: LineManager
-    var lineControllerStorage: LineControllerStorage
+    var lineManager: LineManager {
+        didSet {
+            if lineManager !== oldValue {
+                lineNavigationLocationService.lineManager = lineManager
+            }
+        }
+    }
 
+    private let lineControllerStorage: LineControllerStorage
     private var anchoringDirection: TextDirection?
     private var selectionOrigin: Int?
 
@@ -18,32 +24,39 @@ final class SelectionService {
     private var wordNavigationLocationService: WordNavigationLocationFactory {
         WordNavigationLocationFactory(stringTokenizer: stringTokenizer)
     }
-    private var lineNavigationLocationService: LineNavigationLocationFactory {
-        LineNavigationLocationFactory(lineManager: lineManager, lineControllerStorage: lineControllerStorage)
-    }
+    private let lineNavigationLocationService: ConsiderateLineNavigationLocationFactory
 
     init(stringView: StringView, lineManager: LineManager, lineControllerStorage: LineControllerStorage) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
+        self.lineNavigationLocationService = ConsiderateLineNavigationLocationFactory(
+            lineManager: lineManager,
+            lineControllerStorage: lineControllerStorage
+        )
     }
 
     func range(moving range: NSRange, by granularity: TextGranularity, inDirection direction: TextDirection) -> NSRange {
         if range.length == 0 {
             selectionOrigin = range.location
+            lineNavigationLocationService.reset()
         }
         let anchoringDirection = anchoringDirection(moving: range, inDirection: direction)
         switch (granularity, anchoringDirection) {
         case (.character, .backward):
+            lineNavigationLocationService.reset()
             let upperBound = characterNavigationLocationService.location(movingFrom: range.upperBound, inDirection: direction)
             return range.withUpperBound(upperBound)
         case (.character, .forward):
+            lineNavigationLocationService.reset()
             let lowerBound = characterNavigationLocationService.location(movingFrom: range.lowerBound, inDirection: direction)
             return range.withLowerBound(lowerBound)
         case (.word, .backward):
+            lineNavigationLocationService.reset()
             let upperBound = wordNavigationLocationService.location(movingFrom: range.upperBound, inDirection: direction)
             return range.withUpperBound(upperBound)
         case (.word, .forward):
+            lineNavigationLocationService.reset()
             let lowerBound = wordNavigationLocationService.location(movingFrom: range.lowerBound, inDirection: direction)
             return range.withLowerBound(lowerBound)
         case (.line, .backward):
@@ -56,13 +69,29 @@ final class SelectionService {
     }
 
     func range(moving range: NSRange, toBoundary boundary: TextBoundary, inDirection direction: TextDirection) -> NSRange {
+        lineNavigationLocationService.reset()
         if range.length == 0 {
             selectionOrigin = range.location
         }
-        return range
+        let anchoringDirection = anchoringDirection(moving: range, inDirection: direction)
+        switch anchoringDirection {
+        case .backward:
+            if let upperBound = stringTokenizer.location(from: range.upperBound, toBoundary: boundary, inDirection: direction) {
+                return range.withUpperBound(upperBound)
+            } else {
+                return range
+            }
+        case .forward:
+            if let lowerBound = stringTokenizer.location(from: range.lowerBound, toBoundary: boundary, inDirection: direction) {
+                return range.withLowerBound(lowerBound)
+            } else {
+                return range
+            }
+        }
     }
 
     func rangeByStartDraggingSelection(from location: Int) -> NSRange {
+        lineNavigationLocationService.reset()
         let range = NSRange(location: location, length: 0)
         selectionOrigin = location
         return range
