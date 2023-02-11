@@ -121,6 +121,9 @@ final class SelectionService {
     }
 
     func rangeBySelectingWord(at location: Int) -> NSRange {
+        guard location >= 0 && location < stringView.string.length else {
+            return NSRange(location: location, length: 0)
+        }
         let character = stringView.string.character(at: location)
         let substringRange = stringView.string.customRangeOfComposedCharacterSequence(at: location)
         let substring = stringView.string.substring(with: substringRange)

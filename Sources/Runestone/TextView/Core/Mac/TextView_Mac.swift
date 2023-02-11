@@ -450,6 +450,7 @@ open class TextView: NSView, NSMenuItemValidation {
         setNeedsLayout()
         setupWindowObservers()
         setupScrollViewBoundsDidChangeObserver()
+        setupMenu()
     }
 
     public required init?(coder: NSCoder) {
@@ -543,6 +544,15 @@ open class TextView: NSView, NSMenuItemValidation {
         if event.clickCount == 1, let location = locationClosestToPoint(in: event) {
             textViewController.extendDraggedSelection(to: location)
         }
+    }
+
+    open override func rightMouseDown(with event: NSEvent) {
+        if event.clickCount == 1, let location = locationClosestToPoint(in: event) {
+            if let selectedRange = textViewController.selectedRange, !selectedRange.contains(location) || textViewController.selectedRange == nil {
+                textViewController.selectWord(at: location)
+            }
+        }
+        super.rightMouseDown(with: event)
     }
 
     override public func resetCursorRects() {
@@ -917,6 +927,16 @@ private extension TextView {
         let point = scrollContentView.convert(event.locationInWindow, from: nil)
         let adjustedPoint = CGPoint(x: point.x - gutterWidth - textContainerInset.left, y: point.y)
         return textViewController.layoutManager.closestIndex(to: adjustedPoint)
+    }
+}
+
+// MARK: - Menu
+private extension TextView {
+    private func setupMenu() {
+        menu = NSMenu()
+        menu?.addItem(withTitle: L10n.Menu.ItemTitle.cut, action: #selector(cut(_:)), keyEquivalent: "")
+        menu?.addItem(withTitle: L10n.Menu.ItemTitle.copy, action: #selector(copy(_:)), keyEquivalent: "")
+        menu?.addItem(withTitle: L10n.Menu.ItemTitle.paste, action: #selector(paste(_:)), keyEquivalent: "")
     }
 }
 

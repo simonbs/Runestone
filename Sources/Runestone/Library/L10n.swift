@@ -3,31 +3,35 @@
 
 import Foundation
 
-// swiftlint:disable superfluous_disable_command file_length implicit_return
+// swiftlint:disable superfluous_disable_command file_length implicit_return prefer_self_in_static_references
 
 // MARK: - Strings
 
 // swiftlint:disable explicit_type_interface function_parameter_count identifier_name line_length
 // swiftlint:disable nesting type_body_length type_name vertical_whitespace_opening_braces
 internal enum L10n {
-
   internal enum Menu {
     internal enum ItemTitle {
+      /// Paste
+      internal static let copy = L10n.tr("Localizable", "menu.item_title.copy", fallback: "Paste")
+      /// Cut
+      internal static let cut = L10n.tr("Localizable", "menu.item_title.cut", fallback: "Cut")
+      /// Copy
+      internal static let paste = L10n.tr("Localizable", "menu.item_title.paste", fallback: "Copy")
       /// Replace
-      internal static let replace = L10n.tr("Localizable", "menu.item_title.replace")
+      internal static let replace = L10n.tr("Localizable", "menu.item_title.replace", fallback: "Replace")
     }
   }
-
   internal enum Undo {
     internal enum ActionName {
       /// Move Lines Down
-      internal static let moveLinesDown = L10n.tr("Localizable", "undo.action_name.move_lines_down")
+      internal static let moveLinesDown = L10n.tr("Localizable", "undo.action_name.move_lines_down", fallback: "Move Lines Down")
       /// Move Lines Up
-      internal static let moveLinesUp = L10n.tr("Localizable", "undo.action_name.move_lines_up")
+      internal static let moveLinesUp = L10n.tr("Localizable", "undo.action_name.move_lines_up", fallback: "Move Lines Up")
       /// Replace All
-      internal static let replaceAll = L10n.tr("Localizable", "undo.action_name.replace_all")
+      internal static let replaceAll = L10n.tr("Localizable", "undo.action_name.replace_all", fallback: "Replace All")
       /// Typing
-      internal static let typing = L10n.tr("Localizable", "undo.action_name.typing")
+      internal static let typing = L10n.tr("Localizable", "undo.action_name.typing", fallback: "Typing")
     }
   }
 }
@@ -37,8 +41,8 @@ internal enum L10n {
 // MARK: - Implementation Details
 
 extension L10n {
-  private static func tr(_ table: String, _ key: String, _ args: CVarArg...) -> String {
-    let format = BundleToken.bundle.localizedString(forKey: key, value: nil, table: table)
+  private static func tr(_ table: String, _ key: String, _ args: CVarArg..., fallback value: String) -> String {
+    let format = BundleToken.bundle.localizedString(forKey: key, value: value, table: table)
     return String(format: format, locale: Locale.current, arguments: args)
   }
 }
