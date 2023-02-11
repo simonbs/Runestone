@@ -1,9 +1,10 @@
 // swiftlint:disable file_length
 #if os(macOS)
 import AppKit
+import UniformTypeIdentifiers
 
 // swiftlint:disable:next type_body_length
-open class TextView: NSView {
+open class TextView: NSView, NSMenuItemValidation {
     public weak var editorDelegate: TextViewDelegate?
     override public var acceptsFirstResponder: Bool {
         true
@@ -449,6 +450,7 @@ open class TextView: NSView {
         setNeedsLayout()
         setupWindowObservers()
         setupScrollViewBoundsDidChangeObserver()
+        setupMenu()
     }
 
     public required init?(coder: NSCoder) {
@@ -520,9 +522,13 @@ open class TextView: NSView {
 
     override public func mouseDown(with event: NSEvent) {
         super.mouseDown(with: event)
-        if let location = locationClosestToPoint(in: event) {
+        if event.clickCount == 1, let location = locationClosestToPoint(in: event) {
             textViewController.move(to: location)
             textViewController.startDraggingSelection(from: location)
+        } else if event.clickCount == 2, let location = locationClosestToPoint(in: event) {
+            textViewController.selectWord(at: location)
+        } else if event.clickCount == 3, let location = locationClosestToPoint(in: event) {
+            textViewController.selectLine(at: location)
         }
     }
 
@@ -535,9 +541,18 @@ open class TextView: NSView {
 
     override public func mouseUp(with event: NSEvent) {
         super.mouseUp(with: event)
-        if let location = locationClosestToPoint(in: event) {
+        if event.clickCount == 1, let location = locationClosestToPoint(in: event) {
             textViewController.extendDraggedSelection(to: location)
         }
+    }
+
+    open override func rightMouseDown(with event: NSEvent) {
+        if event.clickCount == 1, let location = locationClosestToPoint(in: event) {
+            if let selectedRange = textViewController.selectedRange, !selectedRange.contains(location) || textViewController.selectedRange == nil {
+                textViewController.selectWord(at: location)
+            }
+        }
+        super.rightMouseDown(with: event)
     }
 
     override public func resetCursorRects() {
@@ -557,6 +572,22 @@ open class TextView: NSView {
     /// - Parameter addUndoAction: Whether the state change can be undone. Defaults to false.
     public func setState(_ state: TextViewState, addUndoAction: Bool = false) {
         textViewController.setState(state, addUndoAction: addUndoAction)
+    }
+
+    public func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(copy(_:)) || menuItem.action == #selector(cut(_:)){
+            return selectedRange().length > 0
+        } else if menuItem.action == #selector(paste(_:)) {
+            return NSPasteboard.general.canReadItem(withDataConformingToTypes: [UTType.plainText.identifier])
+        } else if menuItem.action == #selector(selectAll(_:)) {
+            return text.count > 0
+        } else if menuItem.action == #selector(undo(_:)) {
+            return undoManager?.canUndo ?? false
+        } else if menuItem.action == #selector(redo(_:)) {
+            return undoManager?.canRedo ?? false
+        } else {
+            return true
+        }
     }
 }
 
@@ -791,6 +822,18 @@ public extension TextView {
         textViewController.layoutIfNeeded()
         scrollView.contentOffset = newOffset
     }
+
+    @objc func undo(_ sender: Any?) {
+        if let undoManager = undoManager, undoManager.canUndo {
+            undoManager.undo()
+        }
+    }
+
+    @objc func redo(_ sender: Any?) {
+        if let undoManager = undoManager, undoManager.canRedo {
+            undoManager.redo()
+        }
+    }
 }
 
 // MARK: - Window
@@ -921,6 +964,16 @@ private extension TextView {
         let point = scrollContentView.convert(event.locationInWindow, from: nil)
         let adjustedPoint = CGPoint(x: point.x - gutterWidth - textContainerInset.left, y: point.y)
         return textViewController.layoutManager.closestIndex(to: adjustedPoint)
+    }
+}
+
+// MARK: - Menu
+private extension TextView {
+    private func setupMenu() {
+        menu = NSMenu()
+        menu?.addItem(withTitle: L10n.Menu.ItemTitle.cut, action: #selector(cut(_:)), keyEquivalent: "")
+        menu?.addItem(withTitle: L10n.Menu.ItemTitle.copy, action: #selector(copy(_:)), keyEquivalent: "")
+        menu?.addItem(withTitle: L10n.Menu.ItemTitle.paste, action: #selector(paste(_:)), keyEquivalent: "")
     }
 }
 
