@@ -581,6 +581,10 @@ open class TextView: NSView, NSMenuItemValidation {
             return NSPasteboard.general.canReadItem(withDataConformingToTypes: [UTType.plainText.identifier])
         } else if menuItem.action == #selector(selectAll(_:)) {
             return text.count > 0
+        } else if menuItem.action == #selector(undo(_:)) {
+            return undoManager?.canUndo ?? false
+        } else if menuItem.action == #selector(redo(_:)) {
+            return undoManager?.canRedo ?? false
         } else {
             return true
         }
@@ -796,6 +800,18 @@ public extension TextView {
     /// - Parameter sender: The object calling this method.
     override func selectAll(_ sender: Any?) {
         textViewController.selectedRange = NSRange(location: 0, length: textViewController.stringView.string.length)
+    }
+
+    @objc func undo(_ sender: Any?) {
+        if let undoManager = undoManager, undoManager.canUndo {
+            undoManager.undo()
+        }
+    }
+
+    @objc func redo(_ sender: Any?) {
+        if let undoManager = undoManager, undoManager.canRedo {
+            undoManager.redo()
+        }
     }
 }
 
