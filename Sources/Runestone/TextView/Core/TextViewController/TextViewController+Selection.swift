@@ -67,6 +67,14 @@ extension TextViewController {
     func extendDraggedSelection(to location: Int) {
         selectedRange = selectionService.rangeByExtendingDraggedSelection(to: location)
     }
+
+    func selectWord(at location: Int) {
+        selectedRange = selectionService.rangeBySelectingWord(at: location)
+    }
+
+    func selectLine(at location: Int) {
+        selectedRange = selectionService.rangeBySelectingLine(at: location)
+    }
 }
 
 private extension TextViewController {

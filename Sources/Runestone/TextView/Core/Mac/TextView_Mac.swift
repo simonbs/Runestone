@@ -520,9 +520,13 @@ open class TextView: NSView {
 
     override public func mouseDown(with event: NSEvent) {
         super.mouseDown(with: event)
-        if let location = locationClosestToPoint(in: event) {
+        if event.clickCount == 1, let location = locationClosestToPoint(in: event) {
             textViewController.move(to: location)
             textViewController.startDraggingSelection(from: location)
+        } else if event.clickCount == 2, let location = locationClosestToPoint(in: event) {
+            textViewController.selectWord(at: location)
+        } else if event.clickCount == 3, let location = locationClosestToPoint(in: event) {
+            textViewController.selectLine(at: location)
         }
     }
 
@@ -535,7 +539,7 @@ open class TextView: NSView {
 
     override public func mouseUp(with event: NSEvent) {
         super.mouseUp(with: event)
-        if let location = locationClosestToPoint(in: event) {
+        if event.clickCount == 1, let location = locationClosestToPoint(in: event) {
             textViewController.extendDraggedSelection(to: location)
         }
     }
