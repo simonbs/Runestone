@@ -1,6 +1,5 @@
 strings:
-  - inputs: 
-      - Sources/Runestone/Resources
+  - inputs: Sources/Runestone/Resources/en.lproj/Localizable.strings
     outputs:
       templateName: structured-swift5
       output: Sources/Runestone/Library/L10n.swift
