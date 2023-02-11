@@ -1,9 +1,10 @@
 // swiftlint:disable file_length
 #if os(macOS)
 import AppKit
+import UniformTypeIdentifiers
 
 // swiftlint:disable:next type_body_length
-open class TextView: NSView {
+open class TextView: NSView, NSMenuItemValidation {
     public weak var editorDelegate: TextViewDelegate?
     override public var acceptsFirstResponder: Bool {
         true
@@ -561,6 +562,18 @@ open class TextView: NSView {
     /// - Parameter addUndoAction: Whether the state change can be undone. Defaults to false.
     public func setState(_ state: TextViewState, addUndoAction: Bool = false) {
         textViewController.setState(state, addUndoAction: addUndoAction)
+    }
+
+    public func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(copy(_:)) || menuItem.action == #selector(cut(_:)){
+            return selectedRange().length > 0
+        } else if menuItem.action == #selector(paste(_:)) {
+            return NSPasteboard.general.canReadItem(withDataConformingToTypes: [UTType.plainText.identifier])
+        } else if menuItem.action == #selector(selectAll(_:)) {
+            return text.count > 0
+        } else {
+            return true
+        }
     }
 }
 
