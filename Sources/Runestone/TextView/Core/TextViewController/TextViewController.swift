@@ -149,7 +149,9 @@ final class TextViewController {
                 layoutManager.stringView = stringView
                 indentController.stringView = stringView
                 navigationService.stringView = stringView
+                #if os(macOS)
                 selectionService.stringView = stringView
+                #endif
             }
         }
     }
@@ -162,7 +164,9 @@ final class TextViewController {
                 contentSizeService.lineManager = lineManager
                 highlightService.lineManager = lineManager
                 navigationService.lineManager = lineManager
+                #if os(macOS)
                 selectionService.lineManager = lineManager
+                #endif
             }
         }
     }
