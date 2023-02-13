@@ -95,7 +95,7 @@ final class LineFragment {
     }
 
     func withHiddenLength(_ hiddenLength: Int) -> LineFragment {
-        return LineFragment(
+        Self(
             id: id,
             index: index,
             visibleRange: visibleRange,

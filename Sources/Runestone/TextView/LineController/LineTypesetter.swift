@@ -216,7 +216,12 @@ private extension LineTypesetter {
         return length
     }
 
-    private func makeLineFragment(for visibleRange: CFRange, in typesetter: CTTypesetter, lineFragmentIndex: Int, yPosition: CGFloat) -> LineFragment {
+    private func makeLineFragment(
+        for visibleRange: CFRange,
+        in typesetter: CTTypesetter,
+        lineFragmentIndex: Int,
+        yPosition: CGFloat
+    ) -> LineFragment {
         let line = CTTypesetterCreateLine(typesetter, visibleRange)
         var ascent: CGFloat = 0
         var descent: CGFloat = 0
