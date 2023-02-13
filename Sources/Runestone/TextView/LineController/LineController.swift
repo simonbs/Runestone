@@ -350,8 +350,10 @@ private extension LineController {
             lineFragmentController.lineFragment = lineFragment
             return lineFragmentController
         } else {
-            let lineFragmentController = LineFragmentController(lineFragment: lineFragment,
-                                                                invisibleCharacterConfiguration: invisibleCharacterConfiguration)
+            let lineFragmentController = LineFragmentController(
+                lineFragment: lineFragment,
+                invisibleCharacterConfiguration: invisibleCharacterConfiguration
+            )
             lineFragmentController.delegate = self
             lineFragmentControllers[lineFragment.id] = lineFragmentController
             applyTheme(to: lineFragmentController)
