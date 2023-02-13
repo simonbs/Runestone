@@ -176,11 +176,18 @@ private extension LineTypesetter {
         var length = suggestNextLineBreak(using: typesetter)
         var lineFragment: LineFragment?
         while lineFragment == nil || lineFragment!.scaledSize.width > constrainingWidth {
-            let range = CFRangeMake(startOffset, length)
-            lineFragment = makeLineFragment(for: range, in: typesetter, lineFragmentIndex: lineFragmentIndex, yPosition: nextYPosition)
+            let visibleRange = CFRangeMake(startOffset, length)
+            lineFragment = makeLineFragment(for: visibleRange, in: typesetter, lineFragmentIndex: lineFragmentIndex, yPosition: nextYPosition)
             length -= 1
         }
-        return lineFragment
+        guard let lineFragment else {
+            return nil
+        }
+        let whitespaceLength = lengthOfWhitespace(after: startOffset + length)
+        guard whitespaceLength > 0 else {
+            return lineFragment
+        }
+        return lineFragment.withHiddenLength(whitespaceLength)
     }
 
     private func suggestNextLineBreak(using typesetter: CTTypesetter) -> Int {
@@ -196,8 +203,26 @@ private extension LineTypesetter {
         return lineBreakSuggester.suggestLineBreak(startingAt: startOffset)
     }
 
-    private func makeLineFragment(for range: CFRange, in typesetter: CTTypesetter, lineFragmentIndex: Int, yPosition: CGFloat) -> LineFragment {
-        let line = CTTypesetterCreateLine(typesetter, range)
+    private func lengthOfWhitespace(after location: Int) -> Int {
+        guard let attributedString, location < attributedString.length - 1 else {
+            return 0
+        }
+        var nextCharacter = location + 1
+        var length = 0
+        while attributedString.isWhitespaceCharacter(at: nextCharacter) {
+            nextCharacter += 1
+            length += 1
+        }
+        return length
+    }
+
+    private func makeLineFragment(
+        for visibleRange: CFRange,
+        in typesetter: CTTypesetter,
+        lineFragmentIndex: Int,
+        yPosition: CGFloat
+    ) -> LineFragment {
+        let line = CTTypesetterCreateLine(typesetter, visibleRange)
         var ascent: CGFloat = 0
         var descent: CGFloat = 0
         var leading: CGFloat = 0
@@ -206,11 +231,11 @@ private extension LineTypesetter {
         let baseSize = CGSize(width: width, height: height)
         let scaledSize = CGSize(width: width, height: height * lineFragmentHeightMultiplier)
         let id = LineFragmentID(lineId: lineID, lineFragmentIndex: lineFragmentIndex)
-        let range = NSRange(location: range.location, length: range.length)
+        let visibleRange = NSRange(location: visibleRange.location, length: visibleRange.length)
         return LineFragment(
             id: id,
             index: lineFragmentIndex,
-            range: range,
+            visibleRange: visibleRange,
             line: line,
             descent: descent,
             baseSize: baseSize,
