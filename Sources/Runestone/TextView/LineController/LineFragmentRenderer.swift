@@ -106,7 +106,7 @@ private extension LineFragmentRenderer {
 
     private func drawInvisibleCharacters(in string: String) {
         var indexInLineFragment = 0
-        for substring in string {            
+        for substring in string {
             let indexInLine = lineFragment.visibleRange.location + indexInLineFragment
             indexInLineFragment += substring.utf16.count
             if invisibleCharacterConfiguration.showSpaces && substring == Symbol.Character.space {
