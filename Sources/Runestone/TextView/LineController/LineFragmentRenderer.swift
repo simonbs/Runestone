@@ -106,8 +106,10 @@ private extension LineFragmentRenderer {
 
     private func drawInvisibleCharacters(in string: String) {
         let textRange = CTLineGetStringRange(lineFragment.line)
-        for (indexInLineFragment, substring) in string.enumerated() {
+        var indexInLineFragment = 0
+        for substring in string {
             let indexInLine = textRange.location + indexInLineFragment
+            indexInLineFragment += substring.utf16.count
             if invisibleCharacterConfiguration.showSpaces && substring == Symbol.Character.space {
                 draw(invisibleCharacterConfiguration.spaceSymbol, at: .character(indexInLine))
             } else if invisibleCharacterConfiguration.showNonBreakingSpaces && substring == Symbol.Character.nonBreakingSpace {
