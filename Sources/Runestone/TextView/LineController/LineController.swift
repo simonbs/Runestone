@@ -461,8 +461,7 @@ extension LineController {
 extension LineController: LineFragmentControllerDelegate {
     func string(in controller: LineFragmentController) -> String? {
         let lineFragment = controller.lineFragment
-        let cfRange = CTLineGetStringRange(lineFragment.line)
-        let range = NSRange(location: line.location + cfRange.location, length: cfRange.length)
+        let range = NSRange(location: line.location + lineFragment.visibleRange.location, length: lineFragment.visibleRange.length)
         return stringView.substring(in: range)
     }
 }
