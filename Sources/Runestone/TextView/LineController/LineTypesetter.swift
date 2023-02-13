@@ -124,18 +124,22 @@ private extension LineTypesetter {
         guard let typesetter = typesetter else {
             return []
         }
-        let typesetResult = typesetLineFragments(until: condition,
-                                                 additionalLineFragmentCount: additionalLineFragmentCount,
-                                                 using: typesetter,
-                                                 stringLength: stringLength)
+        let typesetResult = typesetLineFragments(
+            until: condition,
+            additionalLineFragmentCount: additionalLineFragmentCount,
+            using: typesetter,
+            stringLength: stringLength
+        )
         updateState(from: typesetResult)
         return typesetResult.lineFragments
     }
 
-    private func typesetLineFragments(until condition: TypesetEndCondition,
-                                      additionalLineFragmentCount: Int = 0,
-                                      using typesetter: CTTypesetter,
-                                      stringLength: Int) -> TypesetResult {
+    private func typesetLineFragments(
+        until condition: TypesetEndCondition,
+        additionalLineFragmentCount: Int = 0,
+        using typesetter: CTTypesetter,
+        stringLength: Int
+    ) -> TypesetResult {
         guard constrainingWidth > 0 else {
             return TypesetResult(lineFragments: [], lineFragmentsMap: [:], maximumLineWidth: 0)
         }
@@ -266,14 +270,18 @@ private extension LineTypesetter {
         let baseSize = CGSize(width: width, height: height)
         let scaledSize = CGSize(width: width, height: height * lineFragmentHeightMultiplier)
         let id = LineFragmentID(lineId: lineID, lineFragmentIndex: lineFragmentIndex)
-        let nsRange = NSRange(location: range.location, length: range.length)
-        return LineFragment(id: id,
-                            index: lineFragmentIndex,
-                            range: nsRange,
-                            line: line,
-                            descent: descent,
-                            baseSize: baseSize,
-                            scaledSize: scaledSize,
-                            yPosition: yPosition)
+        let visibleRange = NSRange(location: range.location, length: range.length)
+        return LineFragment(
+            id: id,
+            index: lineFragmentIndex,
+            visibleRange: visibleRange,
+            line: line,
+            descent: descent,
+            baseSize: baseSize,
+            scaledSize: scaledSize,
+            yPosition: yPosition
+        )
+    }
+}
     }
 }
