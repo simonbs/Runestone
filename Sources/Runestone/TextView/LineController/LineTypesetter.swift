@@ -206,11 +206,11 @@ private extension LineTypesetter {
         let baseSize = CGSize(width: width, height: height)
         let scaledSize = CGSize(width: width, height: height * lineFragmentHeightMultiplier)
         let id = LineFragmentID(lineId: lineID, lineFragmentIndex: lineFragmentIndex)
-        let visibleRange = NSRange(location: range.location, length: range.length)
+        let range = NSRange(location: range.location, length: range.length)
         return LineFragment(
             id: id,
             index: lineFragmentIndex,
-            visibleRange: visibleRange,
+            range: range,
             line: line,
             descent: descent,
             baseSize: baseSize,
