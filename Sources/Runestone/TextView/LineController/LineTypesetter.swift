@@ -124,18 +124,22 @@ private extension LineTypesetter {
         guard let typesetter = typesetter else {
             return []
         }
-        let typesetResult = typesetLineFragments(until: condition,
-                                                 additionalLineFragmentCount: additionalLineFragmentCount,
-                                                 using: typesetter,
-                                                 stringLength: stringLength)
+        let typesetResult = typesetLineFragments(
+            until: condition,
+            additionalLineFragmentCount: additionalLineFragmentCount,
+            using: typesetter,
+            stringLength: stringLength
+        )
         updateState(from: typesetResult)
         return typesetResult.lineFragments
     }
 
-    private func typesetLineFragments(until condition: TypesetEndCondition,
-                                      additionalLineFragmentCount: Int = 0,
-                                      using typesetter: CTTypesetter,
-                                      stringLength: Int) -> TypesetResult {
+    private func typesetLineFragments(
+        until condition: TypesetEndCondition,
+        additionalLineFragmentCount: Int = 0,
+        using typesetter: CTTypesetter,
+        stringLength: Int
+    ) -> TypesetResult {
         guard constrainingWidth > 0 else {
             return TypesetResult(lineFragments: [], lineFragmentsMap: [:], maximumLineWidth: 0)
         }
@@ -172,92 +176,53 @@ private extension LineTypesetter {
         var length = suggestNextLineBreak(using: typesetter)
         var lineFragment: LineFragment?
         while lineFragment == nil || lineFragment!.scaledSize.width > constrainingWidth {
-            let range = CFRangeMake(startOffset, length)
-            lineFragment = makeLineFragment(for: range, in: typesetter, lineFragmentIndex: lineFragmentIndex, yPosition: nextYPosition)
+            let visibleRange = CFRangeMake(startOffset, length)
+            lineFragment = makeLineFragment(for: visibleRange, in: typesetter, lineFragmentIndex: lineFragmentIndex, yPosition: nextYPosition)
             length -= 1
         }
-        return lineFragment
+        guard let lineFragment else {
+            return nil
+        }
+        let whitespaceLength = lengthOfWhitespace(after: startOffset + length)
+        guard whitespaceLength > 0 else {
+            return lineFragment
+        }
+        return lineFragment.withHiddenLength(whitespaceLength)
     }
 
     private func suggestNextLineBreak(using typesetter: CTTypesetter) -> Int {
-        switch lineBreakMode {
-        case .byWordWrapping:
-            return suggestNextLineBreakUsingWordWrapping(using: typesetter)
-        case .byCharWrapping:
-            return suggestNextLineBreakUsingCharWrapping(using: typesetter)
+        guard let attributedString else {
+            return stringLength
         }
+        let lineBreakSuggester = LineBreakSuggester(
+            lineBreakMode: lineBreakMode,
+            typesetter: typesetter,
+            attributedString: attributedString,
+            constrainingWidth: constrainingWidth
+        )
+        return lineBreakSuggester.suggestLineBreak(startingAt: startOffset)
     }
 
-    private func suggestNextLineBreakUsingWordWrapping(using typesetter: CTTypesetter) -> Int {
-        let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingWidth))
-        guard startOffset + length < stringLength else {
-            // We've reached the end of the line.
-            return length
+    private func lengthOfWhitespace(after location: Int) -> Int {
+        guard let attributedString, location < attributedString.length - 1 else {
+            return 0
         }
-        let lastCharacterIndex = startOffset + length - 1
-        let prefersLineBreakAfterCharacter = prefersInsertingLineBreakAfterCharacter(at: lastCharacterIndex)
-        guard !prefersLineBreakAfterCharacter else {
-            // We're breaking at a whitespace so we return the break suggested by CTTypesetter.
-            return length
-        }
-        // CTTypesetter did not suggest breaking at a whitespace. We try to go back in the string to find a whitespace to break at.
-        // If that fails we'll just use the break suggested by CTTypesetter. This workaround solves two issues:
-        // 1. The results more closely matches the behavior of desktop editors like Nova. They tend to prefer breaking at whitespaces.
-        // 2. It fixes an issue where breaking in the middle of the /> ligature would cause the slash not to be drawn. More info in this tweet:
-        //    https://twitter.com/simonbs/status/1515961709671899137
-        let maximumLookback = min(length, 100)
-        if let lookbackLength = lookbackToFindFirstLineBreakableCharacter(startingAt: startOffset + length, maximumLookback: maximumLookback) {
-            return length - lookbackLength
-        } else {
-            return length
-        }
-    }
-
-    private func suggestNextLineBreakUsingCharWrapping(using typesetter: CTTypesetter) -> Int {
-        let length = CTTypesetterSuggestClusterBreak(typesetter, startOffset, Double(constrainingWidth))
-        guard startOffset + length < stringLength, let attributedString = attributedString else {
-            // There is no character after suggested line break.
-            return length
-        }
-        let lastCharacterIndex = startOffset + length - 1
-        let range = NSRange(location: lastCharacterIndex, length: 2)
-        if attributedString.attributedSubstring(from: range).string == Symbol.carriageReturnLineFeed {
-            // Suggested line break is in the middle of CRLF so return one position ahead which is after the character pair.
-            return length + 1
+        var nextCharacter = location + 1
+        var length = 0
+        while attributedString.isWhitespaceCharacter(at: nextCharacter) {
+            nextCharacter += 1
+            length += 1
         }
         return length
     }
 
-    private func lookbackToFindFirstLineBreakableCharacter(startingAt startLocation: Int, maximumLookback: Int) -> Int? {
-        var lookback = 0
-        var foundWhitespace = false
-        while lookback < maximumLookback && !foundWhitespace {
-            if prefersInsertingLineBreakAfterCharacter(at: startLocation - lookback) {
-                foundWhitespace = true
-            } else {
-                lookback += 1
-            }
-        }
-        if foundWhitespace {
-            // Subtract one to break at the whitespace we've found.
-            return lookback - 1
-        } else {
-            return nil
-        }
-    }
-
-    private func prefersInsertingLineBreakAfterCharacter(at location: Int) -> Bool {
-        guard let attributedString = attributedString else {
-            return false
-        }
-        let range = NSRange(location: location, length: 1)
-        let attributedSubstring = attributedString.attributedSubstring(from: range)
-        let string = attributedSubstring.string.trimmingCharacters(in: .whitespaces)
-        return string.isEmpty || CharacterSet(charactersIn: string).isSubset(of: .punctuationCharacters)
-    }
-
-    private func makeLineFragment(for range: CFRange, in typesetter: CTTypesetter, lineFragmentIndex: Int, yPosition: CGFloat) -> LineFragment {
-        let line = CTTypesetterCreateLine(typesetter, range)
+    private func makeLineFragment(
+        for visibleRange: CFRange,
+        in typesetter: CTTypesetter,
+        lineFragmentIndex: Int,
+        yPosition: CGFloat
+    ) -> LineFragment {
+        let line = CTTypesetterCreateLine(typesetter, visibleRange)
         var ascent: CGFloat = 0
         var descent: CGFloat = 0
         var leading: CGFloat = 0
@@ -266,14 +231,16 @@ private extension LineTypesetter {
         let baseSize = CGSize(width: width, height: height)
         let scaledSize = CGSize(width: width, height: height * lineFragmentHeightMultiplier)
         let id = LineFragmentID(lineId: lineID, lineFragmentIndex: lineFragmentIndex)
-        let nsRange = NSRange(location: range.location, length: range.length)
-        return LineFragment(id: id,
-                            index: lineFragmentIndex,
-                            range: nsRange,
-                            line: line,
-                            descent: descent,
-                            baseSize: baseSize,
-                            scaledSize: scaledSize,
-                            yPosition: yPosition)
+        let visibleRange = NSRange(location: visibleRange.location, length: visibleRange.length)
+        return LineFragment(
+            id: id,
+            index: lineFragmentIndex,
+            visibleRange: visibleRange,
+            line: line,
+            descent: descent,
+            baseSize: baseSize,
+            scaledSize: scaledSize,
+            yPosition: yPosition
+        )
     }
 }
