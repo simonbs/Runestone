@@ -1,9 +1,9 @@
 #if os(macOS)
-import XCTest
 import AppKit
 import Runestone
+import XCTest
 
-final class TextViewTests_Mac: XCTestCase {
+final class TextViewTestsMac: XCTestCase {
     func testMovingInDocument() throws {
         let textView = makeTextView(withText: "Hello,\nWorld")
         // moveToEndOfParagraph:
@@ -33,7 +33,7 @@ final class TextViewTests_Mac: XCTestCase {
     }
 }
 
-private extension TextViewTests_Mac {
+private extension TextViewTestsMac {
     private func makeTextView(withText text: String) -> TextView {
         let textView = TextView()
         textView.text = text
