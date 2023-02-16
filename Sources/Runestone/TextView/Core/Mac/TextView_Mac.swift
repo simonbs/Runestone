@@ -546,7 +546,7 @@ open class TextView: NSView, NSMenuItemValidation {
         }
     }
 
-    open override func rightMouseDown(with event: NSEvent) {
+    override public func rightMouseDown(with event: NSEvent) {
         if event.clickCount == 1, let location = locationClosestToPoint(in: event) {
             if let selectedRange = textViewController.selectedRange, !selectedRange.contains(location) || textViewController.selectedRange == nil {
                 textViewController.selectWord(at: location)
@@ -575,12 +575,12 @@ open class TextView: NSView, NSMenuItemValidation {
     }
 
     public func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        if menuItem.action == #selector(copy(_:)) || menuItem.action == #selector(cut(_:)){
+        if menuItem.action == #selector(copy(_:)) || menuItem.action == #selector(cut(_:)) {
             return selectedRange().length > 0
         } else if menuItem.action == #selector(paste(_:)) {
             return NSPasteboard.general.canReadItem(withDataConformingToTypes: [UTType.plainText.identifier])
         } else if menuItem.action == #selector(selectAll(_:)) {
-            return text.count > 0
+            return !text.isEmpty
         } else if menuItem.action == #selector(undo(_:)) {
             return undoManager?.canUndo ?? false
         } else if menuItem.action == #selector(redo(_:)) {

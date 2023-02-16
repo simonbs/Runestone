@@ -188,7 +188,9 @@ private extension ContentSizeService {
         }
         lineIDTrackingWidth = longestLine.id
         let lineController = lineControllerStorage.getOrCreateLineController(for: longestLine)
-        lineController.invalidateEverything()
+        lineController.invalidateString()
+        lineController.invalidateTypesetting()
+        lineController.invalidateSyntaxHighlighting()
         lineWidths[longestLine.id] = lineController.lineWidth
         if !isLineWrappingEnabled {
             _longestLineWidth = nil

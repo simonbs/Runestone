@@ -183,7 +183,9 @@ final class LayoutManager {
     func redisplayLines(withIDs lineIDs: Set<DocumentLineNodeID>) {
         for lineID in lineIDs {
             if let lineController = lineControllerStorage[lineID] {
-                lineController.invalidateEverything()
+                lineController.invalidateString()
+                lineController.invalidateTypesetting()
+                lineController.invalidateSyntaxHighlighting()
                 // Only display the line if it's currently visible on the screen. Otherwise it's enough to invalidate it and redisplay it later.
                 if visibleLineIDs.contains(lineID) {
                     let lineYPosition = lineController.line.yPosition
