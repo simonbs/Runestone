@@ -140,24 +140,23 @@ final class LineController {
         syntaxHighlighter?.cancel()
     }
 
-    func invalidateEverything() {
-        isLineFragmentCacheInvalid = true
+    func invalidateString() {
         isStringInvalid = true
+    }
+
+    func invalidateTypesetting() {
+        isLineFragmentCacheInvalid = true
         isTypesetterInvalid = true
+        _lineHeight = nil
+    }
+
+    func invalidateSyntaxHighlighting() {
         isDefaultAttributesInvalid = true
         isSyntaxHighlightingInvalid = true
-        _lineHeight = nil
     }
 
     func invalidateSyntaxHighlighter() {
         cachedSyntaxHighlighter = nil
-    }
-
-    func invalidateSyntaxHighlighting() {
-        isTypesetterInvalid = true
-        isDefaultAttributesInvalid = true
-        isSyntaxHighlightingInvalid = true
-        _lineHeight = nil
     }
 
     func lineFragmentControllers(in rect: CGRect) -> [LineFragmentController] {

@@ -127,7 +127,9 @@ final class TextViewController {
                 contentSizeService.scrollViewSize = scrollViewSize
                 layoutManager.scrollViewWidth = scrollViewSize.width
                 if isLineWrappingEnabled {
-                    invalidateLines()
+                    for lineController in lineControllerStorage {
+                        lineController.invalidateTypesetting()
+                    }
                 }
             }
         }
