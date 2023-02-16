@@ -25,20 +25,23 @@ final class StringViewTests: XCTestCase {
     func testPassingValidIndexToCharacterAt() {
         let str = "Hello world"
         let stringView = StringView(string: str)
-        XCTAssertEqual(stringView.character(at: 4), "o")
+        let character = stringView.substring(in: NSRange(location: 4, length: 1))
+        XCTAssertEqual(character, "o")
     }
 
     func testPassingInvalidIndexToCharacterAt() {
         let str = "Hello world"
         let stringView = StringView(string: str)
-        XCTAssertNil(stringView.character(at: 12))
+        let character = stringView.substring(in: NSRange(location: 12, length: 1))
+        XCTAssertNil(character)
     }
 
     func testGetCharacterFromEmojiString() {
         // Should return nil because the first character in a composed glyph isn't a valid Unicode.Scalar.
         let str = "🥳🥳"
         let stringView = StringView(string: str)
-        XCTAssertNil(stringView.character(at: 0))
+        let character = stringView.substring(in: NSRange(location: 0, length: 1))
+        XCTAssertNil(character)
     }
 
     func testGetBytesOfFirstCharacter() {

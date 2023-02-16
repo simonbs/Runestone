@@ -3,42 +3,41 @@ import XCTest
 import AppKit
 import Runestone
 
-class TextView_MacTests: XCTestCase {
+final class TextViewTests_Mac: XCTestCase {
     func testMovingInDocument() throws {
-        let textView = createTextView(text: "Hello,\nWorld")
-
+        let textView = makeTextView(withText: "Hello,\nWorld")
         // moveToEndOfParagraph:
-        textView.keyDown(with: try .create(characters: "e", modifiers: .control))
+        textView.keyDown(with: try .keyEvent(pressing: "e", withModifiers: .control))
         XCTAssertEqual(textView.selectedRange(), NSRange(location: 6, length: 0))
         // moveLeft:
-        textView.keyDown(with: try .create(key: .leftArrow))
+        textView.keyDown(with: try .keyEvent(pressing: .leftArrow))
         XCTAssertEqual(textView.selectedRange(), NSRange(location: 5, length: 0))
         // moveRight:
-        textView.keyDown(with: try .create(key: .rightArrow))
+        textView.keyDown(with: try .keyEvent(pressing: .rightArrow))
         XCTAssertEqual(textView.selectedRange(), NSRange(location: 6, length: 0))
         // moveToBeginningOfParagraph:
-        textView.keyDown(with: try .create(characters: "a", modifiers: .control))
+        textView.keyDown(with: try .keyEvent(pressing: "a", withModifiers: .control))
         XCTAssertEqual(textView.selectedRange(), NSRange(location: 0, length: 0))
         // moveDown:
-        textView.keyDown(with: try .create(characters: "n", modifiers: .control))
+        textView.keyDown(with: try .keyEvent(pressing: "n", withModifiers: .control))
         XCTAssertEqual(textView.selectedRange(), NSRange(location: 7, length: 0))
         // moveUp:
-        textView.keyDown(with: try .create(characters: "p", modifiers: .control))
+        textView.keyDown(with: try .keyEvent(pressing: "p", withModifiers: .control))
         XCTAssertEqual(textView.selectedRange(), NSRange(location: 0, length: 0))
         // moveDown:
-        textView.keyDown(with: try .create(key: .downArrow))
+        textView.keyDown(with: try .keyEvent(pressing: .downArrow))
         XCTAssertEqual(textView.selectedRange(), NSRange(location: 7, length: 0))
         // moveUp:
-        textView.keyDown(with: try .create(key: .upArrow))
+        textView.keyDown(with: try .keyEvent(pressing: .upArrow))
         XCTAssertEqual(textView.selectedRange(), NSRange(location: 0, length: 0))
     }
+}
 
-
-    private func createTextView(text: String, selectedRange: NSRange = NSRange(location: 0, length: 0)) -> TextView {
+private extension TextViewTests_Mac {
+    private func makeTextView(withText text: String) -> TextView {
         let textView = TextView()
         textView.text = text
         textView.frame = CGRect(x: 0, y: 0, width: 400, height: 400)
-
         return textView
     }
 }
