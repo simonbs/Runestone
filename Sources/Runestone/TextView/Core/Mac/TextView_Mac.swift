@@ -567,6 +567,14 @@ open class TextView: NSView, NSMenuItemValidation {
     public func syntaxNode(at location: Int) -> SyntaxNode? {
         textViewController.syntaxNode(at: location)
     }
+
+    /// Returns the text in the specified range.
+    /// - Parameter range: A range of text in the document.
+    /// - Returns: The substring that falls within the specified range.
+    public func text(in range: NSRange) -> String? {
+        textViewController.text(in: range)
+    }
+
     /// Implemented to override the default action of enabling or disabling a specific menu item.
     /// - Parameter menuItem: An NSMenuItem object that represents the menu item.
     /// - Returns: `true` to enable menuItem, `false` to disable it.
