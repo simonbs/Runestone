@@ -547,7 +547,7 @@ open class TextView: NSView, NSMenuItemValidation {
     }
 
     override public func rightMouseDown(with event: NSEvent) {
-        if event.clickCount == 1, let location = locationClosestToPoint(in: event) {
+        if let location = locationClosestToPoint(in: event) {
             if let selectedRange = textViewController.selectedRange, !selectedRange.contains(location) || textViewController.selectedRange == nil {
                 textViewController.selectWord(at: location)
             }
