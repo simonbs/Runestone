@@ -5,6 +5,7 @@ extension TextViewController {
         if scrollView.contentSize != contentSizeService.contentSize {
             hasPendingContentSizeUpdate = true
             handleContentSizeUpdateIfNeeded()
+            updateScrollerVisibility()
         }
     }
 
@@ -31,11 +32,29 @@ extension TextViewController {
         scrollView.contentSize = contentSizeService.contentSize
         scrollView.contentOffset = oldContentOffset
         textView.setNeedsLayout()
-        #if os(macOS)
+    }
+
+    #if os(macOS)
+    func updateScrollerVisibility() {
+        let hadVerticalScroller = scrollView.hasVerticalScroller
+        let hadHorizontalScroller = scrollView.hasHorizontalScroller
         scrollView.hasVerticalScroller = scrollView.contentSize.height > scrollView.frame.height
         scrollView.hasHorizontalScroller = scrollView.contentSize.width > scrollView.frame.width
         scrollView.horizontalScroller?.layer?.zPosition = 1_000
         scrollView.verticalScroller?.layer?.zPosition = 1_000
-        #endif
+        layoutManager.verticalScrollerWidth = scrollView.verticalScrollerWidth
+        contentSizeService.verticalScrollerWidth = scrollView.verticalScrollerWidth
+        if scrollView.hasVerticalScroller != hadVerticalScroller || scrollView.hasHorizontalScroller != hadHorizontalScroller {
+            textView.setNeedsLayout()
+        }
+    }
+    #endif
+}
+
+#if os(macOS)
+private extension MultiPlatformScrollView {
+    var verticalScrollerWidth: CGFloat {
+        hasVerticalScroller ? verticalScroller?.frame.width ?? 0 : 0
     }
 }
+#endif

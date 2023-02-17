@@ -10,6 +10,13 @@ final class ContentSizeService {
             }
         }
     }
+    var verticalScrollerWidth: CGFloat = 0 {
+        didSet {
+            if verticalScrollerWidth != oldValue {
+                invalidateContentSize()
+            }
+        }
+    }
     var textContainerInset: MultiPlatformEdgeInsets = .zero
     var isLineWrappingEnabled = true {
         didSet {
@@ -43,7 +50,7 @@ final class ContentSizeService {
         }
     }
     var contentWidth: CGFloat {
-        let minimumWidth = scrollViewSize.width - safeAreaInset.left - safeAreaInset.right
+        let minimumWidth = scrollViewSize.width - safeAreaInset.left - safeAreaInset.right - verticalScrollerWidth
         if isLineWrappingEnabled {
             return minimumWidth
         } else {

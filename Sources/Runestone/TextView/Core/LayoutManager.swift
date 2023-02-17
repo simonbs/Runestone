@@ -15,6 +15,7 @@ final class LayoutManager {
     var lineManager: LineManager
     var stringView: StringView
     var scrollViewWidth: CGFloat = 0
+    var verticalScrollerWidth: CGFloat = 0
     var viewport: CGRect = .zero
     var languageMode: InternalLanguageMode {
         didSet {
@@ -89,6 +90,7 @@ final class LayoutManager {
             - gutterWidthService.gutterWidth
             - textContainerInset.left - textContainerInset.right
             - safeAreaInsets.left - safeAreaInsets.right
+            - verticalScrollerWidth
         } else {
             // Rendering multiple very long lines is very expensive. In order to let the editor remain useable,
             // we set a very high maximum line width when line wrapping is disabled.

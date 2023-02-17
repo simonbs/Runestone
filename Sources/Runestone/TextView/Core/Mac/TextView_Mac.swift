@@ -518,6 +518,7 @@ open class TextView: NSView, NSMenuItemValidation {
         textViewController.scrollViewSize = scrollView.frame.size
         textViewController.layoutIfNeeded()
         textViewController.handleContentSizeUpdateIfNeeded()
+        textViewController.updateScrollerVisibility()
         updateCaretFrame()
         updateSelectedRectangles()
     }
