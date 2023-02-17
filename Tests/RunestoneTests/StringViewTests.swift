@@ -37,11 +37,10 @@ final class StringViewTests: XCTestCase {
     }
 
     func testGetCharacterFromEmojiString() {
-        // Should return nil because the first character in a composed glyph isn't a valid Unicode.Scalar.
         let str = "🥳🥳"
         let stringView = StringView(string: str)
-        let character = stringView.substring(in: NSRange(location: 0, length: 1))
-        XCTAssertNil(character)
+        let character = stringView.substring(in: NSRange(location: 0, length: 2))
+        XCTAssertEqual(character, "🥳")
     }
 
     func testGetBytesOfFirstCharacter() {
