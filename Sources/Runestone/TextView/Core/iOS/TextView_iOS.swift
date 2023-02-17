@@ -541,18 +541,10 @@ open class TextView: UIScrollView {
         guard isEditable else {
             return false
         }
-        if let editorDelegate = editorDelegate {
-            return editorDelegate.textViewShouldBeginEditing(self)
-        } else {
-            return true
-        }
+        return editorDelegate??.textViewShouldBeginEditing(self) ?? true
     }
     private var shouldEndEditing: Bool {
-        if let editorDelegate = editorDelegate {
-            return editorDelegate.textViewShouldEndEditing(self)
-        } else {
-            return true
-        }
+        editorDelegate?.textViewShouldEndEditing(self) ?? true
     }
 
     /// Create a new text view.
