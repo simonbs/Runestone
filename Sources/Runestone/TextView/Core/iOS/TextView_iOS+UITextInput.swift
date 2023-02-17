@@ -454,11 +454,8 @@ public extension TextView {
     /// - Parameter point: A point in the view that is drawing a document's text.
     /// - Returns: An object locating a position in a document that is closest to `point`.
     func closestPosition(to point: CGPoint) -> UITextPosition? {
-        if let index = textViewController.layoutManager.closestIndex(to: point) {
-            return IndexedPosition(index: index)
-        } else {
-            return nil
-        }
+        let index = textViewController.layoutManager.closestIndex(to: point)
+        return IndexedPosition(index: index)
     }
 
     /// Returns the position in a document that is closest to a specified point in a specified range.
@@ -470,9 +467,7 @@ public extension TextView {
         guard let indexedRange = range as? IndexedRange else {
             return nil
         }
-        guard let index = textViewController.layoutManager.closestIndex(to: point) else {
-            return nil
-        }
+        let index = textViewController.layoutManager.closestIndex(to: point)
         let minimumIndex = indexedRange.range.lowerBound
         let maximumIndex = indexedRange.range.upperBound
         let cappedIndex = min(max(index, minimumIndex), maximumIndex)
@@ -483,9 +478,7 @@ public extension TextView {
     /// - Parameter point: A point in the view that is drawing a document's text.
     /// - Returns: An object representing a range that encloses a character (or characters) at `point`.
     func characterRange(at point: CGPoint) -> UITextRange? {
-        guard let index = textViewController.layoutManager.closestIndex(to: point) else {
-            return nil
-        }
+        let index = textViewController.layoutManager.closestIndex(to: point)
         let cappedIndex = max(index - 1, 0)
         let range = textViewController.stringView.string.customRangeOfComposedCharacterSequence(at: cappedIndex)
         return IndexedRange(range)

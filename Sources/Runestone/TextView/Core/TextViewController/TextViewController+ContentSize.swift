@@ -5,7 +5,9 @@ extension TextViewController {
         if scrollView.contentSize != contentSizeService.contentSize {
             hasPendingContentSizeUpdate = true
             handleContentSizeUpdateIfNeeded()
+            #if os(macOS)
             updateScrollerVisibility()
+            #endif
         }
     }
 

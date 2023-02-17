@@ -541,7 +541,7 @@ open class TextView: UIScrollView {
         guard isEditable else {
             return false
         }
-        return editorDelegate??.textViewShouldBeginEditing(self) ?? true
+        return editorDelegate?.textViewShouldBeginEditing(self) ?? true
     }
     private var shouldEndEditing: Bool {
         editorDelegate?.textViewShouldEndEditing(self) ?? true
@@ -1117,9 +1117,8 @@ private extension TextView {
         }
         let point = gestureRecognizer.location(in: self)
         let oldSelectedRange = selectedRange
-        if let index = textViewController.layoutManager.closestIndex(to: point) {
-            selectedRange = NSRange(location: index, length: 0)
-        }
+        let index = textViewController.layoutManager.closestIndex(to: point)
+        selectedRange = NSRange(location: index, length: 0)
         if selectedRange != oldSelectedRange {
             layoutIfNeeded()
         }
