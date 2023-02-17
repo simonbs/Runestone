@@ -555,6 +555,18 @@ open class TextView: NSView, NSMenuItemValidation {
         textViewController.setState(state, addUndoAction: addUndoAction)
     }
 
+    /// Returns the syntax node at the specified location in the document.
+    ///
+    /// This can be used with character pairs to determine if a pair should be inserted or not.
+    /// For example, a character pair consisting of two quotes (") to surround a string, should probably not be
+    /// inserted when the quote is typed while the caret is already inside a string.
+    ///
+    /// This requires a language to be set on the editor.
+    /// - Parameter location: A location in the document.
+    /// - Returns: The syntax node at the location.
+    public func syntaxNode(at location: Int) -> SyntaxNode? {
+        textViewController.syntaxNode(at: location)
+    }
     /// Implemented to override the default action of enabling or disabling a specific menu item.
     /// - Parameter menuItem: An NSMenuItem object that represents the menu item.
     /// - Returns: `true` to enable menuItem, `false` to disable it.
