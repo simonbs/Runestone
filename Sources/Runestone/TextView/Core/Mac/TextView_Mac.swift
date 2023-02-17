@@ -4,11 +4,22 @@ import AppKit
 import UniformTypeIdentifiers
 
 // swiftlint:disable:next type_body_length
+/// A type similiar to NSTextView with features commonly found in code editors.
+///
+/// `TextView` is a performant implementation of a text view with features such as showing line numbers, searching for text and replacing results, syntax highlighting, showing invisible characters and more.
+///
+/// The type does not subclass `NSTextView` but its interface is kept close to `NSTextView`.
+///
+/// When initially configuring the `TextView` with a theme, a language and the text to be shown, it is recommended to use the ``setState(_:addUndoAction:)`` function.
+/// The function takes an instance of ``TextViewState`` as input which can be created on a background queue to avoid blocking the main queue while doing the initial parse of a text.
 open class TextView: NSView, NSMenuItemValidation {
+    /// Delegate to receive callbacks for events triggered by the editor.
     public weak var editorDelegate: TextViewDelegate?
+    /// Returns a Boolean value indicating whether this object can become the first responder.
     override public var acceptsFirstResponder: Bool {
         true
     }
+    /// A Boolean value indicating whether the view uses a flipped coordinate system.
     override public var isFlipped: Bool {
         true
     }
@@ -365,7 +376,7 @@ open class TextView: NSView, NSMenuItemValidation {
     ///
     /// The value only affects new line breaks inserted in the text view and changing this value does not change the line endings of the text in the text view. Defaults to Unix (LF).
     ///
-    /// The TextView will only update the line endings when text is modified through an external event, such as when the user typing on the keyboard, when the user is replacing selected text, and when pasting text into the text view. In all other cases, you should make sure that the text provided to the text view uses the desired line endings. This includes when calling ``TextView/setState(_:addUndoAction:)`` and ``TextView/replaceText(in:)``.
+    /// The TextView will only update the line endings when text is modified through an external event, such as when the user typing on the keyboard, when the user is replacing selected text, and when pasting text into the text view. In all other cases, you should make sure that the text provided to the text view uses the desired line endings. This includes when calling ``TextView/setState(_:addUndoAction:)``.
     public var lineEndings: LineEnding {
         get {
             textViewController.lineEndings
@@ -392,14 +403,15 @@ open class TextView: NSView, NSMenuItemValidation {
             }
         }
     }
+    /// The object that the document uses to support undo/redo operations.
     override open var undoManager: UndoManager? {
         textViewController.timedUndoManager
     }
 
     private(set) lazy var textViewController = TextViewController(textView: self, scrollView: scrollView)
+    let scrollContentView = FlippedView()
 
     private let scrollView = NSScrollView()
-    private let scrollContentView = FlippedView()
     private let caretView = CaretView()
     private let selectionViewReuseQueue = ViewReuseQueue<String, LineSelectionView>()
     private var isWindowKey = false {
@@ -434,6 +446,7 @@ open class TextView: NSView, NSMenuItemValidation {
         }
     }
 
+    /// Create a new text view.
     public init() {
         super.init(frame: .zero)
         textViewController.delegate = self
@@ -453,6 +466,8 @@ open class TextView: NSView, NSMenuItemValidation {
         setupMenu()
     }
 
+    /// The initializer has not been implemented.
+    /// - Parameter coder: Not used.
     public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
@@ -461,6 +476,7 @@ open class TextView: NSView, NSMenuItemValidation {
         NotificationCenter.default.removeObserver(self)
     }
 
+    /// Notifies the receiver that it's about to become first responder in its NSWindow.
     @discardableResult
     override open func becomeFirstResponder() -> Bool {
         guard !isEditing && shouldBeginEditing else {
@@ -477,6 +493,8 @@ open class TextView: NSView, NSMenuItemValidation {
         return didBecomeFirstResponder
     }
 
+
+    /// Notifies the receiver that it's been asked to relinquish its status as first responder in its window.
     @discardableResult
     override open func resignFirstResponder() -> Bool {
         guard isEditing && shouldEndEditing else {
@@ -491,6 +509,8 @@ open class TextView: NSView, NSMenuItemValidation {
         return didResignFirstResponder
     }
 
+    /// Informs the view's subviews that the view's bounds rectangle size has changed.
+    /// - Parameter oldSize: The previous size of the view's bounds rectangle.
     override public func resizeSubviews(withOldSize oldSize: NSSize) {
         super.resizeSubviews(withOldSize: oldSize)
         scrollView.frame = bounds
@@ -502,59 +522,19 @@ open class TextView: NSView, NSMenuItemValidation {
         updateSelectedRectangles()
     }
 
+    /// Updates the layout of the receiving view and its subviews based on the current views and constraints.
     override public func layoutSubtreeIfNeeded() {
         super.layoutSubtreeIfNeeded()
         textViewController.layoutIfNeeded()
     }
 
+    /// Informs the view that it has been added to a new view hierarchy.
     override public func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         textViewController.performFullLayoutIfNeeded()
     }
 
-    override public func keyDown(with event: NSEvent) {
-        NSCursor.setHiddenUntilMouseMoves(true)
-        let didInputContextHandleEvent = inputContext?.handleEvent(event) ?? false
-        if !didInputContextHandleEvent {
-            super.keyDown(with: event)
-        }
-    }
-
-    override public func mouseDown(with event: NSEvent) {
-        super.mouseDown(with: event)
-        if event.clickCount == 1, let location = locationClosestToPoint(in: event) {
-            textViewController.move(to: location)
-            textViewController.startDraggingSelection(from: location)
-        } else if event.clickCount == 2, let location = locationClosestToPoint(in: event) {
-            textViewController.selectWord(at: location)
-        } else if event.clickCount == 3, let location = locationClosestToPoint(in: event) {
-            textViewController.selectLine(at: location)
-        }
-    }
-
-    override public func mouseDragged(with event: NSEvent) {
-        super.mouseDragged(with: event)
-        if let location = locationClosestToPoint(in: event) {
-            textViewController.extendDraggedSelection(to: location)
-        }
-    }
-
-    override public func mouseUp(with event: NSEvent) {
-        super.mouseUp(with: event)
-        if event.clickCount == 1, let location = locationClosestToPoint(in: event) {
-            textViewController.extendDraggedSelection(to: location)
-        }
-    }
-
-    override public func rightMouseDown(with event: NSEvent) {
-        if let location = locationClosestToPoint(in: event) {
-            if let selectedRange = textViewController.selectedRange, !selectedRange.contains(location) || textViewController.selectedRange == nil {
-                textViewController.selectWord(at: location)
-            }
-        }
-        super.rightMouseDown(with: event)
-    }
-
+    /// Overridden by subclasses to define their default cursor rectangles.
     override public func resetCursorRects() {
         super.resetCursorRects()
         addCursorRect(bounds, cursor: .iBeam)
@@ -574,6 +554,9 @@ open class TextView: NSView, NSMenuItemValidation {
         textViewController.setState(state, addUndoAction: addUndoAction)
     }
 
+    /// Implemented to override the default action of enabling or disabling a specific menu item.
+    /// - Parameter menuItem: An NSMenuItem object that represents the menu item.
+    /// - Returns: `true` to enable menuItem, `false` to disable it.
     public func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         if menuItem.action == #selector(copy(_:)) || menuItem.action == #selector(cut(_:)) {
             return selectedRange().length > 0
@@ -587,230 +570,6 @@ open class TextView: NSView, NSMenuItemValidation {
             return undoManager?.canRedo ?? false
         } else {
             return true
-        }
-    }
-}
-
-// MARK: - Commands
-public extension TextView {
-    override func deleteBackward(_ sender: Any?) {
-        guard var selectedRange = textViewController.markedRange ?? textViewController.selectedRange?.nonNegativeLength else {
-            return
-        }
-        if selectedRange.length == 0 {
-            selectedRange.location -= 1
-            selectedRange.length = 1
-        }
-        let deleteRange = textViewController.rangeForDeletingText(in: selectedRange)
-        // If we're deleting everything in the marked range then we clear the marked range. UITextInput doesn't do that for us.
-        // Can be tested by entering a backtick (`) in an empty document and deleting it.
-        if deleteRange == textViewController.markedRange {
-            textViewController.markedRange = nil
-        }
-        guard textViewController.shouldChangeText(in: deleteRange, replacementText: "") else {
-            return
-        }
-        let isDeletingMultipleCharacters = selectedRange.length > 1
-        if isDeletingMultipleCharacters {
-            undoManager?.endUndoGrouping()
-            undoManager?.beginUndoGrouping()
-        }
-        textViewController.replaceText(in: deleteRange, with: "", selectedRangeAfterUndo: selectedRange)
-        if isDeletingMultipleCharacters {
-            undoManager?.endUndoGrouping()
-        }
-    }
-
-    override func insertNewline(_ sender: Any?) {
-        if textViewController.shouldChangeText(in: textViewController.rangeForInsertingText, replacementText: lineEndings.symbol) {
-            textViewController.indentController.insertLineBreak(in: textViewController.rangeForInsertingText, using: lineEndings.symbol)
-        }
-    }
-
-    override func insertTab(_ sender: Any?) {
-        let indentString = indentStrategy.string(indentLevel: 1)
-        if textViewController.shouldChangeText(in: textViewController.rangeForInsertingText, replacementText: indentString) {
-            textViewController.replaceText(in: textViewController.rangeForInsertingText, with: indentString)
-        }
-    }
-
-    override func moveLeft(_ sender: Any?) {
-        textViewController.moveLeft()
-    }
-
-    override func moveRight(_ sender: Any?) {
-        textViewController.moveRight()
-    }
-
-    override func moveForward(_ sender: Any?) {
-        textViewController.moveRight()
-    }
-
-    override func moveBackward(_ sender: Any?) {
-        textViewController.moveLeft()
-    }
-
-    override func moveUp(_ sender: Any?) {
-        textViewController.moveUp()
-    }
-
-    override func moveDown(_ sender: Any?) {
-        textViewController.moveDown()
-    }
-
-    override func moveWordLeft(_ sender: Any?) {
-        textViewController.moveWordLeft()
-    }
-
-    override func moveWordRight(_ sender: Any?) {
-        textViewController.moveWordRight()
-    }
-
-    override func moveWordForward(_ sender: Any?) {
-        textViewController.moveWordRight()
-    }
-
-    override func moveWordBackward(_ sender: Any?) {
-        textViewController.moveWordLeft()
-    }
-
-    override func moveToBeginningOfLine(_ sender: Any?) {
-        textViewController.moveToBeginningOfLine()
-    }
-
-    override func moveToEndOfLine(_ sender: Any?) {
-        textViewController.moveToEndOfLine()
-    }
-
-    override func moveToBeginningOfParagraph(_ sender: Any?) {
-        textViewController.moveToBeginningOfParagraph()
-    }
-
-    override func moveToEndOfParagraph(_ sender: Any?) {
-        textViewController.moveToEndOfParagraph()
-    }
-
-    override func moveToBeginningOfDocument(_ sender: Any?) {
-        textViewController.moveToBeginningOfDocument()
-    }
-
-    override func moveToEndOfDocument(_ sender: Any?) {
-        textViewController.moveToEndOfDocument()
-    }
-
-    override func moveLeftAndModifySelection(_ sender: Any?) {
-        textViewController.moveLeftAndModifySelection()
-    }
-
-    override func moveRightAndModifySelection(_ sender: Any?) {
-        textViewController.moveRightAndModifySelection()
-    }
-
-    override func moveForwardAndModifySelection(_ sender: Any?) {
-        textViewController.moveRightAndModifySelection()
-    }
-
-    override func moveBackwardAndModifySelection(_ sender: Any?) {
-        textViewController.moveLeftAndModifySelection()
-    }
-
-    override func moveUpAndModifySelection(_ sender: Any?) {
-        textViewController.moveUpAndModifySelection()
-    }
-
-    override func moveDownAndModifySelection(_ sender: Any?) {
-        textViewController.moveDownAndModifySelection()
-    }
-
-    override func moveWordLeftAndModifySelection(_ sender: Any?) {
-        textViewController.moveWordLeftAndModifySelection()
-    }
-
-    override func moveWordRightAndModifySelection(_ sender: Any?) {
-        textViewController.moveWordRightAndModifySelection()
-    }
-
-    override func moveWordBackwardAndModifySelection(_ sender: Any?) {
-        textViewController.moveWordLeftAndModifySelection()
-    }
-
-    override func moveWordForwardAndModifySelection(_ sender: Any?) {
-        textViewController.moveWordRightAndModifySelection()
-    }
-
-    override func moveToBeginningOfLineAndModifySelection(_ sender: Any?) {
-        textViewController.moveToBeginningOfLineAndModifySelection()
-    }
-
-    override func moveToEndOfLineAndModifySelection(_ sender: Any?) {
-        textViewController.moveToEndOfLineAndModifySelection()
-    }
-
-    override func moveToBeginningOfParagraphAndModifySelection(_ sender: Any?) {
-        textViewController.moveToBeginningOfParagraphAndModifySelection()
-    }
-
-    override func moveToEndOfParagraphAndModifySelection(_ sender: Any?) {
-        textViewController.moveToEndOfParagraphAndModifySelection()
-    }
-
-    override func moveToBeginningOfDocumentAndModifySelection(_ sender: Any?) {
-        textViewController.moveToBeginningOfDocumentAndModifySelection()
-    }
-
-    override func moveToEndOfDocumentAndModifySelection(_ sender: Any?) {
-        textViewController.moveToEndOfDocumentAndModifySelection()
-    }
-
-    /// Copy the selected text.
-    ///
-    /// - Parameter sender: The object calling this method.
-    @objc func copy(_ sender: Any?) {
-        let selectedRange = selectedRange()
-        if selectedRange.length > 0, let text = textViewController.text(in: selectedRange) {
-            NSPasteboard.general.declareTypes([.string], owner: nil)
-            NSPasteboard.general.setString(text, forType: .string)
-        }
-    }
-
-    /// Paste text from the pasteboard.
-    ///
-    /// - Parameter sender: The object calling this method.
-    @objc func paste(_ sender: Any?) {
-        let selectedRange = selectedRange()
-        if let string = NSPasteboard.general.string(forType: .string) {
-            let preparedText = textViewController.prepareTextForInsertion(string)
-            textViewController.replaceText(in: selectedRange, with: preparedText)
-        }
-    }
-
-    /// Cut text  to the pasteboard.
-    ///
-    /// - Parameter sender: The object calling this method.
-    @objc func cut(_ sender: Any?) {
-        let selectedRange = selectedRange()
-        if selectedRange.length > 0, let text = textViewController.text(in: selectedRange) {
-            NSPasteboard.general.setString(text, forType: .string)
-            textViewController.replaceText(in: selectedRange, with: "")
-        }
-    }
-
-    /// Select all text in the text view.
-    ///
-    /// - Parameter sender: The object calling this method.
-    override func selectAll(_ sender: Any?) {
-        textViewController.selectedRange = NSRange(location: 0, length: textViewController.stringView.string.length)
-    }
-
-    @objc func undo(_ sender: Any?) {
-        if let undoManager = undoManager, undoManager.canUndo {
-            undoManager.undo()
-        }
-    }
-
-    @objc func redo(_ sender: Any?) {
-        if let undoManager = undoManager, undoManager.canRedo {
-            undoManager.redo()
         }
     }
 }
@@ -934,15 +693,6 @@ private extension TextView {
         }
         let disappearedViewKeys = Set(selectionViewReuseQueue.visibleViews.keys).subtracting(appearedViewKeys)
         selectionViewReuseQueue.enqueueViews(withKeys: disappearedViewKeys)
-    }
-}
-
-// MARK: - Location
-private extension TextView {
-    private func locationClosestToPoint(in event: NSEvent) -> Int? {
-        let point = scrollContentView.convert(event.locationInWindow, from: nil)
-        let adjustedPoint = CGPoint(x: point.x - gutterWidth - textContainerInset.left, y: point.y)
-        return textViewController.layoutManager.closestIndex(to: adjustedPoint)
     }
 }
 

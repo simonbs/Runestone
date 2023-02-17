@@ -244,7 +244,7 @@ extension LayoutManager {
         return CGRect(x: xPosition, y: yPosition, width: width, height: lineContentsRect.height)
     }
 
-    func closestIndex(to point: CGPoint) -> Int? {
+    func closestIndex(to point: CGPoint) -> Int {
         let adjustedXPosition = point.x - textContainerInset.left
         let adjustedYPosition = point.y - textContainerInset.top
         let adjustedPoint = CGPoint(x: adjustedXPosition, y: adjustedYPosition)

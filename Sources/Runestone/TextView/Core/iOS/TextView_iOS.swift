@@ -12,6 +12,7 @@ import UIKit
 /// When initially configuring the `TextView` with a theme, a language and the text to be shown, it is recommended to use the ``setState(_:addUndoAction:)`` function.
 /// The function takes an instance of ``TextViewState`` as input which can be created on a background queue to avoid blocking the main queue while doing the initial parse of a text.
 open class TextView: UIScrollView {
+    /// An input delegate that receives a notification when text changes or when the selection changes.
     @objc public weak var inputDelegate: UITextInputDelegate?
     /// Returns a Boolean value indicating whether this object can become the first responder.
     override public var canBecomeFirstResponder: Bool {
@@ -470,7 +471,7 @@ open class TextView: UIScrollView {
     }
     /// When enabled the text view will present a menu with actions actions such as Copy and Replace after navigating to a highlighted range.
     public var showMenuAfterNavigatingToHighlightedRange = true
-    /// A boolean value that enables a text view’s built-in find interaction.
+    /// A boolean value that enables a text view's built-in find interaction.
     ///
     /// After enabling the find interaction, use [`presentFindNavigator(showingReplace:)`](https://developer.apple.com/documentation/uikit/uifindinteraction/3975832-presentfindnavigator) on <doc:findInteraction> to present the find navigator.
     @available(iOS 16, *)
@@ -482,7 +483,7 @@ open class TextView: UIScrollView {
             textSearchingHelper.isFindInteractionEnabled = newValue
         }
     }
-    /// The text view’s built-in find interaction.
+    /// The text view's built-in find interaction.
     ///
     /// Set <doc:isFindInteractionEnabled> to true to enable the text view's built-in find interaction. This method returns nil when the interaction isn't enabled.
     ///
@@ -985,9 +986,9 @@ open class TextView: UIScrollView {
 
     /// Returns the farthest descendant of the receiver in the view hierarchy (including itself) that contains a specified point.
     /// - Parameters:
-    ///   - point: A point specified in the receiver’s local coordinate system (bounds).
+    ///   - point: A point specified in the receiver's local coordinate system (bounds).
     ///   - event: The event that warranted a call to this method. If you are calling this method from outside your event-handling code, you may specify nil.
-    /// - Returns: The view object that is the farthest descendent of the current view and contains point. Returns nil if the point lies completely outside the receiver’s view hierarchy.
+    /// - Returns: The view object that is the farthest descendent of the current view and contains point. Returns nil if the point lies completely outside the receiver's view hierarchy.
     override open func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         guard isSelectable else {
             return nil
@@ -1044,6 +1045,14 @@ extension TextView {
                 self.removeInteraction(self.editableTextInteraction)
                 self.addInteraction(self.editableTextInteraction)
             }
+        }
+    }
+
+    func updateCaretColor() {
+        // Removing the UITextSelectionView and re-adding it forces it to query the insertion point color.
+        if let textSelectionView = textSelectionView {
+            textSelectionView.removeFromSuperview()
+            addSubview(textSelectionView)
         }
     }
 }
