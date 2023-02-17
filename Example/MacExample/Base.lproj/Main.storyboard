@@ -12,9 +12,9 @@
                 <application id="hnw-xV-0zn" sceneMemberID="viewController">
                     <menu key="mainMenu" title="Main Menu" systemMenu="main" id="AYu-sK-qS6">
                         <items>
-                            <menuItem title="Asd" id="1Xt-HY-uBw">
+                            <menuItem title="MacExample" id="1Xt-HY-uBw">
                                 <modifierMask key="keyEquivalentModifierMask"/>
-                                <menu key="submenu" title="Asd" systemMenu="apple" id="uQy-DD-JDr">
+                                <menu key="submenu" title="MacExample" systemMenu="apple" id="uQy-DD-JDr">
                                     <items>
                                         <menuItem title="About Asd" id="5kV-Vb-QxS">
                                             <modifierMask key="keyEquivalentModifierMask"/>
