@@ -13,7 +13,7 @@ typealias LineFragmentTree = RedBlackTree<LineFragmentNodeID, Int, LineFragmentN
 
 protocol LineControllerDelegate: AnyObject {
     func lineSyntaxHighlighter(for lineController: LineController) -> LineSyntaxHighlighter?
-    func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController)
+    func lineControllerDidInvalidateSize(_ lineController: LineController)
 }
 
 final class LineController {
@@ -293,13 +293,9 @@ private extension LineController {
         if async {
             syntaxHighlighter.syntaxHighlight(input) { [weak self] result in
                 if case .success = result, let self = self {
-                    let oldWidth = self.lineWidth
                     self.isSyntaxHighlightingInvalid = false
                     self.isTypesetterInvalid = true
                     self.redisplayLineFragments()
-                    if abs(self.lineWidth - oldWidth) > CGFloat.ulpOfOne {
-                        self.delegate?.lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(self)
-                    }
                 }
             }
         } else {
@@ -374,6 +370,7 @@ private extension LineController {
         updateLineHeight(for: newLineFragments)
         reapplyLineFragmentToLineFragmentControllers()
         setNeedsDisplayOnLineFragmentViews()
+        delegate?.lineControllerDidInvalidateSize(self)
     }
 
     private func reapplyLineFragmentToLineFragmentControllers() {
