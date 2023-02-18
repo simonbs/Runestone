@@ -202,7 +202,7 @@ private extension StringTokenizer {
         if isLocation(index, atBoundary: .word, inDirection: direction) {
             index = advanceIndex(index)
         }
-        while !isLocation(index, atBoundary: .word, inDirection: direction) && index >= 0 && index < stringView.string.length {
+        while !isLocation(index, atBoundary: .word, inDirection: direction) && index > 0 && index < stringView.string.length - 1 {
             index = advanceIndex(index)
         }
         return index
