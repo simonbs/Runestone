@@ -747,9 +747,12 @@ extension TextViewController: LineControllerDelegate {
         return syntaxHighlighter
     }
 
-    func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController) {
+    func lineControllerDidInvalidateSize(_ lineController: LineController) {
         textView.setNeedsLayout()
         layoutManager.setNeedsLayout()
+        #if os(macOS)
+        textView.layoutIfNeeded()
+        #endif
     }
 }
 
