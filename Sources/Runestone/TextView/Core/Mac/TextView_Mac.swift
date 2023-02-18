@@ -449,6 +449,14 @@ open class TextView: NSView, NSMenuItemValidation {
     /// Create a new text view.
     public init() {
         super.init(frame: .zero)
+        setup()
+    }
+    /// Create a new text view from a XIB or Storyboard.
+    public required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
+    private func setup() {
         textViewController.delegate = self
         textViewController.selectedRange = NSRange(location: 0, length: 0)
         scrollView.borderType = .noBorder
@@ -466,11 +474,6 @@ open class TextView: NSView, NSMenuItemValidation {
         setupMenu()
     }
 
-    /// The initializer has not been implemented.
-    /// - Parameter coder: Not used.
-    public required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
 
     deinit {
         NotificationCenter.default.removeObserver(self)
