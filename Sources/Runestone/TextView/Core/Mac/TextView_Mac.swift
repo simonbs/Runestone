@@ -527,6 +527,8 @@ open class TextView: NSView, NSMenuItemValidation {
     override public func layoutSubtreeIfNeeded() {
         super.layoutSubtreeIfNeeded()
         textViewController.layoutIfNeeded()
+        updateCaretFrame()
+        updateSelectedRectangles()
     }
 
     /// Informs the view that it has been added to a new view hierarchy.
@@ -738,8 +740,6 @@ extension TextView: TextViewControllerDelegate {
         layoutIfNeeded()
         caretView.delayBlinkIfNeeded()
         updateCaretVisibility()
-        updateCaretFrame()
-        updateSelectedRectangles()
         scrollToVisibleLocationIfNeeded()
     }
 }
