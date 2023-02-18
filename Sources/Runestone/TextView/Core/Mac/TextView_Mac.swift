@@ -734,6 +734,7 @@ extension TextView: TextViewControllerDelegate {
     func textViewControllerDidChangeText(_ textViewController: TextViewController) {
         caretView.delayBlinkIfNeeded()
         updateCaretFrame()
+        editorDelegate?.textViewDidChange(self)
     }
 
     func textViewController(_ textViewController: TextViewController, didChangeSelectedRange selectedRange: NSRange?) {
