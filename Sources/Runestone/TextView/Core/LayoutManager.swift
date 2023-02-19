@@ -288,8 +288,8 @@ extension LayoutManager {
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             layoutGutter()
-            layoutLineSelection()
             layoutLinesInViewport()
+            layoutLineSelection()
             updateLineNumberColors()
             CATransaction.commit()
         }
