@@ -118,5 +118,46 @@ public extension TextView {
             undoManager.redo()
         }
     }
+
+    /// Delete the word in front of the insertion point.
+    override func deleteWordForward(_ sender: Any?) {
+        deleteText(toBoundary: .word, inDirection: .forward)
+    }
+
+    /// Delete the word behind the insertion point.
+    override func deleteWordBackward(_ sender: Any?) {
+        deleteText(toBoundary: .word, inDirection: .backward)
+    }
+}
+
+private extension TextView {
+    private func deleteText(toBoundary boundary: TextBoundary, inDirection direction: TextDirection) {
+        guard let selectedRange = textViewController.selectedRange else {
+            return
+        }
+        guard selectedRange.length == 0 else {
+            deleteBackward(nil)
+            return
+        }
+        guard let range = rangeForDeleting(from: selectedRange.location, toBoundary: boundary, inDirection: direction) else {
+            return
+        }
+        textViewController.selectedRange = range
+        deleteBackward(nil)
+    }
+
+    private func rangeForDeleting(from sourceLocation: Int, toBoundary boundary: TextBoundary, inDirection direction: TextDirection) -> NSRange? {
+        let stringTokenizer = StringTokenizer(
+            stringView: textViewController.stringView,
+            lineManager: textViewController.lineManager,
+            lineControllerStorage: textViewController.lineControllerStorage
+        )
+        guard let destinationLocation = stringTokenizer.location(from: sourceLocation, toBoundary: boundary, inDirection: direction) else {
+            return nil
+        }
+        let lowerBound = min(sourceLocation, destinationLocation)
+        let upperBound = max(sourceLocation, destinationLocation)
+        return NSRange(location: lowerBound, length: upperBound - lowerBound)
+    }
 }
 #endif
