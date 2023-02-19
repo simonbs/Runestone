@@ -196,13 +196,21 @@ private extension StringTokenizer {
             case .backward:
                 preferredIndex = index - 1
             }
-            return min(max(preferredIndex, 0), stringView.string.length - 1)
+            return min(max(preferredIndex, 0), stringView.string.length)
+        }
+        func hasReachedEnd(at index: Int) -> Bool {
+            switch direction {
+            case .forward:
+                return index == stringView.string.length
+            case .backward:
+                return index == 0
+            }
         }
         var index = location
         if isLocation(index, atBoundary: .word, inDirection: direction) {
             index = advanceIndex(index)
         }
-        while !isLocation(index, atBoundary: .word, inDirection: direction) && index > 0 && index < stringView.string.length - 1 {
+        while !isLocation(index, atBoundary: .word, inDirection: direction) && !hasReachedEnd(at: index) {
             index = advanceIndex(index)
         }
         return index
