@@ -7,6 +7,9 @@ public extension TextView {
         guard var selectedRange = textViewController.markedRange ?? textViewController.selectedRange?.nonNegativeLength else {
             return
         }
+        guard selectedRange.location > 0 || selectedRange.length > 0 else {
+            return
+        }
         if selectedRange.length == 0 {
             selectedRange.location -= 1
             selectedRange.length = 1
