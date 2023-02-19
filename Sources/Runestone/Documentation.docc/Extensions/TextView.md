@@ -146,13 +146,14 @@
 - ``smartDashesType``
 - ``smartInsertDeleteType``
 - ``smartQuotesType``
-- ``text(in:)-3lp4v``
+- ``text(in:)``
 - ``insertText(_:)``
 - ``insertText(_:replacementRange:)``
 - ``insertNewline(_:)``
 - ``insertTab(_:)``
 - ``replaceText(in:)``
 - ``replace(_:withText:)-7gret``
+- ``deleteForward(_:)``
 - ``deleteBackward()``
 - ``deleteBackward(_:)``
 - ``undoManager``
@@ -239,6 +240,8 @@
 - ``selectAll(_:)``
 - ``replace(_:withText:)-7cbas``
 - ``canPerformAction(_:withSender:)``
+- ``deleteWordForward(_:)``
+- ``deleteWordBackward(_:)``
 
 ### Responder Chain
 
