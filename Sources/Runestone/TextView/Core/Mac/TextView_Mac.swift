@@ -451,11 +451,13 @@ open class TextView: NSView, NSMenuItemValidation {
         super.init(frame: .zero)
         setup()
     }
+
     /// Create a new text view from a XIB or Storyboard.
     public required init?(coder: NSCoder) {
         super.init(coder: coder)
         setup()
     }
+
     private func setup() {
         textViewController.delegate = self
         textViewController.selectedRange = NSRange(location: 0, length: 0)
@@ -473,7 +475,6 @@ open class TextView: NSView, NSMenuItemValidation {
         setupScrollViewBoundsDidChangeObserver()
         setupMenu()
     }
-
 
     deinit {
         NotificationCenter.default.removeObserver(self)
@@ -495,7 +496,6 @@ open class TextView: NSView, NSMenuItemValidation {
         }
         return didBecomeFirstResponder
     }
-
 
     /// Notifies the receiver that it's been asked to relinquish its status as first responder in its window.
     @discardableResult
