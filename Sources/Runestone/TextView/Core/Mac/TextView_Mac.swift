@@ -558,6 +558,7 @@ open class TextView: NSView, NSMenuItemValidation {
     /// - Parameter addUndoAction: Whether the state change can be undone. Defaults to false.
     public func setState(_ state: TextViewState, addUndoAction: Bool = false) {
         textViewController.setState(state, addUndoAction: addUndoAction)
+        // Layout to ensure the selection erctangles and caret as correctly placed.
         setNeedsLayout()
         layoutIfNeeded()
     }
