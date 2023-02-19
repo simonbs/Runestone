@@ -3,6 +3,22 @@ import AppKit
 
 public extension TextView {
     /// Deletes a character from the displayed text.
+    override func deleteForward(_ sender: Any?) {
+        guard let selectedRange = textViewController.selectedRange else {
+            return
+        }
+        guard selectedRange.length == 0 else {
+            deleteBackward(nil)
+            return
+        }
+        guard selectedRange.location < textViewController.stringView.string.length else {
+            return
+        }
+        textViewController.selectedRange = NSRange(location: selectedRange.location, length: 1)
+        deleteBackward(nil)
+    }
+
+    /// Deletes a character from the displayed text.
     override func deleteBackward(_ sender: Any?) {
         guard var selectedRange = textViewController.markedRange ?? textViewController.selectedRange?.nonNegativeLength else {
             return
