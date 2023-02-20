@@ -12,12 +12,12 @@
 
 - ``isFlipped``
 - ``didMoveToWindow()``
+- ``layout()``
 - ``layoutSubviews()``
 - ``safeAreaInsetsDidChange()``
 - ``traitCollectionDidChange(_:)``
 - ``viewDidMoveToWindow()``
 - ``resizeSubviews(withOldSize:)``
-- ``layoutSubtreeIfNeeded()``
 - ``resetCursorRects()``
 
 ### Responding to Text View Changes

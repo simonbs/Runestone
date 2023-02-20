@@ -526,9 +526,9 @@ open class TextView: NSView, NSMenuItemValidation {
         updateSelectedRectangles()
     }
 
-    /// Updates the layout of the receiving view and its subviews based on the current views and constraints.
-    override public func layoutSubtreeIfNeeded() {
-        super.layoutSubtreeIfNeeded()
+    /// Perform layout in concert with the constraint-based layout system.
+    open override func layout() {
+        super.layout()
         textViewController.layoutIfNeeded()
         updateCaretFrame()
         updateSelectedRectangles()

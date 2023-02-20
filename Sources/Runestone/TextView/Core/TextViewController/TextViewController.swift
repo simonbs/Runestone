@@ -750,9 +750,6 @@ extension TextViewController: LineControllerDelegate {
     func lineControllerDidInvalidateSize(_ lineController: LineController) {
         textView.setNeedsLayout()
         layoutManager.setNeedsLayout()
-        #if os(macOS)
-        textView.layoutIfNeeded()
-        #endif
     }
 }
 
