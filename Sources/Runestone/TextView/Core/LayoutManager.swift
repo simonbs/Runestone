@@ -319,14 +319,15 @@ extension LayoutManager {
     private func layoutGutter() {
         let totalGutterWidth = safeAreaInsets.left + gutterWidthService.gutterWidth
         let contentSize = contentSizeService.contentSize
-        gutterContainerView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: viewport.height)
         #if os(iOS)
         // Offset gutter background and line numbers on iOS as it is a child of the scroll view and we want it to appear static.
-        gutterBackgroundView.frame = CGRect(x: viewport.minX, y: viewport.minY, width: totalGutterWidth, height: viewport.height)
-        lineNumbersContainerView.frame = CGRect(x: viewport.minX, y: 0, width: totalGutterWidth, height: contentSize.height)
+        gutterContainerView.frame = CGRect(x: viewport.minX, y: 0, width: totalGutterWidth, height: contentSize.height)
+        gutterBackgroundView.frame = CGRect(x: 0, y: viewport.minY, width: totalGutterWidth, height: viewport.height)
+        lineNumbersContainerView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: contentSize.height)
         #else
-        gutterBackgroundView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: viewport.height)
         // Manually offset line numbers on macOS as the container is not a child of the scroll view.
+        gutterContainerView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: viewport.height)
+        gutterBackgroundView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: viewport.height)
         lineNumbersContainerView.frame = CGRect(x: 0, y: viewport.minY * -1, width: totalGutterWidth, height: contentSize.height)
         #endif
     }
