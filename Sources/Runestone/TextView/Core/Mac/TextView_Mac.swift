@@ -758,6 +758,22 @@ private extension TextView {
     }
 }
 
+
+// MARK: - Gutter
+private extension TextView {
+    private func setupGutterContainerView() {
+        let gutterContainerView = textViewController.layoutManager.gutterContainerView
+        gutterContainerView.removeFromSuperview()
+        if let scrollView {
+            textViewController.layoutManager.isGutterFloatingChildOfScrollView = true
+            scrollView.addFloatingSubview(gutterContainerView, for: .horizontal)
+        } else {
+            textViewController.layoutManager.isGutterFloatingChildOfScrollView = false
+            addSubview(gutterContainerView)
+        }
+    }
+}
+
 // MARK: - TextViewControllerDelegate
 extension TextView: TextViewControllerDelegate {
     func textViewControllerDidChangeText(_ textViewController: TextViewController) {
