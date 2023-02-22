@@ -325,8 +325,8 @@ extension LayoutManager {
     private func layoutGutter() {
         let totalGutterWidth = safeAreaInsets.left + gutterWidthService.gutterWidth
         let contentSize = contentSizeService.contentSize
-        let gutterContainerYOffset = isGutterFloatingChildOfScrollView ? 0 : viewport.minX
-        gutterContainerView.frame = CGRect(x: gutterContainerYOffset, y: 0, width: totalGutterWidth, height: contentSize.height)
+        let gutterContainerXOffset = isGutterFloatingChildOfScrollView ? 0 : viewport.minX
+        gutterContainerView.frame = CGRect(x: gutterContainerXOffset, y: 0, width: totalGutterWidth, height: contentSize.height)
         gutterBackgroundView.frame = CGRect(x: 0, y: viewport.minY, width: totalGutterWidth, height: viewport.height)
         lineNumbersContainerView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: contentSize.height)
     }
