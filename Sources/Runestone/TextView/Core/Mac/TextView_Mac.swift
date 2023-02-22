@@ -408,10 +408,15 @@ open class TextView: NSView, NSMenuItemValidation {
         textViewController.timedUndoManager
     }
 
-    private(set) lazy var textViewController = TextViewController(textView: self, scrollView: scrollView)
-    let scrollContentView = FlippedView()
+    private(set) lazy var textViewController = TextViewController(textView: self)
+    let textFinder = NSTextFinder()
+    var scrollView: NSScrollView? {
+        guard let scrollView = enclosingScrollView, scrollView.documentView === self else {
+            return nil
+        }
+        return scrollView
+     }
 
-    private let scrollView = NSScrollView()
     private let caretView = CaretView()
     private let selectionViewReuseQueue = ViewReuseQueue<String, LineSelectionView>()
     private var isWindowKey = false {
@@ -445,6 +450,7 @@ open class TextView: NSView, NSMenuItemValidation {
             return true
         }
     }
+    private var boundsObserver: Any?
 
     /// Create a new text view.
     public init() {
@@ -461,23 +467,38 @@ open class TextView: NSView, NSMenuItemValidation {
     private func setup() {
         textViewController.delegate = self
         textViewController.selectedRange = NSRange(location: 0, length: 0)
-        scrollView.borderType = .noBorder
-        scrollView.drawsBackground = false
-        scrollView.documentView = scrollContentView
-        scrollView.contentView.postsBoundsChangedNotifications = true
-        scrollContentView.addSubview(textViewController.layoutManager.linesContainerView)
-        scrollContentView.addSubview(caretView)
-        scrollView.addSubview(textViewController.layoutManager.gutterContainerView)
         addSubview(textViewController.layoutManager.lineSelectionBackgroundView)
-        addSubview(scrollView)
-        setNeedsLayout()
+        addSubview(textViewController.layoutManager.linesContainerView)
+        addSubview(caretView)
+        addSubview(textViewController.layoutManager.gutterContainerView)
         setupWindowObservers()
         setupScrollViewBoundsDidChangeObserver()
         setupMenu()
     }
 
     deinit {
+        boundsObserver = nil
         NotificationCenter.default.removeObserver(self)
+    }
+
+    /// Create a scroll view with an instance of `TextView` assigned to the document view.
+    public static func scrollableTextView() -> NSScrollView {
+        let textView = TextView()
+        textView.autoresizingMask = [.width, .height]
+        let scrollView = NSScrollView()
+        scrollView.contentView = FlippedClipView()
+        scrollView.documentView = textView
+        scrollView.drawsBackground = false
+        return scrollView
+    }
+
+    /// Informs the view that its superview has changed.
+    open override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        textViewController.scrollView = scrollView
+        setupScrollViewBoundsDidChangeObserver()
+        setupTextFinder()
+        setupGutterContainerView()
     }
 
     /// Notifies the receiver that it's about to become first responder in its NSWindow.
@@ -516,9 +537,7 @@ open class TextView: NSView, NSMenuItemValidation {
     /// - Parameter oldSize: The previous size of the view's bounds rectangle.
     override public func resizeSubviews(withOldSize oldSize: NSSize) {
         super.resizeSubviews(withOldSize: oldSize)
-        scrollView.frame = bounds
-        textViewController.viewport = CGRect(origin: scrollView.contentOffset, size: frame.size)
-        textViewController.scrollViewSize = scrollView.frame.size
+        updateViewport()
         textViewController.layoutIfNeeded()
         textViewController.handleContentSizeUpdateIfNeeded()
         textViewController.updateScrollerVisibility()
@@ -529,9 +548,8 @@ open class TextView: NSView, NSMenuItemValidation {
     /// Perform layout in concert with the constraint-based layout system.
     open override func layout() {
         super.layout()
+        updateViewport()
         textViewController.layoutIfNeeded()
-        updateCaretFrame()
-        updateSelectedRectangles()
     }
 
     /// Informs the view that it has been added to a new view hierarchy.
@@ -558,7 +576,7 @@ open class TextView: NSView, NSMenuItemValidation {
     /// - Parameter addUndoAction: Whether the state change can be undone. Defaults to false.
     public func setState(_ state: TextViewState, addUndoAction: Bool = false) {
         textViewController.setState(state, addUndoAction: addUndoAction)
-        // Layout to ensure the selection erctangles and caret as correctly placed.
+        // Layout to ensure the selection rectangles and caret are correctly placed.
         setNeedsLayout()
         layoutIfNeeded()
     }
@@ -628,17 +646,22 @@ private extension TextView {
 // MARK: - Scrolling
 private extension TextView {
     private func setupScrollViewBoundsDidChangeObserver() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(scrollViewBoundsDidChange),
-            name: NSView.boundsDidChangeNotification,
-            object: scrollView.contentView
-        )
+        boundsObserver = nil
+        guard let contentView = scrollView?.contentView else {
+            return
+        }
+        let notificationName = NSView.boundsDidChangeNotification
+        boundsObserver = NotificationCenter.default.addObserver(forName: notificationName, object: contentView, queue: .main) { [weak self] _ in
+            self?.updateViewport()
+        }
     }
 
-    @objc private func scrollViewBoundsDidChange() {
-        textViewController.viewport = CGRect(origin: scrollView.contentOffset, size: frame.size)
-        textViewController.layoutIfNeeded()
+    private func updateViewport() {
+        if let scrollView {
+            textViewController.viewport = scrollView.documentVisibleRect
+        } else {
+            textViewController.viewport = CGRect(origin: .zero, size: frame.size)
+        }
     }
 
     private func scrollToVisibleLocationIfNeeded() {
@@ -717,7 +740,7 @@ private extension TextView {
             view.frame = selectionRect.rect
             view.wantsLayer = true
             view.backgroundColor = selectionHighlightColor
-            scrollContentView.addSubview(view)
+            addSubview(view)
             appearedViewKeys.insert(key)
         }
         let disappearedViewKeys = Set(selectionViewReuseQueue.visibleViews.keys).subtracting(appearedViewKeys)
@@ -744,9 +767,10 @@ extension TextView: TextViewControllerDelegate {
     }
 
     func textViewController(_ textViewController: TextViewController, didChangeSelectedRange selectedRange: NSRange?) {
-        layoutIfNeeded()
-        caretView.delayBlinkIfNeeded()
+        updateCaretFrame()
+        updateSelectedRectangles()
         updateCaretVisibility()
+        caretView.delayBlinkIfNeeded()
         scrollToVisibleLocationIfNeeded()
     }
 }

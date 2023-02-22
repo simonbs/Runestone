@@ -21,15 +21,8 @@ final class TextViewController {
             fatalError("The text view has been deallocated or has not been assigned")
         }
     }
-    var scrollView: MultiPlatformScrollView {
-        if let scrollView = _scrollView {
-            return scrollView
-        } else {
-            fatalError("The scroll view has been deallocated or has not been assigned")
-        }
-    }
+    weak var scrollView: MultiPlatformScrollView?
     private weak var _textView: TextView?
-    private weak var _scrollView: MultiPlatformScrollView?
     var selectedRange: NSRange? {
         get {
             _selectedRange
@@ -84,6 +77,12 @@ final class TextViewController {
         }
         set {
             if newValue != layoutManager.viewport {
+                contentSizeService.containerSize = newValue.size
+                if isLineWrappingEnabled && newValue.width != layoutManager.viewport.width  {
+                    for lineController in lineControllerStorage {
+                        lineController.invalidateTypesetting()
+                    }
+                }
                 layoutManager.viewport = newValue
                 layoutManager.setNeedsLayout()
                 textView.setNeedsLayout()
@@ -121,19 +120,6 @@ final class TextViewController {
         }
     }
     var hasPendingContentSizeUpdate = false
-    var scrollViewSize: CGSize = .zero {
-        didSet {
-            if scrollViewSize != oldValue {
-                contentSizeService.scrollViewSize = scrollViewSize
-                layoutManager.scrollViewWidth = scrollViewSize.width
-                if isLineWrappingEnabled {
-                    for lineController in lineControllerStorage {
-                        lineController.invalidateTypesetting()
-                    }
-                }
-            }
-        }
-    }
     var safeAreaInsets: MultiPlatformEdgeInsets = .zero {
         didSet {
             if safeAreaInsets != oldValue {
@@ -543,9 +529,8 @@ final class TextViewController {
     private var cancellables: Set<AnyCancellable> = []
 
     // swiftlint:disable:next function_body_length
-    init(textView: TextView, scrollView: MultiPlatformScrollView) {
+    init(textView: TextView) {
         _textView = textView
-        _scrollView = scrollView
         lineManager = LineManager(stringView: stringView)
         highlightService = HighlightService(lineManager: lineManager)
         lineControllerFactory = LineControllerFactory(
@@ -717,6 +702,9 @@ extension TextViewController: TreeSitterLanguageModeDelegate {
 // MARK: - LayoutManagerDelegate
 extension TextViewController: LayoutManagerDelegate {
     func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint) {
+        guard let scrollView else {
+            return
+        }
         let isScrolling = scrollView.isDragging || scrollView.isDecelerating
         if contentOffsetAdjustment != .zero && isScrolling {
             let newXOffset = scrollView.contentOffset.x + contentOffsetAdjustment.x

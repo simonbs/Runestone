@@ -2,17 +2,18 @@ import Foundation
 
 extension TextViewController {
     func invalidateContentSizeIfNeeded() {
-        if scrollView.contentSize != contentSizeService.contentSize {
-            hasPendingContentSizeUpdate = true
-            handleContentSizeUpdateIfNeeded()
-            #if os(macOS)
-            updateScrollerVisibility()
-            #endif
+        guard let scrollView, scrollView.contentSize != contentSizeService.contentSize else {
+            return
         }
+        hasPendingContentSizeUpdate = true
+        handleContentSizeUpdateIfNeeded()
+        #if os(macOS)
+        updateScrollerVisibility()
+        #endif
     }
 
     func handleContentSizeUpdateIfNeeded() {
-        guard hasPendingContentSizeUpdate else {
+        guard let scrollView, hasPendingContentSizeUpdate else {
             return
         }
         // We don't want to update the content size when the scroll view is "bouncing" near the gutter,
@@ -33,11 +34,15 @@ extension TextViewController {
         let oldContentOffset = scrollView.contentOffset
         scrollView.contentSize = contentSizeService.contentSize
         scrollView.contentOffset = oldContentOffset
+        layoutManager.setNeedsLayout()
         textView.setNeedsLayout()
     }
 
     #if os(macOS)
     func updateScrollerVisibility() {
+        guard let scrollView else {
+            return
+        }
         let hadVerticalScroller = scrollView.hasVerticalScroller
         let hadHorizontalScroller = scrollView.hasHorizontalScroller
         scrollView.hasVerticalScroller = scrollView.contentSize.height > scrollView.frame.height
@@ -45,7 +50,6 @@ extension TextViewController {
         scrollView.horizontalScroller?.layer?.zPosition = 1_000
         scrollView.verticalScroller?.layer?.zPosition = 1_000
         layoutManager.verticalScrollerWidth = scrollView.verticalScrollerWidth
-        contentSizeService.verticalScrollerWidth = scrollView.verticalScrollerWidth
         if scrollView.hasVerticalScroller != hadVerticalScroller || scrollView.hasHorizontalScroller != hadHorizontalScroller {
             textView.setNeedsLayout()
         }

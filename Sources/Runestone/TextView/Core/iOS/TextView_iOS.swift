@@ -506,7 +506,7 @@ open class TextView: UIScrollView {
         }
     }
 
-    private(set) lazy var textViewController = TextViewController(textView: self, scrollView: self)
+    private(set) lazy var textViewController = TextViewController(textView: self)
     private(set) lazy var customTokenizer = TextInputStringTokenizer(
         textInput: self,
         stringView: textViewController.stringView,
@@ -552,6 +552,7 @@ open class TextView: UIScrollView {
     override public init(frame: CGRect) {
         super.init(frame: frame)
         textViewController.delegate = self
+        textViewController.scrollView = self
         backgroundColor = .white
         editableTextInteraction.textInput = self
         nonEditableTextInteraction.textInput = self
@@ -587,8 +588,6 @@ open class TextView: UIScrollView {
     override open func layoutSubviews() {
         super.layoutSubviews()
         hasDeletedTextWithPendingLayoutSubviews = false
-        textViewController.scrollViewSize = frame.size
-        textViewController.layoutIfNeeded()
         // We notify the input delegate about selection changes in layoutSubviews so we have a chance of disabling notifying the input delegate during an editing operation.
         // We will sometimes disable notifying the input delegate when the user enters Korean text.
         // This workaround is inspired by a dialog with Alexander Blach (@lextar), developer of Textastic.
@@ -603,6 +602,7 @@ open class TextView: UIScrollView {
         }
         textViewController.handleContentSizeUpdateIfNeeded()
         textViewController.viewport = CGRect(origin: contentOffset, size: frame.size)
+        textViewController.layoutIfNeeded()
         textViewController.layoutManager.bringGutterToFront()
         // Setting the frame of the text selection view fixes a bug where UIKit assigns an incorrect
         // Y-position to the selection rects the first time the user selects text.

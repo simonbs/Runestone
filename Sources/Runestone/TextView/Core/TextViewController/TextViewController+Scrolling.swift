@@ -21,7 +21,7 @@ private extension TextViewController {
         let rectMinY = min(lowerBoundRect.minY, upperBoundRect.minY)
         let rectMaxY = max(lowerBoundRect.maxY, upperBoundRect.maxY)
         let rect = CGRect(x: rectMinX, y: rectMinY, width: rectMaxX - rectMinX, height: rectMaxY - rectMinY)
-        scrollView.contentOffset = contentOffsetForScrollingToVisibleRect(rect)
+        scrollView?.contentOffset = contentOffsetForScrollingToVisibleRect(rect)
     }
 
     private func caretRect(at location: Int) -> CGRect {
@@ -42,20 +42,22 @@ private extension TextViewController {
     /// - Returns: The content offset to scroll to.
     private func contentOffsetForScrollingToVisibleRect(_ rect: CGRect) -> CGPoint {
         // Create the viewport: a rectangle containing the content that is visible to the user.
-        var viewport = CGRect(origin: scrollView.contentOffset, size: textView.frame.size)
-        viewport.origin.y += scrollView.adjustedContentInset.top + textContainerInset.top
-        viewport.origin.x += scrollView.adjustedContentInset.left + gutterWidth + textContainerInset.left
-        viewport.size.width -= scrollView.adjustedContentInset.left
-        + scrollView.adjustedContentInset.right
+        let contentOffset = scrollView?.contentOffset ?? .zero
+        let adjustedContentInset = scrollView?.adjustedContentInset ?? .zero
+        var viewport = CGRect(origin: contentOffset, size: textView.frame.size)
+        viewport.origin.y += adjustedContentInset.top + textContainerInset.top
+        viewport.origin.x += adjustedContentInset.left + gutterWidth + textContainerInset.left
+        viewport.size.width -= adjustedContentInset.left
+        + adjustedContentInset.right
         + gutterWidth
         + textContainerInset.left
         + textContainerInset.right
-        viewport.size.height -= scrollView.adjustedContentInset.top
-        + scrollView.adjustedContentInset.bottom
+        viewport.size.height -= adjustedContentInset.top
+        + adjustedContentInset.bottom
         + textContainerInset.top
         + textContainerInset.bottom
         // Construct the best possible content offset.
-        var newContentOffset = scrollView.contentOffset
+        var newContentOffset = contentOffset
         if rect.minX < viewport.minX {
             newContentOffset.x -= viewport.minX - rect.minX
         } else if rect.maxX > viewport.maxX && rect.width <= viewport.width {
@@ -72,8 +74,10 @@ private extension TextViewController {
         } else if rect.maxY > viewport.maxY {
             newContentOffset.y += rect.minY
         }
-        let cappedXOffset = min(max(newContentOffset.x, scrollView.minimumContentOffset.x), scrollView.maximumContentOffset.x)
-        let cappedYOffset = min(max(newContentOffset.y, scrollView.minimumContentOffset.y), scrollView.maximumContentOffset.y)
+        let minimumContentOffset = scrollView?.minimumContentOffset ?? .zero
+        let maximumContentOffset = scrollView?.maximumContentOffset ?? .zero
+        let cappedXOffset = min(max(newContentOffset.x, minimumContentOffset.x), maximumContentOffset.x)
+        let cappedYOffset = min(max(newContentOffset.y, minimumContentOffset.y), maximumContentOffset.y)
         return CGPoint(x: cappedXOffset, y: cappedYOffset)
     }
 }

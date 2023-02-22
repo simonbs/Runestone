@@ -37,7 +37,7 @@ final class SelectionRectFactory {
         let adjustedRange = NSRange(location: range.location, length: selectsLineEnding ? range.length - 1 : range.length)
         let startCaretRect = caretRectFactory.caretRect(at: adjustedRange.lowerBound, allowMovingCaretToNextLineFragment: true)
         let endCaretRect = caretRectFactory.caretRect(at: adjustedRange.upperBound, allowMovingCaretToNextLineFragment: false)
-        let fullWidth = max(contentSizeService.contentWidth, contentSizeService.scrollViewSize.width) - leadingLineSpacing - textContainerInset.right
+        let fullWidth = max(contentSizeService.contentWidth, contentSizeService.containerSize.width) - leadingLineSpacing - textContainerInset.right
         if startCaretRect.minY == endCaretRect.minY && startCaretRect.maxY == endCaretRect.maxY {
             // Selecting text in the same line fragment.
             let width = selectsLineEnding ? fullWidth - (startCaretRect.minX - leadingLineSpacing) : endCaretRect.maxX - startCaretRect.maxX

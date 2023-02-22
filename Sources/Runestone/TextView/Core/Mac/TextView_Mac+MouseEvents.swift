@@ -48,7 +48,7 @@ public extension TextView {
 
 private extension TextView {
     private func locationClosestToPoint(in event: NSEvent) -> Int {
-        let point = scrollContentView.convert(event.locationInWindow, from: nil)
+        let point = convert(event.locationInWindow, from: nil)
         return characterIndex(for: point)
     }
 }

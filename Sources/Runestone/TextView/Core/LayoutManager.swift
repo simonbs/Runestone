@@ -14,7 +14,6 @@ final class LayoutManager {
     weak var delegate: LayoutManagerDelegate?
     var lineManager: LineManager
     var stringView: StringView
-    var scrollViewWidth: CGFloat = 0
     var verticalScrollerWidth: CGFloat = 0
     var viewport: CGRect = .zero
     var languageMode: InternalLanguageMode {
@@ -86,7 +85,7 @@ final class LayoutManager {
     var lineHeightMultiplier: CGFloat = 1
     var constrainingLineWidth: CGFloat {
         if isLineWrappingEnabled {
-            return scrollViewWidth
+            return viewport.width
             - gutterWidthService.gutterWidth
             - textContainerInset.left - textContainerInset.right
             - safeAreaInsets.left - safeAreaInsets.right
@@ -101,6 +100,13 @@ final class LayoutManager {
         didSet {
             if markedRange != oldValue {
                 updateMarkedTextOnVisibleLines()
+            }
+        }
+    }
+    var isGutterFloatingChildOfScrollView = false {
+        didSet {
+            if isGutterFloatingChildOfScrollView != oldValue {
+                setNeedsLayout()
             }
         }
     }
@@ -319,17 +325,10 @@ extension LayoutManager {
     private func layoutGutter() {
         let totalGutterWidth = safeAreaInsets.left + gutterWidthService.gutterWidth
         let contentSize = contentSizeService.contentSize
-        #if os(iOS)
-        // Offset gutter background and line numbers on iOS as it is a child of the scroll view and we want it to appear static.
-        gutterContainerView.frame = CGRect(x: viewport.minX, y: 0, width: totalGutterWidth, height: contentSize.height)
+        let gutterContainerYOffset = isGutterFloatingChildOfScrollView ? 0 : viewport.minX
+        gutterContainerView.frame = CGRect(x: gutterContainerYOffset, y: 0, width: totalGutterWidth, height: contentSize.height)
         gutterBackgroundView.frame = CGRect(x: 0, y: viewport.minY, width: totalGutterWidth, height: viewport.height)
         lineNumbersContainerView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: contentSize.height)
-        #else
-        // Manually offset line numbers on macOS as the container is not a child of the scroll view.
-        gutterContainerView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: viewport.height)
-        gutterBackgroundView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: viewport.height)
-        lineNumbersContainerView.frame = CGRect(x: 0, y: viewport.minY * -1, width: totalGutterWidth, height: contentSize.height)
-        #endif
     }
 
     private func layoutLineSelection() {
@@ -338,14 +337,8 @@ extension LayoutManager {
         }
         let totalGutterWidth = safeAreaInsets.left + gutterWidthService.gutterWidth
         gutterSelectionBackgroundView.frame = CGRect(x: 0, y: rect.minY, width: totalGutterWidth, height: rect.height)
-        #if os(iOS)
-        // Adjust x-offset to make it appear static as it is added to the scroll view.
         let lineSelectionBackgroundOrigin = CGPoint(x: viewport.minX + totalGutterWidth, y: rect.minY)
-        #else
-        // Adjust y-offset on macOS to make it scroll as it is not a child of the scroll view.
-        let lineSelectionBackgroundOrigin = CGPoint(x: totalGutterWidth, y: rect.minY + viewport.minY * -1)
-        #endif
-        let lineSelectionBackgroundSize = CGSize(width: scrollViewWidth - totalGutterWidth, height: rect.height)
+        let lineSelectionBackgroundSize = CGSize(width: viewport.width - totalGutterWidth, height: rect.height)
         lineSelectionBackgroundView.frame = CGRect(origin: lineSelectionBackgroundOrigin, size: lineSelectionBackgroundSize)
     }
 
@@ -366,7 +359,7 @@ extension LayoutManager {
         case .line:
             let minY = startLine.yPosition
             let height = (realEndLine.yPosition + realEndLine.data.lineHeight) - minY
-            return CGRect(x: 0, y: textContainerInset.top + minY, width: scrollViewWidth, height: height)
+            return CGRect(x: 0, y: textContainerInset.top + minY, width: viewport.width, height: height)
         case .lineFragment:
             let caretRectFactory = CaretRectFactory(
                 stringView: stringView,
@@ -381,7 +374,7 @@ extension LayoutManager {
             let endLineFragmentHeight = endCaretRect.height * lineHeightMultiplier
             let minY = startCaretRect.minY - (startLineFragmentHeight - startCaretRect.height) / 2
             let maxY = endCaretRect.maxY + (endLineFragmentHeight - endCaretRect.height) / 2
-            return CGRect(x: 0, y: minY, width: scrollViewWidth, height: maxY - minY)
+            return CGRect(x: 0, y: minY, width: viewport.width, height: maxY - minY)
         case .disabled:
             return nil
         }
@@ -518,10 +511,9 @@ extension LayoutManager {
             linesContainerView.addSubview(lineFragmentView)
         }
         lineFragmentController.lineFragmentView = lineFragmentView
-        let lineFragmentOrigin = CGPoint(
-            x: max(viewport.minX, 0) * -1 + textContainerInset.left,
-            y: textContainerInset.top + lineYPosition + lineFragment.yPosition
-        )
+        let lineFragmentXOffset = max(viewport.minX, 0) * -1 + textContainerInset.left
+        let lineFragmentYOffset = textContainerInset.top + lineYPosition + lineFragment.yPosition
+        let lineFragmentOrigin = CGPoint(x: lineFragmentXOffset, y: lineFragmentYOffset)
         let lineFragmentWidth = contentSizeService.contentWidth - textContainerInset.left - textContainerInset.right
         let lineFragmentSize = CGSize(width: lineFragmentWidth, height: lineFragment.scaledSize.height)
         lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragmentSize)

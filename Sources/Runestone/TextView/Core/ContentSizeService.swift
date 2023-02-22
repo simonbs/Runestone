@@ -3,16 +3,9 @@ import Foundation
 
 final class ContentSizeService {
     var safeAreaInset: MultiPlatformEdgeInsets = .zero
-    var scrollViewSize: CGSize = .zero {
+    var containerSize: CGSize = .zero {
         didSet {
-            if scrollViewSize != oldValue && isLineWrappingEnabled {
-                invalidateContentSize()
-            }
-        }
-    }
-    var verticalScrollerWidth: CGFloat = 0 {
-        didSet {
-            if verticalScrollerWidth != oldValue {
+            if containerSize != oldValue && isLineWrappingEnabled {
                 invalidateContentSize()
             }
         }
@@ -50,11 +43,11 @@ final class ContentSizeService {
         }
     }
     var contentWidth: CGFloat {
-        let minimumWidth = scrollViewSize.width - safeAreaInset.left - safeAreaInset.right - verticalScrollerWidth
+        let minimumWidth = containerSize.width - safeAreaInset.left - safeAreaInset.right
         if isLineWrappingEnabled {
             return minimumWidth
         } else {
-            let textContentWidth = longestLineWidth ?? scrollViewSize.width
+            let textContentWidth = longestLineWidth ?? containerSize.width
             let preferredWidth = ceil(
                 textContentWidth
                 + gutterWidthService.gutterWidth
@@ -69,8 +62,8 @@ final class ContentSizeService {
         ceil(totalLinesHeight + textContainerInset.top + textContainerInset.bottom)
     }
     var contentSize: CGSize {
-        let horizontalOverscrollLength = max(scrollViewSize.width * horizontalOverscrollFactor, 0)
-        let verticalOverscrollLength = max(scrollViewSize.height * verticalOverscrollFactor, 0)
+        let horizontalOverscrollLength = max(containerSize.width * horizontalOverscrollFactor, 0)
+        let verticalOverscrollLength = max(containerSize.height * verticalOverscrollFactor, 0)
         let width = contentWidth + (isLineWrappingEnabled ? 0 : horizontalOverscrollLength)
         let height = contentHeight + verticalOverscrollLength
         return CGSize(width: width, height: height)
