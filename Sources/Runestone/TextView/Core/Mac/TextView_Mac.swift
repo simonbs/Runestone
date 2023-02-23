@@ -419,6 +419,7 @@ open class TextView: NSView, NSMenuItemValidation {
 
     private let caretView = CaretView()
     private let selectionViewReuseQueue = ViewReuseQueue<String, LineSelectionView>()
+    private let textFinderClient = TextFinderClient()
     private var isWindowKey = false {
         didSet {
             if isWindowKey != oldValue {
@@ -758,19 +759,12 @@ private extension TextView {
     }
 }
 
-
-// MARK: - Gutter
+// MARK: - Find
 private extension TextView {
-    private func setupGutterContainerView() {
-        let gutterContainerView = textViewController.layoutManager.gutterContainerView
-        gutterContainerView.removeFromSuperview()
-        if let scrollView {
-            textViewController.layoutManager.isGutterFloatingChildOfScrollView = true
-            scrollView.addFloatingSubview(gutterContainerView, for: .horizontal)
-        } else {
-            textViewController.layoutManager.isGutterFloatingChildOfScrollView = false
-            addSubview(gutterContainerView)
-        }
+    private func setupTextFinder() {
+        textFinderClient.textView = self
+        textFinder.client = textFinderClient
+        textFinder.findBarContainer = scrollView
     }
 }
 
