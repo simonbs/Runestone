@@ -1,4 +1,6 @@
 @testable import Runestone
+@testable import LineManager
+import StringView
 import XCTest
 
 final class LineManagerTests: XCTestCase {

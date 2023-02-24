@@ -1,6 +1,8 @@
 #if os(iOS)
 // swiftlint:disable force_cast
+import LineManager
 @testable import Runestone
+import StringView
 import XCTest
 
 final class TextInputStringTokenizerTests: XCTestCase {}
@@ -305,6 +307,6 @@ extension TextInputStringTokenizerTests: LineControllerDelegate {
         PlainTextSyntaxHighlighter()
     }
 
-    func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController) {}
+    func lineControllerDidInvalidateSize(_ lineController: LineController) {}
 }
 #endif

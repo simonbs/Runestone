@@ -1,3 +1,6 @@
+import LineManager
+import StringView
+
 final class LineControllerFactory {
     var stringView: StringView
 
@@ -11,9 +14,11 @@ final class LineControllerFactory {
     }
 
     func makeLineController(for line: DocumentLineNode) -> LineController {
-        LineController(line: line,
-                       stringView: stringView,
-                       invisibleCharacterConfiguration: invisibleCharacterConfiguration,
-                       highlightService: highlightService)
+        LineController(
+            line: line,
+            stringView: stringView,
+            invisibleCharacterConfiguration: invisibleCharacterConfiguration,
+            highlightService: highlightService
+        )
     }
 }

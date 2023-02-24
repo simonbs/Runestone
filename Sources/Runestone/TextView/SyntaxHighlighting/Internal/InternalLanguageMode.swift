@@ -1,4 +1,5 @@
 import Foundation
+import LineManager
 
 struct InsertLineBreakIndentStrategy {
     let indentLevel: Int
@@ -15,6 +16,7 @@ protocol InternalLanguageMode: AnyObject {
     func strategyForInsertingLineBreak(
         from startLinePosition: LinePosition,
         to endLinePosition: LinePosition,
-        using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy
+        using indentStrategy: IndentStrategy
+    ) -> InsertLineBreakIndentStrategy
     func detectIndentStrategy() -> DetectedIndentStrategy
 }

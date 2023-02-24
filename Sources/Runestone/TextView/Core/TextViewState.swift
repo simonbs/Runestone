@@ -1,4 +1,6 @@
 import Foundation
+import LineManager
+import StringView
 
 /// Encapsulates the bare informations needed to do syntax highlighting in a text view.
 ///

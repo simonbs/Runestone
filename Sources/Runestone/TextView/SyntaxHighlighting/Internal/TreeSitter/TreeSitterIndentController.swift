@@ -1,4 +1,7 @@
 import Foundation
+import LineManager
+import StringView
+import TreeSitter
 
 final class TreeSitterIndentController {
     private let indentationScopes: TreeSitterIndentationScopes
@@ -13,10 +16,12 @@ final class TreeSitterIndentController {
         self.tabLength = tabLength
     }
 
-    func strategyForInsertingLineBreak(between startNode: TreeSitterNode?,
-                                       and endNode: TreeSitterNode?,
-                                       caretStartPosition: LinePosition,
-                                       caretEndPosition: LinePosition) -> InsertLineBreakIndentStrategy {
+    func strategyForInsertingLineBreak(
+        between startNode: TreeSitterNode?,
+        and endNode: TreeSitterNode?,
+        caretStartPosition: LinePosition,
+        caretEndPosition: LinePosition
+    ) -> InsertLineBreakIndentStrategy {
         var indentAdjustment = 0
         var outdentAdjustment = 0
         var indentingNode: TreeSitterNode?

@@ -1,3 +1,4 @@
+import LineManager
 @testable import Runestone
 import TestTreeSitterLanguages
 import XCTest

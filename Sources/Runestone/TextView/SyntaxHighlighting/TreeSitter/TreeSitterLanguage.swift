@@ -1,5 +1,6 @@
 import Foundation
 import TreeSitter
+import TreeSitterLib
 
 /// Language to use for syntax highlighting with Tree-sitter.
 ///
@@ -34,10 +35,12 @@ public final class TreeSitterLanguage {
     ///   - highlightsQuery: Query used for syntax highlighting.
     ///   - injectionsQuery: Query used for detecting injected languages.
     ///   - indentationScopes: Rules used for indenting text.
-    public init(_ language: UnsafePointer<TSLanguage>,
-                highlightsQuery: TreeSitterLanguage.Query? = nil,
-                injectionsQuery: TreeSitterLanguage.Query? = nil,
-                indentationScopes: TreeSitterIndentationScopes? = nil) {
+    public init(
+        _ language: UnsafePointer<TSLanguage>,
+        highlightsQuery: TreeSitterLanguage.Query? = nil,
+        injectionsQuery: TreeSitterLanguage.Query? = nil,
+        indentationScopes: TreeSitterIndentationScopes? = nil
+    ) {
         self.languagePointer = language
         self.highlightsQuery = highlightsQuery
         self.injectionsQuery = injectionsQuery
@@ -87,10 +90,12 @@ private extension TreeSitterInternalLanguage {
     convenience init(_ language: TreeSitterLanguage) {
         let highlightsQuery = Self.makeInternalQuery(from: language.highlightsQuery, with: language.languagePointer)
         let injectionsQuery = Self.makeInternalQuery(from: language.injectionsQuery, with: language.languagePointer)
-        self.init(languagePointer: language.languagePointer,
-                  highlightsQuery: highlightsQuery,
-                  injectionsQuery: injectionsQuery,
-                  indentationScopes: language.indentationScopes)
+        self.init(
+            languagePointer: language.languagePointer,
+            highlightsQuery: highlightsQuery,
+            injectionsQuery: injectionsQuery,
+            indentationScopes: language.indentationScopes
+        )
     }
 
     private static func makeInternalQuery(from query: TreeSitterLanguage.Query?, with language: UnsafePointer<TSLanguage>) -> TreeSitterQuery? {

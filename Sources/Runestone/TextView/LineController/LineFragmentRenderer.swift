@@ -1,5 +1,7 @@
 import CoreText
 import Foundation
+import MultiPlatform
+import Symbol
 
 protocol LineFragmentRendererDelegate: AnyObject {
     func string(in lineFragmentRenderer: LineFragmentRenderer) -> String?

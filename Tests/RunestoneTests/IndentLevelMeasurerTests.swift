@@ -1,4 +1,5 @@
 @testable import Runestone
+import StringView
 import TestTreeSitterLanguages
 import XCTest
 

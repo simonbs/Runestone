@@ -1,4 +1,5 @@
 import Foundation
+import LineManager
 
 extension TextViewController {
     func performFullLayout() {

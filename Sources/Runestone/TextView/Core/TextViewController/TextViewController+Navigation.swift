@@ -1,4 +1,5 @@
 import Foundation
+import RangeHelpers
 
 extension TextViewController {
     func moveLeft() {

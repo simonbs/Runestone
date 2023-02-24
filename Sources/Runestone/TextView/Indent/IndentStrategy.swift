@@ -1,4 +1,5 @@
 import Foundation
+import Symbol
 
 /// Strategy to use when indenting text.
 public enum IndentStrategy: Equatable {

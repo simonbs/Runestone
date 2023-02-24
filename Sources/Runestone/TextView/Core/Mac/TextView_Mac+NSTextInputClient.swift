@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import RangeHelpers
 
 extension TextView: NSTextInputClient {
     // swiftlint:disable:next prohibited_super_call

@@ -1,6 +1,8 @@
 import Combine
 import CoreGraphics
 import Foundation
+import LineManager
+import MultiPlatform
 
 final class GutterWidthService {
     var lineManager: LineManager {

@@ -1,4 +1,6 @@
 #if os(iOS)
+import LineManager
+import StringView
 import UIKit
 
 final class TextInputStringTokenizer: UITextInputStringTokenizer {

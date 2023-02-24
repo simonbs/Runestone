@@ -1,3 +1,4 @@
+import MultiPlatform
 #if os(iOS)
 import UIKit
 #endif

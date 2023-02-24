@@ -1,4 +1,6 @@
+import CoreGraphics
 import Foundation
+import MultiPlatform
 
 final class GutterBackgroundView: MultiPlatformView {
     var hairlineWidth: CGFloat = 1 {

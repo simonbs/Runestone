@@ -1,4 +1,8 @@
+import Byte
 import Foundation
+import LineManager
+import RangeHelpers
+import StringView
 
 struct TextEditResult {
     let textChange: TextChange
@@ -33,11 +37,13 @@ final class TextEditHelper {
         lineChangeSet.union(with: lineChangeSetFromInsertingCharacters)
         let startLinePosition = lineManager.linePosition(at: range.location)!
         let newEndLinePosition = lineManager.linePosition(at: range.location + nsNewString.length)!
-        let textChange = TextChange(byteRange: byteRange,
-                                    bytesAdded: newString.byteCount,
-                                    oldEndLinePosition: oldEndLinePosition,
-                                    startLinePosition: startLinePosition,
-                                    newEndLinePosition: newEndLinePosition)
+        let textChange = TextChange(
+            byteRange: byteRange,
+            bytesAdded: newString.byteCount,
+            oldEndLinePosition: oldEndLinePosition,
+            startLinePosition: startLinePosition,
+            newEndLinePosition: newEndLinePosition
+        )
         return TextEditResult(textChange: textChange, lineChangeSet: lineChangeSet)
     }
 

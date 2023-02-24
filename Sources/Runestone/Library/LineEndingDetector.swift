@@ -1,4 +1,6 @@
 import Foundation
+import LineManager
+import StringView
 
 final class LineEndingDetector {
     private let lineManager: LineManager
@@ -11,7 +13,7 @@ final class LineEndingDetector {
 
     func detect() -> LineEnding? {
         var shouldScan = true
-        let iterator = lineManager.createLineIterator()
+        let iterator = lineManager.makeLineIterator()
         let lineCount = lineManager.lineCount
         var scannedLineCount = 0
         var lineEndingCountMap: [LineEnding: Int] = [:]

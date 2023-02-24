@@ -49,18 +49,10 @@ extension TextViewController {
         scrollView.hasHorizontalScroller = scrollView.contentSize.width > scrollView.frame.width
         scrollView.horizontalScroller?.layer?.zPosition = 1_000
         scrollView.verticalScroller?.layer?.zPosition = 1_000
-        layoutManager.verticalScrollerWidth = scrollView.verticalScrollerWidth
+        layoutManager.verticalScrollerWidth = scrollView.hasVerticalScroller ? scrollView.verticalScroller?.frame.width ?? 0 : 0
         if scrollView.hasVerticalScroller != hadVerticalScroller || scrollView.hasHorizontalScroller != hadHorizontalScroller {
             textView.setNeedsLayout()
         }
     }
     #endif
 }
-
-#if os(macOS)
-private extension MultiPlatformScrollView {
-    var verticalScrollerWidth: CGFloat {
-        hasVerticalScroller ? verticalScroller?.frame.width ?? 0 : 0
-    }
-}
-#endif

@@ -1,4 +1,4 @@
-import Foundation
+import LineManager
 
 struct LineNavigationLocationFactory {
     private let lineManager: LineManager

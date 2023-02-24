@@ -1,6 +1,7 @@
 #if os(iOS)
 // swiftlint:disable file_length type_body_length
 import CoreText
+import LineManager
 import UIKit
 
 /// A type similiar to UITextView with features commonly found in code editors.

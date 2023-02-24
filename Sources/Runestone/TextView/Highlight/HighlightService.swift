@@ -1,4 +1,6 @@
 import Foundation
+import LineManager
+import RangeHelpers
 
 final class HighlightService {
     var lineManager: LineManager {
@@ -54,11 +56,13 @@ private extension HighlightService {
                 let cappedLocalRange = cappedRange.local(to: lineRange)
                 let containsStart = cappedRange.lowerBound == highlightedRange.range.lowerBound
                 let containsEnd = cappedRange.upperBound == highlightedRange.range.upperBound
-                let highlightedRangeFragment = HighlightedRangeFragment(range: cappedLocalRange,
-                                                                        containsStart: containsStart,
-                                                                        containsEnd: containsEnd,
-                                                                        color: highlightedRange.color,
-                                                                        cornerRadius: highlightedRange.cornerRadius)
+                let highlightedRangeFragment = HighlightedRangeFragment(
+                    range: cappedLocalRange,
+                    containsStart: containsStart,
+                    containsEnd: containsEnd,
+                    color: highlightedRange.color,
+                    cornerRadius: highlightedRange.cornerRadius
+                )
                 if let existingHighlightedRangeFragments = result[line.id] {
                     result[line.id] = existingHighlightedRangeFragments + [highlightedRangeFragment]
                 } else {
@@ -69,8 +73,10 @@ private extension HighlightService {
         return result
     }
 
-    private func createHighlightedLineFragments(for lineFragment: LineFragment,
-                                                inLineWithID lineID: DocumentLineNodeID) -> [HighlightedRangeFragment] {
+    private func createHighlightedLineFragments(
+        for lineFragment: LineFragment,
+        inLineWithID lineID: DocumentLineNodeID
+    ) -> [HighlightedRangeFragment] {
         guard let lineHighlightedRangeFragments = highlightedRangeFragmentsPerLine[lineID] else {
             return []
         }
@@ -81,11 +87,13 @@ private extension HighlightService {
             let cappedRange = lineHighlightedRangeFragment.range.capped(to: lineFragment.range)
             let containsStart = lineHighlightedRangeFragment.containsStart && cappedRange.lowerBound == lineHighlightedRangeFragment.range.lowerBound
             let containsEnd = lineHighlightedRangeFragment.containsEnd && cappedRange.upperBound == lineHighlightedRangeFragment.range.upperBound
-            return HighlightedRangeFragment(range: cappedRange,
-                                            containsStart: containsStart,
-                                            containsEnd: containsEnd,
-                                            color: lineHighlightedRangeFragment.color,
-                                            cornerRadius: lineHighlightedRangeFragment.cornerRadius)
+            return HighlightedRangeFragment(
+                range: cappedRange,
+                containsStart: containsStart,
+                containsEnd: containsEnd,
+                color: lineHighlightedRangeFragment.color,
+                cornerRadius: lineHighlightedRangeFragment.cornerRadius
+            )
         }
     }
 }

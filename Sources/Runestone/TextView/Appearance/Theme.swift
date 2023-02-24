@@ -5,6 +5,7 @@ import CoreGraphics
 #if os(iOS)
 import UIKit
 #endif
+import MultiPlatform
 
 /// Fonts and colors to be used by a `TextView`.
 public protocol Theme: AnyObject {

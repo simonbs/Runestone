@@ -1,4 +1,5 @@
 import Foundation
+import TreeSitter
 
 protocol TreeSitterInjectedLanguageMapperDelegate: AnyObject {
     func treeSitterInjectedLanguageMapper(_ mapper: TreeSitterInjectedLanguageMapper, textIn textRange: TreeSitterTextRange) -> String?
@@ -34,7 +35,7 @@ final class TreeSitterInjectedLanguageMapper {
                 }
             } else {
                 let languageName = languageNamePendingContent ?? capture.properties[CaptureProperty.injectionLanguage] ?? capture.name
-                let id = capture.node.rawValue.id!
+                let id = capture.node.id
                 let textRange = capture.node.textRange
                 let injectedLanguage = TreeSitterInjectedLanguage(id: id, languageName: languageName, textRange: textRange)
                 result.append(injectedLanguage)

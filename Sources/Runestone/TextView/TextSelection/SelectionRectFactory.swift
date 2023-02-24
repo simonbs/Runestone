@@ -1,5 +1,7 @@
 import CoreGraphics
 import Foundation
+import LineManager
+import MultiPlatform
 
 final class SelectionRectFactory {
     private let lineManager: LineManager

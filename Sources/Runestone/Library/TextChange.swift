@@ -1,4 +1,5 @@
-import Foundation
+import Byte
+import LineManager
 
 struct TextChange {
     let byteRange: ByteRange

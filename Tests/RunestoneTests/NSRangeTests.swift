@@ -1,3 +1,4 @@
+import Byte
 import Foundation
 @testable import Runestone
 import XCTest

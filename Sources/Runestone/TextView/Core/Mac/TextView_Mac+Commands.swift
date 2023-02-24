@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import RangeHelpers
 
 public extension TextView {
     /// Deletes a character from the displayed text.

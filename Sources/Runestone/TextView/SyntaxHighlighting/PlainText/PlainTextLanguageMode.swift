@@ -1,4 +1,5 @@
-import Foundation
+import StringView
+import LineManager
 
 /// Language mode with no syntax highlighting.
 ///

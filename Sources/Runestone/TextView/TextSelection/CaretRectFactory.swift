@@ -1,4 +1,7 @@
 import CoreGraphics
+import LineManager
+import MultiPlatform
+import StringView
 
 final class CaretRectFactory {
     private let stringView: StringView

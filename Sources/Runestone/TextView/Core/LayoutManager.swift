@@ -1,5 +1,9 @@
 import CoreGraphics
 import Foundation
+import LineManager
+import MultiPlatform
+import RangeHelpers
+import StringView
 import QuartzCore
 #if os(iOS)
 import UIKit

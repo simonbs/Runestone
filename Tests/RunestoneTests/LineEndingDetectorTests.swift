@@ -1,4 +1,6 @@
+import LineManager
 @testable import Runestone
+import StringView
 import XCTest
 
 final class LineEndingDetectorTests: XCTestCase {

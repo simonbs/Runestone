@@ -1,5 +1,9 @@
 #if os(macOS)
+import CharacterSetHelpers
 import Foundation
+import StringView
+import LineManager
+import Symbol
 
 final class SelectionService {
     var stringView: StringView

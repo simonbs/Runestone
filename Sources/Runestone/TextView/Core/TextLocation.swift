@@ -1,4 +1,4 @@
-import Foundation
+import LineManager
 
 /// A location in the text.
 public struct TextLocation: Hashable, Equatable {

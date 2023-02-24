@@ -1,4 +1,8 @@
 import Foundation
+import LineManager
+import StringView
+import Symbol
+import TreeSitter
 
 final class TreeSitterIndentStrategyDetector {
     private let lineManager: LineManager
@@ -13,7 +17,7 @@ final class TreeSitterIndentStrategyDetector {
 
     func detect() -> DetectedIndentStrategy {
         var shouldScan = true
-        let iterator = lineManager.createLineIterator()
+        let iterator = lineManager.makeLineIterator()
         var lineCountBeginningWithTab = 0
         var lineCountBeginningWithSpace = 0
         var scannedLineCount = 0

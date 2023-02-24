@@ -1,5 +1,6 @@
 import CoreText
 import Foundation
+import Symbol
 
 struct CharacterLineBreakSuggester {
     let typesetter: CTTypesetter

@@ -1,4 +1,5 @@
-import Foundation
+import LineManager
+import StringView
 
 final class NavigationService {
     var stringView: StringView

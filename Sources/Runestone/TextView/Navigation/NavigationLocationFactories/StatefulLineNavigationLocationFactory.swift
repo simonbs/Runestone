@@ -1,4 +1,5 @@
 import Foundation
+import LineManager
 
 final class StatefulLineNavigationLocationFactory {
     private struct MoveOperation {

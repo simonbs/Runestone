@@ -1,4 +1,5 @@
 import Foundation
+import MultiPlatform
 
 protocol LineFragmentControllerDelegate: AnyObject {
     func string(in controller: LineFragmentController) -> String?

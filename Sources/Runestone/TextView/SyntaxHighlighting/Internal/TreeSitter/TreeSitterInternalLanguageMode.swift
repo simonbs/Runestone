@@ -1,5 +1,9 @@
+import Byte
 import Foundation
+import LineManager
+import StringView
 import TreeSitter
+import TreeSitterLib
 
 protocol TreeSitterLanguageModeDelegate: AnyObject {
     func treeSitterLanguageMode(_ languageMode: TreeSitterInternalLanguageMode, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult?
@@ -22,7 +26,7 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
         self.lineManager = lineManager
         operationQueue.name = "TreeSitterLanguageMode"
         operationQueue.qualityOfService = .userInitiated
-        parser = TreeSitterParser(encoding: TSInputEncodingUTF16)
+        parser = TreeSitterParser()
         rootLanguageLayer = TreeSitterLanguageLayer(
             language: language,
             languageProvider: languageProvider,
