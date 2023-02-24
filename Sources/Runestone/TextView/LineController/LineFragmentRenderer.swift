@@ -1,7 +1,13 @@
+#if os(macOS)
+import AppKit
+#endif
 import CoreText
 import Foundation
 import MultiPlatform
 import Symbol
+#if os(iOS)
+import UIKit
+#endif
 
 protocol LineFragmentRendererDelegate: AnyObject {
     func string(in lineFragmentRenderer: LineFragmentRenderer) -> String?
@@ -134,21 +140,30 @@ private extension LineFragmentRenderer {
     }
 
     private func draw(_ symbol: String, at horizontalPosition: HorizontalPosition) {
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = .center
         let attrs: [NSAttributedString.Key: Any] = [
             .foregroundColor: invisibleCharacterConfiguration.textColor,
-            .font: invisibleCharacterConfiguration.font
+            .font: invisibleCharacterConfiguration.font,
+            .paragraphStyle: paragraphStyle
         ]
         let size = symbol.size(withAttributes: attrs)
-        let xPosition = xPosition(for: horizontalPosition)
+        let xPosition = xPositionDrawingSymbol(ofSize: size, at: horizontalPosition)
         let yPosition = (lineFragment.scaledSize.height - size.height) / 2
         let rect = CGRect(x: xPosition, y: yPosition, width: size.width, height: size.height)
         symbol.draw(in: rect, withAttributes: attrs)
     }
 
-    private func xPosition(for horizontalPosition: HorizontalPosition) -> CGFloat {
+    private func xPositionDrawingSymbol(ofSize symbolSize: CGSize, at horizontalPosition: HorizontalPosition) -> CGFloat {
         switch horizontalPosition {
         case .character(let index):
-            return CTLineGetOffsetForStringIndex(lineFragment.line, index, nil)
+            let minX = CTLineGetOffsetForStringIndex(lineFragment.line, index, nil)
+            if index < lineFragment.range.upperBound {
+                let maxX = CTLineGetOffsetForStringIndex(lineFragment.line, index + 1, nil)
+                return minX + (maxX - minX - symbolSize.width) / 2
+            } else {
+                return minX
+            }
         case .endOfLine:
             return CGFloat(CTLineGetTypographicBounds(lineFragment.line, nil, nil, nil))
         }
