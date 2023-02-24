@@ -1,25 +1,25 @@
 import Foundation
 
 public final class LineChangeSet {
-    public private(set) var insertedLines: Set<DocumentLineNode> = []
-    public private(set) var removedLines: Set<DocumentLineNode> = []
-    public private(set) var editedLines: Set<DocumentLineNode> = []
+    public private(set) var insertedLines: Set<LineNode> = []
+    public private(set) var removedLines: Set<LineNode> = []
+    public private(set) var editedLines: Set<LineNode> = []
 
     public init() {}
 
-    public func markLineInserted(_ line: DocumentLineNode) {
+    public func markLineInserted(_ line: LineNode) {
         removedLines.remove(line)
         editedLines.remove(line)
         insertedLines.insert(line)
     }
 
-    public func markLineRemoved(_ line: DocumentLineNode) {
+    public func markLineRemoved(_ line: LineNode) {
         insertedLines.remove(line)
         editedLines.remove(line)
         removedLines.insert(line)
     }
 
-    public func markLineEdited(_ line: DocumentLineNode) {
+    public func markLineEdited(_ line: LineNode) {
         if !insertedLines.contains(line) && !removedLines.contains(line) {
             editedLines.insert(line)
         }

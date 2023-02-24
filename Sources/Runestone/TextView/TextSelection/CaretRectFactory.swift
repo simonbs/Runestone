@@ -43,7 +43,7 @@ final class CaretRectFactory {
 }
 
 private extension CaretRectFactory {
-    private func shouldMoveCaretToNextLineFragment(forLocation location: Int, in line: DocumentLineNode) -> Bool {
+    private func shouldMoveCaretToNextLineFragment(forLocation location: Int, in line: LineNode) -> Bool {
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         guard lineController.numberOfLineFragments > 0 else {
             return false

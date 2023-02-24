@@ -27,7 +27,7 @@ final class LineController {
     }
 
     weak var delegate: LineControllerDelegate?
-    let line: DocumentLineNode
+    let line: LineNode
     var lineFragmentHeightMultiplier: CGFloat = 1 {
         didSet {
             if lineFragmentHeightMultiplier != oldValue {
@@ -119,7 +119,7 @@ final class LineController {
         }
     }
 
-    init(line: DocumentLineNode,
+    init(line: LineNode,
          stringView: StringView,
          invisibleCharacterConfiguration: InvisibleCharacterConfiguration,
          highlightService: HighlightService) {

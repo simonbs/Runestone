@@ -18,14 +18,14 @@ final class HighlightService {
         }
     }
 
-    private var highlightedRangeFragmentsPerLine: [DocumentLineNodeID: [HighlightedRangeFragment]] = [:]
+    private var highlightedRangeFragmentsPerLine: [LineNodeID: [HighlightedRangeFragment]] = [:]
     private var highlightedRangeFragmentsPerLineFragment: [LineFragmentID: [HighlightedRangeFragment]] = [:]
 
     init(lineManager: LineManager) {
         self.lineManager = lineManager
     }
 
-    func highlightedRangeFragments(for lineFragment: LineFragment, inLineWithID lineID: DocumentLineNodeID) -> [HighlightedRangeFragment] {
+    func highlightedRangeFragments(for lineFragment: LineFragment, inLineWithID lineID: LineNodeID) -> [HighlightedRangeFragment] {
         if let lineFragmentHighlightRangeFragments = highlightedRangeFragmentsPerLineFragment[lineFragment.id] {
             return lineFragmentHighlightRangeFragments
         } else {
@@ -43,8 +43,8 @@ private extension HighlightService {
         highlightedRangeFragmentsPerLine = createHighlightedRangeFragmentsPerLine()
     }
 
-    private func createHighlightedRangeFragmentsPerLine() -> [DocumentLineNodeID: [HighlightedRangeFragment]] {
-        var result: [DocumentLineNodeID: [HighlightedRangeFragment]] = [:]
+    private func createHighlightedRangeFragmentsPerLine() -> [LineNodeID: [HighlightedRangeFragment]] {
+        var result: [LineNodeID: [HighlightedRangeFragment]] = [:]
         for highlightedRange in highlightedRanges where highlightedRange.range.length > 0 {
             let lines = lineManager.lines(in: highlightedRange.range)
             for line in lines {
@@ -75,7 +75,7 @@ private extension HighlightService {
 
     private func createHighlightedLineFragments(
         for lineFragment: LineFragment,
-        inLineWithID lineID: DocumentLineNodeID
+        inLineWithID lineID: LineNodeID
     ) -> [HighlightedRangeFragment] {
         guard let lineHighlightedRangeFragments = highlightedRangeFragmentsPerLine[lineID] else {
             return []

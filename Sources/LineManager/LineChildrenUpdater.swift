@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import RedBlackTree
 
-final class DocumentLineChildrenUpdater: RedBlackTreeChildrenUpdater<DocumentLineNodeID, Int, DocumentLineNodeData> {
+final class LineChildrenUpdater: RedBlackTreeChildrenUpdater<LineNodeID, Int, LineNodeData> {
     override func updateAfterChangingChildren(of node: Node) -> Bool {
         var totalLineHeight = node.data.lineHeight
         var totalByteCount = node.data.byteCount

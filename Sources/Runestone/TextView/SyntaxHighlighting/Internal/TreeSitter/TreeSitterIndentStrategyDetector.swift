@@ -66,7 +66,7 @@ final class TreeSitterIndentStrategyDetector {
 }
 
 private extension TreeSitterIndentStrategyDetector {
-    private func numberOfSpacesAtBeginning(of line: DocumentLineNode, lineLocation: Int, lowestSpaceCount: Int) -> Int {
+    private func numberOfSpacesAtBeginning(of line: LineNode, lineLocation: Int, lowestSpaceCount: Int) -> Int {
         var range = NSRange(location: lineLocation, length: 1)
         var character = stringView.substring(in: range)
         var spaceCount = 0

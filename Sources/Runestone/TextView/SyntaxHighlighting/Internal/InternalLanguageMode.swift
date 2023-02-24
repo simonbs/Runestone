@@ -12,7 +12,7 @@ protocol InternalLanguageMode: AnyObject {
     func textDidChange(_ change: TextChange) -> LineChangeSet
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode?
-    func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int
+    func currentIndentLevel(of line: LineNode, using indentStrategy: IndentStrategy) -> Int
     func strategyForInsertingLineBreak(
         from startLinePosition: LinePosition,
         to endLinePosition: LinePosition,

@@ -13,7 +13,7 @@ final class LineControllerFactory {
         self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
     }
 
-    func makeLineController(for line: DocumentLineNode) -> LineController {
+    func makeLineController(for line: LineNode) -> LineController {
         LineController(
             line: line,
             stringView: stringView,

@@ -28,7 +28,7 @@ final class PlainTextInternalLanguageMode: InternalLanguageMode {
         nil
     }
 
-    func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {
+    func currentIndentLevel(of line: LineNode, using indentStrategy: IndentStrategy) -> Int {
         0
     }
 

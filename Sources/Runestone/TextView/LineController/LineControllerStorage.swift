@@ -7,7 +7,7 @@ protocol LineControllerStorageDelegate: AnyObject {
 
 final class LineControllerStorage {
     weak var delegate: LineControllerStorageDelegate?
-    subscript(_ lineID: DocumentLineNodeID) -> LineController? {
+    subscript(_ lineID: LineNodeID) -> LineController? {
         lineControllers[lineID]
     }
 
@@ -23,7 +23,7 @@ final class LineControllerStorage {
         lineControllers.count
     }
 
-    private var lineControllers: [DocumentLineNodeID: LineController] = [:]
+    private var lineControllers: [LineNodeID: LineController] = [:]
     private let lineControllerFactory: LineControllerFactory
 
     init(stringView: StringView, lineControllerFactory: LineControllerFactory) {
@@ -31,7 +31,7 @@ final class LineControllerStorage {
         self.lineControllerFactory = lineControllerFactory
     }
 
-    func getOrCreateLineController(for line: DocumentLineNode) -> LineController {
+    func getOrCreateLineController(for line: LineNode) -> LineController {
         if let cachedLineController = lineControllers[line.id] {
             return cachedLineController
         } else {
@@ -42,7 +42,7 @@ final class LineControllerStorage {
         }
     }
 
-    func removeLineController(withID lineID: DocumentLineNodeID) {
+    func removeLineController(withID lineID: LineNodeID) {
         lineControllers.removeValue(forKey: lineID)
     }
 
@@ -50,7 +50,7 @@ final class LineControllerStorage {
         lineControllers.removeAll()
     }
 
-    func removeAllLineControllers(exceptLinesWithID exceptionLineIDs: Set<DocumentLineNodeID>) {
+    func removeAllLineControllers(exceptLinesWithID exceptionLineIDs: Set<LineNodeID>) {
         let allLineIDs = Set(lineControllers.keys)
         let lineIDsToRelease = allLineIDs.subtracting(exceptionLineIDs)
         for lineID in lineIDsToRelease {

@@ -183,7 +183,7 @@ final class IndentController {
 }
 
 extension IndentController {
-    private func range(surrounding lines: [DocumentLineNode]) -> NSRange {
+    private func range(surrounding lines: [LineNode]) -> NSRange {
         let firstLine = lines[0]
         let lastLine = lines[lines.count - 1]
         let location = firstLine.location

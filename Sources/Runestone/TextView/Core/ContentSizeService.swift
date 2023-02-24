@@ -74,8 +74,8 @@ final class ContentSizeService {
 
     private let lineControllerStorage: LineControllerStorage
     private let gutterWidthService: GutterWidthService
-    private var lineIDTrackingWidth: DocumentLineNodeID?
-    private var lineWidths: [DocumentLineNodeID: CGFloat] = [:]
+    private var lineIDTrackingWidth: LineNodeID?
+    private var lineWidths: [LineNodeID: CGFloat] = [:]
     private var longestLineWidth: CGFloat? {
         if let longestLineWidth = _longestLineWidth {
             return longestLineWidth
@@ -151,7 +151,7 @@ final class ContentSizeService {
         _totalLinesHeight = nil
     }
 
-    func removeLine(withID lineID: DocumentLineNodeID) {
+    func removeLine(withID lineID: LineNodeID) {
         lineWidths.removeValue(forKey: lineID)
         if lineID == lineIDTrackingWidth {
             lineIDTrackingWidth = nil
@@ -159,7 +159,7 @@ final class ContentSizeService {
         }
     }
 
-    func setSize(of line: DocumentLineNode, to newSize: CGSize) {
+    func setSize(of line: LineNode, to newSize: CGSize) {
         let lineWidth = newSize.width
         if lineWidths[line.id] != lineWidth {
             lineWidths[line.id] = lineWidth

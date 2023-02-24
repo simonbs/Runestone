@@ -120,8 +120,8 @@ final class LayoutManager {
     let lineSelectionBackgroundView = FlippedView()
     let gutterContainerView = FlippedView()
     private var lineFragmentViewReuseQueue = ViewReuseQueue<LineFragmentID, LineFragmentView>()
-    private var lineNumberLabelReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineNumberView>()
-    private var visibleLineIDs: Set<DocumentLineNodeID> = []
+    private var lineNumberLabelReuseQueue = ViewReuseQueue<LineNodeID, LineNumberView>()
+    private var visibleLineIDs: Set<LineNodeID> = []
     private let gutterBackgroundView = GutterBackgroundView()
     private let gutterSelectionBackgroundView = FlippedView()
     private let lineNumbersContainerView = FlippedView()
@@ -192,7 +192,7 @@ final class LayoutManager {
         layoutIfNeeded()
     }
 
-    func redisplayLines(withIDs lineIDs: Set<DocumentLineNodeID>) {
+    func redisplayLines(withIDs lineIDs: Set<LineNodeID>) {
         for lineID in lineIDs {
             if let lineController = lineControllerStorage[lineID] {
                 lineController.invalidateString()
@@ -385,7 +385,7 @@ extension LayoutManager {
     }
 
     func layoutLines(toLocation location: Int) {
-        var nextLine: DocumentLineNode? = lineManager.firstLine
+        var nextLine: LineNode? = lineManager.firstLine
         let isLocationEndOfString = location >= stringView.string.length
         while let line = nextLine {
             let lineLocation = line.location
@@ -414,7 +414,7 @@ extension LayoutManager {
         let oldVisibleLineFragmentIDs = Set(lineFragmentViewReuseQueue.visibleViews.keys)
         // Layout lines until we have filled the viewport.
         var nextLine = lineManager.line(containingYOffset: insetViewport.minY)
-        var appearedLineIDs: Set<DocumentLineNodeID> = []
+        var appearedLineIDs: Set<LineNodeID> = []
         var appearedLineFragmentIDs: Set<LineFragmentID> = []
         var maxY = insetViewport.minY
         var contentOffsetAdjustmentY: CGFloat = 0
@@ -482,7 +482,7 @@ extension LayoutManager {
         }
     }
 
-    private func layoutLineNumberView(for line: DocumentLineNode) {
+    private func layoutLineNumberView(for line: LineNode) {
         let lineNumberView = lineNumberLabelReuseQueue.dequeueView(forKey: line.id)
         if lineNumberView.superview == nil {
             lineNumbersContainerView.addSubview(lineNumberView)

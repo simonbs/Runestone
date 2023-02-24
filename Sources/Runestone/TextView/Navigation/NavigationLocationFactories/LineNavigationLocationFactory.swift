@@ -33,7 +33,7 @@ struct LineNavigationLocationFactory {
     func location(
         movingFrom location: Int,
         inLineFragmentAt lineFragmentIndex: Int,
-        of line: DocumentLineNode,
+        of line: LineNode,
         offset: Int = 1,
         inDirection direction: TextDirection
     ) -> Int {
@@ -51,7 +51,7 @@ struct LineNavigationLocationFactory {
 }
 
 private extension LineNavigationLocationFactory {
-    private func location(movingFrom location: Int, inLineFragmentAt lineFragmentIndex: Int, of line: DocumentLineNode) -> Int {
+    private func location(movingFrom location: Int, inLineFragmentAt lineFragmentIndex: Int, of line: LineNode) -> Int {
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let destinationLineFragmentNode = lineController.lineFragmentNode(atIndex: lineFragmentIndex)
         let lineLocation = line.location
@@ -63,7 +63,7 @@ private extension LineNavigationLocationFactory {
         return min(preferredLocation, maximumLocation)
     }
 
-    private func location(movingBackwardsFrom location: Int, inLineFragmentAt lineFragmentIndex: Int, of line: DocumentLineNode, offset: Int) -> Int {
+    private func location(movingBackwardsFrom location: Int, inLineFragmentAt lineFragmentIndex: Int, of line: LineNode, offset: Int) -> Int {
         let takeLineCount = min(lineFragmentIndex, offset)
         let remainingOffset = offset - takeLineCount
         guard remainingOffset > 0 else {
@@ -86,7 +86,7 @@ private extension LineNavigationLocationFactory {
         return self.location(movingBackwardsFrom: location, inLineFragmentAt: newLineFragmentIndex, of: previousLine, offset: remainingOffset - 1)
     }
 
-    private func location(movingForwardsFrom location: Int, inLineFragmentAt lineFragmentIndex: Int, of line: DocumentLineNode, offset: Int) -> Int {
+    private func location(movingForwardsFrom location: Int, inLineFragmentAt lineFragmentIndex: Int, of line: LineNode, offset: Int) -> Int {
         let numberOfLineFragments = numberOfLineFragments(in: line)
         let takeLineCount = min(numberOfLineFragments - lineFragmentIndex - 1, offset)
         let remainingOffset = offset - takeLineCount
@@ -108,7 +108,7 @@ private extension LineNavigationLocationFactory {
         return self.location(movingForwardsFrom: location, inLineFragmentAt: 0, of: nextLine, offset: remainingOffset - 1)
     }
 
-    private func numberOfLineFragments(in line: DocumentLineNode) -> Int {
+    private func numberOfLineFragments(in line: LineNode) -> Int {
         lineControllerStorage.getOrCreateLineController(for: line).numberOfLineFragments
     }
 }
