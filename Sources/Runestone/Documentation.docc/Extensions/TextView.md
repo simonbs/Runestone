@@ -7,15 +7,17 @@
 - ``init()``
 - ``init(frame:)``
 - ``init(coder:)``
+- ``scrollableTextView()``
 
 ### Lifecycle
 
 - ``isFlipped``
-- ``didMoveToWindow()``
 - ``layout()``
 - ``layoutSubviews()``
 - ``safeAreaInsetsDidChange()``
 - ``traitCollectionDidChange(_:)``
+- ``viewDidMoveToSuperview()``
+- ``didMoveToWindow()``
 - ``viewDidMoveToWindow()``
 - ``resizeSubviews(withOldSize:)``
 - ``resetCursorRects()``
@@ -147,6 +149,7 @@
 - ``smartInsertDeleteType``
 - ``smartQuotesType``
 - ``text(in:)``
+- ``text(in:)-3lp4v``
 - ``insertText(_:)``
 - ``insertText(_:replacementRange:)``
 - ``insertNewline(_:)``
