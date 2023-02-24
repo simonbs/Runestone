@@ -119,10 +119,12 @@ final class LineController {
         }
     }
 
-    init(line: LineNode,
-         stringView: StringView,
-         invisibleCharacterConfiguration: InvisibleCharacterConfiguration,
-         highlightService: HighlightService) {
+    init(
+        line: LineNode,
+        stringView: StringView,
+        invisibleCharacterConfiguration: InvisibleCharacterConfiguration,
+        highlightService: HighlightService
+    ) {
         self.line = line
         self.stringView = stringView
         self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
@@ -194,6 +196,39 @@ final class LineController {
                 lineFragmentController.markedRange = nil
             }
         }
+    }
+
+    func caretRect(atIndex lineLocalLocation: Int) -> CGRect {
+        for lineFragment in typesetter.lineFragments {
+            if let caretLocation = lineFragment.caretLocation(forLineLocalLocation: lineLocalLocation) {
+                let xPosition = CTLineGetOffsetForStringIndex(lineFragment.line, caretLocation, nil)
+                let yPosition = lineFragment.yPosition + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
+                return CGRect(x: xPosition, y: yPosition, width: Caret.width, height: lineFragment.baseSize.height)
+            }
+        }
+        let yPosition = (estimatedLineFragmentHeight * lineFragmentHeightMultiplier - estimatedLineFragmentHeight) / 2
+        return CGRect(x: 0, y: yPosition, width: Caret.width, height: estimatedLineFragmentHeight)
+    }
+
+    func firstRect(for lineLocalRange: NSRange) -> CGRect {
+        for lineFragment in typesetter.lineFragments {
+            if let caretRange = lineFragment.caretRange(forLineLocalRange: lineLocalRange) {
+                let finalIndex = min(lineFragment.visibleRange.upperBound, caretRange.upperBound)
+                let xStart = CTLineGetOffsetForStringIndex(lineFragment.line, caretRange.location, nil)
+                let xEnd = CTLineGetOffsetForStringIndex(lineFragment.line, finalIndex, nil)
+                let yPosition = lineFragment.yPosition + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
+                return CGRect(x: xStart, y: yPosition, width: xEnd - xStart, height: lineFragment.baseSize.height)
+            }
+        }
+        return CGRect(x: 0, y: 0, width: 0, height: estimatedLineFragmentHeight * lineFragmentHeightMultiplier)
+    }
+
+    func location(closestTo point: CGPoint) -> Int {
+        guard let closestLineFragment = lineFragment(closestTo: point) else {
+            return line.location
+        }
+        let localLocation = min(CTLineGetStringIndexForPosition(closestLineFragment.line, point), line.data.length)
+        return line.location + localLocation
     }
 }
 
@@ -419,42 +454,6 @@ private extension LineController {
             }
         }
         return closestLineFragment
-    }
-}
-
-// MARK: - UITextInput
-extension LineController {
-    func caretRect(atIndex lineLocalLocation: Int) -> CGRect {
-        for lineFragment in typesetter.lineFragments {
-            if let caretLocation = lineFragment.caretLocation(forLineLocalLocation: lineLocalLocation) {
-                let xPosition = CTLineGetOffsetForStringIndex(lineFragment.line, caretLocation, nil)
-                let yPosition = lineFragment.yPosition + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
-                return CGRect(x: xPosition, y: yPosition, width: Caret.width, height: lineFragment.baseSize.height)
-            }
-        }
-        let yPosition = (estimatedLineFragmentHeight * lineFragmentHeightMultiplier - estimatedLineFragmentHeight) / 2
-        return CGRect(x: 0, y: yPosition, width: Caret.width, height: estimatedLineFragmentHeight)
-    }
-
-    func firstRect(for lineLocalRange: NSRange) -> CGRect {
-        for lineFragment in typesetter.lineFragments {
-            if let caretRange = lineFragment.caretRange(forLineLocalRange: lineLocalRange) {
-                let finalIndex = min(lineFragment.visibleRange.upperBound, caretRange.upperBound)
-                let xStart = CTLineGetOffsetForStringIndex(lineFragment.line, caretRange.location, nil)
-                let xEnd = CTLineGetOffsetForStringIndex(lineFragment.line, finalIndex, nil)
-                let yPosition = lineFragment.yPosition + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
-                return CGRect(x: xStart, y: yPosition, width: xEnd - xStart, height: lineFragment.baseSize.height)
-            }
-        }
-        return CGRect(x: 0, y: 0, width: 0, height: estimatedLineFragmentHeight * lineFragmentHeightMultiplier)
-    }
-
-    func closestIndex(to point: CGPoint) -> Int {
-        guard let closestLineFragment = lineFragment(closestTo: point) else {
-            return line.location
-        }
-        let localLocation = min(CTLineGetStringIndexForPosition(closestLineFragment.line, point), line.data.length)
-        return line.location + localLocation
     }
 }
 
