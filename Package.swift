@@ -114,7 +114,7 @@ extension Array where Element == Target {
                 "Byte",
                 "StringView"
             ]),
-            .target(name: "TestTreeSitterLanguages", cSettings: [
+            .target(name: "TestTreeSitterLanguages", path: "Tests/TestTreeSitterLanguages", cSettings: [
                 .unsafeFlags(["-w"])
             ])
         ]
