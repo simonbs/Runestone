@@ -286,9 +286,11 @@ Donec laoreet, massa sed commodo tincidunt, dui neque ullamcorper sapien, laoree
         }
         return TextInputStringTokenizer(
             textInput: textView,
-            stringView: stringView,
-            lineManager: lineManager,
-            lineControllerStorage: lineControllerStorage
+            stringTokenizer: StringTokenizer(
+                stringView: stringView,
+                lineManager: lineManager,
+                lineControllerStorage: lineControllerStorage
+            )
         )
     }
 }
