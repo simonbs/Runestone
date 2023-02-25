@@ -677,8 +677,7 @@ private extension TextView {
 // MARK: - Caret
 private extension TextView {
     private func updateCaretVisibility() {
-//        textViewController.caretLayoutManager.showCaret = isWindowKey && isFirstResponder && selectedRange().length == 0
-        textViewController.caretLayoutManager.showCaret = true
+        textViewController.caretLayoutManager.showCaret = isWindowKey && isFirstResponder && selectedRange().length == 0
     }
 }
 
