@@ -11,6 +11,7 @@ public final class StringView {
             internalString = NSMutableString(string: newValue)
         }
     }
+    
     private var internalString: NSMutableString {
         didSet {
             if internalString != oldValue {
@@ -27,7 +28,6 @@ public final class StringView {
             return swiftString
         }
     }
-
     private var _swiftString: String?
 
     public init(string: NSMutableString = NSMutableString()) {

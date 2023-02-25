@@ -5,20 +5,6 @@ import MultiPlatform
 import StringView
 
 final class CaretLayoutManager {
-    var stringView: StringView {
-        didSet {
-            if stringView !== oldValue {
-                setNeedsLayout()
-            }
-        }
-    }
-    var lineManager: LineManager {
-        didSet {
-            if lineManager !== oldValue {
-                setNeedsLayout()
-            }
-        }
-    }
     var textContainerInset: MultiPlatformEdgeInsets {
         didSet {
             if textContainerInset != oldValue {
@@ -57,6 +43,8 @@ final class CaretLayoutManager {
         }
     }
 
+    private let stringView: StringView
+    private let lineManager: LineManager
     private let lineControllerStorage: LineControllerStorage
     private let caretView = CaretView()
     private var needsLayout = false

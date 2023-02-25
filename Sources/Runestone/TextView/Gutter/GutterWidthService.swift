@@ -5,13 +5,7 @@ import LineManager
 import MultiPlatform
 
 final class GutterWidthService {
-    var lineManager: LineManager {
-        didSet {
-            if lineManager !== oldValue {
-                _lineNumberWidth = nil
-            }
-        }
-    }
+    let lineManager: LineManager
     var font = MultiPlatformFont.monospacedSystemFont(ofSize: 14, weight: .regular) {
         didSet {
             if font != oldValue {

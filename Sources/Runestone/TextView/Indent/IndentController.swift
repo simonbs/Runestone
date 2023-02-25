@@ -18,8 +18,6 @@ final class IndentController {
     #endif
 
     weak var delegate: IndentControllerDelegate?
-    var stringView: StringView
-    var lineManager: LineManager
     var languageMode: InternalLanguageMode
     var indentFont: MultiPlatformFont {
         didSet {
@@ -53,6 +51,8 @@ final class IndentController {
         }
     }
 
+    private let stringView: StringView
+    private let lineManager: LineManager
     private var _tabWidth: CGFloat?
 
     init(

@@ -31,8 +31,7 @@ final class StatefulLineNavigationLocationFactory {
         }
     }
 
-    var lineManager: LineManager
-
+    private let lineManager: LineManager
     private let lineControllerStorage: LineControllerStorage
     private var previousOperation: MoveOperation?
     private var lineNavigationLocationFactory: LineNavigationLocationFactory {

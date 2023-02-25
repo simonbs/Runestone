@@ -12,20 +12,6 @@ final class TextSelectionLayoutManager {
             }
         }
     }
-    var stringView: StringView {
-        didSet {
-            if stringView !== oldValue {
-                updateSelectedRectangles()
-            }
-        }
-    }
-    var lineManager: LineManager {
-        didSet {
-            if lineManager !== oldValue {
-                updateSelectedRectangles()
-            }
-        }
-    }
     var textContainerInset: MultiPlatformEdgeInsets = .zero {
         didSet {
             if textContainerInset != oldValue {
@@ -50,6 +36,8 @@ final class TextSelectionLayoutManager {
         }
     }
 
+    private let stringView: StringView
+    private let lineManager: LineManager
     private let lineControllerStorage: LineControllerStorage
     private let contentSizeService: ContentSizeService
     private weak var containerView: MultiPlatformView?

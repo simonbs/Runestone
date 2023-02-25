@@ -6,15 +6,6 @@ import LineManager
 import Symbol
 
 final class SelectionService {
-    var stringView: StringView
-    var lineManager: LineManager {
-        didSet {
-            if lineManager !== oldValue {
-                lineNavigationLocationService.lineManager = lineManager
-            }
-        }
-    }
-
     private struct BracketPair {
         let opening: String
         let closing: String
@@ -29,6 +20,8 @@ final class SelectionService {
         }
     }
 
+    private let stringView: StringView
+    private let lineManager: LineManager
     private let lineControllerStorage: LineControllerStorage
     private var anchoringDirection: TextDirection?
     private var selectionOrigin: Int?

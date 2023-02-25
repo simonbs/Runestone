@@ -35,15 +35,6 @@ final class ContentSizeService {
         }
     }
     let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
-    var lineManager: LineManager {
-        didSet {
-            if lineManager !== oldValue {
-                lineWidths = [:]
-                invalidateContentSize()
-                storeWidthOfInitiallyLongestLine()
-            }
-        }
-    }
     var contentWidth: CGFloat {
         let minimumWidth = containerSize.width - safeAreaInset.left - safeAreaInset.right
         if isLineWrappingEnabled {
@@ -71,6 +62,7 @@ final class ContentSizeService {
     }
     @Published private(set) var isContentSizeInvalid = false
 
+    private let lineManager: LineManager
     private let lineControllerStorage: LineControllerStorage
     private let gutterWidthService: GutterWidthService
     private var lineIDTrackingWidth: LineNodeID?
@@ -143,6 +135,12 @@ final class ContentSizeService {
         self.lineControllerStorage = lineControllerStorage
         self.gutterWidthService = gutterWidthService
         self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
+    }
+
+    func reset() {
+        lineWidths = [:]
+        invalidateContentSize()
+        storeWidthOfInitiallyLongestLine()
     }
 
     func invalidateContentSize() {

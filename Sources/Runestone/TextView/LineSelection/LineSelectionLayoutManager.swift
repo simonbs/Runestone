@@ -5,20 +5,6 @@ import RangeHelpers
 import StringView
 
 final class LineSelectionLayoutManager {
-    var stringView: StringView {
-        didSet {
-            if stringView !== oldValue {
-                setNeedsLayout()
-            }
-        }
-    }
-    var lineManager: LineManager {
-        didSet {
-            if lineManager !== oldValue {
-                setNeedsLayout()
-            }
-        }
-    }
     var showLineSelection = false {
         didSet {
             if showLineSelection != oldValue {
@@ -64,6 +50,8 @@ final class LineSelectionLayoutManager {
         }
     }
 
+    private let stringView: StringView
+    private let lineManager: LineManager
     private let lineControllerStorage: LineControllerStorage
     private weak var containerView: MultiPlatformView?
     private let lineSelectionView = MultiPlatformView()

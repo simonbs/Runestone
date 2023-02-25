@@ -11,18 +11,11 @@ final class LineControllerStorage {
         lineControllers[lineID]
     }
 
-    var stringView: StringView {
-        didSet {
-            if stringView !== oldValue {
-                lineControllers.removeAll()
-            }
-        }
-    }
-
     fileprivate var numberOfLineControllers: Int {
         lineControllers.count
     }
 
+    private let stringView: StringView
     private var lineControllers: [LineNodeID: LineController] = [:]
     private let lineControllerFactory: LineControllerFactory
 

@@ -6,7 +6,6 @@ import StringView
 import Symbol
 
 public final class LineManager {
-    public var stringView: StringView
     public var lineCount: Int {
         lineTree.nodeTotalCount
     }
@@ -26,7 +25,8 @@ public final class LineManager {
     // that the reference does not necessarily point to the longest line as the document is edited.
     public private(set) weak var initialLongestLine: LineNode?
 
-    private let lineTree: LineTree
+    private(set) var stringView: StringView
+    private(set) var lineTree: LineTree
 
     public init(stringView: StringView) {
         self.stringView = stringView
@@ -34,6 +34,13 @@ public final class LineManager {
         lineTree = LineTree(minimumValue: 0, rootValue: 0, rootData: rootData)
         lineTree.childrenUpdater = LineChildrenUpdater()
         rootData.node = lineTree.root
+    }
+
+    public func copy(from other: LineManager) {
+        stringView = other.stringView
+        lineTree = other.lineTree
+        initialLongestLine = other.initialLongestLine
+        estimatedLineHeight = other.estimatedLineHeight
     }
 
     public func rebuild() {

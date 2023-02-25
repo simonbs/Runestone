@@ -2,8 +2,7 @@ import LineManager
 import StringView
 
 final class LineControllerFactory {
-    var stringView: StringView
-
+    private let stringView: StringView
     private let highlightService: HighlightService
     private let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
 

@@ -5,9 +5,8 @@ import StringView
 import Symbol
 
 final class StringTokenizer {
-    var lineManager: LineManager
-    var stringView: StringView
-
+    private let stringView: StringView
+    private let lineManager: LineManager
     private let lineControllerStorage: LineControllerStorage
     private var newlineCharacters: [Character] {
         [Symbol.Character.lineFeed, Symbol.Character.carriageReturn, Symbol.Character.carriageReturnLineFeed]

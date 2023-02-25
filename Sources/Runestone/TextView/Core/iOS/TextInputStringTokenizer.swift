@@ -4,23 +4,8 @@ import StringView
 import UIKit
 
 final class TextInputStringTokenizer: UITextInputStringTokenizer {
-    var lineManager: LineManager {
-        get {
-            stringTokenizer.lineManager
-        }
-        set {
-            stringTokenizer.lineManager = newValue
-        }
-    }
-    var stringView: StringView {
-        get {
-            stringTokenizer.stringView
-        }
-        set {
-            stringTokenizer.stringView = newValue
-        }
-    }
-
+    private let stringView: StringView
+    private let lineManager: LineManager
     private let stringTokenizer: StringTokenizer
 
     init(

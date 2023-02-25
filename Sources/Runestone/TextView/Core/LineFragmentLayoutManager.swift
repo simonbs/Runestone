@@ -11,20 +11,6 @@ protocol LineFragmentLayoutManagerDelegate: AnyObject {
 
 final class LineFragmentLayoutManager {
     weak var delegate: LineFragmentLayoutManagerDelegate?
-    var stringView: StringView {
-        didSet {
-            if stringView !== oldValue {
-                setNeedsLayout()
-            }
-        }
-    }
-    var lineManager: LineManager {
-        didSet {
-            if lineManager !== oldValue {
-                setNeedsLayout()
-            }
-        }
-    }
     var viewport: CGRect = .zero {
         didSet {
             if viewport != oldValue {
@@ -55,6 +41,8 @@ final class LineFragmentLayoutManager {
     }
     private(set) var visibleLineIDs: Set<LineNodeID> = []
 
+    private let stringView: StringView
+    private let lineManager: LineManager
     private let lineControllerStorage: LineControllerStorage
     private let contentSizeService: ContentSizeService
     private weak var containerView: MultiPlatformView?

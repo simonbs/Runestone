@@ -100,6 +100,7 @@ final class TextViewController {
             if nsString != stringView.string {
                 stringView.string = nsString
                 languageMode.parse(nsString)
+                lineControllerStorage.removeAllLineControllers()
                 lineManager.rebuild()
                 if let oldSelectedRange = selectedRange {
                     #if os(iOS)
@@ -110,8 +111,9 @@ final class TextViewController {
                     textView.inputDelegate?.selectionDidChange(textView)
                     #endif
                 }
-                contentSizeService.invalidateContentSize()
+                contentSizeService.reset()
                 gutterWidthService.invalidateLineNumberWidth()
+                highlightService.invalidateHighlightedRangeFragments()
                 invalidateLines()
                 lineFragmentLayoutManager.setNeedsLayout()
                 lineFragmentLayoutManager.layoutIfNeeded()
@@ -130,43 +132,9 @@ final class TextViewController {
         }
     }
 
-    private(set) var stringView = StringView() {
-        didSet {
-            if stringView !== oldValue {
-                lineManager.stringView = stringView
-                lineControllerFactory.stringView = stringView
-                lineControllerStorage.stringView = stringView
-                lineFragmentLayoutManager.stringView = stringView
-                lineSelectionLayoutManager.stringView = stringView
-                indentController.stringView = stringView
-                navigationService.stringView = stringView
-                #if os(macOS)
-                selectionService.stringView = stringView
-                textSelectionLayoutManager.stringView = stringView
-                caretLayoutManager.stringView = stringView
-                #endif
-            }
-        }
-    }
+    let stringView = StringView()
+    let lineManager: LineManager
     let invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
-    private(set) var lineManager: LineManager {
-        didSet {
-            if lineManager !== oldValue {
-                lineFragmentLayoutManager.lineManager = lineManager
-                lineSelectionLayoutManager.lineManager = lineManager
-                indentController.lineManager = lineManager
-                gutterWidthService.lineManager = lineManager
-                contentSizeService.lineManager = lineManager
-                highlightService.lineManager = lineManager
-                navigationService.lineManager = lineManager
-                #if os(macOS)
-                selectionService.lineManager = lineManager
-                textSelectionLayoutManager.lineManager = lineManager
-                caretLayoutManager.lineManager = lineManager
-                #endif
-            }
-        }
-    }
     let highlightService: HighlightService
     let lineControllerFactory: LineControllerFactory
     let lineControllerStorage: LineControllerStorage
@@ -624,14 +592,15 @@ final class TextViewController {
     func setState(_ state: TextViewState, addUndoAction: Bool = false) {
         let oldText = stringView.string
         let newText = state.stringView.string
-        stringView = state.stringView
+        stringView.string = state.stringView.string
         theme = state.theme
         languageMode = state.languageMode
         lineControllerStorage.removeAllLineControllers()
-        lineManager = state.lineManager
+        lineManager.copy(from: state.lineManager)
         lineManager.estimatedLineHeight = estimatedLineHeight
-        contentSizeService.invalidateContentSize()
+        contentSizeService.reset()
         gutterWidthService.invalidateLineNumberWidth()
+        highlightService.invalidateHighlightedRangeFragments()
         if addUndoAction {
             if newText != oldText {
                 let newRange = NSRange(location: 0, length: newText.length)

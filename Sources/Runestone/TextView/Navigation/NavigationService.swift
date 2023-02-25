@@ -2,15 +2,8 @@ import LineManager
 import StringView
 
 final class NavigationService {
-    var stringView: StringView
-    var lineManager: LineManager {
-        didSet {
-            if lineManager !== oldValue {
-                lineNavigationLocationService.lineManager = lineManager
-            }
-        }
-    }
-
+    private let stringView: StringView
+    private let lineManager: LineManager
     private let lineControllerStorage: LineControllerStorage
     private var stringTokenizer: StringTokenizer {
         StringTokenizer(stringView: stringView, lineManager: lineManager, lineControllerStorage: lineControllerStorage)

@@ -3,13 +3,7 @@ import LineManager
 import RangeHelpers
 
 final class HighlightService {
-    var lineManager: LineManager {
-        didSet {
-            if lineManager !== oldValue {
-                invalidateHighlightedRangeFragments()
-            }
-        }
-    }
+    let lineManager: LineManager
     var highlightedRanges: [HighlightedRange] = [] {
         didSet {
             if highlightedRanges != oldValue {
@@ -34,15 +28,15 @@ final class HighlightService {
             return highlightedLineFragments
         }
     }
-}
 
-private extension HighlightService {
-    private func invalidateHighlightedRangeFragments() {
+    func invalidateHighlightedRangeFragments() {
         highlightedRangeFragmentsPerLine.removeAll()
         highlightedRangeFragmentsPerLineFragment.removeAll()
         highlightedRangeFragmentsPerLine = createHighlightedRangeFragmentsPerLine()
     }
+}
 
+private extension HighlightService {
     private func createHighlightedRangeFragmentsPerLine() -> [LineNodeID: [HighlightedRangeFragment]] {
         var result: [LineNodeID: [HighlightedRangeFragment]] = [:]
         for highlightedRange in highlightedRanges where highlightedRange.range.length > 0 {
