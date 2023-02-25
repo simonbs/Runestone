@@ -14,16 +14,27 @@ final class NavigationService {
     private var wordNavigationLocationService: WordNavigationLocationFactory {
         WordNavigationLocationFactory(stringTokenizer: stringTokenizer)
     }
-    private var lineNavigationLocationService: StatefulLineNavigationLocationFactory
+    #if os(macOS)
+    private let lineNavigationLocationService: StatefulLineNavigationLocationFactory
+    #else
+    private let lineNavigationLocationService: LineNavigationLocationFactory
+    #endif
 
     init(stringView: StringView, lineManager: LineManager, lineControllerStorage: LineControllerStorage) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
+        #if os(macOS)
         self.lineNavigationLocationService = StatefulLineNavigationLocationFactory(
             lineManager: lineManager,
             lineControllerStorage: lineControllerStorage
         )
+        #else
+        self.lineNavigationLocationService = LineNavigationLocationFactory(
+            lineManager: lineManager,
+            lineControllerStorage: lineControllerStorage
+        )
+        #endif
     }
 
     func location(movingFrom location: Int, byCharacterCount offset: Int, inDirection direction: TextDirection) -> Int {
@@ -43,6 +54,8 @@ final class NavigationService {
     }
 
     func resetPreviousLineNavigationOperation() {
+        #if os(macOS)
         lineNavigationLocationService.reset()
+        #endif
     }
 }
