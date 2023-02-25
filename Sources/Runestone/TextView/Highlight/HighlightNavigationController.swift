@@ -1,13 +1,13 @@
 import Foundation
 
-protocol HighlightNavigationControllerDelegate: AnyObject {
+protocol HighlightedRangeNavigationControllerDelegate: AnyObject {
     func highlightNavigationController(
-        _ controller: HighlightNavigationController,
-        shouldNavigateTo highlightNavigationRange: HighlightNavigationRange
+        _ controller: HighlightedRangeNavigationController,
+        shouldNavigateTo destination: HighlightedRangeNavigationDestination
     )
 }
 
-struct HighlightNavigationRange {
+struct HighlightedRangeNavigationDestination {
     enum LoopMode {
         case disabled
         case previousGoesToLast
@@ -23,64 +23,64 @@ struct HighlightNavigationRange {
     }
 }
 
-final class HighlightNavigationController {
-    weak var delegate: HighlightNavigationControllerDelegate?
+final class HighlightedRangeNavigationController {
+    weak var delegate: HighlightedRangeNavigationControllerDelegate?
     var selectedRange: NSRange?
     var highlightedRanges: [HighlightedRange] = []
     var loopRanges = false
 
-    private var previousNavigationRange: HighlightNavigationRange? {
+    private var previousNavigationDestination: HighlightedRangeNavigationDestination? {
         if let selectedRange = selectedRange {
             let reversedRanges = highlightedRanges.reversed()
             if let nextRange = reversedRanges.first(where: { $0.range.upperBound <= selectedRange.lowerBound }) {
-                return HighlightNavigationRange(range: nextRange.range)
+                return HighlightedRangeNavigationDestination(range: nextRange.range)
             } else if loopRanges, let firstRange = reversedRanges.first {
-                return HighlightNavigationRange(range: firstRange.range, loopMode: .previousGoesToLast)
+                return HighlightedRangeNavigationDestination(range: firstRange.range, loopMode: .previousGoesToLast)
             } else {
                 return nil
             }
         } else if let lastRange = highlightedRanges.last {
-            return HighlightNavigationRange(range: lastRange.range)
+            return HighlightedRangeNavigationDestination(range: lastRange.range)
         } else {
             return nil
         }
     }
-    private var nextNavigationRange: HighlightNavigationRange? {
+    private var nextNavigationDestination: HighlightedRangeNavigationDestination? {
         if let selectedRange = selectedRange {
             if let nextRange = highlightedRanges.first(where: { $0.range.lowerBound >= selectedRange.upperBound }) {
-                return HighlightNavigationRange(range: nextRange.range)
+                return HighlightedRangeNavigationDestination(range: nextRange.range)
             } else if loopRanges, let firstRange = highlightedRanges.first {
-                return HighlightNavigationRange(range: firstRange.range, loopMode: .nextGoesToFirst)
+                return HighlightedRangeNavigationDestination(range: firstRange.range, loopMode: .nextGoesToFirst)
             } else {
                 return nil
             }
         } else if let firstRange = highlightedRanges.first {
-            return HighlightNavigationRange(range: firstRange.range)
+            return HighlightedRangeNavigationDestination(range: firstRange.range)
         } else {
             return nil
         }
     }
 
     func selectPreviousRange() {
-        if let previousNavigationRange = previousNavigationRange {
-            selectedRange = previousNavigationRange.range
-            delegate?.highlightNavigationController(self, shouldNavigateTo: previousNavigationRange)
+        if let previousNavigationDestination {
+            selectedRange = previousNavigationDestination.range
+            delegate?.highlightNavigationController(self, shouldNavigateTo: previousNavigationDestination)
         }
     }
 
     func selectNextRange() {
-        if let nextNavigationRange = nextNavigationRange {
-            selectedRange = nextNavigationRange.range
-            delegate?.highlightNavigationController(self, shouldNavigateTo: nextNavigationRange)
+        if let nextNavigationDestination {
+            selectedRange = nextNavigationDestination.range
+            delegate?.highlightNavigationController(self, shouldNavigateTo: nextNavigationDestination)
         }
     }
 
     func selectRange(at index: Int) {
         if index >= 0 && index < highlightedRanges.count {
             let highlightedRange = highlightedRanges[index]
-            let navigationRange = HighlightNavigationRange(range: highlightedRange.range)
+            let destination = HighlightedRangeNavigationDestination(range: highlightedRange.range)
             selectedRange = highlightedRange.range
-            delegate?.highlightNavigationController(self, shouldNavigateTo: navigationRange)
+            delegate?.highlightNavigationController(self, shouldNavigateTo: destination)
         } else {
             let count = highlightedRanges.count
             let countString = count == 1 ? "There is \(count) highlighted range" : "There are \(count) highlighted ranges"

@@ -45,10 +45,9 @@ private extension TextViewController {
         let adjustedContentInset = scrollView?.adjustedContentInset ?? .zero
         var viewport = CGRect(origin: contentOffset, size: textView.frame.size)
         viewport.origin.y += adjustedContentInset.top + textContainerInset.top
-        viewport.origin.x += adjustedContentInset.left + gutterWidth + textContainerInset.left
+        viewport.origin.x += adjustedContentInset.left + textContainerInset.left
         viewport.size.width -= adjustedContentInset.left
         + adjustedContentInset.right
-        + gutterWidth
         + textContainerInset.left
         + textContainerInset.right
         viewport.size.height -= adjustedContentInset.top

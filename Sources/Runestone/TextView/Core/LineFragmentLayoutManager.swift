@@ -138,7 +138,7 @@ extension LineFragmentLayoutManager {
                 let lineFragment = lineFragmentController.lineFragment
                 var lineFragmentFrame: CGRect = .zero
                 appearedLineFragmentIDs.insert(lineFragment.id)
-//                lineFragmentController.highlightedRangeFragments = highlightService.highlightedRangeFragments(
+//                lineFragmentController.highlightedRangeFragments = highlightedRangeService.highlightedRangeFragments(
 //                    for: lineFragment,
 //                    inLineWithID: line.id
 //                )
@@ -181,7 +181,7 @@ extension LineFragmentLayoutManager {
     ) {
         let lineFragment = lineFragmentController.lineFragment
         let lineFragmentView = lineFragmentViewReuseQueue.dequeueView(forKey: lineFragment.id)
-        lineFragmentView.layer?.zPosition = 50
+        lineFragmentView.layerIfLoaded?.zPosition = 50
         if lineFragmentView.superview == nil {
             containerView?.addSubview(lineFragmentView)
         }

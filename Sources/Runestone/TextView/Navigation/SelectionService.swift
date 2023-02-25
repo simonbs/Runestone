@@ -25,7 +25,6 @@ final class SelectionService {
     private let lineControllerStorage: LineControllerStorage
     private var anchoringDirection: TextDirection?
     private var selectionOrigin: Int?
-
     private var stringTokenizer: StringTokenizer {
         StringTokenizer(stringView: stringView, lineManager: lineManager, lineControllerStorage: lineControllerStorage)
     }

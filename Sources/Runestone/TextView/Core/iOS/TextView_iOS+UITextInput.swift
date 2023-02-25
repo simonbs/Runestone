@@ -244,14 +244,14 @@ public extension TextView {
             lineControllerStorage: textViewController.lineControllerStorage,
             textContainerInset: textContainerInset
         )
-        let selectionRectFactory = SelectionRectFactory(
+        let textSelectionRectFactory = TextSelectionRectFactory(
             lineManager: textViewController.lineManager,
             contentSizeService: textViewController.contentSizeService,
             caretRectFactory: caretRectFactory,
             textContainerInset: textContainerInset,
             lineHeightMultiplier: lineHeightMultiplier
         )
-        return selectionRectFactory.selectionRects(in: indexedRange.range)
+        return textSelectionRectFactory.selectionRects(in: indexedRange.range)
     }
 }
 

@@ -6,8 +6,20 @@ import UIKit
 public typealias MultiPlatformView = UIView
 #endif
 
+#if os(iOS)
+public extension UIView {
+    var layerIfLoaded: CALayer? {
+        layer
+    }
+}
+#endif
+
 #if os(macOS)
 public extension NSView {
+    var layerIfLoaded: CALayer? {
+        layer
+    }
+
     var backgroundColor: NSColor? {
         get {
             if let backgroundColor = layer?.backgroundColor {

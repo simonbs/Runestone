@@ -3,12 +3,16 @@ import StringView
 
 final class LineControllerFactory {
     private let stringView: StringView
-    private let highlightService: HighlightService
+    private let highlightedRangeService: HighlightedRangeService
     private let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
 
-    init(stringView: StringView, highlightService: HighlightService, invisibleCharacterConfiguration: InvisibleCharacterConfiguration) {
+    init(
+        stringView: StringView,
+        highlightedRangeService: HighlightedRangeService,
+        invisibleCharacterConfiguration: InvisibleCharacterConfiguration
+    ) {
         self.stringView = stringView
-        self.highlightService = highlightService
+        self.highlightedRangeService = highlightedRangeService
         self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
     }
 
@@ -17,7 +21,7 @@ final class LineControllerFactory {
             line: line,
             stringView: stringView,
             invisibleCharacterConfiguration: invisibleCharacterConfiguration,
-            highlightService: highlightService
+            highlightedRangeService: highlightedRangeService
         )
     }
 }

@@ -62,7 +62,7 @@ final class LineSelectionLayoutManager {
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
         self.containerView = containerView
-        lineSelectionView.layer?.zPosition = -1000
+        lineSelectionView.layerIfLoaded?.zPosition = -1000
     }
 
     func setNeedsLayout() {

@@ -4,17 +4,10 @@ import StringView
 import UIKit
 
 final class TextInputStringTokenizer: UITextInputStringTokenizer {
-    private let stringView: StringView
-    private let lineManager: LineManager
     private let stringTokenizer: StringTokenizer
 
-    init(
-        textInput: UIResponder & UITextInput,
-        stringView: StringView,
-        lineManager: LineManager,
-        lineControllerStorage: LineControllerStorage
-    ) {
-        self.stringTokenizer = StringTokenizer(stringView: stringView, lineManager: lineManager, lineControllerStorage: lineControllerStorage)
+    init(textInput: UIResponder & UITextInput, stringTokenizer: StringTokenizer) {
+        self.stringTokenizer = stringTokenizer
         super.init(textInput: textInput)
     }
 

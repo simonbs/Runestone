@@ -2,7 +2,7 @@ import Foundation
 import LineManager
 import RangeHelpers
 
-final class HighlightService {
+final class HighlightedRangeService {
     let lineManager: LineManager
     var highlightedRanges: [HighlightedRange] = [] {
         didSet {
@@ -36,7 +36,7 @@ final class HighlightService {
     }
 }
 
-private extension HighlightService {
+private extension HighlightedRangeService {
     private func createHighlightedRangeFragmentsPerLine() -> [LineNodeID: [HighlightedRangeFragment]] {
         var result: [LineNodeID: [HighlightedRangeFragment]] = [:]
         for highlightedRange in highlightedRanges where highlightedRange.range.length > 0 {

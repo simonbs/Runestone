@@ -271,10 +271,10 @@ Donec laoreet, massa sed commodo tincidunt, dui neque ullamcorper sapien, laoree
         let invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
         let lineManager = LineManager(stringView: stringView)
         lineManager.rebuild()
-        let highlightService = HighlightService(lineManager: lineManager)
+        let highlightedRangeService = HighlightedRangeService(lineManager: lineManager)
         let lineControllerFactory = LineControllerFactory(
             stringView: stringView,
-            highlightService: highlightService,
+            highlightedRangeService: highlightedRangeService,
             invisibleCharacterConfiguration: invisibleCharacterConfiguration
         )
         let lineControllerStorage = LineControllerStorage(stringView: stringView, lineControllerFactory: lineControllerFactory)

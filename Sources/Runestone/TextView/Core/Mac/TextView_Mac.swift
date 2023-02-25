@@ -279,7 +279,7 @@ open class TextView: NSView, NSMenuItemValidation {
     }
     /// Width of the gutter.
     public var gutterWidth: CGFloat {
-        textViewController.gutterWidth
+        textViewController.gutterWidthService.gutterWidth
     }
     /// The line-height is multiplied with the value.
     public var lineHeightMultiplier: CGFloat {
@@ -352,7 +352,7 @@ open class TextView: NSView, NSMenuItemValidation {
     ///
     /// This will return nil if the line is no longer available. The value will not be kept updated as the text is changed. The value can be used to determine if a document contains a very long line in which case the performance may be degraded when editing the line.
     public var lengthOfInitallyLongestLine: Int? {
-        textViewController.lengthOfInitallyLongestLine
+        textViewController.lineManager.initialLongestLine?.data.totalLength
     }
     /// Ranges in the text to be highlighted. The color defined by the background will be drawen behind the text.
     public var highlightedRanges: [HighlightedRange] {

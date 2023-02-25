@@ -364,7 +364,7 @@ open class TextView: UIScrollView {
     }
     /// Width of the gutter.
     public var gutterWidth: CGFloat {
-        textViewController.gutterWidth
+        textViewController.gutterWidthService.gutterWidth
     }
     /// The line-height is multiplied with the value.
     public var lineHeightMultiplier: CGFloat {
@@ -437,7 +437,7 @@ open class TextView: UIScrollView {
     ///
     /// This will return nil if the line is no longer available. The value will not be kept updated as the text is changed. The value can be used to determine if a document contains a very long line in which case the performance may be degraded when editing the line.
     public var lengthOfInitallyLongestLine: Int? {
-        textViewController.lengthOfInitallyLongestLine
+        textViewController.lineManager.initialLongestLine?.data.totalLength
     }
     /// Ranges in the text to be highlighted. The color defined by the background will be drawen behind the text.
     public var highlightedRanges: [HighlightedRange] {
@@ -510,9 +510,11 @@ open class TextView: UIScrollView {
     private(set) lazy var textViewController = TextViewController(textView: self)
     private(set) lazy var customTokenizer = TextInputStringTokenizer(
         textInput: self,
-        stringView: textViewController.stringView,
-        lineManager: textViewController.lineManager,
-        lineControllerStorage: textViewController.lineControllerStorage
+        stringTokenizer: StringTokenizer(
+            stringView: textViewController.stringView,
+            lineManager: textViewController.lineManager,
+            lineControllerStorage: textViewController.lineControllerStorage
+        )
     )
 
     var isRestoringPreviouslyDeletedText = false
@@ -567,7 +569,7 @@ open class TextView: UIScrollView {
         textSearchingHelper.textView = self
         editMenuController.delegate = self
         editMenuController.setupEditMenu(in: self)
-        textViewController.highlightNavigationController.delegate = self
+        textViewController.highlightedRangeNavigationController.delegate = self
     }
 
     /// The initializer has not been implemented.
@@ -595,8 +597,6 @@ open class TextView: UIScrollView {
         textViewController.handleContentSizeUpdateIfNeeded()
         textViewController.viewport = CGRect(origin: contentOffset, size: frame.size)
         textViewController.lineFragmentLayoutManager.layoutIfNeeded()
-//        textViewController.layoutIfNeeded()
-//        textViewController.lineFragmentLayoutManager.bringGutterToFront()
         // Setting the frame of the text selection view fixes a bug where UIKit assigns an incorrect
         // Y-position to the selection rects the first time the user selects text.
         // After the initial selection the rectangles would be placed correctly.
@@ -912,14 +912,14 @@ open class TextView: UIScrollView {
     /// Selects a highlighted range behind the selected range if possible.
     public func selectPreviousHighlightedRange() {
         inputDelegate?.selectionWillChange(self)
-        textViewController.highlightNavigationController.selectPreviousRange()
+        textViewController.highlightedRangeNavigationController.selectPreviousRange()
         inputDelegate?.selectionDidChange(self)
     }
 
     /// Selects a highlighted range after the selected range if possible.
     public func selectNextHighlightedRange() {
         inputDelegate?.selectionWillChange(self)
-        textViewController.highlightNavigationController.selectNextRange()
+        textViewController.highlightedRangeNavigationController.selectNextRange()
         inputDelegate?.selectionDidChange(self)
     }
 
@@ -927,7 +927,7 @@ open class TextView: UIScrollView {
     /// - Parameter index: Index of highlighted range to select.
     public func selectHighlightedRange(at index: Int) {
         inputDelegate?.selectionWillChange(self)
-        textViewController.highlightNavigationController.selectRange(at: index)
+        textViewController.highlightedRangeNavigationController.selectRange(at: index)
         inputDelegate?.selectionDidChange(self)
     }
 
@@ -1305,20 +1305,19 @@ extension TextView: EditMenuControllerDelegate {
     }
 }
 
-// MARK: - HighlightNavigationControllerDelegate
-extension TextView: HighlightNavigationControllerDelegate {
+// MARK: - HighlightedRangeNavigationControllerDelegate
+extension TextView: HighlightedRangeNavigationControllerDelegate {
     func highlightNavigationController(
-        _ controller: HighlightNavigationController,
-        shouldNavigateTo highlightNavigationRange: HighlightNavigationRange
+        _ controller: HighlightedRangeNavigationController,
+        shouldNavigateTo destination: HighlightedRangeNavigationDestination
     ) {
-        let range = highlightNavigationRange.range
-        scrollRangeToVisible(range)
-        selectedTextRange = IndexedRange(range)
+        scrollRangeToVisible(destination.range)
+        selectedTextRange = IndexedRange(destination.range)
         _ = becomeFirstResponder()
         if showMenuAfterNavigatingToHighlightedRange {
-            editMenuController.presentEditMenu(from: self, forTextIn: range)
+            editMenuController.presentEditMenu(from: self, forTextIn: destination.range)
         }
-        switch highlightNavigationRange.loopMode {
+        switch destination.loopMode {
         case .previousGoesToLast:
             editorDelegate?.textViewDidLoopToLastHighlightedRange(self)
         case .nextGoesToFirst:

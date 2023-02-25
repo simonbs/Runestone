@@ -96,7 +96,7 @@ final class LineController {
 
     private let stringView: StringView
     private let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
-    private let highlightService: HighlightService
+    private let highlightedRangeService: HighlightedRangeService
     private let typesetter: LineTypesetter
     private var cachedSyntaxHighlighter: LineSyntaxHighlighter?
     private var lineFragmentControllers: [LineFragmentID: LineFragmentController] = [:]
@@ -123,12 +123,12 @@ final class LineController {
         line: LineNode,
         stringView: StringView,
         invisibleCharacterConfiguration: InvisibleCharacterConfiguration,
-        highlightService: HighlightService
+        highlightedRangeService: HighlightedRangeService
     ) {
         self.line = line
         self.stringView = stringView
         self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
-        self.highlightService = highlightService
+        self.highlightedRangeService = highlightedRangeService
         self.typesetter = LineTypesetter(lineID: line.id.rawValue)
         let rootLineFragmentNodeData = LineFragmentNodeData(lineFragment: nil)
         self.lineFragmentTree = LineFragmentTree(minimumValue: 0, rootValue: 0, rootData: rootLineFragmentNodeData)
