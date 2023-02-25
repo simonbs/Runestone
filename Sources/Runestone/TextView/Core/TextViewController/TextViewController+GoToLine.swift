@@ -11,7 +11,7 @@ extension TextViewController {
         textView.resignFirstResponder()
         textView.becomeFirstResponder()
         let line = lineManager.line(atRow: lineIndex)
-        layoutManager.layoutLines(toLocation: line.location)
+        lineFragmentLayoutManager.layoutLines(toLocation: line.location)
         scrollLocationToVisible(line.location)
         textView.layoutIfNeeded()
         switch selection {

@@ -15,16 +15,16 @@ private final class TypesetResult {
 }
 
 final class LineTypesetter {
-    private enum TypesetEndCondition {
+    enum TypesetEndCondition {
         case yPosition(_ targetYPosition: CGFloat)
-        case characterIndex(_ targetCharacterIndex: Int)
+        case location(_ targetLocation: Int)
 
-        func shouldKeepTypesetting(currentYPosition: CGFloat, currentCharacterIndex: Int) -> Bool {
+        func shouldKeepTypesetting(currentYPosition: CGFloat, currentLocation: Int) -> Bool {
             switch self {
             case .yPosition(let targetYPosition):
                 return currentYPosition < targetYPosition
-            case .characterIndex(let targetCharacterIndex):
-                return currentCharacterIndex < targetCharacterIndex
+            case .location(let targetLocation):
+                return currentLocation < targetLocation
             }
         }
     }
@@ -83,23 +83,22 @@ final class LineTypesetter {
     }
 
     @discardableResult
-    func typesetLineFragments(in rect: CGRect) -> [LineFragment] {
-        let lineFragments = typesetLineFragments(until: .yPosition(rect.maxY))
+    func typesetLineFragments(to condition: TypesetEndCondition, additionalLineFragmentCount: Int = 0) -> [LineFragment] {
+        guard let typesetter = typesetter else {
+            return []
+        }
+        let typesetResult = typesetLineFragments(
+            until: condition,
+            additionalLineFragmentCount: additionalLineFragmentCount,
+            using: typesetter,
+            stringLength: stringLength
+        )
+        updateState(from: typesetResult)
         if isFinishedTypesetting {
             attributedString = nil
-            typesetter = nil
+            self.typesetter = nil
         }
-        return lineFragments
-    }
-
-    @discardableResult
-    func typesetLineFragments(toLocation location: Int, additionalLineFragmentCount: Int = 0) -> [LineFragment] {
-        let lineFragments = typesetLineFragments(until: .characterIndex(location), additionalLineFragmentCount: additionalLineFragmentCount)
-        if isFinishedTypesetting {
-            attributedString = nil
-            typesetter = nil
-        }
-        return lineFragments
+        return typesetResult.lineFragments
     }
 
     func lineFragment(withID lineFragmentID: LineFragmentID) -> LineFragment? {
@@ -120,20 +119,6 @@ private extension LineTypesetter {
         maximumLineWidth = max(maximumLineWidth, typesetResult.maximumLineWidth)
     }
 
-    private func typesetLineFragments(until condition: TypesetEndCondition, additionalLineFragmentCount: Int = 0) -> [LineFragment] {
-        guard let typesetter = typesetter else {
-            return []
-        }
-        let typesetResult = typesetLineFragments(
-            until: condition,
-            additionalLineFragmentCount: additionalLineFragmentCount,
-            using: typesetter,
-            stringLength: stringLength
-        )
-        updateState(from: typesetResult)
-        return typesetResult.lineFragments
-    }
-
     private func typesetLineFragments(
         until condition: TypesetEndCondition,
         additionalLineFragmentCount: Int = 0,
@@ -147,7 +132,7 @@ private extension LineTypesetter {
         var lineFragments: [LineFragment] = []
         var lineFragmentsMap: [LineFragmentID: Int] = [:]
         var remainingAdditionalLineFragmentCount = additionalLineFragmentCount
-        let conditionAllowsKeepTypesetting = condition.shouldKeepTypesetting(currentYPosition: nextYPosition, currentCharacterIndex: startOffset)
+        let conditionAllowsKeepTypesetting = condition.shouldKeepTypesetting(currentYPosition: nextYPosition, currentLocation: startOffset)
         var shouldKeepTypesetting = conditionAllowsKeepTypesetting || remainingAdditionalLineFragmentCount > 0
         while startOffset < stringLength && shouldKeepTypesetting, let lineFragment = makeNextLineFragment(using: typesetter) {
             lineFragments.append(lineFragment)
@@ -158,7 +143,7 @@ private extension LineTypesetter {
             }
             lineFragmentsMap[lineFragment.id] = lineFragmentIndex
             lineFragmentIndex += 1
-            if condition.shouldKeepTypesetting(currentYPosition: nextYPosition, currentCharacterIndex: startOffset) {
+            if condition.shouldKeepTypesetting(currentYPosition: nextYPosition, currentLocation: startOffset) {
                 shouldKeepTypesetting = true
             } else if remainingAdditionalLineFragmentCount > 0 {
                 shouldKeepTypesetting = true

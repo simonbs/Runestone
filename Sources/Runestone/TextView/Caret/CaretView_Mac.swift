@@ -9,6 +9,16 @@ final class CaretView: NSView {
             }
         }
     }
+    var isBlinkingEnabled = false {
+        didSet {
+            if isBlinkingEnabled != oldValue {
+                blinkTimer?.invalidate()
+                if isBlinkingEnabled {
+                    blinkTimer = .scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(blink), userInfo: nil, repeats: true)
+                }
+            }
+        }
+    }
 
     private var blinkTimer: Timer?
     private var isVisible = true {
@@ -19,15 +29,14 @@ final class CaretView: NSView {
         }
     }
 
-    var isBlinkingEnabled = false {
-        didSet {
-            if isBlinkingEnabled != oldValue {
-                blinkTimer?.invalidate()
-                if isBlinkingEnabled {
-                    blinkTimer = .scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(blink), userInfo: nil, repeats: true)
-                }
-            }
-        }
+    init() {
+        super.init(frame: .zero)
+        wantsLayer = true
+        backgroundColor = .clear
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -43,7 +52,7 @@ final class CaretView: NSView {
         }
     }
 
-    func delayBlinkIfNeeded() {
+    func delayBlink() {
         let wasBlinking = isBlinkingEnabled
         isBlinkingEnabled = false
         isVisible = true

@@ -3,9 +3,8 @@ import Foundation
 import LineManager
 import MultiPlatform
 
-final class SelectionRectFactory {
+final class TextSelectionRectFactory {
     private let lineManager: LineManager
-    private let gutterWidthService: GutterWidthService
     private let contentSizeService: ContentSizeService
     private let caretRectFactory: CaretRectFactory
     private let textContainerInset: MultiPlatformEdgeInsets
@@ -13,14 +12,12 @@ final class SelectionRectFactory {
 
     init(
         lineManager: LineManager,
-        gutterWidthService: GutterWidthService,
         contentSizeService: ContentSizeService,
         caretRectFactory: CaretRectFactory,
         textContainerInset: MultiPlatformEdgeInsets,
         lineHeightMultiplier: CGFloat
     ) {
         self.lineManager = lineManager
-        self.gutterWidthService = gutterWidthService
         self.contentSizeService = contentSizeService
         self.caretRectFactory = caretRectFactory
         self.textContainerInset = textContainerInset
@@ -34,7 +31,7 @@ final class SelectionRectFactory {
         guard let endLine = lineManager.line(containingCharacterAt: range.upperBound) else {
             return []
         }
-        let leadingLineSpacing = gutterWidthService.gutterWidth + textContainerInset.left
+        let leadingLineSpacing = textContainerInset.left
         let selectsLineEnding = range.upperBound == endLine.location
         let adjustedRange = NSRange(location: range.location, length: selectsLineEnding ? range.length - 1 : range.length)
         let startCaretRect = caretRectFactory.caretRect(at: adjustedRange.lowerBound, allowMovingCaretToNextLineFragment: true)

@@ -34,7 +34,7 @@ extension TextViewController {
         let oldContentOffset = scrollView.contentOffset
         scrollView.contentSize = contentSizeService.contentSize
         scrollView.contentOffset = oldContentOffset
-        layoutManager.setNeedsLayout()
+        lineFragmentLayoutManager.setNeedsLayout()
         textView.setNeedsLayout()
     }
 
@@ -49,7 +49,6 @@ extension TextViewController {
         scrollView.hasHorizontalScroller = scrollView.contentSize.width > scrollView.frame.width
         scrollView.horizontalScroller?.layer?.zPosition = 1_000
         scrollView.verticalScroller?.layer?.zPosition = 1_000
-        layoutManager.verticalScrollerWidth = scrollView.hasVerticalScroller ? scrollView.verticalScroller?.frame.width ?? 0 : 0
         if scrollView.hasVerticalScroller != hadVerticalScroller || scrollView.hasHorizontalScroller != hadHorizontalScroller {
             textView.setNeedsLayout()
         }

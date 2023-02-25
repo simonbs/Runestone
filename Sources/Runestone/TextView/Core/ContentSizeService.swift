@@ -52,7 +52,6 @@ final class ContentSizeService {
             let textContentWidth = longestLineWidth ?? containerSize.width
             let preferredWidth = ceil(
                 textContentWidth
-                + gutterWidthService.gutterWidth
                 + textContainerInset.left
                 + textContainerInset.right
                 + invisibleCharacterConfiguration.maximumLineBreakSymbolWidth

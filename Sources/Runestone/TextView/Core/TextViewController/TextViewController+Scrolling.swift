@@ -2,7 +2,7 @@ import Foundation
 
  extension TextViewController {
     func scrollRangeToVisible(_ range: NSRange) {
-        layoutManager.layoutLines(toLocation: range.upperBound)
+        lineFragmentLayoutManager.layoutLines(toLocation: range.upperBound)
         justScrollRangeToVisible(range)
     }
 
@@ -29,7 +29,6 @@ private extension TextViewController {
             stringView: stringView,
             lineManager: lineManager,
             lineControllerStorage: lineControllerStorage,
-            gutterWidthService: gutterWidthService,
             textContainerInset: textContainerInset
         )
         return caretRectFactory.caretRect(at: location, allowMovingCaretToNextLineFragment: true)

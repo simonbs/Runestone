@@ -386,21 +386,21 @@ open class TextView: NSView, NSMenuItemValidation {
         }
     }
     /// The color of the insertion point. This can be used to control the color of the caret.
-    public var insertionPointColor: NSColor = .label {
-        didSet {
-            if insertionPointColor != oldValue {
-                caretView.color = insertionPointColor
-            }
+    public var insertionPointColor: NSColor {
+        get {
+            textViewController.caretLayoutManager.color
+        }
+        set {
+            textViewController.caretLayoutManager.color = newValue
         }
     }
     /// The color of the selection highlight. It is most common to set this to the same color as the color used for the insertion point.
-    public var selectionHighlightColor: NSColor = .label.withAlphaComponent(0.2) {
-        didSet {
-            if selectionHighlightColor != oldValue {
-                for (_, view) in selectionViewReuseQueue.visibleViews {
-                    view.backgroundColor = selectionHighlightColor
-                }
-            }
+    public var selectionHighlightColor: NSColor {
+        get {
+            textViewController.textSelectionLayoutManager.backgroundColor
+        }
+        set {
+            textViewController.textSelectionLayoutManager.backgroundColor = newValue
         }
     }
     /// The object that the document uses to support undo/redo operations.
@@ -417,8 +417,6 @@ open class TextView: NSView, NSMenuItemValidation {
         return scrollView
      }
 
-    private let caretView = CaretView()
-    private let selectionViewReuseQueue = ViewReuseQueue<String, LineSelectionView>()
     private let textFinderClient = TextFinderClient()
     private var isWindowKey = false {
         didSet {
@@ -468,10 +466,6 @@ open class TextView: NSView, NSMenuItemValidation {
     private func setup() {
         textViewController.delegate = self
         textViewController.selectedRange = NSRange(location: 0, length: 0)
-        addSubview(textViewController.layoutManager.lineSelectionBackgroundView)
-        addSubview(textViewController.layoutManager.linesContainerView)
-        addSubview(caretView)
-        addSubview(textViewController.layoutManager.gutterContainerView)
         setupWindowObservers()
         setupScrollViewBoundsDidChangeObserver()
         setupMenu()
@@ -499,7 +493,6 @@ open class TextView: NSView, NSMenuItemValidation {
         textViewController.scrollView = scrollView
         setupScrollViewBoundsDidChangeObserver()
         setupTextFinder()
-        setupGutterContainerView()
     }
 
     /// Notifies the receiver that it's about to become first responder in its NSWindow.
@@ -538,25 +531,18 @@ open class TextView: NSView, NSMenuItemValidation {
     /// - Parameter oldSize: The previous size of the view's bounds rectangle.
     override public func resizeSubviews(withOldSize oldSize: NSSize) {
         super.resizeSubviews(withOldSize: oldSize)
-        updateViewport()
-        textViewController.layoutIfNeeded()
-        textViewController.handleContentSizeUpdateIfNeeded()
-        textViewController.updateScrollerVisibility()
-        updateCaretFrame()
-        updateSelectedRectangles()
+        textViewController.textSelectionLayoutManager.updateSelectedRectangles()
     }
 
     /// Perform layout in concert with the constraint-based layout system.
     open override func layout() {
         super.layout()
         updateViewport()
-        textViewController.layoutIfNeeded()
-    }
-
-    /// Informs the view that it has been added to a new view hierarchy.
-    override public func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        textViewController.performFullLayoutIfNeeded()
+        textViewController.caretLayoutManager.layoutIfNeeded()
+        textViewController.lineFragmentLayoutManager.layoutIfNeeded()
+        textViewController.lineSelectionLayoutManager.layoutIfNeeded()
+        textViewController.handleContentSizeUpdateIfNeeded()
+        textViewController.updateScrollerVisibility()
     }
 
     /// Overridden by subclasses to define their default cursor rectangles.
@@ -577,9 +563,6 @@ open class TextView: NSView, NSMenuItemValidation {
     /// - Parameter addUndoAction: Whether the state change can be undone. Defaults to false.
     public func setState(_ state: TextViewState, addUndoAction: Bool = false) {
         textViewController.setState(state, addUndoAction: addUndoAction)
-        // Layout to ensure the selection rectangles and caret are correctly placed.
-        setNeedsLayout()
-        layoutIfNeeded()
     }
 
     /// Returns the syntax node at the specified location in the document.
@@ -672,83 +655,6 @@ private extension TextView {
     }
 }
 
-// MARK: - Caret
-private extension TextView {
-    private func updateCaretFrame() {
-        let caretRectFactory = CaretRectFactory(
-            stringView: textViewController.stringView,
-            lineManager: textViewController.lineManager,
-            lineControllerStorage: textViewController.lineControllerStorage,
-            gutterWidthService: textViewController.gutterWidthService,
-            textContainerInset: textContainerInset
-        )
-        let selectedRange = selectedRange()
-        caretView.frame = caretRectFactory.caretRect(at: selectedRange.upperBound, allowMovingCaretToNextLineFragment: true)
-    }
-
-    private func updateCaretVisibility() {
-        if isWindowKey && isFirstResponder && selectedRange().length == 0 {
-            caretView.isHidden = false
-            caretView.isBlinkingEnabled = true
-            caretView.delayBlinkIfNeeded()
-        } else {
-            caretView.isHidden = true
-            caretView.isBlinkingEnabled = false
-        }
-    }
-}
-
-// MARK: - Selection
-private extension TextView {
-    private func updateSelectedRectangles() {
-        let selectedRange = selectedRange()
-        guard selectedRange.length != 0 else {
-            removeAllLineSelectionViews()
-            return
-        }
-        let caretRectFactory = CaretRectFactory(
-            stringView: textViewController.stringView,
-            lineManager: textViewController.lineManager,
-            lineControllerStorage: textViewController.lineControllerStorage,
-            gutterWidthService: textViewController.gutterWidthService,
-            textContainerInset: textContainerInset
-        )
-        let selectionRectFactory = SelectionRectFactory(
-            lineManager: textViewController.lineManager,
-            gutterWidthService: textViewController.gutterWidthService,
-            contentSizeService: textViewController.contentSizeService,
-            caretRectFactory: caretRectFactory,
-            textContainerInset: textContainerInset,
-            lineHeightMultiplier: lineHeightMultiplier
-        )
-        let selectionRects = selectionRectFactory.selectionRects(in: selectedRange)
-        addLineSelectionViews(for: selectionRects)
-    }
-
-    private func removeAllLineSelectionViews() {
-        for (_, view) in selectionViewReuseQueue.visibleViews {
-            view.removeFromSuperview()
-        }
-        let keys = Set(selectionViewReuseQueue.visibleViews.keys)
-        selectionViewReuseQueue.enqueueViews(withKeys: keys)
-    }
-
-    private func addLineSelectionViews(for selectionRects: [TextSelectionRect]) {
-        var appearedViewKeys = Set<String>()
-        for (idx, selectionRect) in selectionRects.enumerated() {
-            let key = String(describing: idx)
-            let view = selectionViewReuseQueue.dequeueView(forKey: key)
-            view.frame = selectionRect.rect
-            view.wantsLayer = true
-            view.backgroundColor = selectionHighlightColor
-            addSubview(view)
-            appearedViewKeys.insert(key)
-        }
-        let disappearedViewKeys = Set(selectionViewReuseQueue.visibleViews.keys).subtracting(appearedViewKeys)
-        selectionViewReuseQueue.enqueueViews(withKeys: disappearedViewKeys)
-    }
-}
-
 // MARK: - Menu
 private extension TextView {
     private func setupMenu() {
@@ -768,19 +674,22 @@ private extension TextView {
     }
 }
 
+// MARK: - Caret
+private extension TextView {
+    private func updateCaretVisibility() {
+//        textViewController.caretLayoutManager.showCaret = isWindowKey && isFirstResponder && selectedRange().length == 0
+        textViewController.caretLayoutManager.showCaret = true
+    }
+}
+
 // MARK: - TextViewControllerDelegate
 extension TextView: TextViewControllerDelegate {
     func textViewControllerDidChangeText(_ textViewController: TextViewController) {
-        caretView.delayBlinkIfNeeded()
-        updateCaretFrame()
         editorDelegate?.textViewDidChange(self)
     }
 
     func textViewController(_ textViewController: TextViewController, didChangeSelectedRange selectedRange: NSRange?) {
-        updateCaretFrame()
-        updateSelectedRectangles()
         updateCaretVisibility()
-        caretView.delayBlinkIfNeeded()
         scrollToVisibleLocationIfNeeded()
     }
 }

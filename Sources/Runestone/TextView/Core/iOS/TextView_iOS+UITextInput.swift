@@ -5,6 +5,17 @@ import UIKit
 
 extension TextView: UITextInput {}
 
+private extension TextView {
+    private var closestLocationLocator: ClosestLocationLocator {
+        ClosestLocationLocator(
+            stringView: textViewController.stringView,
+            lineManager: textViewController.lineManager,
+            lineControllerStorage: textViewController.lineControllerStorage,
+            textContainerInset: textViewController.textContainerInset
+        )
+    }
+}
+
 public extension TextView {
     /// The text position for the beginning of a document.
     var beginningOfDocument: UITextPosition {
@@ -37,7 +48,6 @@ public extension TextView {
             stringView: textViewController.stringView,
             lineManager: textViewController.lineManager,
             lineControllerStorage: textViewController.lineControllerStorage,
-            gutterWidthService: textViewController.gutterWidthService,
             textContainerInset: textContainerInset
         )
         return caretFactory.caretRect(at: indexedPosition.index, allowMovingCaretToNextLineFragment: true)
@@ -232,12 +242,10 @@ public extension TextView {
             stringView: textViewController.stringView,
             lineManager: textViewController.lineManager,
             lineControllerStorage: textViewController.lineControllerStorage,
-            gutterWidthService: textViewController.gutterWidthService,
             textContainerInset: textContainerInset
         )
         let selectionRectFactory = SelectionRectFactory(
             lineManager: textViewController.lineManager,
-            gutterWidthService: textViewController.gutterWidthService,
             contentSizeService: textViewController.contentSizeService,
             caretRectFactory: caretRectFactory,
             textContainerInset: textContainerInset,
@@ -448,14 +456,20 @@ public extension TextView {
         guard let indexedRange = range as? IndexedRange else {
             fatalError("Expected range to be of type \(IndexedRange.self)")
         }
-        return textViewController.layoutManager.firstRect(for: indexedRange.range)
+        let firstRectFactory = FirstRectFactory(
+            lineManager: textViewController.lineManager,
+            lineControllerStorage: textViewController.lineControllerStorage,
+            textContainerWidth: textViewController.viewport.width,
+            textContainerInset: textViewController.textContainerInset
+        )
+        return firstRectFactory.firstRect(for: indexedRange.range)
     }
 
     /// Returns the position in a document that is closest to a specified point.
     /// - Parameter point: A point in the view that is drawing a document's text.
     /// - Returns: An object locating a position in a document that is closest to `point`.
     func closestPosition(to point: CGPoint) -> UITextPosition? {
-        let index = textViewController.layoutManager.closestIndex(to: point)
+        let index = closestLocationLocator.location(closestTo: point)
         return IndexedPosition(index: index)
     }
 
@@ -468,7 +482,7 @@ public extension TextView {
         guard let indexedRange = range as? IndexedRange else {
             return nil
         }
-        let index = textViewController.layoutManager.closestIndex(to: point)
+        let index = closestLocationLocator.location(closestTo: point)
         let minimumIndex = indexedRange.range.lowerBound
         let maximumIndex = indexedRange.range.upperBound
         let cappedIndex = min(max(index, minimumIndex), maximumIndex)
@@ -479,7 +493,7 @@ public extension TextView {
     /// - Parameter point: A point in the view that is drawing a document's text.
     /// - Returns: An object representing a range that encloses a character (or characters) at `point`.
     func characterRange(at point: CGPoint) -> UITextRange? {
-        let index = textViewController.layoutManager.closestIndex(to: point)
+        let index = closestLocationLocator.location(closestTo: point)
         let cappedIndex = max(index - 1, 0)
         let range = textViewController.stringView.string.customRangeOfComposedCharacterSequence(at: cappedIndex)
         return IndexedRange(range)

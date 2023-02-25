@@ -7,25 +7,22 @@ final class CaretRectFactory {
     private let stringView: StringView
     private let lineManager: LineManager
     private let lineControllerStorage: LineControllerStorage
-    private let gutterWidthService: GutterWidthService
     private let textContainerInset: MultiPlatformEdgeInsets
 
     init(
         stringView: StringView,
         lineManager: LineManager,
         lineControllerStorage: LineControllerStorage,
-        gutterWidthService: GutterWidthService,
         textContainerInset: MultiPlatformEdgeInsets
     ) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
-        self.gutterWidthService = gutterWidthService
         self.textContainerInset = textContainerInset
     }
 
     func caretRect(at location: Int, allowMovingCaretToNextLineFragment: Bool) -> CGRect {
-        let leadingLineSpacing = gutterWidthService.gutterWidth + textContainerInset.left
+        let leadingLineSpacing = textContainerInset.left
         let safeLocation = min(max(location, 0), stringView.string.length)
         let line = lineManager.line(containingCharacterAt: safeLocation)!
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)

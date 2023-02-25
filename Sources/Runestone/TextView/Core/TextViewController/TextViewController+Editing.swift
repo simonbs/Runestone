@@ -29,7 +29,9 @@ extension TextViewController {
         let lineChangeSet = textEditResult.lineChangeSet
         let languageModeLineChangeSet = languageMode.textDidChange(textChange)
         lineChangeSet.union(with: languageModeLineChangeSet)
-        applyLineChangesToLayoutManager(lineChangeSet)
+        applyLineChanges(lineChangeSet)
+        lineFragmentLayoutManager.setNeedsLayout()
+        lineFragmentLayoutManager.layoutIfNeeded()
         let updatedTextEditResult = TextEditResult(textChange: textChange, lineChangeSet: lineChangeSet)
         textDidChange()
         if updatedTextEditResult.didAddOrRemoveLines {
@@ -196,6 +198,22 @@ private extension TextViewController {
             selectedRange = NSRange(location: location, length: 0)
         } else {
             selectedRange = nil
+        }
+    }
+
+    private func applyLineChanges(_ lineChangeSet: LineChangeSet) {
+        let didAddOrRemoveLines = !lineChangeSet.insertedLines.isEmpty || !lineChangeSet.removedLines.isEmpty
+        if didAddOrRemoveLines {
+            contentSizeService.invalidateContentSize()
+            for removedLine in lineChangeSet.removedLines {
+                lineControllerStorage.removeLineController(withID: removedLine.id)
+                contentSizeService.removeLine(withID: removedLine.id)
+            }
+        }
+        let editedLineIDs = Set(lineChangeSet.editedLines.map(\.id))
+        redisplayLines(withIDs: editedLineIDs)
+        if didAddOrRemoveLines {
+            gutterWidthService.invalidateLineNumberWidth()
         }
     }
 }

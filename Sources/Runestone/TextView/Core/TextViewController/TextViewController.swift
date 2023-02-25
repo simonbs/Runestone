@@ -43,21 +43,18 @@ final class TextViewController {
     var _selectedRange: NSRange? {
         didSet {
             if _selectedRange != oldValue {
-                layoutManager.selectedRange = _selectedRange
-                layoutManager.setNeedsLayoutLineSelection()
+                #if os(macOS)
+                caretLayoutManager.caretLocation = _selectedRange?.upperBound ?? 0
+                textSelectionLayoutManager.selectedRange = _selectedRange
+                #endif
+                lineSelectionLayoutManager.selectedRange = _selectedRange
                 highlightNavigationController.selectedRange = _selectedRange
                 textView.setNeedsLayout()
             }
         }
     }
     var markedRange: NSRange?
-    var isEditing = false {
-        didSet {
-            if isEditing != oldValue {
-                layoutManager.isEditing = isEditing
-            }
-        }
-    }
+    var isEditing = false
     var isEditable = true {
         didSet {
             if isEditable != oldValue && !isEditable && isEditing {
@@ -79,18 +76,17 @@ final class TextViewController {
     }
     var viewport: CGRect {
         get {
-            layoutManager.viewport
+            lineFragmentLayoutManager.viewport
         }
         set {
-            if newValue != layoutManager.viewport {
+            if newValue != lineFragmentLayoutManager.viewport {
                 contentSizeService.containerSize = newValue.size
-                if isLineWrappingEnabled && newValue.width != layoutManager.viewport.width  {
+                if isLineWrappingEnabled && newValue.width != lineFragmentLayoutManager.viewport.width  {
                     for lineController in lineControllerStorage {
                         lineController.invalidateTypesetting()
                     }
                 }
-                layoutManager.viewport = newValue
-                layoutManager.setNeedsLayout()
+                lineFragmentLayoutManager.viewport = newValue
                 textView.setNeedsLayout()
             }
         }
@@ -117,8 +113,8 @@ final class TextViewController {
                 contentSizeService.invalidateContentSize()
                 gutterWidthService.invalidateLineNumberWidth()
                 invalidateLines()
-                layoutManager.setNeedsLayout()
-                layoutManager.layoutIfNeeded()
+                lineFragmentLayoutManager.setNeedsLayout()
+                lineFragmentLayoutManager.layoutIfNeeded()
                 if !preserveUndoStackWhenSettingString {
                     timedUndoManager.removeAllActions()
                 }
@@ -129,7 +125,7 @@ final class TextViewController {
     var safeAreaInsets: MultiPlatformEdgeInsets = .zero {
         didSet {
             if safeAreaInsets != oldValue {
-                layoutManager.safeAreaInsets = safeAreaInsets
+                lineFragmentLayoutManager.safeAreaInsets = safeAreaInsets
             }
         }
     }
@@ -140,11 +136,14 @@ final class TextViewController {
                 lineManager.stringView = stringView
                 lineControllerFactory.stringView = stringView
                 lineControllerStorage.stringView = stringView
-                layoutManager.stringView = stringView
+                lineFragmentLayoutManager.stringView = stringView
+                lineSelectionLayoutManager.stringView = stringView
                 indentController.stringView = stringView
                 navigationService.stringView = stringView
                 #if os(macOS)
                 selectionService.stringView = stringView
+                textSelectionLayoutManager.stringView = stringView
+                caretLayoutManager.stringView = stringView
                 #endif
             }
         }
@@ -153,6 +152,8 @@ final class TextViewController {
     private(set) var lineManager: LineManager {
         didSet {
             if lineManager !== oldValue {
+                lineFragmentLayoutManager.lineManager = lineManager
+                lineSelectionLayoutManager.lineManager = lineManager
                 indentController.lineManager = lineManager
                 gutterWidthService.lineManager = lineManager
                 contentSizeService.lineManager = lineManager
@@ -160,6 +161,8 @@ final class TextViewController {
                 navigationService.lineManager = lineManager
                 #if os(macOS)
                 selectionService.lineManager = lineManager
+                textSelectionLayoutManager.lineManager = lineManager
+                caretLayoutManager.lineManager = lineManager
                 #endif
             }
         }
@@ -173,11 +176,16 @@ final class TextViewController {
     #if os(macOS)
     let selectionService: SelectionService
     #endif
-    let layoutManager: LayoutManager
     let indentController: IndentController
     let pageGuideController = PageGuideController()
     let highlightNavigationController = HighlightNavigationController()
     let timedUndoManager = TimedUndoManager()
+    let lineFragmentLayoutManager: LineFragmentLayoutManager
+    let lineSelectionLayoutManager: LineSelectionLayoutManager
+    #if os(macOS)
+    let textSelectionLayoutManager: TextSelectionLayoutManager
+    let caretLayoutManager: CaretLayoutManager
+    #endif
 
     var languageMode: InternalLanguageMode = PlainTextInternalLanguageMode() {
         didSet {
@@ -208,8 +216,7 @@ final class TextViewController {
                 textView.inputDelegate?.selectionWillChange(textView)
                 #endif
                 gutterWidthService.showLineNumbers = showLineNumbers
-                layoutManager.showLineNumbers = showLineNumbers
-                layoutManager.setNeedsLayout()
+                lineFragmentLayoutManager.setNeedsLayout()
                 textView.setNeedsLayout()
                 #if os(iOS)
                 textView.inputDelegate?.selectionDidChange(textView)
@@ -217,12 +224,12 @@ final class TextViewController {
             }
         }
     }
-    var lineSelectionDisplayType: LineSelectionDisplayType {
-        get {
-            layoutManager.lineSelectionDisplayType
-        }
-        set {
-            layoutManager.lineSelectionDisplayType = newValue
+    var lineSelectionDisplayType: LineSelectionDisplayType = .disabled {
+        didSet {
+            if lineSelectionDisplayType != oldValue {
+                lineSelectionLayoutManager.showLineSelection = lineSelectionDisplayType != .disabled
+                lineSelectionLayoutManager.selectEntireLine = lineSelectionDisplayType == .line
+            }
         }
     }
     var showTabs: Bool {
@@ -232,7 +239,7 @@ final class TextViewController {
         set {
             if newValue != invisibleCharacterConfiguration.showTabs {
                 invisibleCharacterConfiguration.showTabs = newValue
-                layoutManager.setNeedsDisplayOnLines()
+                setNeedsDisplayOnLines()
             }
         }
     }
@@ -243,7 +250,7 @@ final class TextViewController {
         set {
             if newValue != invisibleCharacterConfiguration.showSpaces {
                 invisibleCharacterConfiguration.showSpaces = newValue
-                layoutManager.setNeedsDisplayOnLines()
+                setNeedsDisplayOnLines()
             }
         }
     }
@@ -254,7 +261,7 @@ final class TextViewController {
         set {
             if newValue != invisibleCharacterConfiguration.showNonBreakingSpaces {
                 invisibleCharacterConfiguration.showNonBreakingSpaces = newValue
-                layoutManager.setNeedsDisplayOnLines()
+                setNeedsDisplayOnLines()
             }
         }
     }
@@ -266,8 +273,8 @@ final class TextViewController {
             if newValue != invisibleCharacterConfiguration.showLineBreaks {
                 invisibleCharacterConfiguration.showLineBreaks = newValue
                 invalidateLines()
-                layoutManager.setNeedsLayout()
-                layoutManager.setNeedsDisplayOnLines()
+                lineFragmentLayoutManager.setNeedsLayout()
+                setNeedsDisplayOnLines()
                 textView.setNeedsLayout()
             }
         }
@@ -280,8 +287,8 @@ final class TextViewController {
             if newValue != invisibleCharacterConfiguration.showSoftLineBreaks {
                 invisibleCharacterConfiguration.showSoftLineBreaks = newValue
                 invalidateLines()
-                layoutManager.setNeedsLayout()
-                layoutManager.setNeedsDisplayOnLines()
+                lineFragmentLayoutManager.setNeedsLayout()
+                setNeedsDisplayOnLines()
                 textView.setNeedsLayout()
             }
         }
@@ -293,7 +300,7 @@ final class TextViewController {
         set {
             if newValue != invisibleCharacterConfiguration.tabSymbol {
                 invisibleCharacterConfiguration.tabSymbol = newValue
-                layoutManager.setNeedsDisplayOnLines()
+                setNeedsDisplayOnLines()
             }
         }
     }
@@ -304,7 +311,7 @@ final class TextViewController {
         set {
             if newValue != invisibleCharacterConfiguration.spaceSymbol {
                 invisibleCharacterConfiguration.spaceSymbol = newValue
-                layoutManager.setNeedsDisplayOnLines()
+                setNeedsDisplayOnLines()
             }
         }
     }
@@ -315,7 +322,7 @@ final class TextViewController {
         set {
             if newValue != invisibleCharacterConfiguration.nonBreakingSpaceSymbol {
                 invisibleCharacterConfiguration.nonBreakingSpaceSymbol = newValue
-                layoutManager.setNeedsDisplayOnLines()
+                setNeedsDisplayOnLines()
             }
         }
     }
@@ -326,7 +333,7 @@ final class TextViewController {
         set {
             if newValue != invisibleCharacterConfiguration.lineBreakSymbol {
                 invisibleCharacterConfiguration.lineBreakSymbol = newValue
-                layoutManager.setNeedsDisplayOnLines()
+                setNeedsDisplayOnLines()
             }
         }
     }
@@ -337,7 +344,7 @@ final class TextViewController {
         set {
             if newValue != invisibleCharacterConfiguration.softLineBreakSymbol {
                 invisibleCharacterConfiguration.softLineBreakSymbol = newValue
-                layoutManager.setNeedsDisplayOnLines()
+                setNeedsDisplayOnLines()
             }
         }
     }
@@ -345,7 +352,6 @@ final class TextViewController {
         didSet {
             if indentStrategy != oldValue {
                 indentController.indentStrategy = indentStrategy
-                layoutManager.setNeedsLayout()
                 textView.setNeedsLayout()
                 textView.layoutIfNeeded()
             }
@@ -355,7 +361,6 @@ final class TextViewController {
         didSet {
             if gutterLeadingPadding != oldValue {
                 gutterWidthService.gutterLeadingPadding = gutterLeadingPadding
-                layoutManager.setNeedsLayout()
                 textView.setNeedsLayout()
             }
         }
@@ -364,7 +369,6 @@ final class TextViewController {
         didSet {
             if gutterTrailingPadding != oldValue {
                 gutterWidthService.gutterTrailingPadding = gutterTrailingPadding
-                layoutManager.setNeedsLayout()
                 textView.setNeedsLayout()
             }
         }
@@ -373,35 +377,34 @@ final class TextViewController {
         didSet {
             if gutterMinimumCharacterCount != oldValue {
                 gutterWidthService.gutterMinimumCharacterCount = gutterMinimumCharacterCount
-                layoutManager.setNeedsLayout()
                 textView.setNeedsLayout()
             }
         }
     }
-    var textContainerInset: MultiPlatformEdgeInsets {
-        get {
-            layoutManager.textContainerInset
-        }
-        set {
-            if newValue != layoutManager.textContainerInset {
-                contentSizeService.textContainerInset = newValue
-                layoutManager.textContainerInset = newValue
-                layoutManager.setNeedsLayout()
+    var textContainerInset: MultiPlatformEdgeInsets = .zero {
+        didSet {
+            if textContainerInset != lineFragmentLayoutManager.textContainerInset {
+                contentSizeService.textContainerInset = textContainerInset
+                lineSelectionLayoutManager.textContainerInset = textContainerInset
+                lineFragmentLayoutManager.textContainerInset = textContainerInset
+                #if os(macOS)
+                textSelectionLayoutManager.textContainerInset = textContainerInset
+                caretLayoutManager.textContainerInset = textContainerInset
+                #endif
                 textView.setNeedsLayout()
             }
         }
     }
     var isLineWrappingEnabled: Bool {
         get {
-            layoutManager.isLineWrappingEnabled
+            lineFragmentLayoutManager.isLineWrappingEnabled
         }
         set {
-            if newValue != layoutManager.isLineWrappingEnabled {
+            if newValue != lineFragmentLayoutManager.isLineWrappingEnabled {
                 contentSizeService.isLineWrappingEnabled = newValue
-                layoutManager.isLineWrappingEnabled = newValue
+                lineFragmentLayoutManager.isLineWrappingEnabled = newValue
                 invalidateLines()
-                layoutManager.setNeedsLayout()
-                layoutManager.layoutIfNeeded()
+                lineFragmentLayoutManager.layoutIfNeeded()
             }
         }
     }
@@ -410,8 +413,8 @@ final class TextViewController {
             if lineBreakMode != oldValue {
                 invalidateLines()
                 contentSizeService.invalidateContentSize()
-                layoutManager.setNeedsLayout()
-                layoutManager.layoutIfNeeded()
+                lineFragmentLayoutManager.setNeedsLayout()
+                lineFragmentLayoutManager.layoutIfNeeded()
             }
         }
     }
@@ -421,10 +424,13 @@ final class TextViewController {
     var lineHeightMultiplier: CGFloat = 1 {
         didSet {
             if lineHeightMultiplier != oldValue {
-                layoutManager.lineHeightMultiplier = lineHeightMultiplier
                 invalidateLines()
                 lineManager.estimatedLineHeight = estimatedLineHeight
-                layoutManager.setNeedsLayout()
+                lineSelectionLayoutManager.lineHeightMultiplier = lineHeightMultiplier
+                #if os(macOS)
+                textSelectionLayoutManager.lineHeightMultiplier = lineHeightMultiplier
+                #endif
+                lineFragmentLayoutManager.setNeedsLayout()
                 textView.setNeedsLayout()
             }
         }
@@ -435,7 +441,7 @@ final class TextViewController {
                 invalidateLines()
                 pageGuideController.kern = kern
                 contentSizeService.invalidateContentSize()
-                layoutManager.setNeedsLayout()
+                lineFragmentLayoutManager.setNeedsLayout()
                 textView.setNeedsLayout()
             }
         }
@@ -501,8 +507,6 @@ final class TextViewController {
         set {
             if newValue != highlightService.highlightedRanges {
                 highlightService.highlightedRanges = newValue
-                layoutManager.setNeedsLayout()
-                layoutManager.layoutIfNeeded()
                 highlightNavigationController.highlightedRanges = newValue
             }
         }
@@ -567,16 +571,6 @@ final class TextViewController {
             lineControllerStorage: lineControllerStorage
         )
         #endif
-        layoutManager = LayoutManager(
-            lineManager: lineManager,
-            languageMode: languageMode,
-            stringView: stringView,
-            lineControllerStorage: lineControllerStorage,
-            contentSizeService: contentSizeService,
-            gutterWidthService: gutterWidthService,
-            highlightService: highlightService,
-            invisibleCharacterConfiguration: invisibleCharacterConfiguration
-        )
         indentController = IndentController(
             stringView: stringView,
             lineManager: lineManager,
@@ -584,7 +578,37 @@ final class TextViewController {
             indentStrategy: indentStrategy,
             indentFont: theme.font
         )
-        layoutManager.delegate = self
+        lineFragmentLayoutManager = LineFragmentLayoutManager(
+            stringView: stringView,
+            lineManager: lineManager,
+            lineControllerStorage: lineControllerStorage,
+            contentSizeService: contentSizeService,
+            containerView: textView
+        )
+        lineSelectionLayoutManager = LineSelectionLayoutManager(
+            stringView: stringView,
+            lineManager: lineManager,
+            lineControllerStorage: lineControllerStorage,
+            containerView: textView
+        )
+        #if os(macOS)
+        textSelectionLayoutManager = TextSelectionLayoutManager(
+            stringView: stringView,
+            lineManager: lineManager,
+            textContainerInset: textContainerInset,
+            lineControllerStorage: lineControllerStorage,
+            contentSizeService: contentSizeService,
+            containerView: textView
+        )
+        caretLayoutManager = CaretLayoutManager(
+            stringView: stringView,
+            lineManager: lineManager,
+            textContainerInset: textContainerInset,
+            lineControllerStorage: lineControllerStorage,
+            containerView: textView
+        )
+        #endif
+        lineFragmentLayoutManager.delegate = self
         applyThemeToChildren()
         indentController.delegate = self
         lineControllerStorage.delegate = self
@@ -592,6 +616,9 @@ final class TextViewController {
         gutterWidthService.gutterTrailingPadding = gutterTrailingPadding
         setupContentSizeObserver()
         setupGutterWidthObserver()
+        #if os(iOS)
+        subscribeToMemoryWarningNotification()
+        #endif
     }
 
     func setState(_ state: TextViewState, addUndoAction: Bool = false) {
@@ -603,8 +630,6 @@ final class TextViewController {
         lineControllerStorage.removeAllLineControllers()
         lineManager = state.lineManager
         lineManager.estimatedLineHeight = estimatedLineHeight
-        layoutManager.languageMode = state.languageMode
-        layoutManager.lineManager = state.lineManager
         contentSizeService.invalidateContentSize()
         gutterWidthService.invalidateLineNumberWidth()
         if addUndoAction {
@@ -625,11 +650,6 @@ final class TextViewController {
             textView.inputDelegate?.selectionDidChange(textView)
             #endif
         }
-        if textView.window != nil {
-            performFullLayout()
-        } else {
-            hasPendingFullLayout = true
-        }
     }
 
     func setLanguageMode(_ languageMode: LanguageMode, completion: ((Bool) -> Void)? = nil) {
@@ -639,12 +659,11 @@ final class TextViewController {
             lineManager: lineManager
         )
         self.languageMode = internalLanguageMode
-        layoutManager.languageMode = internalLanguageMode
         internalLanguageMode.parse(stringView.string) { [weak self] finished in
             if let self = self, finished {
                 self.invalidateLines()
-                self.layoutManager.setNeedsLayout()
-                self.layoutManager.layoutIfNeeded()
+                self.lineFragmentLayoutManager.setNeedsLayout()
+                self.lineFragmentLayoutManager.layoutIfNeeded()
             }
             completion?(finished)
         }
@@ -664,7 +683,14 @@ private extension TextViewController {
         pageGuideController.guideView.hairlineWidth = theme.pageGuideHairlineWidth
         pageGuideController.guideView.hairlineColor = theme.pageGuideHairlineColor
         pageGuideController.guideView.backgroundColor = theme.pageGuideBackgroundColor
-        layoutManager.theme = theme
+        invisibleCharacterConfiguration.font = theme.font
+        invisibleCharacterConfiguration.textColor = theme.invisibleCharactersColor
+        lineSelectionLayoutManager.backgroundColor = theme.selectedLineBackgroundColor
+        for lineController in lineControllerStorage {
+            lineController.theme = theme
+            lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
+            lineController.invalidateSyntaxHighlighting()
+        }
     }
 
     private func setupContentSizeObserver() {
@@ -677,11 +703,11 @@ private extension TextViewController {
 
     private func setupGutterWidthObserver() {
         gutterWidthService.didUpdateGutterWidth.sink { [weak self] in
-            if let self = self, let textView = self._textView {
+            if let self = self, let textView = self._textView, self.showLineNumbers {
                 // Typeset lines again when the line number width changes since changing line number width may increase or reduce the number of line fragments in a line.
                 textView.setNeedsLayout()
                 self.invalidateLines()
-                self.layoutManager.setNeedsLayout()
+                self.lineFragmentLayoutManager.setNeedsLayout()
                 textView.editorDelegate?.textViewDidChangeGutterWidth(self.textView)
             }
         }.store(in: &cancellables)
@@ -705,9 +731,9 @@ extension TextViewController: TreeSitterLanguageModeDelegate {
     }
 }
 
-// MARK: - LayoutManagerDelegate
-extension TextViewController: LayoutManagerDelegate {
-    func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint) {
+// MARK: - LineFragmentLayoutManagerDelegate
+extension TextViewController: LineFragmentLayoutManagerDelegate {
+    func lineFragmentLayoutManager(_ lineFragmentLayoutManager: LineFragmentLayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint) {
         guard let scrollView else {
             return
         }
@@ -724,7 +750,7 @@ extension TextViewController: LayoutManagerDelegate {
 extension TextViewController: LineControllerStorageDelegate {
     func lineControllerStorage(_ storage: LineControllerStorage, didCreate lineController: LineController) {
         lineController.delegate = self
-        lineController.constrainingWidth = layoutManager.constrainingLineWidth
+//        lineController.constrainingWidth = lineFragmentLayoutManager.constrainingLineWidth
         lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
         lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
         lineController.tabWidth = indentController.tabWidth
@@ -742,8 +768,9 @@ extension TextViewController: LineControllerDelegate {
     }
 
     func lineControllerDidInvalidateSize(_ lineController: LineController) {
+        lineFragmentLayoutManager.setNeedsLayout()
+        lineSelectionLayoutManager.setNeedsLayout()
         textView.setNeedsLayout()
-        layoutManager.setNeedsLayout()
     }
 }
 

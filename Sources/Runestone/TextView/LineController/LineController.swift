@@ -22,8 +22,8 @@ protocol LineControllerDelegate: AnyObject {
 
 final class LineController {
     private enum TypesetAmount {
-        case inRect(CGRect)
-        case toLocation(Int)
+        case yPosition(CGFloat)
+        case location(Int)
     }
 
     weak var delegate: LineControllerDelegate?
@@ -134,12 +134,12 @@ final class LineController {
         self.lineFragmentTree = LineFragmentTree(minimumValue: 0, rootValue: 0, rootData: rootLineFragmentNodeData)
     }
 
-    func prepareToDisplayString(in rect: CGRect, syntaxHighlightAsynchronously: Bool) {
-        prepareToDisplayString(.inRect(rect), syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
+    func prepareToDisplayString(toYPosition yPosition: CGFloat, syntaxHighlightAsynchronously: Bool) {
+        prepareToDisplayString(to: .yPosition(yPosition), syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
     }
 
     func prepareToDisplayString(toLocation location: Int, syntaxHighlightAsynchronously: Bool) {
-        prepareToDisplayString(.toLocation(location), syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
+        prepareToDisplayString(to: .location(location), syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
     }
 
     func cancelSyntaxHighlighting() {
@@ -233,9 +233,17 @@ final class LineController {
 }
 
 private extension LineController {
-    private func prepareToDisplayString(_ typesetAmount: TypesetAmount, syntaxHighlightAsynchronously: Bool) {
+    private func prepareToDisplayString(to typesetAmount: TypesetAmount, syntaxHighlightAsynchronously: Bool) {
         prepareString(syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
-        typesetLineFragments(typesetAmount)
+        let newLineFragments: [LineFragment]
+        switch typesetAmount {
+        case .yPosition(let yPosition):
+            newLineFragments = typesetter.typesetLineFragments(to: .yPosition(yPosition))
+        case .location(let location):
+            // When typesetting to a location we'll typeset an additional line fragment to ensure that we can display the text surrounding that location.
+            newLineFragments = typesetter.typesetLineFragments(to: .location(location), additionalLineFragmentCount: 1)
+        }
+        updateLineHeight(for: newLineFragments)
     }
 
     private func prepareString(syntaxHighlightAsynchronously: Bool) {
@@ -245,18 +253,6 @@ private extension LineController {
         updateDefaultAttributesIfNecessary()
         updateSyntaxHighlightingIfNecessary(async: syntaxHighlightAsynchronously)
         updateTypesetterIfNecessary()
-    }
-
-    private func typesetLineFragments(_ typesetAmount: TypesetAmount) {
-        let newLineFragments: [LineFragment]
-        switch typesetAmount {
-        case .inRect(let rect):
-            newLineFragments = typesetter.typesetLineFragments(in: rect)
-        case .toLocation(let location):
-            // When typesetting to a location we'll typeset an additional line fragment to ensure that we can display the text surrounding that location.
-            newLineFragments = typesetter.typesetLineFragments(toLocation: location, additionalLineFragmentCount: 1)
-        }
-        updateLineHeight(for: newLineFragments)
     }
 
     private func clearLineFragmentControllersIfNecessary() {
@@ -405,7 +401,7 @@ private extension LineController {
         let typesetLength = typesetter.typesetLength
         _lineHeight = nil
         updateTypesetterIfNecessary()
-        let newLineFragments = typesetter.typesetLineFragments(toLocation: typesetLength)
+        let newLineFragments = typesetter.typesetLineFragments(to: .location(typesetLength))
         updateLineHeight(for: newLineFragments)
         reapplyLineFragmentToLineFragmentControllers()
         setNeedsDisplayOnLineFragmentViews()

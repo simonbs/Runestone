@@ -17,7 +17,7 @@ public extension NSView {
             }
         }
         set {
-            if backgroundColor != nil {
+            if newValue != nil {
                 wantsLayer = true
             }
             layer?.backgroundColor = newValue?.cgColor

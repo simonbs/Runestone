@@ -568,21 +568,12 @@ open class TextView: UIScrollView {
         editMenuController.delegate = self
         editMenuController.setupEditMenu(in: self)
         textViewController.highlightNavigationController.delegate = self
-        addSubview(textViewController.layoutManager.lineSelectionBackgroundView)
-        addSubview(textViewController.layoutManager.linesContainerView)
-        addSubview(textViewController.layoutManager.gutterContainerView)
     }
 
     /// The initializer has not been implemented.
     /// - Parameter coder: Not used.
     public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-    }
-
-    /// Tells the view that its window object changed.
-    override open func didMoveToWindow() {
-        super.didMoveToWindow()
-        textViewController.performFullLayoutIfNeeded()
     }
 
     /// Lays out subviews.
@@ -603,8 +594,9 @@ open class TextView: UIScrollView {
         }
         textViewController.handleContentSizeUpdateIfNeeded()
         textViewController.viewport = CGRect(origin: contentOffset, size: frame.size)
-        textViewController.layoutIfNeeded()
-        textViewController.layoutManager.bringGutterToFront()
+        textViewController.lineFragmentLayoutManager.layoutIfNeeded()
+//        textViewController.layoutIfNeeded()
+//        textViewController.lineFragmentLayoutManager.bringGutterToFront()
         // Setting the frame of the text selection view fixes a bug where UIKit assigns an incorrect
         // Y-position to the selection rects the first time the user selects text.
         // After the initial selection the rectangles would be placed correctly.
@@ -910,7 +902,11 @@ open class TextView: UIScrollView {
     /// - Parameter range: Range of text to include in text view. The returned result may span a larger range than the one specified.
     /// - Returns: Text preview containing the specified range.
     public func textPreview(containing range: NSRange) -> TextPreview? {
-        textViewController.layoutManager.textPreview(containing: range)
+        let textPreviewFactory = TextPreviewFactory(
+            lineManager: textViewController.lineManager,
+            lineControllerStorage: textViewController.lineControllerStorage
+        )
+        return textPreviewFactory.textPreview(containing: range)
     }
 
     /// Selects a highlighted range behind the selected range if possible.
@@ -937,7 +933,7 @@ open class TextView: UIScrollView {
 
     /// Synchronously displays the visible lines. This can be used to immediately update the visible lines after setting the theme. Use with caution as redisplaying the visible lines can be a costly operation.
     public func redisplayVisibleLines() {
-        textViewController.layoutManager.redisplayVisibleLines()
+        textViewController.redisplayVisibleLines()
     }
 
     /// Scrolls the text view to reveal the text in the specified range.
@@ -973,7 +969,7 @@ open class TextView: UIScrollView {
         super.traitCollectionDidChange(previousTraitCollection)
         if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
             textViewController.invalidateLines()
-            textViewController.layoutManager.setNeedsLayout()
+            textViewController.lineFragmentLayoutManager.setNeedsLayout()
         }
     }
 
@@ -1118,7 +1114,13 @@ private extension TextView {
         }
         let point = gestureRecognizer.location(in: self)
         let oldSelectedRange = selectedRange
-        let index = textViewController.layoutManager.closestIndex(to: point)
+        let closestLocationLocator = ClosestLocationLocator(
+            stringView: textViewController.stringView,
+            lineManager: textViewController.lineManager,
+            lineControllerStorage: textViewController.lineControllerStorage,
+            textContainerInset: textViewController.textContainerInset
+        )
+        let index = closestLocationLocator.location(closestTo: point)
         selectedRange = NSRange(location: index, length: 0)
         if selectedRange != oldSelectedRange {
             layoutIfNeeded()
@@ -1281,8 +1283,7 @@ extension TextView: EditMenuControllerDelegate {
             stringView: textViewController.stringView,
             lineManager: textViewController.lineManager,
             lineControllerStorage: textViewController.lineControllerStorage,
-            gutterWidthService: textViewController.gutterWidthService,
-            textContainerInset: textContainerInset
+            textContainerInset: textViewController.textContainerInset
         )
         return caretRectFactory.caretRect(at: location, allowMovingCaretToNextLineFragment: false)
     }

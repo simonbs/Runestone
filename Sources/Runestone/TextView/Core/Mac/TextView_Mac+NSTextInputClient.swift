@@ -81,8 +81,13 @@ extension TextView: NSTextInputClient {
     /// - Parameter point: The point to test, in screen coordinates.
     /// - Returns: The character index, measured from the start of the receiver's text storage, of the character containing the given point.
     public func characterIndex(for point: NSPoint) -> Int {
-        let adjustedPoint = CGPoint(x: point.x - gutterWidth - textContainerInset.left, y: point.y)
-        return textViewController.layoutManager.closestIndex(to: adjustedPoint)
+        let closestLocationLocator = ClosestLocationLocator(
+            stringView: textViewController.stringView,
+            lineManager: textViewController.lineManager,
+            lineControllerStorage: textViewController.lineControllerStorage,
+            textContainerInset: textViewController.textContainerInset
+        )
+        return closestLocationLocator.location(closestTo: point)
     }
 }
 #endif
