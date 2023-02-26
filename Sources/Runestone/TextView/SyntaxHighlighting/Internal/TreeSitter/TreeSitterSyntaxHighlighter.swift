@@ -1,9 +1,4 @@
-import Byte
 import Foundation
-import LineManager
-import MultiPlatform
-import StringView
-import TreeSitter
 
 enum TreeSitterSyntaxHighlighterError: LocalizedError {
     case cancelled

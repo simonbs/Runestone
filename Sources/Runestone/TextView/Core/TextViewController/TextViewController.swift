@@ -1,12 +1,6 @@
 // swiftlint:disable file_length
-import Byte
 import Combine
 import Foundation
-import LineManager
-import MultiPlatform
-import RangeHelpers
-import StringView
-import TreeSitter
 
 protocol TextViewControllerDelegate: AnyObject {
     func textViewControllerDidChangeText(_ textViewController: TextViewController)

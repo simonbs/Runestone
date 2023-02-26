@@ -1,5 +1,4 @@
 import Foundation
-import MultiPlatform
 
 final class HighlightedRangeFragment: Equatable {
     let range: NSRange

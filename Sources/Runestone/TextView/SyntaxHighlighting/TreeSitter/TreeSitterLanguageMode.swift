@@ -1,6 +1,4 @@
 import Foundation
-import LineManager
-import StringView
 
 /// Perform syntax highlighting with Tree-sitter.
 ///

@@ -1,6 +1,4 @@
 import CoreGraphics
-import RangeHelpers
-import RedBlackTree
 
 final class LineFragmentFrameQuery: RedBlackTreeSearchQuery {
     typealias NodeID = LineFragmentNodeID

@@ -1,5 +1,4 @@
 import Foundation
-import MultiPlatform
 
 /// Range of text to highlight.
 public final class HighlightedRange {

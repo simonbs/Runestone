@@ -1,5 +1,3 @@
-import StringView
-
 struct CharacterNavigationLocationFactory {
     private let stringView: StringView
 

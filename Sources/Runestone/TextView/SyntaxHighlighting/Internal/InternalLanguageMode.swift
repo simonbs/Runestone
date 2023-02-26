@@ -1,5 +1,4 @@
 import Foundation
-import LineManager
 
 struct InsertLineBreakIndentStrategy {
     let indentLevel: Int

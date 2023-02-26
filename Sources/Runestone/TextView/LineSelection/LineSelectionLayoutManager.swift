@@ -1,8 +1,4 @@
 import Foundation
-import LineManager
-import MultiPlatform
-import RangeHelpers
-import StringView
 
 final class LineSelectionLayoutManager {
     var showLineSelection = false {

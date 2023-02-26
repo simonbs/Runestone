@@ -1,8 +1,5 @@
 #if os(macOS)
 import Foundation
-import LineManager
-import StringView
-import MultiPlatform
 
 final class TextSelectionLayoutManager {
     var selectedRange: NSRange? {
@@ -29,7 +26,7 @@ final class TextSelectionLayoutManager {
     var backgroundColor: MultiPlatformColor = .label.withAlphaComponent(0.2) {
         didSet {
             if backgroundColor != oldValue {
-                for (_, view) in selectionViewReuseQueue.visibleViews {
+                for (_, view) in selectionReusableViewQueue.visibleViews {
                     view.backgroundColor = backgroundColor
                 }
             }
@@ -41,7 +38,7 @@ final class TextSelectionLayoutManager {
     private let lineControllerStorage: LineControllerStorage
     private let contentSizeService: ContentSizeService
     private weak var containerView: MultiPlatformView?
-    private let selectionViewReuseQueue = ViewReuseQueue<String, LineSelectionView>()
+    private let selectionReusableViewQueue = ReusableViewQueue<String, LineSelectionView>()
 
     init(
         stringView: StringView,
@@ -84,26 +81,26 @@ final class TextSelectionLayoutManager {
 
 private extension TextSelectionLayoutManager {
     private func removeAllViews() {
-        for (_, view) in selectionViewReuseQueue.visibleViews {
+        for (_, view) in selectionReusableViewQueue.visibleViews {
             view.removeFromSuperview()
         }
-        let keys = Set(selectionViewReuseQueue.visibleViews.keys)
-        selectionViewReuseQueue.enqueueViews(withKeys: keys)
+        let keys = Set(selectionReusableViewQueue.visibleViews.keys)
+        selectionReusableViewQueue.enqueueViews(withKeys: keys)
     }
 
     private func addViews(for selectionRects: [TextSelectionRect]) {
         var appearedViewKeys = Set<String>()
         for (idx, selectionRect) in selectionRects.enumerated() {
             let key = String(describing: idx)
-            let view = selectionViewReuseQueue.dequeueView(forKey: key)
+            let view = selectionReusableViewQueue.dequeueView(forKey: key)
             view.frame = selectionRect.rect
             view.backgroundColor = backgroundColor
             view.layer?.zPosition = 500
             containerView?.addSubview(view)
             appearedViewKeys.insert(key)
         }
-        let disappearedViewKeys = Set(selectionViewReuseQueue.visibleViews.keys).subtracting(appearedViewKeys)
-        selectionViewReuseQueue.enqueueViews(withKeys: disappearedViewKeys)
+        let disappearedViewKeys = Set(selectionReusableViewQueue.visibleViews.keys).subtracting(appearedViewKeys)
+        selectionReusableViewQueue.enqueueViews(withKeys: disappearedViewKeys)
     }
 }
 #endif

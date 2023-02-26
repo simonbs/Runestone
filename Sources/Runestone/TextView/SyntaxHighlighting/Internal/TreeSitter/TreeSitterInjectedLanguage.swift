@@ -1,5 +1,4 @@
 import Foundation
-import TreeSitter
 
 struct TreeSitterInjectedLanguage {
     let id: UnsafeRawPointer

@@ -1,6 +1,4 @@
 import Foundation
-import RangeHelpers
-import RedBlackTree
 
 final class LineFragmentCharacterLocationQuery: RedBlackTreeSearchQuery {
     typealias NodeID = LineFragmentNodeID

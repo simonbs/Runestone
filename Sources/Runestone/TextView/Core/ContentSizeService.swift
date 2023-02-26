@@ -1,7 +1,5 @@
 import Combine
 import Foundation
-import MultiPlatform
-import LineManager
 
 final class ContentSizeService {
     var safeAreaInset: MultiPlatformEdgeInsets = .zero

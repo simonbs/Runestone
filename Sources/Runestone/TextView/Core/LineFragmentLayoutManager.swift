@@ -1,9 +1,5 @@
 import CoreGraphics
 import Foundation
-import LineManager
-import MultiPlatform
-import RangeHelpers
-import StringView
 
 protocol LineFragmentLayoutManagerDelegate: AnyObject {
     func lineFragmentLayoutManager(_ lineFragmentLayoutManager: LineFragmentLayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
@@ -46,7 +42,7 @@ final class LineFragmentLayoutManager {
     private let lineControllerStorage: LineControllerStorage
     private let contentSizeService: ContentSizeService
     private weak var containerView: MultiPlatformView?
-    private var lineFragmentViewReuseQueue = ViewReuseQueue<LineFragmentID, LineFragmentView>()
+    private var lineFragmentReusableViewQueue = ReusableViewQueue<LineFragmentID, LineFragmentView>()
     private var needsLayout = false
     private var constrainingLineWidth: CGFloat {
         if isLineWrappingEnabled {
@@ -116,7 +112,7 @@ extension LineFragmentLayoutManager {
             return
         }
         let oldVisibleLineIDs = visibleLineIDs
-        let oldVisibleLineFragmentIDs = Set(lineFragmentViewReuseQueue.visibleViews.keys)
+        let oldVisibleLineFragmentIDs = Set(lineFragmentReusableViewQueue.visibleViews.keys)
         // Layout lines until we have filled the viewport.
         var nextLine = lineManager.line(containingYOffset: viewport.minY)
         var appearedLineIDs: Set<LineNodeID> = []
@@ -166,7 +162,7 @@ extension LineFragmentLayoutManager {
             let lineController = lineControllerStorage[disappearedLineID]
             lineController?.cancelSyntaxHighlighting()
         }
-        lineFragmentViewReuseQueue.enqueueViews(withKeys: disappearedLineFragmentIDs)
+        lineFragmentReusableViewQueue.enqueueViews(withKeys: disappearedLineFragmentIDs)
         // Adjust the content offset on the Y-axis if necessary.
         if contentOffsetAdjustmentY != 0 {
             let contentOffsetAdjustment = CGPoint(x: 0, y: contentOffsetAdjustmentY)
@@ -180,7 +176,7 @@ extension LineFragmentLayoutManager {
         lineFragmentFrame: inout CGRect
     ) {
         let lineFragment = lineFragmentController.lineFragment
-        let lineFragmentView = lineFragmentViewReuseQueue.dequeueView(forKey: lineFragment.id)
+        let lineFragmentView = lineFragmentReusableViewQueue.dequeueView(forKey: lineFragment.id)
         lineFragmentView.layerIfLoaded?.zPosition = 50
         if lineFragmentView.superview == nil {
             containerView?.addSubview(lineFragmentView)

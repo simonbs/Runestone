@@ -1,6 +1,4 @@
 import Foundation
-import StringView
-import Symbol
 
 final class IndentLevelMeasurer {
     private let stringView: StringView

@@ -1,6 +1,3 @@
-import StringView
-import LineManager
-
 /// Language mode with no syntax highlighting.
 ///
 /// This language mode is used by default when creating a new ``TextView``.

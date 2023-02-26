@@ -1,6 +1,4 @@
 import Foundation
-import LineManager
-import StringView
 
 struct MoveLinesOperation {
     let removeRange: NSRange

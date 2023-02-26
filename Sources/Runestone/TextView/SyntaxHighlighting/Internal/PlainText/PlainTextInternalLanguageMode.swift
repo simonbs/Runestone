@@ -1,5 +1,4 @@
 import Foundation
-import LineManager
 
 final class PlainTextInternalLanguageMode: InternalLanguageMode {
     func parse(_ text: NSString) {}

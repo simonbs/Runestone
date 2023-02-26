@@ -1,6 +1,3 @@
-import LineManager
-import StringView
-
 final class LineControllerFactory {
     private let stringView: StringView
     private let highlightedRangeService: HighlightedRangeService

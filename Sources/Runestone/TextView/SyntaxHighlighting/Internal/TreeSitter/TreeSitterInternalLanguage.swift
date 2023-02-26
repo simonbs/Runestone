@@ -1,4 +1,3 @@
-import TreeSitter
 import TreeSitterLib
 
 final class TreeSitterInternalLanguage {

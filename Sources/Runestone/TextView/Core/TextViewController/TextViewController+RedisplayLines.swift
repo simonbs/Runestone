@@ -1,5 +1,4 @@
 import CoreGraphics
-import LineManager
 
 extension TextViewController {
     func invalidateLines() {

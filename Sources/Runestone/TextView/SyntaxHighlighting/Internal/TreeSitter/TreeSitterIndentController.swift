@@ -1,7 +1,4 @@
 import Foundation
-import LineManager
-import StringView
-import TreeSitter
 
 final class TreeSitterIndentController {
     private let indentationScopes: TreeSitterIndentationScopes

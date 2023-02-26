@@ -1,4 +1,3 @@
-import Byte
 import CoreGraphics
 import Foundation
 

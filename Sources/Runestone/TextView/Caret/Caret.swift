@@ -1,5 +1,4 @@
 import CoreGraphics
-import MultiPlatform
 
 enum Caret {
     #if os(iOS)

@@ -1,6 +1,4 @@
 import Foundation
-import LineManager
-import RangeHelpers
 
 extension TextViewController {
     var rangeForInsertingText: NSRange {

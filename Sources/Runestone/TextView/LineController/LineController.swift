@@ -5,10 +5,6 @@ import AppKit
 import CoreGraphics
 import CoreText
 import Foundation
-import LineManager
-import RangeHelpers
-import RedBlackTree
-import StringView
 #if os(iOS)
 import UIKit
 #endif

@@ -1,6 +1,5 @@
 // swiftlint:disable file_length
 #if os(iOS)
-import RangeHelpers
 import UIKit
 
 extension TextView: UITextInput {}

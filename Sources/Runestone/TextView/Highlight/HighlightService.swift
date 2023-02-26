@@ -1,6 +1,4 @@
 import Foundation
-import LineManager
-import RangeHelpers
 
 final class HighlightedRangeService {
     let lineManager: LineManager

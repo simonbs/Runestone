@@ -3,8 +3,6 @@ import AppKit
 #endif
 import CoreText
 import Foundation
-import MultiPlatform
-import Symbol
 #if os(iOS)
 import UIKit
 #endif

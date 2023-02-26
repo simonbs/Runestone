@@ -1,5 +1,4 @@
 import Foundation
-import TreeSitter
 
 protocol TreeSitterInjectedLanguageMapperDelegate: AnyObject {
     func treeSitterInjectedLanguageMapper(_ mapper: TreeSitterInjectedLanguageMapper, textIn textRange: TreeSitterTextRange) -> String?

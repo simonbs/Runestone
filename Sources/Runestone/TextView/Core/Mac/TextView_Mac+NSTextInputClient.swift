@@ -1,13 +1,12 @@
 #if os(macOS)
 import AppKit
-import RangeHelpers
 
 extension TextView: NSTextInputClient {
     // swiftlint:disable:next prohibited_super_call
     override public func doCommand(by selector: Selector) {
-//        #if DEBUG
-//        print(NSStringFromSelector(selector))
-//        #endif
+        #if DEBUG
+        print(NSStringFromSelector(selector))
+        #endif
         super.doCommand(by: selector)
     }
 

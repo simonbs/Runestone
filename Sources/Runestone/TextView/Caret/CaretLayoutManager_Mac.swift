@@ -1,8 +1,5 @@
 #if os(macOS)
 import Foundation
-import LineManager
-import MultiPlatform
-import StringView
 
 final class CaretLayoutManager {
     var textContainerInset: MultiPlatformEdgeInsets {

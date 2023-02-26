@@ -1,7 +1,4 @@
 import CoreGraphics
-import LineManager
-import MultiPlatform
-import StringView
 
 struct ClosestLocationLocator {
     private let stringView: StringView

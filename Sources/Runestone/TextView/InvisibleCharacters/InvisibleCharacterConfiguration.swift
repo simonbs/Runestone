@@ -2,7 +2,6 @@
 import AppKit
 #endif
 import CoreGraphics
-import MultiPlatform
 #if os(iOS)
 import UIKit
 #endif

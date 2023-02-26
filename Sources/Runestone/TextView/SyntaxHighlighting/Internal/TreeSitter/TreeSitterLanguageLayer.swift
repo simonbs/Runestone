@@ -1,8 +1,4 @@
-import Byte
 import Foundation
-import LineManager
-import StringView
-import TreeSitter
 
 final class TreeSitterLanguageLayer {
     typealias LayerAndNodeTuple = (layer: TreeSitterLanguageLayer, node: TreeSitterNode)

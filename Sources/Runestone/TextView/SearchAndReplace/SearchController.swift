@@ -1,6 +1,4 @@
 import Foundation
-import LineManager
-import StringView
 
 protocol SearchControllerDelegate: AnyObject {
     func searchController(_ searchController: SearchController, linePositionAt location: Int) -> LinePosition?

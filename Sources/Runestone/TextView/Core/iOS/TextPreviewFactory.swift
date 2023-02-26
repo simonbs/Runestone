@@ -1,6 +1,5 @@
 #if os(iOS)
 import Foundation
-import LineManager
 
 struct TextPreviewFactory {
     private let lineManager: LineManager

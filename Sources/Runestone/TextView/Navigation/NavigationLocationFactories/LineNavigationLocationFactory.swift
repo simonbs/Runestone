@@ -1,5 +1,3 @@
-import LineManager
-
 struct LineNavigationLocationFactory {
     private let lineManager: LineManager
     private let lineControllerStorage: LineControllerStorage

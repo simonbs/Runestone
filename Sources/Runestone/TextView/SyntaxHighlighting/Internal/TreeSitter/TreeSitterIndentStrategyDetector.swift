@@ -1,8 +1,4 @@
 import Foundation
-import LineManager
-import StringView
-import Symbol
-import TreeSitter
 
 final class TreeSitterIndentStrategyDetector {
     private let lineManager: LineManager

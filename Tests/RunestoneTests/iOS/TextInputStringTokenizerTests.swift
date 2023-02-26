@@ -1,8 +1,6 @@
 #if os(iOS)
 // swiftlint:disable force_cast
-import LineManager
 @testable import Runestone
-import StringView
 import XCTest
 
 final class TextInputStringTokenizerTests: XCTestCase {}

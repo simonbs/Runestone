@@ -1,6 +1,3 @@
-import LineManager
-import StringView
-
 final class NavigationService {
     private let stringView: StringView
     private let lineManager: LineManager

@@ -1,6 +1,4 @@
 import Foundation
-import LineManager
-import StringView
 
 enum InternalLanguageModeFactory {
     static func internalLanguageMode(from languageMode: LanguageMode, stringView: StringView, lineManager: LineManager) -> InternalLanguageMode {

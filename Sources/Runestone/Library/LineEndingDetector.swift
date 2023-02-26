@@ -1,6 +1,4 @@
 import Foundation
-import LineManager
-import StringView
 
 final class LineEndingDetector {
     private let lineManager: LineManager

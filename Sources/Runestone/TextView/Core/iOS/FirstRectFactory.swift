@@ -1,7 +1,5 @@
 #if os(iOS)
 import Foundation
-import LineManager
-import MultiPlatform
 
 struct FirstRectFactory {
     private let lineManager: LineManager

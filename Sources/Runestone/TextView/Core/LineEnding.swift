@@ -1,5 +1,4 @@
 import Foundation
-import Symbol
 
 /// Line ending character to use when inserting a line break in the text view.
 public enum LineEnding: String, CaseIterable {
