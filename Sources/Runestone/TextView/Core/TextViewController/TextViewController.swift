@@ -524,7 +524,7 @@ final class TextViewController {
     #endif
 
     // Undo/redo
-    let timedUndoManager = TimedUndoManager()
+    let timedUndoManager = CoalescingUndoManager()
 
     // Scrolling
     var isAutomaticScrollEnabled = true

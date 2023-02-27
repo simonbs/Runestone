@@ -1,6 +1,6 @@
 import Foundation
 
-final class TimedUndoManager: UndoManager {
+final class CoalescingUndoManager: UndoManager {
     private let endGroupingInterval: TimeInterval = 1
     private var endGroupingTimer: Timer?
     private var hasOpenGroup: Bool {
@@ -39,9 +39,15 @@ final class TimedUndoManager: UndoManager {
     }
 }
 
-private extension TimedUndoManager {
+private extension CoalescingUndoManager {
     private func scheduleTimer() {
-        let timer = Timer(timeInterval: endGroupingInterval, target: self, selector: #selector(timerDidTrigger), userInfo: nil, repeats: false)
+        let timer = Timer(
+            timeInterval: endGroupingInterval,
+            target: self,
+            selector: #selector(timerDidTrigger),
+            userInfo: nil,
+            repeats: false
+        )
         endGroupingTimer = timer
         RunLoop.main.add(timer, forMode: .common)
     }
@@ -56,3 +62,5 @@ private extension TimedUndoManager {
         endUndoGrouping()
     }
 }
+
+extension CoalescingUndoManager: UndoManagable {}
