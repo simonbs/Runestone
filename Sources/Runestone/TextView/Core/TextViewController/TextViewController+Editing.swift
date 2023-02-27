@@ -26,7 +26,7 @@ extension TextViewController {
         let textChange = textEditResult.textChange
         let lineChangeSet = textEditResult.lineChangeSet
         let languageModeLineChangeSet = languageMode.textDidChange(textChange)
-        lineChangeSet.union(with: languageModeLineChangeSet)
+        lineChangeSet.formUnion(with: languageModeLineChangeSet)
         applyLineChanges(lineChangeSet)
         lineFragmentLayoutManager.setNeedsLayout()
         lineFragmentLayoutManager.layoutIfNeeded()

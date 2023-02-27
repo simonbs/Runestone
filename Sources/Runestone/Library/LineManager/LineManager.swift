@@ -100,9 +100,9 @@ final class LineManager {
             // Deleting starting in the middle of a delimiter.
             let changeSet = LineChangeSet()
             let otherChangeSetA = setLength(of: startLine, to: startLine.value - 1)
-            changeSet.union(with: otherChangeSetA)
+            changeSet.formUnion(with: otherChangeSetA)
             let otherChangeSetB = removeCharacters(in: NSRange(location: range.location, length: range.length - 1))
-            changeSet.union(with: otherChangeSetB)
+            changeSet.formUnion(with: otherChangeSetB)
             return changeSet
         } else if range.location + range.length < Int(startLine.location) + startLine.value {
             // Removing a part of the start line.
@@ -132,7 +132,7 @@ final class LineManager {
                 } while lineToRemove !== endLine
                 let newLength = startLine.value - charactersRemovedInStartLine + charactersLeftInEndLine
                 let otherChangeSet = setLength(of: startLine, to: newLength)
-                changeSet.union(with: otherChangeSet)
+                changeSet.formUnion(with: otherChangeSet)
                 return changeSet
             }
         }
@@ -149,12 +149,12 @@ final class LineManager {
         if location > lineLocation + line.data.length {
             // Inserting in the middle of a delimiter.
             let otherChangeSetA = setLength(of: line, to: line.value - 1)
-            changeSet.union(with: otherChangeSetA)
+            changeSet.formUnion(with: otherChangeSetA)
             // Add new line.
             line = insertLine(ofLength: 1, after: line)
             changeSet.markLineInserted(line)
             let otherChangeSetB = setLength(of: line, to: 1, newLine: &line)
-            changeSet.union(with: otherChangeSetB)
+            changeSet.formUnion(with: otherChangeSetB)
         }
         if let rangeOfFirstNewLine = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: 0) {
             var lastDelimiterEnd = 0
@@ -165,11 +165,11 @@ final class LineManager {
                 lineLocation = Int(line.location)
                 let lengthAfterInsertionPos = lineLocation + line.value - (location + lastDelimiterEnd)
                 let otherChangeSetA = setLength(of: line, to: lineBreakLocation - lineLocation, newLine: &line)
-                changeSet.union(with: otherChangeSetA)
+                changeSet.formUnion(with: otherChangeSetA)
                 var newLine = insertLine(ofLength: lengthAfterInsertionPos, after: line)
                 changeSet.markLineInserted(newLine)
                 let otherChangeSetB = setLength(of: newLine, to: lengthAfterInsertionPos, newLine: &newLine)
-                changeSet.union(with: otherChangeSetB)
+                changeSet.formUnion(with: otherChangeSetB)
                 line = newLine
                 lastDelimiterEnd = rangeOfNewLine.location + rangeOfNewLine.length
                 if let rangeOfNextNewLine = NewLineFinder.rangeOfNextNewLine(in: string, startingAt: lastDelimiterEnd) {
@@ -181,12 +181,12 @@ final class LineManager {
             // Insert rest of last delimiter.
             if lastDelimiterEnd != string.length {
                 let otherChangeSet = setLength(of: line, to: line.value + string.length - lastDelimiterEnd)
-                changeSet.union(with: otherChangeSet)
+                changeSet.formUnion(with: otherChangeSet)
             }
         } else {
             // No newline is being inserted. All the text is in a single line.
             let otherChangeSet = setLength(of: line, to: line.value + string.length)
-            changeSet.union(with: otherChangeSet)
+            changeSet.formUnion(with: otherChangeSet)
         }
         return changeSet
     }
@@ -310,7 +310,7 @@ private extension LineManager {
                     changeSet.markLineRemoved(line)
                     lineTree.remove(line)
                     let otherChangeSet = setLength(of: previousLine, to: previousLine.value + 1, newLine: &newLine)
-                    changeSet.union(with: otherChangeSet)
+                    changeSet.formUnion(with: otherChangeSet)
                 } else {
                     line.data.delimiterLength = 1
                 }

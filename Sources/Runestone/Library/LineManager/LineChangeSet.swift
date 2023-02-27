@@ -25,7 +25,7 @@ final class LineChangeSet {
         }
     }
 
-    func union(with otherChangeSet: LineChangeSet) {
+    func formUnion(with otherChangeSet: LineChangeSet) {
         insertedLines.formUnion(otherChangeSet.insertedLines)
         removedLines.formUnion(otherChangeSet.removedLines)
         editedLines.formUnion(otherChangeSet.editedLines)
