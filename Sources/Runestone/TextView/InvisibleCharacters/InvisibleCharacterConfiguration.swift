@@ -10,8 +10,8 @@ final class InvisibleCharacterConfiguration {
     var font: MultiPlatformFont = .systemFont(ofSize: 12) {
         didSet {
             if font != oldValue {
-                _lineBreakSymbolSize = nil
-                _softLineBreakSymbolSize = nil
+                cachedLineBreakSymbolSize = nil
+                cachedSoftLineBreakSymbolSize = nil
             }
         }
     }
@@ -22,14 +22,14 @@ final class InvisibleCharacterConfiguration {
     var showLineBreaks = false {
         didSet {
             if showLineBreaks != oldValue {
-                _lineBreakSymbolSize = nil
+                cachedLineBreakSymbolSize = nil
             }
         }
     }
     var showSoftLineBreaks = false {
         didSet {
             if showSoftLineBreaks != oldValue {
-                _softLineBreakSymbolSize = nil
+                cachedSoftLineBreakSymbolSize = nil
             }
         }
     }
@@ -39,41 +39,18 @@ final class InvisibleCharacterConfiguration {
     var lineBreakSymbol = "\u{00ac}" {
         didSet {
             if lineBreakSymbol != oldValue {
-                _lineBreakSymbolSize = nil
+                cachedLineBreakSymbolSize = nil
             }
         }
     }
     var softLineBreakSymbol = "\u{00ac}" {
         didSet {
             if softLineBreakSymbol != oldValue {
-                _softLineBreakSymbolSize = nil
+                cachedSoftLineBreakSymbolSize = nil
             }
         }
     }
-    var lineBreakSymbolSize: CGSize {
-        if let lineBreakSymbolSize = _lineBreakSymbolSize {
-            return lineBreakSymbolSize
-        } else if showLineBreaks {
-            let attrs: [NSAttributedString.Key: Any] = [.font: font]
-            let lineBreakSymbolSize = lineBreakSymbol.size(withAttributes: attrs)
-            _lineBreakSymbolSize = lineBreakSymbolSize
-            return lineBreakSymbolSize
-        } else {
-            return .zero
-        }
-    }
-    var softLineBreakSymbolSize: CGSize {
-        if let softLineBreakSymbolSize = _softLineBreakSymbolSize {
-            return softLineBreakSymbolSize
-        } else if showSoftLineBreaks {
-            let attrs: [NSAttributedString.Key: Any] = [.font: font]
-            let softLineBreakSymbolSize = softLineBreakSymbol.size(withAttributes: attrs)
-            _softLineBreakSymbolSize = softLineBreakSymbolSize
-            return softLineBreakSymbolSize
-        } else {
-            return .zero
-        }
-    }
+
     var maximumLineBreakSymbolWidth: CGFloat {
         if showLineBreaks && showSoftLineBreaks {
             return max(lineBreakSymbolSize.width, softLineBreakSymbolSize.width)
@@ -86,6 +63,31 @@ final class InvisibleCharacterConfiguration {
         }
     }
 
-    private var _lineBreakSymbolSize: CGSize?
-    private var _softLineBreakSymbolSize: CGSize?
+    private var lineBreakSymbolSize: CGSize {
+        if let cachedLineBreakSymbolSize {
+            return cachedLineBreakSymbolSize
+        } else if showLineBreaks {
+            let attrs: [NSAttributedString.Key: Any] = [.font: font]
+            let lineBreakSymbolSize = lineBreakSymbol.size(withAttributes: attrs)
+            cachedLineBreakSymbolSize = lineBreakSymbolSize
+            return lineBreakSymbolSize
+        } else {
+            return .zero
+        }
+    }
+    private var softLineBreakSymbolSize: CGSize {
+        if let cachedSoftLineBreakSymbolSize {
+            return cachedSoftLineBreakSymbolSize
+        } else if showSoftLineBreaks {
+            let attrs: [NSAttributedString.Key: Any] = [.font: font]
+            let softLineBreakSymbolSize = softLineBreakSymbol.size(withAttributes: attrs)
+            cachedSoftLineBreakSymbolSize = softLineBreakSymbolSize
+            return softLineBreakSymbolSize
+        } else {
+            return .zero
+        }
+    }
+
+    private var cachedLineBreakSymbolSize: CGSize?
+    private var cachedSoftLineBreakSymbolSize: CGSize?
 }
