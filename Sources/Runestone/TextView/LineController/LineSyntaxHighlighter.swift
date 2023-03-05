@@ -1,3 +1,4 @@
+import Combine
 import CoreGraphics
 import Foundation
 
@@ -22,8 +23,8 @@ final class LineSyntaxHighlighterInput {
 
 protocol LineSyntaxHighlighter: AnyObject {
     typealias AsyncCallback = (Result<Void, Error>) -> Void
-    var theme: Theme { get set }
-    var kern: CGFloat { get set }
+    var theme: CurrentValueSubject<Theme, Never> { get }
+    var kern: CurrentValueSubject<CGFloat, Never> { get }
     var canHighlight: Bool { get }
     func setDefaultAttributes(on attributedString: NSMutableAttributedString)
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput)
@@ -35,9 +36,9 @@ extension LineSyntaxHighlighter {
     func setDefaultAttributes(on attributedString: NSMutableAttributedString) {
         let entireRange = NSRange(location: 0, length: attributedString.length)
         let attributes: [NSAttributedString.Key: Any] = [
-            .foregroundColor: theme.textColor,
-            .font: theme.font,
-            .kern: kern as NSNumber
+            .foregroundColor: theme.value.textColor,
+            .font: theme.value.font,
+            .kern: kern.value as NSNumber
         ]
         attributedString.beginEditing()
         attributedString.setAttributes(attributes, range: entireRange)

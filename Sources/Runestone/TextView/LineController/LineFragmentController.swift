@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 protocol LineFragmentControllerDelegate: AnyObject {
@@ -32,28 +33,6 @@ final class LineFragmentController {
             }
         }
     }
-    var markedTextBackgroundColor: MultiPlatformColor {
-        get {
-            renderer.markedTextBackgroundColor
-        }
-        set {
-            if newValue != renderer.markedTextBackgroundColor {
-                renderer.markedTextBackgroundColor = newValue
-                lineFragmentView?.setNeedsDisplay()
-            }
-        }
-    }
-    var markedTextBackgroundCornerRadius: CGFloat {
-        get {
-            renderer.markedTextBackgroundCornerRadius
-        }
-        set {
-            if newValue != renderer.markedTextBackgroundCornerRadius {
-                renderer.markedTextBackgroundCornerRadius = newValue
-                lineFragmentView?.setNeedsDisplay()
-            }
-        }
-    }
     var highlightedRangeFragments: [HighlightedRangeFragment] {
         get {
             renderer.highlightedRangeFragments
@@ -67,11 +46,28 @@ final class LineFragmentController {
     }
 
     private let renderer: LineFragmentRenderer
+    private var cancellables: Set<AnyCancellable> = []
 
-    init(lineFragment: LineFragment, invisibleCharacterConfiguration: InvisibleCharacterConfiguration) {
+    init(
+        lineFragment: LineFragment,
+        invisibleCharacterSettings: InvisibleCharacterSettings,
+        markedTextBackgroundColor: CurrentValueSubject<MultiPlatformColor, Never>,
+        markedTextBackgroundCornerRadius: CurrentValueSubject<CGFloat, Never>
+    ) {
         self.lineFragment = lineFragment
-        self.renderer = LineFragmentRenderer(lineFragment: lineFragment, invisibleCharacterConfiguration: invisibleCharacterConfiguration)
+        self.renderer = LineFragmentRenderer(
+            lineFragment: lineFragment,
+            invisibleCharacterSettings: invisibleCharacterSettings,
+            markedTextBackgroundColor: markedTextBackgroundColor,
+            markedTextBackgroundCornerRadius: markedTextBackgroundCornerRadius
+        )
         self.renderer.delegate = self
+        Publishers.CombineLatest(
+            markedTextBackgroundColor.removeDuplicates(),
+            markedTextBackgroundCornerRadius.removeDuplicates()
+        ).sink { [weak self] _ in
+            self?.lineFragmentView?.setNeedsDisplay()
+        }.store(in: &cancellables)
     }
 }
 

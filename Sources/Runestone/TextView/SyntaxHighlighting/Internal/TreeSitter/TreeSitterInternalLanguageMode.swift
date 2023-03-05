@@ -58,7 +58,7 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
         operationQueue.addOperation(operation)
     }
 
-    func textDidChange(_ change: TextChange) -> LineChangeSet {
+    func textDidChange(_ change: TextStoreChange) -> LineChangeSet {
         let bytesRemoved = change.byteRange.length
         let bytesAdded = change.bytesAdded
         let edit = TreeSitterInputEdit(
@@ -67,7 +67,8 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
             newEndByte: change.byteRange.location + bytesAdded,
             startPoint: TreeSitterTextPoint(change.startLinePosition),
             oldEndPoint: TreeSitterTextPoint(change.oldEndLinePosition),
-            newEndPoint: TreeSitterTextPoint(change.newEndLinePosition))
+            newEndPoint: TreeSitterTextPoint(change.newEndLinePosition)
+        )
         return rootLanguageLayer.apply(edit)
     }
 

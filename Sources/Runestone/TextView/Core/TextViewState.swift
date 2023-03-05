@@ -35,7 +35,8 @@ public final class TextViewState {
             language: language.internalLanguage,
             languageProvider: languageProvider,
             stringView: stringView,
-            lineManager: lineManager)
+            lineManager: lineManager
+        )
         prepare(with: text)
     }
 

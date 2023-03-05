@@ -266,14 +266,14 @@ Donec laoreet, massa sed commodo tincidunt, dui neque ullamcorper sapien, laoree
     private func makeTokenizer() -> UITextInputTokenizer {
         let textView = TextView()
         let stringView = StringView(string: sampleText)
-        let invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
+        let invisibleCharacterSettings = InvisibleCharacterSettings()
         let lineManager = LineManager(stringView: stringView)
         lineManager.rebuild()
         let highlightedRangeService = HighlightedRangeService(lineManager: lineManager)
         let lineControllerFactory = LineControllerFactory(
             stringView: stringView,
             highlightedRangeService: highlightedRangeService,
-            invisibleCharacterConfiguration: invisibleCharacterConfiguration
+            invisibleCharacterSettings: invisibleCharacterSettings
         )
         let lineControllerStorage = LineControllerStorage(stringView: stringView, lineControllerFactory: lineControllerFactory)
         lineControllerStorage.delegate = self

@@ -86,7 +86,7 @@ extension TreeSitterLanguageLayer {
             }
         }
         let childLineChangeSet = updateChildLayers(applying: edit)
-        lineChangeSet.union(with: childLineChangeSet)
+        lineChangeSet.formUnion(with: childLineChangeSet)
         return lineChangeSet
     }
 
@@ -190,7 +190,7 @@ private extension TreeSitterLanguageLayer {
         for injectedLanguage in injectedLanguages {
             if let childLanguageLayer = childLanguageLayer(withID: injectedLanguage.id, forLanguageNamed: injectedLanguage.languageName) {
                 let childLineChangeSet = childLanguageLayer.apply(edit, parsing: [injectedLanguage.textRange])
-                lineChangeSet.union(with: childLineChangeSet)
+                lineChangeSet.formUnion(with: childLineChangeSet)
             }
         }
         return lineChangeSet

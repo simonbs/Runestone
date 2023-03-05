@@ -62,5 +62,3 @@ private extension CoalescingUndoManager {
         endUndoGrouping()
     }
 }
-
-extension CoalescingUndoManager: UndoManagable {}

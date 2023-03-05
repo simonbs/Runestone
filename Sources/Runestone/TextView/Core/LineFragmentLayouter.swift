@@ -1,55 +1,34 @@
+import Combine
 import CoreGraphics
 import Foundation
 
-protocol LineFragmentLayoutManagerDelegate: AnyObject {
-    func lineFragmentLayoutManager(_ lineFragmentLayoutManager: LineFragmentLayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
+protocol LineFragmentLayouterDelegate: AnyObject {
+    func lineFragmentLayouter(
+        _ lineFragmentLayouter: LineFragmentLayouter, didProposeContentOffsetAdjustment
+        contentOffsetAdjustment: CGPoint
+    )
 }
 
-final class LineFragmentLayoutManager {
-    weak var delegate: LineFragmentLayoutManagerDelegate?
-    var viewport: CGRect = .zero {
-        didSet {
-            if viewport != oldValue {
-                setNeedsLayout()
-            }
-        }
-    }
-    var isLineWrappingEnabled = true {
-        didSet {
-            if isLineWrappingEnabled != oldValue {
-                setNeedsLayout()
-            }
-        }
-    }
-    var textContainerInset: MultiPlatformEdgeInsets = .zero {
-        didSet {
-            if textContainerInset != oldValue {
-                setNeedsLayout()
-            }
-        }
-    }
-    var safeAreaInsets: MultiPlatformEdgeInsets = .zero {
-        didSet {
-            if safeAreaInsets != oldValue {
-                setNeedsLayout()
-            }
-        }
-    }
+final class LineFragmentLayouter {
+    weak var delegate: LineFragmentLayouterDelegate?
     private(set) var visibleLineIDs: Set<LineNodeID> = []
 
     private let stringView: StringView
     private let lineManager: LineManager
     private let lineControllerStorage: LineControllerStorage
-    private let contentSizeService: ContentSizeService
+    private let widestLineTracker: WidestLineTracker
+    private let totalLineHeightTracker: TotalLineHeightTracker
+    private let textContainer: TextContainer
+    private let isLineWrappingEnabled: CurrentValueSubject<Bool, Never>
+    private let contentSize: CurrentValueSubject<CGSize, Never>
     private weak var containerView: MultiPlatformView?
     private var lineFragmentReusableViewQueue = ReusableViewQueue<LineFragmentID, LineFragmentView>()
     private var needsLayout = false
     private var constrainingLineWidth: CGFloat {
-        if isLineWrappingEnabled {
-            return viewport.width
-            - textContainerInset.left - textContainerInset.right
-            - safeAreaInsets.left - safeAreaInsets.right
-            //            - verticalScrollerWidth
+        if isLineWrappingEnabled.value {
+            let horizontalContainerInset = textContainer.inset.value.left + textContainer.inset.value.right
+            let horizontalSafeAreaInset = textContainer.safeAreaInsets.value.left + textContainer.safeAreaInsets.value.right
+            return textContainer.viewport.value.width - horizontalContainerInset - horizontalSafeAreaInset
         } else {
             // Rendering multiple very long lines is very expensive. In order to let the editor remain useable,
             // we set a very high maximum line width when line wrapping is disabled.
@@ -61,26 +40,36 @@ final class LineFragmentLayoutManager {
         stringView: StringView,
         lineManager: LineManager,
         lineControllerStorage: LineControllerStorage,
-        contentSizeService: ContentSizeService,
+        widestLineTracker: WidestLineTracker,
+        totalLineHeightTracker: TotalLineHeightTracker,
+        textContainer: TextContainer,
+        isLineWrappingEnabled: CurrentValueSubject<Bool, Never>,
+        contentSize: CurrentValueSubject<CGSize, Never>,
         containerView: MultiPlatformView
     ) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
-        self.contentSizeService = contentSizeService
+        self.widestLineTracker = widestLineTracker
+        self.totalLineHeightTracker = totalLineHeightTracker
+        self.textContainer = textContainer
+        self.isLineWrappingEnabled = isLineWrappingEnabled
+        self.contentSize = contentSize
         self.containerView = containerView
+        setupSetNeedsLayoutObserver()
     }
+
+    private var cancellables: Set<AnyCancellable> = []
 
     func setNeedsLayout() {
         needsLayout = true
     }
 
     func layoutIfNeeded() {
-        guard needsLayout else {
-            return
+        if needsLayout {
+            needsLayout = false
+            layoutLinesInViewport()
         }
-        needsLayout = false
-        layoutLinesInViewport()
     }
 
     func layoutLines(toLocation location: Int) {
@@ -92,8 +81,8 @@ final class LineFragmentLayoutManager {
             let lineController = lineControllerStorage.getOrCreateLineController(for: line)
             lineController.constrainingWidth = constrainingLineWidth
             lineController.prepareToDisplayString(toLocation: endTypesettingLocation, syntaxHighlightAsynchronously: true)
-            let lineSize = CGSize(width: lineController.lineWidth, height: lineController.lineHeight)
-            contentSizeService.setSize(of: lineController.line, to: lineSize)
+            widestLineTracker.setWidthOfLine(withID: lineController.line.id.id, to: lineController.lineWidth)
+            totalLineHeightTracker.setHeight(of: lineController.line, to: lineController.lineHeight)
             let lineEndLocation = lineLocation + line.data.length
             if ((lineEndLocation < location) || (lineLocation == location && !isLocationEndOfString)) && line.index < lineManager.lineCount - 1 {
                 nextLine = lineManager.line(atRow: line.index + 1)
@@ -105,9 +94,10 @@ final class LineFragmentLayoutManager {
 }
 
 // MARK: - Layout
-extension LineFragmentLayoutManager {
+extension LineFragmentLayouter {
     // swiftlint:disable:next function_body_length
     private func layoutLinesInViewport() {
+        let viewport = textContainer.viewport.value
         guard viewport.size.width > 0 && viewport.size.height > 0 else {
             return
         }
@@ -127,8 +117,7 @@ extension LineFragmentLayoutManager {
             let oldLineHeight = lineController.lineHeight
             lineController.constrainingWidth = constrainingLineWidth
             lineController.prepareToDisplayString(toYPosition: lineLocalViewport.maxY, syntaxHighlightAsynchronously: true)
-            // Layout line fragments ("sublines") in the line until we have filled the viewport.
-            let lineYPosition = line.yPosition
+            // Layout line fragments in the line until we have filled the viewport.
             let lineFragmentControllers = lineController.lineFragmentControllers(in: viewport)
             for lineFragmentController in lineFragmentControllers {
                 let lineFragment = lineFragmentController.lineFragment
@@ -138,17 +127,16 @@ extension LineFragmentLayoutManager {
 //                    for: lineFragment,
 //                    inLineWithID: line.id
 //                )
-                layoutLineFragmentView(for: lineFragmentController, lineYPosition: lineYPosition, lineFragmentFrame: &lineFragmentFrame)
+                layoutLineFragmentView(for: lineFragmentController, lineYPosition: line.yPosition, lineFragmentFrame: &lineFragmentFrame)
                 maxY = lineFragmentFrame.maxY
             }
-            let stoppedGeneratingLineFragments = lineFragmentControllers.isEmpty
-            let lineSize = CGSize(width: lineController.lineWidth, height: lineController.lineHeight)
-            contentSizeService.setSize(of: lineController.line, to: lineSize)
+            widestLineTracker.setWidthOfLine(withID: lineController.line.id.id, to: lineController.lineWidth)
+            totalLineHeightTracker.setHeight(of: lineController.line, to: lineController.lineHeight)
             let isSizingLineAboveTopEdge = line.yPosition < viewport.minY
             if isSizingLineAboveTopEdge && lineController.isFinishedTypesetting {
                 contentOffsetAdjustmentY += lineController.lineHeight - oldLineHeight
             }
-            if !stoppedGeneratingLineFragments && line.index < lineManager.lineCount - 1 {
+            if !lineFragmentControllers.isEmpty && line.index < lineManager.lineCount - 1 {
                 nextLine = lineManager.line(atRow: line.index + 1)
             } else {
                 nextLine = nil
@@ -166,7 +154,7 @@ extension LineFragmentLayoutManager {
         // Adjust the content offset on the Y-axis if necessary.
         if contentOffsetAdjustmentY != 0 {
             let contentOffsetAdjustment = CGPoint(x: 0, y: contentOffsetAdjustmentY)
-            delegate?.lineFragmentLayoutManager(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
+            delegate?.lineFragmentLayouter(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
         }
     }
 
@@ -182,10 +170,22 @@ extension LineFragmentLayoutManager {
             containerView?.addSubview(lineFragmentView)
         }
         lineFragmentController.lineFragmentView = lineFragmentView
+        let textContainerInset = textContainer.inset.value
         let lineFragmentOrigin = CGPoint(x: textContainerInset.left, y: textContainerInset.top + lineYPosition + lineFragment.yPosition)
-        let lineFragmentWidth = contentSizeService.contentWidth - textContainerInset.left - textContainerInset.right
-        let lineFragmentSize = CGSize(width: lineFragmentWidth, height: lineFragment.scaledSize.height)
-        lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragmentSize)
+//        let lineFragmentWidth = contentSize.value.width - textContainerInset.left - textContainerInset.right
+//        let lineFragmentSize = CGSize(width: lineFragmentWidth, height: lineFragment.scaledSize.height)
+        lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragment.scaledSize)
         lineFragmentView.frame = lineFragmentFrame
+    }
+
+    private func setupSetNeedsLayoutObserver() {
+        Publishers.CombineLatest4(
+            textContainer.viewport.removeDuplicates(),
+            textContainer.inset.removeDuplicates(),
+            textContainer.safeAreaInsets.removeDuplicates(),
+            isLineWrappingEnabled.removeDuplicates()
+        ).sink { [weak self] _, _, _, _ in
+            self?.setNeedsLayout()
+        }.store(in: &cancellables)
     }
 }

@@ -21,19 +21,16 @@ extension TextViewController {
         let newRange = NSRange(location: range.location, length: nsNewString.length)
         addUndoOperation(replacing: newRange, withText: currentText, selectedRangeAfterUndo: selectedRangeAfterUndo, actionName: undoActionName)
         selectedRange = NSRange(location: newRange.upperBound, length: 0)
-        let textEditHelper = TextEditHelper(stringView: stringView, lineManager: lineManager, lineEndings: lineEndings)
-        let textEditResult = textEditHelper.replaceText(in: range, with: newString)
-        let textChange = textEditResult.textChange
-        let lineChangeSet = textEditResult.lineChangeSet
-        let languageModeLineChangeSet = languageMode.textDidChange(textChange)
-        lineChangeSet.formUnion(with: languageModeLineChangeSet)
-        applyLineChanges(lineChangeSet)
-        lineFragmentLayoutManager.setNeedsLayout()
-        lineFragmentLayoutManager.layoutIfNeeded()
-        let updatedTextEditResult = TextEditResult(textChange: textChange, lineChangeSet: lineChangeSet)
+        let textStore = TextStore(stringView: stringView, lineManager: lineManager)
+        let textStoreChange = textStore.replaceText(in: range, with: newString)
+        let languageModeLineChangeSet = languageMode.textDidChange(textStoreChange)
+        textStoreChange.lineChangeSet.formUnion(with: languageModeLineChangeSet)
+        applyLineChanges(textStoreChange.lineChangeSet)
+        lineFragmentLayouter.setNeedsLayout()
+        lineFragmentLayouter.layoutIfNeeded()
         textDidChange()
-        if updatedTextEditResult.didAddOrRemoveLines {
-            invalidateContentSizeIfNeeded()
+        if !textStoreChange.lineChangeSet.insertedLines.isEmpty || !textStoreChange.lineChangeSet.removedLines.isEmpty {
+//            invalidateContentSizeIfNeeded()
         }
     }
 
@@ -45,8 +42,7 @@ extension TextViewController {
         if let oldSelectedRange = selectedRange {
             oldLinePosition = lineManager.linePosition(at: oldSelectedRange.location)
         }
-        let textEditHelper = TextEditHelper(stringView: stringView, lineManager: lineManager, lineEndings: lineEndings)
-        let newString = textEditHelper.string(byApplying: batchReplaceSet)
+        let newString = stringView.string.applying(batchReplaceSet)
         setStringWithUndoAction(newString)
         if let oldLinePosition = oldLinePosition {
             // By restoring the selected range using the old line position we can better preserve the old selected language.
@@ -202,16 +198,16 @@ private extension TextViewController {
     private func applyLineChanges(_ lineChangeSet: LineChangeSet) {
         let didAddOrRemoveLines = !lineChangeSet.insertedLines.isEmpty || !lineChangeSet.removedLines.isEmpty
         if didAddOrRemoveLines {
-            contentSizeService.invalidateContentSize()
+//            contentSizeService.invalidateContentSize()
             for removedLine in lineChangeSet.removedLines {
                 lineControllerStorage.removeLineController(withID: removedLine.id)
-                contentSizeService.removeLine(withID: removedLine.id)
+//                contentSizeService.removeLine(withID: removedLine.id)
             }
         }
         let editedLineIDs = Set(lineChangeSet.editedLines.map(\.id))
         redisplayLines(withIDs: editedLineIDs)
-        if didAddOrRemoveLines {
-            gutterWidthService.invalidateLineNumberWidth()
-        }
+//        if didAddOrRemoveLines {
+//            gutterWidthService.invalidateLineNumberWidth()
+//        }
     }
 }

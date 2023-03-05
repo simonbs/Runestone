@@ -1,0 +1,40 @@
+import Combine
+import CoreGraphics
+
+final class ThemeSettings {
+    let theme: CurrentValueSubject<Theme, Never>
+    let font: CurrentValueSubject<MultiPlatformFont, Never>
+    let invisibleCharactersColor: CurrentValueSubject<MultiPlatformColor, Never>
+    let selectedLineBackgroundColor: CurrentValueSubject<MultiPlatformColor, Never>
+    let pageGuideBackgroundColor: CurrentValueSubject<MultiPlatformColor, Never>
+    let pageGuideHairlineColor: CurrentValueSubject<MultiPlatformColor, Never>
+    let pageGuideHairlineWidth: CurrentValueSubject<CGFloat, Never>
+
+    private var cancellables: Set<AnyCancellable> = []
+
+    init(theme: Theme = DefaultTheme()) {
+        self.theme = CurrentValueSubject(theme)
+        self.font = CurrentValueSubject(theme.font)
+        self.invisibleCharactersColor = CurrentValueSubject(theme.invisibleCharactersColor)
+        self.selectedLineBackgroundColor = CurrentValueSubject(theme.selectedLineBackgroundColor)
+        self.pageGuideBackgroundColor = CurrentValueSubject(theme.pageGuideBackgroundColor)
+        self.pageGuideHairlineColor = CurrentValueSubject(theme.pageGuideHairlineColor)
+        self.pageGuideHairlineWidth = CurrentValueSubject(theme.pageGuideHairlineWidth)
+    }
+}
+
+private extension ThemeSettings {
+    private func setupObservers() {
+        setupObserver(assigning: \.font, to: \.font.value)
+        setupObserver(assigning: \.selectedLineBackgroundColor, to: \.selectedLineBackgroundColor.value)
+        setupObserver(assigning: \.pageGuideBackgroundColor, to: \.pageGuideBackgroundColor.value)
+        setupObserver(assigning: \.pageGuideHairlineColor, to: \.pageGuideHairlineColor.value)
+        setupObserver(assigning: \.pageGuideHairlineWidth, to: \.pageGuideHairlineWidth.value)
+    }
+
+    private func setupObserver<T>(assigning sourceKeyPath: KeyPath<Theme, T>, to destinationKeyPath: ReferenceWritableKeyPath<ThemeSettings, T>) {
+        theme.map(sourceKeyPath).sink { [weak self] value in
+            self?[keyPath: destinationKeyPath] = value
+        }.store(in: &cancellables)
+    }
+}

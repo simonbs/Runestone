@@ -1,23 +1,27 @@
 final class LineControllerFactory {
     private let stringView: StringView
     private let highlightedRangeService: HighlightedRangeService
-    private let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
+    private let typesetSettings: TypesetSettings
+    private let invisibleCharacterSettings: InvisibleCharacterSettings
 
     init(
         stringView: StringView,
         highlightedRangeService: HighlightedRangeService,
-        invisibleCharacterConfiguration: InvisibleCharacterConfiguration
+        typesetSettings: TypesetSettings,
+        invisibleCharacterSettings: InvisibleCharacterSettings
     ) {
         self.stringView = stringView
         self.highlightedRangeService = highlightedRangeService
-        self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
+        self.typesetSettings = typesetSettings
+        self.invisibleCharacterSettings = invisibleCharacterSettings
     }
 
     func makeLineController(for line: LineNode) -> LineController {
         LineController(
             line: line,
             stringView: stringView,
-            invisibleCharacterConfiguration: invisibleCharacterConfiguration,
+            typesetSettings: typesetSettings,
+            invisibleCharacterSettings: invisibleCharacterSettings,
             highlightedRangeService: highlightedRangeService
         )
     }

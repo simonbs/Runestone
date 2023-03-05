@@ -1,42 +1,41 @@
 import CoreGraphics
 
-final class CaretRectFactory {
+final class CaretRectProvider {
     private let stringView: StringView
     private let lineManager: LineManager
     private let lineControllerStorage: LineControllerStorage
-    private let textContainerInset: MultiPlatformEdgeInsets
+    private let contentAreaProvider: ContentAreaProvider
 
     init(
         stringView: StringView,
         lineManager: LineManager,
         lineControllerStorage: LineControllerStorage,
-        textContainerInset: MultiPlatformEdgeInsets
+        contentAreaProvider: ContentAreaProvider
     ) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
-        self.textContainerInset = textContainerInset
+        self.contentAreaProvider = contentAreaProvider
     }
 
     func caretRect(at location: Int, allowMovingCaretToNextLineFragment: Bool) -> CGRect {
-        let leadingLineSpacing = textContainerInset.left
         let safeLocation = min(max(location, 0), stringView.string.length)
         let line = lineManager.line(containingCharacterAt: safeLocation)!
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let lineLocalLocation = safeLocation - line.location
         if allowMovingCaretToNextLineFragment && shouldMoveCaretToNextLineFragment(forLocation: lineLocalLocation, in: line) {
             let rect = caretRect(at: location + 1, allowMovingCaretToNextLineFragment: false)
-            return CGRect(x: leadingLineSpacing, y: rect.minY, width: rect.width, height: rect.height)
+            return CGRect(x: contentAreaProvider.contentArea.minX, y: rect.minY, width: rect.width, height: rect.height)
         } else {
             let localCaretRect = lineController.caretRect(atIndex: lineLocalLocation)
             let globalYPosition = line.yPosition + localCaretRect.minY
             let globalRect = CGRect(x: localCaretRect.minX, y: globalYPosition, width: localCaretRect.width, height: localCaretRect.height)
-            return globalRect.offsetBy(dx: leadingLineSpacing, dy: textContainerInset.top)
+            return globalRect.offsetBy(dx: contentAreaProvider.contentArea.minX, dy: contentAreaProvider.contentArea.minY)
         }
     }
 }
 
-private extension CaretRectFactory {
+private extension CaretRectProvider {
     private func shouldMoveCaretToNextLineFragment(forLocation location: Int, in line: LineNode) -> Bool {
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         guard lineController.numberOfLineFragments > 0 else {

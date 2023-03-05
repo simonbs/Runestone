@@ -1,7 +1,7 @@
 #if os(macOS)
 import Foundation
 
-final class TextSelectionLayoutManager {
+final class TextSelectionLayouter {
     var selectedRange: NSRange? {
         didSet {
             if selectedRange != oldValue {
@@ -33,26 +33,12 @@ final class TextSelectionLayoutManager {
         }
     }
 
-    private let stringView: StringView
-    private let lineManager: LineManager
-    private let lineControllerStorage: LineControllerStorage
-    private let contentSizeService: ContentSizeService
+    private let textSelectionRectProvider: TextSelectionRectProvider
     private weak var containerView: MultiPlatformView?
     private let selectionReusableViewQueue = ReusableViewQueue<String, LineSelectionView>()
 
-    init(
-        stringView: StringView,
-        lineManager: LineManager,
-        textContainerInset: MultiPlatformEdgeInsets,
-        lineControllerStorage: LineControllerStorage,
-        contentSizeService: ContentSizeService,
-        containerView: MultiPlatformView
-    ) {
-        self.stringView = stringView
-        self.lineManager = lineManager
-        self.textContainerInset = textContainerInset
-        self.lineControllerStorage = lineControllerStorage
-        self.contentSizeService = contentSizeService
+    init(textSelectionRectProvider: TextSelectionRectProvider, containerView: MultiPlatformView) {
+        self.textSelectionRectProvider = textSelectionRectProvider
         self.containerView = containerView
     }
 
@@ -61,25 +47,12 @@ final class TextSelectionLayoutManager {
             removeAllViews()
             return
         }
-        let caretRectFactory = CaretRectFactory(
-            stringView: stringView,
-            lineManager: lineManager,
-            lineControllerStorage: lineControllerStorage,
-            textContainerInset: textContainerInset
-        )
-        let textSelectionRectFactory = TextSelectionRectFactory(
-            lineManager: lineManager,
-            contentSizeService: contentSizeService,
-            caretRectFactory: caretRectFactory,
-            textContainerInset: textContainerInset,
-            lineHeightMultiplier: lineHeightMultiplier
-        )
-        let selectionRects = textSelectionRectFactory.selectionRects(in: selectedRange)
+        let selectionRects = textSelectionRectProvider.selectionRects(in: selectedRange)
         addViews(for: selectionRects)
     }
 }
 
-private extension TextSelectionLayoutManager {
+private extension TextSelectionLayouter {
     private func removeAllViews() {
         for (_, view) in selectionReusableViewQueue.visibleViews {
             view.removeFromSuperview()

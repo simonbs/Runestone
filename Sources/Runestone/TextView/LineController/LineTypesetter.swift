@@ -1,3 +1,4 @@
+import Combine
 import CoreGraphics
 import CoreText
 import Foundation
@@ -29,9 +30,7 @@ final class LineTypesetter {
         }
     }
 
-    var lineBreakMode: LineBreakMode = .byWordWrapping
     var constrainingWidth: CGFloat = 0
-    var lineFragmentHeightMultiplier: CGFloat = 1
     private(set) var lineFragments: [LineFragment] = []
     private(set) var maximumLineWidth: CGFloat = 0
     var bestGuessNumberOfLineFragments: Int {
@@ -52,6 +51,8 @@ final class LineTypesetter {
     }
 
     private let lineID: String
+    private let lineBreakMode: CurrentValueSubject<LineBreakMode, Never>
+    private let lineFragmentHeightMultiplier: CurrentValueSubject<CGFloat, Never>
     private var stringLength = 0
     private var attributedString: NSAttributedString?
     private var typesetter: CTTypesetter?
@@ -60,8 +61,14 @@ final class LineTypesetter {
     private var nextYPosition: CGFloat = 0
     private var lineFragmentIndex = 0
 
-    init(lineID: String) {
+    init(
+        lineID: String,
+        lineBreakMode: CurrentValueSubject<LineBreakMode, Never>,
+        lineFragmentHeightMultiplier: CurrentValueSubject<CGFloat, Never>
+    ) {
         self.lineID = lineID
+        self.lineBreakMode = lineBreakMode
+        self.lineFragmentHeightMultiplier = lineFragmentHeightMultiplier
     }
 
     func reset() {
@@ -157,7 +164,7 @@ private extension LineTypesetter {
 
     private func makeNextLineFragment(using typesetter: CTTypesetter) -> LineFragment? {
         // suggestNextLineBreak(using:) uses CTTypesetterSuggestLineBreak but it may return lines that are longer than our constraining width.
-        // In that case we keep removeing characters from the line until we're below the constraining width.
+        // In that case we keep removing characters from the line until we're below the constraining width.
         var length = suggestNextLineBreak(using: typesetter)
         var lineFragment: LineFragment?
         while lineFragment == nil || lineFragment!.scaledSize.width > constrainingWidth {
@@ -180,7 +187,7 @@ private extension LineTypesetter {
             return stringLength
         }
         let lineBreakSuggester = LineBreakSuggester(
-            lineBreakMode: lineBreakMode,
+            lineBreakMode: lineBreakMode.value,
             typesetter: typesetter,
             attributedString: attributedString,
             constrainingWidth: constrainingWidth
@@ -214,7 +221,7 @@ private extension LineTypesetter {
         let width = CGFloat(CTLineGetTypographicBounds(line, &ascent, &descent, &leading))
         let height = ascent + descent + leading
         let baseSize = CGSize(width: width, height: height)
-        let scaledSize = CGSize(width: width, height: height * lineFragmentHeightMultiplier)
+        let scaledSize = CGSize(width: width, height: height * lineFragmentHeightMultiplier.value)
         let id = LineFragmentID(lineId: lineID, lineFragmentIndex: lineFragmentIndex)
         let visibleRange = NSRange(location: visibleRange.location, length: visibleRange.length)
         return LineFragment(

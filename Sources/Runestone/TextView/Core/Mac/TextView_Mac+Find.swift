@@ -20,8 +20,8 @@ extension TextView {
         textFinder.findBarContainer?.findBarView?.wantsLayer = true
         textFinder.findBarContainer?.findBarView?.layer?.zPosition = 1000
         if action == .showFindInterface || action == .showReplaceInterface || action == .hideFindInterface || action == .hideReplaceInterface {
-            textViewController.lineFragmentLayoutManager.setNeedsLayout()
-            textViewController.lineFragmentLayoutManager.layoutIfNeeded()
+            textViewController.lineFragmentLayouter.setNeedsLayout()
+            textViewController.lineFragmentLayouter.layoutIfNeeded()
         }
     }
 }

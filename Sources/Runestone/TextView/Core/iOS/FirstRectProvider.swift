@@ -1,7 +1,7 @@
 #if os(iOS)
 import Foundation
 
-struct FirstRectFactory {
+struct FirstRectProvider {
     private let lineManager: LineManager
     private let lineControllerStorage: LineControllerStorage
     private let textContainerWidth: CGFloat

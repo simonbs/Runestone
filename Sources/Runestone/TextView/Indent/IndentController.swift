@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 #if os(iOS)
 import UIKit
@@ -15,29 +16,32 @@ final class IndentController {
     #endif
 
     weak var delegate: IndentControllerDelegate?
-    var languageMode: InternalLanguageMode
-    var indentFont: MultiPlatformFont {
-        didSet {
-            if indentFont != oldValue {
-                _tabWidth = nil
-            }
-        }
-    }
-    var indentStrategy: IndentStrategy {
-        didSet {
-            if indentStrategy != oldValue {
-                _tabWidth = nil
-            }
-        }
-    }
+
+    let indentStrategy = CurrentValueSubject<IndentStrategy, Never>(.tab(length: 2))
+//    var indentFont: MultiPlatformFont {
+//        didSet {
+//            if indentFont != oldValue {
+//                _tabWidth = nil
+//            }
+//        }
+//    }
+//
+//
+//    var indentStrategy: IndentStrategy {
+//        didSet {
+//            if indentStrategy != oldValue {
+//                _tabWidth = nil
+//            }
+//        }
+//    }
     var tabWidth: CGFloat {
         if let tabWidth = _tabWidth {
             return tabWidth
         } else {
-            let str = String(repeating: " ", count: indentStrategy.tabLength)
+            let str = String(repeating: " ", count: indentStrategy.value.tabLength)
             let maxSize = CGSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude)
             let options: NSStringDrawingOptions = [.usesFontLeading, .usesLineFragmentOrigin]
-            let attributes: [NSAttributedString.Key: Any] = [.font: indentFont]
+            let attributes: [NSAttributedString.Key: Any] = [.font: font.value]
             let bounds = str.boundingRect(with: maxSize, options: options, attributes: attributes, context: nil)
             let tabWidth = round(bounds.size.width)
             if tabWidth != _tabWidth {
@@ -50,20 +54,20 @@ final class IndentController {
 
     private let stringView: StringView
     private let lineManager: LineManager
+    private let languageMode: CurrentValueSubject<InternalLanguageMode, Never>
+    private let font: CurrentValueSubject<MultiPlatformFont, Never>
     private var _tabWidth: CGFloat?
 
     init(
         stringView: StringView,
         lineManager: LineManager,
-        languageMode: InternalLanguageMode,
-        indentStrategy: IndentStrategy,
-        indentFont: MultiPlatformFont
+        languageMode: CurrentValueSubject<InternalLanguageMode, Never>,
+        font: CurrentValueSubject<MultiPlatformFont, Never>
     ) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.languageMode = languageMode
-        self.indentStrategy = indentStrategy
-        self.indentFont = indentFont
+        self.font = font
     }
 
     func shiftLeft(in selectedRange: NSRange) {
@@ -71,7 +75,7 @@ final class IndentController {
         let originalRange = range(surrounding: lines)
         var newSelectedRange = selectedRange
         var replacementString: String?
-        let indentString = indentStrategy.string(indentLevel: 1)
+        let indentString = indentStrategy.value.string(indentLevel: 1)
         let utf8IndentLength = indentString.count
         let utf16IndentLength = indentString.utf16.count
         for (lineIndex, line) in lines.enumerated() {
@@ -110,7 +114,7 @@ final class IndentController {
         let originalRange = range(surrounding: lines)
         var newSelectedRange = selectedRange
         var replacementString: String?
-        let indentString = indentStrategy.string(indentLevel: 1)
+        let indentString = indentStrategy.value.string(indentLevel: 1)
         let indentLength = indentString.utf16.count
         for (lineIndex, line) in lines.enumerated() {
             let lineRange = NSRange(location: line.location, length: line.data.totalLength)
@@ -129,24 +133,27 @@ final class IndentController {
     }
 
     func insertLineBreak(in range: NSRange, using symbol: String) {
-        if let startLinePosition = lineManager.linePosition(at: range.lowerBound),
-            let endLinePosition = lineManager.linePosition(at: range.upperBound) {
-            let strategy = languageMode.strategyForInsertingLineBreak(from: startLinePosition, to: endLinePosition, using: indentStrategy)
-            if strategy.insertExtraLineBreak {
-                // Inserting a line break enters a new indentation level.
-                // We insert an additional line break and place the cursor in the new block.
-                let firstLineText = symbol + indentStrategy.string(indentLevel: strategy.indentLevel)
-                let secondLineText = symbol + indentStrategy.string(indentLevel: strategy.indentLevel - 1)
-                let indentedText = firstLineText + secondLineText
-                delegate?.indentController(self, shouldInsert: indentedText, in: range)
-                let newSelectedRange = NSRange(location: range.location + firstLineText.utf16.count, length: 0)
-                delegate?.indentController(self, shouldSelect: newSelectedRange)
-            } else {
-                let indentedText = symbol + indentStrategy.string(indentLevel: strategy.indentLevel)
-                delegate?.indentController(self, shouldInsert: indentedText, in: range)
-            }
-        } else {
+        guard let startLinePosition = lineManager.linePosition(at: range.lowerBound) else {
             delegate?.indentController(self, shouldInsert: symbol, in: range)
+            return
+        }
+        guard let endLinePosition = lineManager.linePosition(at: range.upperBound) else {
+            delegate?.indentController(self, shouldInsert: symbol, in: range)
+            return
+        }
+        let strategy = languageMode.value.strategyForInsertingLineBreak(from: startLinePosition, to: endLinePosition, using: indentStrategy.value)
+        if strategy.insertExtraLineBreak {
+            // Inserting a line break enters a new indentation level.
+            // We insert an additional line break and place the cursor in the new block.
+            let firstLineText = symbol + indentStrategy.value.string(indentLevel: strategy.indentLevel)
+            let secondLineText = symbol + indentStrategy.value.string(indentLevel: strategy.indentLevel - 1)
+            let indentedText = firstLineText + secondLineText
+            delegate?.indentController(self, shouldInsert: indentedText, in: range)
+            let newSelectedRange = NSRange(location: range.location + firstLineText.utf16.count, length: 0)
+            delegate?.indentController(self, shouldSelect: newSelectedRange)
+        } else {
+            let indentedText = symbol + indentStrategy.value.string(indentLevel: strategy.indentLevel)
+            delegate?.indentController(self, shouldInsert: indentedText, in: range)
         }
     }
 
@@ -157,7 +164,7 @@ final class IndentController {
             return nil
         }
         let tabLength: Int
-        switch indentStrategy {
+        switch indentStrategy.value {
         case .tab:
             tabLength = 1
         case .space(let length):
@@ -167,8 +174,8 @@ final class IndentController {
         guard localLocation >= tabLength else {
             return nil
         }
-        let indentLevel = languageMode.currentIndentLevel(of: line, using: indentStrategy)
-        let indentString = indentStrategy.string(indentLevel: indentLevel)
+        let indentLevel = languageMode.value.currentIndentLevel(of: line, using: indentStrategy.value)
+        let indentString = indentStrategy.value.string(indentLevel: indentLevel)
         guard localLocation <= indentString.utf16.count else {
             return nil
         }
@@ -177,9 +184,22 @@ final class IndentController {
         }
         return NSRange(location: location - tabLength, length: tabLength)
     }
+
+    func isIndentation(at location: Int) -> Bool {
+        guard let line = lineManager.line(containingCharacterAt: location) else {
+            return false
+        }
+        let localLocation = location - line.location
+        guard localLocation >= 0 else {
+            return false
+        }
+        let indentLevel = languageMode.value.currentIndentLevel(of: line, using: indentStrategy.value)
+        let indentString = indentStrategy.value.string(indentLevel: indentLevel)
+        return localLocation <= indentString.utf16.count
+    }
 }
 
-extension IndentController {
+private extension IndentController {
     private func range(surrounding lines: [LineNode]) -> NSRange {
         let firstLine = lines[0]
         let lastLine = lines[lines.count - 1]

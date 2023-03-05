@@ -1,3 +1,4 @@
+import Combine
 import CoreGraphics
 import Foundation
 
@@ -5,11 +6,11 @@ final class LineManager {
     var lineCount: Int {
         lineTree.nodeTotalCount
     }
+    var estimatedLineHeight: CGFloat = 20
     var contentHeight: CGFloat {
         let rightMost = lineTree.root.rightMost
         return rightMost.yPosition + rightMost.data.lineHeight
     }
-    var estimatedLineHeight: CGFloat = 12
     var firstLine: LineNode {
         lineTree.root.leftMost
     }
@@ -21,8 +22,8 @@ final class LineManager {
     // that the reference does not necessarily point to the longest line as the document is edited.
     private(set) weak var initialLongestLine: LineNode?
 
-    private(set) var stringView: StringView
-    private(set) var lineTree: LineTree
+    private var stringView: StringView
+    private var lineTree: LineTree
 
     init(stringView: StringView) {
         self.stringView = stringView
@@ -229,18 +230,7 @@ final class LineManager {
     func line(atRow row: Int) -> LineNode {
         lineTree.node(atIndex: row)
     }
-
-    @discardableResult
-    func setHeight(of line: LineNode, to newHeight: CGFloat) -> Bool {
-        if abs(newHeight - line.data.lineHeight) < CGFloat.ulpOfOne {
-            return false
-        } else {
-            line.data.lineHeight = newHeight
-            lineTree.updateAfterChangingChildren(of: line)
-            return true
-        }
-    }
-
+    
     func lines(in range: NSRange) -> [LineNode] {
         guard let firstLine = line(containingCharacterAt: range.location) else {
             return []
@@ -273,6 +263,10 @@ final class LineManager {
 
     func makeLineIterator() -> RedBlackTreeIterator<LineNodeID, Int, LineNodeData> {
         RedBlackTreeIterator(tree: lineTree)
+    }
+
+    func updateAfterChangingChildren(of line: LineNode) {
+        lineTree.updateAfterChangingChildren(of: line)
     }
 }
 

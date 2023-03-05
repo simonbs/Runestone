@@ -2,7 +2,7 @@ import Foundation
 
  extension TextViewController {
     func scrollRangeToVisible(_ range: NSRange) {
-        lineFragmentLayoutManager.layoutLines(toLocation: range.upperBound)
+        lineFragmentLayouter.layoutLines(toLocation: range.upperBound)
         justScrollRangeToVisible(range)
     }
 
@@ -25,13 +25,7 @@ private extension TextViewController {
     }
 
     private func caretRect(at location: Int) -> CGRect {
-        let caretRectFactory = CaretRectFactory(
-            stringView: stringView,
-            lineManager: lineManager,
-            lineControllerStorage: lineControllerStorage,
-            textContainerInset: textContainerInset
-        )
-        return caretRectFactory.caretRect(at: location, allowMovingCaretToNextLineFragment: true)
+        caretRectProvider.caretRect(at: location, allowMovingCaretToNextLineFragment: true)
     }
 
     /// Computes a content offset to scroll to in order to reveal the specified rectangle.
@@ -43,6 +37,7 @@ private extension TextViewController {
         // Create the viewport: a rectangle containing the content that is visible to the user.
         let contentOffset = scrollView?.contentOffset ?? .zero
         let adjustedContentInset = scrollView?.adjustedContentInset ?? .zero
+        let textContainerInset = textContainer.inset.value
         var viewport = CGRect(origin: contentOffset, size: textView.frame.size)
         viewport.origin.y += adjustedContentInset.top + textContainerInset.top
         viewport.origin.x += adjustedContentInset.left + textContainerInset.left

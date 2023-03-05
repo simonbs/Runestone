@@ -35,7 +35,7 @@ public final class TextPreview {
     /// This is potentially an expensive operation and should ideally be done on-demand.
     public func prepare() {
         forEachRangeInLineController { lineController, range in
-            lineController.prepareToDisplayString(toLocation: range.upperBound, syntaxHighlightAsynchronously: false)
+            lineController.prepareToDisplayString(to: .location(range.upperBound), syntaxHighlightAsynchronously: false)
         }
         updateAttributedString()
     }

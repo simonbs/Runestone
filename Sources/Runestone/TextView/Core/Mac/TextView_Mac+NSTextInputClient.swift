@@ -84,7 +84,7 @@ extension TextView: NSTextInputClient {
             stringView: textViewController.stringView,
             lineManager: textViewController.lineManager,
             lineControllerStorage: textViewController.lineControllerStorage,
-            textContainerInset: textViewController.textContainerInset
+            textContainerInset: textViewController.textContainer.inset.value
         )
         return closestLocationLocator.location(closestTo: point)
     }

@@ -1,26 +1,11 @@
+import Combine
 import Foundation
 
-final class LineSelectionLayoutManager {
-    var showLineSelection = false {
+final class LineSelectionLayouter {
+    var lineSelectionDisplayType: LineSelectionDisplayType = .disabled {
         didSet {
-            if showLineSelection != oldValue {
-                setNeedsLayout()
-                updateVisibility()
-            }
-        }
-    }
-    var selectEntireLine = false {
-        didSet {
-            if selectEntireLine != oldValue {
-                setNeedsLayout()
-            }
-        }
-    }
-    var lineHeightMultiplier: CGFloat = 1 {
-        didSet {
-            if lineHeightMultiplier != oldValue {
-                setNeedsLayout()
-            }
+            updateVisibility()
+            setNeedsLayout()
         }
     }
     var textContainerInset: MultiPlatformEdgeInsets = .zero {
@@ -38,27 +23,30 @@ final class LineSelectionLayoutManager {
             }
         }
     }
-    var backgroundColor: MultiPlatformColor? {
-        didSet {
-            if backgroundColor != oldValue {
-                lineSelectionView.backgroundColor = backgroundColor
-            }
-        }
-    }
 
-    private let stringView: StringView
     private let lineManager: LineManager
-    private let lineControllerStorage: LineControllerStorage
+    private let caretRectProvider: CaretRectProvider
+    private let lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
     private weak var containerView: MultiPlatformView?
     private let lineSelectionView = MultiPlatformView()
     private var needsLayout = false
+    private var cancellables: Set<AnyCancellable> = []
 
-    init(stringView: StringView, lineManager: LineManager, lineControllerStorage: LineControllerStorage, containerView: MultiPlatformView) {
-        self.stringView = stringView
+    init(
+        lineManager: LineManager,
+        caretRectProvider: CaretRectProvider,
+        lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>,
+        backgroundColor: CurrentValueSubject<MultiPlatformColor, Never>,
+        containerView: MultiPlatformView
+    ) {
         self.lineManager = lineManager
-        self.lineControllerStorage = lineControllerStorage
+        self.caretRectProvider = caretRectProvider
+        self.lineHeightMultiplier = lineHeightMultiplier
         self.containerView = containerView
         lineSelectionView.layerIfLoaded?.zPosition = -1000
+        backgroundColor.sink { [weak self] color in
+            self?.lineSelectionView.backgroundColor = color
+        }.store(in: &cancellables)
     }
 
     func setNeedsLayout() {
@@ -79,19 +67,22 @@ final class LineSelectionLayoutManager {
     }
 }
 
-private extension LineSelectionLayoutManager {
+private extension LineSelectionLayouter {
     private func updateVisibility() {
-        lineSelectionView.isHidden = !showLineSelection || (selectedRange?.length ?? 0) > 0
+        lineSelectionView.isHidden = lineSelectionDisplayType == .disabled || (selectedRange?.length ?? 0) > 0
     }
 
     private func getLineSelectionRect() -> CGRect? {
         guard let selectedRange = selectedRange?.nonNegativeLength else {
             return nil
         }
-        if selectEntireLine {
+        switch lineSelectionDisplayType {
+        case .line:
             return getEntireLineSelectionRect(in: selectedRange)
-        } else {
+        case .lineFragment:
             return getLineFragmentSelectionRect(in: selectedRange)
+        case .disabled:
+            return nil
         }
     }
 
@@ -111,18 +102,20 @@ private extension LineSelectionLayoutManager {
         guard let containerView else {
             return nil
         }
-        let caretRectFactory = CaretRectFactory(
-            stringView: stringView,
-            lineManager: lineManager,
-            lineControllerStorage: lineControllerStorage,
-            textContainerInset: textContainerInset
-        )
-        let startCaretRect = caretRectFactory.caretRect(at: range.lowerBound, allowMovingCaretToNextLineFragment: true)
-        let endCaretRect = caretRectFactory.caretRect(at: range.upperBound, allowMovingCaretToNextLineFragment: true)
-        let startLineFragmentHeight = startCaretRect.height * lineHeightMultiplier
-        let endLineFragmentHeight = endCaretRect.height * lineHeightMultiplier
+        let startCaretRect = caretRectProvider.caretRect(at: range.lowerBound, allowMovingCaretToNextLineFragment: true)
+        let endCaretRect = caretRectProvider.caretRect(at: range.upperBound, allowMovingCaretToNextLineFragment: true)
+        let startLineFragmentHeight = startCaretRect.height * lineHeightMultiplier.value
+        let endLineFragmentHeight = endCaretRect.height * lineHeightMultiplier.value
         let minY = startCaretRect.minY - (startLineFragmentHeight - startCaretRect.height) / 2
         let maxY = endCaretRect.maxY + (endLineFragmentHeight - endCaretRect.height) / 2
         return CGRect(x: 0, y: minY, width: containerView.frame.width, height: maxY - minY)
+    }
+}
+
+private extension LineSelectionLayouter {
+    private func setupSetNeedsLayoutObserver() {
+        lineHeightMultiplier.sink { [weak self] _ in
+            self?.setNeedsLayout()
+        }.store(in: &cancellables)
     }
 }

@@ -10,7 +10,7 @@ extension TextViewController {
 
 private extension TextViewController {
     @objc private func clearMemory() {
-        lineControllerStorage.removeAllLineControllers(exceptLinesWithID: lineFragmentLayoutManager.visibleLineIDs)
+        lineControllerStorage.removeAllLineControllers(exceptLinesWithID: lineFragmentLayouter.visibleLineIDs)
     }
 }
 #endif

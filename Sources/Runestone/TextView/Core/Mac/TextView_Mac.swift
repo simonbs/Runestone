@@ -39,315 +39,159 @@ open class TextView: NSView, NSMenuItemValidation {
         textViewController.isEditing
     }
     /// The text that the text view displays.
-    public var text: String {
-        get {
-            textViewController.text
-        }
-        set {
-            textViewController.text = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.text)
+    public var text: String
     /// Colors and fonts to be used by the editor.
-    public var theme: Theme {
-        get {
-            textViewController.theme
-        }
-        set {
-            textViewController.theme = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.themeSettings.theme.value)
+    public var theme: Theme
     /// Character pairs are used by the editor to automatically insert a trailing character when the user types the leading character.
     ///
     /// Common usages of this includes the \" character to surround strings and { } to surround a scope.
-    public var characterPairs: [CharacterPair] {
-        get {
-            textViewController.characterPairs
-        }
-        set {
-            textViewController.characterPairs = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.characterPairs)
+    public var characterPairs: [CharacterPair]
     /// Determines what should happen to the trailing component of a character pair when deleting the leading component. Defaults to `disabled` meaning that nothing will happen.
-    public var characterPairTrailingComponentDeletionMode: CharacterPairTrailingComponentDeletionMode {
-        get {
-            textViewController.characterPairTrailingComponentDeletionMode
-        }
-        set {
-            textViewController.characterPairTrailingComponentDeletionMode = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.characterPairTrailingComponentDeletionMode)
+    public var characterPairTrailingComponentDeletionMode: CharacterPairTrailingComponentDeletionMode
     /// Enable to show line numbers in the gutter.
-    public var showLineNumbers: Bool {
-        get {
-            textViewController.showLineNumbers
-        }
-        set {
-            textViewController.showLineNumbers = newValue
-        }
-    }
+//    public var showLineNumbers: Bool {
+//        get {
+//            textViewController.showLineNumbers
+//        }
+//        set {
+//            textViewController.showLineNumbers = newValue
+//        }
+//    }
     /// Enable to show highlight the selected lines. The selection is only shown in the gutter when multiple lines are selected.
-    public var lineSelectionDisplayType: LineSelectionDisplayType {
-        get {
-            textViewController.lineSelectionDisplayType
-        }
-        set {
-            textViewController.lineSelectionDisplayType = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.lineSelectionLayouter.lineSelectionDisplayType)
+    public var lineSelectionDisplayType: LineSelectionDisplayType
     /// The text view renders invisible tabs when enabled. The `tabsSymbol` is used to render tabs.
-    public var showTabs: Bool {
-        get {
-            textViewController.showTabs
-        }
-        set {
-            textViewController.showTabs = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.showTabs.value)
+    public var showTabs: Bool
     /// The text view renders invisible spaces when enabled.
     ///
     /// The `spaceSymbol` is used to render spaces.
-    public var showSpaces: Bool {
-        get {
-            textViewController.showSpaces
-        }
-        set {
-            textViewController.showSpaces = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.showSpaces.value)
+    public var showSpaces: Bool
     /// The text view renders invisible spaces when enabled.
     ///
     /// The `nonBreakingSpaceSymbol` is used to render spaces.
-    public var showNonBreakingSpaces: Bool {
-        get {
-            textViewController.showNonBreakingSpaces
-        }
-        set {
-            textViewController.showNonBreakingSpaces = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.showNonBreakingSpaces.value)
+    public var showNonBreakingSpaces: Bool
     /// The text view renders invisible line breaks when enabled.
     ///
     /// The `lineBreakSymbol` is used to render line breaks.
-    public var showLineBreaks: Bool {
-        get {
-            textViewController.showLineBreaks
-        }
-        set {
-            textViewController.showLineBreaks = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.showLineBreaks.value)
+    public var showLineBreaks: Bool
     /// The text view renders invisible soft line breaks when enabled.
     ///
     /// The `softLineBreakSymbol` is used to render line breaks. These line breaks are typically represented by the U+2028 unicode character. Runestone does not provide any key commands for inserting these but supports rendering them.
-    public var showSoftLineBreaks: Bool {
-        get {
-            textViewController.showSoftLineBreaks
-        }
-        set {
-            textViewController.showSoftLineBreaks = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.showSoftLineBreaks.value)
+    public var showSoftLineBreaks: Bool
     /// Symbol used to display tabs.
     ///
     /// The value is only used when invisible tab characters is enabled. The default is ▸.
     ///
     /// Common characters for this symbol include ▸, ⇥, ➜, ➞, and ❯.
-    public var tabSymbol: String {
-        get {
-            textViewController.tabSymbol
-        }
-        set {
-            textViewController.tabSymbol = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.tabSymbol.value)
+    public var tabSymbol: String
     /// Symbol used to display spaces.
     ///
     /// The value is only used when showing invisible space characters is enabled. The default is ·.
     ///
     /// Common characters for this symbol include ·, •, and _.
-    public var spaceSymbol: String {
-        get {
-            textViewController.spaceSymbol
-        }
-        set {
-            textViewController.spaceSymbol = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.spaceSymbol.value)
+    public var spaceSymbol: String
     /// Symbol used to display non-breaking spaces.
     ///
     /// The value is only used when showing invisible space characters is enabled. The default is ·.
     ///
     /// Common characters for this symbol include ·, •, and _.
-    public var nonBreakingSpaceSymbol: String {
-        get {
-            textViewController.nonBreakingSpaceSymbol
-        }
-        set {
-            textViewController.nonBreakingSpaceSymbol = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.nonBreakingSpaceSymbol.value)
+    public var nonBreakingSpaceSymbol: String
     /// Symbol used to display line break.
     ///
     /// The value is only used when showing invisible line break characters is enabled. The default is ¬.
     ///
     /// Common characters for this symbol include ¬, ↵, ↲, ⤶, and ¶.
-    public var lineBreakSymbol: String {
-        get {
-            textViewController.lineBreakSymbol
-        }
-        set {
-            textViewController.lineBreakSymbol = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.lineBreakSymbol.value)
+    public var lineBreakSymbol: String
     /// Symbol used to display soft line breaks.
     ///
     /// The value is only used when showing invisible soft line break characters is enabled. The default is ¬.
     ///
     /// Common characters for this symbol include ¬, ↵, ↲, ⤶, and ¶.
-    public var softLineBreakSymbol: String {
-        get {
-            textViewController.softLineBreakSymbol
-        }
-        set {
-            textViewController.softLineBreakSymbol = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.softLineBreakSymbol.value)
+    public var softLineBreakSymbol: String
     /// The strategy used when indenting text.
-    public var indentStrategy: IndentStrategy {
-        get {
-            textViewController.indentStrategy
-        }
-        set {
-            textViewController.indentStrategy = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.indentController.indentStrategy.value)
+    public var indentStrategy: IndentStrategy
     /// The amount of padding before the line numbers inside the gutter.
-    public var gutterLeadingPadding: CGFloat {
-        get {
-            textViewController.gutterLeadingPadding
-        }
-        set {
-            textViewController.gutterLeadingPadding = newValue
-        }
-    }
+//    public var gutterLeadingPadding: CGFloat {
+//        get {
+//            textViewController.gutterLeadingPadding
+//        }
+//        set {
+//            textViewController.gutterLeadingPadding = newValue
+//        }
+//    }
     /// The amount of padding after the line numbers inside the gutter.
-    public var gutterTrailingPadding: CGFloat {
-        get {
-            textViewController.gutterTrailingPadding
-        }
-        set {
-            textViewController.gutterTrailingPadding = newValue
-        }
-    }
+//    public var gutterTrailingPadding: CGFloat {
+//        get {
+//            textViewController.gutterTrailingPadding
+//        }
+//        set {
+//            textViewController.gutterTrailingPadding = newValue
+//        }
+//    }
     /// The minimum amount of characters to use for width calculation inside the gutter.
-    public var gutterMinimumCharacterCount: Int {
-        get {
-            textViewController.gutterMinimumCharacterCount
-        }
-        set {
-            textViewController.gutterMinimumCharacterCount = newValue
-        }
-    }
+//    public var gutterMinimumCharacterCount: Int {
+//        get {
+//            textViewController.gutterMinimumCharacterCount
+//        }
+//        set {
+//            textViewController.gutterMinimumCharacterCount = newValue
+//        }
+//    }
     /// The amount of spacing surrounding the lines.
-    public var textContainerInset: NSEdgeInsets {
-        get {
-            textViewController.textContainerInset
-        }
-        set {
-            textViewController.textContainerInset = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.textContainer.inset.value)
+    public var textContainerInset: NSEdgeInsets
     /// When line wrapping is disabled, users can scroll the text view horizontally to see the entire line.
     ///
     /// Line wrapping is enabled by default.
-    public var isLineWrappingEnabled: Bool {
-        get {
-            textViewController.isLineWrappingEnabled
-        }
-        set {
-            textViewController.isLineWrappingEnabled = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.typesetSettings.isLineWrappingEnabled.value)
+    public var isLineWrappingEnabled: Bool
     /// Line break mode for text view. The default value is .byWordWrapping meaning that wrapping occurs on word boundaries.
-    public var lineBreakMode: LineBreakMode {
-        get {
-            textViewController.lineBreakMode
-        }
-        set {
-            textViewController.lineBreakMode = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.typesetSettings.lineBreakMode.value)
+    public var lineBreakMode: LineBreakMode
     /// Width of the gutter.
-    public var gutterWidth: CGFloat {
-        textViewController.gutterWidthService.gutterWidth
-    }
+//    public var gutterWidth: CGFloat {
+//        textViewController.gutterWidthService.gutterWidth
+//    }
     /// The line-height is multiplied with the value.
-    public var lineHeightMultiplier: CGFloat {
-        get {
-            textViewController.lineHeightMultiplier
-        }
-        set {
-            textViewController.lineHeightMultiplier = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.typesetSettings.lineHeightMultiplier.value)
+    public var lineHeightMultiplier: CGFloat
     /// The number of points by which to adjust kern. The default value is 0 meaning that kerning is disabled.
-    public var kern: CGFloat {
-        get {
-            textViewController.kern
-        }
-        set {
-            textViewController.kern = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.typesetSettings.kern.value)
+    public var kern: CGFloat
     /// The text view shows a page guide when enabled. Use `pageGuideColumn` to specify the location of the page guide.
-    public var showPageGuide: Bool {
-        get {
-            textViewController.showPageGuide
-        }
-        set {
-            textViewController.showPageGuide = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.pageGuideLayouter.isEnabled)
+    public var showPageGuide: Bool
     /// Specifies the location of the page guide. Use `showPageGuide` to specify if the page guide should be shown.
-    public var pageGuideColumn: Int {
-        get {
-            textViewController.pageGuideColumn
-        }
-        set {
-            textViewController.pageGuideColumn = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.pageGuideLayouter.column)
+    public var pageGuideColumn: Int
     /// Automatically scrolls the text view to show the caret when typing or moving the caret.
-    public var isAutomaticScrollEnabled: Bool {
-        get {
-            textViewController.isAutomaticScrollEnabled
-        }
-        set {
-            textViewController.isAutomaticScrollEnabled = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.isAutomaticScrollEnabled)
+    public var isAutomaticScrollEnabled: Bool
     /// Amount of overscroll to add in the vertical direction.
     ///
     /// The overscroll is a factor of the scrollable area height and will not take into account any insets. 0 means no overscroll and 1 means an amount equal to the height of the text view. Detaults to 0.
-    public var verticalOverscrollFactor: CGFloat {
-        get {
-            textViewController.verticalOverscrollFactor
-        }
-        set {
-            textViewController.verticalOverscrollFactor = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.contentSizeService.verticalOverscrollFactor.value)
+    public var verticalOverscrollFactor: CGFloat
     /// Amount of overscroll to add in the horizontal direction.
     ///
     /// The overscroll is a factor of the scrollable area height and will not take into account any insets or the width of the gutter. 0 means no overscroll and 1 means an amount equal to the width of the text view. Detaults to 0.
-    public var horizontalOverscrollFactor: CGFloat {
-        get {
-            textViewController.horizontalOverscrollFactor
-        }
-        set {
-            textViewController.horizontalOverscrollFactor = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.contentSizeService.horizontalOverscrollFactor.value)
+    public var horizontalOverscrollFactor: CGFloat
     /// The length of the line that was longest when opening the document.
     ///
     /// This will return nil if the line is no longer available. The value will not be kept updated as the text is changed. The value can be used to determine if a document contains a very long line in which case the performance may be degraded when editing the line.
@@ -355,54 +199,24 @@ open class TextView: NSView, NSMenuItemValidation {
         textViewController.lineManager.initialLongestLine?.data.totalLength
     }
     /// Ranges in the text to be highlighted. The color defined by the background will be drawen behind the text.
-    public var highlightedRanges: [HighlightedRange] {
-        get {
-            textViewController.highlightedRanges
-        }
-        set {
-            textViewController.highlightedRanges = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.highlightedRanges)
+    public var highlightedRanges: [HighlightedRange]
     /// Wheter the text view should loop when navigating through highlighted ranges using `selectPreviousHighlightedRange` or `selectNextHighlightedRange` on the text view.
-    public var highlightedRangeLoopingMode: HighlightedRangeLoopingMode {
-        get {
-            textViewController.highlightedRangeLoopingMode
-        }
-        set {
-            textViewController.highlightedRangeLoopingMode = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.highlightedRangeLoopingMode)
+    public var highlightedRangeLoopingMode: HighlightedRangeLoopingMode
     /// Line endings to use when inserting a line break.
     ///
     /// The value only affects new line breaks inserted in the text view and changing this value does not change the line endings of the text in the text view. Defaults to Unix (LF).
     ///
     /// The TextView will only update the line endings when text is modified through an external event, such as when the user typing on the keyboard, when the user is replacing selected text, and when pasting text into the text view. In all other cases, you should make sure that the text provided to the text view uses the desired line endings. This includes when calling ``TextView/setState(_:addUndoAction:)``.
-    public var lineEndings: LineEnding {
-        get {
-            textViewController.lineEndings
-        }
-        set {
-            textViewController.lineEndings = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.lineEndings)
+    public var lineEndings: LineEnding
     /// The color of the insertion point. This can be used to control the color of the caret.
-    public var insertionPointColor: NSColor {
-        get {
-            textViewController.caretLayoutManager.color
-        }
-        set {
-            textViewController.caretLayoutManager.color = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.caretLayouter.color)
+    public var insertionPointColor: NSColor
     /// The color of the selection highlight. It is most common to set this to the same color as the color used for the insertion point.
-    public var selectionHighlightColor: NSColor {
-        get {
-            textViewController.textSelectionLayoutManager.backgroundColor
-        }
-        set {
-            textViewController.textSelectionLayoutManager.backgroundColor = newValue
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.textSelectionLayouter.backgroundColor)
+    public var selectionHighlightColor: NSColor
     /// The object that the document uses to support undo/redo operations.
     override open var undoManager: UndoManager? {
         textViewController.timedUndoManager
@@ -466,6 +280,7 @@ open class TextView: NSView, NSMenuItemValidation {
     private func setup() {
         textViewController.delegate = self
         textViewController.selectedRange = NSRange(location: 0, length: 0)
+        textViewController.scrollView = scrollView
         setupWindowObservers()
         setupScrollViewBoundsDidChangeObserver()
         setupMenu()
@@ -484,6 +299,8 @@ open class TextView: NSView, NSMenuItemValidation {
         scrollView.contentView = FlippedClipView()
         scrollView.documentView = textView
         scrollView.drawsBackground = false
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = true
         return scrollView
     }
 
@@ -531,18 +348,17 @@ open class TextView: NSView, NSMenuItemValidation {
     /// - Parameter oldSize: The previous size of the view's bounds rectangle.
     override public func resizeSubviews(withOldSize oldSize: NSSize) {
         super.resizeSubviews(withOldSize: oldSize)
-        textViewController.textSelectionLayoutManager.updateSelectedRectangles()
+        textViewController.textSelectionLayouter.updateSelectedRectangles()
     }
 
     /// Perform layout in concert with the constraint-based layout system.
     open override func layout() {
         super.layout()
         updateViewport()
-        textViewController.caretLayoutManager.layoutIfNeeded()
-        textViewController.lineFragmentLayoutManager.layoutIfNeeded()
-        textViewController.lineSelectionLayoutManager.layoutIfNeeded()
-        textViewController.handleContentSizeUpdateIfNeeded()
-        textViewController.updateScrollerVisibility()
+        textViewController.caretLayouter.layoutIfNeeded()
+        textViewController.lineFragmentLayouter.layoutIfNeeded()
+        textViewController.lineSelectionLayouter.layoutIfNeeded()
+        textViewController.contentSizeService.updateContentSizeIfNeeded()
     }
 
     /// Overridden by subclasses to define their default cursor rectangles.
@@ -641,10 +457,11 @@ private extension TextView {
     }
 
     private func updateViewport() {
+        let viewport = textViewController.textContainer.viewport
         if let scrollView {
-            textViewController.viewport = scrollView.documentVisibleRect
+            viewport.value = scrollView.documentVisibleRect
         } else {
-            textViewController.viewport = CGRect(origin: .zero, size: frame.size)
+            viewport.value = CGRect(origin: .zero, size: frame.size)
         }
     }
 
@@ -677,7 +494,7 @@ private extension TextView {
 // MARK: - Caret
 private extension TextView {
     private func updateCaretVisibility() {
-        textViewController.caretLayoutManager.showCaret = isWindowKey && isFirstResponder && selectedRange().length == 0
+        textViewController.caretLayouter.showCaret = isWindowKey && isFirstResponder && selectedRange().length == 0
     }
 }
 

@@ -2,6 +2,7 @@
 #if os(macOS)
 import AppKit
 #endif
+import Combine
 import CoreGraphics
 import CoreText
 import Foundation
@@ -17,28 +18,13 @@ protocol LineControllerDelegate: AnyObject {
 }
 
 final class LineController {
-    private enum TypesetAmount {
+    enum TypesetAmount {
         case yPosition(CGFloat)
         case location(Int)
     }
 
     weak var delegate: LineControllerDelegate?
     let line: LineNode
-    var lineFragmentHeightMultiplier: CGFloat = 1 {
-        didSet {
-            if lineFragmentHeightMultiplier != oldValue {
-                typesetter.lineFragmentHeightMultiplier = lineFragmentHeightMultiplier
-            }
-        }
-    }
-    var theme: Theme = DefaultTheme() {
-        didSet {
-            syntaxHighlighter?.theme = theme
-            applyThemeToAllLineFragmentControllers()
-        }
-    }
-    var estimatedLineFragmentHeight: CGFloat = 15
-    var tabWidth: CGFloat = 10
     var constrainingWidth: CGFloat {
         get {
             typesetter.constrainingWidth
@@ -54,32 +40,17 @@ final class LineController {
         if let lineHeight = _lineHeight {
             return lineHeight
         } else if typesetter.lineFragments.isEmpty {
-            let lineHeight = estimatedLineFragmentHeight * lineFragmentHeightMultiplier
+            let lineHeight = estimatedLineHeight.rawValue * typesetSettings.lineHeightMultiplier.value
             _lineHeight = lineHeight
             return lineHeight
         } else {
             let knownLineFragmentHeight = typesetter.lineFragments.reduce(0) { $0 + $1.scaledSize.height }
             let remainingNumberOfLineFragments = typesetter.bestGuessNumberOfLineFragments - typesetter.lineFragments.count
-            let lineFragmentHeight = estimatedLineFragmentHeight * lineFragmentHeightMultiplier
+            let lineFragmentHeight = estimatedLineHeight.rawValue * typesetSettings.lineHeightMultiplier.value
             let remainingLineFragmentHeight = CGFloat(remainingNumberOfLineFragments) * lineFragmentHeight
             let lineHeight = knownLineFragmentHeight + remainingLineFragmentHeight
             _lineHeight = lineHeight
             return lineHeight
-        }
-    }
-    var kern: CGFloat = 0 {
-        didSet {
-            if kern != oldValue {
-                syntaxHighlighter?.kern = kern
-            }
-        }
-    }
-    var lineBreakMode: LineBreakMode {
-        get {
-            typesetter.lineBreakMode
-        }
-        set {
-            typesetter.lineBreakMode = newValue
         }
     }
     var numberOfLineFragments: Int {
@@ -91,8 +62,13 @@ final class LineController {
     private(set) var attributedString: NSMutableAttributedString?
 
     private let stringView: StringView
-    private let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
+    private let typesetSettings: TypesetSettings
+    private let invisibleCharacterSettings: InvisibleCharacterSettings
     private let highlightedRangeService: HighlightedRangeService
+    private let estimatedLineHeight: EstimatedLineHeight
+    private let theme: CurrentValueSubject<Theme, Never>
+    private let markedTextBackgroundColor: CurrentValueSubject<MultiPlatformColor, Never>
+    private let markedTextBackgroundCornerRadius: CurrentValueSubject<CGFloat, Never>
     private let typesetter: LineTypesetter
     private var cachedSyntaxHighlighter: LineSyntaxHighlighter?
     private var lineFragmentControllers: [LineFragmentID: LineFragmentController] = [:]
@@ -107,36 +83,54 @@ final class LineController {
         if let cachedSyntaxHighlighter = cachedSyntaxHighlighter {
             return cachedSyntaxHighlighter
         } else if let syntaxHighlighter = delegate?.lineSyntaxHighlighter(for: self) {
-            syntaxHighlighter.theme = theme
             cachedSyntaxHighlighter = syntaxHighlighter
             return syntaxHighlighter
         } else {
             return nil
         }
     }
+    private var cancellables: Set<AnyCancellable> = []
 
     init(
         line: LineNode,
         stringView: StringView,
-        invisibleCharacterConfiguration: InvisibleCharacterConfiguration,
-        highlightedRangeService: HighlightedRangeService
+        typesetSettings: TypesetSettings,
+        invisibleCharacterSettings: InvisibleCharacterSettings,
+        highlightedRangeService: HighlightedRangeService,
+        theme: CurrentValueSubject<Theme, Never>,
+        estimatedLineHeight: EstimatedLineHeight,
+        markedTextBackgroundColor: CurrentValueSubject<MultiPlatformColor, Never>,
+        markedTextBackgroundCornerRadius: CurrentValueSubject<CGFloat, Never>
     ) {
         self.line = line
         self.stringView = stringView
-        self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
+        self.typesetSettings = typesetSettings
+        self.invisibleCharacterSettings = invisibleCharacterSettings
         self.highlightedRangeService = highlightedRangeService
-        self.typesetter = LineTypesetter(lineID: line.id.rawValue)
+        self.theme = theme
+        self.markedTextBackgroundColor = markedTextBackgroundColor
+        self.markedTextBackgroundCornerRadius = markedTextBackgroundCornerRadius
+        self.typesetter = LineTypesetter(
+            lineID: line.id.rawValue,
+            lineBreakMode: typesetSettings.lineBreakMode,
+            lineFragmentHeightMultiplier: typesetSettings.lineHeightMultiplier
+        )
         let rootLineFragmentNodeData = LineFragmentNodeData(lineFragment: nil)
         self.lineFragmentTree = LineFragmentTree(minimumValue: 0, rootValue: 0, rootData: rootLineFragmentNodeData)
     }
 
-    func prepareToDisplayString(toYPosition yPosition: CGFloat, syntaxHighlightAsynchronously: Bool) {
-        prepareToDisplayString(to: .yPosition(yPosition), syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
-    }
-
-    func prepareToDisplayString(toLocation location: Int, syntaxHighlightAsynchronously: Bool) {
-        prepareToDisplayString(to: .location(location), syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
-    }
+    func prepareToDisplayString(to typesetAmount: TypesetAmount, syntaxHighlightAsynchronously: Bool) {
+       prepareString(syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
+       let newLineFragments: [LineFragment]
+       switch typesetAmount {
+       case .yPosition(let yPosition):
+           newLineFragments = typesetter.typesetLineFragments(to: .yPosition(yPosition))
+       case .location(let location):
+           // When typesetting to a location we'll typeset an additional line fragment to ensure that we can display the text surrounding that location.
+           newLineFragments = typesetter.typesetLineFragments(to: .location(location), additionalLineFragmentCount: 1)
+       }
+       updateLineHeight(for: newLineFragments)
+   }
 
     func cancelSyntaxHighlighting() {
         syntaxHighlighter?.cancel()
@@ -202,8 +196,8 @@ final class LineController {
                 return CGRect(x: xPosition, y: yPosition, width: Caret.width, height: lineFragment.baseSize.height)
             }
         }
-        let yPosition = (estimatedLineFragmentHeight * lineFragmentHeightMultiplier - estimatedLineFragmentHeight) / 2
-        return CGRect(x: 0, y: yPosition, width: Caret.width, height: estimatedLineFragmentHeight)
+        let yPosition = (estimatedLineHeight.rawValue * typesetSettings.lineHeightMultiplier.value - estimatedLineHeight.rawValue) / 2
+        return CGRect(x: 0, y: yPosition, width: Caret.width, height: estimatedLineHeight.rawValue)
     }
 
     func firstRect(for lineLocalRange: NSRange) -> CGRect {
@@ -216,7 +210,7 @@ final class LineController {
                 return CGRect(x: xStart, y: yPosition, width: xEnd - xStart, height: lineFragment.baseSize.height)
             }
         }
-        return CGRect(x: 0, y: 0, width: 0, height: estimatedLineFragmentHeight * lineFragmentHeightMultiplier)
+        return CGRect(x: 0, y: 0, width: 0, height: estimatedLineHeight.rawValue * typesetSettings.lineHeightMultiplier.value)
     }
 
     func location(closestTo point: CGPoint) -> Int {
@@ -229,36 +223,23 @@ final class LineController {
 }
 
 private extension LineController {
-    private func prepareToDisplayString(to typesetAmount: TypesetAmount, syntaxHighlightAsynchronously: Bool) {
-        prepareString(syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
-        let newLineFragments: [LineFragment]
-        switch typesetAmount {
-        case .yPosition(let yPosition):
-            newLineFragments = typesetter.typesetLineFragments(to: .yPosition(yPosition))
-        case .location(let location):
-            // When typesetting to a location we'll typeset an additional line fragment to ensure that we can display the text surrounding that location.
-            newLineFragments = typesetter.typesetLineFragments(to: .location(location), additionalLineFragmentCount: 1)
-        }
-        updateLineHeight(for: newLineFragments)
-    }
-
     private func prepareString(syntaxHighlightAsynchronously: Bool) {
         syntaxHighlighter?.cancel()
-        clearLineFragmentControllersIfNecessary()
-        updateStringIfNecessary()
-        updateDefaultAttributesIfNecessary()
-        updateSyntaxHighlightingIfNecessary(async: syntaxHighlightAsynchronously)
-        updateTypesetterIfNecessary()
+        clearLineFragmentControllersIfNeeded()
+        updateStringIfNeeded()
+        updateDefaultAttributesIfNeeded()
+        updateSyntaxHighlightingIfNeeded(async: syntaxHighlightAsynchronously)
+        updateTypesetterIfNeeded()
     }
 
-    private func clearLineFragmentControllersIfNecessary() {
+    private func clearLineFragmentControllersIfNeeded() {
         if isLineFragmentCacheInvalid {
             lineFragmentControllers.removeAll(keepingCapacity: true)
             isLineFragmentCacheInvalid = false
         }
     }
 
-    private func updateStringIfNecessary() {
+    private func updateStringIfNeeded() {
         if isStringInvalid {
             let range = NSRange(location: line.location, length: line.data.totalLength)
             if let string = stringView.substring(in: range) {
@@ -273,7 +254,7 @@ private extension LineController {
         }
     }
 
-    private func updateDefaultAttributesIfNecessary() {
+    private func updateDefaultAttributesIfNeeded() {
         if isDefaultAttributesInvalid {
             if let input = createLineSyntaxHighlightInput() {
                 syntaxHighlighter?.setDefaultAttributes(on: input.attributedString)
@@ -289,13 +270,13 @@ private extension LineController {
         if let attributedString = attributedString {
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.tabStops = []
-            paragraphStyle.defaultTabInterval = tabWidth
+            paragraphStyle.defaultTabInterval = typesetSettings.tabWidth.value
             let range = NSRange(location: 0, length: attributedString.length)
             attributedString.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
         }
     }
 
-    private func updateTypesetterIfNecessary() {
+    private func updateTypesetterIfNeeded() {
         if isTypesetterInvalid {
             lineFragmentTree.reset(rootValue: 0, rootData: LineFragmentNodeData(lineFragment: nil))
             typesetter.reset()
@@ -306,7 +287,7 @@ private extension LineController {
         }
     }
 
-    private func updateSyntaxHighlightingIfNecessary(async: Bool) {
+    private func updateSyntaxHighlightingIfNeeded(async: Bool) {
         guard isSyntaxHighlightingInvalid else {
             return
         }
@@ -384,11 +365,12 @@ private extension LineController {
         } else {
             let lineFragmentController = LineFragmentController(
                 lineFragment: lineFragment,
-                invisibleCharacterConfiguration: invisibleCharacterConfiguration
+                invisibleCharacterSettings: invisibleCharacterSettings,
+                markedTextBackgroundColor: markedTextBackgroundColor,
+                markedTextBackgroundCornerRadius: markedTextBackgroundCornerRadius
             )
             lineFragmentController.delegate = self
             lineFragmentControllers[lineFragment.id] = lineFragmentController
-            applyTheme(to: lineFragmentController)
             return lineFragmentController
         }
     }
@@ -396,7 +378,7 @@ private extension LineController {
     private func redisplayLineFragments() {
         let typesetLength = typesetter.typesetLength
         _lineHeight = nil
-        updateTypesetterIfNecessary()
+        updateTypesetterIfNeeded()
         let newLineFragments = typesetter.typesetLineFragments(to: .location(typesetLength))
         updateLineHeight(for: newLineFragments)
         reapplyLineFragmentToLineFragmentControllers()
@@ -425,17 +407,6 @@ private extension LineController {
         }
     }
 
-    private func applyThemeToAllLineFragmentControllers() {
-        for (_, lineFragmentController) in lineFragmentControllers {
-            applyTheme(to: lineFragmentController)
-        }
-    }
-
-    private func applyTheme(to lineFragmentController: LineFragmentController) {
-        lineFragmentController.markedTextBackgroundColor = theme.markedTextBackgroundColor
-        lineFragmentController.markedTextBackgroundCornerRadius = theme.markedTextBackgroundCornerRadius
-    }
-
     private func lineFragment(closestTo point: CGPoint) -> LineFragment? {
         var closestLineFragment = typesetter.lineFragments.last
         for lineFragment in typesetter.lineFragments {
@@ -446,6 +417,12 @@ private extension LineController {
             }
         }
         return closestLineFragment
+    }
+
+    private func setupObservers() {
+        theme.sink { [weak self] _ in
+            self?.setNeedsDisplayOnLineFragmentViews()
+        }.store(in: &cancellables)
     }
 }
 

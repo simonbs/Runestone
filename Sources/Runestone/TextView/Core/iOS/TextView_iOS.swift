@@ -595,7 +595,7 @@ open class TextView: UIScrollView {
         }
         textViewController.handleContentSizeUpdateIfNeeded()
         textViewController.viewport = CGRect(origin: contentOffset, size: frame.size)
-        textViewController.lineFragmentLayoutManager.layoutIfNeeded()
+        textViewController.lineFragmentLayouter.layoutIfNeeded()
         // Setting the frame of the text selection view fixes a bug where UIKit assigns an incorrect
         // Y-position to the selection rects the first time the user selects text.
         // After the initial selection the rectangles would be placed correctly.
@@ -968,7 +968,7 @@ open class TextView: UIScrollView {
         super.traitCollectionDidChange(previousTraitCollection)
         if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
             textViewController.invalidateLines()
-            textViewController.lineFragmentLayoutManager.setNeedsLayout()
+            textViewController.lineFragmentLayouter.setNeedsLayout()
         }
     }
 

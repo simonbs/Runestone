@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 enum TreeSitterSyntaxHighlighterError: LocalizedError {
@@ -15,8 +16,8 @@ enum TreeSitterSyntaxHighlighterError: LocalizedError {
 }
 
 final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
-    var theme: Theme = DefaultTheme()
-    var kern: CGFloat = 0
+    let theme: CurrentValueSubject<Theme, Never>
+    let kern: CurrentValueSubject<CGFloat, Never>
     var canHighlight: Bool {
         languageMode.canHighlight
     }
@@ -26,9 +27,17 @@ final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
     private let operationQueue: OperationQueue
     private var currentOperation: Operation?
 
-    init(stringView: StringView, languageMode: TreeSitterInternalLanguageMode, operationQueue: OperationQueue) {
+    init(
+        stringView: StringView,
+        languageMode: TreeSitterInternalLanguageMode,
+        theme: CurrentValueSubject<Theme, Never>,
+        kern: CurrentValueSubject<CGFloat, Never>,
+        operationQueue: OperationQueue
+    ) {
         self.stringView = stringView
         self.languageMode = languageMode
+        self.theme = theme
+        self.kern = kern
         self.operationQueue = operationQueue
     }
 
@@ -113,7 +122,7 @@ private extension TreeSitterSyntaxHighlighter {
                 #endif
             }
             let currentFont = attributedString.attribute(.font, at: token.range.location, effectiveRange: nil) as? MultiPlatformFont
-            let baseFont = token.font ?? theme.font
+            let baseFont = token.font ?? theme.value.font
             let newFont: MultiPlatformFont
             if !symbolicTraits.isEmpty {
                 newFont = baseFont.withSymbolicTraits(symbolicTraits) ?? baseFont
@@ -154,10 +163,10 @@ private extension TreeSitterSyntaxHighlighter {
 private extension TreeSitterSyntaxHighlighter {
     private func token(from capture: TreeSitterCapture, in byteRange: ByteRange) -> TreeSitterSyntaxHighlightToken {
         let range = NSRange(byteRange)
-        let textColor = theme.textColor(for: capture.name)
-        let shadow = theme.shadow(for: capture.name)
-        let font = theme.font(for: capture.name)
-        let fontTraits = theme.fontTraits(for: capture.name)
+        let textColor = theme.value.textColor(for: capture.name)
+        let shadow = theme.value.shadow(for: capture.name)
+        let font = theme.value.font(for: capture.name)
+        let fontTraits = theme.value.fontTraits(for: capture.name)
         return TreeSitterSyntaxHighlightToken(range: range, textColor: textColor, shadow: shadow, font: font, fontTraits: fontTraits)
     }
 }

@@ -1,6 +1,7 @@
 #if os(macOS)
 import AppKit
 #endif
+import Combine
 import CoreText
 import Foundation
 #if os(iOS)
@@ -19,22 +20,29 @@ final class LineFragmentRenderer {
 
     weak var delegate: LineFragmentRendererDelegate?
     var lineFragment: LineFragment
-    let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
     var markedRange: NSRange?
-    var markedTextBackgroundColor: MultiPlatformColor = .systemFill
-    var markedTextBackgroundCornerRadius: CGFloat = 0
     var highlightedRangeFragments: [HighlightedRangeFragment] = []
 
+    private let invisibleCharacterSettings: InvisibleCharacterSettings
+    private let markedTextBackgroundColor: CurrentValueSubject<MultiPlatformColor, Never>
+    private let markedTextBackgroundCornerRadius: CurrentValueSubject<CGFloat, Never>
     private var showInvisibleCharacters: Bool {
-        invisibleCharacterConfiguration.showTabs
-            || invisibleCharacterConfiguration.showSpaces
-            || invisibleCharacterConfiguration.showLineBreaks
-            || invisibleCharacterConfiguration.showSoftLineBreaks
+        invisibleCharacterSettings.showTabs.value
+            || invisibleCharacterSettings.showSpaces.value
+            || invisibleCharacterSettings.showLineBreaks.value
+            || invisibleCharacterSettings.showSoftLineBreaks.value
     }
 
-    init(lineFragment: LineFragment, invisibleCharacterConfiguration: InvisibleCharacterConfiguration) {
+    init(
+        lineFragment: LineFragment,
+        invisibleCharacterSettings: InvisibleCharacterSettings,
+        markedTextBackgroundColor: CurrentValueSubject<MultiPlatformColor, Never>,
+        markedTextBackgroundCornerRadius: CurrentValueSubject<CGFloat, Never>
+    ) {
         self.lineFragment = lineFragment
-        self.invisibleCharacterConfiguration = invisibleCharacterConfiguration
+        self.invisibleCharacterSettings = invisibleCharacterSettings
+        self.markedTextBackgroundColor = markedTextBackgroundColor
+        self.markedTextBackgroundCornerRadius = markedTextBackgroundCornerRadius
     }
 
     func draw(to context: CGContext, inCanvasOfSize canvasSize: CGSize) {
@@ -88,9 +96,9 @@ private extension LineFragmentRenderer {
             let startX = CTLineGetOffsetForStringIndex(lineFragment.line, markedRange.lowerBound, nil)
             let endX = CTLineGetOffsetForStringIndex(lineFragment.line, markedRange.upperBound, nil)
             let rect = CGRect(x: startX, y: 0, width: endX - startX, height: lineFragment.scaledSize.height)
-            context.setFillColor(markedTextBackgroundColor.cgColor)
-            if markedTextBackgroundCornerRadius > 0 {
-                let cornerRadius = markedTextBackgroundCornerRadius
+            context.setFillColor(markedTextBackgroundColor.value.cgColor)
+            if markedTextBackgroundCornerRadius.value > 0 {
+                let cornerRadius = markedTextBackgroundCornerRadius.value
                 let path = CGPath(roundedRect: rect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
                 context.addPath(path)
                 context.fillPath()
@@ -123,16 +131,16 @@ private extension LineFragmentRenderer {
         for substring in string {
             let indexInLine = lineFragment.visibleRange.location + indexInLineFragment
             indexInLineFragment += substring.utf16.count
-            if invisibleCharacterConfiguration.showSpaces && substring == Symbol.Character.space {
-                draw(invisibleCharacterConfiguration.spaceSymbol, at: .character(indexInLine))
-            } else if invisibleCharacterConfiguration.showNonBreakingSpaces && substring == Symbol.Character.nonBreakingSpace {
-                draw(invisibleCharacterConfiguration.nonBreakingSpaceSymbol, at: .character(indexInLine))
-            } else if invisibleCharacterConfiguration.showTabs && substring == Symbol.Character.tab {
-                draw(invisibleCharacterConfiguration.tabSymbol, at: .character(indexInLine))
-            } else if invisibleCharacterConfiguration.showLineBreaks && isLineBreak(substring) {
-                draw(invisibleCharacterConfiguration.lineBreakSymbol, at: .endOfLine)
-            } else if invisibleCharacterConfiguration.showSoftLineBreaks && substring == Symbol.Character.lineSeparator {
-                draw(invisibleCharacterConfiguration.softLineBreakSymbol, at: .endOfLine)
+            if invisibleCharacterSettings.showSpaces.value && substring == Symbol.Character.space {
+                draw(invisibleCharacterSettings.spaceSymbol.value, at: .character(indexInLine))
+            } else if invisibleCharacterSettings.showNonBreakingSpaces.value && substring == Symbol.Character.nonBreakingSpace {
+                draw(invisibleCharacterSettings.nonBreakingSpaceSymbol.value, at: .character(indexInLine))
+            } else if invisibleCharacterSettings.showTabs.value && substring == Symbol.Character.tab {
+                draw(invisibleCharacterSettings.tabSymbol.value, at: .character(indexInLine))
+            } else if invisibleCharacterSettings.showLineBreaks.value && isLineBreak(substring) {
+                draw(invisibleCharacterSettings.lineBreakSymbol.value, at: .endOfLine)
+            } else if invisibleCharacterSettings.showSoftLineBreaks.value && substring == Symbol.Character.lineSeparator {
+                draw(invisibleCharacterSettings.softLineBreakSymbol.value, at: .endOfLine)
             }
         }
     }
@@ -141,8 +149,8 @@ private extension LineFragmentRenderer {
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.alignment = .center
         let attrs: [NSAttributedString.Key: Any] = [
-            .foregroundColor: invisibleCharacterConfiguration.textColor,
-            .font: invisibleCharacterConfiguration.font,
+            .foregroundColor: invisibleCharacterSettings.textColor.value,
+            .font: invisibleCharacterSettings.font.value,
             .paragraphStyle: paragraphStyle
         ]
         let size = symbol.size(withAttributes: attrs)

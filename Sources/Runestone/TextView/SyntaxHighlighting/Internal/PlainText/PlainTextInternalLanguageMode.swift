@@ -1,13 +1,22 @@
+import Combine
 import Foundation
 
 final class PlainTextInternalLanguageMode: InternalLanguageMode {
+    private let theme: CurrentValueSubject<Theme, Never>
+    private let kern: CurrentValueSubject<CGFloat, Never>
+
+    init(theme: CurrentValueSubject<Theme, Never>, kern: CurrentValueSubject<CGFloat, Never>) {
+        self.theme = theme
+        self.kern = kern
+    }
+
     func parse(_ text: NSString) {}
 
     func parse(_ text: NSString, completion: @escaping ((Bool) -> Void)) {
         completion(true)
     }
 
-    func textDidChange(_ change: TextChange) -> LineChangeSet {
+    func textDidChange(_ change: TextStoreChange) -> LineChangeSet {
         LineChangeSet()
     }
 
@@ -16,7 +25,7 @@ final class PlainTextInternalLanguageMode: InternalLanguageMode {
     }
 
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter {
-        PlainTextSyntaxHighlighter()
+        PlainTextSyntaxHighlighter(theme: theme, kern: kern)
     }
 
     func highestSyntaxNode(at linePosition: LinePosition) -> SyntaxNode? {

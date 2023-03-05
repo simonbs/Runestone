@@ -1,11 +1,15 @@
+import Combine
 import CoreGraphics
 import Foundation
 
 final class PlainTextSyntaxHighlighter: LineSyntaxHighlighter {
-    var theme: Theme = DefaultTheme()
-    var kern: CGFloat = 0
-    var canHighlight: Bool {
-        false
+    let theme: CurrentValueSubject<Theme, Never>
+    let kern: CurrentValueSubject<CGFloat, Never>
+    let canHighlight = false
+
+    init(theme: CurrentValueSubject<Theme, Never>, kern: CurrentValueSubject<CGFloat, Never>) {
+        self.theme = theme
+        self.kern = kern
     }
 
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput) {}
