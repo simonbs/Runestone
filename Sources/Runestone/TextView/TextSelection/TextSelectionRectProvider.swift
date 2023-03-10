@@ -3,13 +3,13 @@ import CoreGraphics
 import Foundation
 
 final class TextSelectionRectProvider {
-    private let lineManager: LineManager
+    private let lineManager: CurrentValueSubject<LineManager, Never>
     private let contentAreaProvider: ContentAreaProvider
     private let caretRectProvider: CaretRectProvider
     private let lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
 
     init(
-        lineManager: LineManager,
+        lineManager: CurrentValueSubject<LineManager, Never>,
         contentAreaProvider: ContentAreaProvider,
         caretRectProvider: CaretRectProvider,
         lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
@@ -24,7 +24,7 @@ final class TextSelectionRectProvider {
         guard range.length > 0 else {
             return []
         }
-        guard let endLine = lineManager.line(containingCharacterAt: range.upperBound) else {
+        guard let endLine = lineManager.value.line(containingCharacterAt: range.upperBound) else {
             return []
         }
         let contentArea = contentAreaProvider.contentArea

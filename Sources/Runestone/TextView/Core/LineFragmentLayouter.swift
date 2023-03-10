@@ -13,8 +13,8 @@ final class LineFragmentLayouter {
     weak var delegate: LineFragmentLayouterDelegate?
     private(set) var visibleLineIDs: Set<LineNodeID> = []
 
-    private let stringView: StringView
-    private let lineManager: LineManager
+    private let stringView: CurrentValueSubject<StringView, Never>
+    private let lineManager: CurrentValueSubject<LineManager, Never>
     private let lineControllerStorage: LineControllerStorage
     private let widestLineTracker: WidestLineTracker
     private let totalLineHeightTracker: TotalLineHeightTracker
@@ -37,8 +37,8 @@ final class LineFragmentLayouter {
     }
 
     init(
-        stringView: StringView,
-        lineManager: LineManager,
+        stringView: CurrentValueSubject<StringView, Never>,
+        lineManager: CurrentValueSubject<LineManager, Never>,
         lineControllerStorage: LineControllerStorage,
         widestLineTracker: WidestLineTracker,
         totalLineHeightTracker: TotalLineHeightTracker,
@@ -73,19 +73,21 @@ final class LineFragmentLayouter {
     }
 
     func layoutLines(toLocation location: Int) {
-        var nextLine: LineNode? = lineManager.firstLine
-        let isLocationEndOfString = location >= stringView.string.length
+        var nextLine: LineNode? = lineManager.value.firstLine
+        let isLocationEndOfString = location >= stringView.value.string.length
         while let line = nextLine {
             let lineLocation = line.location
             let endTypesettingLocation = min(lineLocation + line.data.length, location) - lineLocation
             let lineController = lineControllerStorage.getOrCreateLineController(for: line)
             lineController.constrainingWidth = constrainingLineWidth
-            lineController.prepareToDisplayString(toLocation: endTypesettingLocation, syntaxHighlightAsynchronously: true)
+            lineController.prepareToDisplayString(to: .location(endTypesettingLocation), syntaxHighlightAsynchronously: true)
             widestLineTracker.setWidthOfLine(withID: lineController.line.id.id, to: lineController.lineWidth)
             totalLineHeightTracker.setHeight(of: lineController.line, to: lineController.lineHeight)
             let lineEndLocation = lineLocation + line.data.length
-            if ((lineEndLocation < location) || (lineLocation == location && !isLocationEndOfString)) && line.index < lineManager.lineCount - 1 {
-                nextLine = lineManager.line(atRow: line.index + 1)
+            if (
+                (lineEndLocation < location) || (lineLocation == location && !isLocationEndOfString)
+            ) && line.index < lineManager.value.lineCount - 1 {
+                nextLine = lineManager.value.line(atRow: line.index + 1)
             } else {
                 nextLine = nil
             }
@@ -104,7 +106,7 @@ extension LineFragmentLayouter {
         let oldVisibleLineIDs = visibleLineIDs
         let oldVisibleLineFragmentIDs = Set(lineFragmentReusableViewQueue.visibleViews.keys)
         // Layout lines until we have filled the viewport.
-        var nextLine = lineManager.line(containingYOffset: viewport.minY)
+        var nextLine = lineManager.value.line(containingYOffset: viewport.minY)
         var appearedLineIDs: Set<LineNodeID> = []
         var appearedLineFragmentIDs: Set<LineFragmentID> = []
         var maxY = viewport.minY
@@ -116,7 +118,7 @@ extension LineFragmentLayouter {
             let lineController = lineControllerStorage.getOrCreateLineController(for: line)
             let oldLineHeight = lineController.lineHeight
             lineController.constrainingWidth = constrainingLineWidth
-            lineController.prepareToDisplayString(toYPosition: lineLocalViewport.maxY, syntaxHighlightAsynchronously: true)
+            lineController.prepareToDisplayString(to: .yPosition(lineLocalViewport.maxY), syntaxHighlightAsynchronously: true)
             // Layout line fragments in the line until we have filled the viewport.
             let lineFragmentControllers = lineController.lineFragmentControllers(in: viewport)
             for lineFragmentController in lineFragmentControllers {
@@ -136,8 +138,8 @@ extension LineFragmentLayouter {
             if isSizingLineAboveTopEdge && lineController.isFinishedTypesetting {
                 contentOffsetAdjustmentY += lineController.lineHeight - oldLineHeight
             }
-            if !lineFragmentControllers.isEmpty && line.index < lineManager.lineCount - 1 {
-                nextLine = lineManager.line(atRow: line.index + 1)
+            if !lineFragmentControllers.isEmpty && line.index < lineManager.value.lineCount - 1 {
+                nextLine = lineManager.value.line(atRow: line.index + 1)
             } else {
                 nextLine = nil
             }

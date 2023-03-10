@@ -4,12 +4,8 @@ import CoreGraphics
 final class ContentAreaProvider {
     var contentArea: CGRect {
         let textContainerInset = textContainerInset.value
-        let width = max(viewport.value.width, contentSize.value.width)
-//        - textContainerInset.left
-//        - textContainerInset.right
-        let height = max(viewport.value.height, contentSize.value.height)
-//        - textContainerInset.top
-//        - textContainerInset.bottom
+        let width = max(viewport.value.width, contentSize.value.width) - textContainerInset.left - textContainerInset.right
+        let height = max(viewport.value.height, contentSize.value.height) - textContainerInset.top - textContainerInset.bottom
         return CGRect(x: textContainerInset.left, y: textContainerInset.top, width: width, height: height)
     }
 

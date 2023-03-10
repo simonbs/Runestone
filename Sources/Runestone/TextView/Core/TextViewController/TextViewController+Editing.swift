@@ -3,11 +3,11 @@ import Foundation
 extension TextViewController {
     var rangeForInsertingText: NSRange {
         // If there is no marked range or selected range then we fallback to appending text to the end of our string.
-        markedRange ?? selectedRange?.nonNegativeLength ?? NSRange(location: stringView.string.length, length: 0)
+        markedRange ?? selectedRange?.nonNegativeLength ?? NSRange(location: stringView.value.string.length, length: 0)
     }
 
     func text(in range: NSRange) -> String? {
-        stringView.substring(in: range.nonNegativeLength)
+        stringView.value.substring(in: range.nonNegativeLength)
     }
 
     func replaceText(
@@ -21,9 +21,10 @@ extension TextViewController {
         let newRange = NSRange(location: range.location, length: nsNewString.length)
         addUndoOperation(replacing: newRange, withText: currentText, selectedRangeAfterUndo: selectedRangeAfterUndo, actionName: undoActionName)
         selectedRange = NSRange(location: newRange.upperBound, length: 0)
-        let textStore = TextStore(stringView: stringView, lineManager: lineManager)
+        let textStore = TextStore(stringView: stringView.value, lineManager: lineManager.value)
         let textStoreChange = textStore.replaceText(in: range, with: newString)
-        let languageModeLineChangeSet = languageMode.textDidChange(textStoreChange)
+        let languageModeLineChangeSet = languageMode.value.textDidChange(textStoreChange)
+        print(textStoreChange.lineChangeSet.editedLines.count)
         textStoreChange.lineChangeSet.formUnion(with: languageModeLineChangeSet)
         applyLineChanges(textStoreChange.lineChangeSet)
         lineFragmentLayouter.setNeedsLayout()
@@ -40,9 +41,9 @@ extension TextViewController {
         }
         var oldLinePosition: LinePosition?
         if let oldSelectedRange = selectedRange {
-            oldLinePosition = lineManager.linePosition(at: oldSelectedRange.location)
+            oldLinePosition = lineManager.value.linePosition(at: oldSelectedRange.location)
         }
-        let newString = stringView.string.applying(batchReplaceSet)
+        let newString = stringView.value.string.applying(batchReplaceSet)
         setStringWithUndoAction(newString)
         if let oldLinePosition = oldLinePosition {
             // By restoring the selected range using the old line position we can better preserve the old selected language.
@@ -55,17 +56,17 @@ extension TextViewController {
         if range.length == 1, let indentRange = indentController.indentRangeInFrontOfLocation(range.upperBound) {
             resultingRange = indentRange
         } else {
-            resultingRange = stringView.string.customRangeOfComposedCharacterSequences(for: range)
+            resultingRange = stringView.value.string.customRangeOfComposedCharacterSequences(for: range)
         }
         // If deleting the leading component of a character pair we may also expand the range to delete the trailing component.
         if characterPairTrailingComponentDeletionMode == .immediatelyFollowingLeadingComponent
             && maximumLeadingCharacterPairComponentLength > 0
             && resultingRange.length <= maximumLeadingCharacterPairComponentLength {
-            let stringToDelete = stringView.substring(in: resultingRange)
+            let stringToDelete = stringView.value.substring(in: resultingRange)
             if let characterPair = characterPairs.first(where: { $0.leading == stringToDelete }) {
                 let trailingComponentLength = characterPair.trailing.utf16.count
                 let trailingComponentRange = NSRange(location: resultingRange.upperBound, length: trailingComponentLength)
-                if stringView.substring(in: trailingComponentRange) == characterPair.trailing {
+                if stringView.value.substring(in: trailingComponentRange) == characterPair.trailing {
                     let deleteRange = trailingComponentRange.upperBound - resultingRange.lowerBound
                     resultingRange = NSRange(location: resultingRange.lowerBound, length: deleteRange)
                 }
@@ -155,10 +156,10 @@ private extension TextViewController {
     }
 
     private func setStringWithUndoAction(_ newString: NSString) {
-        guard newString != stringView.string else {
+        guard newString != stringView.value.string else {
             return
         }
-        guard let oldString = stringView.string.copy() as? NSString else {
+        guard let oldString = stringView.value.string.copy() as? NSString else {
             return
         }
         timedUndoManager.endUndoGrouping()
@@ -174,7 +175,7 @@ private extension TextViewController {
         timedUndoManager.endUndoGrouping()
         textDidChange()
         if let oldSelectedRange = oldSelectedRange {
-            selectedRange = oldSelectedRange.capped(to: stringView.string.length)
+            selectedRange = oldSelectedRange.capped(to: stringView.value.string.length)
         }
     }
 
@@ -186,8 +187,8 @@ private extension TextViewController {
     }
 
     private func moveCaret(to linePosition: LinePosition) {
-        if linePosition.row < lineManager.lineCount {
-            let line = lineManager.line(atRow: linePosition.row)
+        if linePosition.row < lineManager.value.lineCount {
+            let line = lineManager.value.line(atRow: linePosition.row)
             let location = line.location + min(linePosition.column, line.data.length)
             selectedRange = NSRange(location: location, length: 0)
         } else {

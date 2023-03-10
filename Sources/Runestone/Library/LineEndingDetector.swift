@@ -1,12 +1,12 @@
 import Foundation
 
 final class LineEndingDetector {
-    private let lineManager: LineManager
     private let stringView: StringView
+    private let lineManager: LineManager
 
-    init(lineManager: LineManager, stringView: StringView) {
-        self.lineManager = lineManager
+    init(stringView: StringView, lineManager: LineManager) {
         self.stringView = stringView
+        self.lineManager = lineManager
     }
 
     func detect() -> LineEnding? {

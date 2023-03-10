@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 protocol SearchControllerDelegate: AnyObject {
@@ -7,9 +8,9 @@ protocol SearchControllerDelegate: AnyObject {
 final class SearchController {
     weak var delegate: SearchControllerDelegate?
 
-    private let stringView: StringView
+    private let stringView: CurrentValueSubject<StringView, Never>
 
-    init(stringView: StringView) {
+    init(stringView: CurrentValueSubject<StringView, Never>) {
         self.stringView = stringView
     }
 
@@ -26,7 +27,7 @@ final class SearchController {
         let replacementStringParser = ReplacementStringParser(string: replacementText)
         let parsedReplacementString = replacementStringParser.parse()
         return search(for: query) { textCheckingResult in
-            let replacementText = parsedReplacementString.string(byMatching: textCheckingResult, in: stringView.string)
+            let replacementText = parsedReplacementString.string(byMatching: textCheckingResult, in: stringView.value.string)
             return searchReplaceResult(in: textCheckingResult.range, replacementText: replacementText)
         }
     }
@@ -43,7 +44,7 @@ private extension SearchController {
         guard !query.text.isEmpty else {
             return []
         }
-        let matches = query.matches(in: stringView.string)
+        let matches = query.matches(in: stringView.value.string)
         return matches.compactMap { textCheckingResult in
             if textCheckingResult.range.length > 0, let mappedValue = mapper(textCheckingResult) {
                 return mappedValue

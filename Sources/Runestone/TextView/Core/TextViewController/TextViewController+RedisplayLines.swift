@@ -20,7 +20,6 @@ extension TextViewController {
     }
 
     func redisplayLines(withIDs lineIDs: Set<LineNodeID>) {
-        let viewport = textContainer.viewport.value
         for lineID in lineIDs {
             guard let lineController = lineControllerStorage[lineID] else {
                 continue
@@ -33,7 +32,7 @@ extension TextViewController {
                 continue
             }
             let lineYPosition = lineController.line.yPosition
-            let lineLocalMaxY = lineYPosition + (viewport.maxY - lineYPosition)
+            let lineLocalMaxY = lineYPosition + (textContainer.viewport.value.maxY - lineYPosition)
             lineController.prepareToDisplayString(to: .yPosition(lineLocalMaxY), syntaxHighlightAsynchronously: false)
         }
     }

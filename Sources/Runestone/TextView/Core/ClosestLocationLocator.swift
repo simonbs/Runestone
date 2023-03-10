@@ -1,14 +1,15 @@
+import Combine
 import CoreGraphics
 
 struct ClosestLocationLocator {
-    private let stringView: StringView
-    private let lineManager: LineManager
+    private let stringView: CurrentValueSubject<StringView, Never>
+    private let lineManager: CurrentValueSubject<LineManager, Never>
     private let lineControllerStorage: LineControllerStorage
     private let textContainerInset: MultiPlatformEdgeInsets
 
     init(
-        stringView: StringView,
-        lineManager: LineManager,
+        stringView: CurrentValueSubject<StringView, Never>,
+        lineManager: CurrentValueSubject<LineManager, Never>,
         lineControllerStorage: LineControllerStorage,
         textContainerInset: MultiPlatformEdgeInsets
     ) {
@@ -20,21 +21,21 @@ struct ClosestLocationLocator {
 
     func location(closestTo point: CGPoint) -> Int {
         let point = CGPoint(x: point.x - textContainerInset.left, y: point.y - textContainerInset.top)
-        if let line = lineManager.line(containingYOffset: point.y), let lineController = lineControllerStorage[line.id] {
+        if let line = lineManager.value.line(containingYOffset: point.y), let lineController = lineControllerStorage[line.id] {
             return closestIndex(to: point, in: lineController)
         } else if point.y <= 0 {
-            let firstLine = lineManager.firstLine
+            let firstLine = lineManager.value.firstLine
             if let lineController = lineControllerStorage[firstLine.id] {
                 return closestIndex(to: point, in: lineController)
             } else {
                 return 0
             }
         } else {
-            let lastLine = lineManager.lastLine
+            let lastLine = lineManager.value.lastLine
             if point.y >= lastLine.yPosition, let lineController = lineControllerStorage[lastLine.id] {
                 return closestIndex(to: point, in: lineController)
             } else {
-                return stringView.string.length
+                return stringView.value.string.length
             }
         }
     }

@@ -2,12 +2,19 @@ import Combine
 import Foundation
 
 final class CompositionRoot {
-    let stringView = StringView()
+    let stringView = CurrentValueSubject<StringView, Never>(StringView())
     private(set) lazy var estimatedLineHeight = EstimatedLineHeight(
         font: themeSettings.font.eraseToAnyPublisher(),
         lineHeightMultiplier: typesetSettings.lineHeightMultiplier.eraseToAnyPublisher()
     )
-    private(set) lazy var lineManager = LineManager(stringView: stringView)
+    private(set) lazy var defaultStringAttributes = DefaultStringAttributes(
+        font: themeSettings.font,
+        textColor: themeSettings.textColor,
+        kern: typesetSettings.kern
+    )
+    private(set) lazy var lineManager = CurrentValueSubject<LineManager, Never>(
+        LineManager(stringView: stringView.value)
+    )
     let textContainer = TextContainer()
     let typesetSettings = TypesetSettings()
     private(set) lazy var invisibleCharacterSettings = InvisibleCharacterSettings(
@@ -16,7 +23,7 @@ final class CompositionRoot {
     )
     let themeSettings = ThemeSettings()
     private(set) lazy var languageMode = CurrentValueSubject<InternalLanguageMode, Never>(
-        PlainTextInternalLanguageMode(theme: themeSettings.theme, kern: typesetSettings.kern)
+        PlainTextInternalLanguageMode(stringView: stringView.value, lineManager: lineManager.value)
     )
     private(set) lazy var lineControllerStorage = LineControllerStorage(
         stringView: stringView,
@@ -37,20 +44,12 @@ final class CompositionRoot {
         textContainerInset: textContainer.inset
     )
     private(set) lazy var highlightedRangeService = HighlightedRangeService(lineManager: lineManager)
-    let theme = CurrentValueSubject<Theme, Never>(DefaultTheme())
 
-    private let textView: TextView
+    private unowned let textView: TextView
     private lazy var totalLineHeightTracker = TotalLineHeightTracker(lineManager: lineManager)
 
     init(textView: TextView) {
         self.textView = textView
-    }
-
-    var textSelectionLayouter: TextSelectionLayouter {
-        TextSelectionLayouter(
-            textSelectionRectProvider: textSelectionRectProvider,
-            containerView: textView
-        )
     }
 
     var lineFragmentLayouter: LineFragmentLayouter {
@@ -71,6 +70,7 @@ final class CompositionRoot {
         LineSelectionLayouter(
             lineManager: lineManager,
             caretRectProvider: caretRectProvider,
+            textContainerInset: textContainer.inset,
             lineHeightMultiplier: typesetSettings.lineHeightMultiplier,
             backgroundColor: themeSettings.selectedLineBackgroundColor,
             containerView: textView
@@ -113,6 +113,13 @@ final class CompositionRoot {
             lineControllerStorage: lineControllerStorage
         )
     }
+
+    var textSelectionLayouter: TextSelectionLayouter {
+        TextSelectionLayouter(
+            textSelectionRectProvider: textSelectionRectProvider,
+            containerView: textView
+        )
+    }
     #endif
 
     var indentController: IndentController {
@@ -138,9 +145,20 @@ private extension CompositionRoot {
     private var lineControllerFactory: LineControllerFactory {
         LineControllerFactory(
             stringView: stringView,
-            highlightedRangeService: highlightedRangeService,
+            estimatedLineHeight: estimatedLineHeight,
+            defaultStringAttributes: defaultStringAttributes,
             typesetSettings: typesetSettings,
-            invisibleCharacterSettings: invisibleCharacterSettings
+            invisibleCharacterSettings: invisibleCharacterSettings,
+            rendererFactory: rendererFactory,
+            syntaxHighlighterFactory: syntaxHighlighterFactory
         )
+    }
+
+    private var rendererFactory: RendererFactory {
+        RendererFactory(stringView: stringView, invisibleCharacterSettings: invisibleCharacterSettings)
+    }
+
+    private var syntaxHighlighterFactory: SyntaxHighlighterFactory {
+        SyntaxHighlighterFactory(theme: themeSettings.theme, languageMode: languageMode)
     }
 }

@@ -2,12 +2,12 @@ import Combine
 import Foundation
 
 final class PlainTextInternalLanguageMode: InternalLanguageMode {
-    private let theme: CurrentValueSubject<Theme, Never>
-    private let kern: CurrentValueSubject<CGFloat, Never>
+    let stringView: CurrentValueSubject<StringView, Never>
+    let lineManager: CurrentValueSubject<LineManager, Never>
 
-    init(theme: CurrentValueSubject<Theme, Never>, kern: CurrentValueSubject<CGFloat, Never>) {
-        self.theme = theme
-        self.kern = kern
+    init(stringView: StringView, lineManager: LineManager) {
+        self.stringView = CurrentValueSubject(stringView)
+        self.lineManager = CurrentValueSubject(lineManager)
     }
 
     func parse(_ text: NSString) {}
@@ -24,8 +24,8 @@ final class PlainTextInternalLanguageMode: InternalLanguageMode {
         nil
     }
 
-    func createLineSyntaxHighlighter() -> LineSyntaxHighlighter {
-        PlainTextSyntaxHighlighter(theme: theme, kern: kern)
+    func createSyntaxHighlighter(with theme: CurrentValueSubject<Theme, Never>) -> SyntaxHighlighter {
+        PlainTextSyntaxHighlighter()
     }
 
     func highestSyntaxNode(at linePosition: LinePosition) -> SyntaxNode? {

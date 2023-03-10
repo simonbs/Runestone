@@ -1,12 +1,11 @@
 #if os(macOS)
 import AppKit
-#endif
-#if os(iOS)
+#else
 import UIKit
 #endif
 
 final class LineFragmentView: FlippedView, ReusableView {
-    var renderer: LineFragmentRenderer? {
+    var renderer: Renderer? {
         didSet {
             if renderer !== oldValue {
                 setNeedsDisplay()
@@ -36,35 +35,21 @@ final class LineFragmentView: FlippedView, ReusableView {
     #if os(iOS)
     override func draw(_ rect: CGRect) {
         super.draw(rect)
-        _drawRect()
+        renderer?.render()
+    }
+
+    func prepareForReuse() {
+        renderer = nil
     }
     #else
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
-        _drawRect()
+        renderer?.render()
     }
-    #endif
 
-    #if os(iOS)
-    func prepareForReuse() {
-        _prepareForReuse()
-    }
-    #else
     override func prepareForReuse() {
         super.prepareForReuse()
-        _prepareForReuse()
-    }
-    #endif
-}
-
-private extension LineFragmentView {
-    private func _drawRect() {
-        if let context = UIGraphicsGetCurrentContext() {
-            renderer?.draw(to: context, inCanvasOfSize: bounds.size)
-        }
-    }
-
-    private func _prepareForReuse() {
         renderer = nil
     }
+    #endif
 }

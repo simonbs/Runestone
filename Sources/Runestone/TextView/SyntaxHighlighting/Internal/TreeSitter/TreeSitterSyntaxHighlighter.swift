@@ -15,39 +15,36 @@ enum TreeSitterSyntaxHighlighterError: LocalizedError {
     }
 }
 
-final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
+final class TreeSitterSyntaxHighlighter: SyntaxHighlighter {
     let theme: CurrentValueSubject<Theme, Never>
-    let kern: CurrentValueSubject<CGFloat, Never>
     var canHighlight: Bool {
         languageMode.canHighlight
     }
 
-    private let stringView: StringView
+    private let stringView: CurrentValueSubject<StringView, Never>
     private let languageMode: TreeSitterInternalLanguageMode
     private let operationQueue: OperationQueue
     private var currentOperation: Operation?
 
     init(
-        stringView: StringView,
+        stringView: CurrentValueSubject<StringView, Never>,
         languageMode: TreeSitterInternalLanguageMode,
         theme: CurrentValueSubject<Theme, Never>,
-        kern: CurrentValueSubject<CGFloat, Never>,
         operationQueue: OperationQueue
     ) {
         self.stringView = stringView
         self.languageMode = languageMode
         self.theme = theme
-        self.kern = kern
         self.operationQueue = operationQueue
     }
 
-    func syntaxHighlight(_ input: LineSyntaxHighlighterInput) {
+    func syntaxHighlight(_ input: SyntaxHighlighterInput) {
         let captures = languageMode.captures(in: input.byteRange)
         let tokens = self.tokens(for: captures, localTo: input.byteRange)
         setAttributes(for: tokens, on: input.attributedString)
     }
 
-    func syntaxHighlight(_ input: LineSyntaxHighlighterInput, completion: @escaping AsyncCallback) {
+    func syntaxHighlight(_ input: SyntaxHighlighterInput, completion: @escaping AsyncCallback) {
         let operation = BlockOperation()
         operation.addExecutionBlock { [weak operation, weak self] in
             guard let operation = operation, let self = self else {

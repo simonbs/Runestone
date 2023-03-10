@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 final class StatefulLineNavigationLocationFactory {
@@ -30,14 +31,14 @@ final class StatefulLineNavigationLocationFactory {
         }
     }
 
-    private let lineManager: LineManager
+    private let lineManager: CurrentValueSubject<LineManager, Never>
     private let lineControllerStorage: LineControllerStorage
     private var previousOperation: MoveOperation?
     private var lineNavigationLocationFactory: LineNavigationLocationFactory {
         LineNavigationLocationFactory(lineManager: lineManager, lineControllerStorage: lineControllerStorage)
     }
 
-    init(lineManager: LineManager, lineControllerStorage: LineControllerStorage) {
+    init(lineManager: CurrentValueSubject<LineManager, Never>, lineControllerStorage: LineControllerStorage) {
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
     }

@@ -11,7 +11,7 @@ public extension TextView {
             deleteBackward(nil)
             return
         }
-        guard selectedRange.location < textViewController.stringView.string.length else {
+        guard selectedRange.location < textViewController.stringView.value.string.length else {
             return
         }
         textViewController.selectedRange = NSRange(location: selectedRange.location, length: 1)
@@ -102,7 +102,8 @@ public extension TextView {
     ///
     /// - Parameter sender: The object calling this method.
     override func selectAll(_ sender: Any?) {
-        textViewController.selectedRange = NSRange(location: 0, length: textViewController.stringView.string.length)
+        let stringLength = textViewController.stringView.value.string.length
+        return textViewController.selectedRange = NSRange(location: 0, length: stringLength)
     }
 
     /// Performs the undo operations in the last undo group.
@@ -148,8 +149,8 @@ private extension TextView {
 
     private func rangeForDeleting(from sourceLocation: Int, toBoundary boundary: TextBoundary, inDirection direction: TextDirection) -> NSRange? {
         let stringTokenizer = StringTokenizer(
-            stringView: textViewController.stringView,
-            lineManager: textViewController.lineManager,
+            stringView: textViewController.stringView.value,
+            lineManager: textViewController.lineManager.value,
             lineControllerStorage: textViewController.lineControllerStorage
         )
         guard let destinationLocation = stringTokenizer.location(from: sourceLocation, toBoundary: boundary, inDirection: direction) else {

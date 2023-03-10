@@ -16,24 +16,24 @@ final class TextViewController {
     weak var delegate: TextViewControllerDelegate?
 
     // Content
-    let stringView: StringView
-    let lineManager: LineManager
+    let stringView: CurrentValueSubject<StringView, Never>
+    let lineManager: CurrentValueSubject<LineManager, Never>
     var text: String {
         get {
-            stringView.string as String
+            stringView.value.string as String
         }
         set {
             let nsString = newValue as NSString
-            if nsString != stringView.string {
-                stringView.string = nsString
+            if nsString != stringView.value.string {
+                stringView.value.string = nsString
                 languageMode.value.parse(nsString)
                 lineControllerStorage.removeAllLineControllers()
-                lineManager.rebuild()
+                lineManager.value.rebuild()
                 if let oldSelectedRange = selectedRange {
                     #if os(iOS)
                     textView.inputDelegate?.selectionWillChange(textView)
                     #endif
-                    selectedRange = oldSelectedRange.capped(to: stringView.string.length)
+                    selectedRange = oldSelectedRange.capped(to: stringView.value.string.length)
                     #if os(iOS)
                     textView.inputDelegate?.selectionDidChange(textView)
                     #endif
@@ -124,7 +124,7 @@ final class TextViewController {
 //        didSet {
 //            if kern != oldValue {
 //                invalidateLines()
-//                PageGuideLayouter.kern = kern
+//                pageGuideLayouter.kern = kern
 ////                contentSizeService.invalidateContentSize()
 //                lineFragmentLayouter.setNeedsLayout()
 //                textView.setNeedsLayout()
@@ -152,8 +152,9 @@ final class TextViewController {
     let textContainer: TextContainer
     let typesetSettings: TypesetSettings
     let invisibleCharacterSettings: InvisibleCharacterSettings
-    let themeSettings = ThemeSettings()
+    let themeSettings: ThemeSettings
     private let estimatedLineHeight: EstimatedLineHeight
+    private let widestLineTracker: WidestLineTracker
     let languageMode: CurrentValueSubject<InternalLanguageMode, Never>
     private let contentAreaProvider: ContentAreaProvider
     let contentSizeService: ContentSizeService
@@ -253,16 +254,6 @@ final class TextViewController {
     var characterPairTrailingComponentDeletionMode: CharacterPairTrailingComponentDeletionMode = .disabled
     private(set) var maximumLeadingCharacterPairComponentLength = 0
 
-//        didSet {
-//            if languageMode !== oldValue {
-//                indentController.languageMode = languageMode
-//                if let treeSitterLanguageMode = languageMode as? TreeSitterInternalLanguageMode {
-//                    treeSitterLanguageMode.delegate = self
-//                }
-//            }
-//        }
-//    }
-
     // Highlighted ranges
     var highlightedRanges: [HighlightedRange] {
         get {
@@ -299,10 +290,6 @@ final class TextViewController {
     var isAutomaticScrollEnabled = true
     private var cancellables: Set<AnyCancellable> = []
 
-
-
-    private let widestLineTracker: WidestLineTracker
-
     // swiftlint:disable:next function_body_length
     init(textView: TextView) {
         let compositionRoot = CompositionRoot(textView: textView)
@@ -310,10 +297,12 @@ final class TextViewController {
         textContainer = compositionRoot.textContainer
         typesetSettings = compositionRoot.typesetSettings
         invisibleCharacterSettings = compositionRoot.invisibleCharacterSettings
+        themeSettings = compositionRoot.themeSettings
         contentAreaProvider = compositionRoot.contentAreaProvider
         stringView = compositionRoot.stringView
         lineManager = compositionRoot.lineManager
         languageMode = compositionRoot.languageMode
+        estimatedLineHeight = compositionRoot.estimatedLineHeight
         caretRectProvider = compositionRoot.caretRectProvider
         highlightedRangeService = compositionRoot.highlightedRangeService
         lineControllerStorage = compositionRoot.lineControllerStorage
@@ -321,13 +310,12 @@ final class TextViewController {
         widestLineTracker = compositionRoot.widestLineTracker
         contentSizeService = compositionRoot.contentSizeService
         navigationService = compositionRoot.navigationService
-        #if os(macOS)
-        selectionService = compositionRoot.selectionService
-        #endif
         indentController = compositionRoot.indentController
         lineFragmentLayouter = compositionRoot.lineFragmentLayouter
         lineSelectionLayouter = compositionRoot.lineSelectionLayouter
+        pageGuideLayouter = compositionRoot.pageGuideLayouter
         #if os(macOS)
+        selectionService = compositionRoot.selectionService
         textSelectionLayouter = compositionRoot.textSelectionLayouter
         caretLayouter = CaretLayouter(caretRectProvider: caretRectProvider, containerView: textView)
         #endif
@@ -345,13 +333,14 @@ final class TextViewController {
     }
 
     func setState(_ state: TextViewState, addUndoAction: Bool = false) {
-        let oldText = stringView.string
+        let oldText = stringView.value.string
         let newText = state.stringView.string
-        stringView.string = newText
+        state.lineManager.estimatedLineHeight = estimatedLineHeight.rawValue
+        stringView.value = state.stringView
+        lineManager.value = state.lineManager
         themeSettings.theme.value = state.theme
         languageMode.value = state.languageMode
         lineControllerStorage.removeAllLineControllers()
-        lineManager.copy(from: state.lineManager)
 //        contentSizeService.reset()
 //        gutterWidthService.invalidateLineNumberWidth()
         highlightedRangeService.invalidateHighlightedRangeFragments()
@@ -381,7 +370,7 @@ final class TextViewController {
             stringView: stringView,
             lineManager: lineManager
         )
-        self.languageMode.value.parse(stringView.string) { [weak self] finished in
+        self.languageMode.value.parse(stringView.value.string) { [weak self] finished in
             if let self = self, finished {
                 self.invalidateLines()
                 self.lineFragmentLayouter.setNeedsLayout()
@@ -416,23 +405,6 @@ private extension TextViewController {
 //    }
 }
 
-// MARK: - TreeSitterLanguageModeDelegate
-extension TextViewController: TreeSitterLanguageModeDelegate {
-    func treeSitterLanguageMode(_ languageMode: TreeSitterInternalLanguageMode, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult? {
-        guard byteIndex.value >= 0 && byteIndex < stringView.string.byteCount else {
-            return nil
-        }
-        let targetByteCount: ByteCount = 4 * 1_024
-        let endByte = min(byteIndex + targetByteCount, stringView.string.byteCount)
-        let byteRange = ByteRange(from: byteIndex, to: endByte)
-        if let result = stringView.bytes(in: byteRange) {
-            return TreeSitterTextProviderResult(bytes: result.bytes, length: UInt32(result.length.value))
-        } else {
-            return nil
-        }
-    }
-}
-
 // MARK: - LineFragmentLayouterDelegate
 extension TextViewController: LineFragmentLayouterDelegate {
     func lineFragmentLayouter(_ lineFragmentLayouter: LineFragmentLayouter, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint) {
@@ -451,25 +423,19 @@ extension TextViewController: LineFragmentLayouterDelegate {
 // MARK: - LineControllerStorageDelegate
 extension TextViewController: LineControllerStorageDelegate {
     func lineControllerStorage(_ storage: LineControllerStorage, didCreate lineController: LineController) {
-        lineController.delegate = self
+//        lineController.delegate = self
 //        lineController.constrainingWidth = lineFragmentLayouter.constrainingLineWidth
     }
 }
 
 // MARK: - LineControllerDelegate
-extension TextViewController: LineControllerDelegate {
-    func lineSyntaxHighlighter(for lineController: LineController) -> LineSyntaxHighlighter? {
-        let syntaxHighlighter = languageMode.value.createLineSyntaxHighlighter()
-        syntaxHighlighter.kern = typesetSettings.kern.value
-        return syntaxHighlighter
-    }
-
-    func lineControllerDidInvalidateSize(_ lineController: LineController) {
-        lineFragmentLayouter.setNeedsLayout()
-        lineSelectionLayouter.setNeedsLayout()
-        textView.setNeedsLayout()
-    }
-}
+//extension TextViewController: LineControllerDelegate {
+//    func lineControllerDidInvalidateSize(_ lineController: LineController) {
+//        lineFragmentLayouter.setNeedsLayout()
+//        lineSelectionLayouter.setNeedsLayout()
+//        textView.setNeedsLayout()
+//    }
+//}
 
 // MARK: - IndentControllerDelegate
 extension TextViewController: IndentControllerDelegate {

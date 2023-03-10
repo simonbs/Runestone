@@ -1,34 +1,35 @@
+import Combine
 import Foundation
 import TreeSitterLib
 
-protocol TreeSitterLanguageModeDelegate: AnyObject {
-    func treeSitterLanguageMode(_ languageMode: TreeSitterInternalLanguageMode, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult?
-}
-
 final class TreeSitterInternalLanguageMode: InternalLanguageMode {
-    weak var delegate: TreeSitterLanguageModeDelegate?
+    let stringView: CurrentValueSubject<StringView, Never>
+    let lineManager: CurrentValueSubject<LineManager, Never>
     var canHighlight: Bool {
         rootLanguageLayer.canHighlight
     }
 
-    private let stringView: StringView
-    private let parser: TreeSitterParser
-    private let lineManager: LineManager
+    private let parser = TreeSitterParser()
     private let rootLanguageLayer: TreeSitterLanguageLayer
     private let operationQueue = OperationQueue()
 
-    init(language: TreeSitterInternalLanguage, languageProvider: TreeSitterLanguageProvider?, stringView: StringView, lineManager: LineManager) {
-        self.stringView = stringView
-        self.lineManager = lineManager
+    init(
+        language: TreeSitterInternalLanguage,
+        languageProvider: TreeSitterLanguageProvider?,
+        stringView: StringView,
+        lineManager: LineManager
+    ) {
+        self.stringView = CurrentValueSubject(stringView)
+        self.lineManager = CurrentValueSubject(lineManager)
         operationQueue.name = "TreeSitterLanguageMode"
         operationQueue.qualityOfService = .userInitiated
-        parser = TreeSitterParser()
         rootLanguageLayer = TreeSitterLanguageLayer(
             language: language,
             languageProvider: languageProvider,
             parser: parser,
             stringView: stringView,
-            lineManager: lineManager)
+            lineManager: lineManager
+        )
         parser.delegate = self
     }
 
@@ -76,13 +77,22 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
         rootLanguageLayer.captures(in: range)
     }
 
-    func createLineSyntaxHighlighter() -> LineSyntaxHighlighter {
-        TreeSitterSyntaxHighlighter(stringView: stringView, languageMode: self, operationQueue: operationQueue)
+    func createSyntaxHighlighter(with theme: CurrentValueSubject<Theme, Never>) -> SyntaxHighlighter {
+        TreeSitterSyntaxHighlighter(
+            stringView: stringView,
+            languageMode: self,
+            theme: theme,
+            operationQueue: operationQueue
+        )
     }
 
     func currentIndentLevel(of line: LineNode, using indentStrategy: IndentStrategy) -> Int {
-        let measurer = IndentLevelMeasurer(stringView: stringView)
-        return measurer.indentLevel(lineStartLocation: line.location, lineTotalLength: line.data.totalLength, tabLength: indentStrategy.tabLength)
+        let measurer = IndentLevelMeasurer(stringView: stringView.value)
+        return measurer.indentLevel(
+            lineStartLocation: line.location,
+            lineTotalLength: line.data.totalLength,
+            tabLength: indentStrategy.tabLength
+        )
     }
 
     func strategyForInsertingLineBreak(
@@ -92,22 +102,23 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     ) -> InsertLineBreakIndentStrategy {
         let startLayerAndNode = rootLanguageLayer.layerAndNode(at: startLinePosition)
         let endLayerAndNode = rootLanguageLayer.layerAndNode(at: endLinePosition)
-        if let indentationScopes = startLayerAndNode?.layer.language.indentationScopes ?? endLayerAndNode?.layer.language.indentationScopes {
-            let indentController = TreeSitterIndentController(
-                indentationScopes: indentationScopes,
-                stringView: stringView,
-                lineManager: lineManager,
-                tabLength: indentStrategy.tabLength)
-            let startNode = startLayerAndNode?.node
-            let endNode = endLayerAndNode?.node
-            return indentController.strategyForInsertingLineBreak(
-                between: startNode,
-                and: endNode,
-                caretStartPosition: startLinePosition,
-                caretEndPosition: endLinePosition)
-        } else {
+        guard let indentationScopes = startLayerAndNode?.layer.language.indentationScopes ?? endLayerAndNode?.layer.language.indentationScopes else {
             return InsertLineBreakIndentStrategy(indentLevel: 0, insertExtraLineBreak: false)
         }
+        let indentController = TreeSitterIndentController(
+            indentationScopes: indentationScopes,
+            stringView: stringView.value,
+            lineManager: lineManager.value,
+            tabLength: indentStrategy.tabLength
+        )
+        let startNode = startLayerAndNode?.node
+        let endNode = endLayerAndNode?.node
+        return indentController.strategyForInsertingLineBreak(
+            between: startNode,
+            and: endNode,
+            caretStartPosition: startLinePosition,
+            caretEndPosition: endLinePosition
+        )
     }
 
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode? {
@@ -121,17 +132,30 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     }
 
     func detectIndentStrategy() -> DetectedIndentStrategy {
-        if let tree = rootLanguageLayer.tree {
-            let detector = TreeSitterIndentStrategyDetector(lineManager: lineManager, tree: tree, stringView: stringView)
-            return detector.detect()
-        } else {
+        guard let tree = rootLanguageLayer.tree else {
             return .unknown
         }
+        let detector = TreeSitterIndentStrategyDetector(
+            stringView: stringView.value,
+            lineManager: lineManager.value,
+            tree: tree
+        )
+        return detector.detect()
     }
 }
 
 extension TreeSitterInternalLanguageMode: TreeSitterParserDelegate {
     func parser(_ parser: TreeSitterParser, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult? {
-        delegate?.treeSitterLanguageMode(self, bytesAt: byteIndex)
+        guard byteIndex.value >= 0 && byteIndex < stringView.value.string.byteCount else {
+            return nil
+        }
+        let targetByteCount: ByteCount = 4 * 1_024
+        let endByte = min(byteIndex + targetByteCount, stringView.value.string.byteCount)
+        let byteRange = ByteRange(from: byteIndex, to: endByte)
+        if let result = stringView.value.bytes(in: byteRange) {
+            return TreeSitterTextProviderResult(bytes: result.bytes, length: UInt32(result.length.value))
+        } else {
+            return nil
+        }
     }
 }

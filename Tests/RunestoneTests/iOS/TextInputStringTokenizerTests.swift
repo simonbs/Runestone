@@ -303,7 +303,7 @@ extension TextInputStringTokenizerTests: LineControllerStorageDelegate {
 }
 
 extension TextInputStringTokenizerTests: LineControllerDelegate {
-    func lineSyntaxHighlighter(for lineController: LineController) -> LineSyntaxHighlighter? {
+    func SyntaxHighlighter(for lineController: LineController) -> SyntaxHighlighter? {
         PlainTextSyntaxHighlighter()
     }
 

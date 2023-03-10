@@ -1,14 +1,15 @@
+import Combine
 import CoreGraphics
 
 final class CaretRectProvider {
-    private let stringView: StringView
-    private let lineManager: LineManager
+    private let stringView: CurrentValueSubject<StringView, Never>
+    private let lineManager: CurrentValueSubject<LineManager, Never>
     private let lineControllerStorage: LineControllerStorage
     private let contentAreaProvider: ContentAreaProvider
 
     init(
-        stringView: StringView,
-        lineManager: LineManager,
+        stringView: CurrentValueSubject<StringView, Never>,
+        lineManager: CurrentValueSubject<LineManager, Never>,
         lineControllerStorage: LineControllerStorage,
         contentAreaProvider: ContentAreaProvider
     ) {
@@ -19,8 +20,8 @@ final class CaretRectProvider {
     }
 
     func caretRect(at location: Int, allowMovingCaretToNextLineFragment: Bool) -> CGRect {
-        let safeLocation = min(max(location, 0), stringView.string.length)
-        let line = lineManager.line(containingCharacterAt: safeLocation)!
+        let safeLocation = min(max(location, 0), stringView.value.string.length)
+        let line = lineManager.value.line(containingCharacterAt: safeLocation)!
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let lineLocalLocation = safeLocation - line.location
         if allowMovingCaretToNextLineFragment && shouldMoveCaretToNextLineFragment(forLocation: lineLocalLocation, in: line) {

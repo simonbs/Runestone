@@ -2,7 +2,7 @@ import Foundation
 
 extension TextViewController {
     public func goToLine(_ lineIndex: Int, select selection: GoToLineSelection = .beginning) -> Bool {
-        guard lineIndex >= 0 && lineIndex < lineManager.lineCount else {
+        guard lineIndex >= 0 && lineIndex < lineManager.value.lineCount else {
             return false
         }
         // I'm not exactly sure why this is necessary but if the text view is the first responder as we jump
@@ -10,7 +10,7 @@ extension TextViewController {
         // jumped to the specified line.
         textView.resignFirstResponder()
         textView.becomeFirstResponder()
-        let line = lineManager.line(atRow: lineIndex)
+        let line = lineManager.value.line(atRow: lineIndex)
         lineFragmentLayouter.layoutLines(toLocation: line.location)
         scrollLocationToVisible(line.location)
         textView.layoutIfNeeded()

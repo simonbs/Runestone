@@ -1,24 +1,25 @@
+import Combine
 import Foundation
 
 final class SelectedRangeService {
     private(set) var selectedRange = NSRange(location: 0, length: 0)
 
-    private let stringView: StringView
-    private let lineManager: LineManager
+    private let stringView: CurrentValueSubject<StringView, Never>
+    private let lineManager: CurrentValueSubject<LineManager, Never>
 
-    init(stringView: StringView, lineManager: LineManager) {
+    init(stringView: CurrentValueSubject<StringView, Never>, lineManager: CurrentValueSubject<LineManager, Never>) {
         self.stringView = stringView
         self.lineManager = lineManager
     }
 
     func moveCaret(to location: Int) {
-        let safeLocation = min(max(location, 0), stringView.string.length)
+        let safeLocation = min(max(location, 0), stringView.value.string.length)
         selectedRange = NSRange(location: safeLocation, length: 0)
     }
 
     func moveCaret(to linePosition: LinePosition) {
-        if linePosition.row < lineManager.lineCount {
-            let line = lineManager.line(atRow: linePosition.row)
+        if linePosition.row < lineManager.value.lineCount {
+            let line = lineManager.value.line(atRow: linePosition.row)
             let location = line.location + min(linePosition.column, line.data.length)
             selectedRange = NSRange(location: location, length: 0)
         } else {
@@ -27,6 +28,6 @@ final class SelectedRangeService {
     }
 
     func selectRange(_ range: NSRange) {
-        selectedRange = range.capped(to: stringView.string.length)
+        selectedRange = range.capped(to: stringView.value.string.length)
     }
 }

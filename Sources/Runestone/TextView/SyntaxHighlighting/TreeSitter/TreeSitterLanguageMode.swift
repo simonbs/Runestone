@@ -5,7 +5,7 @@ import Foundation
 /// Use this language mode to perform syntax highlighting using [Tree-sitter](https://tree-sitter.github.io/tree-sitter/).
 ///
 /// Refer to <doc:AddingATreeSitterLanguage> for more information on adding a Tree-sitter language to your project.
-public final class TreeSitterLanguageMode {
+public final class TreeSitterLanguageMode: LanguageMode {
     /// Tree-sitter language to use with the language mode.
     public let language: TreeSitterLanguage
     /// RefeAn object that can provide embedded languages on demand. A strong reference will be stored to the language provider.
@@ -18,16 +18,5 @@ public final class TreeSitterLanguageMode {
     public init(language: TreeSitterLanguage, languageProvider: TreeSitterLanguageProvider? = nil) {
         self.language = language
         self.languageProvider = languageProvider
-    }
-}
-
-extension TreeSitterLanguageMode: LanguageMode {
-    func makeInternalLanguageMode(stringView: StringView, lineManager: LineManager) -> InternalLanguageMode {
-        TreeSitterInternalLanguageMode(
-            language: language.internalLanguage,
-            languageProvider: languageProvider,
-            stringView: stringView,
-            lineManager: lineManager
-        )
     }
 }

@@ -13,14 +13,8 @@ final class PageGuideView: MultiPlatformView {
             }
         }
     }
-    var hairlineColor: MultiPlatformColor? {
-        get {
-            hairlineView.backgroundColor
-        }
-        set {
-            hairlineView.backgroundColor = newValue
-        }
-    }
+    @_RunestoneProxy(\PageGuideView.hairlineView.backgroundColor)
+    var hairlineColor: MultiPlatformColor?
 
     private let hairlineView = MultiPlatformView()
 

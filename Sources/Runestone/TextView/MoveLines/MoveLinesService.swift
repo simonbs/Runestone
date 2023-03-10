@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 struct MoveLinesOperation {
@@ -8,11 +9,15 @@ struct MoveLinesOperation {
 }
 
 final class MoveLinesService {
-    private let stringView: StringView
-    private let lineManager: LineManager
+    private let stringView: CurrentValueSubject<StringView, Never>
+    private let lineManager: CurrentValueSubject<LineManager, Never>
     private let lineEndingSymbol: String
 
-    init(stringView: StringView, lineManager: LineManager, lineEndingSymbol: String) {
+    init(
+        stringView: CurrentValueSubject<StringView, Never>,
+        lineManager: CurrentValueSubject<LineManager, Never>,
+        lineEndingSymbol: String
+    ) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.lineEndingSymbol = lineEndingSymbol
@@ -22,7 +27,7 @@ final class MoveLinesService {
         // This implementation of moving lines is naive, as it first removes the selected lines and then inserts the text at the target line.
         // That requires two parses of the syntax tree and two operations on our line manager. Ideally we would do this in one operation.
         let isMovingDown = lineOffset > 0
-        let selectedLines = lineManager.lines(in: selectedRange)
+        let selectedLines = lineManager.value.lines(in: selectedRange)
         guard !selectedLines.isEmpty else {
             return nil
         }
@@ -33,11 +38,11 @@ final class MoveLinesService {
         if isMovingDown {
             targetLineIndex += selectedLines.count - 1
         }
-        guard targetLineIndex >= 0 && targetLineIndex < lineManager.lineCount else {
+        guard targetLineIndex >= 0 && targetLineIndex < lineManager.value.lineCount else {
             return nil
         }
         // Find the line to move the selected text to.
-        let targetLine = lineManager.line(atRow: targetLineIndex)
+        let targetLine = lineManager.value.line(atRow: targetLineIndex)
         // Find the range of text to remove. That's the range encapsulating selected lines.
         let removeLocation = firstLine.location
         let removeLength = lastLine.location + lastLine.data.totalLength - removeLocation
@@ -51,7 +56,7 @@ final class MoveLinesService {
         // Perform the remove and insert operations.
         var removeRange = NSRange(location: removeLocation, length: removeLength)
         let insertRange = NSRange(location: insertLocation, length: 0)
-        var text = stringView.substring(in: removeRange) ?? ""
+        var text = stringView.value.substring(in: removeRange) ?? ""
         if isMovingDown && targetLine.data.delimiterLength == 0 {
             if lastLine.data.delimiterLength > 0 {
                 // We're moving to a line with no line break so we'll remove the last line break from the text we're moving.

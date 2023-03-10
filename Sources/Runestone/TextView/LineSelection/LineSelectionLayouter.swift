@@ -8,13 +8,6 @@ final class LineSelectionLayouter {
             setNeedsLayout()
         }
     }
-    var textContainerInset: MultiPlatformEdgeInsets = .zero {
-        didSet {
-            if textContainerInset != oldValue {
-                setNeedsLayout()
-            }
-        }
-    }
     var selectedRange: NSRange? {
         didSet {
             if selectedRange != oldValue {
@@ -24,8 +17,9 @@ final class LineSelectionLayouter {
         }
     }
 
-    private let lineManager: LineManager
+    private let lineManager: CurrentValueSubject<LineManager, Never>
     private let caretRectProvider: CaretRectProvider
+    private let textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>
     private let lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
     private weak var containerView: MultiPlatformView?
     private let lineSelectionView = MultiPlatformView()
@@ -33,18 +27,21 @@ final class LineSelectionLayouter {
     private var cancellables: Set<AnyCancellable> = []
 
     init(
-        lineManager: LineManager,
+        lineManager: CurrentValueSubject<LineManager, Never>,
         caretRectProvider: CaretRectProvider,
+        textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>,
         lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>,
         backgroundColor: CurrentValueSubject<MultiPlatformColor, Never>,
         containerView: MultiPlatformView
     ) {
         self.lineManager = lineManager
         self.caretRectProvider = caretRectProvider
+        self.textContainerInset = textContainerInset
         self.lineHeightMultiplier = lineHeightMultiplier
         self.containerView = containerView
         lineSelectionView.layerIfLoaded?.zPosition = -1000
         backgroundColor.sink { [weak self] color in
+            print(color)
             self?.lineSelectionView.backgroundColor = color
         }.store(in: &cancellables)
     }
@@ -90,12 +87,14 @@ private extension LineSelectionLayouter {
         guard let containerView else {
             return nil
         }
-        guard let (startLine, endLine) = lineManager.startAndEndLine(in: range) else {
+        guard let (startLine, endLine) = lineManager.value.startAndEndLine(in: range) else {
             return nil
         }
         let minY = startLine.yPosition
         let height = (endLine.yPosition + endLine.data.lineHeight) - minY
-        return CGRect(x: 0, y: textContainerInset.top + minY, width: containerView.frame.width, height: height)
+        let origin = CGPoint(x: 0, y: textContainerInset.value.top + minY)
+        let size = CGSize(width: containerView.frame.width, height: height)
+        return CGRect(origin: origin, size: size)
     }
 
     private func getLineFragmentSelectionRect(in range: NSRange) -> CGRect? {
@@ -114,7 +113,7 @@ private extension LineSelectionLayouter {
 
 private extension LineSelectionLayouter {
     private func setupSetNeedsLayoutObserver() {
-        lineHeightMultiplier.sink { [weak self] _ in
+        Publishers.CombineLatest(textContainerInset, lineHeightMultiplier).sink { [weak self] _ in
             self?.setNeedsLayout()
         }.store(in: &cancellables)
     }

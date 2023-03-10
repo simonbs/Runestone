@@ -2,10 +2,10 @@
 import Foundation
 
 struct TextPreviewFactory {
-    private let lineManager: LineManager
+    private let lineManager: CurrentValueSubject<LineManager, Never>
     private let lineControllerStorage: LineControllerStorage
 
-    init(lineManager: LineManager, lineControllerStorage: LineControllerStorage) {
+    init(lineManager: CurrentValueSubject<LineManager, Never>, lineControllerStorage: LineControllerStorage) {
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
     }

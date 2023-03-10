@@ -1,4 +1,5 @@
 #if os(macOS)
+import Combine
 import Foundation
 
 final class SelectionService {
@@ -16,13 +17,17 @@ final class SelectionService {
         }
     }
 
-    private let stringView: StringView
-    private let lineManager: LineManager
+    private let stringView: CurrentValueSubject<StringView, Never>
+    private let lineManager: CurrentValueSubject<LineManager, Never>
     private let lineControllerStorage: LineControllerStorage
     private var anchoringDirection: TextDirection?
     private var selectionOrigin: Int?
     private var stringTokenizer: StringTokenizer {
-        StringTokenizer(stringView: stringView, lineManager: lineManager, lineControllerStorage: lineControllerStorage)
+        StringTokenizer(
+            stringView: stringView.value,
+            lineManager: lineManager.value,
+            lineControllerStorage: lineControllerStorage
+        )
     }
     private var characterNavigationLocationService: CharacterNavigationLocationFactory {
         CharacterNavigationLocationFactory(stringView: stringView)
@@ -32,7 +37,11 @@ final class SelectionService {
     }
     private let lineNavigationLocationService: StatefulLineNavigationLocationFactory
 
-    init(stringView: StringView, lineManager: LineManager, lineControllerStorage: LineControllerStorage) {
+    init(
+        stringView: CurrentValueSubject<StringView, Never>,
+        lineManager: CurrentValueSubject<LineManager, Never>,
+        lineControllerStorage: LineControllerStorage
+    ) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
@@ -113,12 +122,12 @@ final class SelectionService {
     }
 
     func rangeBySelectingWord(at location: Int) -> NSRange {
-        guard location >= 0 && location < stringView.string.length else {
+        guard location >= 0 && location < stringView.value.string.length else {
             return NSRange(location: location, length: 0)
         }
-        let character = stringView.string.character(at: location)
-        let substringRange = stringView.string.customRangeOfComposedCharacterSequence(at: location)
-        let substring = stringView.string.substring(with: substringRange)
+        let character = stringView.value.string.character(at: location)
+        let substringRange = stringView.value.string.customRangeOfComposedCharacterSequence(at: location)
+        let substring = stringView.value.string.substring(with: substringRange)
         let selectableSymbols = [Symbol.carriageReturnLineFeed, Symbol.carriageReturn, Symbol.lineFeed]
         let bracketPairs = [
             BracketPair(opening: "(", closing: ")"),
@@ -143,7 +152,7 @@ final class SelectionService {
     }
 
     func rangeBySelectingLine(at location: Int) -> NSRange {
-        guard let line = lineManager.line(containingCharacterAt: location) else {
+        guard let line = lineManager.value.line(containingCharacterAt: location) else {
             return NSRange(location: location, length: 0)
         }
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
@@ -172,10 +181,10 @@ private extension SelectionService {
     private func rangeOfWhitespace(matching character: unichar, at location: Int) -> NSRange {
         var lowerBound = location
         var upperBound = location + 1
-        while lowerBound > 0 && lowerBound < stringView.string.length && stringView.string.character(at: lowerBound - 1) == character {
+        while lowerBound > 0 && lowerBound < stringView.value.string.length && stringView.value.string.character(at: lowerBound - 1) == character {
             lowerBound -= 1
         }
-        while upperBound >= 0 && upperBound < stringView.string.length && stringView.string.character(at: upperBound) == character {
+        while upperBound >= 0 && upperBound < stringView.value.string.length && stringView.value.string.character(at: upperBound) == character {
             upperBound += 1
         }
         return NSRange(location: lowerBound, length: upperBound - lowerBound)
@@ -196,9 +205,9 @@ private extension SelectionService {
         // In this case an "opening" component can actually be a closing component, e.g. "}", if that's what the user double clicked. That closing bracket "opens" our selection and we need to find the needle component, e.g. "{".
         let openingComponent = characterPair.component(inDirection: direction.opposite)
         let needleComponent = characterPair.component(inDirection: direction)
-        while endLocation > 0 && endLocation < stringView.string.length && unclosedBracketsCount > 0 {
+        while endLocation > 0 && endLocation < stringView.value.string.length && unclosedBracketsCount > 0 {
             let characterRange = NSRange(location: endLocation, length: 1)
-            let substring = stringView.string.substring(with: characterRange)
+            let substring = stringView.value.string.substring(with: characterRange)
             if substring == openingComponent {
                 unclosedBracketsCount += 1
             }

@@ -3,7 +3,7 @@ import CoreGraphics
 import Foundation
 
 final class GutterWidthService {
-    let lineManager: LineManager
+    let lineManager: CurrentValueSubject<LineManager, Never>
     var font = MultiPlatformFont.monospacedSystemFont(ofSize: 14, weight: .regular) {
         didSet {
             if font != oldValue {
@@ -35,7 +35,7 @@ final class GutterWidthService {
         }
     }
     var lineNumberWidth: CGFloat {
-        let lineCount = lineManager.lineCount
+        let lineCount = lineManager.value.lineCount
         let hasLineCountChanged = lineCount != previousLineCount
         let hasFontChanged = font != previousFont
         if let lineNumberWidth = _lineNumberWidth, !hasLineCountChanged && !hasFontChanged {
@@ -44,7 +44,7 @@ final class GutterWidthService {
             let lineNumberWidth = computeLineNumberWidth()
             _lineNumberWidth = lineNumberWidth
             previousFont = font
-            previousLineCount = lineManager.lineCount
+            previousLineCount = lineManager.value.lineCount
             sendGutterWidthUpdatedIfNeeded()
             return lineNumberWidth
         }
@@ -56,7 +56,7 @@ final class GutterWidthService {
     private var previousFont: MultiPlatformFont?
     private var previouslySentGutterWidth: CGFloat?
 
-    init(lineManager: LineManager) {
+    init(lineManager: CurrentValueSubject<LineManager, Never>) {
         self.lineManager = lineManager
     }
 
@@ -67,7 +67,7 @@ final class GutterWidthService {
 
 private extension GutterWidthService {
     private func computeLineNumberWidth() -> CGFloat {
-        let characterCount = "\(lineManager.lineCount)".count
+        let characterCount = "\(lineManager.value.lineCount)".count
         let wideLineNumberString = String(repeating: "8", count: {
             if let gutterMinimumCharacterCount = gutterMinimumCharacterCount, gutterMinimumCharacterCount > characterCount {
                 return gutterMinimumCharacterCount

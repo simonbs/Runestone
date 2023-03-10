@@ -1,7 +1,9 @@
-struct CharacterNavigationLocationFactory {
-    private let stringView: StringView
+import Combine
 
-    init(stringView: StringView) {
+struct CharacterNavigationLocationFactory {
+    private let stringView: CurrentValueSubject<StringView, Never>
+
+    init(stringView: CurrentValueSubject<StringView, Never>) {
         self.stringView = stringView
     }
 
@@ -13,13 +15,13 @@ struct CharacterNavigationLocationFactory {
         case .backward:
             naiveNewLocation = sourceLocation - offset
         }
-        guard naiveNewLocation >= 0 && naiveNewLocation <= stringView.string.length else {
+        guard naiveNewLocation >= 0 && naiveNewLocation <= stringView.value.string.length else {
             return sourceLocation
         }
-        guard naiveNewLocation > 0 && naiveNewLocation < stringView.string.length else {
+        guard naiveNewLocation > 0 && naiveNewLocation < stringView.value.string.length else {
             return naiveNewLocation
         }
-        let range = stringView.string.customRangeOfComposedCharacterSequence(at: naiveNewLocation)
+        let range = stringView.value.string.customRangeOfComposedCharacterSequence(at: naiveNewLocation)
         guard naiveNewLocation > range.location && naiveNewLocation < range.location + range.length else {
             return naiveNewLocation
         }

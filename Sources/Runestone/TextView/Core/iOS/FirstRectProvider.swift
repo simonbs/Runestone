@@ -2,13 +2,13 @@
 import Foundation
 
 struct FirstRectProvider {
-    private let lineManager: LineManager
+    private let lineManager: CurrentValueSubject<LineManager, Never>
     private let lineControllerStorage: LineControllerStorage
     private let textContainerWidth: CGFloat
     private let textContainerInset: MultiPlatformEdgeInsets
 
     init(
-        lineManager: LineManager,
+        lineManager: CurrentValueSubject<LineManager, Never>,
         lineControllerStorage: LineControllerStorage,
         textContainerWidth: CGFloat,
         textContainerInset: MultiPlatformEdgeInsets

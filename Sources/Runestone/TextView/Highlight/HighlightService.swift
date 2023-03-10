@@ -1,7 +1,8 @@
+import Combine
 import Foundation
 
 final class HighlightedRangeService {
-    let lineManager: LineManager
+    let lineManager: CurrentValueSubject<LineManager, Never>
     var highlightedRanges: [HighlightedRange] = [] {
         didSet {
             if highlightedRanges != oldValue {
@@ -13,7 +14,7 @@ final class HighlightedRangeService {
     private var highlightedRangeFragmentsPerLine: [LineNodeID: [HighlightedRangeFragment]] = [:]
     private var highlightedRangeFragmentsPerLineFragment: [LineFragmentID: [HighlightedRangeFragment]] = [:]
 
-    init(lineManager: LineManager) {
+    init(lineManager: CurrentValueSubject<LineManager, Never>) {
         self.lineManager = lineManager
     }
 
@@ -38,7 +39,7 @@ private extension HighlightedRangeService {
     private func createHighlightedRangeFragmentsPerLine() -> [LineNodeID: [HighlightedRangeFragment]] {
         var result: [LineNodeID: [HighlightedRangeFragment]] = [:]
         for highlightedRange in highlightedRanges where highlightedRange.range.length > 0 {
-            let lines = lineManager.lines(in: highlightedRange.range)
+            let lines = lineManager.value.lines(in: highlightedRange.range)
             for line in lines {
                 let lineRange = NSRange(location: line.location, length: line.data.totalLength)
                 guard highlightedRange.range.overlaps(lineRange) else {

@@ -2,7 +2,7 @@ import Combine
 import CoreGraphics
 
 final class EstimatedLineHeight {
-    private(set) var rawValue: CGFloat
+    private(set) var rawValue: CGFloat = 10
 
     private var cancellables: Set<AnyCancellable> = []
 

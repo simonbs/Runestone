@@ -1,3 +1,5 @@
+import Combine
+
 protocol LineControllerStorageDelegate: AnyObject {
     func lineControllerStorage(_ storage: LineControllerStorage, didCreate lineController: LineController)
 }
@@ -12,11 +14,11 @@ final class LineControllerStorage {
         lineControllers.count
     }
 
-    private let stringView: StringView
+    private let stringView: CurrentValueSubject<StringView, Never>
     private var lineControllers: [LineNodeID: LineController] = [:]
     private let lineControllerFactory: LineControllerFactory
 
-    init(stringView: StringView, lineControllerFactory: LineControllerFactory) {
+    init(stringView: CurrentValueSubject<StringView, Never>, lineControllerFactory: LineControllerFactory) {
         self.stringView = stringView
         self.lineControllerFactory = lineControllerFactory
     }

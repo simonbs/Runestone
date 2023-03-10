@@ -33,13 +33,6 @@ final class LineManager {
         rootData.node = lineTree.root
     }
 
-    func copy(from other: LineManager) {
-        stringView = other.stringView
-        lineTree = other.lineTree
-        initialLongestLine = other.initialLongestLine
-        estimatedLineHeight = other.estimatedLineHeight
-    }
-
     func rebuild() {
         // Reset the tree so we only have a single line.
         let rootData = LineNodeData(lineHeight: estimatedLineHeight)

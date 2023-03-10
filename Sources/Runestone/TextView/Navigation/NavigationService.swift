@@ -1,9 +1,15 @@
+import Combine
+
 final class NavigationService {
-    private let stringView: StringView
-    private let lineManager: LineManager
+    private let stringView: CurrentValueSubject<StringView, Never>
+    private let lineManager: CurrentValueSubject<LineManager, Never>
     private let lineControllerStorage: LineControllerStorage
     private var stringTokenizer: StringTokenizer {
-        StringTokenizer(stringView: stringView, lineManager: lineManager, lineControllerStorage: lineControllerStorage)
+        StringTokenizer(
+            stringView: stringView.value,
+            lineManager: lineManager.value,
+            lineControllerStorage: lineControllerStorage
+        )
     }
     private var characterNavigationLocationService: CharacterNavigationLocationFactory {
         CharacterNavigationLocationFactory(stringView: stringView)
@@ -17,7 +23,11 @@ final class NavigationService {
     private let lineNavigationLocationService: LineNavigationLocationFactory
     #endif
 
-    init(stringView: StringView, lineManager: LineManager, lineControllerStorage: LineControllerStorage) {
+    init(
+        stringView: CurrentValueSubject<StringView, Never>,
+        lineManager: CurrentValueSubject<LineManager, Never>,
+        lineControllerStorage: LineControllerStorage
+    ) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage

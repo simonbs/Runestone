@@ -12,3 +12,11 @@ extension String {
         return dataA == dataB ? .utf16LittleEndian : .utf16BigEndian
     }
 }
+
+extension String.Element {
+    var isLineBreak: Bool {
+        self == Symbol.Character.lineFeed
+        || self == Symbol.Character.carriageReturn
+        || self == Symbol.Character.carriageReturnLineFeed
+    }
+}

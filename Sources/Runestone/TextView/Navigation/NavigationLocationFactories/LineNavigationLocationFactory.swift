@@ -1,14 +1,16 @@
+import Combine
+
 struct LineNavigationLocationFactory {
-    private let lineManager: LineManager
+    private let lineManager: CurrentValueSubject<LineManager, Never>
     private let lineControllerStorage: LineControllerStorage
 
-    init(lineManager: LineManager, lineControllerStorage: LineControllerStorage) {
+    init(lineManager: CurrentValueSubject<LineManager, Never>, lineControllerStorage: LineControllerStorage) {
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
     }
 
     func location(movingFrom sourceLocation: Int, byLineCount offset: Int = 1, inDirection direction: TextDirection) -> Int {
-        guard let line = lineManager.line(containingCharacterAt: sourceLocation) else {
+        guard let line = lineManager.value.line(containingCharacterAt: sourceLocation) else {
             return sourceLocation
         }
         guard let lineController = lineControllerStorage[line.id] else {
@@ -78,7 +80,7 @@ private extension LineNavigationLocationFactory {
             // We've reached the beginning of the document so we move to the first character.
             return 0
         }
-        let previousLine = lineManager.line(atRow: lineIndex - 1)
+        let previousLine = lineManager.value.line(atRow: lineIndex - 1)
         let numberOfLineFragments = numberOfLineFragments(in: previousLine)
         let newLineFragmentIndex = numberOfLineFragments - 1
         return self.location(movingBackwardsFrom: location, inLineFragmentAt: newLineFragmentIndex, of: previousLine, offset: remainingOffset - 1)
@@ -98,11 +100,11 @@ private extension LineNavigationLocationFactory {
             )
         }
         let lineIndex = line.index
-        guard lineIndex < lineManager.lineCount - 1 else {
+        guard lineIndex < lineManager.value.lineCount - 1 else {
             // We've reached the end of the document so we move to the last character.
             return line.location + line.data.totalLength
         }
-        let nextLine = lineManager.line(atRow: lineIndex + 1)
+        let nextLine = lineManager.value.line(atRow: lineIndex + 1)
         return self.location(movingForwardsFrom: location, inLineFragmentAt: 0, of: nextLine, offset: remainingOffset - 1)
     }
 

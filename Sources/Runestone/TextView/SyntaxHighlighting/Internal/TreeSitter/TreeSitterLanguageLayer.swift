@@ -1,17 +1,34 @@
+import Combine
 import Foundation
 
 final class TreeSitterLanguageLayer {
     typealias LayerAndNodeTuple = (layer: TreeSitterLanguageLayer, node: TreeSitterNode)
 
+    var stringView: StringView {
+        didSet {
+            if stringView !== oldValue {
+                for (_, languageLayer) in childLanguageLayers {
+                    languageLayer.stringView = stringView
+                }
+            }
+        }
+    }
+    var lineManager: LineManager {
+        didSet {
+            if lineManager !== oldValue {
+                for (_, languageLayer) in childLanguageLayers {
+                    languageLayer.lineManager = lineManager
+                }
+            }
+        }
+    }
     let language: TreeSitterInternalLanguage
     private(set) var tree: TreeSitterTree?
     var canHighlight: Bool {
         parser.language != nil && tree != nil
     }
 
-    private let lineManager: LineManager
     private let parser: TreeSitterParser
-    private let stringView: StringView
     private var childLanguageLayers: [UnsafeRawPointer: TreeSitterLanguageLayer] = [:]
     private weak var parentLanguageLayer: TreeSitterLanguageLayer?
     private let languageProvider: TreeSitterLanguageProvider?
@@ -23,11 +40,13 @@ final class TreeSitterLanguageLayer {
         }
     }
 
-    init(language: TreeSitterInternalLanguage,
-         languageProvider: TreeSitterLanguageProvider?,
-         parser: TreeSitterParser,
-         stringView: StringView,
-         lineManager: LineManager) {
+    init(
+        language: TreeSitterInternalLanguage,
+        languageProvider: TreeSitterLanguageProvider?,
+        parser: TreeSitterParser,
+        stringView: StringView,
+        lineManager: LineManager
+    ) {
         self.language = language
         self.languageProvider = languageProvider
         self.parser = parser

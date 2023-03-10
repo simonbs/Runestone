@@ -7,16 +7,16 @@ final class TotalLineHeightTracker {
         if let cachedTotalLinesHeight {
             return cachedTotalLinesHeight
         } else {
-            let totalLinesHeight = lineManager.contentHeight
+            let totalLinesHeight = lineManager.value.contentHeight
             cachedTotalLinesHeight = totalLinesHeight
             return totalLinesHeight
         }
     }
     
-    private let lineManager: LineManager
+    private let lineManager: CurrentValueSubject<LineManager, Never>
     private var cachedTotalLinesHeight: CGFloat?
 
-    init(lineManager: LineManager) {
+    init(lineManager: CurrentValueSubject<LineManager, Never>) {
         self.lineManager = lineManager
     }
 
@@ -30,7 +30,7 @@ final class TotalLineHeightTracker {
             return
         }
         line.data.lineHeight = newHeight
-        lineManager.updateAfterChangingChildren(of: line)
+        lineManager.value.updateAfterChangingChildren(of: line)
         cachedTotalLinesHeight = nil
         isTotalLineHeightInvalid = true
     }

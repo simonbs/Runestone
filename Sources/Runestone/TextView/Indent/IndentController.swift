@@ -52,15 +52,15 @@ final class IndentController {
         }
     }
 
-    private let stringView: StringView
-    private let lineManager: LineManager
+    private let stringView: CurrentValueSubject<StringView, Never>
+    private let lineManager: CurrentValueSubject<LineManager, Never>
     private let languageMode: CurrentValueSubject<InternalLanguageMode, Never>
     private let font: CurrentValueSubject<MultiPlatformFont, Never>
     private var _tabWidth: CGFloat?
 
     init(
-        stringView: StringView,
-        lineManager: LineManager,
+        stringView: CurrentValueSubject<StringView, Never>,
+        lineManager: CurrentValueSubject<LineManager, Never>,
         languageMode: CurrentValueSubject<InternalLanguageMode, Never>,
         font: CurrentValueSubject<MultiPlatformFont, Never>
     ) {
@@ -71,7 +71,7 @@ final class IndentController {
     }
 
     func shiftLeft(in selectedRange: NSRange) {
-        let lines = lineManager.lines(in: selectedRange)
+        let lines = lineManager.value.lines(in: selectedRange)
         let originalRange = range(surrounding: lines)
         var newSelectedRange = selectedRange
         var replacementString: String?
@@ -80,7 +80,7 @@ final class IndentController {
         let utf16IndentLength = indentString.utf16.count
         for (lineIndex, line) in lines.enumerated() {
             let lineRange = NSRange(location: line.location, length: line.data.totalLength)
-            let lineString = stringView.substring(in: lineRange) ?? ""
+            let lineString = stringView.value.substring(in: lineRange) ?? ""
             guard lineString.hasPrefix(indentString) else {
                 replacementString = (replacementString ?? "") + lineString
                 continue
@@ -110,7 +110,7 @@ final class IndentController {
     }
 
     func shiftRight(in selectedRange: NSRange) {
-        let lines = lineManager.lines(in: selectedRange)
+        let lines = lineManager.value.lines(in: selectedRange)
         let originalRange = range(surrounding: lines)
         var newSelectedRange = selectedRange
         var replacementString: String?
@@ -118,7 +118,7 @@ final class IndentController {
         let indentLength = indentString.utf16.count
         for (lineIndex, line) in lines.enumerated() {
             let lineRange = NSRange(location: line.location, length: line.data.totalLength)
-            let lineString = stringView.substring(in: lineRange) ?? ""
+            let lineString = stringView.value.substring(in: lineRange) ?? ""
             replacementString = (replacementString ?? "") + indentString + lineString
             if lineIndex == 0 {
                 newSelectedRange.location += indentLength
@@ -133,11 +133,11 @@ final class IndentController {
     }
 
     func insertLineBreak(in range: NSRange, using symbol: String) {
-        guard let startLinePosition = lineManager.linePosition(at: range.lowerBound) else {
+        guard let startLinePosition = lineManager.value.linePosition(at: range.lowerBound) else {
             delegate?.indentController(self, shouldInsert: symbol, in: range)
             return
         }
-        guard let endLinePosition = lineManager.linePosition(at: range.upperBound) else {
+        guard let endLinePosition = lineManager.value.linePosition(at: range.upperBound) else {
             delegate?.indentController(self, shouldInsert: symbol, in: range)
             return
         }
@@ -160,7 +160,7 @@ final class IndentController {
     // Returns the range of an indentation text if the cursor is placed after an indentation.
     // This can be used when doing a deleteBackward operation to delete an indent level.
     func indentRangeInFrontOfLocation(_ location: Int) -> NSRange? {
-        guard let line = lineManager.line(containingCharacterAt: location) else {
+        guard let line = lineManager.value.line(containingCharacterAt: location) else {
             return nil
         }
         let tabLength: Int
@@ -186,7 +186,7 @@ final class IndentController {
     }
 
     func isIndentation(at location: Int) -> Bool {
-        guard let line = lineManager.line(containingCharacterAt: location) else {
+        guard let line = lineManager.value.line(containingCharacterAt: location) else {
             return false
         }
         let localLocation = location - line.location

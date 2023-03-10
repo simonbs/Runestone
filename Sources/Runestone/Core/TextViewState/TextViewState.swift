@@ -27,7 +27,13 @@ public final class TextViewState {
     ///   - theme: The theme to use when syntax highlighting the text.
     ///   - language: The language to use when parsing the text.
     ///   - languageProvider: Object that can provide embedded languages on demand. A strong reference will be stored to the language provider.
-    public init(text: String, theme: Theme = DefaultTheme(), language: TreeSitterLanguage, languageProvider: TreeSitterLanguageProvider? = nil) {
+    public init(
+        text: String,
+        theme:
+        Theme = DefaultTheme(),
+        language: TreeSitterLanguage,
+        languageProvider: TreeSitterLanguageProvider? = nil
+    ) {
         self.theme = theme
         self.stringView = StringView(string: NSMutableString(string: text))
         self.lineManager = LineManager(stringView: stringView)
@@ -50,7 +56,7 @@ public final class TextViewState {
         self.theme = theme
         self.stringView = StringView(string: NSMutableString(string: text))
         self.lineManager = LineManager(stringView: stringView)
-        self.languageMode = PlainTextInternalLanguageMode()
+        self.languageMode = PlainTextInternalLanguageMode(stringView: stringView, lineManager: lineManager)
         prepare(with: text)
     }
 }
@@ -62,7 +68,7 @@ private extension TextViewState {
         lineManager.rebuild()
         languageMode.parse(nsString)
         detectedIndentStrategy = languageMode.detectIndentStrategy()
-        let lineEndingDetector = LineEndingDetector(lineManager: lineManager, stringView: stringView)
+        let lineEndingDetector = LineEndingDetector(stringView: stringView, lineManager: lineManager)
         detectedLineEndings = lineEndingDetector.detect()
     }
 }

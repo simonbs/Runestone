@@ -1,14 +1,14 @@
 import Foundation
 
 final class TreeSitterIndentStrategyDetector {
+    private let stringView: StringView
     private let lineManager: LineManager
     private let tree: TreeSitterTree
-    private let stringView: StringView
 
-    init(lineManager: LineManager, tree: TreeSitterTree, stringView: StringView) {
+    init(stringView: StringView, lineManager: LineManager, tree: TreeSitterTree) {
+        self.stringView = stringView
         self.lineManager = lineManager
         self.tree = tree
-        self.stringView = stringView
     }
 
     func detect() -> DetectedIndentStrategy {
