@@ -24,7 +24,6 @@ extension TextViewController {
         let textStore = TextStore(stringView: stringView.value, lineManager: lineManager.value)
         let textStoreChange = textStore.replaceText(in: range, with: newString)
         let languageModeLineChangeSet = languageMode.value.textDidChange(textStoreChange)
-        print(textStoreChange.lineChangeSet.editedLines.count)
         textStoreChange.lineChangeSet.formUnion(with: languageModeLineChangeSet)
         applyLineChanges(textStoreChange.lineChangeSet)
         lineFragmentLayouter.setNeedsLayout()

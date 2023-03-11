@@ -41,7 +41,6 @@ final class LineSelectionLayouter {
         self.containerView = containerView
         lineSelectionView.layerIfLoaded?.zPosition = -1000
         backgroundColor.sink { [weak self] color in
-            print(color)
             self?.lineSelectionView.backgroundColor = color
         }.store(in: &cancellables)
     }

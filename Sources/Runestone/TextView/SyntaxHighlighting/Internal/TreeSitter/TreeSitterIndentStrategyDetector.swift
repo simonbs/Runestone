@@ -1,12 +1,12 @@
 import Foundation
 
 final class TreeSitterIndentStrategyDetector {
-    private let stringView: StringView
+    private let string: NSString
     private let lineManager: LineManager
     private let tree: TreeSitterTree
 
-    init(stringView: StringView, lineManager: LineManager, tree: TreeSitterTree) {
-        self.stringView = stringView
+    init(string: NSString, lineManager: LineManager, tree: TreeSitterTree) {
+        self.string = string
         self.lineManager = lineManager
         self.tree = tree
     }
@@ -34,7 +34,7 @@ final class TreeSitterIndentStrategyDetector {
             scannedLineWithContentCount += 1
             let lineLocation = line.location
             let range = NSRange(location: lineLocation, length: 1)
-            let character = stringView.substring(in: range)
+            let character = string.substring(with: range)
             if character == Symbol.tab {
                 lineCountBeginningWithTab += 1
             } else if character == Symbol.space {
@@ -64,16 +64,16 @@ final class TreeSitterIndentStrategyDetector {
 private extension TreeSitterIndentStrategyDetector {
     private func numberOfSpacesAtBeginning(of line: LineNode, lineLocation: Int, lowestSpaceCount: Int) -> Int {
         var range = NSRange(location: lineLocation, length: 1)
-        var character = stringView.substring(in: range)
+        var character = string.substring(with: range)
         var spaceCount = 0
-        let stringLength = stringView.string.length
+        let stringLength = string.length
         while spaceCount < line.data.totalLength
                 && character == Symbol.space
                 && spaceCount < lowestSpaceCount
                 && range.location < stringLength - 1 {
             spaceCount += 1
             range = NSRange(location: range.location + 1, length: 1)
-            character = stringView.substring(in: range)
+            character = string.substring(with: range)
         }
         return spaceCount
     }

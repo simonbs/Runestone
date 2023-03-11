@@ -7,19 +7,19 @@ public final class TextViewState {
     let stringView: StringView
     let theme: Theme
     let lineManager: LineManager
-    let languageMode: InternalLanguageMode
+    let languageModeState: LanguageModeState
 
     /// Indent strategy detected in the text.
     ///
     /// The information provided by the detected strategy can be used to update the ``TextView/indentStrategy`` on the text view to align with the existing strategy in a text.
-    public private(set) var detectedIndentStrategy: DetectedIndentStrategy = .unknown
+    public let detectedIndentStrategy: DetectedIndentStrategy = .unknown
 
     /// Line endings detected in the dtext.
     ///
     /// The information pvoided by the detected line endings can be used to update the ``TextView/lineEndings`` on the text view to align with the existing line endings in a text.
     ///
     /// The value is `nil` if the line ending cannot be detected.
-    public private(set) var detectedLineEndings: LineEnding?
+    public let detectedLineEndings: LineEnding?
 
     /// Creates state that can be passed to an instance of ``TextView``.
     /// - Parameters:
@@ -27,23 +27,32 @@ public final class TextViewState {
     ///   - theme: The theme to use when syntax highlighting the text.
     ///   - language: The language to use when parsing the text.
     ///   - languageProvider: Object that can provide embedded languages on demand. A strong reference will be stored to the language provider.
-    public init(
+    public convenience init(
         text: String,
-        theme:
-        Theme = DefaultTheme(),
+        theme: Theme = DefaultTheme(),
         language: TreeSitterLanguage,
         languageProvider: TreeSitterLanguageProvider? = nil
     ) {
-        self.theme = theme
-        self.stringView = StringView(string: NSMutableString(string: text))
-        self.lineManager = LineManager(stringView: stringView)
-        self.languageMode = TreeSitterInternalLanguageMode(
+        let string = NSMutableString(string: text)
+        let stringView = StringView(string: string)
+        let lineManager = Self.makeLineManager(stringView: stringView, theme: theme)
+        let parser = TreeSitterParser()
+        parser.language = language.languagePointer
+        let tree = parser.parse(string)
+        let languageModeState: LanguageModeState = .treeSitter(.init(
             language: language.internalLanguage,
             languageProvider: languageProvider,
+            parser: parser,
+            tree: tree
+        ))
+        let indentStrategy = Self.detectIndentStrategy(string: string, lineManager: lineManager, tree: tree)
+        self.init(
             stringView: stringView,
-            lineManager: lineManager
+            lineManager: lineManager,
+            theme: theme,
+            languageModeState: languageModeState,
+            indentStrategy: indentStrategy
         )
-        prepare(with: text)
     }
 
     /// Creates state that can be passed to an instance of ``TextView``.
@@ -52,23 +61,47 @@ public final class TextViewState {
     /// - Parameters:
     ///   - text: The text to display in the text view.
     ///   - theme: The theme to use when syntax highlighting the text.
-    public init(text: String, theme: Theme = DefaultTheme()) {
+    public convenience init(text: String, theme: Theme = DefaultTheme()) {
+        let stringView = StringView(string: NSMutableString(string: text))
+        let lineManager = Self.makeLineManager(stringView: stringView, theme: theme)
+        self.init(
+            stringView: stringView,
+            lineManager: lineManager,
+            theme: theme,
+            languageModeState: .plainText,
+            indentStrategy: .unknown
+        )
+    }
+
+    private init(
+        stringView: StringView,
+        lineManager: LineManager,
+        theme: Theme,
+        languageModeState: LanguageModeState,
+        indentStrategy: DetectedIndentStrategy
+    ) {
+        self.stringView = stringView
+        self.lineManager = lineManager
         self.theme = theme
-        self.stringView = StringView(string: NSMutableString(string: text))
-        self.lineManager = LineManager(stringView: stringView)
-        self.languageMode = PlainTextInternalLanguageMode(stringView: stringView, lineManager: lineManager)
-        prepare(with: text)
+        self.languageModeState = languageModeState
+        let lineEndingDetector = LineEndingDetector(stringView: stringView, lineManager: lineManager)
+        detectedLineEndings = lineEndingDetector.detect()
     }
 }
 
 private extension TextViewState {
-    private func prepare(with text: String) {
-        let nsString = text as NSString
+    static func makeLineManager(stringView: StringView, theme: Theme) -> LineManager {
+        let lineManager = LineManager(stringView: stringView)
         lineManager.estimatedLineHeight = theme.font.totalLineHeight
         lineManager.rebuild()
-        languageMode.parse(nsString)
-        detectedIndentStrategy = languageMode.detectIndentStrategy()
-        let lineEndingDetector = LineEndingDetector(stringView: stringView, lineManager: lineManager)
-        detectedLineEndings = lineEndingDetector.detect()
+        return lineManager
+    }
+
+    static func detectIndentStrategy(string: NSString, lineManager: LineManager, tree: TreeSitterTree?) -> DetectedIndentStrategy {
+        guard let tree else {
+            return .unknown
+        }
+        let detector = TreeSitterIndentStrategyDetector(string: string, lineManager: lineManager, tree: tree)
+        return detector.detect()
     }
 }

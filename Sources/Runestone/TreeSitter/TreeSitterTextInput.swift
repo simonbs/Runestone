@@ -1,16 +1,6 @@
 import TreeSitterLib
 
-struct TreeSitterTextProviderResult {
-    let bytes: UnsafePointer<Int8>
-    let length: UInt32
-
-    init(bytes: UnsafePointer<Int8>, length: UInt32) {
-        self.bytes = bytes
-        self.length = length
-    }
-}
-
-typealias TreeSitterReadCallback = (_ byteIndex: ByteCount, _ position: TreeSitterTextPoint) -> TreeSitterTextProviderResult?
+typealias TreeSitterReadCallback = (_ byteIndex: ByteCount, _ position: TreeSitterTextPoint) -> TreeSitterByteRead?
 
 /// The implementation is inspired by SwiftTreeSitter.
 /// https://github.com/ChimeHQ/SwiftTreeSitter/blob/main/Sources/SwiftTreeSitter/Input.swift

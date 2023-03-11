@@ -1,12 +1,7 @@
 import Foundation
 import TreeSitterLib
 
-protocol TreeSitterParserDelegate: AnyObject {
-    func parser(_ parser: TreeSitterParser, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult?
-}
-
 final class TreeSitterParser {
-    weak var delegate: TreeSitterParserDelegate?
     var language: UnsafePointer<TSLanguage>? {
         didSet {
             ts_parser_set_language(pointer, language)
@@ -47,13 +42,9 @@ final class TreeSitterParser {
         }
     }
 
-    func parse(oldTree: TreeSitterTree? = nil) -> TreeSitterTree? {
-        let input = TreeSitterTextInput(encoding: encoding) { [weak self] byteIndex, _ in
-            if let self = self {
-                return self.delegate?.parser(self, bytesAt: byteIndex)
-            } else {
-                return nil
-            }
+    func parse(readingFrom reader: TreeSitterByteReader, oldTree: TreeSitterTree? = nil) -> TreeSitterTree? {
+        let input = TreeSitterTextInput(encoding: encoding) { byteIndex, _ in
+            reader.readBytes(startingAt: byteIndex)
         }
         let newTreePointer = ts_parser_parse(pointer, oldTree?.pointer, input.makeTSInput())
         input.deallocate()

@@ -22,9 +22,7 @@ final class CompositionRoot {
         textColor: themeSettings.invisibleCharactersColor
     )
     let themeSettings = ThemeSettings()
-    private(set) lazy var languageMode = CurrentValueSubject<InternalLanguageMode, Never>(
-        PlainTextInternalLanguageMode(stringView: stringView.value, lineManager: lineManager.value)
-    )
+    let languageMode = CurrentValueSubject<InternalLanguageMode, Never>(PlainTextInternalLanguageMode())
     private(set) lazy var lineControllerStorage = LineControllerStorage(
         stringView: stringView,
         lineControllerFactory: lineControllerFactory

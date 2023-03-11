@@ -7,8 +7,6 @@ struct InsertLineBreakIndentStrategy {
 }
 
 protocol InternalLanguageMode: AnyObject {
-    var stringView: CurrentValueSubject<StringView, Never> { get }
-    var lineManager: CurrentValueSubject<LineManager, Never> { get }
     func parse(_ text: NSString)
     func parse(_ text: NSString, completion: @escaping ((Bool) -> Void))
     func textDidChange(_ change: TextStoreChange) -> LineChangeSet

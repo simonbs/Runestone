@@ -339,7 +339,11 @@ final class TextViewController {
         stringView.value = state.stringView
         lineManager.value = state.lineManager
         themeSettings.theme.value = state.theme
-        languageMode.value = state.languageMode
+        languageMode.value = InternalLanguageModeFactory.internalLanguageMode(
+            from: state.languageModeState,
+            stringView: stringView,
+            lineManager: lineManager
+        )
         lineControllerStorage.removeAllLineControllers()
 //        contentSizeService.reset()
 //        gutterWidthService.invalidateLineNumberWidth()

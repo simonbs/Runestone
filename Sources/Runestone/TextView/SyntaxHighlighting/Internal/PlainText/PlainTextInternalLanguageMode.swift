@@ -2,14 +2,6 @@ import Combine
 import Foundation
 
 final class PlainTextInternalLanguageMode: InternalLanguageMode {
-    let stringView: CurrentValueSubject<StringView, Never>
-    let lineManager: CurrentValueSubject<LineManager, Never>
-
-    init(stringView: StringView, lineManager: LineManager) {
-        self.stringView = CurrentValueSubject(stringView)
-        self.lineManager = CurrentValueSubject(lineManager)
-    }
-
     func parse(_ text: NSString) {}
 
     func parse(_ text: NSString, completion: @escaping ((Bool) -> Void)) {
@@ -43,7 +35,8 @@ final class PlainTextInternalLanguageMode: InternalLanguageMode {
     func strategyForInsertingLineBreak(
         from startLinePosition: LinePosition,
         to endLinePosition: LinePosition,
-        using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
+        using indentStrategy: IndentStrategy
+    ) -> InsertLineBreakIndentStrategy {
         InsertLineBreakIndentStrategy(indentLevel: 0, insertExtraLineBreak: false)
     }
 

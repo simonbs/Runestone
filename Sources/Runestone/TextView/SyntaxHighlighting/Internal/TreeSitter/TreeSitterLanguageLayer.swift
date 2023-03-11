@@ -4,30 +4,14 @@ import Foundation
 final class TreeSitterLanguageLayer {
     typealias LayerAndNodeTuple = (layer: TreeSitterLanguageLayer, node: TreeSitterNode)
 
-    var stringView: StringView {
-        didSet {
-            if stringView !== oldValue {
-                for (_, languageLayer) in childLanguageLayers {
-                    languageLayer.stringView = stringView
-                }
-            }
-        }
-    }
-    var lineManager: LineManager {
-        didSet {
-            if lineManager !== oldValue {
-                for (_, languageLayer) in childLanguageLayers {
-                    languageLayer.lineManager = lineManager
-                }
-            }
-        }
-    }
     let language: TreeSitterInternalLanguage
     private(set) var tree: TreeSitterTree?
     var canHighlight: Bool {
         parser.language != nil && tree != nil
     }
 
+    private let stringView: CurrentValueSubject<StringView, Never>
+    private let lineManager: CurrentValueSubject<LineManager, Never>
     private let parser: TreeSitterParser
     private var childLanguageLayers: [UnsafeRawPointer: TreeSitterLanguageLayer] = [:]
     private weak var parentLanguageLayer: TreeSitterLanguageLayer?
@@ -41,17 +25,19 @@ final class TreeSitterLanguageLayer {
     }
 
     init(
+        stringView: CurrentValueSubject<StringView, Never>,
+        lineManager: CurrentValueSubject<LineManager, Never>,
         language: TreeSitterInternalLanguage,
         languageProvider: TreeSitterLanguageProvider?,
         parser: TreeSitterParser,
-        stringView: StringView,
-        lineManager: LineManager
+        tree: TreeSitterTree?
     ) {
+        self.stringView = stringView
+        self.lineManager = lineManager
         self.language = language
         self.languageProvider = languageProvider
         self.parser = parser
-        self.stringView = stringView
-        self.lineManager = lineManager
+        self.tree = tree
     }
 }
 
@@ -90,7 +76,8 @@ extension TreeSitterLanguageLayer {
         let oldTree = tree
         tree?.apply(edit)
         prepareParser(toParse: ranges)
-        tree = parser.parse(oldTree: tree)
+        let byteReader = TreeSitterByteReader(stringView: stringView)
+        tree = parser.parse(readingFrom: byteReader, oldTree: tree)
         // Gather changed lines.
         let lineChangeSet = LineChangeSet()
         if let oldTree = oldTree, let newTree = tree {
@@ -99,7 +86,7 @@ extension TreeSitterLanguageLayer {
                 let startRow = Int(changedRange.startPoint.row)
                 let endRow = Int(changedRange.endPoint.row)
                 for row in startRow ... endRow {
-                    let line = lineManager.line(atRow: row)
+                    let line = lineManager.value.line(atRow: row)
                     lineChangeSet.markLineEdited(line)
                 }
             }
@@ -125,7 +112,7 @@ extension TreeSitterLanguageLayer {
         if let injectionsQuery = language.injectionsQuery, let node = tree?.rootNode {
             let queryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
             queryCursor.execute()
-            let captures = queryCursor.validCaptures(in: stringView)
+            let captures = queryCursor.validCaptures(in: stringView.value)
             let injectedLanguages = injectedLanguages(from: captures)
             for injectedLanguage in injectedLanguages {
                 if let childLanguageLayer = childLanguageLayer(withID: injectedLanguage.id, forLanguageNamed: injectedLanguage.languageName) {
@@ -157,7 +144,7 @@ extension TreeSitterLanguageLayer {
         let queryCursor = TreeSitterQueryCursor(query: highlightsQuery, node: tree.rootNode)
         queryCursor.setQueryRange(range)
         queryCursor.execute()
-        let captures = queryCursor.validCaptures(in: stringView)
+        let captures = queryCursor.validCaptures(in: stringView.value)
         let capturesInChildren = childLanguageLayers.values.reduce(into: []) { $0 += $1.allValidCaptures(in: range) }
         return captures + capturesInChildren
     }
@@ -171,11 +158,13 @@ private extension TreeSitterLanguageLayer {
             return childLanguageLayer
         } else if let language = languageProvider?.treeSitterLanguage(named: languageName) {
             let childLanguageLayer = TreeSitterLanguageLayer(
+                stringView: stringView,
+                lineManager: lineManager,
                 language: language.internalLanguage,
                 languageProvider: languageProvider,
                 parser: parser,
-                stringView: stringView,
-                lineManager: lineManager)
+                tree: nil
+            )
             childLanguageLayer.parentLanguageLayer = self
             childLanguageLayers[id] = childLanguageLayer
             return childLanguageLayer
@@ -191,7 +180,7 @@ private extension TreeSitterLanguageLayer {
         }
         let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
         injectionsQueryCursor.execute()
-        let captures = injectionsQueryCursor.validCaptures(in: stringView)
+        let captures = injectionsQueryCursor.validCaptures(in: stringView.value)
         let injectedLanguages = injectedLanguages(from: captures)
         let capturedIDs = injectedLanguages.map(\.id)
         let currentIDs = Array(childLanguageLayers.keys)
@@ -227,7 +216,7 @@ extension TreeSitterLanguageLayer: TreeSitterInjectedLanguageMapperDelegate {
     func treeSitterInjectedLanguageMapper(_ mapper: TreeSitterInjectedLanguageMapper, textIn textRange: TreeSitterTextRange) -> String? {
         let byteRange = ByteRange(from: textRange.startByte, to: textRange.endByte)
         let range = NSRange(byteRange)
-        return stringView.substring(in: range)
+        return stringView.value.substring(in: range)
     }
 }
 
