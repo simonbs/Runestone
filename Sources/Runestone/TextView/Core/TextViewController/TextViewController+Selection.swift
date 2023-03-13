@@ -61,33 +61,29 @@ extension TextViewController {
     }
 
     func startDraggingSelection(from location: Int) {
-        selectedRange = selectionService.rangeByStartDraggingSelection(from: location)
+        selectedRange.value = selectionService.rangeByStartDraggingSelection(from: location)
     }
 
     func extendDraggedSelection(to location: Int) {
-        selectedRange = selectionService.rangeByExtendingDraggedSelection(to: location)
+        selectedRange.value = selectionService.rangeByExtendingDraggedSelection(to: location)
     }
 
     func selectWord(at location: Int) {
-        selectedRange = selectionService.rangeBySelectingWord(at: location)
+        selectedRange.value = selectionService.rangeBySelectingWord(at: location)
     }
 
     func selectLine(at location: Int) {
-        selectedRange = selectionService.rangeBySelectingLine(at: location)
+        selectedRange.value = selectionService.rangeBySelectingLine(at: location)
     }
 }
 
 private extension TextViewController {
     private func move(by granularity: TextGranularity, inDirection direction: TextDirection) {
-        if let selectedRange {
-            self.selectedRange = selectionService.range(moving: selectedRange, by: granularity, inDirection: direction)
-        }
+        selectedRange.value = selectionService.range(moving: selectedRange.value, by: granularity, inDirection: direction)
     }
 
     private func move(toBoundary boundary: TextBoundary, inDirection direction: TextDirection) {
-        if let selectedRange {
-            self.selectedRange = selectionService.range(moving: selectedRange, toBoundary: boundary, inDirection: direction)
-        }
+        selectedRange.value = selectionService.range(moving: selectedRange.value, toBoundary: boundary, inDirection: direction)
     }
 }
 #endif

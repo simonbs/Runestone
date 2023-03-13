@@ -1,11 +1,6 @@
 import Combine
 
-protocol LineControllerStorageDelegate: AnyObject {
-    func lineControllerStorage(_ storage: LineControllerStorage, didCreate lineController: LineController)
-}
-
 final class LineControllerStorage {
-    weak var delegate: LineControllerStorageDelegate?
     subscript(_ lineID: LineNodeID) -> LineController? {
         lineControllers[lineID]
     }
@@ -15,8 +10,8 @@ final class LineControllerStorage {
     }
 
     private let stringView: CurrentValueSubject<StringView, Never>
-    private var lineControllers: [LineNodeID: LineController] = [:]
     private let lineControllerFactory: LineControllerFactory
+    private var lineControllers: [LineNodeID: LineController] = [:]
 
     init(stringView: CurrentValueSubject<StringView, Never>, lineControllerFactory: LineControllerFactory) {
         self.stringView = stringView
@@ -29,7 +24,6 @@ final class LineControllerStorage {
         } else {
             let lineController = lineControllerFactory.makeLineController(for: line)
             lineControllers[line.id] = lineController
-            delegate?.lineControllerStorage(self, didCreate: lineController)
             return lineController
         }
     }

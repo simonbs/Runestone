@@ -14,8 +14,8 @@ import Foundation
 
 private extension TextViewController {
     private func justScrollRangeToVisible(_ range: NSRange) {
-        let lowerBoundRect = caretRect(at: range.lowerBound)
-        let upperBoundRect = range.length == 0 ? lowerBoundRect : caretRect(at: range.upperBound)
+        let lowerBoundRect = caret(at: range.lowerBound)
+        let upperBoundRect = range.length == 0 ? lowerBoundRect : caret(at: range.upperBound)
         let rectMinX = min(lowerBoundRect.minX, upperBoundRect.minX)
         let rectMaxX = max(lowerBoundRect.maxX, upperBoundRect.maxX)
         let rectMinY = min(lowerBoundRect.minY, upperBoundRect.minY)
@@ -24,8 +24,8 @@ private extension TextViewController {
         scrollView?.contentOffset = contentOffsetForScrollingToVisibleRect(rect)
     }
 
-    private func caretRect(at location: Int) -> CGRect {
-        caretRectProvider.caretRect(at: location, allowMovingCaretToNextLineFragment: true)
+    private func caret(at location: Int) -> CGRect {
+        caret.frame(at: location, allowMovingCaretToNextLineFragment: true)
     }
 
     /// Computes a content offset to scroll to in order to reveal the specified rectangle.

@@ -4,9 +4,7 @@ import AppKit
 public extension TextView {
     /// Deletes a character from the displayed text.
     override func deleteForward(_ sender: Any?) {
-        guard let selectedRange = textViewController.selectedRange else {
-            return
-        }
+        let selectedRange = textViewController.selectedRange.value
         guard selectedRange.length == 0 else {
             deleteBackward(nil)
             return
@@ -14,15 +12,13 @@ public extension TextView {
         guard selectedRange.location < textViewController.stringView.value.string.length else {
             return
         }
-        textViewController.selectedRange = NSRange(location: selectedRange.location, length: 1)
+        textViewController.selectedRange.value = NSRange(location: selectedRange.location, length: 1)
         deleteBackward(nil)
     }
 
     /// Deletes a character from the displayed text.
     override func deleteBackward(_ sender: Any?) {
-        guard var selectedRange = textViewController.markedRange ?? textViewController.selectedRange?.nonNegativeLength else {
-            return
-        }
+        var selectedRange = textViewController.markedRange ?? textViewController.selectedRange.value.nonNegativeLength
         guard selectedRange.location > 0 || selectedRange.length > 0 else {
             return
         }
@@ -103,7 +99,7 @@ public extension TextView {
     /// - Parameter sender: The object calling this method.
     override func selectAll(_ sender: Any?) {
         let stringLength = textViewController.stringView.value.string.length
-        return textViewController.selectedRange = NSRange(location: 0, length: stringLength)
+        textViewController.selectedRange.value = NSRange(location: 0, length: stringLength)
     }
 
     /// Performs the undo operations in the last undo group.
@@ -133,9 +129,7 @@ public extension TextView {
 
 private extension TextView {
     private func deleteText(toBoundary boundary: TextBoundary, inDirection direction: TextDirection) {
-        guard let selectedRange = textViewController.selectedRange else {
-            return
-        }
+        let selectedRange = textViewController.selectedRange.value
         guard selectedRange.length == 0 else {
             deleteBackward(nil)
             return
@@ -143,7 +137,7 @@ private extension TextView {
         guard let range = rangeForDeleting(from: selectedRange.location, toBoundary: boundary, inDirection: direction) else {
             return
         }
-        textViewController.selectedRange = range
+        textViewController.selectedRange.value = range
         deleteBackward(nil)
     }
 

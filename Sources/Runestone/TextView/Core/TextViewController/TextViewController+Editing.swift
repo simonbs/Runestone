@@ -3,7 +3,7 @@ import Foundation
 extension TextViewController {
     var rangeForInsertingText: NSRange {
         // If there is no marked range or selected range then we fallback to appending text to the end of our string.
-        markedRange ?? selectedRange?.nonNegativeLength ?? NSRange(location: stringView.value.string.length, length: 0)
+        markedRange ?? selectedRange.value.nonNegativeLength
     }
 
     func text(in range: NSRange) -> String? {
@@ -20,14 +20,14 @@ extension TextViewController {
         let currentText = text(in: range) ?? ""
         let newRange = NSRange(location: range.location, length: nsNewString.length)
         addUndoOperation(replacing: newRange, withText: currentText, selectedRangeAfterUndo: selectedRangeAfterUndo, actionName: undoActionName)
-        selectedRange = NSRange(location: newRange.upperBound, length: 0)
+        selectedRange.value = NSRange(location: newRange.upperBound, length: 0)
         let textStore = TextStore(stringView: stringView.value, lineManager: lineManager.value)
         let textStoreChange = textStore.replaceText(in: range, with: newString)
         let languageModeLineChangeSet = languageMode.value.textDidChange(textStoreChange)
         textStoreChange.lineChangeSet.formUnion(with: languageModeLineChangeSet)
         applyLineChanges(textStoreChange.lineChangeSet)
-        lineFragmentLayouter.setNeedsLayout()
-        lineFragmentLayouter.layoutIfNeeded()
+//        lineFragmentLayouter.setNeedsLayout()
+//        lineFragmentLayouter.layoutIfNeeded()
         textDidChange()
         if !textStoreChange.lineChangeSet.insertedLines.isEmpty || !textStoreChange.lineChangeSet.removedLines.isEmpty {
 //            invalidateContentSizeIfNeeded()
@@ -38,10 +38,7 @@ extension TextViewController {
         guard !batchReplaceSet.replacements.isEmpty else {
             return
         }
-        var oldLinePosition: LinePosition?
-        if let oldSelectedRange = selectedRange {
-            oldLinePosition = lineManager.value.linePosition(at: oldSelectedRange.location)
-        }
+        let oldLinePosition = lineManager.value.linePosition(at: selectedRange.value.location)
         let newString = stringView.value.string.applying(batchReplaceSet)
         setStringWithUndoAction(newString)
         if let oldLinePosition = oldLinePosition {
@@ -117,17 +114,14 @@ private extension TextViewController {
         guard shouldInsertCharacterPair else {
             return false
         }
-        guard let selectedRange = selectedRange else {
-            return false
-        }
-        if selectedRange.length == 0 {
-            replaceText(in: selectedRange, with: characterPair.leading + characterPair.trailing)
-            self.selectedRange = NSRange(location: range.location + characterPair.leading.count, length: 0)
+        if selectedRange.value.length == 0 {
+            replaceText(in: selectedRange.value, with: characterPair.leading + characterPair.trailing)
+            selectedRange.value = NSRange(location: range.location + characterPair.leading.count, length: 0)
             return true
-        } else if let text = text(in: selectedRange) {
+        } else if let text = text(in: selectedRange.value) {
             let modifiedText = characterPair.leading + text + characterPair.trailing
-            replaceText(in: selectedRange, with: modifiedText)
-            self.selectedRange = NSRange(location: range.location + characterPair.leading.count, length: range.length)
+            replaceText(in: selectedRange.value, with: modifiedText)
+            selectedRange.value = NSRange(location: range.location + characterPair.leading.count, length: range.length)
             return true
         } else {
             return false
@@ -147,10 +141,8 @@ private extension TextViewController {
         guard shouldSkip else {
             return false
         }
-        if let selectedRange = selectedRange {
-            let offset = characterPair.trailing.count
-            self.selectedRange = NSRange(location: selectedRange.location + offset, length: 0)
-        }
+        let offset = characterPair.trailing.count
+        selectedRange.value = NSRange(location: selectedRange.value.location + offset, length: 0)
         return true
     }
 
@@ -162,7 +154,7 @@ private extension TextViewController {
             return
         }
         timedUndoManager.endUndoGrouping()
-        let oldSelectedRange = selectedRange
+        let oldSelectedRange = selectedRange.value
         preserveUndoStackWhenSettingString = true
         text = newString as String
         preserveUndoStackWhenSettingString = false
@@ -173,26 +165,21 @@ private extension TextViewController {
         }
         timedUndoManager.endUndoGrouping()
         textDidChange()
-        if let oldSelectedRange = oldSelectedRange {
-            selectedRange = oldSelectedRange.capped(to: stringView.value.string.length)
-        }
+        selectedRange.value = oldSelectedRange.capped(to: stringView.value.string.length)
     }
 
     private func textDidChange() {
-        if isAutomaticScrollEnabled, let newRange = selectedRange, newRange.length == 0 {
-            scrollLocationToVisible(newRange.location)
+        if isAutomaticScrollEnabled, selectedRange.value.length == 0 {
+            scrollLocationToVisible(selectedRange.value.location)
         }
         delegate?.textViewControllerDidChangeText(self)
     }
 
     private func moveCaret(to linePosition: LinePosition) {
-        if linePosition.row < lineManager.value.lineCount {
-            let line = lineManager.value.line(atRow: linePosition.row)
-            let location = line.location + min(linePosition.column, line.data.length)
-            selectedRange = NSRange(location: location, length: 0)
-        } else {
-            selectedRange = nil
-        }
+        let cappedRow = max(linePosition.row, lineManager.value.lineCount - 1)
+        let line = lineManager.value.line(atRow: cappedRow)
+        let location = line.location + min(linePosition.column, line.data.length)
+        selectedRange.value = NSRange(location: location, length: 0)
     }
 
     private func applyLineChanges(_ lineChangeSet: LineChangeSet) {
@@ -204,8 +191,8 @@ private extension TextViewController {
 //                contentSizeService.removeLine(withID: removedLine.id)
             }
         }
-        let editedLineIDs = Set(lineChangeSet.editedLines.map(\.id))
-        redisplayLines(withIDs: editedLineIDs)
+//        let editedLineIDs = Set(lineChangeSet.editedLines.map(\.id))
+//        redisplayLines(withIDs: editedLineIDs)
 //        if didAddOrRemoveLines {
 //            gutterWidthService.invalidateLineNumberWidth()
 //        }

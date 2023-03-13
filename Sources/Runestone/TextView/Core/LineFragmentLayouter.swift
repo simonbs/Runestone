@@ -35,6 +35,7 @@ final class LineFragmentLayouter {
             return 10_000
         }
     }
+    private var cancellables: Set<AnyCancellable> = []
 
     init(
         stringView: CurrentValueSubject<StringView, Never>,
@@ -57,13 +58,14 @@ final class LineFragmentLayouter {
         self.contentSize = contentSize
         self.containerView = containerView
         setupSetNeedsLayoutObserver()
+        stringView.sink { [weak self] _ in
+            self?.needsLayout = true
+        }.store(in: &cancellables)
     }
 
-    private var cancellables: Set<AnyCancellable> = []
-
-    func setNeedsLayout() {
-        needsLayout = true
-    }
+//    func setNeedsLayout() {
+//        needsLayout = true
+//    }
 
     func layoutIfNeeded() {
         if needsLayout {
@@ -181,13 +183,16 @@ extension LineFragmentLayouter {
     }
 
     private func setupSetNeedsLayoutObserver() {
-        Publishers.CombineLatest4(
-            textContainer.viewport.removeDuplicates(),
-            textContainer.inset.removeDuplicates(),
-            textContainer.safeAreaInsets.removeDuplicates(),
-            isLineWrappingEnabled.removeDuplicates()
-        ).sink { [weak self] _, _, _, _ in
-            self?.setNeedsLayout()
+        Publishers.CombineLatest3(
+            stringView.removeDuplicates { $0 === $1 },
+            isLineWrappingEnabled.removeDuplicates(),
+            Publishers.CombineLatest3(
+                textContainer.viewport.removeDuplicates(),
+                textContainer.inset.removeDuplicates(),
+                textContainer.safeAreaInsets.removeDuplicates()
+            )
+        ).sink { [weak self] _, _, _ in
+            self?.needsLayout = true
         }.store(in: &cancellables)
     }
 }

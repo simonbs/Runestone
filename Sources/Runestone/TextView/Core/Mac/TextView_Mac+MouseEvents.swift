@@ -39,7 +39,8 @@ public extension TextView {
     /// - Parameter event: An object encapsulating information about the mouse-down event.
     override func rightMouseDown(with event: NSEvent) {
         let location = locationClosestToPoint(in: event)
-        if let selectedRange = textViewController.selectedRange, !selectedRange.contains(location) || textViewController.selectedRange == nil {
+        let selectedRange = textViewController.selectedRange.value
+        if !selectedRange.contains(location) {
             textViewController.selectWord(at: location)
         }
         super.rightMouseDown(with: event)

@@ -16,11 +16,11 @@ extension TextViewController {
         textView.layoutIfNeeded()
         switch selection {
         case .beginning:
-            selectedRange = NSRange(location: line.location, length: 0)
+            selectedRange.value = NSRange(location: line.location, length: 0)
         case .end:
-            selectedRange = NSRange(location: line.data.length, length: line.data.length)
+            selectedRange.value = NSRange(location: line.data.length, length: line.data.length)
         case .line:
-            selectedRange = NSRange(location: line.location, length: line.data.length)
+            selectedRange.value = NSRange(location: line.location, length: line.data.length)
         }
         return true
     }

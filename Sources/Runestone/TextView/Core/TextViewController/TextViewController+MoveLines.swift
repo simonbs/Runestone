@@ -12,11 +12,8 @@ extension TextViewController {
 
 private extension TextViewController {
     private func moveSelectedLine(byOffset lineOffset: Int, undoActionName: String) {
-        guard let oldSelectedRange = selectedRange else {
-            return
-        }
         let moveLinesService = MoveLinesService(stringView: stringView, lineManager: lineManager, lineEndingSymbol: lineEndings.symbol)
-        guard let operation = moveLinesService.operationForMovingLines(in: oldSelectedRange, byOffset: lineOffset) else {
+        guard let operation = moveLinesService.operationForMovingLines(in: selectedRange.value, byOffset: lineOffset) else {
             return
         }
         timedUndoManager.endUndoGrouping()
@@ -26,7 +23,7 @@ private extension TextViewController {
         #if os(iOS)
         textView.notifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
         #endif
-        selectedRange = operation.selectedRange
+        selectedRange.value = operation.selectedRange
         timedUndoManager.endUndoGrouping()
     }
 }

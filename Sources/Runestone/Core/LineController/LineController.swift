@@ -90,6 +90,9 @@ final class LineController {
         self.syntaxHighlighter = syntaxHighlighter
         let rootLineFragmentNodeData = LineFragmentNodeData(lineFragment: nil)
         self.lineFragmentTree = LineFragmentTree(minimumValue: 0, rootValue: 0, rootData: rootLineFragmentNodeData)
+        stringView.sink { [weak self] _ in
+            self?.isStringInvalid = true
+        }.store(in: &cancellables)
     }
 
     func prepareToDisplayString(to typesetAmount: TypesetAmount, syntaxHighlightAsynchronously: Bool) {
@@ -105,18 +108,18 @@ final class LineController {
        updateLineHeight(for: newLineFragments)
    }
 
+//    func invalidateString() {
+//        isStringInvalid = true
+//    }
+//
+//    func invalidateTypesetting() {
+//        isLineFragmentCacheInvalid = true
+//        isTypesetterInvalid = true
+//        _lineHeight = nil
+//    }
+
     func cancelSyntaxHighlighting() {
         syntaxHighlighter.cancel()
-    }
-
-    func invalidateString() {
-        isStringInvalid = true
-    }
-
-    func invalidateTypesetting() {
-        isLineFragmentCacheInvalid = true
-        isTypesetterInvalid = true
-        _lineHeight = nil
     }
 
     func invalidateSyntaxHighlighting() {

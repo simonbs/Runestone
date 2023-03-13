@@ -2,21 +2,21 @@ import Combine
 import CoreGraphics
 import Foundation
 
-final class TextSelectionRectProvider {
+final class TextSelectionRectFactory {
+    private let caret: Caret
     private let lineManager: CurrentValueSubject<LineManager, Never>
-    private let contentAreaProvider: ContentAreaProvider
-    private let caretRectProvider: CaretRectProvider
+    private let contentArea: CurrentValueSubject<CGRect, Never>
     private let lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
 
     init(
+        caret: Caret,
         lineManager: CurrentValueSubject<LineManager, Never>,
-        contentAreaProvider: ContentAreaProvider,
-        caretRectProvider: CaretRectProvider,
+        contentArea: CurrentValueSubject<CGRect, Never>,
         lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
     ) {
+        self.caret = caret
         self.lineManager = lineManager
-        self.contentAreaProvider = contentAreaProvider
-        self.caretRectProvider = caretRectProvider
+        self.contentArea = contentArea
         self.lineHeightMultiplier = lineHeightMultiplier
     }
 
@@ -27,28 +27,28 @@ final class TextSelectionRectProvider {
         guard let endLine = lineManager.value.line(containingCharacterAt: range.upperBound) else {
             return []
         }
-        let contentArea = contentAreaProvider.contentArea
+        let contentArea = contentArea.value
         let selectsLineEnding = range.upperBound == endLine.location
         let adjustedRange = NSRange(location: range.location, length: selectsLineEnding ? range.length - 1 : range.length)
-        let startCaretRect = caretRectProvider.caretRect(at: adjustedRange.lowerBound, allowMovingCaretToNextLineFragment: true)
-        let endCaretRect = caretRectProvider.caretRect(at: adjustedRange.upperBound, allowMovingCaretToNextLineFragment: false)
-        if startCaretRect.minY == endCaretRect.minY && startCaretRect.maxY == endCaretRect.maxY {
+        let startCaretFrame = caret.frame(at: adjustedRange.lowerBound, allowMovingCaretToNextLineFragment: true)
+        let endCaretFrame = caret.frame(at: adjustedRange.upperBound, allowMovingCaretToNextLineFragment: false)
+        if startCaretFrame.minY == endCaretFrame.minY && startCaretFrame.maxY == endCaretFrame.maxY {
             // Selecting text in the same line fragment.
-            let width = selectsLineEnding ? contentArea.width - (startCaretRect.minX - contentArea.minX) : endCaretRect.maxX - startCaretRect.maxX
-            let scaledHeight = startCaretRect.height * lineHeightMultiplier.value
-            let offsetY = startCaretRect.minY - (scaledHeight - startCaretRect.height) / 2
-            let rect = CGRect(x: startCaretRect.minX, y: offsetY, width: width, height: scaledHeight)
+            let width = selectsLineEnding ? contentArea.width - (startCaretFrame.minX - contentArea.minX) : endCaretFrame.maxX - startCaretFrame.maxX
+            let scaledHeight = startCaretFrame.height * lineHeightMultiplier.value
+            let offsetY = startCaretFrame.minY - (scaledHeight - startCaretFrame.height) / 2
+            let rect = CGRect(x: startCaretFrame.minX, y: offsetY, width: width, height: scaledHeight)
             let selectionRect = TextSelectionRect(rect: rect, writingDirection: .natural, containsStart: true, containsEnd: true)
             return [selectionRect]
         } else {
             // Selecting text across line fragments and possibly across lines.
-            let startWidth = contentArea.width - (startCaretRect.minX - contentArea.minX)
-            let startScaledHeight = startCaretRect.height * lineHeightMultiplier.value
-            let startOffsetY = startCaretRect.minY - (startScaledHeight - startCaretRect.height) / 2
-            let startRect = CGRect(x: startCaretRect.minX, y: startOffsetY, width: startWidth, height: startScaledHeight)
-            let endWidth = selectsLineEnding ? contentArea.width : endCaretRect.minX - contentArea.minX
-            let endScaledHeight = endCaretRect.height * lineHeightMultiplier.value
-            let endOffsetY = endCaretRect.minY - (endScaledHeight - endCaretRect.height) / 2
+            let startWidth = contentArea.width - (startCaretFrame.minX - contentArea.minX)
+            let startScaledHeight = startCaretFrame.height * lineHeightMultiplier.value
+            let startOffsetY = startCaretFrame.minY - (startScaledHeight - startCaretFrame.height) / 2
+            let startRect = CGRect(x: startCaretFrame.minX, y: startOffsetY, width: startWidth, height: startScaledHeight)
+            let endWidth = selectsLineEnding ? contentArea.width : endCaretFrame.minX - contentArea.minX
+            let endScaledHeight = endCaretFrame.height * lineHeightMultiplier.value
+            let endOffsetY = endCaretFrame.minY - (endScaledHeight - endCaretFrame.height) / 2
             let endRect = CGRect(x: contentArea.minX, y: endOffsetY, width: endWidth, height: endScaledHeight)
             let middleHeight = endRect.minY - startRect.maxY
             let middleRect = CGRect(x: contentArea.minX, y: startRect.maxY, width: contentArea.width, height: middleHeight)

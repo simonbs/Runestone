@@ -1,6 +1,7 @@
 // swiftlint:disable file_length
 #if os(macOS)
 import AppKit
+import Combine
 import UniformTypeIdentifiers
 
 // swiftlint:disable:next type_body_length
@@ -62,7 +63,7 @@ open class TextView: NSView, NSMenuItemValidation {
 //        }
 //    }
     /// Enable to show highlight the selected lines. The selection is only shown in the gutter when multiple lines are selected.
-    @_RunestoneProxy(\TextView.textViewController.lineSelectionLayouter.lineSelectionDisplayType)
+    @_RunestoneProxy(\TextView.textViewController.lineSelectionLayouter.lineSelectionDisplayType.value)
     public var lineSelectionDisplayType: LineSelectionDisplayType
     /// The text view renders invisible tabs when enabled. The `tabsSymbol` is used to render tabs.
     @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.showTabs.value)
@@ -215,7 +216,7 @@ open class TextView: NSView, NSMenuItemValidation {
     @_RunestoneProxy(\TextView.textViewController.caretLayouter.color)
     public var insertionPointColor: NSColor
     /// The color of the selection highlight. It is most common to set this to the same color as the color used for the insertion point.
-    @_RunestoneProxy(\TextView.textViewController.textSelectionLayouter.backgroundColor)
+    @_RunestoneProxy(\TextView.textViewController.textSelectionLayouter.backgroundColor.value)
     public var selectionHighlightColor: NSColor
     /// The object that the document uses to support undo/redo operations.
     override open var undoManager: UndoManager? {
@@ -232,20 +233,6 @@ open class TextView: NSView, NSMenuItemValidation {
      }
 
     private let textFinderClient = TextFinderClient()
-    private var isWindowKey = false {
-        didSet {
-            if isWindowKey != oldValue {
-                updateCaretVisibility()
-            }
-        }
-    }
-    private var isFirstResponder = false {
-        didSet {
-            if isFirstResponder != oldValue {
-                updateCaretVisibility()
-            }
-        }
-    }
     private var shouldBeginEditing: Bool {
         guard isEditable else {
             return false
@@ -263,7 +250,8 @@ open class TextView: NSView, NSMenuItemValidation {
             return true
         }
     }
-    private var boundsObserver: Any?
+    private var boundsObserver: AnyCancellable?
+    private var windowDidResignKeyObserver: AnyCancellable?
 
     /// Create a new text view.
     public init() {
@@ -279,16 +267,10 @@ open class TextView: NSView, NSMenuItemValidation {
 
     private func setup() {
         textViewController.delegate = self
-        textViewController.selectedRange = NSRange(location: 0, length: 0)
+        textViewController.selectedRange.value = NSRange(location: 0, length: 0)
         textViewController.scrollView = scrollView
-        setupWindowObservers()
         setupScrollViewBoundsDidChangeObserver()
         setupMenu()
-    }
-
-    deinit {
-        boundsObserver = nil
-        NotificationCenter.default.removeObserver(self)
     }
 
     /// Create a scroll view with an instance of `TextView` assigned to the document view.
@@ -320,7 +302,7 @@ open class TextView: NSView, NSMenuItemValidation {
         }
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if didBecomeFirstResponder {
-            isFirstResponder = true
+            textViewController.isFirstResponder.value = true
             textViewController.isEditing = true
             editorDelegate?.textViewDidBeginEditing(self)
         } else {
@@ -337,27 +319,20 @@ open class TextView: NSView, NSMenuItemValidation {
         }
         let didResignFirstResponder = super.resignFirstResponder()
         if didResignFirstResponder {
-            isFirstResponder = false
+            textViewController.isFirstResponder.value = false
             textViewController.isEditing = false
             editorDelegate?.textViewDidEndEditing(self)
         }
         return didResignFirstResponder
     }
 
-    /// Informs the view's subviews that the view's bounds rectangle size has changed.
-    /// - Parameter oldSize: The previous size of the view's bounds rectangle.
-    override public func resizeSubviews(withOldSize oldSize: NSSize) {
-        super.resizeSubviews(withOldSize: oldSize)
-        textViewController.textSelectionLayouter.updateSelectedRectangles()
-    }
-
     /// Perform layout in concert with the constraint-based layout system.
     open override func layout() {
         super.layout()
         updateViewport()
-        textViewController.caretLayouter.layoutIfNeeded()
+//        textViewController.caretLayouter.layoutIfNeeded()
         textViewController.lineFragmentLayouter.layoutIfNeeded()
-        textViewController.lineSelectionLayouter.layoutIfNeeded()
+//        textViewController.lineSelectionLayouter.layoutIfNeeded()
         textViewController.contentSizeService.updateContentSizeIfNeeded()
     }
 
@@ -421,39 +396,19 @@ open class TextView: NSView, NSMenuItemValidation {
     }
 }
 
-// MARK: - Window
-private extension TextView {
-    private func setupWindowObservers() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(windowKeyStateDidChange),
-            name: NSWindow.didBecomeKeyNotification,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(windowKeyStateDidChange),
-            name: NSWindow.didResignKeyNotification,
-            object: nil
-        )
-    }
-
-    @objc private func windowKeyStateDidChange() {
-        isWindowKey = window?.isKeyWindow ?? false
-    }
-}
-
 // MARK: - Scrolling
 private extension TextView {
     private func setupScrollViewBoundsDidChangeObserver() {
+        boundsObserver?.cancel()
         boundsObserver = nil
         guard let contentView = scrollView?.contentView else {
             return
         }
-        let notificationName = NSView.boundsDidChangeNotification
-        boundsObserver = NotificationCenter.default.addObserver(forName: notificationName, object: contentView, queue: .main) { [weak self] _ in
-            self?.updateViewport()
-        }
+        boundsObserver = NotificationCenter.default
+            .publisher(for: NSView.boundsDidChangeNotification, object: contentView)
+            .sink { [weak self] _ in
+                self?.updateViewport()
+            }
     }
 
     private func updateViewport() {
@@ -466,8 +421,9 @@ private extension TextView {
     }
 
     private func scrollToVisibleLocationIfNeeded() {
-        if isAutomaticScrollEnabled, let newRange = textViewController.selectedRange, newRange.length == 0 {
-            textViewController.scrollLocationToVisible(newRange.location)
+        let selectedRange = textViewController.selectedRange.value
+        if isAutomaticScrollEnabled, selectedRange.length == 0 {
+            textViewController.scrollLocationToVisible(selectedRange.location)
         }
     }
 }
@@ -491,13 +447,6 @@ private extension TextView {
     }
 }
 
-// MARK: - Caret
-private extension TextView {
-    private func updateCaretVisibility() {
-        textViewController.caretLayouter.showCaret = isWindowKey && isFirstResponder && selectedRange().length == 0
-    }
-}
-
 // MARK: - TextViewControllerDelegate
 extension TextView: TextViewControllerDelegate {
     func textViewControllerDidChangeText(_ textViewController: TextViewController) {
@@ -505,7 +454,6 @@ extension TextView: TextViewControllerDelegate {
     }
 
     func textViewController(_ textViewController: TextViewController, didChangeSelectedRange selectedRange: NSRange?) {
-        updateCaretVisibility()
         scrollToVisibleLocationIfNeeded()
     }
 }

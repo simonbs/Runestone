@@ -61,42 +61,38 @@ extension TextViewController {
 
     func move(to location: Int) {
         navigationService.resetPreviousLineNavigationOperation()
-        selectedRange = NSRange(location: location, length: 0)
+        selectedRange.value = NSRange(location: location, length: 0)
     }
 }
 
 private extension TextViewController {
     private func move(by granularity: TextGranularity, inDirection direction: TextDirection) {
-        guard let selectedRange = selectedRange?.nonNegativeLength else {
-            return
-        }
+        let sourceSelectedRange = selectedRange.value.nonNegativeLength
         switch granularity {
         case .character:
-            if selectedRange.length == 0 {
-                let sourceLocation = selectedRange.bound(in: direction)
+            if sourceSelectedRange.length == 0 {
+                let sourceLocation = sourceSelectedRange.bound(in: direction)
                 let location = navigationService.location(movingFrom: sourceLocation, byCharacterCount: 1, inDirection: direction)
-                self.selectedRange = NSRange(location: location, length: 0)
+                selectedRange.value = NSRange(location: location, length: 0)
             } else {
-                let location = selectedRange.bound(in: direction)
-                self.selectedRange = NSRange(location: location, length: 0)
+                let location = sourceSelectedRange.bound(in: direction)
+                selectedRange.value = NSRange(location: location, length: 0)
             }
         case .line:
-            let location = navigationService.location(movingFrom: selectedRange.location, byLineCount: 1, inDirection: direction)
-            self.selectedRange = NSRange(location: location, length: 0)
+            let location = navigationService.location(movingFrom: sourceSelectedRange.location, byLineCount: 1, inDirection: direction)
+            selectedRange.value = NSRange(location: location, length: 0)
         case .word:
-            let sourceLocation = selectedRange.bound(in: direction)
+            let sourceLocation = sourceSelectedRange.bound(in: direction)
             let location = navigationService.location(movingFrom: sourceLocation, byWordCount: 1, inDirection: direction)
-            self.selectedRange = NSRange(location: location, length: 0)
+            selectedRange.value = NSRange(location: location, length: 0)
         }
     }
 
     private func move(toBoundary boundary: TextBoundary, inDirection direction: TextDirection) {
-        guard let selectedRange = selectedRange?.nonNegativeLength else {
-            return
-        }
-        let sourceLocation = selectedRange.bound(in: direction)
+        let sourceSelectedRange = selectedRange.value.nonNegativeLength
+        let sourceLocation = sourceSelectedRange.bound(in: direction)
         let location = navigationService.location(moving: sourceLocation, toBoundary: boundary, inDirection: direction)
-        self.selectedRange = NSRange(location: location, length: 0)
+        selectedRange.value = NSRange(location: location, length: 0)
     }
 }
 

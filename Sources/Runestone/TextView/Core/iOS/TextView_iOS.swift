@@ -1277,14 +1277,14 @@ extension TextView: UITextInteractionDelegate {
 
 // MARK: - EditMenuControllerDelegate
 extension TextView: EditMenuControllerDelegate {
-    func editMenuController(_ controller: EditMenuController, caretRectAt location: Int) -> CGRect {
-        let caretRectFactory = CaretRectFactory(
+    func editMenuController(_ controller: EditMenuController, caretAt location: Int) -> CGRect {
+        let caretFactory = CaretFactory(
             stringView: textViewController.stringView,
             lineManager: textViewController.lineManager,
             lineControllerStorage: textViewController.lineControllerStorage,
             textContainerInset: textViewController.textContainerInset
         )
-        return caretRectFactory.caretRect(at: location, allowMovingCaretToNextLineFragment: false)
+        return caretFactory.caret(at: location, allowMovingCaretToNextLineFragment: false)
     }
 
     func editMenuControllerShouldReplaceText(_ controller: EditMenuController) {

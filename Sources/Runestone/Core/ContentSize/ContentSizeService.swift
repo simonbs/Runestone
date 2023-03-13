@@ -27,12 +27,14 @@ final class ContentSizeService {
         }
         let totalTextContainerInset = textContainerInset.value.left + textContainerInset.value.right
         let overscrollAmount = viewport.value.width * horizontalOverscrollFactor.value
-        return lineWidth + totalTextContainerInset + overscrollAmount
+        let preferredWidth = lineWidth + totalTextContainerInset + overscrollAmount
+        return max(preferredWidth, viewport.value.width)
     }
     private var contentHeight: CGFloat {
         let totalTextContainerInset = textContainerInset.value.top + textContainerInset.value.bottom
         let overscrollAmount = viewport.value.height * verticalOverscrollFactor.value
-        return totalLineHeightTracker.totalLineHeight + totalTextContainerInset + overscrollAmount
+        let preferredHeight = totalLineHeightTracker.totalLineHeight + totalTextContainerInset + overscrollAmount
+        return max(preferredHeight, viewport.value.height)
     }
 
     init(

@@ -2,6 +2,9 @@ import Combine
 import Foundation
 
 final class CompositionRoot {
+    private(set) lazy var keyWindowObserver = KeyWindowObserver(referenceView: textView)
+    let isFirstResponder = CurrentValueSubject<Bool, Never>(false)
+    let selectedRange = CurrentValueSubject<NSRange, Never>(NSRange(location: 0, length: 0))
     let stringView = CurrentValueSubject<StringView, Never>(StringView())
     private(set) lazy var estimatedLineHeight = EstimatedLineHeight(
         font: themeSettings.font.eraseToAnyPublisher(),
@@ -36,7 +39,7 @@ final class CompositionRoot {
         isLineWrappingEnabled: typesetSettings.isLineWrappingEnabled,
         maximumLineBreakSymbolWidth: invisibleCharacterSettings.maximumLineBreakSymbolWidth
     )
-    private(set) lazy var contentAreaProvider = ContentAreaProvider(
+    private(set) lazy var contentArea = ContentArea(
         viewport: textContainer.viewport,
         contentSize: contentSizeService.contentSize,
         textContainerInset: textContainer.inset
@@ -48,6 +51,23 @@ final class CompositionRoot {
 
     init(textView: TextView) {
         self.textView = textView
+    }
+
+    private(set) lazy var caret = Caret(
+        stringView: stringView,
+        lineManager: lineManager,
+        lineControllerStorage: lineControllerStorage,
+        contentArea: contentArea.rawValue,
+        location: selectedRange.map(\.location).eraseToAnyPublisher()
+    )
+
+    var caretLayouter: CaretLayouter {
+        CaretLayouter(
+            caret: caret,
+            containerView: textView,
+            selectedRange: selectedRange.eraseToAnyPublisher(),
+            showCaret: showCaret
+        )
     }
 
     var lineFragmentLayouter: LineFragmentLayouter {
@@ -66,8 +86,10 @@ final class CompositionRoot {
 
     var lineSelectionLayouter: LineSelectionLayouter {
         LineSelectionLayouter(
+            caret: caret,
+            selectedRange: selectedRange,
             lineManager: lineManager,
-            caretRectProvider: caretRectProvider,
+            viewport: textContainer.viewport,
             textContainerInset: textContainer.inset,
             lineHeightMultiplier: typesetSettings.lineHeightMultiplier,
             backgroundColor: themeSettings.selectedLineBackgroundColor,
@@ -83,15 +105,6 @@ final class CompositionRoot {
             hairlineColor: themeSettings.pageGuideHairlineColor,
             hairlineWidth: themeSettings.pageGuideHairlineWidth,
             containerView: textView
-        )
-    }
-
-    var caretRectProvider: CaretRectProvider {
-        CaretRectProvider(
-            stringView: stringView,
-            lineManager: lineManager,
-            lineControllerStorage: lineControllerStorage,
-            contentAreaProvider: contentAreaProvider
         )
     }
 
@@ -114,8 +127,10 @@ final class CompositionRoot {
 
     var textSelectionLayouter: TextSelectionLayouter {
         TextSelectionLayouter(
-            textSelectionRectProvider: textSelectionRectProvider,
-            containerView: textView
+            textSelectionRectFactory: textSelectionRectFactory,
+            containerView: textView,
+            viewport: textContainer.viewport,
+            selectedRange: selectedRange
         )
     }
     #endif
@@ -131,11 +146,11 @@ final class CompositionRoot {
 }
 
 private extension CompositionRoot {
-    private var textSelectionRectProvider: TextSelectionRectProvider {
-        TextSelectionRectProvider(
+    private var textSelectionRectFactory: TextSelectionRectFactory {
+        TextSelectionRectFactory(
+            caret: caret,
             lineManager: lineManager,
-            contentAreaProvider: contentAreaProvider,
-            caretRectProvider: caretRectProvider,
+            contentArea: contentArea.rawValue,
             lineHeightMultiplier: typesetSettings.lineHeightMultiplier
         )
     }
@@ -158,5 +173,15 @@ private extension CompositionRoot {
 
     private var syntaxHighlighterFactory: SyntaxHighlighterFactory {
         SyntaxHighlighterFactory(theme: themeSettings.theme, languageMode: languageMode)
+    }
+
+    private var showCaret: AnyPublisher<Bool, Never> {
+        Publishers.CombineLatest3(
+            keyWindowObserver.isKeyWindow,
+            isFirstResponder,
+            selectedRange
+        ).map { isKeyWindow, isFirstResponder, selectedRange in
+            isKeyWindow && isFirstResponder && selectedRange.length == 0
+        }.eraseToAnyPublisher()
     }
 }

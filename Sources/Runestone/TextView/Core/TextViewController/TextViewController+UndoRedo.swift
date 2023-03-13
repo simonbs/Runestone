@@ -7,7 +7,7 @@ extension TextViewController {
         selectedRangeAfterUndo: NSRange? = nil,
         actionName: String = L10n.Undo.ActionName.typing
     ) {
-        let oldSelectedRange = selectedRangeAfterUndo ?? selectedRange
+        let oldSelectedRange = selectedRangeAfterUndo ?? selectedRange.value
         timedUndoManager.beginUndoGrouping()
         timedUndoManager.setActionName(actionName)
         timedUndoManager.registerUndo(withTarget: self) { textViewController in
@@ -15,7 +15,7 @@ extension TextViewController {
             textViewController.textView.inputDelegate?.selectionWillChange(textViewController.textView)
             #endif
             textViewController.replaceText(in: range, with: text)
-            textViewController.selectedRange = oldSelectedRange
+            textViewController.selectedRange.value = oldSelectedRange
             #if os(iOS)
             textViewController.textView.inputDelegate?.selectionDidChange(textViewController.textView)
             #endif

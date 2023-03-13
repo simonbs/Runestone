@@ -1,25 +1,27 @@
 import Combine
 import CoreGraphics
 
-final class ContentAreaProvider {
-    var contentArea: CGRect {
-        let textContainerInset = textContainerInset.value
-        let width = max(viewport.value.width, contentSize.value.width) - textContainerInset.left - textContainerInset.right
-        let height = max(viewport.value.height, contentSize.value.height) - textContainerInset.top - textContainerInset.bottom
-        return CGRect(x: textContainerInset.left, y: textContainerInset.top, width: width, height: height)
-    }
+final class ContentArea {
+    let rawValue = CurrentValueSubject<CGRect, Never>(.zero)
 
-    private unowned let viewport: CurrentValueSubject<CGRect, Never>
-    private unowned let contentSize: CurrentValueSubject<CGSize, Never>
-    private unowned let textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>
+    private var cancellables = Set<AnyCancellable>()
 
     init(
         viewport: CurrentValueSubject<CGRect, Never>,
         contentSize: CurrentValueSubject<CGSize, Never>,
         textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>
     ) {
-        self.viewport = viewport
-        self.contentSize = contentSize
-        self.textContainerInset = textContainerInset
+        Publishers.CombineLatest3(
+            viewport,
+            contentSize,
+            textContainerInset
+        ).sink { [weak self] viewport, contentSize, textContainerInset in
+            guard let self else {
+                return
+            }
+            let width = max(viewport.width, contentSize.width) - textContainerInset.left - textContainerInset.right
+            let height = max(viewport.height, contentSize.height) - textContainerInset.top - textContainerInset.bottom
+            self.rawValue.value = CGRect(x: textContainerInset.left, y: textContainerInset.top, width: width, height: height)
+        }.store(in: &cancellables)
     }
 }

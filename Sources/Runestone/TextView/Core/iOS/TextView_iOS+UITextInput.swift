@@ -43,13 +43,13 @@ public extension TextView {
         guard let indexedPosition = position as? IndexedPosition else {
             fatalError("Expected position to be of type \(IndexedPosition.self)")
         }
-        let caretFactory = CaretRectFactory(
+        let caretFactory = CaretFactory(
             stringView: textViewController.stringView,
             lineManager: textViewController.lineManager,
             lineControllerStorage: textViewController.lineControllerStorage,
             textContainerInset: textContainerInset
         )
-        return caretFactory.caretRect(at: indexedPosition.index, allowMovingCaretToNextLineFragment: true)
+        return caretFactory.frame(at: indexedPosition.index, allowMovingCaretToNextLineFragment: true)
     }
 
     /// Called at the beginning of the gesture that the system uses to manipulate the cursor.
@@ -62,10 +62,10 @@ public extension TextView {
         insertionPointColor = insertionPointColorBeforeFloatingBegan.withAlphaComponent(0.5)
         updateCaretColor()
         let caretRect = self.caretRect(for: position)
-        let caretOrigin = CGPoint(x: point.x - caretRect.width / 2, y: point.y - caretRect.height / 2)
+        let caretOrigin = CGPoint(x: point.x - caret.width / 2, y: point.y - caret.height / 2)
         let floatingCaretView = FloatingCaretView()
         floatingCaretView.backgroundColor = insertionPointColorBeforeFloatingBegan
-        floatingCaretView.frame = CGRect(origin: caretOrigin, size: caretRect.size)
+        floatingCaretView.frame = CGRect(origin: caretOrigin, size: caret.size)
         addSubview(floatingCaretView)
         self.floatingCaretView = floatingCaretView
         editorDelegate?.textViewDidBeginFloatingCursor(self)
@@ -237,7 +237,7 @@ public extension TextView {
         guard let indexedRange = range as? IndexedRange else {
             return []
         }
-        let caretRectFactory = CaretRectFactory(
+        let caretFactory = CaretFactory(
             stringView: textViewController.stringView,
             lineManager: textViewController.lineManager,
             lineControllerStorage: textViewController.lineControllerStorage,
@@ -246,7 +246,7 @@ public extension TextView {
         let textSelectionRectFactory = TextSelectionRectFactory(
             lineManager: textViewController.lineManager,
             contentSizeService: textViewController.contentSizeService,
-            caretRectFactory: caretRectFactory,
+            caretFactory: caretFactory,
             textContainerInset: textContainerInset,
             lineHeightMultiplier: lineHeightMultiplier
         )
