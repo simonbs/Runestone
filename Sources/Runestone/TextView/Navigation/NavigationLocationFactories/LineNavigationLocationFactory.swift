@@ -59,13 +59,7 @@ private extension LineNavigationLocationFactory {
         let lineFragmentMaximumLocation = lineLocation + destinationLineFragmentNode.location + destinationLineFragmentNode.value
         let lineMaximumLocation = lineLocation + line.data.length
         let maximumLocation = min(lineFragmentMaximumLocation, lineMaximumLocation)
-        if line !== lineManager.value.lastLine {
-            // Subtract 1 from the maximum location in the line fragment to ensure the caret is not placed on the next line fragment when navigating to the end of a line fragment. This aligns with the behavior of popular text editors.
-            return min(preferredLocation, maximumLocation - 1)
-        } else {
-            // ...but if it is the last line in the document then we allow navigating all the way to the last character.
-            return min(preferredLocation, maximumLocation)
-        }
+        return min(preferredLocation, maximumLocation)
     }
 
     private func location(movingBackwardsFrom location: Int, inLineFragmentAt lineFragmentIndex: Int, of line: LineNode, offset: Int) -> Int {
