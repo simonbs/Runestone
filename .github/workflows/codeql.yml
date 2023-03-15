@@ -12,6 +12,9 @@ jobs:
   analyze:
     name: Analyze
     runs-on: macos-latest
+    
+    permissions:
+      security-events: write
 
     strategy:
       fail-fast: false
