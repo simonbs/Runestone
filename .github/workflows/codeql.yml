@@ -1,0 +1,33 @@
+name: "CodeQL"
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: macos-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ "swift" ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+      - name: Build
+        run: xcodebuild build-for-testing -scheme Runestone -sdk iphonesimulator
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: "/language:${{matrix.language}}"
