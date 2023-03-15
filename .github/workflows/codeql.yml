@@ -28,7 +28,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
       - name: Build
-        run: xcodebuild build-for-testing -scheme Runestone -sdk iphonesimulator
+        run: xcodebuild -scheme Runestone -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 14'
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2
         with:
