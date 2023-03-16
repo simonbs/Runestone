@@ -60,8 +60,7 @@ final class IndentController {
         var newSelectedRange = selectedRange
         var replacementString: String?
         let indentString = indentStrategy.string(indentLevel: 1)
-        let utf8IndentLength = indentString.count
-        let utf16IndentLength = indentString.utf16.count
+        let indentLength = indentString.utf16.count
         for (lineIndex, line) in lines.enumerated() {
             let lineRange = NSRange(location: line.location, length: line.data.totalLength)
             let lineString = stringView.substring(in: lineRange) ?? ""
@@ -69,14 +68,14 @@ final class IndentController {
                 replacementString = (replacementString ?? "") + lineString
                 continue
             }
-            let startIndex = lineString.index(lineString.startIndex, offsetBy: utf8IndentLength)
+            let startIndex = lineString.index(lineString.startIndex, offsetBy: indentLength)
             let endIndex = lineString.endIndex
             replacementString = (replacementString ?? "") + lineString[startIndex ..< endIndex]
             if lineIndex == 0 {
                 // We don't want the selection to move to the previous line when we can't shift left anymore.
                 // Therefore we keep it to the minimum location, which is the location the line starts on.
                 // If we try to exceed that, we need to adjust the length of the selected range.
-                let preferredLocation = newSelectedRange.location - utf16IndentLength
+                let preferredLocation = newSelectedRange.location - indentLength
                 let newLocation = max(preferredLocation, originalRange.location)
                 newSelectedRange.location = newLocation
                 if newLocation > preferredLocation {
@@ -84,7 +83,7 @@ final class IndentController {
                     newSelectedRange.length = max(preferredLength, 0)
                 }
             } else {
-                newSelectedRange.length -= utf16IndentLength
+                newSelectedRange.length -= indentLength
             }
         }
         if let replacementString = replacementString {
