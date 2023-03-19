@@ -2,17 +2,8 @@ import Combine
 import CoreGraphics
 import Foundation
 
-protocol LineFragmentLayouterDelegate: AnyObject {
-    func lineFragmentLayouter(
-        _ lineFragmentLayouter: LineFragmentLayouter, didProposeContentOffsetAdjustment
-        contentOffsetAdjustment: CGPoint
-    )
-}
-
 final class LineFragmentLayouter {
-    weak var delegate: LineFragmentLayouterDelegate?
-    private(set) var visibleLineIDs: Set<LineNodeID> = []
-
+    private unowned let _scrollView: CurrentValueSubject<ScrollViewBox, Never>
     private let stringView: CurrentValueSubject<StringView, Never>
     private let lineManager: CurrentValueSubject<LineManager, Never>
     private let lineControllerStorage: LineControllerStorage
@@ -24,6 +15,8 @@ final class LineFragmentLayouter {
     private weak var containerView: MultiPlatformView?
     private var lineFragmentReusableViewQueue = ReusableViewQueue<LineFragmentID, LineFragmentView>()
     private var needsLayout = false
+    private var visibleLineIDs: Set<LineNodeID> = []
+    private var cancellables: Set<AnyCancellable> = []
     private var constrainingLineWidth: CGFloat {
         if isLineWrappingEnabled.value {
             let horizontalContainerInset = textContainer.inset.value.left + textContainer.inset.value.right
@@ -35,9 +28,12 @@ final class LineFragmentLayouter {
             return 10_000
         }
     }
-    private var cancellables: Set<AnyCancellable> = []
+    private var scrollView: MultiPlatformScrollView? {
+        _scrollView.value.scrollView
+    }
 
     init(
+        scrollView: CurrentValueSubject<ScrollViewBox, Never>,
         stringView: CurrentValueSubject<StringView, Never>,
         lineManager: CurrentValueSubject<LineManager, Never>,
         lineControllerStorage: LineControllerStorage,
@@ -48,6 +44,7 @@ final class LineFragmentLayouter {
         contentSize: CurrentValueSubject<CGSize, Never>,
         containerView: MultiPlatformView
     ) {
+        self._scrollView = scrollView
         self.stringView = stringView
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
@@ -62,10 +59,6 @@ final class LineFragmentLayouter {
             self?.needsLayout = true
         }.store(in: &cancellables)
     }
-
-//    func setNeedsLayout() {
-//        needsLayout = true
-//    }
 
     func layoutIfNeeded() {
         if needsLayout {
@@ -156,9 +149,8 @@ extension LineFragmentLayouter {
         }
         lineFragmentReusableViewQueue.enqueueViews(withKeys: disappearedLineFragmentIDs)
         // Adjust the content offset on the Y-axis if necessary.
-        if contentOffsetAdjustmentY != 0 {
-            let contentOffsetAdjustment = CGPoint(x: 0, y: contentOffsetAdjustmentY)
-            delegate?.lineFragmentLayouter(self, didProposeContentOffsetAdjustment: contentOffsetAdjustment)
+        if contentOffsetAdjustmentY != 0, let scrollView, (scrollView.isDragging || scrollView.isDecelerating) {
+            scrollView.contentOffset = CGPoint(x: scrollView.contentOffset.x, y: scrollView.contentOffset.y + contentOffsetAdjustmentY)
         }
     }
 

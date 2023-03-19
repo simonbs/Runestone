@@ -61,16 +61,16 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
         operationQueue.addOperation(operation)
     }
 
-    func textDidChange(_ change: TextStoreChange) -> LineChangeSet {
-        let bytesRemoved = change.byteRange.length
-        let bytesAdded = change.bytesAdded
+    func textDidChange(_ edit: TextEdit) -> LineChangeSet {
+        let bytesRemoved = edit.byteRange.length
+        let bytesAdded = edit.bytesAdded
         let edit = TreeSitterInputEdit(
-            startByte: change.byteRange.location,
-            oldEndByte: change.byteRange.location + bytesRemoved,
-            newEndByte: change.byteRange.location + bytesAdded,
-            startPoint: TreeSitterTextPoint(change.startLinePosition),
-            oldEndPoint: TreeSitterTextPoint(change.oldEndLinePosition),
-            newEndPoint: TreeSitterTextPoint(change.newEndLinePosition)
+            startByte: edit.byteRange.location,
+            oldEndByte: edit.byteRange.location + bytesRemoved,
+            newEndByte: edit.byteRange.location + bytesAdded,
+            startPoint: TreeSitterTextPoint(edit.startLinePosition),
+            oldEndPoint: TreeSitterTextPoint(edit.oldEndLinePosition),
+            newEndPoint: TreeSitterTextPoint(edit.newEndLinePosition)
         )
         return rootLanguageLayer.apply(edit)
     }
@@ -88,15 +88,6 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
         )
     }
 
-    func currentIndentLevel(of line: LineNode, using indentStrategy: IndentStrategy) -> Int {
-        let measurer = IndentLevelMeasurer(stringView: stringView.value)
-        return measurer.indentLevel(
-            lineStartLocation: line.location,
-            lineTotalLength: line.data.totalLength,
-            tabLength: indentStrategy.tabLength
-        )
-    }
-
     func strategyForInsertingLineBreak(
         from startLinePosition: LinePosition,
         to endLinePosition: LinePosition,
@@ -107,15 +98,15 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
         guard let indentationScopes = startLayerAndNode?.layer.language.indentationScopes ?? endLayerAndNode?.layer.language.indentationScopes else {
             return InsertLineBreakIndentStrategy(indentLevel: 0, insertExtraLineBreak: false)
         }
-        let indentController = TreeSitterIndentController(
+        let indentService = TreeSitterIndentService(
             indentationScopes: indentationScopes,
             stringView: stringView.value,
             lineManager: lineManager.value,
-            tabLength: indentStrategy.tabLength
+            indentLengthInSpaces: indentStrategy.lengthInSpaces
         )
         let startNode = startLayerAndNode?.node
         let endNode = endLayerAndNode?.node
-        return indentController.strategyForInsertingLineBreak(
+        return indentService.strategyForInsertingLineBreak(
             between: startNode,
             and: endNode,
             caretStartPosition: startLinePosition,

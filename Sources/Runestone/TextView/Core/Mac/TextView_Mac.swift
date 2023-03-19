@@ -15,7 +15,14 @@ import UniformTypeIdentifiers
 /// The function takes an instance of ``TextViewState`` as input which can be created on a background queue to avoid blocking the main queue while doing the initial parse of a text.
 open class TextView: NSView, NSMenuItemValidation {
     /// Delegate to receive callbacks for events triggered by the editor.
-    public weak var editorDelegate: TextViewDelegate?
+    public weak var editorDelegate: TextViewDelegate? {
+        get {
+            textViewController.textViewDelegateBox.delegate
+        }
+        set {
+            textViewController.textViewDelegateBox.delegate = newValue
+        }
+    }
     /// Returns a Boolean value indicating whether this object can become the first responder.
     override public var acceptsFirstResponder: Bool {
         true
@@ -25,19 +32,11 @@ open class TextView: NSView, NSMenuItemValidation {
         true
     }
     /// A Boolean value that indicates whether the text view is editable.
-    public var isEditable: Bool {
-        get {
-            textViewController.isEditable
-        }
-        set {
-            if newValue != isEditable {
-                textViewController.isEditable = newValue
-            }
-        }
-    }
+    @_RunestoneProxy(\TextView.textViewController.editorState.isEditable.value)
+    public var isEditable: Bool
     /// Whether the text view is in a state where the contents can be edited.
     public var isEditing: Bool {
-        textViewController.isEditing
+        textViewController.editorState.isEditing.value
     }
     /// The text that the text view displays.
     @_RunestoneProxy(\TextView.textViewController.text)
@@ -48,10 +47,10 @@ open class TextView: NSView, NSMenuItemValidation {
     /// Character pairs are used by the editor to automatically insert a trailing character when the user types the leading character.
     ///
     /// Common usages of this includes the \" character to surround strings and { } to surround a scope.
-    @_RunestoneProxy(\TextView.textViewController.characterPairs)
+    @_RunestoneProxy(\TextView.textViewController.characterPairService.characterPairs)
     public var characterPairs: [CharacterPair]
     /// Determines what should happen to the trailing component of a character pair when deleting the leading component. Defaults to `disabled` meaning that nothing will happen.
-    @_RunestoneProxy(\TextView.textViewController.characterPairTrailingComponentDeletionMode)
+    @_RunestoneProxy(\TextView.textViewController.characterPairService.trailingComponentDeletionMode)
     public var characterPairTrailingComponentDeletionMode: CharacterPairTrailingComponentDeletionMode
     /// Enable to show line numbers in the gutter.
 //    public var showLineNumbers: Bool {
@@ -124,7 +123,7 @@ open class TextView: NSView, NSMenuItemValidation {
     @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.softLineBreakSymbol.value)
     public var softLineBreakSymbol: String
     /// The strategy used when indenting text.
-    @_RunestoneProxy(\TextView.textViewController.indentController.indentStrategy.value)
+    @_RunestoneProxy(\TextView.textViewController.typesetSettings.indentStrategy.value)
     public var indentStrategy: IndentStrategy
     /// The amount of padding before the line numbers inside the gutter.
 //    public var gutterLeadingPadding: CGFloat {
@@ -200,17 +199,17 @@ open class TextView: NSView, NSMenuItemValidation {
         textViewController.lineManager.value.initialLongestLine?.data.totalLength
     }
     /// Ranges in the text to be highlighted. The color defined by the background will be drawen behind the text.
-    @_RunestoneProxy(\TextView.textViewController.highlightedRanges)
+    @_RunestoneProxy(\TextView.textViewController.highlightedRangeFragmentStore.highlightedRanges.value)
     public var highlightedRanges: [HighlightedRange]
     /// Wheter the text view should loop when navigating through highlighted ranges using `selectPreviousHighlightedRange` or `selectNextHighlightedRange` on the text view.
-    @_RunestoneProxy(\TextView.textViewController.highlightedRangeLoopingMode)
+    @_RunestoneProxy(\TextView.textViewController.highlightedRangeNavigator.loopingMode)
     public var highlightedRangeLoopingMode: HighlightedRangeLoopingMode
     /// Line endings to use when inserting a line break.
     ///
     /// The value only affects new line breaks inserted in the text view and changing this value does not change the line endings of the text in the text view. Defaults to Unix (LF).
     ///
     /// The TextView will only update the line endings when text is modified through an external event, such as when the user typing on the keyboard, when the user is replacing selected text, and when pasting text into the text view. In all other cases, you should make sure that the text provided to the text view uses the desired line endings. This includes when calling ``TextView/setState(_:addUndoAction:)``.
-    @_RunestoneProxy(\TextView.textViewController.lineEndings)
+    @_RunestoneProxy(\TextView.textViewController.typesetSettings.lineEndings.value)
     public var lineEndings: LineEnding
     /// The color of the insertion point. This can be used to control the color of the caret.
     @_RunestoneProxy(\TextView.textViewController.caretLayouter.color)
@@ -220,7 +219,7 @@ open class TextView: NSView, NSMenuItemValidation {
     public var selectionHighlightColor: NSColor
     /// The object that the document uses to support undo/redo operations.
     override open var undoManager: UndoManager? {
-        textViewController.timedUndoManager
+        textViewController.undoManager
     }
 
     private(set) lazy var textViewController = TextViewController(textView: self)
@@ -266,9 +265,8 @@ open class TextView: NSView, NSMenuItemValidation {
     }
 
     private func setup() {
-        textViewController.delegate = self
         textViewController.selectedRange.value = NSRange(location: 0, length: 0)
-        textViewController.scrollView = scrollView
+        textViewController.scrollView.value = ScrollViewBox(scrollView)
         setupScrollViewBoundsDidChangeObserver()
         setupMenu()
     }
@@ -289,7 +287,7 @@ open class TextView: NSView, NSMenuItemValidation {
     /// Informs the view that its superview has changed.
     open override func viewDidMoveToSuperview() {
         super.viewDidMoveToSuperview()
-        textViewController.scrollView = scrollView
+        textViewController.scrollView.value = ScrollViewBox(scrollView)
         setupScrollViewBoundsDidChangeObserver()
         setupTextFinder()
     }
@@ -303,10 +301,10 @@ open class TextView: NSView, NSMenuItemValidation {
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if didBecomeFirstResponder {
             textViewController.isFirstResponder.value = true
-            textViewController.isEditing = true
+            textViewController.editorState.isEditing.value = true
             editorDelegate?.textViewDidBeginEditing(self)
         } else {
-            textViewController.isEditing = false
+            textViewController.editorState.isEditing.value = false
         }
         return didBecomeFirstResponder
     }
@@ -320,7 +318,7 @@ open class TextView: NSView, NSMenuItemValidation {
         let didResignFirstResponder = super.resignFirstResponder()
         if didResignFirstResponder {
             textViewController.isFirstResponder.value = false
-            textViewController.isEditing = false
+            textViewController.editorState.isEditing.value = false
             editorDelegate?.textViewDidEndEditing(self)
         }
         return didResignFirstResponder
@@ -373,7 +371,7 @@ open class TextView: NSView, NSMenuItemValidation {
     /// - Parameter range: A range of text in the document.
     /// - Returns: The substring that falls within the specified range.
     public func text(in range: NSRange) -> String? {
-        textViewController.text(in: range)
+        textViewController.stringView.value.substring(in: range)
     }
 
     /// Implemented to override the default action of enabling or disabling a specific menu item.
@@ -393,6 +391,16 @@ open class TextView: NSView, NSMenuItemValidation {
         } else {
             return true
         }
+    }
+
+    /// Scrolls the text view to reveal the text in the specified range.
+    ///
+    /// The function will scroll the text view as little as possible while revealing as much as possible of the specified range. It is not guaranteed that the entire range is visible after performing the scroll.
+    ///
+    /// - Parameters:
+    ///   - range: The range of text to scroll into view.
+    public func scrollRangeToVisible(_ range: NSRange) {
+        textViewController.viewportScroller.scroll(toVisibleRange: range)
     }
 }
 
@@ -423,7 +431,8 @@ private extension TextView {
     private func scrollToVisibleLocationIfNeeded() {
         let selectedRange = textViewController.selectedRange.value
         if isAutomaticScrollEnabled, selectedRange.length == 0 {
-            textViewController.scrollLocationToVisible(selectedRange.location)
+            let visibleRange = NSRange(location: selectedRange.location, length: 0)
+            textViewController.viewportScroller.scroll(toVisibleRange: visibleRange)
         }
     }
 }
@@ -448,13 +457,13 @@ private extension TextView {
 }
 
 // MARK: - TextViewControllerDelegate
-extension TextView: TextViewControllerDelegate {
-    func textViewControllerDidChangeText(_ textViewController: TextViewController) {
-        editorDelegate?.textViewDidChange(self)
-    }
-
-    func textViewController(_ textViewController: TextViewController, didChangeSelectedRange selectedRange: NSRange?) {
-        scrollToVisibleLocationIfNeeded()
-    }
-}
+//extension TextView: TextViewControllerDelegate {
+//    func textViewControllerDidChangeText(_ textViewController: TextViewController) {
+//        editorDelegate?.textViewDidChange(self)
+//    }
+//
+//    func textViewController(_ textViewController: TextViewController, didChangeSelectedRange selectedRange: NSRange?) {
+//        scrollToVisibleLocationIfNeeded()
+//    }
+//}
 #endif

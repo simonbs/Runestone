@@ -8,7 +8,7 @@ final class PlainTextInternalLanguageMode: InternalLanguageMode {
         completion(true)
     }
 
-    func textDidChange(_ change: TextStoreChange) -> LineChangeSet {
+    func textDidChange(_ change: TextEdit) -> LineChangeSet {
         LineChangeSet()
     }
 
@@ -26,10 +26,6 @@ final class PlainTextInternalLanguageMode: InternalLanguageMode {
 
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode? {
         nil
-    }
-
-    func currentIndentLevel(of line: LineNode, using indentStrategy: IndentStrategy) -> Int {
-        0
     }
 
     func strategyForInsertingLineBreak(

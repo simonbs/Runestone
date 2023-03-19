@@ -470,7 +470,8 @@ open class TextView: UIScrollView {
         }
     }
     /// When enabled the text view will present a menu with actions actions such as Copy and Replace after navigating to a highlighted range.
-    public var showMenuAfterNavigatingToHighlightedRange = true
+    @_RunestoneProxy(TextView.textViewController.highlightedRangeNavigator.showMenuAfterNavigatingToHighlightedRange)
+    public var showMenuAfterNavigatingToHighlightedRange: Bool
     /// A boolean value that enables a text view's built-in find interaction.
     ///
     /// After enabling the find interaction, use [`presentFindNavigator(showingReplace:)`](https://developer.apple.com/documentation/uikit/uifindinteraction/3975832-presentfindnavigator) on <doc:findInteraction> to present the find navigator.
@@ -568,7 +569,7 @@ open class TextView: UIScrollView {
         textSearchingHelper.textView = self
         editMenuController.delegate = self
         editMenuController.setupEditMenu(in: self)
-        textViewController.highlightedRangeNavigationController.delegate = self
+        textViewController.highlightedRangeNavigator.delegate = self
     }
 
     /// The initializer has not been implemented.
@@ -719,7 +720,8 @@ open class TextView: UIScrollView {
         } else if action == #selector(replace(_:)) {
             return true
         } else if action == NSSelectorFromString("replaceTextInSelectedHighlightedRange") {
-            if let selectedRange = textViewController.selectedRange, let highlightedRange = textViewController.highlightedRange(for: selectedRange) {
+            if let selectedRange = textViewController.selectedRange,
+               let highlightedRange = highlightedRanges.first(where: { $0.range == selectedRange.value }) {
                 return editorDelegate?.textView(self, canReplaceTextIn: highlightedRange) ?? false
             } else {
                 return false
@@ -811,7 +813,9 @@ open class TextView: UIScrollView {
     public func shiftLeft() {
         if let selectedRange = textViewController.selectedRange {
             inputDelegate?.textWillChange(self)
-            textViewController.indentController.shiftLeft(in: selectedRange)
+            textView.inputDelegate?.selectionWillChange(self)
+            textViewController.indentService.shiftLeft(in: selectedRange)
+            textView.inputDelegate?.selectionDidChange(textView)
             inputDelegate?.textDidChange(self)
         }
     }
@@ -820,7 +824,9 @@ open class TextView: UIScrollView {
     public func shiftRight() {
         if let selectedRange = textViewController.selectedRange {
             inputDelegate?.textWillChange(self)
-            textViewController.indentController.shiftRight(in: selectedRange)
+            textView.inputDelegate?.selectionWillChange(self)
+            textViewController.indentService.shiftRight(in: selectedRange)
+            textView.inputDelegate?.selectionDidChange(textView)
             inputDelegate?.textDidChange(self)
         }
     }
@@ -829,14 +835,14 @@ open class TextView: UIScrollView {
     ///
     /// Calling this function has no effect when the selected lines include the first line in the text view.
     public func moveSelectedLinesUp() {
-        textViewController.moveSelectedLinesUp()
+        textViewController.lineMover.moveSelectedLinesUp()
     }
 
     /// Moves the selected lines down by one line.
     ///
     /// Calling this function has no effect when the selected lines include the last line in the text view.
     public func moveSelectedLinesDown() {
-        textViewController.moveSelectedLinesDown()
+        textViewController.lineMover.moveSelectedLinesDown()
     }
 
     /// Attempts to detect the indent strategy used in the document. This may return an unknown strategy even
@@ -911,14 +917,14 @@ open class TextView: UIScrollView {
     /// Selects a highlighted range behind the selected range if possible.
     public func selectPreviousHighlightedRange() {
         inputDelegate?.selectionWillChange(self)
-        textViewController.highlightedRangeNavigationController.selectPreviousRange()
+        textViewController.highlightedRangeNavigator.selectPreviousRange()
         inputDelegate?.selectionDidChange(self)
     }
 
     /// Selects a highlighted range after the selected range if possible.
     public func selectNextHighlightedRange() {
         inputDelegate?.selectionWillChange(self)
-        textViewController.highlightedRangeNavigationController.selectNextRange()
+        textViewController.highlightedRangeNavigator.selectNextRange()
         inputDelegate?.selectionDidChange(self)
     }
 
@@ -926,7 +932,7 @@ open class TextView: UIScrollView {
     /// - Parameter index: Index of highlighted range to select.
     public func selectHighlightedRange(at index: Int) {
         inputDelegate?.selectionWillChange(self)
-        textViewController.highlightedRangeNavigationController.selectRange(at: index)
+        textViewController.highlightedRangeNavigator.selectRange(at: index)
         inputDelegate?.selectionDidChange(self)
     }
 
@@ -1145,9 +1151,13 @@ private extension TextView {
     }
 
     @objc private func replaceTextInSelectedHighlightedRange() {
-        if let selectedRange = textViewController.selectedRange, let highlightedRange = textViewController.highlightedRange(for: selectedRange) {
-            editorDelegate?.textView(self, replaceTextIn: highlightedRange)
+        guard let selectedRange = textViewController.selectedRange else {
+            return
         }
+        guard let highlightedRange = highlightedRanges.first(where: { $0.range == selectedRange }) else {
+            return
+        }
+        editorDelegate?.textView(self, replaceTextIn: highlightedRange)
     }
 
     private func handleKeyPressDuringMultistageTextInput(keyCode: UIKeyboardHIDUsage) {
@@ -1301,29 +1311,6 @@ extension TextView: EditMenuControllerDelegate {
 
     func selectedRange(for controller: EditMenuController) -> NSRange? {
         selectedRange
-    }
-}
-
-// MARK: - HighlightedRangeNavigationControllerDelegate
-extension TextView: HighlightedRangeNavigationControllerDelegate {
-    func highlightNavigationController(
-        _ controller: HighlightedRangeNavigationController,
-        shouldNavigateTo destination: HighlightedRangeNavigationDestination
-    ) {
-        scrollRangeToVisible(destination.range)
-        selectedTextRange = IndexedRange(destination.range)
-        _ = becomeFirstResponder()
-        if showMenuAfterNavigatingToHighlightedRange {
-            editMenuController.presentEditMenu(from: self, forTextIn: destination.range)
-        }
-        switch destination.loopMode {
-        case .previousGoesToLast:
-            editorDelegate?.textViewDidLoopToLastHighlightedRange(self)
-        case .nextGoesToFirst:
-            editorDelegate?.textViewDidLoopToFirstHighlightedRange(self)
-        case .disabled:
-            break
-        }
     }
 }
 #endif

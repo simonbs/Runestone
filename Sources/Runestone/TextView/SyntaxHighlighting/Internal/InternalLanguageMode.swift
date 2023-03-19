@@ -9,10 +9,9 @@ struct InsertLineBreakIndentStrategy {
 protocol InternalLanguageMode: AnyObject {
     func parse(_ text: NSString)
     func parse(_ text: NSString, completion: @escaping ((Bool) -> Void))
-    func textDidChange(_ change: TextStoreChange) -> LineChangeSet
+    func textDidChange(_ change: TextEdit) -> LineChangeSet
     func createSyntaxHighlighter(with theme: CurrentValueSubject<Theme, Never>) -> SyntaxHighlighter
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode?
-    func currentIndentLevel(of line: LineNode, using indentStrategy: IndentStrategy) -> Int
     func strategyForInsertingLineBreak(
         from startLinePosition: LinePosition,
         to endLinePosition: LinePosition,

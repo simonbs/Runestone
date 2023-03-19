@@ -2,10 +2,15 @@ import Combine
 import Foundation
 
 final class CompositionRoot {
+    let textViewDelegateBox = TextViewDelegateBox()
+    let scrollView = CurrentValueSubject<ScrollViewBox, Never>(ScrollViewBox())
     private(set) lazy var keyWindowObserver = KeyWindowObserver(referenceView: textView)
     let isFirstResponder = CurrentValueSubject<Bool, Never>(false)
+    private(set) lazy var editorState = EditorState(textView: textView, textViewDelegate: textViewDelegateBox)
     let selectedRange = CurrentValueSubject<NSRange, Never>(NSRange(location: 0, length: 0))
+    let markedRange = CurrentValueSubject<NSRange?, Never>(nil)
     let stringView = CurrentValueSubject<StringView, Never>(StringView())
+    let undoManager: UndoManager = CoalescingUndoManager()
     private(set) lazy var estimatedLineHeight = EstimatedLineHeight(
         font: themeSettings.font.eraseToAnyPublisher(),
         lineHeightMultiplier: typesetSettings.lineHeightMultiplier.eraseToAnyPublisher()
@@ -19,7 +24,7 @@ final class CompositionRoot {
         LineManager(stringView: stringView.value)
     )
     let textContainer = TextContainer()
-    let typesetSettings = TypesetSettings()
+    private(set) lazy var typesetSettings = TypesetSettings(font: themeSettings.font)
     private(set) lazy var invisibleCharacterSettings = InvisibleCharacterSettings(
         font: themeSettings.font,
         textColor: themeSettings.invisibleCharactersColor
@@ -44,14 +49,25 @@ final class CompositionRoot {
         contentSize: contentSizeService.contentSize,
         textContainerInset: textContainer.inset
     )
-    private(set) lazy var highlightedRangeService = HighlightedRangeService(lineManager: lineManager)
+    private(set) lazy var highlightedRangeFragmentStore = HighlightedRangeFragmentStore(
+        stringView: stringView,
+        lineManager: lineManager
+    )
+    private(set) lazy var highlightedRangeNavigator = HighlightedRangeNavigator(
+        selectedRange: selectedRange,
+        highlightedRanges: highlightedRangeFragmentStore.highlightedRanges,
+        viewportScroller: viewportScroller
+    )
+    private var textEditState = TextEditState()
+
+    #if os(iOS)
+    private var textInputDelegate = TextInputDelegate_iOS()
+    #else
+    private var textInputDelegate = TextInputDelegate_Mac()
+    #endif
 
     private unowned let textView: TextView
     private lazy var totalLineHeightTracker = TotalLineHeightTracker(lineManager: lineManager)
-
-    init(textView: TextView) {
-        self.textView = textView
-    }
 
     private(set) lazy var caret = Caret(
         stringView: stringView,
@@ -72,6 +88,7 @@ final class CompositionRoot {
 
     var lineFragmentLayouter: LineFragmentLayouter {
         LineFragmentLayouter(
+            scrollView: scrollView,
             stringView: stringView,
             lineManager: lineManager,
             lineControllerStorage: lineControllerStorage,
@@ -135,13 +152,93 @@ final class CompositionRoot {
     }
     #endif
 
-    var indentController: IndentController {
-        IndentController(
+    private(set) lazy var textReplacer = TextReplacer(
+        stringView: stringView,
+        selectedRange: selectedRange,
+        markedRange: markedRange,
+        textEditAllowedChecker: textEditAllowedChecker,
+        textEditor: textEditor,
+        characterPairService: characterPairService,
+        replacementTextPreparator: replacementTextPreparator,
+        undoManager: textEditingUndoManager
+    )
+
+    private(set) lazy var textInserter = TextInserter(
+        lineManager: lineManager,
+        selectedRange: selectedRange,
+        markedRange: markedRange,
+        languageMode: languageMode,
+        lineEndings: typesetSettings.lineEndings,
+        indentStrategy: typesetSettings.indentStrategy,
+        textReplacer: textReplacer
+    )
+
+    private(set) lazy var textDeleter = TextDeleter(
+        stringView: stringView,
+        lineManager: lineManager,
+        selectedRange: selectedRange,
+        markedRange: markedRange,
+        lineControllerStorage: lineControllerStorage,
+        textEditState: textEditState,
+        textEditAllowedChecker: textEditAllowedChecker,
+        textEditor: textEditor,
+        undoManager: textEditingUndoManager,
+        textInputDelegate: textInputDelegate,
+        deletionRangeFactory: textDeletionRangeFactory
+    )
+
+    private var textDeletionRangeFactory: TextDeletionRangeFactory {
+        TextDeletionRangeFactory(
+            stringView: stringView,
+            indentRangeFactory: deleteIndentRangeFactory,
+            characterPairRangeFactory: deleteCharacterPairRangeFactory
+        )
+    }
+
+    private var deleteIndentRangeFactory: DeleteIndentRangeFactory {
+        DeleteIndentRangeFactory(
             stringView: stringView,
             lineManager: lineManager,
-            languageMode: languageMode,
-            font: themeSettings.font
+            indentStrategy: typesetSettings.indentStrategy
         )
+    }
+
+    private var deleteCharacterPairRangeFactory: DeleteCharacterPairRangeFactory {
+        DeleteCharacterPairRangeFactory(stringView: stringView, characterPairService: characterPairService)
+    }
+
+    private(set) lazy var characterPairService = CharacterPairService(
+        stringView: stringView,
+        selectedRange: selectedRange,
+        textEditor: textEditor,
+        handlingAllowedChecker: characterPairHandlingAllowedChecker
+    )
+
+    private(set) lazy var lineMover = LineMover(
+        stringView: stringView,
+        lineManager: lineManager,
+        selectedRange: selectedRange,
+        lineEndings: typesetSettings.lineEndings,
+        textEditor: textEditor,
+        undoManager: undoManager
+    )
+
+    private(set) lazy var lineJumper = LineJumper(
+        textView: textView,
+        lineManager: lineManager,
+        selectedRange: selectedRange,
+        viewportScroller: viewportScroller
+    )
+
+    private(set) lazy var viewportScroller = ViewportScroller(
+        scrollView: scrollView,
+        textContainerInset: textContainer.inset,
+        caret: caret,
+        lineFragmentLayouter: lineFragmentLayouter
+    )
+
+    init(textView: TextView) {
+        self.textView = textView
     }
 }
 
@@ -183,5 +280,40 @@ private extension CompositionRoot {
         ).map { isKeyWindow, isFirstResponder, selectedRange in
             isKeyWindow && isFirstResponder && selectedRange.length == 0
         }.eraseToAnyPublisher()
+    }
+
+    private var textEditor: TextEditor {
+        TextEditor(
+            stringView: stringView,
+            lineManager: lineManager,
+            selectedRange: selectedRange,
+            lineControllerStorage: lineControllerStorage,
+            languageMode: languageMode,
+            undoManager: undoManager
+        )
+    }
+
+    private var replacementTextPreparator: ReplacementTextPreparator {
+        ReplacementTextPreparator(lineEndings: typesetSettings.lineEndings)
+    }
+
+    private var characterPairHandlingAllowedChecker: CharacterPairHandlingAllowedChecker {
+        CharacterPairHandlingAllowedChecker(
+            textView: textView,
+            textViewDelegateBox: textViewDelegateBox
+        )
+    }
+
+    private var textEditAllowedChecker: TextEditAllowedChecker {
+        TextEditAllowedChecker(textView: textView, textViewDelegateBox: textViewDelegateBox)
+    }
+
+    private var textEditingUndoManager: TextEditingUndoManager {
+        TextEditingUndoManager(
+            stringView: stringView,
+            selectedRange: selectedRange,
+            undoManager: undoManager,
+            textEditor: textEditor
+        )
     }
 }

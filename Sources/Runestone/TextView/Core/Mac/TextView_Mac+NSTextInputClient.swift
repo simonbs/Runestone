@@ -23,9 +23,10 @@ extension TextView: NSTextInputClient {
         guard let string = string as? String else {
             return
         }
-        let range = replacementRange.location == NSNotFound ? textViewController.rangeForInsertingText : replacementRange
-        if textViewController.shouldChangeText(in: range, replacementText: string) {
-            textViewController.replaceText(in: range, with: string)
+        if replacementRange.location == NSNotFound {
+            textViewController.textInserter.insertText(string)
+        } else {
+            textViewController.textReplacer.replaceText(in: replacementRange, with: string)
         }
     }
 
@@ -37,19 +38,19 @@ extension TextView: NSTextInputClient {
 
     /// Unmarks the marked text.
     public func unmarkText() {
-        textViewController.markedRange = nil
+        textViewController.markedRange.value = nil
     }
 
     /// Returns the range of the marked text.
     /// - Returns: The range of marked text or {NSNotFound, 0} if there is no marked range.
     public func markedRange() -> NSRange {
-        textViewController.markedRange ?? NSRange(location: NSNotFound, length: 0)
+        textViewController.markedRange.value ?? NSRange(location: NSNotFound, length: 0)
     }
 
     /// Returns a Boolean value indicating whether the receiver has marked text.
     /// - Returns: `true` if the receiver has marked text; otherwise `false.
     public func hasMarkedText() -> Bool {
-        (textViewController.markedRange?.length ?? 0) > 0
+        (textViewController.markedRange.value?.length ?? 0) > 0
     }
 
     /// Returns an attributed string derived from the given range in the receiver's text storage.

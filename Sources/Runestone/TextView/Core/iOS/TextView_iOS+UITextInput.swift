@@ -137,7 +137,7 @@ public extension TextView {
         // The backtick will remain marked unless we manually clear the marked range.
         textViewController.markedRange = nil
         if LineEnding(symbol: text) != nil {
-            textViewController.indentController.insertLineBreak(in: selectedRange, using: lineEndings.symbol)
+            textViewController.indentService.insertLineBreak(in: selectedRange, using: lineEndings.symbol)
         } else {
             textViewController.replaceText(in: selectedRange, with: preparedText)
         }
