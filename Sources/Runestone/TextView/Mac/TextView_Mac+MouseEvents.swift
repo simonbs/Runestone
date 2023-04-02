@@ -8,12 +8,12 @@ public extension TextView {
         super.mouseDown(with: event)
         let location = locationClosestToPoint(in: event)
         if event.clickCount == 1 {
-            textViewController.locationNavigator.move(to: location)
-            textViewController.selectionNavigator.startDraggingSelection(from: location)
+            locationNavigator.move(to: location)
+            selectionNavigator.startDraggingSelection(from: location)
         } else if event.clickCount == 2 {
-            textViewController.selectionNavigator.selectWord(at: location)
+            selectionNavigator.selectWord(at: location)
         } else if event.clickCount == 3 {
-            textViewController.selectionNavigator.selectLine(at: location)
+            selectionNavigator.selectLine(at: location)
         }
     }
 
@@ -22,7 +22,7 @@ public extension TextView {
     override func mouseDragged(with event: NSEvent) {
         super.mouseDragged(with: event)
         let location = locationClosestToPoint(in: event)
-        textViewController.selectionNavigator.extendDraggedSelection(to: location)
+        selectionNavigator.extendDraggedSelection(to: location)
     }
 
     /// Informs the receiver that the user has released the left mouse button.
@@ -31,7 +31,7 @@ public extension TextView {
         super.mouseUp(with: event)
         if event.clickCount == 1 {
             let location = locationClosestToPoint(in: event)
-            textViewController.selectionNavigator.extendDraggedSelection(to: location)
+            selectionNavigator.extendDraggedSelection(to: location)
         }
     }
 
@@ -39,9 +39,8 @@ public extension TextView {
     /// - Parameter event: An object encapsulating information about the mouse-down event.
     override func rightMouseDown(with event: NSEvent) {
         let location = locationClosestToPoint(in: event)
-        let selectedRange = textViewController.selectedRange.value
-        if !selectedRange.contains(location) {
-            textViewController.selectionNavigator.selectWord(at: location)
+        if !_selectedRange.value.contains(location) {
+            selectionNavigator.selectWord(at: location)
         }
         super.rightMouseDown(with: event)
     }

@@ -17,13 +17,13 @@ final class CaretLayouter {
 
     init(
         caret: Caret,
-        containerView: MultiPlatformView,
+        containerView: CurrentValueSubject<WeakBox<TextView>, Never>,
         selectedRange: AnyPublisher<NSRange, Never>,
         showCaret: AnyPublisher<Bool, Never>
     ) {
         caretView.layer?.zPosition = 1000
         caretView.isHidden = true
-        containerView.addSubview(caretView)
+        containerView.value.value?.addSubview(caretView)
         selectedRange.removeDuplicates().sink { [weak self] selectedRange in
             self?.caretView.delayBlink()
         }.store(in: &cancellabels)

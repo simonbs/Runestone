@@ -5,11 +5,11 @@ final class EditorState {
     let isEditable = CurrentValueSubject<Bool, Never>(true)
     let isSelectable = CurrentValueSubject<Bool, Never>(true)
 
-    private unowned let textView: TextView
+    private let textView: CurrentValueSubject<WeakBox<TextView>, Never>
     private let textViewDelegate: ErasedTextViewDelegate
     private var cancellables: Set<AnyCancellable> = []
 
-    init(textView: TextView, textViewDelegate: ErasedTextViewDelegate) {
+    init(textView: CurrentValueSubject<WeakBox<TextView>, Never>, textViewDelegate: ErasedTextViewDelegate) {
         self.textView = textView
         self.textViewDelegate = textViewDelegate
         Publishers.CombineLatest3(isEditing, isEditable, isSelectable).sink { [weak self] isEditing, isEditable, isSelectable in
@@ -22,7 +22,7 @@ final class EditorState {
 
 private extension EditorState {
     private func endEditing() {
-        textView.resignFirstResponder()
+        textView.value.value?.resignFirstResponder()
         isEditing.value = false
         textViewDelegate.textViewDidEndEditing()
     }

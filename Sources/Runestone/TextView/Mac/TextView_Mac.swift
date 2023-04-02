@@ -17,10 +17,10 @@ open class TextView: NSView, NSMenuItemValidation {
     /// Delegate to receive callbacks for events triggered by the editor.
     public weak var editorDelegate: TextViewDelegate? {
         get {
-            textViewController.textViewDelegate.delegate
+            textViewDelegate.delegate
         }
         set {
-            textViewController.textViewDelegate.delegate = newValue
+            textViewDelegate.delegate = newValue
         }
     }
     /// Returns a Boolean value indicating whether this object can become the first responder.
@@ -32,212 +32,276 @@ open class TextView: NSView, NSMenuItemValidation {
         true
     }
     /// A Boolean value that indicates whether the text view is editable.
-    @_RunestoneProxy(\TextView.textViewController.editorState.isEditable.value)
+    @_RunestoneProxy(\TextView.editorState.isEditable.value)
     public var isEditable: Bool
     /// Whether the text view is in a state where the contents can be edited.
     public var isEditing: Bool {
-        textViewController.editorState.isEditing.value
+        editorState.isEditing.value
     }
     /// The text that the text view displays.
     public var text: String {
         get {
-            textViewController.stringView.value.string as String
+            stringView.value.string as String
         }
         set {
-            textViewController.textSetter.setText(newValue as NSString)
+            textSetter.setText(newValue as NSString)
         }
     }
     /// Colors and fonts to be used by the editor.
-    @_RunestoneProxy(\TextView.textViewController.themeSettings.theme.value)
+    @_RunestoneProxy(\TextView.themeSettings.theme.value)
     public var theme: Theme
     /// Character pairs are used by the editor to automatically insert a trailing character when the user types the leading character.
     ///
     /// Common usages of this includes the \" character to surround strings and { } to surround a scope.
-    @_RunestoneProxy(\TextView.textViewController.characterPairService.characterPairs)
+    @_RunestoneProxy(\TextView.characterPairService.characterPairs)
     public var characterPairs: [CharacterPair]
     /// Determines what should happen to the trailing component of a character pair when deleting the leading component. Defaults to `disabled` meaning that nothing will happen.
-    @_RunestoneProxy(\TextView.textViewController.characterPairService.trailingComponentDeletionMode)
+    @_RunestoneProxy(\TextView.characterPairService.trailingComponentDeletionMode)
     public var characterPairTrailingComponentDeletionMode: CharacterPairTrailingComponentDeletionMode
     /// Enable to show line numbers in the gutter.
 //    public var showLineNumbers: Bool {
 //        get {
-//            textViewController.showLineNumbers
+//            showLineNumbers
 //        }
 //        set {
-//            textViewController.showLineNumbers = newValue
+//            showLineNumbers = newValue
 //        }
 //    }
     /// Enable to show highlight the selected lines. The selection is only shown in the gutter when multiple lines are selected.
-    @_RunestoneProxy(\TextView.textViewController.lineSelectionLayouter.lineSelectionDisplayType.value)
+    @_RunestoneProxy(\TextView.lineSelectionLayouter.lineSelectionDisplayType.value)
     public var lineSelectionDisplayType: LineSelectionDisplayType
     /// The text view renders invisible tabs when enabled. The `tabsSymbol` is used to render tabs.
-    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.showTabs.value)
+    @_RunestoneProxy(\TextView.invisibleCharacterSettings.showTabs.value)
     public var showTabs: Bool
     /// The text view renders invisible spaces when enabled.
     ///
     /// The `spaceSymbol` is used to render spaces.
-    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.showSpaces.value)
+    @_RunestoneProxy(\TextView.invisibleCharacterSettings.showSpaces.value)
     public var showSpaces: Bool
     /// The text view renders invisible spaces when enabled.
     ///
     /// The `nonBreakingSpaceSymbol` is used to render spaces.
-    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.showNonBreakingSpaces.value)
+    @_RunestoneProxy(\TextView.invisibleCharacterSettings.showNonBreakingSpaces.value)
     public var showNonBreakingSpaces: Bool
     /// The text view renders invisible line breaks when enabled.
     ///
     /// The `lineBreakSymbol` is used to render line breaks.
-    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.showLineBreaks.value)
+    @_RunestoneProxy(\TextView.invisibleCharacterSettings.showLineBreaks.value)
     public var showLineBreaks: Bool
     /// The text view renders invisible soft line breaks when enabled.
     ///
     /// The `softLineBreakSymbol` is used to render line breaks. These line breaks are typically represented by the U+2028 unicode character. Runestone does not provide any key commands for inserting these but supports rendering them.
-    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.showSoftLineBreaks.value)
+    @_RunestoneProxy(\TextView.invisibleCharacterSettings.showSoftLineBreaks.value)
     public var showSoftLineBreaks: Bool
     /// Symbol used to display tabs.
     ///
     /// The value is only used when invisible tab characters is enabled. The default is ▸.
     ///
     /// Common characters for this symbol include ▸, ⇥, ➜, ➞, and ❯.
-    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.tabSymbol.value)
+    @_RunestoneProxy(\TextView.invisibleCharacterSettings.tabSymbol.value)
     public var tabSymbol: String
     /// Symbol used to display spaces.
     ///
     /// The value is only used when showing invisible space characters is enabled. The default is ·.
     ///
     /// Common characters for this symbol include ·, •, and _.
-    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.spaceSymbol.value)
+    @_RunestoneProxy(\TextView.invisibleCharacterSettings.spaceSymbol.value)
     public var spaceSymbol: String
     /// Symbol used to display non-breaking spaces.
     ///
     /// The value is only used when showing invisible space characters is enabled. The default is ·.
     ///
     /// Common characters for this symbol include ·, •, and _.
-    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.nonBreakingSpaceSymbol.value)
+    @_RunestoneProxy(\TextView.invisibleCharacterSettings.nonBreakingSpaceSymbol.value)
     public var nonBreakingSpaceSymbol: String
     /// Symbol used to display line break.
     ///
     /// The value is only used when showing invisible line break characters is enabled. The default is ¬.
     ///
     /// Common characters for this symbol include ¬, ↵, ↲, ⤶, and ¶.
-    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.lineBreakSymbol.value)
+    @_RunestoneProxy(\TextView.invisibleCharacterSettings.lineBreakSymbol.value)
     public var lineBreakSymbol: String
     /// Symbol used to display soft line breaks.
     ///
     /// The value is only used when showing invisible soft line break characters is enabled. The default is ¬.
     ///
     /// Common characters for this symbol include ¬, ↵, ↲, ⤶, and ¶.
-    @_RunestoneProxy(\TextView.textViewController.invisibleCharacterSettings.softLineBreakSymbol.value)
+    @_RunestoneProxy(\TextView.invisibleCharacterSettings.softLineBreakSymbol.value)
     public var softLineBreakSymbol: String
     /// The strategy used when indenting text.
-    @_RunestoneProxy(\TextView.textViewController.typesetSettings.indentStrategy.value)
+    @_RunestoneProxy(\TextView.typesetSettings.indentStrategy.value)
     public var indentStrategy: IndentStrategy
     /// The amount of padding before the line numbers inside the gutter.
 //    public var gutterLeadingPadding: CGFloat {
 //        get {
-//            textViewController.gutterLeadingPadding
+//            gutterLeadingPadding
 //        }
 //        set {
-//            textViewController.gutterLeadingPadding = newValue
+//            gutterLeadingPadding = newValue
 //        }
 //    }
     /// The amount of padding after the line numbers inside the gutter.
 //    public var gutterTrailingPadding: CGFloat {
 //        get {
-//            textViewController.gutterTrailingPadding
+//            gutterTrailingPadding
 //        }
 //        set {
-//            textViewController.gutterTrailingPadding = newValue
+//            gutterTrailingPadding = newValue
 //        }
 //    }
     /// The minimum amount of characters to use for width calculation inside the gutter.
 //    public var gutterMinimumCharacterCount: Int {
 //        get {
-//            textViewController.gutterMinimumCharacterCount
+//            gutterMinimumCharacterCount
 //        }
 //        set {
-//            textViewController.gutterMinimumCharacterCount = newValue
+//            gutterMinimumCharacterCount = newValue
 //        }
 //    }
     /// The amount of spacing surrounding the lines.
-    @_RunestoneProxy(\TextView.textViewController.textContainer.inset.value)
+    @_RunestoneProxy(\TextView.textContainer.inset.value)
     public var textContainerInset: NSEdgeInsets
     /// When line wrapping is disabled, users can scroll the text view horizontally to see the entire line.
     ///
     /// Line wrapping is enabled by default.
-    @_RunestoneProxy(\TextView.textViewController.typesetSettings.isLineWrappingEnabled.value)
+    @_RunestoneProxy(\TextView.typesetSettings.isLineWrappingEnabled.value)
     public var isLineWrappingEnabled: Bool
     /// Line break mode for text view. The default value is .byWordWrapping meaning that wrapping occurs on word boundaries.
-    @_RunestoneProxy(\TextView.textViewController.typesetSettings.lineBreakMode.value)
+    @_RunestoneProxy(\TextView.typesetSettings.lineBreakMode.value)
     public var lineBreakMode: LineBreakMode
     /// Width of the gutter.
 //    public var gutterWidth: CGFloat {
-//        textViewController.gutterWidthService.gutterWidth
+//        gutterWidthService.gutterWidth
 //    }
     /// The line-height is multiplied with the value.
-    @_RunestoneProxy(\TextView.textViewController.typesetSettings.lineHeightMultiplier.value)
+    @_RunestoneProxy(\TextView.typesetSettings.lineHeightMultiplier.value)
     public var lineHeightMultiplier: CGFloat
     /// The number of points by which to adjust kern. The default value is 0 meaning that kerning is disabled.
-    @_RunestoneProxy(\TextView.textViewController.typesetSettings.kern.value)
+    @_RunestoneProxy(\TextView.typesetSettings.kern.value)
     public var kern: CGFloat
     /// The text view shows a page guide when enabled. Use `pageGuideColumn` to specify the location of the page guide.
-    @_RunestoneProxy(\TextView.textViewController.pageGuideLayouter.isEnabled)
+    @_RunestoneProxy(\TextView.pageGuideLayouter.isEnabled)
     public var showPageGuide: Bool
     /// Specifies the location of the page guide. Use `showPageGuide` to specify if the page guide should be shown.
-    @_RunestoneProxy(\TextView.textViewController.pageGuideLayouter.column)
+    @_RunestoneProxy(\TextView.pageGuideLayouter.column)
     public var pageGuideColumn: Int
     /// Automatically scrolls the text view to show the caret when typing or moving the caret.
-    @_RunestoneProxy(\TextView.textViewController.automaticViewportScroller.isAutomaticScrollEnabled)
+    @_RunestoneProxy(\TextView.automaticViewportScroller.isAutomaticScrollEnabled)
     public var isAutomaticScrollEnabled: Bool
     /// Amount of overscroll to add in the vertical direction.
     ///
     /// The overscroll is a factor of the scrollable area height and will not take into account any insets. 0 means no overscroll and 1 means an amount equal to the height of the text view. Detaults to 0.
-    @_RunestoneProxy(\TextView.textViewController.contentSizeService.verticalOverscrollFactor.value)
+    @_RunestoneProxy(\TextView.contentSizeService.verticalOverscrollFactor.value)
     public var verticalOverscrollFactor: CGFloat
     /// Amount of overscroll to add in the horizontal direction.
     ///
     /// The overscroll is a factor of the scrollable area height and will not take into account any insets or the width of the gutter. 0 means no overscroll and 1 means an amount equal to the width of the text view. Detaults to 0.
-    @_RunestoneProxy(\TextView.textViewController.contentSizeService.horizontalOverscrollFactor.value)
+    @_RunestoneProxy(\TextView.contentSizeService.horizontalOverscrollFactor.value)
     public var horizontalOverscrollFactor: CGFloat
     /// The length of the line that was longest when opening the document.
     ///
     /// This will return nil if the line is no longer available. The value will not be kept updated as the text is changed. The value can be used to determine if a document contains a very long line in which case the performance may be degraded when editing the line.
     public var lengthOfInitallyLongestLine: Int? {
-        textViewController.lineManager.value.initialLongestLine?.data.totalLength
+        lineManager.value.initialLongestLine?.data.totalLength
     }
     /// Ranges in the text to be highlighted. The color defined by the background will be drawen behind the text.
-    @_RunestoneProxy(\TextView.textViewController.highlightedRangeFragmentStore.highlightedRanges.value)
+    @_RunestoneProxy(\TextView.highlightedRangeFragmentStore.highlightedRanges.value)
     public var highlightedRanges: [HighlightedRange]
     /// Wheter the text view should loop when navigating through highlighted ranges using `selectPreviousHighlightedRange` or `selectNextHighlightedRange` on the text view.
-    @_RunestoneProxy(\TextView.textViewController.highlightedRangeNavigator.loopingMode)
+    @_RunestoneProxy(\TextView.highlightedRangeNavigator.loopingMode)
     public var highlightedRangeLoopingMode: HighlightedRangeLoopingMode
     /// Line endings to use when inserting a line break.
     ///
     /// The value only affects new line breaks inserted in the text view and changing this value does not change the line endings of the text in the text view. Defaults to Unix (LF).
     ///
     /// The TextView will only update the line endings when text is modified through an external event, such as when the user typing on the keyboard, when the user is replacing selected text, and when pasting text into the text view. In all other cases, you should make sure that the text provided to the text view uses the desired line endings. This includes when calling ``TextView/setState(_:addUndoAction:)``.
-    @_RunestoneProxy(\TextView.textViewController.typesetSettings.lineEndings.value)
+    @_RunestoneProxy(\TextView.typesetSettings.lineEndings.value)
     public var lineEndings: LineEnding
     /// The color of the insertion point. This can be used to control the color of the caret.
-    @_RunestoneProxy(\TextView.textViewController.caretLayouter.color)
+    @_RunestoneProxy(\TextView.caretLayouter.color)
     public var insertionPointColor: NSColor
     /// The color of the selection highlight. It is most common to set this to the same color as the color used for the insertion point.
-    @_RunestoneProxy(\TextView.textViewController.textSelectionLayouter.backgroundColor.value)
+    @_RunestoneProxy(\TextView.textSelectionLayouter.backgroundColor.value)
     public var selectionHighlightColor: NSColor
     /// The object that the document uses to support undo/redo operations.
     override open var undoManager: UndoManager? {
-        textViewController.undoManager
+        _undoManager
     }
 
-    private(set) lazy var textViewController = TextViewController(textView: self)
+    let _scrollView: CurrentValueSubject<WeakBox<MultiPlatformScrollView>, Never>
+    let textViewDelegate: ErasedTextViewDelegate
+    let isFirstResponder: CurrentValueSubject<Bool, Never>
+    private let keyWindowObserver: KeyWindowObserver
+    private let textViewNeedsLayoutObserver: TextViewNeedsLayoutObserver
+    private var boundsObserver: AnyCancellable?
+    private var windowDidResignKeyObserver: AnyCancellable?
+
+    let stringView: CurrentValueSubject<StringView, Never>
+    let lineManager: CurrentValueSubject<LineManager, Never>
+    let lineControllerStorage: LineControllerStorage
+
+    let _selectedRange: CurrentValueSubject<NSRange, Never>
+    let _markedRange: CurrentValueSubject<NSRange?, Never>
+
+    let textContainer: TextContainer
+    let typesetSettings: TypesetSettings
+    let invisibleCharacterSettings: InvisibleCharacterSettings
+    let themeSettings: ThemeSettings
+
+    let _undoManager: UndoManager
+    let characterPairService: CharacterPairService
+    let indentationChecker: IndentationChecker
+
+    let languageMode: CurrentValueSubject<InternalLanguageMode, Never>
+    let languageModeSetter: LanguageModeSetter
+
+    let textSetter: TextSetter
+    let textViewStateSetter: TextViewStateSetter
+
+    let editorState: EditorState
+    let textReplacer: TextReplacer
+    let textInserter: TextInserter
+    let textDeleter: TextDeleter
+    let textShifter: TextShifter
+
+    let caret: Caret
+    let contentSizeService: ContentSizeService
+    private let estimatedLineHeight: EstimatedLineHeight
+    private let widestLineTracker: WidestLineTracker
+    private let contentArea: ContentArea
+
+    let locationNavigator: LocationNavigator
+    let locationRaycaster: LocationRaycaster
+    let selectionNavigator: SelectionNavigator
+    let lineMover: LineMover
+    let goToLineNavigator: GoToLineNavigator
+    let syntaxNodeRaycaster: SyntaxNodeRaycaster
+    let textLocationConverter: TextLocationConverter
+
+    let caretLayouter: CaretLayouter
+    let lineFragmentLayouter: LineFragmentLayouter
+    let textSelectionLayouter: TextSelectionLayouter
+    let lineSelectionLayouter: LineSelectionLayouter
+    let pageGuideLayouter: PageGuideLayouter
+
+    let viewportScroller: ViewportScroller
+    let automaticViewportScroller: AutomaticViewportScroller
+
     let textFinder = NSTextFinder()
+    let searchService: SearchService
+    let batchReplacer: BatchReplacer
+    private let textFinderClient = TextFinderClient()
+
+    let highlightedRangeFragmentStore: HighlightedRangeFragmentStore
+    let highlightedRangeNavigator: HighlightedRangeNavigator
+
     var scrollView: NSScrollView? {
         guard let scrollView = enclosingScrollView, scrollView.documentView === self else {
             return nil
         }
         return scrollView
-     }
+    }
 
-    private let textFinderClient = TextFinderClient()
     private var shouldBeginEditing: Bool {
         guard isEditable else {
             return false
@@ -255,26 +319,82 @@ open class TextView: NSView, NSMenuItemValidation {
             return true
         }
     }
-    private var boundsObserver: AnyCancellable?
-    private var windowDidResignKeyObserver: AnyCancellable?
 
     /// Create a new text view.
     public init() {
+        let compositionRoot = CompositionRoot()
+        _scrollView = compositionRoot.scrollView
+        textViewDelegate = compositionRoot.textViewDelegate
+        isFirstResponder = compositionRoot.isFirstResponder
+        keyWindowObserver = compositionRoot.keyWindowObserver
+        textViewNeedsLayoutObserver = compositionRoot.textViewNeedsLayoutObserver
+
+        stringView = compositionRoot.stringView
+        lineManager = compositionRoot.lineManager
+        lineControllerStorage = compositionRoot.lineControllerStorage
+
+        _selectedRange = compositionRoot.selectedRange
+        _markedRange = compositionRoot.markedRange
+
+        textContainer = compositionRoot.textContainer
+        typesetSettings = compositionRoot.typesetSettings
+        invisibleCharacterSettings = compositionRoot.invisibleCharacterSettings
+        themeSettings = compositionRoot.themeSettings
+
+        _undoManager = compositionRoot.undoManager
+        characterPairService = compositionRoot.characterPairService
+        indentationChecker = compositionRoot.indentationChecker
+
+        languageMode = compositionRoot.languageMode
+        languageModeSetter = compositionRoot.languageModeSetter
+
+        textSetter = compositionRoot.textSetter
+        textViewStateSetter = compositionRoot.textViewStateSetter
+
+        editorState = compositionRoot.editorState
+        textReplacer = compositionRoot.textReplacer
+        textInserter = compositionRoot.textInserter
+        textDeleter = compositionRoot.textDeleter
+        textShifter = compositionRoot.textShifter
+
+        caret = compositionRoot.caret
+        contentSizeService = compositionRoot.contentSizeService
+        estimatedLineHeight = compositionRoot.estimatedLineHeight
+        widestLineTracker = compositionRoot.widestLineTracker
+        contentArea = compositionRoot.contentArea
+
+        locationNavigator = compositionRoot.locationNavigator
+        locationRaycaster = compositionRoot.locationRaycaster
+        selectionNavigator = compositionRoot.selectionNavigator
+        lineMover = compositionRoot.lineMover
+        goToLineNavigator = compositionRoot.goToLineNavigator
+        syntaxNodeRaycaster = compositionRoot.syntaxNodeRaycaster
+        textLocationConverter = compositionRoot.textLocationConverter
+
+        caretLayouter = compositionRoot.caretLayouter
+        lineFragmentLayouter = compositionRoot.lineFragmentLayouter
+        textSelectionLayouter = compositionRoot.textSelectionLayouter
+        lineSelectionLayouter = compositionRoot.lineSelectionLayouter
+        pageGuideLayouter = compositionRoot.pageGuideLayouter
+
+        viewportScroller = compositionRoot.viewportScroller
+        automaticViewportScroller = compositionRoot.automaticViewportScroller
+
+        searchService = compositionRoot.searchService
+        batchReplacer = compositionRoot.batchReplacer
+
+        highlightedRangeFragmentStore = compositionRoot.highlightedRangeFragmentStore
+        highlightedRangeNavigator = compositionRoot.highlightedRangeNavigator
         super.init(frame: .zero)
-        setup()
-    }
-
-    /// Create a new text view from a XIB or Storyboard.
-    public required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setup()
-    }
-
-    private func setup() {
-        textViewController.selectedRange.value = NSRange(location: 0, length: 0)
-        textViewController.scrollView.value = WeakBox(scrollView)
+        compositionRoot.textView.value = WeakBox(self)
+        _selectedRange.value = NSRange(location: 0, length: 0)
+        _scrollView.value = WeakBox(scrollView)
         setupScrollViewBoundsDidChangeObserver()
         setupMenu()
+    }
+
+    required public init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 
     /// Create a scroll view with an instance of `TextView` assigned to the document view.
@@ -293,7 +413,7 @@ open class TextView: NSView, NSMenuItemValidation {
     /// Informs the view that its superview has changed.
     open override func viewDidMoveToSuperview() {
         super.viewDidMoveToSuperview()
-        textViewController.scrollView.value = WeakBox(scrollView)
+        _scrollView.value = WeakBox(scrollView)
         setupScrollViewBoundsDidChangeObserver()
         setupTextFinder()
     }
@@ -306,11 +426,11 @@ open class TextView: NSView, NSMenuItemValidation {
         }
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if didBecomeFirstResponder {
-            textViewController.isFirstResponder.value = true
-            textViewController.editorState.isEditing.value = true
+            isFirstResponder.value = true
+            editorState.isEditing.value = true
             editorDelegate?.textViewDidBeginEditing(self)
         } else {
-            textViewController.editorState.isEditing.value = false
+            editorState.isEditing.value = false
         }
         return didBecomeFirstResponder
     }
@@ -323,8 +443,8 @@ open class TextView: NSView, NSMenuItemValidation {
         }
         let didResignFirstResponder = super.resignFirstResponder()
         if didResignFirstResponder {
-            textViewController.isFirstResponder.value = false
-            textViewController.editorState.isEditing.value = false
+            isFirstResponder.value = false
+            editorState.isEditing.value = false
             editorDelegate?.textViewDidEndEditing(self)
         }
         return didResignFirstResponder
@@ -334,10 +454,10 @@ open class TextView: NSView, NSMenuItemValidation {
     open override func layout() {
         super.layout()
         updateViewport()
-//        textViewController.caretLayouter.layoutIfNeeded()
-        textViewController.lineFragmentLayouter.layoutIfNeeded()
-//        textViewController.lineSelectionLayouter.layoutIfNeeded()
-        textViewController.contentSizeService.updateContentSizeIfNeeded()
+//        caretLayouter.layoutIfNeeded()
+        lineFragmentLayouter.layoutIfNeeded()
+//        lineSelectionLayouter.layoutIfNeeded()
+        contentSizeService.updateContentSizeIfNeeded()
     }
 
     /// Overridden by subclasses to define their default cursor rectangles.
@@ -382,19 +502,11 @@ private extension TextView {
     }
 
     private func updateViewport() {
-        let viewport = textViewController.textContainer.viewport
+        let viewport = textContainer.viewport
         if let scrollView {
             viewport.value = scrollView.documentVisibleRect
         } else {
             viewport.value = CGRect(origin: .zero, size: frame.size)
-        }
-    }
-
-    private func scrollToVisibleLocationIfNeeded() {
-        let selectedRange = textViewController.selectedRange.value
-        if isAutomaticScrollEnabled, selectedRange.length == 0 {
-            let visibleRange = NSRange(location: selectedRange.location, length: 0)
-            textViewController.viewportScroller.scroll(toVisibleRange: visibleRange)
         }
     }
 }

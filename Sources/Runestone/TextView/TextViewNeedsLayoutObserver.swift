@@ -2,13 +2,13 @@ import Combine
 import CoreGraphics
 
 final class TextViewNeedsLayoutObserver {
-    private unowned let textView: TextView
+    private let textView: CurrentValueSubject<WeakBox<TextView>, Never>
     private let stringView: CurrentValueSubject<StringView, Never>
     private let viewport: CurrentValueSubject<CGRect, Never>
     private var cancellables: Set<AnyCancellable> = []
 
     init(
-        textView: TextView,
+        textView: CurrentValueSubject<WeakBox<TextView>, Never>,
         stringView: CurrentValueSubject<StringView, Never>,
         viewport: CurrentValueSubject<CGRect, Never>
     ) {
@@ -22,7 +22,7 @@ final class TextViewNeedsLayoutObserver {
 private extension TextViewNeedsLayoutObserver {
     private func setupObserver() {
         Publishers.CombineLatest(stringView, viewport.removeDuplicates()).sink { [weak self] _ in
-            self?.textView.setNeedsLayout()
+            self?.textView.value.value?.setNeedsLayout()
         }.store(in: &cancellables)
     }
 }

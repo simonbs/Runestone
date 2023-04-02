@@ -15,7 +15,7 @@ final class PageGuideLayouter {
         didSet {
             if isEnabled != oldValue {
                 if isEnabled {
-                    containerView.addSubview(view)
+                    containerView.value.value?.addSubview(view)
                 } else {
                     view.removeFromSuperview()
                 }
@@ -35,7 +35,7 @@ final class PageGuideLayouter {
     private let backgroundColor: CurrentValueSubject<MultiPlatformColor, Never>
     private let hairlineColor: CurrentValueSubject<MultiPlatformColor, Never>
     private let hairlineWidth: CurrentValueSubject<CGFloat, Never>
-    private unowned let containerView: MultiPlatformView
+    private let containerView: CurrentValueSubject<WeakBox<TextView>, Never>
     private var columnOffset: CGFloat = 0
     private var cancellables: Set<AnyCancellable> = []
     private let view = PageGuideView()
@@ -46,7 +46,7 @@ final class PageGuideLayouter {
         backgroundColor: CurrentValueSubject<MultiPlatformColor, Never>,
         hairlineColor: CurrentValueSubject<MultiPlatformColor, Never>,
         hairlineWidth: CurrentValueSubject<CGFloat, Never>,
-        containerView: MultiPlatformView
+        containerView: CurrentValueSubject<WeakBox<TextView>, Never>
     ) {
         self.font = font
         self.kern = kern

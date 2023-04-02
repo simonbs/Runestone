@@ -5,7 +5,7 @@ final class HighlightedRangeNavigator {
     var loopingMode: HighlightedRangeLoopingMode = .disabled
     var showMenuAfterNavigatingToHighlightedRange = true
 
-    private unowned let textView: TextView
+    private let textView: CurrentValueSubject<WeakBox<TextView>, Never>
     private let textViewDelegate: ErasedTextViewDelegate
     private let selectedRange: CurrentValueSubject<NSRange, Never>
     private let highlightedRanges: CurrentValueSubject<[HighlightedRange], Never>
@@ -35,7 +35,7 @@ final class HighlightedRangeNavigator {
     }
 
     init(
-        textView: TextView,
+        textView: CurrentValueSubject<WeakBox<TextView>, Never>,
         textViewDelegate: ErasedTextViewDelegate,
         selectedRange: CurrentValueSubject<NSRange, Never>,
         highlightedRanges: CurrentValueSubject<[HighlightedRange], Never>,
@@ -79,7 +79,7 @@ private extension HighlightedRangeNavigator {
     private func navigate(to destination: HighlightedRangeNavigationDestination) {
         viewportScroller.scroll(toVisibleRange: destination.range)
         selectedRange.value = destination.range
-        textView.becomeFirstResponder()
+        textView.value.value?.becomeFirstResponder()
         if showMenuAfterNavigatingToHighlightedRange {
             editMenuPresenter.presentForText(in: destination.range)
         }

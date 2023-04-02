@@ -1,12 +1,16 @@
+import Combine
 import Foundation
 
 final class ErasedTextViewDelegate {
     weak var delegate: TextViewDelegate?
 
-    private unowned let textView: TextView
+    private let _textView: CurrentValueSubject<WeakBox<TextView>, Never>
+    private var textView: TextView {
+        _textView.value.value!
+    }
 
-    init(textView: TextView) {
-        self.textView = textView
+    init(textView: CurrentValueSubject<WeakBox<TextView>, Never>) {
+        _textView = textView
     }
 
     func textViewDidChange() {

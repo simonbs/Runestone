@@ -12,7 +12,7 @@ public extension TextView {
     /// - Parameter state: The new state to be used by the editor.
     /// - Parameter addUndoAction: Whether the state change can be undone. Defaults to false.
     func setState(_ state: TextViewState, addUndoAction: Bool = false) {
-        textViewController.textViewStateSetter.setState(state, addUndoAction: addUndoAction)
+        textViewStateSetter.setState(state, addUndoAction: addUndoAction)
     }
 
     /// Returns the row and column at the specified location in the text.
@@ -20,14 +20,14 @@ public extension TextView {
     /// - Parameter location: The location is relative to the first index in the string.
     /// - Returns: The text location if the input location could be found in the string, otherwise nil.
     func textLocation(at location: Int) -> TextLocation? {
-        textViewController.textLocationConverter.textLocation(at: location)
+        textLocationConverter.textLocation(at: location)
     }
 
     /// Returns the character location at the specified row and column.
     /// - Parameter textLocation: The row and column in the text.
     /// - Returns: The location if the input row and column could be found in the text, otherwise nil.
     func location(at textLocation: TextLocation) -> Int? {
-        textViewController.textLocationConverter.location(at: textLocation)
+        textLocationConverter.location(at: textLocation)
     }
 
     /// Sets the language mode on a background thread.
@@ -36,14 +36,14 @@ public extension TextView {
     ///   - languageMode: The new language mode to be used by the editor.
     ///   - completion: Called when the content have been parsed or when parsing fails.
     func setLanguageMode(_ languageMode: LanguageMode, completion: ((Bool) -> Void)? = nil) {
-        textViewController.languageModeSetter.setLanguageMode(languageMode, completion: completion)
+        languageModeSetter.setLanguageMode(languageMode, completion: completion)
     }
 
     /// Replaces the text in the specified matches.
     /// - Parameters:
     ///   - batchReplaceSet: Set of ranges to replace with a text.
     func replaceText(in batchReplaceSet: BatchReplaceSet) {
-        textViewController.batchReplacer.replaceText(in: batchReplaceSet)
+        batchReplacer.replaceText(in: batchReplaceSet)
     }
 
     /// Returns the syntax node at the specified location in the document.
@@ -56,7 +56,7 @@ public extension TextView {
     /// - Parameter location: A location in the document.
     /// - Returns: The syntax node at the location.
     func syntaxNode(at location: Int) -> SyntaxNode? {
-        textViewController.syntaxNodeRaycaster.syntaxNode(at: location)
+        syntaxNodeRaycaster.syntaxNode(at: location)
     }
 
     /// Checks if the specified locations is within the indentation of the line.
@@ -64,37 +64,37 @@ public extension TextView {
     /// - Parameter location: A location in the document.
     /// - Returns: True if the location is within the indentation of the line, otherwise false.
     func isIndentation(at location: Int) -> Bool {
-        textViewController.indentationChecker.isIndentation(at: location)
+        indentationChecker.isIndentation(at: location)
     }
 
     /// Decreases the indentation level of the selected lines.
     func shiftLeft() {
-        textViewController.textShifter.shiftLeft()
+        textShifter.shiftLeft()
     }
 
     /// Increases the indentation level of the selected lines.
     func shiftRight() {
-        textViewController.textShifter.shiftRight()
+        textShifter.shiftRight()
     }
 
     /// Moves the selected lines up by one line.
     ///
     /// Calling this function has no effect when the selected lines include the first line in the text view.
     func moveSelectedLinesUp() {
-        textViewController.lineMover.moveSelectedLinesUp()
+        lineMover.moveSelectedLinesUp()
     }
 
     /// Moves the selected lines down by one line.
     ///
     /// Calling this function has no effect when the selected lines include the last line in the text view.
     func moveSelectedLinesDown() {
-        textViewController.lineMover.moveSelectedLinesDown()
+        lineMover.moveSelectedLinesDown()
     }
 
     /// Attempts to detect the indent strategy used in the document. This may return an unknown strategy even
     /// when the document contains indentation.
     func detectIndentStrategy() -> DetectedIndentStrategy {
-        textViewController.languageMode.value.detectIndentStrategy()
+        languageMode.value.detectIndentStrategy()
     }
 
     /// Go to the beginning of the line at the specified index.
@@ -104,7 +104,7 @@ public extension TextView {
     /// - Returns: True if the text view could navigate to the specified line index, otherwise false.
     @discardableResult
     func goToLine(_ lineIndex: Int, select selection: GoToLineSelection = .beginning) -> Bool {
-        textViewController.goToLineNavigator.goToLine(lineIndex, select: selection)
+        goToLineNavigator.goToLine(lineIndex, select: selection)
     }
 
     /// Search for the specified query.
@@ -119,7 +119,7 @@ public extension TextView {
     /// - Parameter query: Query to find matches for.
     /// - Returns: Results matching the query.
     func search(for query: SearchQuery) -> [SearchResult] {
-        textViewController.searchService.search(for: query)
+        searchService.search(for: query)
     }
 
     /// Search for the specified query and return results that take a replacement string into account.
@@ -141,7 +141,7 @@ public extension TextView {
     ///   - replacementString: String to replace matches with. Can refer to groups in a regular expression using $0, $1, $2 etc.
     /// - Returns: Results matching the query.
     func search(for query: SearchQuery, replacingMatchesWith replacementString: String) -> [SearchReplaceResult] {
-        textViewController.searchService.search(for: query, replacingMatchesWith: replacementString)
+        searchService.search(for: query, replacingMatchesWith: replacementString)
     }
 
     /// Returns a peek into the text view's underlying attributed string.
@@ -149,26 +149,26 @@ public extension TextView {
     /// - Returns: Text preview containing the specified range.
     func textPreview(containing range: NSRange) -> TextPreview? {
         let textPreviewFactory = TextPreviewFactory(
-            lineManager: textViewController.lineManager,
-            lineControllerStorage: textViewController.lineControllerStorage
+            lineManager: lineManager,
+            lineControllerStorage: lineControllerStorage
         )
         return textPreviewFactory.textPreview(containing: range)
     }
 
     /// Selects a highlighted range behind the selected range if possible.
     func selectPreviousHighlightedRange() {
-        textViewController.highlightedRangeNavigator.selectPreviousRange()
+        highlightedRangeNavigator.selectPreviousRange()
     }
 
     /// Selects a highlighted range after the selected range if possible.
     func selectNextHighlightedRange() {
-        textViewController.highlightedRangeNavigator.selectNextRange()
+        highlightedRangeNavigator.selectNextRange()
     }
 
     /// Selects the highlighed range at the specified index.
     /// - Parameter index: Index of highlighted range to select.
     func selectHighlightedRange(at index: Int) {
-        textViewController.highlightedRangeNavigator.selectRange(at: index)
+        highlightedRangeNavigator.selectRange(at: index)
     }
 
     /// Synchronously displays the visible lines.
@@ -177,7 +177,7 @@ public extension TextView {
     ///
     /// Use with caution as redisplaying the visible lines can be a costly operation.
 //    func redisplayVisibleLines() {
-//        textViewController.redisplayVisibleLines()
+//        redisplayVisibleLines()
 //    }
 
     /// Scrolls the text view to reveal the text in the specified range.
@@ -187,7 +187,7 @@ public extension TextView {
     /// - Parameters:
     ///   - range: The range of text to scroll into view.
     func scrollRangeToVisible(_ range: NSRange) {
-        textViewController.viewportScroller.scroll(toVisibleRange: range)
+        viewportScroller.scroll(toVisibleRange: range)
     }
 
     /// Replaces the text that is in the specified range.
@@ -195,13 +195,13 @@ public extension TextView {
     ///   - range: A range of text in the document.
     ///   - text: A string to replace the text in range.
     func replace(_ range: NSRange, withText text: String) {
-        textViewController.textReplacer.replaceText(in: range, with: text)
+        textReplacer.replaceText(in: range, with: text)
     }
 
     /// Returns the text in the specified range.
     /// - Parameter range: A range of text in the document.
     /// - Returns: The substring that falls within the specified range.
     func text(in range: NSRange) -> String? {
-        textViewController.stringView.value.substring(in: range)
+        stringView.value.substring(in: range)
     }
 }

@@ -3,22 +3,22 @@ import AppKit
 public extension TextView {
     /// Deletes a character from the displayed text.
     override func deleteForward(_ sender: Any?) {
-        textViewController.textDeleter.deleteForward()
+        textDeleter.deleteForward()
     }
 
     /// Deletes a character from the displayed text.
     override func deleteBackward(_ sender: Any?) {
-        textViewController.textDeleter.deleteBackward()
+        textDeleter.deleteBackward()
     }
 
     /// Inserts a newline character.
     override func insertNewline(_ sender: Any?) {
-        textViewController.textInserter.insertNewLine()
+        textInserter.insertNewLine()
     }
 
     /// Inserts a tab character.
     override func insertTab(_ sender: Any?) {
-        textViewController.textInserter.insertTab()
+        textInserter.insertTab()
     }
 
     /// Copy the selected text.
@@ -26,7 +26,7 @@ public extension TextView {
     /// - Parameter sender: The object calling this method.
     @objc func copy(_ sender: Any?) {
         let selectedRange = selectedRange()
-        if selectedRange.length > 0, let text = textViewController.stringView.value.substring(in: selectedRange) {
+        if selectedRange.length > 0, let text = stringView.value.substring(in: selectedRange) {
             NSPasteboard.general.declareTypes([.string], owner: nil)
             NSPasteboard.general.setString(text, forType: .string)
         }
@@ -38,8 +38,8 @@ public extension TextView {
     @objc func paste(_ sender: Any?) {
 //        let selectedRange = selectedRange()
 //        if let string = NSPasteboard.general.string(forType: .string) {
-//            let preparedText = textViewController.prepareTextForInsertion(string)
-//            textViewController.textInputHandler.replaceText(in: selectedRange, with: preparedText)
+//            let preparedText = prepareTextForInsertion(string)
+//            textInputHandler.replaceText(in: selectedRange, with: preparedText)
 //        }
     }
 
@@ -48,9 +48,9 @@ public extension TextView {
     /// - Parameter sender: The object calling this method.
     @objc func cut(_ sender: Any?) {
 //        let selectedRange = selectedRange()
-//        if selectedRange.length > 0, let text = textViewController.stringView.value.substring(in: selectedRange) {
+//        if selectedRange.length > 0, let text = stringView.value.substring(in: selectedRange) {
 //            NSPasteboard.general.setString(text, forType: .string)
-//            textViewController.textEditor.replaceText(in: selectedRange, with: "")
+//            textEditor.replaceText(in: selectedRange, with: "")
 //        }
     }
 
@@ -58,8 +58,8 @@ public extension TextView {
     ///
     /// - Parameter sender: The object calling this method.
     override func selectAll(_ sender: Any?) {
-        let stringLength = textViewController.stringView.value.string.length
-        textViewController.selectedRange.value = NSRange(location: 0, length: stringLength)
+        let stringLength = stringView.value.string.length
+        _selectedRange.value = NSRange(location: 0, length: stringLength)
     }
 
     /// Performs the undo operations in the last undo group.
@@ -78,11 +78,11 @@ public extension TextView {
 
     /// Delete the word in front of the insertion point.
     override func deleteWordForward(_ sender: Any?) {
-        textViewController.textDeleter.deleteWordForward()
+        textDeleter.deleteWordForward()
     }
 
     /// Delete the word behind the insertion point.
     override func deleteWordBackward(_ sender: Any?) {
-        textViewController.textDeleter.deleteWordBackward()
+        textDeleter.deleteWordBackward()
     }
 }

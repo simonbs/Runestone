@@ -5,13 +5,13 @@ import Combine
 final class KeyWindowObserver {
     let isKeyWindow = CurrentValueSubject<Bool, Never>(false)
 
-    private weak var referenceView: NSView?
+    private let referenceView: CurrentValueSubject<WeakBox<TextView>, Never>
     private var cancellables = Set<AnyCancellable>()
 
-    init(referenceView: NSView) {
+    init(referenceView: CurrentValueSubject<WeakBox<TextView>, Never>) {
         self.referenceView = referenceView
         NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification).sink { [weak self] _ in
-            self?.isKeyWindow.value = self?.referenceView?.window?.isKeyWindow ?? false
+            self?.isKeyWindow.value = self?.referenceView.value.value?.window?.isKeyWindow ?? false
         }.store(in: &cancellables)
     }
 }

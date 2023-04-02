@@ -12,7 +12,7 @@ extension TextView: NSTextInputClient {
 
     /// The current selection range of the text view.
     public func selectedRange() -> NSRange {
-        textViewController.selectedRange.value.nonNegativeLength
+        _selectedRange.value.nonNegativeLength
     }
 
     /// Inserts the given string into the receiver, replacing the specified content.
@@ -24,9 +24,9 @@ extension TextView: NSTextInputClient {
             return
         }
         if replacementRange.location == NSNotFound {
-            textViewController.textInserter.insertText(string)
+            textInserter.insertText(string)
         } else {
-            textViewController.textReplacer.replaceText(in: replacementRange, with: string)
+            textReplacer.replaceText(in: replacementRange, with: string)
         }
     }
 
@@ -38,19 +38,19 @@ extension TextView: NSTextInputClient {
 
     /// Unmarks the marked text.
     public func unmarkText() {
-        textViewController.markedRange.value = nil
+        _markedRange.value = nil
     }
 
     /// Returns the range of the marked text.
     /// - Returns: The range of marked text or {NSNotFound, 0} if there is no marked range.
     public func markedRange() -> NSRange {
-        textViewController.markedRange.value ?? NSRange(location: NSNotFound, length: 0)
+        _markedRange.value ?? NSRange(location: NSNotFound, length: 0)
     }
 
     /// Returns a Boolean value indicating whether the receiver has marked text.
     /// - Returns: `true` if the receiver has marked text; otherwise `false.
     public func hasMarkedText() -> Bool {
-        (textViewController.markedRange.value?.length ?? 0) > 0
+        (_markedRange.value?.length ?? 0) > 0
     }
 
     /// Returns an attributed string derived from the given range in the receiver's text storage.
@@ -81,7 +81,7 @@ extension TextView: NSTextInputClient {
     /// - Parameter point: The point to test, in screen coordinates.
     /// - Returns: The character index, measured from the start of the receiver's text storage, of the character containing the given point.
     public func characterIndex(for point: NSPoint) -> Int {
-        return textViewController.locationRaycaster.location(closestTo: point)
+        return locationRaycaster.location(closestTo: point)
     }
 }
 #endif

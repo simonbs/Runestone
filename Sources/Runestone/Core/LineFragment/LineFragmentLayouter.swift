@@ -14,7 +14,7 @@ final class LineFragmentLayouter {
     private let textContainer: TextContainer
     private let isLineWrappingEnabled: CurrentValueSubject<Bool, Never>
     private let contentSize: CurrentValueSubject<CGSize, Never>
-    private weak var containerView: MultiPlatformView?
+    private let _containerView: CurrentValueSubject<WeakBox<TextView>, Never>
     private var lineFragmentReusableViewQueue = ReusableViewQueue<LineFragmentID, LineFragmentView>()
     private var needsLayout = false
     private var cancellables: Set<AnyCancellable> = []
@@ -32,6 +32,9 @@ final class LineFragmentLayouter {
     private var scrollView: MultiPlatformScrollView? {
         _scrollView.value.value
     }
+    private var containerView: MultiPlatformView? {
+        _containerView.value.value
+    }
 
     init(
         scrollView: CurrentValueSubject<WeakBox<MultiPlatformScrollView>, Never>,
@@ -43,7 +46,7 @@ final class LineFragmentLayouter {
         textContainer: TextContainer,
         isLineWrappingEnabled: CurrentValueSubject<Bool, Never>,
         contentSize: CurrentValueSubject<CGSize, Never>,
-        containerView: MultiPlatformView
+        containerView: CurrentValueSubject<WeakBox<TextView>, Never>
     ) {
         self._scrollView = scrollView
         self.stringView = stringView
@@ -54,7 +57,7 @@ final class LineFragmentLayouter {
         self.textContainer = textContainer
         self.isLineWrappingEnabled = isLineWrappingEnabled
         self.contentSize = contentSize
-        self.containerView = containerView
+        self._containerView = containerView
         setupSetNeedsLayoutObserver()
         stringView.sink { [weak self] _ in
             self?.needsLayout = true

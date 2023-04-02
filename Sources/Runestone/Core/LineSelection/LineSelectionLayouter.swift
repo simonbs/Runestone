@@ -16,11 +16,11 @@ final class LineSelectionLayouter {
         textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>,
         lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>,
         backgroundColor: CurrentValueSubject<MultiPlatformColor, Never>,
-        containerView: MultiPlatformView
+        containerView: CurrentValueSubject<WeakBox<TextView>, Never>
     ) {
         self.caret = caret
         lineSelectionView.layerIfLoaded?.zPosition = -1000
-        containerView.addSubview(lineSelectionView)
+        containerView.value.value?.addSubview(lineSelectionView)
         setupBackgroundColorSubscriber(backgroundColor: backgroundColor)
         setupHiddenSubscriber(
             lineSelectionDisplayType: lineSelectionDisplayType,
