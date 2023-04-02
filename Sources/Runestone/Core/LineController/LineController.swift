@@ -32,13 +32,13 @@ final class LineController {
         if let lineHeight = _lineHeight {
             return lineHeight
         } else if typesetter.lineFragments.isEmpty {
-            let lineHeight = estimatedLineHeight.rawValue * typesetSettings.lineHeightMultiplier.value
+            let lineHeight = estimatedLineHeight.scaledValue
             _lineHeight = lineHeight
             return lineHeight
         } else {
             let knownLineFragmentHeight = typesetter.lineFragments.reduce(0) { $0 + $1.scaledSize.height }
             let remainingNumberOfLineFragments = typesetter.bestGuessNumberOfLineFragments - typesetter.lineFragments.count
-            let lineFragmentHeight = estimatedLineHeight.rawValue * typesetSettings.lineHeightMultiplier.value
+            let lineFragmentHeight = estimatedLineHeight.scaledValue
             let remainingLineFragmentHeight = CGFloat(remainingNumberOfLineFragments) * lineFragmentHeight
             let lineHeight = knownLineFragmentHeight + remainingLineFragmentHeight
             _lineHeight = lineHeight
@@ -54,8 +54,8 @@ final class LineController {
     private(set) var attributedString: NSMutableAttributedString?
 
     private let stringView: CurrentValueSubject<StringView, Never>
-    private let typesetSettings: TypesetSettings
     private let estimatedLineHeight: EstimatedLineHeight
+    private let tabWidth: CurrentValueSubject<CGFloat, Never>
     private let typesetter: LineTypesetter
     private let defaultStringAttributes: DefaultStringAttributes
     private let rendererFactory: RendererFactory
@@ -73,17 +73,17 @@ final class LineController {
     init(
         line: LineNode,
         stringView: CurrentValueSubject<StringView, Never>,
-        typesetter: LineTypesetter,
-        typesetSettings: TypesetSettings,
         estimatedLineHeight: EstimatedLineHeight,
+        tabWidth: CurrentValueSubject<CGFloat, Never>,
+        typesetter: LineTypesetter,
         defaultStringAttributes: DefaultStringAttributes,
         rendererFactory: RendererFactory,
         syntaxHighlighter: SyntaxHighlighter
     ) {
         self.line = line
         self.stringView = stringView
-        self.typesetSettings = typesetSettings
         self.estimatedLineHeight = estimatedLineHeight
+        self.tabWidth = tabWidth
         self.defaultStringAttributes = defaultStringAttributes
         self.rendererFactory = rendererFactory
         self.typesetter = typesetter
@@ -108,15 +108,15 @@ final class LineController {
        updateLineHeight(for: newLineFragments)
    }
 
-//    func invalidateString() {
-//        isStringInvalid = true
-//    }
-//
-//    func invalidateTypesetting() {
-//        isLineFragmentCacheInvalid = true
-//        isTypesetterInvalid = true
-//        _lineHeight = nil
-//    }
+    func invalidateString() {
+        isStringInvalid = true
+    }
+
+    func invalidateTypesetting() {
+        isLineFragmentCacheInvalid = true
+        isTypesetterInvalid = true
+        _lineHeight = nil
+    }
 
     func cancelSyntaxHighlighting() {
         syntaxHighlighter.cancel()
@@ -168,8 +168,8 @@ final class LineController {
                 return CGRect(x: xPosition, y: yPosition, width: Caret.width, height: lineFragment.baseSize.height)
             }
         }
-        let yPosition = (estimatedLineHeight.rawValue * typesetSettings.lineHeightMultiplier.value - estimatedLineHeight.rawValue) / 2
-        return CGRect(x: 0, y: yPosition, width: Caret.width, height: estimatedLineHeight.rawValue)
+        let yPosition = (estimatedLineHeight.scaledValue - estimatedLineHeight.value) / 2
+        return CGRect(x: 0, y: yPosition, width: Caret.width, height: estimatedLineHeight.value)
     }
 
     func firstRect(for lineLocalRange: NSRange) -> CGRect {
@@ -182,7 +182,7 @@ final class LineController {
                 return CGRect(x: xStart, y: yPosition, width: xEnd - xStart, height: lineFragment.baseSize.height)
             }
         }
-        return CGRect(x: 0, y: 0, width: 0, height: estimatedLineHeight.rawValue * typesetSettings.lineHeightMultiplier.value)
+        return CGRect(x: 0, y: 0, width: 0, height: estimatedLineHeight.scaledValue)
     }
 
     func location(closestTo point: CGPoint) -> Int {
@@ -242,7 +242,7 @@ private extension LineController {
         if let attributedString = attributedString {
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.tabStops = []
-            paragraphStyle.defaultTabInterval = typesetSettings.tabWidth.value
+            paragraphStyle.defaultTabInterval = tabWidth.value
             let range = NSRange(location: 0, length: attributedString.length)
             attributedString.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
         }

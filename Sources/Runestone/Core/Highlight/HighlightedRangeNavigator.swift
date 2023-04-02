@@ -5,10 +5,12 @@ final class HighlightedRangeNavigator {
     var loopingMode: HighlightedRangeLoopingMode = .disabled
     var showMenuAfterNavigatingToHighlightedRange = true
 
+    private unowned let textView: TextView
+    private let textViewDelegate: ErasedTextViewDelegate
     private let selectedRange: CurrentValueSubject<NSRange, Never>
     private let highlightedRanges: CurrentValueSubject<[HighlightedRange], Never>
     private let viewportScroller: ViewportScroller
-    private let textViewDelegateBox: TextViewDelegateBox
+    private let editMenuPresenter: EditMenuPresenter
     private var isLoopingEnabled: Bool {
         loopingMode == .enabled
     }
@@ -33,14 +35,19 @@ final class HighlightedRangeNavigator {
     }
 
     init(
+        textView: TextView,
+        textViewDelegate: ErasedTextViewDelegate,
         selectedRange: CurrentValueSubject<NSRange, Never>,
         highlightedRanges: CurrentValueSubject<[HighlightedRange], Never>,
         viewportScroller: ViewportScroller,
-        textViewDelegateBox: TextViewDelegateBox
+        editMenuPresenter: EditMenuPresenter
     ) {
+        self.textView = textView
+        self.textViewDelegate = textViewDelegate
         self.selectedRange = selectedRange
         self.highlightedRanges = highlightedRanges
         self.viewportScroller = viewportScroller
+        self.editMenuPresenter = editMenuPresenter
     }
 
     func selectPreviousRange() {
@@ -72,15 +79,15 @@ private extension HighlightedRangeNavigator {
     private func navigate(to destination: HighlightedRangeNavigationDestination) {
         viewportScroller.scroll(toVisibleRange: destination.range)
         selectedRange.value = destination.range
-        _ = becomeFirstResponder()
+        textView.becomeFirstResponder()
         if showMenuAfterNavigatingToHighlightedRange {
-            editMenuController.presentEditMenu(from: self, forTextIn: destination.range)
+            editMenuPresenter.presentForText(in: destination.range)
         }
         switch destination.loopMode {
         case .previousGoesToLast:
-            textViewDelegateBox.delegate?.textViewDidLoopToLastHighlightedRange(self)
+            textViewDelegate.textViewDidLoopToLastHighlightedRange()
         case .nextGoesToFirst:
-            textViewDelegateBox.delegate?.textViewDidLoopToFirstHighlightedRange(self)
+            textViewDelegate.textViewDidLoopToFirstHighlightedRange()
         case .disabled:
             break
         }

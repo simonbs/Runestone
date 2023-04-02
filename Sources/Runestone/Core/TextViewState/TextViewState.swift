@@ -92,7 +92,7 @@ public final class TextViewState {
 private extension TextViewState {
     static func makeLineManager(stringView: StringView, theme: Theme) -> LineManager {
         let lineManager = LineManager(stringView: stringView)
-        lineManager.estimatedLineHeight = theme.font.totalLineHeight
+        lineManager.estimatedLineHeight = theme.font.actualLineHeight
         lineManager.rebuild()
         return lineManager
     }

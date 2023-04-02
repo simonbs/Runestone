@@ -2,11 +2,11 @@ import Combine
 import Foundation
 
 final class CompositionRoot {
-    let textViewDelegateBox = TextViewDelegateBox()
-    let scrollView = CurrentValueSubject<ScrollViewBox, Never>(ScrollViewBox())
+    private(set) lazy var textViewDelegate = ErasedTextViewDelegate(textView: textView)
+    let scrollView = CurrentValueSubject<WeakBox<MultiPlatformScrollView>, Never>(WeakBox())
     private(set) lazy var keyWindowObserver = KeyWindowObserver(referenceView: textView)
     let isFirstResponder = CurrentValueSubject<Bool, Never>(false)
-    private(set) lazy var editorState = EditorState(textView: textView, textViewDelegate: textViewDelegateBox)
+    private(set) lazy var editorState = EditorState(textView: textView, textViewDelegate: textViewDelegate)
     let selectedRange = CurrentValueSubject<NSRange, Never>(NSRange(location: 0, length: 0))
     let markedRange = CurrentValueSubject<NSRange?, Never>(nil)
     let stringView = CurrentValueSubject<StringView, Never>(StringView())
@@ -37,6 +37,7 @@ final class CompositionRoot {
     )
     let widestLineTracker = WidestLineTracker()
     private(set) lazy var contentSizeService = ContentSizeService(
+        scrollView: scrollView,
         totalLineHeightTracker: totalLineHeightTracker,
         widestLineTracker: widestLineTracker,
         viewport: textContainer.viewport,
@@ -54,9 +55,12 @@ final class CompositionRoot {
         lineManager: lineManager
     )
     private(set) lazy var highlightedRangeNavigator = HighlightedRangeNavigator(
+        textView: textView,
+        textViewDelegate: textViewDelegate,
         selectedRange: selectedRange,
         highlightedRanges: highlightedRangeFragmentStore.highlightedRanges,
-        viewportScroller: viewportScroller
+        viewportScroller: viewportScroller,
+        editMenuPresenter: editMenuPresenter
     )
     private var textEditState = TextEditState()
 
@@ -86,20 +90,18 @@ final class CompositionRoot {
         )
     }
 
-    var lineFragmentLayouter: LineFragmentLayouter {
-        LineFragmentLayouter(
-            scrollView: scrollView,
-            stringView: stringView,
-            lineManager: lineManager,
-            lineControllerStorage: lineControllerStorage,
-            widestLineTracker: widestLineTracker,
-            totalLineHeightTracker: totalLineHeightTracker,
-            textContainer: textContainer,
-            isLineWrappingEnabled: typesetSettings.isLineWrappingEnabled,
-            contentSize: contentSizeService.contentSize,
-            containerView: textView
-        )
-    }
+    private(set) lazy var lineFragmentLayouter = LineFragmentLayouter(
+        scrollView: scrollView,
+        stringView: stringView,
+        lineManager: lineManager,
+        lineControllerStorage: lineControllerStorage,
+        widestLineTracker: widestLineTracker,
+        totalLineHeightTracker: totalLineHeightTracker,
+        textContainer: textContainer,
+        isLineWrappingEnabled: typesetSettings.isLineWrappingEnabled,
+        contentSize: contentSizeService.contentSize,
+        containerView: textView
+    )
 
     var lineSelectionLayouter: LineSelectionLayouter {
         LineSelectionLayouter(
@@ -125,23 +127,43 @@ final class CompositionRoot {
         )
     }
 
-    var navigationService: NavigationService {
-        NavigationService(
+    var locationNavigator: LocationNavigator {
+        LocationNavigator(
+            selectedRange: selectedRange,
+            stringTokenizer: stringTokenizer,
+            characterNavigationLocationService: characterNavigationLocationFactory,
+            wordNavigationLocationService: wordNavigationLocationFactory,
+            lineNavigationLocationFactory: lineNavigationLocationFactory
+        )
+    }
+
+    var locationRaycaster: LocationRaycaster {
+        LocationRaycaster(
             stringView: stringView,
             lineManager: lineManager,
-            lineControllerStorage: lineControllerStorage
+            lineControllerStorage: lineControllerStorage,
+            textContainerInset: textContainer.inset
+        )
+    }
+
+    var syntaxNodeRaycaster: SyntaxNodeRaycaster {
+        SyntaxNodeRaycaster(lineManager: lineManager, languageMode: languageMode)
+    }
+
+    var selectionNavigator: SelectionNavigator {
+        SelectionNavigator(
+            stringView: stringView,
+            lineManager: lineManager,
+            selectedRange: selectedRange,
+            lineControllerStorage: lineControllerStorage,
+            stringTokenizer: stringTokenizer,
+            characterNavigationLocationFactory: characterNavigationLocationFactory,
+            wordNavigationLocationFactory: wordNavigationLocationFactory,
+            lineNavigationLocationFactory: lineNavigationLocationFactory
         )
     }
 
     #if os(macOS)
-    var selectionService: SelectionService {
-        SelectionService(
-            stringView: stringView,
-            lineManager: lineManager,
-            lineControllerStorage: lineControllerStorage
-        )
-    }
-
     var textSelectionLayouter: TextSelectionLayouter {
         TextSelectionLayouter(
             textSelectionRectFactory: textSelectionRectFactory,
@@ -152,11 +174,22 @@ final class CompositionRoot {
     }
     #endif
 
+    #if os(iOS)
+    var memoryWarningObserver: MemoryWarningObserver {
+        MemoryWarningObserver(handlers: [
+            LineControllerStorageLowMemoryHandler(
+                lineControllerStorage: lineControllerStorage,
+                lineFragmentLayouter: lineFragmentLayouter
+            )
+        ])
+    }
+    #endif
+
     private(set) lazy var textReplacer = TextReplacer(
         stringView: stringView,
         selectedRange: selectedRange,
         markedRange: markedRange,
-        textEditAllowedChecker: textEditAllowedChecker,
+        textViewDelegate: textViewDelegate,
         textEditor: textEditor,
         characterPairService: characterPairService,
         replacementTextPreparator: replacementTextPreparator,
@@ -175,16 +208,16 @@ final class CompositionRoot {
 
     private(set) lazy var textDeleter = TextDeleter(
         stringView: stringView,
-        lineManager: lineManager,
         selectedRange: selectedRange,
         markedRange: markedRange,
-        lineControllerStorage: lineControllerStorage,
+        stringTokenizer: stringTokenizer,
         textEditState: textEditState,
-        textEditAllowedChecker: textEditAllowedChecker,
+        textViewDelegate: textViewDelegate,
         textEditor: textEditor,
         undoManager: textEditingUndoManager,
         textInputDelegate: textInputDelegate,
-        deletionRangeFactory: textDeletionRangeFactory
+        deletionRangeFactory: textDeletionRangeFactory,
+        viewportScroller: automaticViewportScroller
     )
 
     private var textDeletionRangeFactory: TextDeletionRangeFactory {
@@ -211,7 +244,7 @@ final class CompositionRoot {
         stringView: stringView,
         selectedRange: selectedRange,
         textEditor: textEditor,
-        handlingAllowedChecker: characterPairHandlingAllowedChecker
+        textViewDelegate: textViewDelegate
     )
 
     private(set) lazy var lineMover = LineMover(
@@ -223,7 +256,7 @@ final class CompositionRoot {
         undoManager: undoManager
     )
 
-    private(set) lazy var lineJumper = LineJumper(
+    private(set) lazy var goToLineNavigator = GoToLineNavigator(
         textView: textView,
         lineManager: lineManager,
         selectedRange: selectedRange,
@@ -234,7 +267,14 @@ final class CompositionRoot {
         scrollView: scrollView,
         textContainerInset: textContainer.inset,
         caret: caret,
-        lineFragmentLayouter: lineFragmentLayouter
+        estimatedLineHeight: estimatedLineHeight,
+        lineFragmentLayouter: lineFragmentLayouter,
+        contentSizeService: contentSizeService
+    )
+
+    private(set) lazy var automaticViewportScroller = AutomaticViewportScroller(
+        selectedRange: selectedRange,
+        viewportScroller: viewportScroller
     )
 
     init(textView: TextView) {
@@ -284,28 +324,19 @@ private extension CompositionRoot {
 
     private var textEditor: TextEditor {
         TextEditor(
+            textViewDelegate: textViewDelegate,
             stringView: stringView,
             lineManager: lineManager,
-            selectedRange: selectedRange,
             lineControllerStorage: lineControllerStorage,
             languageMode: languageMode,
-            undoManager: undoManager
+            undoManager: undoManager,
+            viewport: textContainer.viewport,
+            lineFragmentLayouter: lineFragmentLayouter
         )
     }
 
     private var replacementTextPreparator: ReplacementTextPreparator {
         ReplacementTextPreparator(lineEndings: typesetSettings.lineEndings)
-    }
-
-    private var characterPairHandlingAllowedChecker: CharacterPairHandlingAllowedChecker {
-        CharacterPairHandlingAllowedChecker(
-            textView: textView,
-            textViewDelegateBox: textViewDelegateBox
-        )
-    }
-
-    private var textEditAllowedChecker: TextEditAllowedChecker {
-        TextEditAllowedChecker(textView: textView, textViewDelegateBox: textViewDelegateBox)
     }
 
     private var textEditingUndoManager: TextEditingUndoManager {
@@ -314,6 +345,44 @@ private extension CompositionRoot {
             selectedRange: selectedRange,
             undoManager: undoManager,
             textEditor: textEditor
+        )
+    }
+
+    private var editMenuPresenter: EditMenuPresenter {
+        #if os(iOS)
+        #else
+        EditMenuPresenter_Mac()
+        #endif
+    }
+
+    private var characterNavigationLocationFactory: CharacterNavigationLocationFactory {
+        CharacterNavigationLocationFactory(stringView: stringView)
+    }
+
+    private var wordNavigationLocationFactory: WordNavigationLocationFactory {
+        WordNavigationLocationFactory(stringTokenizer: stringTokenizer)
+    }
+
+    private var lineNavigationLocationFactory: LineNavigationLocationFactory {
+        #if os(macOS)
+        StatefulLineNavigationLocationFactory(lineNavigationLocationFactory: statelessLineNavigationLocationFactory)
+        #else
+        statelessLineNavigationLocationFactory
+        #endif
+    }
+
+    private var statelessLineNavigationLocationFactory: StatelessLineNavigationLocationFactory {
+        StatelessLineNavigationLocationFactory(
+            lineManager: lineManager,
+            lineControllerStorage: lineControllerStorage
+        )
+    }
+
+    private var stringTokenizer: StringTokenizer {
+        StringTokenizer(
+            stringView: stringView,
+            lineManager: lineManager,
+            lineControllerStorage: lineControllerStorage
         )
     }
 }

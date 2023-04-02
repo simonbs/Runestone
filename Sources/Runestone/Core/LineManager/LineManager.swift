@@ -21,6 +21,8 @@ final class LineManager {
     // This helps the text editor to determine the width of the content. The "initial" in the name implies
     // that the reference does not necessarily point to the longest line as the document is edited.
     private(set) weak var initialLongestLine: LineNode?
+    let didInsertLine = PassthroughSubject<Void, Never>()
+    let didRemoveLine = PassthroughSubject<Void, Never>()
 
     private var stringView: StringView
     private var lineTree: LineTree
@@ -123,6 +125,7 @@ final class LineManager {
                     tmp = tmp.next
                     changeSet.markLineRemoved(lineToRemove)
                     lineTree.remove(lineToRemove)
+                    didRemoveLine.send(())
                 } while lineToRemove !== endLine
                 let newLength = startLine.value - charactersRemovedInStartLine + charactersLeftInEndLine
                 let otherChangeSet = setLength(of: startLine, to: newLength)
@@ -296,6 +299,7 @@ private extension LineManager {
                     let previousLine = line.previous
                     changeSet.markLineRemoved(line)
                     lineTree.remove(line)
+                    didRemoveLine.send(())
                     let otherChangeSet = setLength(of: previousLine, to: previousLine.value + 1, newLine: &newLine)
                     changeSet.formUnion(with: otherChangeSet)
                 } else {
@@ -322,6 +326,7 @@ private extension LineManager {
         insertedLine.data.node = insertedLine
         // Call updateAfterChangingChildren(of:) to update the values of nodeTotalByteCount.
         lineTree.updateAfterChangingChildren(of: insertedLine)
+        didInsertLine.send(())
         return insertedLine
     }
 

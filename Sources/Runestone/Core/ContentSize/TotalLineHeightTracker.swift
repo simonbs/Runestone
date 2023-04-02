@@ -15,9 +15,20 @@ final class TotalLineHeightTracker {
     
     private let lineManager: CurrentValueSubject<LineManager, Never>
     private var cachedTotalLinesHeight: CGFloat?
+    private var lineManagerCancellable: AnyCancellable?
+    private var didInsertOrRemoveLineCancellable: AnyCancellable?
 
     init(lineManager: CurrentValueSubject<LineManager, Never>) {
         self.lineManager = lineManager
+        lineManagerCancellable = lineManager.sink { [weak self] lineManager in
+            self?.didInsertOrRemoveLineCancellable = Publishers.CombineLatest(
+                lineManager.didInsertLine,
+                lineManager.didRemoveLine
+            ).sink { [weak self] _ in
+                self?.cachedTotalLinesHeight = nil
+                self?.isTotalLineHeightInvalid = true
+            }
+        }
     }
 
     func reset() {

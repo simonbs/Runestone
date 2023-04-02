@@ -2,29 +2,33 @@ import Combine
 import Foundation
 
 final class TextEditor {
-    let didEdit = PassthroughSubject<Void, Never>()
-
+    private let textViewDelegate: ErasedTextViewDelegate
     private let stringView: CurrentValueSubject<StringView, Never>
     private let lineManager: CurrentValueSubject<LineManager, Never>
-    private let selectedRange: CurrentValueSubject<NSRange, Never>
     private let lineControllerStorage: LineControllerStorage
     private let languageMode: CurrentValueSubject<InternalLanguageMode, Never>
     private let undoManager: UndoManager
+    private let viewport: CurrentValueSubject<CGRect, Never>
+    private let lineFragmentLayouter: LineFragmentLayouter
 
     init(
+        textViewDelegate: ErasedTextViewDelegate,
         stringView: CurrentValueSubject<StringView, Never>,
         lineManager: CurrentValueSubject<LineManager, Never>,
-        selectedRange: CurrentValueSubject<NSRange, Never>,
         lineControllerStorage: LineControllerStorage,
         languageMode: CurrentValueSubject<InternalLanguageMode, Never>,
-        undoManager: UndoManager
+        undoManager: UndoManager,
+        viewport: CurrentValueSubject<CGRect, Never>,
+        lineFragmentLayouter: LineFragmentLayouter
     ) {
+        self.textViewDelegate = textViewDelegate
         self.stringView = stringView
         self.lineManager = lineManager
-        self.selectedRange = selectedRange
         self.lineControllerStorage = lineControllerStorage
         self.languageMode = languageMode
         self.undoManager = undoManager
+        self.viewport = viewport
+        self.lineFragmentLayouter = lineFragmentLayouter
     }
 
     func replaceText(in range: NSRange, with newString: String) {
@@ -38,18 +42,36 @@ final class TextEditor {
         for removedLine in textEdit.lineChangeSet.removedLines {
             lineControllerStorage.removeLineController(withID: removedLine.id)
         }
-        didEdit.send(())
-//        let editedLineIDs = Set(lineChangeSet.editedLines.map(\.id))
-//        redisplayLines(withIDs: editedLineIDs)
+        let editedLineIDs = Set(textEdit.lineChangeSet.editedLines.map(\.id))
+        redisplayLines(withIDs: editedLineIDs)
 //        if didAddOrRemoveLines {
 //            gutterWidthService.invalidateLineNumberWidth()
 //        }
-//        lineFragmentLayouter.setNeedsLayout()
-//        lineFragmentLayouter.layoutIfNeeded()
-//        textDidChange()
+        lineFragmentLayouter.setNeedsLayout()
+        lineFragmentLayouter.layoutIfNeeded()
+        textViewDelegate.textViewDidChange()
 //        if !textStoreChange.lineChangeSet.insertedLines.isEmpty || !textStoreChange.lineChangeSet.removedLines.isEmpty {
 //            invalidateContentSizeIfNeeded()
 //        }
+    }
+}
+
+private extension TextEditor {
+    func redisplayLines(withIDs lineIDs: Set<LineNodeID>) {
+        for lineID in lineIDs {
+            guard let lineController = lineControllerStorage[lineID] else {
+                continue
+            }
+            lineController.invalidateString()
+            lineController.invalidateTypesetting()
+            lineController.invalidateSyntaxHighlighting()
+            guard lineFragmentLayouter.visibleLineIDs.contains(lineID) else {
+                continue
+            }
+            let lineYPosition = lineController.line.yPosition
+            let lineLocalMaxY = lineYPosition + (viewport.value.maxY - lineYPosition)
+            lineController.prepareToDisplayString(to: .yPosition(lineLocalMaxY), syntaxHighlightAsynchronously: false)
+        }
     }
 }
 

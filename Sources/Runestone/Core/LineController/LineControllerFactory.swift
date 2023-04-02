@@ -18,9 +18,9 @@ struct LineControllerFactory {
         return LineController(
             line: line,
             stringView: stringView,
-            typesetter: typesetter,
-            typesetSettings: typesetSettings,
             estimatedLineHeight: estimatedLineHeight,
+            tabWidth: typesetSettings.tabWidth,
+            typesetter: typesetter,
             defaultStringAttributes: defaultStringAttributes,
             rendererFactory: rendererFactory,
             syntaxHighlighter: syntaxHighlighterFactory.makeSyntaxHighlighter()

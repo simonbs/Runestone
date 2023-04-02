@@ -2,17 +2,11 @@ import Combine
 import CoreGraphics
 
 final class ContentSizeService {
-    weak var scrollView: MultiPlatformScrollView? {
-        didSet {
-            if scrollView !== oldValue {
-                hasPendingContentSizeUpdate = true
-            }
-        }
-    }
     let contentSize = CurrentValueSubject<CGSize, Never>(.zero)
     let horizontalOverscrollFactor = CurrentValueSubject<CGFloat, Never>(1)
     let verticalOverscrollFactor = CurrentValueSubject<CGFloat, Never>(1)
 
+    private let _scrollView: CurrentValueSubject<WeakBox<MultiPlatformScrollView>, Never>
     private let totalLineHeightTracker: TotalLineHeightTracker
     private let widestLineTracker: WidestLineTracker
     private let viewport: CurrentValueSubject<CGRect, Never>
@@ -36,8 +30,12 @@ final class ContentSizeService {
         let preferredHeight = totalLineHeightTracker.totalLineHeight + totalTextContainerInset + overscrollAmount
         return max(preferredHeight, viewport.value.height)
     }
+    var scrollView: MultiPlatformScrollView? {
+        _scrollView.value.value
+    }
 
     init(
+        scrollView: CurrentValueSubject<WeakBox<MultiPlatformScrollView>, Never>,
         totalLineHeightTracker: TotalLineHeightTracker,
         widestLineTracker: WidestLineTracker,
         viewport: CurrentValueSubject<CGRect, Never>,
@@ -45,6 +43,7 @@ final class ContentSizeService {
         isLineWrappingEnabled: CurrentValueSubject<Bool, Never>,
         maximumLineBreakSymbolWidth: CurrentValueSubject<CGFloat, Never>
     ) {
+        self._scrollView = scrollView
         self.totalLineHeightTracker = totalLineHeightTracker
         self.widestLineTracker = widestLineTracker
         self.viewport = viewport

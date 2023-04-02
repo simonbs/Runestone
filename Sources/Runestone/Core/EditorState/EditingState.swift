@@ -6,15 +6,12 @@ final class EditorState {
     let isSelectable = CurrentValueSubject<Bool, Never>(true)
 
     private unowned let textView: TextView
-    private let _textViewDelegate: TextViewDelegateBox
-    private var textViewDelegate: TextViewDelegate? {
-        _textViewDelegate.delegate
-    }
+    private let textViewDelegate: ErasedTextViewDelegate
     private var cancellables: Set<AnyCancellable> = []
 
-    init(textView: TextView, textViewDelegate: TextViewDelegateBox) {
+    init(textView: TextView, textViewDelegate: ErasedTextViewDelegate) {
         self.textView = textView
-        self._textViewDelegate = textViewDelegate
+        self.textViewDelegate = textViewDelegate
         Publishers.CombineLatest3(isEditing, isEditable, isSelectable).sink { [weak self] isEditing, isEditable, isSelectable in
             if isEditing && (!isEditing || !isSelectable) {
                 self?.endEditing()
@@ -27,6 +24,6 @@ private extension EditorState {
     private func endEditing() {
         textView.resignFirstResponder()
         isEditing.value = false
-        textViewDelegate?.textViewDidEndEditing(textView)
+        textViewDelegate.textViewDidEndEditing()
     }
 }

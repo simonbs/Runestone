@@ -2,36 +2,49 @@ import Combine
 import Foundation
 
 final class ViewportScroller {
-    private let _scrollView: CurrentValueSubject<ScrollViewBox, Never>
+    private let _scrollView: CurrentValueSubject<WeakBox<MultiPlatformScrollView>, Never>
     private let textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>
     private let caret: Caret
+    private let estimatedLineHeight: EstimatedLineHeight
     private let lineFragmentLayouter: LineFragmentLayouter
+    private let contentSizeService: ContentSizeService
     private var scrollView: MultiPlatformScrollView? {
-        _scrollView.value.scrollView
+        _scrollView.value.value
     }
 
     init(
-        scrollView: CurrentValueSubject<ScrollViewBox, Never>,
+        scrollView: CurrentValueSubject<WeakBox<MultiPlatformScrollView>, Never>,
         textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>,
         caret: Caret,
-        lineFragmentLayouter: LineFragmentLayouter
+        estimatedLineHeight: EstimatedLineHeight,
+        lineFragmentLayouter: LineFragmentLayouter,
+        contentSizeService: ContentSizeService
     ) {
         self._scrollView = scrollView
         self.textContainerInset = textContainerInset
         self.caret = caret
+        self.estimatedLineHeight = estimatedLineHeight
         self.lineFragmentLayouter = lineFragmentLayouter
+        self.contentSizeService = contentSizeService
     }
 
     func scroll(toVisibleRange range: NSRange) {
         lineFragmentLayouter.layoutLines(toLocation: range.upperBound)
+        contentSizeService.updateContentSizeIfNeeded()
         justScrollRangeToVisible(range)
     }
 }
 
 private extension ViewportScroller {
     private func justScrollRangeToVisible(_ range: NSRange) {
-        let lowerBoundRect = caret.frame(at: range.lowerBound, allowMovingCaretToNextLineFragment: true)
-        let upperBoundRect = caret.frame(at: range.upperBound, allowMovingCaretToNextLineFragment: true)
+        let lowerBoundCaretRect = caret.frame(at: range.lowerBound, allowMovingCaretToNextLineFragment: true)
+        let upperBoundCaretRect = caret.frame(at: range.upperBound, allowMovingCaretToNextLineFragment: true)
+        var lowerBoundRect = lowerBoundCaretRect
+        var upperBoundRect = upperBoundCaretRect
+        lowerBoundRect.origin.y -= (lowerBoundCaretRect.size.height * estimatedLineHeight.value - lowerBoundCaretRect.size.height) / 2
+        upperBoundRect.origin.y -= (lowerBoundCaretRect.size.height * estimatedLineHeight.value - lowerBoundCaretRect.size.height) / 2
+        lowerBoundRect.size.height = lowerBoundCaretRect.size.height * estimatedLineHeight.value
+        upperBoundRect.size.height = lowerBoundCaretRect.size.height * estimatedLineHeight.value
         let rectMinX = min(lowerBoundRect.minX, upperBoundRect.minX)
         let rectMaxX = max(lowerBoundRect.maxX, upperBoundRect.maxX)
         let rectMinY = min(lowerBoundRect.minY, upperBoundRect.minY)
@@ -42,25 +55,25 @@ private extension ViewportScroller {
 
     /// Computes a content offset to scroll to in order to reveal the specified rectangle.
     ///
-    /// The function will return a rectangle that scrolls the text view a minimum amount while revealing as much as possible of the rectangle. It is not guaranteed that the entire rectangle can be revealed.
+    /// The function will return an offset that scrolls the text view a minimum amount while revealing as much as possible of the rectangle. It is not guaranteed that the entire rectangle can be revealed.
     /// - Parameter rect: The rectangle to reveal.
     /// - Returns: The content offset to scroll to.
     private func contentOffsetForScrollingToVisibleRect(_ rect: CGRect) -> CGPoint {
         // Create the viewport: a rectangle containing the content that is visible to the user.
         let contentOffset = scrollView?.contentOffset ?? .zero
-        let adjustedContentInset = scrollView?.adjustedContentInset ?? .zero
-        let textContainerInset = textContainerInset.value
-        var viewport = CGRect(origin: contentOffset, size: scrollView?.frame.size ?? .zero)
-        viewport.origin.y += adjustedContentInset.top + textContainerInset.top
-        viewport.origin.x += adjustedContentInset.left + textContainerInset.left
-        viewport.size.width -= adjustedContentInset.left
-        + adjustedContentInset.right
-        + textContainerInset.left
-        + textContainerInset.right
-        viewport.size.height -= adjustedContentInset.top
-        + adjustedContentInset.bottom
-        + textContainerInset.top
-        + textContainerInset.bottom
+//        let adjustedContentInset = scrollView?.adjustedContentInset ?? .zero
+//        let textContainerInset = textContainerInset.value
+        let viewport = CGRect(origin: contentOffset, size: scrollView?.frame.size ?? .zero)
+//        viewport.origin.y += adjustedContentInset.top + textContainerInset.top
+//        viewport.origin.x += adjustedContentInset.left + textContainerInset.left
+//        viewport.size.width -= adjustedContentInset.left
+//        + adjustedContentInset.right
+//        + textContainerInset.left
+//        + textContainerInset.right
+//        viewport.size.height -= adjustedContentInset.top
+//        + adjustedContentInset.bottom
+//        + textContainerInset.top
+//        + textContainerInset.bottom
         // Construct the best possible content offset.
         var newContentOffset = contentOffset
         if rect.minX < viewport.minX {

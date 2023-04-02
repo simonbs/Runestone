@@ -17,7 +17,7 @@ let package = Package(
         .target(name: "Runestone", dependencies: [
             "TreeSitterLib"
         ], resources: [
-            .process("TextView/Theme/Theme.xcassets")
+            .process("Core/Theme/Theme.xcassets")
         ]),
         .target(name: "TreeSitterLib", path: "tree-sitter/lib", exclude: [
             "binding_rust",

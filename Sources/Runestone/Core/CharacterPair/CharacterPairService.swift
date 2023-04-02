@@ -8,18 +8,18 @@ final class CharacterPairService {
     private let stringView: CurrentValueSubject<StringView, Never>
     private let selectedRange: CurrentValueSubject<NSRange, Never>
     private let textEditor: TextEditor
-    private let handlingAllowedChecker: CharacterPairHandlingAllowedChecker
+    private let textViewDelegate: ErasedTextViewDelegate
 
     init(
         stringView: CurrentValueSubject<StringView, Never>,
         selectedRange: CurrentValueSubject<NSRange, Never>,
         textEditor: TextEditor,
-        handlingAllowedChecker: CharacterPairHandlingAllowedChecker
+        textViewDelegate: ErasedTextViewDelegate
     ) {
         self.stringView = stringView
         self.selectedRange = selectedRange
         self.textEditor = textEditor
-        self.handlingAllowedChecker = handlingAllowedChecker
+        self.textViewDelegate = textViewDelegate
     }
 
     func handleReplacingText(in range: NSRange, with text: String) -> Bool {
@@ -43,7 +43,7 @@ private extension CharacterPairService {
     }
 
     private func insertLeadingComponent(of characterPair: CharacterPair, in range: NSRange) -> Bool {
-        guard handlingAllowedChecker.shouldInsert(characterPair, in: range) else {
+        guard textViewDelegate.shouldInsert(characterPair, in: range) else {
             return false
         }
         if selectedRange.value.length == 0 {
@@ -68,7 +68,7 @@ private extension CharacterPairService {
         guard followingText == characterPair.trailing else {
             return false
         }
-        guard handlingAllowedChecker.shouldSkipTrailingComponent(of: characterPair, in: range) else {
+        guard textViewDelegate.shouldSkipTrailingComponent(of: characterPair, in: range) else {
             return false
         }
         selectedRange.value = NSRange(location: selectedRange.value.location + characterPair.trailing.count, length: 0)

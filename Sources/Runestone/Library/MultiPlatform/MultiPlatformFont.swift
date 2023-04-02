@@ -9,15 +9,7 @@ typealias MultiPlatformFontDescriptor = UIFontDescriptor
 #endif
 
 extension MultiPlatformFont {
-    var totalLineHeight: CGFloat {
+    var actualLineHeight: CGFloat {
         ascender + abs(descender) + leading
     }
 }
-
-#if os(macOS)
-extension NSFont {
-    var lineHeight: CGFloat {
-        ceil(ascender + abs(descender) + leading)
-    }
-}
-#endif
