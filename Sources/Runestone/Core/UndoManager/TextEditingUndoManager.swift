@@ -43,4 +43,8 @@ final class TextEditingUndoManager {
     //            #endif
             }
     }
+
+    func removeAllActions() {
+        undoManager.removeAllActions()
+    }
 }

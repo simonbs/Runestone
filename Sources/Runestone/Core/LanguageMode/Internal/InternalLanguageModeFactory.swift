@@ -1,11 +1,15 @@
 import Combine
 
-enum InternalLanguageModeFactory {
-    static func internalLanguageMode(
-        from languageMode: LanguageMode,
-        stringView: CurrentValueSubject<StringView, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>
-    ) -> InternalLanguageMode {
+struct InternalLanguageModeFactory {
+    private let stringView: CurrentValueSubject<StringView, Never>
+    private let lineManager: CurrentValueSubject<LineManager, Never>
+
+    init(stringView: CurrentValueSubject<StringView, Never>, lineManager: CurrentValueSubject<LineManager, Never>) {
+        self.stringView = stringView
+        self.lineManager = lineManager
+    }
+
+    func internalLanguageMode(from languageMode: LanguageMode) -> InternalLanguageMode {
         switch languageMode {
         case is PlainTextLanguageMode:
             return PlainTextInternalLanguageMode()
@@ -21,11 +25,7 @@ enum InternalLanguageModeFactory {
         }
     }
 
-    static func internalLanguageMode(
-        from languageModeState: TextViewState.LanguageModeState,
-        stringView: CurrentValueSubject<StringView, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>
-    ) -> InternalLanguageMode {
+    func internalLanguageMode(from languageModeState: TextViewState.LanguageModeState) -> InternalLanguageMode {
         switch languageModeState {
         case .plainText:
             return PlainTextInternalLanguageMode()

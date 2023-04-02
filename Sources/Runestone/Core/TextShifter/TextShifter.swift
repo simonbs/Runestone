@@ -22,10 +22,10 @@ final class TextShifter {
         self.textEditor = textEditor
     }
 
-    func shiftLeft(in selectedRange: NSRange) {
-        let lines = lineManager.value.lines(in: selectedRange)
+    func shiftLeft() {
+        let lines = lineManager.value.lines(in: selectedRange.value)
         let originalRange = range(surrounding: lines)
-        var newSelectedRange = selectedRange
+        var newSelectedRange = selectedRange.value
         var replacementString: String?
         let indentString = indentStrategy.value.string(indentLevel: 1)
         let utf8IndentLength = indentString.count
@@ -57,14 +57,14 @@ final class TextShifter {
         }
         if let replacementString = replacementString {
             textEditor.replaceText(in: originalRange, with: replacementString)
-            self.selectedRange.value = newSelectedRange
+            selectedRange.value = newSelectedRange
         }
     }
 
-    func shiftRight(in selectedRange: NSRange) {
-        let lines = lineManager.value.lines(in: selectedRange)
+    func shiftRight() {
+        let lines = lineManager.value.lines(in: selectedRange.value)
         let originalRange = range(surrounding: lines)
-        var newSelectedRange = selectedRange
+        var newSelectedRange = selectedRange.value
         var replacementString: String?
         let indentString = indentStrategy.value.string(indentLevel: 1)
         let indentLength = indentString.utf16.count
@@ -80,7 +80,7 @@ final class TextShifter {
         }
         if let replacementString = replacementString {
             textEditor.replaceText(in: originalRange, with: replacementString)
-            self.selectedRange.value = newSelectedRange
+            selectedRange.value = newSelectedRange
         }
     }
 }

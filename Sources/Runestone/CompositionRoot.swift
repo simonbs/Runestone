@@ -4,6 +4,11 @@ import Foundation
 final class CompositionRoot {
     private(set) lazy var textViewDelegate = ErasedTextViewDelegate(textView: textView)
     let scrollView = CurrentValueSubject<WeakBox<MultiPlatformScrollView>, Never>(WeakBox())
+    private(set) lazy var textViewNeedsLayoutObserver = TextViewNeedsLayoutObserver(
+        textView: textView,
+        stringView: stringView,
+        viewport: textContainer.viewport
+    )
     private(set) lazy var keyWindowObserver = KeyWindowObserver(referenceView: textView)
     let isFirstResponder = CurrentValueSubject<Bool, Never>(false)
     private(set) lazy var editorState = EditorState(textView: textView, textViewDelegate: textViewDelegate)
@@ -72,6 +77,14 @@ final class CompositionRoot {
 
     private unowned let textView: TextView
     private lazy var totalLineHeightTracker = TotalLineHeightTracker(lineManager: lineManager)
+
+    var languageModeSetter: LanguageModeSetter {
+        LanguageModeSetter(
+            stringView: stringView,
+            languageMode: languageMode,
+            internalLanguageModeFactory: internalLanguageModeFactory
+        )
+    }
 
     private(set) lazy var caret = Caret(
         stringView: stringView,
@@ -150,6 +163,10 @@ final class CompositionRoot {
         SyntaxNodeRaycaster(lineManager: lineManager, languageMode: languageMode)
     }
 
+    var textLocationConverter: TextLocationConverter {
+        TextLocationConverter(lineManager: lineManager)
+    }
+
     var selectionNavigator: SelectionNavigator {
         SelectionNavigator(
             stringView: stringView,
@@ -185,6 +202,33 @@ final class CompositionRoot {
     }
     #endif
 
+    var textSetter: TextSetter {
+        TextSetter(
+            textInputDelegate: textInputDelegate,
+            stringView: stringView,
+            lineManager: lineManager,
+            selectedRange: selectedRange,
+            languageMode: languageMode,
+            lineControllerStorage: lineControllerStorage,
+            undoManager: textEditingUndoManager
+        )
+    }
+
+    var textViewStateSetter: TextViewStateSetter {
+        TextViewStateSetter(
+            textInputDelegate: textInputDelegate,
+            stringView: stringView,
+            lineManager: lineManager,
+            selectedRange: selectedRange,
+            languageMode: languageMode,
+            lineControllerStorage: lineControllerStorage,
+            undoManager: textEditingUndoManager,
+            themeSettings: themeSettings,
+            estimatedLineHeight: estimatedLineHeight,
+            internalLanguageModeFactory: internalLanguageModeFactory
+        )
+    }
+
     private(set) lazy var textReplacer = TextReplacer(
         stringView: stringView,
         selectedRange: selectedRange,
@@ -219,6 +263,16 @@ final class CompositionRoot {
         deletionRangeFactory: textDeletionRangeFactory,
         viewportScroller: automaticViewportScroller
     )
+
+    var textShifter: TextShifter {
+        TextShifter(
+            stringView: stringView,
+            lineManager: lineManager,
+            indentStrategy: typesetSettings.indentStrategy,
+            selectedRange: selectedRange,
+            textEditor: textEditor
+        )
+    }
 
     private var textDeletionRangeFactory: TextDeletionRangeFactory {
         TextDeletionRangeFactory(
@@ -276,6 +330,27 @@ final class CompositionRoot {
         selectedRange: selectedRange,
         viewportScroller: viewportScroller
     )
+
+    var indentationChecker: IndentationChecker {
+        IndentationChecker(
+            stringView: stringView,
+            lineManager: lineManager,
+            indentStrategy: typesetSettings.indentStrategy
+        )
+    }
+
+    var searchService: SearchService {
+        SearchService(stringView: stringView, textLocationConverter: textLocationConverter)
+    }
+
+    var batchReplacer: BatchReplacer {
+        BatchReplacer(
+            stringView: stringView,
+            lineManager: lineManager,
+            selectedRange: selectedRange,
+            textSetter: textSetter
+        )
+    }
 
     init(textView: TextView) {
         self.textView = textView
@@ -384,5 +459,9 @@ private extension CompositionRoot {
             lineManager: lineManager,
             lineControllerStorage: lineControllerStorage
         )
+    }
+
+    private var internalLanguageModeFactory: InternalLanguageModeFactory {
+        InternalLanguageModeFactory(stringView: stringView, lineManager: lineManager)
     }
 }

@@ -936,10 +936,14 @@ open class TextView: UIScrollView {
         inputDelegate?.selectionDidChange(self)
     }
 
-    /// Synchronously displays the visible lines. This can be used to immediately update the visible lines after setting the theme. Use with caution as redisplaying the visible lines can be a costly operation.
-    public func redisplayVisibleLines() {
-        textViewController.redisplayVisibleLines()
-    }
+    /// Synchronously displays the visible lines.
+    ///
+    /// This can be used to immediately update the visible lines after setting the theme.
+    ///
+    /// Use with caution as redisplaying the visible lines can be a costly operation.
+//    public func redisplayVisibleLines() {
+//        textViewController.redisplayVisibleLines()
+//    }
 
     /// Scrolls the text view to reveal the text in the specified range.
     ///
@@ -952,9 +956,9 @@ open class TextView: UIScrollView {
     }
 
     /// Replaces the text that is in the specified range.
-     /// - Parameters:
-     ///   - range: A range of text in the document.
-     ///   - text: A string to replace the text in range.
+    /// - Parameters:
+    ///   - range: A range of text in the document.
+    ///   - text: A string to replace the text in range.
     public func replace(_ range: NSRange, withText text: String) {
         inputDelegate?.selectionWillChange(self)
         let indexedRange = IndexedRange(range)

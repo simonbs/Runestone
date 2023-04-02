@@ -1,17 +1,13 @@
 import Combine
 import Foundation
 
-protocol SearchControllerDelegate: AnyObject {
-    func searchController(_ searchController: SearchController, linePositionAt location: Int) -> LinePosition?
-}
-
-final class SearchController {
-    weak var delegate: SearchControllerDelegate?
-
+final class SearchService {
     private let stringView: CurrentValueSubject<StringView, Never>
+    private let textLocationConverter: TextLocationConverter
 
-    init(stringView: CurrentValueSubject<StringView, Never>) {
+    init(stringView: CurrentValueSubject<StringView, Never>, textLocationConverter: TextLocationConverter) {
         self.stringView = stringView
+        self.textLocationConverter = textLocationConverter
     }
 
     func search(for query: SearchQuery) -> [SearchResult] {
@@ -33,7 +29,7 @@ final class SearchController {
     }
 }
 
-private extension SearchController {
+private extension SearchService {
     private func search(for query: SearchQuery, replacingWithPlainText replacementText: String) -> [SearchReplaceResult] {
         search(for: query) { textCheckingResult in
             searchReplaceResult(in: textCheckingResult.range, replacementText: replacementText)
@@ -55,24 +51,27 @@ private extension SearchController {
     }
 
     private func searchResult(in range: NSRange) -> SearchResult? {
-        guard let startLinePosition = delegate?.searchController(self, linePositionAt: range.lowerBound) else {
+        guard let startTextLocation = textLocationConverter.textLocation(at: range.lowerBound) else {
             return nil
         }
-        guard let endLinePosition = delegate?.searchController(self, linePositionAt: range.upperBound) else {
+        guard let endTextLocation = textLocationConverter.textLocation(at: range.upperBound) else {
             return nil
         }
-        return SearchResult(range: range, startLocation: TextLocation(startLinePosition), endLocation: TextLocation(endLinePosition))
+        return SearchResult(range: range, startLocation: startTextLocation, endLocation: endTextLocation)
     }
 
     private func searchReplaceResult(in range: NSRange, replacementText: String) -> SearchReplaceResult? {
-        guard let startLinePosition = delegate?.searchController(self, linePositionAt: range.lowerBound) else {
+        guard let startTextLocation = textLocationConverter.textLocation(at: range.lowerBound) else {
             return nil
         }
-        guard let endLinePosition = delegate?.searchController(self, linePositionAt: range.upperBound) else {
+        guard let endTextLocation = textLocationConverter.textLocation(at: range.upperBound) else {
             return nil
         }
-        let startLocation = TextLocation(startLinePosition)
-        let endLocation = TextLocation(endLinePosition)
-        return SearchReplaceResult(range: range, startLocation: startLocation, endLocation: endLocation, replacementText: replacementText)
+        return SearchReplaceResult(
+            range: range,
+            startLocation: startTextLocation,
+            endLocation: endTextLocation,
+            replacementText: replacementText
+        )
     }
 }

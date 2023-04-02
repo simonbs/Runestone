@@ -1,4 +1,4 @@
-#if os(iOS)
+import Combine
 import Foundation
 
 struct TextPreviewFactory {
@@ -11,7 +11,7 @@ struct TextPreviewFactory {
     }
 
     func textPreview(containing needleRange: NSRange, peekLength: Int = 50) -> TextPreview? {
-        let lines = lineManager.lines(in: needleRange)
+        let lines = lineManager.value.lines(in: needleRange)
         guard !lines.isEmpty else {
             return nil
         }
@@ -35,4 +35,3 @@ struct TextPreviewFactory {
         )
     }
 }
-#endif
