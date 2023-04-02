@@ -1,4 +1,3 @@
-#if os(macOS)
 import AppKit
 
 public extension TextView {
@@ -87,4 +86,3 @@ public extension TextView {
         textViewController.textDeleter.deleteWordBackward()
     }
 }
-#endif
