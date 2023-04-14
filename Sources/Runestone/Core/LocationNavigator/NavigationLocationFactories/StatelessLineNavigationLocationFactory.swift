@@ -1,13 +1,9 @@
 import Combine
 
 struct StatelessLineNavigationLocationFactory: LineNavigationLocationFactory {
-    private let lineManager: CurrentValueSubject<LineManager, Never>
-    private let lineControllerStorage: LineControllerStorage
-
-    init(lineManager: CurrentValueSubject<LineManager, Never>, lineControllerStorage: LineControllerStorage) {
-        self.lineManager = lineManager
-        self.lineControllerStorage = lineControllerStorage
-    }
+    let stringView: CurrentValueSubject<StringView, Never>
+    let lineManager: CurrentValueSubject<LineManager, Never>
+    let lineControllerStorage: LineControllerStorage
 
     func location(movingFrom sourceLocation: Int, byLineCount offset: Int = 1, inDirection direction: TextDirection) -> Int {
         guard let line = lineManager.value.line(containingCharacterAt: sourceLocation) else {
@@ -59,7 +55,9 @@ private extension StatelessLineNavigationLocationFactory {
         let lineFragmentMaximumLocation = lineLocation + destinationLineFragmentNode.location + destinationLineFragmentNode.value
         let lineMaximumLocation = lineLocation + line.data.length
         let maximumLocation = min(lineFragmentMaximumLocation, lineMaximumLocation)
-        return min(preferredLocation, maximumLocation)
+        let naiveLocation = min(preferredLocation, maximumLocation)
+        let range = stringView.value.string.customRangeOfComposedCharacterSequence(at: naiveLocation)
+        return range.location
     }
 
     private func location(movingBackwardsFrom location: Int, inLineFragmentAt lineFragmentIndex: Int, of line: LineNode, offset: Int) -> Int {

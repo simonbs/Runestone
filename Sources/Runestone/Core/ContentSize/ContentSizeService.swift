@@ -13,15 +13,18 @@ final class ContentSizeService {
     private let textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>
     private let isLineWrappingEnabled: CurrentValueSubject<Bool, Never>
     private let maximumLineBreakSymbolWidth: CurrentValueSubject<CGFloat, Never>
+    private let estimatedCharacterWidth: EstimatedCharacterWidth
+    private let insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>
     private var cancellables: Set<AnyCancellable> = []
     private var hasPendingContentSizeUpdate = false
     private var contentWidth: CGFloat {
         guard let lineWidth = widestLineTracker.lineWidth else {
             return 0
         }
-        let totalTextContainerInset = textContainerInset.value.left + textContainerInset.value.right
-        let overscrollAmount = viewport.value.width * horizontalOverscrollFactor.value
-        let preferredWidth = lineWidth + totalTextContainerInset + overscrollAmount
+        let preferredWidth = lineWidth
+        + max(lineBreakInvisibleCharacterWidth, insertionPointWidth)
+        + textContainerInset.value.left + textContainerInset.value.right
+        + viewport.value.width * horizontalOverscrollFactor.value
         return max(preferredWidth, viewport.value.width)
     }
     private var contentHeight: CGFloat {
@@ -30,7 +33,18 @@ final class ContentSizeService {
         let preferredHeight = totalLineHeightTracker.totalLineHeight + totalTextContainerInset + overscrollAmount
         return max(preferredHeight, viewport.value.height)
     }
-    var scrollView: MultiPlatformScrollView? {
+    private var lineBreakInvisibleCharacterWidth: CGFloat {
+        maximumLineBreakSymbolWidth.value
+    }
+    private var insertionPointWidth: CGFloat {
+        switch insertionPointShape.value {
+        case .underline, .block:
+            return estimatedCharacterWidth.rawValue.value
+        case .verticalBar:
+            return 0
+        }
+    }
+    private var scrollView: MultiPlatformScrollView? {
         _scrollView.value.value
     }
 
@@ -41,7 +55,9 @@ final class ContentSizeService {
         viewport: CurrentValueSubject<CGRect, Never>,
         textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>,
         isLineWrappingEnabled: CurrentValueSubject<Bool, Never>,
-        maximumLineBreakSymbolWidth: CurrentValueSubject<CGFloat, Never>
+        maximumLineBreakSymbolWidth: CurrentValueSubject<CGFloat, Never>,
+        estimatedCharacterWidth: EstimatedCharacterWidth,
+        insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>
     ) {
         self._scrollView = scrollView
         self.totalLineHeightTracker = totalLineHeightTracker
@@ -50,6 +66,8 @@ final class ContentSizeService {
         self.textContainerInset = textContainerInset
         self.isLineWrappingEnabled = isLineWrappingEnabled
         self.maximumLineBreakSymbolWidth = maximumLineBreakSymbolWidth
+        self.estimatedCharacterWidth = estimatedCharacterWidth
+        self.insertionPointShape = insertionPointShape
         setupHasPendingContentSizeUpdateSetters()
     }
 
@@ -88,7 +106,9 @@ private extension ContentSizeService {
             isLineWrappingEnabled.removeDuplicates().map { _ in true }.eraseToAnyPublisher(),
             horizontalOverscrollFactor.removeDuplicates().map { _ in true }.eraseToAnyPublisher(),
             verticalOverscrollFactor.removeDuplicates().map { _ in true }.eraseToAnyPublisher(),
-            maximumLineBreakSymbolWidth.removeDuplicates().map { _ in true }.eraseToAnyPublisher()
+            maximumLineBreakSymbolWidth.removeDuplicates().map { _ in true }.eraseToAnyPublisher(),
+            estimatedCharacterWidth.rawValue.removeDuplicates().map { _ in true }.eraseToAnyPublisher(),
+            insertionPointShape.removeDuplicates().map { _ in true }.eraseToAnyPublisher()
         ).sink { [weak self] _ in
             self?.hasPendingContentSizeUpdate = true
         }.store(in: &cancellables)

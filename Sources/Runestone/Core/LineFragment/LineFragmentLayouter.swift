@@ -13,6 +13,7 @@ final class LineFragmentLayouter {
     private let totalLineHeightTracker: TotalLineHeightTracker
     private let textContainer: TextContainer
     private let isLineWrappingEnabled: CurrentValueSubject<Bool, Never>
+    private let maximumLineBreakSymbolWidth: CurrentValueSubject<CGFloat, Never>
     private let contentSize: CurrentValueSubject<CGSize, Never>
     private let _containerView: CurrentValueSubject<WeakBox<TextView>, Never>
     private var lineFragmentReusableViewQueue = ReusableViewQueue<LineFragmentID, LineFragmentView>()
@@ -45,6 +46,7 @@ final class LineFragmentLayouter {
         totalLineHeightTracker: TotalLineHeightTracker,
         textContainer: TextContainer,
         isLineWrappingEnabled: CurrentValueSubject<Bool, Never>,
+        maximumLineBreakSymbolWidth: CurrentValueSubject<CGFloat, Never>,
         contentSize: CurrentValueSubject<CGSize, Never>,
         containerView: CurrentValueSubject<WeakBox<TextView>, Never>
     ) {
@@ -56,6 +58,7 @@ final class LineFragmentLayouter {
         self.totalLineHeightTracker = totalLineHeightTracker
         self.textContainer = textContainer
         self.isLineWrappingEnabled = isLineWrappingEnabled
+        self.maximumLineBreakSymbolWidth = maximumLineBreakSymbolWidth
         self.contentSize = contentSize
         self._containerView = containerView
         setupSetNeedsLayoutObserver()
@@ -176,22 +179,24 @@ extension LineFragmentLayouter {
         lineFragmentController.lineFragmentView = lineFragmentView
         let textContainerInset = textContainer.inset.value
         let lineFragmentOrigin = CGPoint(x: textContainerInset.left, y: textContainerInset.top + lineYPosition + lineFragment.yPosition)
+        let lineFragmentSize = CGSize(width: lineFragment.scaledSize.width + maximumLineBreakSymbolWidth.value, height: lineFragment.scaledSize.height)
 //        let lineFragmentWidth = contentSize.value.width - textContainerInset.left - textContainerInset.right
 //        let lineFragmentSize = CGSize(width: lineFragmentWidth, height: lineFragment.scaledSize.height)
-        lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragment.scaledSize)
+        lineFragmentFrame = CGRect(origin: lineFragmentOrigin, size: lineFragmentSize)
         lineFragmentView.frame = lineFragmentFrame
     }
 
     private func setupSetNeedsLayoutObserver() {
-        Publishers.CombineLatest3(
+        Publishers.CombineLatest4(
             stringView.removeDuplicates { $0 === $1 },
             isLineWrappingEnabled.removeDuplicates(),
+            maximumLineBreakSymbolWidth.removeDuplicates(),
             Publishers.CombineLatest3(
                 textContainer.viewport.removeDuplicates(),
                 textContainer.inset.removeDuplicates(),
                 textContainer.safeAreaInsets.removeDuplicates()
             )
-        ).sink { [weak self] _, _, _ in
+        ).sink { [weak self] _, _, _, _ in
             self?.needsLayout = true
         }.store(in: &cancellables)
     }

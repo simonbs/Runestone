@@ -3,7 +3,7 @@ import CoreGraphics
 import CoreText
 import Foundation
 
-final class MarkedRangeRenderer: Renderer {
+final class MarkedRangeLineFragmentRenderer: LineFragmentRenderer {
     private let lineFragment: LineFragment
     private let markedRange: NSRange?
     private let backgroundColor: CurrentValueSubject<MultiPlatformColor, Never>

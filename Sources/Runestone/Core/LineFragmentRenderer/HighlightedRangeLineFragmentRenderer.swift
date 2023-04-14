@@ -1,11 +1,15 @@
 import CoreText
 
-final class HighlightedRangeRenderer: Renderer {
+final class HighlightedRangeLineFragmentRenderer: LineFragmentRenderer {
     private let lineFragment: LineFragment
-    private let stringProvider: RendererStringProvider
+    private let stringProvider: LineFragmentRendererStringProvider
     private let highlightedRangeFragments: [HighlightedRangeFragment]
 
-    init(lineFragment: LineFragment, stringProvider: RendererStringProvider, highlightedRangeFragments: [HighlightedRangeFragment]) {
+    init(
+        lineFragment: LineFragment,
+        stringProvider: LineFragmentRendererStringProvider,
+        highlightedRangeFragments: [HighlightedRangeFragment]
+    ) {
         self.lineFragment = lineFragment
         self.stringProvider = stringProvider
         self.highlightedRangeFragments = highlightedRangeFragments
@@ -26,7 +30,7 @@ final class HighlightedRangeRenderer: Renderer {
     }
 }
 
-private extension HighlightedRangeRenderer {
+private extension HighlightedRangeLineFragmentRenderer {
     private func render(_ highlightedRange: HighlightedRangeFragment, in context: CGContext) {
         let startX = CTLineGetOffsetForStringIndex(lineFragment.line, highlightedRange.range.lowerBound, nil)
         let endX = endX(for: highlightedRange, in: context)

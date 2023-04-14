@@ -11,6 +11,10 @@ extension String {
         let dataB = "abc".data(using: .utf16)?.suffix(from: 2)
         return dataA == dataB ? .utf16LittleEndian : .utf16BigEndian
     }
+
+    var isLineBreak: Bool {
+        !contains { !$0.isLineBreak }
+    }
 }
 
 extension String.Element {

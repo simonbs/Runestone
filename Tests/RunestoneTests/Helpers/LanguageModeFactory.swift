@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 @testable import Runestone
 import TestTreeSitterLanguages
@@ -76,12 +77,11 @@ enum LanguageModeFactory {
         let stringView = StringView(string: text)
         let lineManager = LineManager(stringView: stringView)
         lineManager.rebuild()
-        let internalLanguage = language.internalLanguage
         return TreeSitterInternalLanguageMode(
-            language: internalLanguage,
-            languageProvider: nil,
-            stringView: stringView,
-            lineManager: lineManager
+            stringView: CurrentValueSubject(stringView),
+            lineManager: CurrentValueSubject(lineManager),
+            language: language.internalLanguage,
+            languageProvider: nil
         )
     }
 }

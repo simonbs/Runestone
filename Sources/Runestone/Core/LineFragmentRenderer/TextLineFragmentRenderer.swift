@@ -2,7 +2,7 @@ import CoreGraphics
 import CoreText
 import Foundation
 
-final class TextRenderer: Renderer {
+final class TextLineFragmentRenderer: LineFragmentRenderer {
     private let lineFragment: LineFragment
 
     init(lineFragment: LineFragment) {

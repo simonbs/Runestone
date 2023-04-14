@@ -22,9 +22,7 @@ final class TypesetSettings {
 private extension TypesetSettings {
     private func setupTabWidthObserver(font: CurrentValueSubject<MultiPlatformFont, Never>) {
         Publishers.CombineLatest(indentStrategy, font).dropFirst().sink { [weak self] indentStrategy, font in
-            if let self {
-                self.tabWidth.value = TabWidthMeasurer.measure(lengthInSpaces: indentStrategy.lengthInSpaces, font: font)
-            }
+            self?.tabWidth.value = TabWidthMeasurer.measure(lengthInSpaces: indentStrategy.lengthInSpaces, font: font)
         }.store(in: &cancellables)
     }
 }

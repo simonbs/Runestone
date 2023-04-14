@@ -17,28 +17,22 @@ final class LineController {
     }
 
     let line: LineNode
-    var constrainingWidth: CGFloat {
-        get {
-            typesetter.constrainingWidth
-        }
-        set {
-            typesetter.constrainingWidth = newValue
-        }
-    }
+    @_RunestoneProxy(\LineController.typesetter.constrainingWidth)
+    var constrainingWidth: CGFloat
     var lineWidth: CGFloat {
-        ceil(typesetter.maximumLineWidth)
+        ceil(typesetter.maximumLineFragmentWidth)
     }
     var lineHeight: CGFloat {
         if let lineHeight = _lineHeight {
             return lineHeight
         } else if typesetter.lineFragments.isEmpty {
-            let lineHeight = estimatedLineHeight.scaledValue
+            let lineHeight = estimatedLineHeight.scaledValue.value
             _lineHeight = lineHeight
             return lineHeight
         } else {
             let knownLineFragmentHeight = typesetter.lineFragments.reduce(0) { $0 + $1.scaledSize.height }
             let remainingNumberOfLineFragments = typesetter.bestGuessNumberOfLineFragments - typesetter.lineFragments.count
-            let lineFragmentHeight = estimatedLineHeight.scaledValue
+            let lineFragmentHeight = estimatedLineHeight.scaledValue.value
             let remainingLineFragmentHeight = CGFloat(remainingNumberOfLineFragments) * lineFragmentHeight
             let lineHeight = knownLineFragmentHeight + remainingLineFragmentHeight
             _lineHeight = lineHeight
@@ -52,13 +46,16 @@ final class LineController {
         typesetter.isFinishedTypesetting
     }
     private(set) var attributedString: NSMutableAttributedString?
+    var lineFragments: [LineFragment] {
+        typesetter.lineFragments
+    }
 
     private let stringView: CurrentValueSubject<StringView, Never>
     private let estimatedLineHeight: EstimatedLineHeight
     private let tabWidth: CurrentValueSubject<CGFloat, Never>
     private let typesetter: LineTypesetter
     private let defaultStringAttributes: DefaultStringAttributes
-    private let rendererFactory: RendererFactory
+    private let lineFragmentControllerFactory: LineFragmentControllerFactory
     private var lineFragmentControllers: [LineFragmentID: LineFragmentController] = [:]
     private var isLineFragmentCacheInvalid = true
     private var isStringInvalid = true
@@ -77,7 +74,7 @@ final class LineController {
         tabWidth: CurrentValueSubject<CGFloat, Never>,
         typesetter: LineTypesetter,
         defaultStringAttributes: DefaultStringAttributes,
-        rendererFactory: RendererFactory,
+        lineFragmentControllerFactory: LineFragmentControllerFactory,
         syntaxHighlighter: SyntaxHighlighter
     ) {
         self.line = line
@@ -85,7 +82,7 @@ final class LineController {
         self.estimatedLineHeight = estimatedLineHeight
         self.tabWidth = tabWidth
         self.defaultStringAttributes = defaultStringAttributes
-        self.rendererFactory = rendererFactory
+        self.lineFragmentControllerFactory = lineFragmentControllerFactory
         self.typesetter = typesetter
         self.syntaxHighlighter = syntaxHighlighter
         let rootLineFragmentNodeData = LineFragmentNodeData(lineFragment: nil)
@@ -160,29 +157,17 @@ final class LineController {
 //        }
 //    }
 
-    func caretRect(atIndex lineLocalLocation: Int) -> CGRect {
-        for lineFragment in typesetter.lineFragments {
-            if let caretLocation = lineFragment.caretLocation(forLineLocalLocation: lineLocalLocation) {
-                let xPosition = CTLineGetOffsetForStringIndex(lineFragment.line, caretLocation, nil)
-                let yPosition = lineFragment.yPosition + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
-                return CGRect(x: xPosition, y: yPosition, width: Caret.width, height: lineFragment.baseSize.height)
-            }
-        }
-        let yPosition = (estimatedLineHeight.scaledValue - estimatedLineHeight.value) / 2
-        return CGRect(x: 0, y: yPosition, width: Caret.width, height: estimatedLineHeight.value)
-    }
-
     func firstRect(for lineLocalRange: NSRange) -> CGRect {
         for lineFragment in typesetter.lineFragments {
-            if let caretRange = lineFragment.caretRange(forLineLocalRange: lineLocalRange) {
-                let finalIndex = min(lineFragment.visibleRange.upperBound, caretRange.upperBound)
-                let xStart = CTLineGetOffsetForStringIndex(lineFragment.line, caretRange.location, nil)
+            if let insertionPointRange = lineFragment.insertionPointRange(forLineLocalRange: lineLocalRange) {
+                let finalIndex = min(lineFragment.visibleRange.upperBound, insertionPointRange.upperBound)
+                let xStart = CTLineGetOffsetForStringIndex(lineFragment.line, insertionPointRange.location, nil)
                 let xEnd = CTLineGetOffsetForStringIndex(lineFragment.line, finalIndex, nil)
                 let yPosition = lineFragment.yPosition + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
                 return CGRect(x: xStart, y: yPosition, width: xEnd - xStart, height: lineFragment.baseSize.height)
             }
         }
-        return CGRect(x: 0, y: 0, width: 0, height: estimatedLineHeight.scaledValue)
+        return CGRect(x: 0, y: 0, width: 0, height: estimatedLineHeight.scaledValue.value)
     }
 
     func location(closestTo point: CGPoint) -> Int {
@@ -331,11 +316,7 @@ private extension LineController {
             lineFragmentController.lineFragment = lineFragment
             return lineFragmentController
         } else {
-            let lineFragmentController = LineFragmentController(
-                line: line,
-                lineFragment: lineFragment,
-                rendererFactory: rendererFactory
-            )
+            let lineFragmentController = lineFragmentControllerFactory.makeLineFragmentController(for: lineFragment, in: line)
             lineFragmentControllers[lineFragment.id] = lineFragmentController
             return lineFragmentController
         }

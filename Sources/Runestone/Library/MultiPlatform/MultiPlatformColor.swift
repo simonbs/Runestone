@@ -12,6 +12,10 @@ extension NSColor {
         .labelColor
     }
 
+    static var background: NSColor {
+        .textBackgroundColor
+    }
+
     static var systemFill: NSColor {
         .systemGray.withAlphaComponent(0.1)
     }

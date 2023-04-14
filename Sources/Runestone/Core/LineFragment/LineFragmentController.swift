@@ -19,13 +19,22 @@ final class LineFragmentController {
     }
 
     private let line: LineNode
-    private let rendererFactory: RendererFactory
-    private var renderer: Renderer
+    private var renderer: LineFragmentRenderer
+    private let rendererFactory: LineFragmentRendererFactory
+    private var cancellables: Set<AnyCancellable> = []
 
-    init(line: LineNode, lineFragment: LineFragment, rendererFactory: RendererFactory) {
+    init(
+        line: LineNode,
+        lineFragment: LineFragment,
+        rendererFactory: LineFragmentRendererFactory,
+        selectedRange: CurrentValueSubject<NSRange, Never>
+    ) {
         self.line = line
         self.lineFragment = lineFragment
-        self.rendererFactory = rendererFactory
         self.renderer = rendererFactory.makeRenderer(for: lineFragment, in: line)
+        self.rendererFactory = rendererFactory
+        selectedRange.sink { [weak self] _ in
+            self?.lineFragmentView?.setNeedsDisplay()
+        }.store(in: &cancellables)
     }
 }

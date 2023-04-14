@@ -5,8 +5,7 @@ struct LineControllerFactory {
     let estimatedLineHeight: EstimatedLineHeight
     let defaultStringAttributes: DefaultStringAttributes
     let typesetSettings: TypesetSettings
-    let invisibleCharacterSettings: InvisibleCharacterSettings
-    let rendererFactory: RendererFactory
+    let lineFragmentControllerFactory: LineFragmentControllerFactory
     let syntaxHighlighterFactory: SyntaxHighlighterFactory
 
     func makeLineController(for line: LineNode) -> LineController {
@@ -22,7 +21,7 @@ struct LineControllerFactory {
             tabWidth: typesetSettings.tabWidth,
             typesetter: typesetter,
             defaultStringAttributes: defaultStringAttributes,
-            rendererFactory: rendererFactory,
+            lineFragmentControllerFactory: lineFragmentControllerFactory,
             syntaxHighlighter: syntaxHighlighterFactory.makeSyntaxHighlighter()
         )
     }

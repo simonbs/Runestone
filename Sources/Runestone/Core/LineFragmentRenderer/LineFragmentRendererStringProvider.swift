@@ -1,7 +1,7 @@
 import Combine
 import Foundation
 
-struct RendererStringProvider {
+struct LineFragmentRendererStringProvider {
     private let stringView: CurrentValueSubject<StringView, Never>
     private let line: LineNode
     private let lineFragment: LineFragment

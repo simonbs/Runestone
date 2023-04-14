@@ -217,10 +217,29 @@ open class TextView: NSView, NSMenuItemValidation {
     /// The TextView will only update the line endings when text is modified through an external event, such as when the user typing on the keyboard, when the user is replacing selected text, and when pasting text into the text view. In all other cases, you should make sure that the text provided to the text view uses the desired line endings. This includes when calling ``TextView/setState(_:addUndoAction:)``.
     @_RunestoneProxy(\TextView.typesetSettings.lineEndings.value)
     public var lineEndings: LineEnding
-    /// The color of the insertion point. This can be used to control the color of the caret.
-    @_RunestoneProxy(\TextView.caretLayouter.color)
+    /// The shape of the insertion point.
+    ///
+    /// Defaults to ``InsertionPointShape/verticalBar``.
+    @_RunestoneProxy(\TextView.insertionPointShapeSubject.value)
+    public var insertionPointShape: InsertionPointShape
+    /// The color of the insertion point.
+    ///
+    /// This can be used to control the color of the caret.
+    @_RunestoneProxy(\TextView.insertionPointBackgroundRenderer.color)
     public var insertionPointColor: NSColor
-    /// The color of the selection highlight. It is most common to set this to the same color as the color used for the insertion point.
+    /// The color of the insertion point.
+    ///
+    /// This can be used to control the color of the caret.
+    @_RunestoneProxy(\TextView.insertionPointForegroundRenderer.defaultColor)
+    public var insertionPointForegroundColor: NSColor
+    /// The color of the insertion point.
+    ///
+    /// This can be used to control the color of the caret.
+    @_RunestoneProxy(\TextView.insertionPointForegroundRenderer.invisibleCharactersColor)
+    public var insertionPointInvisibleCharacterForegroundColor: NSColor
+    /// The color of the selection highlight.
+    ///
+    /// It is most common to set this to the same color as the color used for the insertion point.
     @_RunestoneProxy(\TextView.textSelectionLayouter.backgroundColor.value)
     public var selectionHighlightColor: NSColor
     /// The object that the document uses to support undo/redo operations.
@@ -240,8 +259,8 @@ open class TextView: NSView, NSMenuItemValidation {
     let lineManager: CurrentValueSubject<LineManager, Never>
     let lineControllerStorage: LineControllerStorage
 
-    let _selectedRange: CurrentValueSubject<NSRange, Never>
-    let _markedRange: CurrentValueSubject<NSRange?, Never>
+    let selectedRangeSubject: CurrentValueSubject<NSRange, Never>
+    let markedRangeSubject: CurrentValueSubject<NSRange?, Never>
 
     let textContainer: TextContainer
     let typesetSettings: TypesetSettings
@@ -264,9 +283,9 @@ open class TextView: NSView, NSMenuItemValidation {
     let textDeleter: TextDeleter
     let textShifter: TextShifter
 
-    let caret: Caret
     let contentSizeService: ContentSizeService
     private let estimatedLineHeight: EstimatedLineHeight
+    private let estimatedCharacterWidth: EstimatedCharacterWidth
     private let widestLineTracker: WidestLineTracker
     private let contentArea: ContentArea
 
@@ -278,11 +297,15 @@ open class TextView: NSView, NSMenuItemValidation {
     let syntaxNodeRaycaster: SyntaxNodeRaycaster
     let textLocationConverter: TextLocationConverter
 
-    let caretLayouter: CaretLayouter
+    let insertionPointLayouter: InsertionPointLayouter
     let lineFragmentLayouter: LineFragmentLayouter
     let textSelectionLayouter: TextSelectionLayouter
     let lineSelectionLayouter: LineSelectionLayouter
     let pageGuideLayouter: PageGuideLayouter
+
+    private let insertionPointShapeSubject: CurrentValueSubject<InsertionPointShape, Never>
+    private let insertionPointBackgroundRenderer: InsertionPointBackgroundRenderer
+    private let insertionPointForegroundRenderer: InsertionPointForegroundRenderer
 
     let viewportScroller: ViewportScroller
     let automaticViewportScroller: AutomaticViewportScroller
@@ -333,8 +356,8 @@ open class TextView: NSView, NSMenuItemValidation {
         lineManager = compositionRoot.lineManager
         lineControllerStorage = compositionRoot.lineControllerStorage
 
-        _selectedRange = compositionRoot.selectedRange
-        _markedRange = compositionRoot.markedRange
+        selectedRangeSubject = compositionRoot.selectedRange
+        markedRangeSubject = compositionRoot.markedRange
 
         textContainer = compositionRoot.textContainer
         typesetSettings = compositionRoot.typesetSettings
@@ -357,9 +380,9 @@ open class TextView: NSView, NSMenuItemValidation {
         textDeleter = compositionRoot.textDeleter
         textShifter = compositionRoot.textShifter
 
-        caret = compositionRoot.caret
         contentSizeService = compositionRoot.contentSizeService
         estimatedLineHeight = compositionRoot.estimatedLineHeight
+        estimatedCharacterWidth = compositionRoot.estimatedCharacterWidth
         widestLineTracker = compositionRoot.widestLineTracker
         contentArea = compositionRoot.contentArea
 
@@ -371,11 +394,15 @@ open class TextView: NSView, NSMenuItemValidation {
         syntaxNodeRaycaster = compositionRoot.syntaxNodeRaycaster
         textLocationConverter = compositionRoot.textLocationConverter
 
-        caretLayouter = compositionRoot.caretLayouter
+        insertionPointLayouter = compositionRoot.insertionPointLayouter
         lineFragmentLayouter = compositionRoot.lineFragmentLayouter
         textSelectionLayouter = compositionRoot.textSelectionLayouter
         lineSelectionLayouter = compositionRoot.lineSelectionLayouter
         pageGuideLayouter = compositionRoot.pageGuideLayouter
+
+        insertionPointShapeSubject = compositionRoot.insertionPointShape
+        insertionPointBackgroundRenderer = compositionRoot.insertionPointBackgroundRenderer
+        insertionPointForegroundRenderer = compositionRoot.insertionPointForegoundRenderer
 
         viewportScroller = compositionRoot.viewportScroller
         automaticViewportScroller = compositionRoot.automaticViewportScroller
@@ -387,7 +414,7 @@ open class TextView: NSView, NSMenuItemValidation {
         highlightedRangeNavigator = compositionRoot.highlightedRangeNavigator
         super.init(frame: .zero)
         compositionRoot.textView.value = WeakBox(self)
-        _selectedRange.value = NSRange(location: 0, length: 0)
+        selectedRangeSubject.value = NSRange(location: 0, length: 0)
         _scrollView.value = WeakBox(scrollView)
         setupScrollViewBoundsDidChangeObserver()
         setupMenu()

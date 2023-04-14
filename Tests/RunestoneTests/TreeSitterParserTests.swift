@@ -3,12 +3,9 @@ import TestTreeSitterLanguages
 import XCTest
 
 final class TreeSitterParserTests: XCTestCase {
-    private let delegate = MockTreeSitterParserDelegate()
-
     func testParseString() {
         let string: NSString = "let foo = \"Hello world\""
         let parser = TreeSitterParser()
-        parser.delegate = delegate
         parser.language = tree_sitter_javascript()
         let tree = parser.parse(string)
         let expressionString = "(program (lexical_declaration (variable_declarator name: (identifier) value: (string))))"
@@ -18,7 +15,6 @@ final class TreeSitterParserTests: XCTestCase {
     func testReplaceShortTextWithSameShortText() {
         let string: NSString = "let foo = \"Hello world\""
         let parser = TreeSitterParser()
-        parser.delegate = delegate
         parser.language = tree_sitter_javascript()
         let oldTree = parser.parse(string)
         // Replace the entire text but with the same text (Select all and paste: CMD + A, CMD + V)
@@ -31,8 +27,7 @@ final class TreeSitterParserTests: XCTestCase {
             newEndPoint: TreeSitterTextPoint(row: 0, column: 23)
         )
         oldTree?.apply(inputEdit)
-        delegate.string = string
-        let newTree = parser.parse(oldTree: oldTree)
+        let newTree = parser.parse(string, oldTree: oldTree)
         XCTAssertEqual(newTree!.rootNode.expressionString!, oldTree!.rootNode.expressionString!)
     }
 
@@ -56,7 +51,6 @@ final class TreeSitterParserTests: XCTestCase {
 
         """
         let parser = TreeSitterParser()
-        parser.delegate = delegate
         parser.language = tree_sitter_javascript()
         let oldTree = parser.parse(string)
         // Replace the entire text but with the same text (Select all and paste: CMD + A, CMD + V)
@@ -69,8 +63,7 @@ final class TreeSitterParserTests: XCTestCase {
             newEndPoint: TreeSitterTextPoint(row: 15, column: 0)
         )
         oldTree?.apply(inputEdit)
-        delegate.string = string
-        let newTree = parser.parse(oldTree: oldTree)
+        let newTree = parser.parse(string, oldTree: oldTree)
         XCTAssertEqual(newTree!.rootNode.expressionString!, oldTree!.rootNode.expressionString!)
     }
 }

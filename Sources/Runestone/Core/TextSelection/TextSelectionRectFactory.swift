@@ -2,23 +2,11 @@ import Combine
 import CoreGraphics
 import Foundation
 
-final class TextSelectionRectFactory {
-    private let caret: Caret
-    private let lineManager: CurrentValueSubject<LineManager, Never>
-    private let contentArea: CurrentValueSubject<CGRect, Never>
-    private let lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
-
-    init(
-        caret: Caret,
-        lineManager: CurrentValueSubject<LineManager, Never>,
-        contentArea: CurrentValueSubject<CGRect, Never>,
-        lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
-    ) {
-        self.caret = caret
-        self.lineManager = lineManager
-        self.contentArea = contentArea
-        self.lineHeightMultiplier = lineHeightMultiplier
-    }
+struct TextSelectionRectFactory {
+    let characterBoundsProvider: CharacterBoundsProvider
+    let lineManager: CurrentValueSubject<LineManager, Never>
+    let contentArea: CurrentValueSubject<CGRect, Never>
+    let lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
 
     func selectionRects(in range: NSRange) -> [TextSelectionRect] {
         guard range.length > 0 else {
@@ -27,35 +15,60 @@ final class TextSelectionRectFactory {
         guard let endLine = lineManager.value.line(containingCharacterAt: range.upperBound) else {
             return []
         }
-        let contentArea = contentArea.value
+        let adjustedRange = NSRange(location: range.location, length: range.length - 1)
         let selectsLineEnding = range.upperBound == endLine.location
-        let adjustedRange = NSRange(location: range.location, length: selectsLineEnding ? range.length - 1 : range.length)
-        let startCaretFrame = caret.frame(at: adjustedRange.lowerBound, allowMovingCaretToNextLineFragment: true)
-        let endCaretFrame = caret.frame(at: adjustedRange.upperBound, allowMovingCaretToNextLineFragment: false)
-        if startCaretFrame.minY == endCaretFrame.minY && startCaretFrame.maxY == endCaretFrame.maxY {
-            // Selecting text in the same line fragment.
-            let width = selectsLineEnding ? contentArea.width - (startCaretFrame.minX - contentArea.minX) : endCaretFrame.maxX - startCaretFrame.maxX
-            let scaledHeight = startCaretFrame.height * lineHeightMultiplier.value
-            let offsetY = startCaretFrame.minY - (scaledHeight - startCaretFrame.height) / 2
-            let rect = CGRect(x: startCaretFrame.minX, y: offsetY, width: width, height: scaledHeight)
-            let selectionRect = TextSelectionRect(rect: rect, writingDirection: .natural, containsStart: true, containsEnd: true)
-            return [selectionRect]
-        } else {
-            // Selecting text across line fragments and possibly across lines.
-            let startWidth = contentArea.width - (startCaretFrame.minX - contentArea.minX)
-            let startScaledHeight = startCaretFrame.height * lineHeightMultiplier.value
-            let startOffsetY = startCaretFrame.minY - (startScaledHeight - startCaretFrame.height) / 2
-            let startRect = CGRect(x: startCaretFrame.minX, y: startOffsetY, width: startWidth, height: startScaledHeight)
-            let endWidth = selectsLineEnding ? contentArea.width : endCaretFrame.minX - contentArea.minX
-            let endScaledHeight = endCaretFrame.height * lineHeightMultiplier.value
-            let endOffsetY = endCaretFrame.minY - (endScaledHeight - endCaretFrame.height) / 2
-            let endRect = CGRect(x: contentArea.minX, y: endOffsetY, width: endWidth, height: endScaledHeight)
-            let middleHeight = endRect.minY - startRect.maxY
-            let middleRect = CGRect(x: contentArea.minX, y: startRect.maxY, width: contentArea.width, height: middleHeight)
-            let startSelectionRect = TextSelectionRect(rect: startRect, writingDirection: .natural, containsStart: true, containsEnd: false)
-            let middleSelectionRect = TextSelectionRect(rect: middleRect, writingDirection: .natural, containsStart: false, containsEnd: false)
-            let endSelectionRect = TextSelectionRect(rect: endRect, writingDirection: .natural, containsStart: false, containsEnd: true)
-            return [startSelectionRect, middleSelectionRect, endSelectionRect]
+        guard let lowerRect = characterBoundsProvider.boundsOfComposedCharacterSequence(
+            atLocation: adjustedRange.lowerBound,
+            moveToToNextLineFragmentIfNeeded: false
+        ) else {
+            return []
         }
+        guard let upperRect = characterBoundsProvider.boundsOfComposedCharacterSequence(
+            atLocation: adjustedRange.upperBound,
+            moveToToNextLineFragmentIfNeeded: false
+        ) else {
+            return []
+        }
+        if lowerRect.minY == upperRect.minY && lowerRect.maxY == upperRect.maxY {
+            return createRectsInSingleLineFragment(from: lowerRect, to: upperRect, selectsLineEnding: selectsLineEnding)
+        } else {
+            return createRectsSpanningMultipleLineFragments(from: lowerRect, to: upperRect, selectsLineEnding: selectsLineEnding)
+        }
+    }
+}
+
+private extension TextSelectionRectFactory {
+    private func createRectsInSingleLineFragment(from lowerRect: CGRect, to upperRect: CGRect, selectsLineEnding: Bool) -> [TextSelectionRect] {
+        // Selecting text in the same line fragment.
+        let contentArea = contentArea.value
+        let width = selectsLineEnding ? contentArea.width - (lowerRect.minX - contentArea.minX) : upperRect.maxX - lowerRect.minX
+        let scaledHeight = lowerRect.height * lineHeightMultiplier.value
+        let offsetY = lowerRect.minY - (scaledHeight - lowerRect.height) / 2
+        let rect = CGRect(x: lowerRect.minX, y: offsetY, width: width, height: scaledHeight)
+        let selectionRect = TextSelectionRect(rect: rect, writingDirection: .natural, containsStart: true, containsEnd: true)
+        return [selectionRect]
+    }
+
+    private func createRectsSpanningMultipleLineFragments(
+        from lowerRect: CGRect,
+        to upperRect: CGRect,
+        selectsLineEnding: Bool
+    ) -> [TextSelectionRect] {
+        // Selecting text across line fragments and possibly across lines.
+        let contentArea = contentArea.value
+        let startWidth = contentArea.width - (lowerRect.minX - contentArea.minX)
+        let startScaledHeight = lowerRect.height * lineHeightMultiplier.value
+        let startOffsetY = lowerRect.minY - (startScaledHeight - lowerRect.height) / 2
+        let startRect = CGRect(x: lowerRect.minX, y: startOffsetY, width: startWidth, height: startScaledHeight)
+        let endWidth = selectsLineEnding ? contentArea.width : upperRect.maxX - contentArea.minX
+        let endScaledHeight = upperRect.height * lineHeightMultiplier.value
+        let endOffsetY = upperRect.minY - (endScaledHeight - upperRect.height) / 2
+        let endRect = CGRect(x: contentArea.minX, y: endOffsetY, width: endWidth, height: endScaledHeight)
+        let middleHeight = endRect.minY - startRect.maxY
+        let middleRect = CGRect(x: contentArea.minX, y: startRect.maxY, width: contentArea.width, height: middleHeight)
+        let startSelectionRect = TextSelectionRect(rect: startRect, writingDirection: .natural, containsStart: true, containsEnd: false)
+        let middleSelectionRect = TextSelectionRect(rect: middleRect, writingDirection: .natural, containsStart: false, containsEnd: false)
+        let endSelectionRect = TextSelectionRect(rect: endRect, writingDirection: .natural, containsStart: false, containsEnd: true)
+        return [startSelectionRect, middleSelectionRect, endSelectionRect]
     }
 }

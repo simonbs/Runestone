@@ -16,29 +16,41 @@ final class InvisibleCharacterSettings {
     let lineBreakSymbol = CurrentValueSubject<String, Never>("\u{00ac}")
     let softLineBreakSymbol = CurrentValueSubject<String, Never>("\u{00ac}")
     let maximumLineBreakSymbolWidth = CurrentValueSubject<CGFloat, Never>(0)
+    let showInvisibleCharacters = CurrentValueSubject<Bool, Never>(false)
 
     private var cancellables: Set<AnyCancellable> = []
 
     init(font: CurrentValueSubject<MultiPlatformFont, Never>, textColor: CurrentValueSubject<MultiPlatformColor, Never>) {
         self.font = font
         self.textColor = textColor
-        Publishers.CombineLatest4(
+        Publishers.CombineLatest3(
             font,
-            Publishers.CombineLatest(showLineBreaks, showSoftLineBreaks).map { $0 || $1 },
-            lineBreakSymbol,
-            softLineBreakSymbol
-        ).removeDuplicates(by: { old, new in
-            old != new
-        }).map { new in
-            (font: new.0, lineBreakSymbol: new.2, softLineBreakSymbol: new.3)
-        }.sink { [weak self] values in
+            Publishers.CombineLatest(showLineBreaks, showSoftLineBreaks).map {
+                (lineBreaks: $0, softLineBreaks: $1)
+            },
+            Publishers.CombineLatest(lineBreakSymbol, softLineBreakSymbol).map {
+                (lineBreakSymbol: $0, softLineBreakSymbol: $1)
+            }
+        )
+        .removeDuplicates(by: {
+            $0.0 != $1.0 && $0.1 != $1.1 && $0.2 != $1.2
+        })
+        .sink { [weak self] font, show, symbols in
             guard let self else {
                 return
             }
-            let attrs: [NSAttributedString.Key: Any] = [.font: values.font]
-            let lineBreakSymbolSize = values.lineBreakSymbol.size(withAttributes: attrs)
-            let softLineBreakSymbolSize = values.softLineBreakSymbol.size(withAttributes: attrs)
+            let attrs: [NSAttributedString.Key: Any] = [.font: font]
+            let lineBreakSymbolSize = show.lineBreaks ? symbols.lineBreakSymbol.size(withAttributes: attrs) : .zero
+            let softLineBreakSymbolSize = show.softLineBreaks ? symbols.softLineBreakSymbol.size(withAttributes: attrs) : .zero
             self.maximumLineBreakSymbolWidth.value = max(lineBreakSymbolSize.width, softLineBreakSymbolSize.width)
+        }.store(in: &cancellables)
+        Publishers.CombineLatest4(
+            showTabs,
+            showSpaces,
+            showLineBreaks,
+            showSoftLineBreaks
+        ).sink { [weak self] showTabs, showSpaces, showLineBreaks, showSoftLineBreaks in
+            self?.showInvisibleCharacters.value = showTabs || showSpaces || showLineBreaks || showSoftLineBreaks
         }.store(in: &cancellables)
     }
 }

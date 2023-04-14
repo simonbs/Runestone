@@ -42,7 +42,7 @@ final class TextViewStateSetter {
         let oldText = stringView.value.string
         let newText = state.stringView.string
         updateUndoManager(replacing: oldText, with: newText, addUndoAction: addUndoAction)
-        state.lineManager.estimatedLineHeight = estimatedLineHeight.value
+        state.lineManager.estimatedLineHeight = estimatedLineHeight.rawValue.value
         stringView.value = state.stringView
         lineManager.value = state.lineManager
         themeSettings.theme.value = state.theme

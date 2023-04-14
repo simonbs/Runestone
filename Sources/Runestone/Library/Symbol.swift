@@ -14,6 +14,8 @@ enum Symbol {
     static let lineFeed = String(Self.Character.lineFeed)
     static let carriageReturn = String(Self.Character.carriageReturn)
     static let carriageReturnLineFeed = String(Self.Character.carriageReturnLineFeed)
+    static let lineSeparator = String(Self.Character.lineSeparator)
     static let tab = String(Self.Character.tab)
     static let space = String(Self.Character.space)
+    static let nonBreakingSpace = String(Self.Character.nonBreakingSpace)
 }

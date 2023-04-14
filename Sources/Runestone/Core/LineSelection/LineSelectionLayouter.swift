@@ -4,12 +4,10 @@ import Foundation
 final class LineSelectionLayouter {
     let lineSelectionDisplayType = CurrentValueSubject<LineSelectionDisplayType, Never>(.disabled)
 
-    private let caret: Caret
     private let lineSelectionView = MultiPlatformView()
     private var cancellables: Set<AnyCancellable> = []
 
     init(
-        caret: Caret,
         selectedRange: CurrentValueSubject<NSRange, Never>,
         lineManager: CurrentValueSubject<LineManager, Never>,
         viewport: CurrentValueSubject<CGRect, Never>,
@@ -18,7 +16,6 @@ final class LineSelectionLayouter {
         backgroundColor: CurrentValueSubject<MultiPlatformColor, Never>,
         containerView: CurrentValueSubject<WeakBox<TextView>, Never>
     ) {
-        self.caret = caret
         lineSelectionView.layerIfLoaded?.zPosition = -1000
         containerView.value.value?.addSubview(lineSelectionView)
         setupBackgroundColorSubscriber(backgroundColor: backgroundColor)
@@ -62,26 +59,26 @@ private extension LineSelectionLayouter {
         lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
     ) {
         Publishers.CombineLatest(
-            Publishers.CombineLatest4(caret.frame, lineSelectionDisplayType, selectedRange, lineManager),
+            Publishers.CombineLatest3(lineSelectionDisplayType, selectedRange, lineManager),
             Publishers.CombineLatest3(viewport, textContainerInset, lineHeightMultiplier)
         ).sink { [weak self] tupleA, tupleB in
-            guard let self else {
-                return
-            }
-            let (_, lineSelectionDisplayType, selectedRange, lineManager) = tupleA
-            let (viewport, textContainerInset, lineHeightMultiplier) = tupleB
-            let rectFactory = LineSelectionRectFactory(
-                viewport: viewport,
-                caret: self.caret,
-                lineManager: lineManager,
-                lineSelectionDisplayType: lineSelectionDisplayType,
-                textContainerInset: textContainerInset,
-                lineHeightMultiplier: lineHeightMultiplier,
-                selectedRange: selectedRange
-            )
-            if let frame = rectFactory.rect {
-                self.lineSelectionView.frame = frame
-            }
+//            guard let self else {
+//                return
+//            }
+//            let (lineSelectionDisplayType, selectedRange, lineManager) = tupleA
+//            let (viewport, textContainerInset, lineHeightMultiplier) = tupleB
+//            let rectFactory = LineSelectionRectFactory(
+//                viewport: viewport,
+//                caret: self.caret,
+//                lineManager: lineManager,
+//                lineSelectionDisplayType: lineSelectionDisplayType,
+//                textContainerInset: textContainerInset,
+//                lineHeightMultiplier: lineHeightMultiplier,
+//                selectedRange: selectedRange
+//            )
+//            if let frame = rectFactory.rect {
+//                self.lineSelectionView.frame = frame
+//            }
         }.store(in: &cancellables)
     }
 }

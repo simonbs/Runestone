@@ -48,6 +48,7 @@ final class CompositionRoot {
         textColor: themeSettings.invisibleCharactersColor
     )
     let themeSettings = ThemeSettings()
+    let insertionPointShape = CurrentValueSubject<InsertionPointShape, Never>(.verticalBar)
 
     let undoManager: UndoManager = CoalescingUndoManager()
     private(set) lazy var characterPairService = CharacterPairService(
@@ -160,13 +161,6 @@ final class CompositionRoot {
         DeleteCharacterPairRangeFactory(stringView: stringView, characterPairService: characterPairService)
     }
 
-    private(set) lazy var caret = Caret(
-        stringView: stringView,
-        lineManager: lineManager,
-        lineControllerStorage: lineControllerStorage,
-        contentArea: contentArea.rawValue,
-        location: selectedRange.map(\.location).eraseToAnyPublisher()
-    )
     private(set) lazy var contentSizeService = ContentSizeService(
         scrollView: scrollView,
         totalLineHeightTracker: totalLineHeightTracker,
@@ -174,12 +168,15 @@ final class CompositionRoot {
         viewport: textContainer.viewport,
         textContainerInset: textContainer.inset,
         isLineWrappingEnabled: typesetSettings.isLineWrappingEnabled,
-        maximumLineBreakSymbolWidth: invisibleCharacterSettings.maximumLineBreakSymbolWidth
+        maximumLineBreakSymbolWidth: invisibleCharacterSettings.maximumLineBreakSymbolWidth,
+        estimatedCharacterWidth: estimatedCharacterWidth,
+        insertionPointShape: insertionPointShape
     )
     private(set) lazy var estimatedLineHeight = EstimatedLineHeight(
         font: themeSettings.font.eraseToAnyPublisher(),
         lineHeightMultiplier: typesetSettings.lineHeightMultiplier.eraseToAnyPublisher()
     )
+    private(set) lazy var estimatedCharacterWidth = EstimatedCharacterWidth(font: themeSettings.font)
     let widestLineTracker = WidestLineTracker()
     private lazy var totalLineHeightTracker = TotalLineHeightTracker(lineManager: lineManager)
     private(set) lazy var contentArea = ContentArea(
@@ -238,14 +235,36 @@ final class CompositionRoot {
         TextLocationConverter(lineManager: lineManager)
     }
 
-    var caretLayouter: CaretLayouter {
-        CaretLayouter(
-            caret: caret,
+    var insertionPointLayouter: InsertionPointLayouter {
+        InsertionPointLayouter(
+            renderer: insertionPointRenderer,
+            frame: insertionPointFramePublisherFactory.makeFramePublisher(),
             containerView: textView,
             selectedRange: selectedRange.eraseToAnyPublisher(),
-            showCaret: showCaret
+            showInsertionPoint: showInsertionPoint
         )
     }
+    private var insertionPointRenderer: InsertionPointRenderer {
+        InsertionPointRenderer(
+            backgroundRenderer: insertionPointBackgroundRenderer,
+            foregroundRenderer: insertionPointForegoundRenderer
+        )
+    }
+    private(set) lazy var insertionPointBackgroundRenderer = InsertionPointBackgroundRenderer()
+    private(set) lazy var insertionPointForegoundRenderer = InsertionPointForegroundRenderer(
+        lineManager: lineManager,
+        lineControllerStorage: lineControllerStorage,
+        selectedRange: selectedRange,
+        insertionPointShape: insertionPointShape,
+        invisibleCharacterRenderer: invisibleCharacterRenderer
+    )
+    private var invisibleCharacterRenderer: InvisibleCharacterRenderer {
+        InvisibleCharacterRenderer(
+            stringView: stringView,
+            invisibleCharacterSettings: invisibleCharacterSettings
+        )
+    }
+
     private(set) lazy var lineFragmentLayouter = LineFragmentLayouter(
         scrollView: scrollView,
         stringView: stringView,
@@ -255,9 +274,40 @@ final class CompositionRoot {
         totalLineHeightTracker: totalLineHeightTracker,
         textContainer: textContainer,
         isLineWrappingEnabled: typesetSettings.isLineWrappingEnabled,
+        maximumLineBreakSymbolWidth: invisibleCharacterSettings.maximumLineBreakSymbolWidth,
         contentSize: contentSizeService.contentSize,
         containerView: textView
     )
+    private var insertionPointFramePublisherFactory: InsertionPointFramePublisherFactory {
+        InsertionPointFramePublisherFactory(
+            insertionPointFrameFactory: insertionPointFrameFactory,
+            selectedRange: selectedRange.eraseToAnyPublisher(),
+            insertionPointShape: insertionPointShape.eraseToAnyPublisher(),
+            contentArea: contentArea.rawValue.eraseToAnyPublisher(),
+            estimatedLineHeight: estimatedLineHeight,
+            estimatedCharacterWidth: estimatedCharacterWidth.rawValue.eraseToAnyPublisher(),
+            kern: typesetSettings.kern.eraseToAnyPublisher()
+        )
+    }
+    private var insertionPointFrameFactory: InsertionPointFrameFactory {
+        InsertionPointFrameFactory(
+            stringView: stringView,
+            lineManager: lineManager,
+            characterBoundsProvider: characterBoundsProvider,
+            shape: insertionPointShape,
+            contentArea: contentArea.rawValue,
+            estimatedLineHeight: estimatedLineHeight,
+            estimatedCharacterWidth: estimatedCharacterWidth.rawValue
+        )
+    }
+    private var characterBoundsProvider: CharacterBoundsProvider {
+        CharacterBoundsProvider(
+            stringView: stringView,
+            lineManager: lineManager,
+            lineControllerStorage: lineControllerStorage,
+            contentArea: contentArea
+        )
+    }
     #if os(macOS)
     var textSelectionLayouter: TextSelectionLayouter {
         TextSelectionLayouter(
@@ -270,7 +320,6 @@ final class CompositionRoot {
     #endif
     var lineSelectionLayouter: LineSelectionLayouter {
         LineSelectionLayouter(
-            caret: caret,
             selectedRange: selectedRange,
             lineManager: lineManager,
             viewport: textContainer.viewport,
@@ -294,8 +343,8 @@ final class CompositionRoot {
     private(set) lazy var viewportScroller = ViewportScroller(
         scrollView: scrollView,
         textContainerInset: textContainer.inset,
-        caret: caret,
-        estimatedLineHeight: estimatedLineHeight,
+        insertionPointFrameFactory: insertionPointFrameFactory,
+        lineHeightMultiplier: typesetSettings.lineHeightMultiplier,
         lineFragmentLayouter: lineFragmentLayouter,
         contentSizeService: contentSizeService
     )
@@ -337,7 +386,7 @@ final class CompositionRoot {
 }
 
 private extension CompositionRoot {
-    private var showCaret: AnyPublisher<Bool, Never> {
+    private var showInsertionPoint: AnyPublisher<Bool, Never> {
         Publishers.CombineLatest3(
             keyWindowObserver.isKeyWindow,
             isFirstResponder,
@@ -390,7 +439,7 @@ private extension CompositionRoot {
 
     private var textSelectionRectFactory: TextSelectionRectFactory {
         TextSelectionRectFactory(
-            caret: caret,
+            characterBoundsProvider: characterBoundsProvider,
             lineManager: lineManager,
             contentArea: contentArea.rawValue,
             lineHeightMultiplier: typesetSettings.lineHeightMultiplier
@@ -403,14 +452,24 @@ private extension CompositionRoot {
             estimatedLineHeight: estimatedLineHeight,
             defaultStringAttributes: defaultStringAttributes,
             typesetSettings: typesetSettings,
-            invisibleCharacterSettings: invisibleCharacterSettings,
-            rendererFactory: rendererFactory,
+            lineFragmentControllerFactory: lineFragmentControllerFactory,
             syntaxHighlighterFactory: syntaxHighlighterFactory
         )
     }
 
-    private var rendererFactory: RendererFactory {
-        RendererFactory(stringView: stringView, invisibleCharacterSettings: invisibleCharacterSettings)
+    private var lineFragmentControllerFactory: LineFragmentControllerFactory {
+        LineFragmentControllerFactory(
+            selectedRange: selectedRange,
+            rendererFactory: lineFragmentRendererFactory
+        )
+    }
+
+    private var lineFragmentRendererFactory: LineFragmentRendererFactory {
+        LineFragmentRendererFactory(
+            stringView: stringView,
+            invisibleCharacterSettings: invisibleCharacterSettings,
+            invisibleCharacterRenderer: invisibleCharacterRenderer
+        )
     }
 
     private var syntaxHighlighterFactory: SyntaxHighlighterFactory {
@@ -439,6 +498,7 @@ private extension CompositionRoot {
 
     private var statelessLineNavigationLocationFactory: StatelessLineNavigationLocationFactory {
         StatelessLineNavigationLocationFactory(
+            stringView: stringView,
             lineManager: lineManager,
             lineControllerStorage: lineControllerStorage
         )

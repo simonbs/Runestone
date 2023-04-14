@@ -59,7 +59,7 @@ public extension TextView {
     /// - Parameter sender: The object calling this method.
     override func selectAll(_ sender: Any?) {
         let stringLength = stringView.value.string.length
-        _selectedRange.value = NSRange(location: 0, length: stringLength)
+        selectedRangeSubject.value = NSRange(location: 0, length: stringLength)
     }
 
     /// Performs the undo operations in the last undo group.

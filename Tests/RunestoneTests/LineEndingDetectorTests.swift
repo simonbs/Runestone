@@ -88,7 +88,7 @@ private extension LineEndingDetectorTests {
         let stringView = StringView(string: string)
         let lineManager = LineManager(stringView: stringView)
         lineManager.rebuild()
-        let detector = LineEndingDetector(lineManager: lineManager, stringView: stringView)
+        let detector = LineEndingDetector(stringView: stringView, lineManager: lineManager)
         return detector.detect()
     }
 }

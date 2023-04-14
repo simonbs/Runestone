@@ -108,7 +108,7 @@ final class LineFragment {
         )
     }
 
-    func caretLocation(forLineLocalLocation lineLocalLocation: Int) -> Int? {
+    func insertionPointLocation(forLineLocalLocation lineLocalLocation: Int) -> Int? {
         let lineFragmentLocalLocation = lineLocalLocation - range.location
         guard lineFragmentLocalLocation >= 0 && lineFragmentLocalLocation <= range.length else {
             return nil
@@ -116,11 +116,11 @@ final class LineFragment {
         return min(lineLocalLocation, visibleRange.upperBound)
     }
 
-    func caretRange(forLineLocalRange lineLocalRange: NSRange) -> NSRange? {
-        guard let lowerBound = caretLocation(forLineLocalLocation: lineLocalRange.lowerBound) else {
+    func insertionPointRange(forLineLocalRange lineLocalRange: NSRange) -> NSRange? {
+        guard let lowerBound = insertionPointLocation(forLineLocalLocation: lineLocalRange.lowerBound) else {
             return nil
         }
-        guard let upperBound = caretLocation(forLineLocalLocation: lineLocalRange.upperBound) else {
+        guard let upperBound = insertionPointLocation(forLineLocalLocation: lineLocalRange.upperBound) else {
             return nil
         }
         return NSRange(location: lowerBound, length: upperBound - lowerBound)

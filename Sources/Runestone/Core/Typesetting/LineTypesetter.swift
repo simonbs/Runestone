@@ -6,12 +6,12 @@ import Foundation
 private final class TypesetResult {
     let lineFragments: [LineFragment]
     let lineFragmentsMap: [LineFragmentID: Int]
-    let maximumLineWidth: CGFloat
+    let maximumLineFragmentWidth: CGFloat
 
-    init(lineFragments: [LineFragment], lineFragmentsMap: [LineFragmentID: Int], maximumLineWidth: CGFloat) {
+    init(lineFragments: [LineFragment], lineFragmentsMap: [LineFragmentID: Int], maximumLineFragmentWidth: CGFloat) {
         self.lineFragments = lineFragments
         self.lineFragmentsMap = lineFragmentsMap
-        self.maximumLineWidth = maximumLineWidth
+        self.maximumLineFragmentWidth = maximumLineFragmentWidth
     }
 }
 
@@ -32,7 +32,7 @@ final class LineTypesetter {
 
     var constrainingWidth: CGFloat = 0
     private(set) var lineFragments: [LineFragment] = []
-    private(set) var maximumLineWidth: CGFloat = 0
+    private(set) var maximumLineFragmentWidth: CGFloat = 0
     var bestGuessNumberOfLineFragments: Int {
         if startOffset >= stringLength {
             return lineFragments.count
@@ -73,7 +73,7 @@ final class LineTypesetter {
 
     func reset() {
         lineFragments = []
-        maximumLineWidth = 0
+        maximumLineFragmentWidth = 0
         stringLength = 0
         attributedString = nil
         typesetter = nil
@@ -123,7 +123,7 @@ private extension LineTypesetter {
         for (id, index) in typesetResult.lineFragmentsMap {
             lineFragmentsMap[id] = index
         }
-        maximumLineWidth = max(maximumLineWidth, typesetResult.maximumLineWidth)
+        maximumLineFragmentWidth = max(maximumLineFragmentWidth, typesetResult.maximumLineFragmentWidth)
     }
 
     private func typesetLineFragments(
@@ -133,9 +133,9 @@ private extension LineTypesetter {
         stringLength: Int
     ) -> TypesetResult {
         guard constrainingWidth > 0 else {
-            return TypesetResult(lineFragments: [], lineFragmentsMap: [:], maximumLineWidth: 0)
+            return TypesetResult(lineFragments: [], lineFragmentsMap: [:], maximumLineFragmentWidth: 0)
         }
-        var maximumLineWidth: CGFloat = 0
+        var maximumLineFragmentWidth: CGFloat = 0
         var lineFragments: [LineFragment] = []
         var lineFragmentsMap: [LineFragmentID: Int] = [:]
         var remainingAdditionalLineFragmentCount = additionalLineFragmentCount
@@ -145,8 +145,8 @@ private extension LineTypesetter {
             lineFragments.append(lineFragment)
             nextYPosition += lineFragment.scaledSize.height
             startOffset += lineFragment.range.length
-            if lineFragment.scaledSize.width > maximumLineWidth {
-                maximumLineWidth = lineFragment.scaledSize.width
+            if lineFragment.scaledSize.width > maximumLineFragmentWidth {
+                maximumLineFragmentWidth = lineFragment.scaledSize.width
             }
             lineFragmentsMap[lineFragment.id] = lineFragmentIndex
             lineFragmentIndex += 1
@@ -159,7 +159,11 @@ private extension LineTypesetter {
                 shouldKeepTypesetting = false
             }
         }
-        return TypesetResult(lineFragments: lineFragments, lineFragmentsMap: lineFragmentsMap, maximumLineWidth: maximumLineWidth)
+        return TypesetResult(
+            lineFragments: lineFragments,
+            lineFragmentsMap: lineFragmentsMap,
+            maximumLineFragmentWidth: maximumLineFragmentWidth
+        )
     }
 
     private func makeNextLineFragment(using typesetter: CTTypesetter) -> LineFragment? {

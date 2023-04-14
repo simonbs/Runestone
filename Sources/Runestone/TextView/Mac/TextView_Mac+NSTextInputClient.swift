@@ -4,15 +4,15 @@ import AppKit
 extension TextView: NSTextInputClient {
     // swiftlint:disable:next prohibited_super_call
     override public func doCommand(by selector: Selector) {
-        #if DEBUG
-        print(NSStringFromSelector(selector))
-        #endif
+//        #if DEBUG
+//        print(NSStringFromSelector(selector))
+//        #endif
         super.doCommand(by: selector)
     }
 
     /// The current selection range of the text view.
     public func selectedRange() -> NSRange {
-        _selectedRange.value.nonNegativeLength
+        selectedRangeSubject.value.nonNegativeLength
     }
 
     /// Inserts the given string into the receiver, replacing the specified content.
@@ -38,19 +38,19 @@ extension TextView: NSTextInputClient {
 
     /// Unmarks the marked text.
     public func unmarkText() {
-        _markedRange.value = nil
+        markedRangeSubject.value = nil
     }
 
     /// Returns the range of the marked text.
     /// - Returns: The range of marked text or {NSNotFound, 0} if there is no marked range.
     public func markedRange() -> NSRange {
-        _markedRange.value ?? NSRange(location: NSNotFound, length: 0)
+        markedRangeSubject.value ?? NSRange(location: NSNotFound, length: 0)
     }
 
     /// Returns a Boolean value indicating whether the receiver has marked text.
     /// - Returns: `true` if the receiver has marked text; otherwise `false.
     public func hasMarkedText() -> Bool {
-        (_markedRange.value?.length ?? 0) > 0
+        (markedRangeSubject.value?.length ?? 0) > 0
     }
 
     /// Returns an attributed string derived from the given range in the receiver's text storage.

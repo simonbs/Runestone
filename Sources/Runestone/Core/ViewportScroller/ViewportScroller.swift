@@ -1,11 +1,12 @@
 import Combine
+import CoreGraphics
 import Foundation
 
 final class ViewportScroller {
     private let _scrollView: CurrentValueSubject<WeakBox<MultiPlatformScrollView>, Never>
     private let textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>
-    private let caret: Caret
-    private let estimatedLineHeight: EstimatedLineHeight
+    private let insertionPointFrameFactory: InsertionPointFrameFactory
+    private let lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
     private let lineFragmentLayouter: LineFragmentLayouter
     private let contentSizeService: ContentSizeService
     private var scrollView: MultiPlatformScrollView? {
@@ -15,15 +16,15 @@ final class ViewportScroller {
     init(
         scrollView: CurrentValueSubject<WeakBox<MultiPlatformScrollView>, Never>,
         textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>,
-        caret: Caret,
-        estimatedLineHeight: EstimatedLineHeight,
+        insertionPointFrameFactory: InsertionPointFrameFactory,
+        lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>,
         lineFragmentLayouter: LineFragmentLayouter,
         contentSizeService: ContentSizeService
     ) {
         self._scrollView = scrollView
         self.textContainerInset = textContainerInset
-        self.caret = caret
-        self.estimatedLineHeight = estimatedLineHeight
+        self.insertionPointFrameFactory = insertionPointFrameFactory
+        self.lineHeightMultiplier = lineHeightMultiplier
         self.lineFragmentLayouter = lineFragmentLayouter
         self.contentSizeService = contentSizeService
     }
@@ -37,18 +38,16 @@ final class ViewportScroller {
 
 private extension ViewportScroller {
     private func justScrollRangeToVisible(_ range: NSRange) {
-        let lowerBoundCaretRect = caret.frame(at: range.lowerBound, allowMovingCaretToNextLineFragment: true)
-        let upperBoundCaretRect = caret.frame(at: range.upperBound, allowMovingCaretToNextLineFragment: true)
-        var lowerBoundRect = lowerBoundCaretRect
-        var upperBoundRect = upperBoundCaretRect
-        lowerBoundRect.origin.y -= (lowerBoundCaretRect.size.height * estimatedLineHeight.value - lowerBoundCaretRect.size.height) / 2
-        upperBoundRect.origin.y -= (lowerBoundCaretRect.size.height * estimatedLineHeight.value - lowerBoundCaretRect.size.height) / 2
-        lowerBoundRect.size.height = lowerBoundCaretRect.size.height * estimatedLineHeight.value
-        upperBoundRect.size.height = lowerBoundCaretRect.size.height * estimatedLineHeight.value
-        let rectMinX = min(lowerBoundRect.minX, upperBoundRect.minX)
-        let rectMaxX = max(lowerBoundRect.maxX, upperBoundRect.maxX)
-        let rectMinY = min(lowerBoundRect.minY, upperBoundRect.minY)
-        let rectMaxY = max(lowerBoundRect.maxY, upperBoundRect.maxY)
+        var lowerRect = insertionPointFrameFactory.frameOfInsertionPoint(at: range.lowerBound)
+        var upperRect = insertionPointFrameFactory.frameOfInsertionPoint(at: range.upperBound)
+        lowerRect.origin.y -= (lowerRect.size.height * lineHeightMultiplier.value - lowerRect.size.height) / 2
+        upperRect.origin.y -= (upperRect.size.height * lineHeightMultiplier.value - upperRect.size.height) / 2
+        lowerRect.size.height = lowerRect.size.height * lineHeightMultiplier.value
+        upperRect.size.height = upperRect.size.height * lineHeightMultiplier.value
+        let rectMinX = min(lowerRect.minX, upperRect.minX)
+        let rectMaxX = max(lowerRect.maxX, upperRect.maxX)
+        let rectMinY = min(lowerRect.minY, upperRect.minY)
+        let rectMaxY = max(lowerRect.maxY, upperRect.maxY)
         let rect = CGRect(x: rectMinX, y: rectMinY, width: rectMaxX - rectMinX, height: rectMaxY - rectMinY)
         scrollView?.contentOffset = contentOffsetForScrollingToVisibleRect(rect)
     }
