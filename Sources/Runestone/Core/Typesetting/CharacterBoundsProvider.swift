@@ -9,6 +9,9 @@ struct CharacterBoundsProvider {
     let contentArea: ContentArea
 
     func boundsOfComposedCharacterSequence(atLocation location: Int, moveToToNextLineFragmentIfNeeded: Bool) -> CGRect? {
+        guard location >= 0 && location < stringView.value.string.length else {
+            return nil
+        }
         guard let pair = lineAndActualLocation(atLocation: location, moveToToNextLineFragmentIfNeeded: moveToToNextLineFragmentIfNeeded) else {
             return nil
         }
@@ -24,11 +27,7 @@ private extension CharacterBoundsProvider {
         guard let line = lineManager.value.line(containingCharacterAt: location) else {
             return nil
         }
-        let lineLocalLocation = location - line.location
-        guard lineLocalLocation >= 0 && lineLocalLocation < line.data.totalLength else {
-            return nil
-        }
-        if moveToToNextLineFragmentIfNeeded && moveToNextLineFragment(forLocation: lineLocalLocation, in: line) {
+        if moveToToNextLineFragmentIfNeeded && moveToNextLineFragment(forLocation: location - line.location, in: line) {
             return lineAndActualLocation(atLocation: location + 1, moveToToNextLineFragmentIfNeeded: false)
         } else {
             return (line, location)
