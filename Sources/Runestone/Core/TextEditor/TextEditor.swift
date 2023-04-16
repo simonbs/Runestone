@@ -1,35 +1,15 @@
 import Combine
 import Foundation
 
-final class TextEditor {
-    private let textViewDelegate: ErasedTextViewDelegate
-    private let stringView: CurrentValueSubject<StringView, Never>
-    private let lineManager: CurrentValueSubject<LineManager, Never>
-    private let lineControllerStorage: LineControllerStorage
-    private let languageMode: CurrentValueSubject<InternalLanguageMode, Never>
-    private let undoManager: UndoManager
-    private let viewport: CurrentValueSubject<CGRect, Never>
-    private let lineFragmentLayouter: LineFragmentLayouter
-
-    init(
-        textViewDelegate: ErasedTextViewDelegate,
-        stringView: CurrentValueSubject<StringView, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>,
-        lineControllerStorage: LineControllerStorage,
-        languageMode: CurrentValueSubject<InternalLanguageMode, Never>,
-        undoManager: UndoManager,
-        viewport: CurrentValueSubject<CGRect, Never>,
-        lineFragmentLayouter: LineFragmentLayouter
-    ) {
-        self.textViewDelegate = textViewDelegate
-        self.stringView = stringView
-        self.lineManager = lineManager
-        self.lineControllerStorage = lineControllerStorage
-        self.languageMode = languageMode
-        self.undoManager = undoManager
-        self.viewport = viewport
-        self.lineFragmentLayouter = lineFragmentLayouter
-    }
+struct TextEditor {
+    let textViewDelegate: ErasedTextViewDelegate
+    let stringView: CurrentValueSubject<StringView, Never>
+    let lineManager: CurrentValueSubject<LineManager, Never>
+    let lineControllerStorage: LineControllerStorage
+    let languageMode: CurrentValueSubject<InternalLanguageMode, Never>
+    let undoManager: UndoManager
+    let viewport: CurrentValueSubject<CGRect, Never>
+    let lineFragmentLayouter: LineFragmentLayouter
 
     func replaceText(in range: NSRange, with newString: String) {
         let lineManagerEditor = LineManagerEditor(lineManager: lineManager.value)
