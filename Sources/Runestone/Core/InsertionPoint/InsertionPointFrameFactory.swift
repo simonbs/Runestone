@@ -6,6 +6,7 @@ struct InsertionPointFrameFactory {
     let stringView: CurrentValueSubject<StringView, Never>
     let lineManager: CurrentValueSubject<LineManager, Never>
     let characterBoundsProvider: CharacterBoundsProvider
+    let lineControllerStorage: LineControllerStorage
     let shape: CurrentValueSubject<InsertionPointShape, Never>
     let contentArea: CurrentValueSubject<CGRect, Never>
     let estimatedLineHeight: EstimatedLineHeight
@@ -46,13 +47,12 @@ extension InsertionPointFrameFactory {
         if let bounds = characterBoundsProvider.boundsOfComposedCharacterSequence(atLocation: location, moveToToNextLineFragmentIfNeeded: true) {
             let width = displayableCharacterWidth(forCharacterAtLocation: location, widthActualWidth: bounds.width)
             return CGRect(x: bounds.minX, y: bounds.minY, width: width, height: bounds.height)
+        } else if location == stringView.value.string.length, let bounds = getLastCharacterBounds() {
+            return bounds
         } else {
-            return CGRect(
-                x: contentArea.value.minX,
-                y: contentArea.value.minY,
-                width: estimatedCharacterWidth.value,
-                height: estimatedLineHeight.rawValue.value
-            )
+            let origin = CGPoint(x: contentArea.value.minX, y: contentArea.value.minY)
+            let size = CGSize(width: estimatedCharacterWidth.value, height: estimatedLineHeight.rawValue.value)
+            return CGRect(origin: origin, size: size)
         }
     }
 
@@ -60,14 +60,27 @@ extension InsertionPointFrameFactory {
         guard let line = lineManager.value.line(containingCharacterAt: location) else {
             return actualWidth
         }
-        // If the insertion point is placed at the last character in a line,
-        // i.e. berfore a line break, then we make sure to return the estimated
-        // character width.
+        // If the insertion point is placed at the last character in a line, i.e. berfore a line break, then we make sure to return the estimated character width.
         let lineLocalLocation = location - line.location
         if lineLocalLocation == line.data.length {
             return estimatedCharacterWidth.value
         } else {
             return actualWidth
         }
+    }
+
+    private func getLastCharacterBounds() -> CGRect? {
+        let line = lineManager.value.lastLine
+        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
+        let location = stringView.value.string.length
+        guard let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: location - line.location) else {
+            return nil
+        }
+        guard let lineFragment = lineFragmentNode.data.lineFragment else {
+            return nil
+        }
+        let offsetX = contentArea.value.minX + CTLineGetOffsetForStringIndex(lineFragment.line, lineFragment.visibleRange.upperBound, nil)
+        let offsetY = lineFragment.yPosition + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
+        return CGRect(x: offsetX, y: offsetY, width: estimatedCharacterWidth.value, height: estimatedLineHeight.rawValue.value)
     }
 }

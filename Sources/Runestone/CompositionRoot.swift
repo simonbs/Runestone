@@ -294,6 +294,7 @@ final class CompositionRoot {
             stringView: stringView,
             lineManager: lineManager,
             characterBoundsProvider: characterBoundsProvider,
+            lineControllerStorage: lineControllerStorage,
             shape: insertionPointShape,
             contentArea: contentArea.rawValue,
             estimatedLineHeight: estimatedLineHeight,
