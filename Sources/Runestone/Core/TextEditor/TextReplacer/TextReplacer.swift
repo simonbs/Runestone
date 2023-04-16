@@ -38,7 +38,7 @@ private extension TextReplacer {
     private func justReplaceText(in range: NSRange, with text: String) {
         undoManager.registerUndoOperation(named: L10n.Undo.ActionName.typing, forReplacingTextIn: range, selectedRangeAfterUndo: range)
         let preparedString = replacementTextPreparator.prepareText(text)
-        selectedRange.value = NSRange(location: range.location + preparedString.utf16.count, length: 0)
         textEditor.replaceText(in: range, with: preparedString)
+        selectedRange.value = NSRange(location: range.location + preparedString.utf16.count, length: 0)
     }
 }
