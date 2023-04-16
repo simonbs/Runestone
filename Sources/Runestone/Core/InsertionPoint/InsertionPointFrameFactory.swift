@@ -33,27 +33,13 @@ extension InsertionPointFrameFactory {
     }
 
     private func verticalBarInsertionPointFrame(at location: Int) -> CGRect {
-        if let bounds = characterBoundsProvider.boundsOfComposedCharacterSequence(atLocation: location, moveToToNextLineFragmentIfNeeded: true) {
-            let originY = bounds.minY + (bounds.height - estimatedLineHeight.rawValue.value) / 2
-            return CGRect(x: bounds.minX, y: originY, width: fixedLength, height: estimatedLineHeight.rawValue.value)
-        } else {
-            let originY = contentArea.value.minY + (estimatedLineHeight.scaledValue.value - estimatedLineHeight.rawValue.value) / 2
-            return CGRect(x: contentArea.value.minX, y: originY, width: fixedLength, height: estimatedLineHeight.rawValue.value)
-        }
+        let blockFrame = blockInsertionPointFrame(at: location)
+        return CGRect(x: blockFrame.minX, y: blockFrame.minY, width: fixedLength, height: blockFrame.height)
     }
 
     private func underlineInsertionPointFrame(at location: Int) -> CGRect {
-        if let bounds = characterBoundsProvider.boundsOfComposedCharacterSequence(atLocation: location, moveToToNextLineFragmentIfNeeded: true) {
-            let width = displayableCharacterWidth(forCharacterAtLocation: location, widthActualWidth: bounds.width)
-            return CGRect(x: bounds.minX, y: bounds.maxY - fixedLength, width: width, height: fixedLength)
-        } else {
-            return CGRect(
-                x: contentArea.value.minX,
-                y: estimatedLineHeight.rawValue.value - fixedLength,
-                width: estimatedCharacterWidth.value,
-                height: fixedLength
-            )
-        }
+        let blockFrame = blockInsertionPointFrame(at: location)
+        return CGRect(x: blockFrame.minX, y: blockFrame.maxY - fixedLength, width: blockFrame.width, height: fixedLength)
     }
 
     private func blockInsertionPointFrame(at location: Int) -> CGRect {
