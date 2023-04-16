@@ -1,34 +1,17 @@
 import Combine
 import Foundation
 
-final class TextInserter {
-    private let lineManager: CurrentValueSubject<LineManager, Never>
-    private let selectedRange: CurrentValueSubject<NSRange, Never>
-    private let markedRange: CurrentValueSubject<NSRange?, Never>
-    private let languageMode: CurrentValueSubject<InternalLanguageMode, Never>
-    private let lineEndings: CurrentValueSubject<LineEnding, Never>
-    private let indentStrategy: CurrentValueSubject<IndentStrategy, Never>
-    private let textReplacer: TextReplacer
+struct TextInserter {
+    let lineManager: CurrentValueSubject<LineManager, Never>
+    let selectedRange: CurrentValueSubject<NSRange, Never>
+    let markedRange: CurrentValueSubject<NSRange?, Never>
+    let languageMode: CurrentValueSubject<InternalLanguageMode, Never>
+    let lineEndings: CurrentValueSubject<LineEnding, Never>
+    let indentStrategy: CurrentValueSubject<IndentStrategy, Never>
+    let textReplacer: TextReplacer
+
     private var insertRange: NSRange {
         markedRange.value ?? selectedRange.value.nonNegativeLength
-    }
-
-    init(
-        lineManager: CurrentValueSubject<LineManager, Never>,
-        selectedRange: CurrentValueSubject<NSRange, Never>,
-        markedRange: CurrentValueSubject<NSRange?, Never>,
-        languageMode: CurrentValueSubject<InternalLanguageMode, Never>,
-        lineEndings: CurrentValueSubject<LineEnding, Never>,
-        indentStrategy: CurrentValueSubject<IndentStrategy, Never>,
-        textReplacer: TextReplacer
-    ) {
-        self.lineManager = lineManager
-        self.selectedRange = selectedRange
-        self.markedRange = markedRange
-        self.languageMode = languageMode
-        self.lineEndings = lineEndings
-        self.indentStrategy = indentStrategy
-        self.textReplacer = textReplacer
     }
 
     func insertText(_ text: String) {

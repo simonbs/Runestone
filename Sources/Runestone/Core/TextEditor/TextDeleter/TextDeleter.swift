@@ -1,44 +1,18 @@
 import Combine
 import Foundation
 
-final class TextDeleter {
-    private let stringView: CurrentValueSubject<StringView, Never>
-    private let selectedRange: CurrentValueSubject<NSRange, Never>
-    private let markedRange: CurrentValueSubject<NSRange?, Never>
-    private let stringTokenizer: StringTokenizer
-    private let textEditState: TextEditState
-    private let textViewDelegate: ErasedTextViewDelegate
-    private let textEditor: TextEditor
-    private let undoManager: TextEditingUndoManager
-    private let textInputDelegate: TextInputDelegate
-    private let deletionRangeFactory: TextDeletionRangeFactory
-    private let viewportScroller: AutomaticViewportScroller
-
-    init(
-        stringView: CurrentValueSubject<StringView, Never>,
-        selectedRange: CurrentValueSubject<NSRange, Never>,
-        markedRange: CurrentValueSubject<NSRange?, Never>,
-        stringTokenizer: StringTokenizer,
-        textEditState: TextEditState,
-        textViewDelegate: ErasedTextViewDelegate,
-        textEditor: TextEditor,
-        undoManager: TextEditingUndoManager,
-        textInputDelegate: TextInputDelegate,
-        deletionRangeFactory: TextDeletionRangeFactory,
-        viewportScroller: AutomaticViewportScroller
-    ) {
-        self.stringView = stringView
-        self.selectedRange = selectedRange
-        self.markedRange = markedRange
-        self.stringTokenizer = stringTokenizer
-        self.textEditState = textEditState
-        self.textViewDelegate = textViewDelegate
-        self.textEditor = textEditor
-        self.undoManager = undoManager
-        self.textInputDelegate = textInputDelegate
-        self.deletionRangeFactory = deletionRangeFactory
-        self.viewportScroller = viewportScroller
-    }
+struct TextDeleter {
+    let stringView: CurrentValueSubject<StringView, Never>
+    let selectedRange: CurrentValueSubject<NSRange, Never>
+    let markedRange: CurrentValueSubject<NSRange?, Never>
+    let stringTokenizer: StringTokenizer
+    let textEditState: TextEditState
+    let textViewDelegate: ErasedTextViewDelegate
+    let textEditor: TextEditor
+    let undoManager: TextEditingUndoManager
+    let textInputDelegate: TextInputDelegate
+    let deletionRangeFactory: TextDeletionRangeFactory
+    let viewportScroller: AutomaticViewportScroller
 
     func deleteBackward() {
         var selectedRange = markedRange.value ?? selectedRange.value

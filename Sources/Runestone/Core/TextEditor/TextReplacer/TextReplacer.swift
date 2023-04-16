@@ -1,35 +1,15 @@
 import Combine
 import Foundation
 
-final class TextReplacer {
-    private let stringView: CurrentValueSubject<StringView, Never>
-    private let selectedRange: CurrentValueSubject<NSRange, Never>
-    private let markedRange: CurrentValueSubject<NSRange?, Never>
-    private let textViewDelegate: ErasedTextViewDelegate
-    private let textEditor: TextEditor
-    private let characterPairService: CharacterPairService
-    private let replacementTextPreparator: ReplacementTextPreparator
-    private let undoManager: TextEditingUndoManager
-
-    init(
-        stringView: CurrentValueSubject<StringView, Never>,
-        selectedRange: CurrentValueSubject<NSRange, Never>,
-        markedRange: CurrentValueSubject<NSRange?, Never>,
-        textViewDelegate: ErasedTextViewDelegate,
-        textEditor: TextEditor,
-        characterPairService: CharacterPairService,
-        replacementTextPreparator: ReplacementTextPreparator,
-        undoManager: TextEditingUndoManager
-    ) {
-        self.stringView = stringView
-        self.selectedRange = selectedRange
-        self.markedRange = markedRange
-        self.textViewDelegate = textViewDelegate
-        self.textEditor = textEditor
-        self.characterPairService = characterPairService
-        self.replacementTextPreparator = replacementTextPreparator
-        self.undoManager = undoManager
-    }
+struct TextReplacer {
+    let stringView: CurrentValueSubject<StringView, Never>
+    let selectedRange: CurrentValueSubject<NSRange, Never>
+    let markedRange: CurrentValueSubject<NSRange?, Never>
+    let textViewDelegate: ErasedTextViewDelegate
+    let textEditor: TextEditor
+    let characterPairService: CharacterPairService
+    let replacementTextPreparator: ReplacementTextPreparator
+    let undoManager: TextEditingUndoManager
 
     func replaceText(in range: NSRange, with text: String) {
         if skipInsertComponentCheck {
