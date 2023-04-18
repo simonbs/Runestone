@@ -1,4 +1,5 @@
 excluded:
+  - Sources/Runestone/Library/L10n.swift
   - Sources/Runestone/Documentation.docc/Tutorials
   - Submodules
   - .build
