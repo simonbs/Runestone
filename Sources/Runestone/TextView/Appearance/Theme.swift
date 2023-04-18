@@ -26,6 +26,8 @@ public protocol Theme: AnyObject {
     var invisibleCharactersColor: UIColor { get }
     /// Color of the hairline next to the page guide.
     var pageGuideHairlineColor: UIColor { get }
+    /// Width of the hairline next to the page guide.
+    var pageGuideHairlineWidth: CGFloat { get }
     /// Background color of the page guide.
     var pageGuideBackgroundColor: UIColor { get }
     /// Background color of marked text. Text will be marked when writing certain languages, for example Chinese and Japanese.
