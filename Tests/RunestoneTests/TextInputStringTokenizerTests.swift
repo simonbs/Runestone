@@ -304,3 +304,4 @@ extension TextInputStringTokenizerTests: LineControllerDelegate {
 
     func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController) {}
 }
+// swiftlint:enable force_cast
