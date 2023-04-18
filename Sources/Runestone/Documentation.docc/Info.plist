@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+   Info.plist
+   
+
+   Created by Simon Støvring on 18/04/2023.
+   Copyright (c) 2023 ___ORGANIZATIONNAME___. All rights reserved.
+-->
+<plist version="1.0">
+<dict>
+    <key>CDAppleDefaultAvailability</key>
+    <dict>
+        <key>Runestone</key>
+        <array>
+            <dict>
+                <key>name</key>
+                <string>iOS</string>
+                <key>version</key>
+                <string>14.0</string>
+            </dict>
+        </array>
+    </dict>
+</dict>
+</plist>
