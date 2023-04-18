@@ -1,7 +1,6 @@
+// swiftlint:disable force_try
 @testable import Runestone
 import XCTest
-
-// swiftlint:disable force_try
 
 final class ParsedReplacementStringTests: XCTestCase {
     func testSinglePlaceholder() {
@@ -37,3 +36,4 @@ final class ParsedReplacementStringTests: XCTestCase {
         XCTAssertEqual(expandedString, "hello world world $2")
     }
 }
+// swiftlint:enable force_try
