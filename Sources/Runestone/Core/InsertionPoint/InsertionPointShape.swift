@@ -1,7 +1,6 @@
 import Foundation
 
 /// Shape of the insertion point.
-@available(iOS, unavailable)
 public enum InsertionPointShape {
     /// Vertical bar shape.
     ///

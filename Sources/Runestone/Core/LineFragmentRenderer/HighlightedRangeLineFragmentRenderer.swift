@@ -1,4 +1,7 @@
 import CoreText
+#if os(iOS)
+import UIKit
+#endif
 
 final class HighlightedRangeLineFragmentRenderer: LineFragmentRenderer {
     private let lineFragment: LineFragment

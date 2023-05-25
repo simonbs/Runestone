@@ -2,7 +2,7 @@
 import AppKit
 import Combine
 
-final class KeyWindowObserver {
+final class KeyWindowObserver_Mac: KeyWindowObserver {
     let isKeyWindow = CurrentValueSubject<Bool, Never>(false)
 
     private let referenceView: CurrentValueSubject<WeakBox<TextView>, Never>

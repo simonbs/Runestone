@@ -45,7 +45,7 @@ struct TextDeleter {
         textEditState.notifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
         // Just before calling deleteBackward(), UIKit will set the selected range to a range of length 1, if the selected range has a length of 0.
         // In that case we want to undo to a selected range of length 0, so we construct our range here and pass it all the way to the undo operation.
-        let selectedRangeAfterUndo = selectedRangeAfterUndo(forDeletingTextIn: deleteRange, forCurrentSelectedRange: selectedRange)
+        let selectedRangeAfterUndo = selectedRangeAfterUndo(deletingTextIn: deleteRange, withSelection: selectedRange)
         let isDeletingMultipleCharacters = selectedRange.length > 1
         if isDeletingMultipleCharacters {
             undoManager.endUndoGrouping()
@@ -57,9 +57,7 @@ struct TextDeleter {
             selectedRangeAfterUndo: selectedRangeAfterUndo
         )
         textEditor.replaceText(in: deleteRange, with: "")
-        #if os(macOS)
         self.selectedRange.value = NSRange(location: selectedRange.location, length: 0)
-        #endif
         // Sending selection changed without calling the input delegate directly. This ensures that both inputting Korean letters and deleting entire words with Option+Backspace works properly.
         textInputDelegate.selectionDidChange(sendAnonymously: true)
         if isDeletingMultipleCharacters {
@@ -89,7 +87,7 @@ struct TextDeleter {
 }
 
 private extension TextDeleter {
-    private func selectedRangeAfterUndo(forDeletingTextIn deleteRange: NSRange, forCurrentSelectedRange selectedRange: NSRange) -> NSRange {
+    private func selectedRangeAfterUndo(deletingTextIn deleteRange: NSRange, withSelection selectedRange: NSRange) -> NSRange {
         if deleteRange.length == 1 {
             return NSRange(location: selectedRange.upperBound, length: 0)
         } else {

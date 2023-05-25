@@ -4,7 +4,7 @@ import UIKit
 protocol EditMenuControllerDelegate: AnyObject {
     func editMenuController(_ controller: EditMenuController, highlightedRangeFor range: NSRange) -> HighlightedRange?
     func editMenuController(_ controller: EditMenuController, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool
-    func editMenuController(_ controller: EditMenuController, caretAt location: Int) -> CGRect
+    func editMenuController(_ controller: EditMenuController, caretRectAt location: Int) -> CGRect
     func editMenuControllerShouldReplaceText(_ controller: EditMenuController)
     func selectedRange(for controller: EditMenuController) -> NSRange?
 }

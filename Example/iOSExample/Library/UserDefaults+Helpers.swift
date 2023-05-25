@@ -11,6 +11,7 @@ extension UserDefaults {
         static let theme = "RunestoneExample.theme"
         static let isEditable = "RunestoneExample.isEditable"
         static let isSelectable = "RunestoneExample.isSelectable"
+        static let insertionPointShape = "RunestoneExample.insertionPointShape"
     }
 
     var text: String? {
@@ -71,6 +72,18 @@ extension UserDefaults {
         }
         set {
             set(newValue.rawValue, forKey: Key.theme)
+        }
+    }
+    var insertionPointShape: InsertionPointShapeSetting {
+        get {
+            if let rawValue = string(forKey: Key.insertionPointShape), let setting = InsertionPointShapeSetting(rawValue: rawValue) {
+                return setting
+            } else {
+                return .verticalBar
+            }
+        }
+        set {
+            set(newValue.rawValue, forKey: Key.insertionPointShape)
         }
     }
 

@@ -1,8 +1,8 @@
 #if os(iOS)
+import Combine
 import UIKit
 
 final class UITextSearchingHelper: NSObject {
-    weak var textView: TextView?
     var isFindInteractionEnabled = false {
         didSet {
             if isFindInteractionEnabled != oldValue {
@@ -31,16 +31,18 @@ final class UITextSearchingHelper: NSObject {
     }
     private var _findInteraction: Any?
 
+    private let textView: CurrentValueSubject<WeakBox<TextView>, Never>
     private let queue = OperationQueue()
     private var _textView: TextView {
-        if let textView = textView {
+        if let textView = textView.value.value {
             return textView
         } else {
             fatalError("Text view has been deallocated.")
         }
     }
 
-    override init() {
+    init(textView: CurrentValueSubject<WeakBox<TextView>, Never>) {
+        self.textView = textView
         super.init()
         queue.qualityOfService = .userInitiated
         queue.maxConcurrentOperationCount = 1
@@ -89,27 +91,27 @@ extension UITextSearchingHelper: UITextSearching {
     }
 
     func decorate(foundTextRange: UITextRange, document: AnyHashable??, usingStyle style: UITextSearchFoundTextStyle) {
-        guard let foundTextRange = foundTextRange as? IndexedRange else {
-            return
-        }
-        _textView.highlightedRanges.removeAll { $0.range == foundTextRange.range }
-        if let highlightedRange = _textView.theme.highlightedRange(forFoundTextRange: foundTextRange.range, ofStyle: style) {
-            _textView.highlightedRanges.append(highlightedRange)
-        }
+//        guard let foundTextRange = foundTextRange as? IndexedRange else {
+//            return
+//        }
+//        _textView.highlightedRanges.removeAll { $0.range == foundTextRange.range }
+//        if let highlightedRange = _textView.theme.highlightedRange(forFoundTextRange: foundTextRange.range, ofStyle: style) {
+//            _textView.highlightedRanges.append(highlightedRange)
+//        }
     }
 
     func clearAllDecoratedFoundText() {
-        _textView.highlightedRanges = []
+//        _textView.highlightedRanges = []
     }
 
     func replaceAll(queryString: String, options: UITextSearchOptions, withText replacementText: String) {
-        performTextSearch(for: queryString, options: options) { searchResults in
-            let replacements = searchResults.map { BatchReplaceSet.Replacement(range: $0.range, text: replacementText) }
-            let batchReplaceSet = BatchReplaceSet(replacements: replacements)
-            DispatchQueue.main.sync {
-                self._textView.replaceText(in: batchReplaceSet)
-            }
-        }
+//        performTextSearch(for: queryString, options: options) { searchResults in
+//            let replacements = searchResults.map { BatchReplaceSet.Replacement(range: $0.range, text: replacementText) }
+//            let batchReplaceSet = BatchReplaceSet(replacements: replacements)
+//            DispatchQueue.main.sync {
+//                self._textView.replaceText(in: batchReplaceSet)
+//            }
+//        }
     }
 
     func replace(foundTextRange: UITextRange, document: AnyHashable??, withText replacementText: String) {
@@ -117,20 +119,21 @@ extension UITextSearchingHelper: UITextSearching {
     }
 
     func shouldReplace(foundTextRange: UITextRange, document: AnyHashable??, withText replacementText: String) -> Bool {
-        guard let foundTextRange = foundTextRange as? IndexedRange else {
-            // iOS 16 beta 2 will call this function when presenting the find/replace navigator and pass <uninitialized> to foundTextRange. If we return false in this case, the find/replace UI will not be shown, so we need to return true when we can't convert the UITextRange to an IndexedRange.
-            return true
-        }
-        guard let highlightedRange = _textView.highlightedRanges.first(where: { $0.range == foundTextRange.range }) else {
-            return false
-        }
-        return _textView.editorDelegate?.textView(_textView, canReplaceTextIn: highlightedRange) ?? false
+//        guard let foundTextRange = foundTextRange as? IndexedRange else {
+//            // iOS 16 beta 2 will call this function when presenting the find/replace navigator and pass <uninitialized> to foundTextRange. If we return false in this case, the find/replace UI will not be shown, so we need to return true when we can't convert the UITextRange to an IndexedRange.
+//            return true
+//        }
+//        guard let highlightedRange = _textView.highlightedRanges.first(where: { $0.range == foundTextRange.range }) else {
+//            return false
+//        }
+//        return _textView.editorDelegate?.textView(_textView, canReplaceTextIn: highlightedRange) ?? false
+        return false
     }
 
     func scrollRangeToVisible(_ range: UITextRange, inDocument: AnyHashable??) {
-        if let indexedRange = range as? IndexedRange {
-            _textView.scrollRangeToVisible(indexedRange.range)
-        }
+//        if let indexedRange = range as? IndexedRange {
+//            _textView.scrollRangeToVisible(indexedRange.range)
+//        }
     }
 }
 
@@ -152,17 +155,17 @@ private extension UITextSearchingHelper {
 
     @available(iOS 16.0, *)
     private func performTextSearch(for queryString: String, options: UITextSearchOptions, completion: @escaping ([SearchResult]) -> Void) {
-        queue.cancelAllOperations()
-        let operation = BlockOperation()
-        operation.addExecutionBlock { [weak self, weak operation] in
-            guard let self = self, let operation = operation, !operation.isCancelled else {
-                return
-            }
-            let query = SearchQuery(queryString: queryString, options: options)
-            let searchResults = self._textView.search(for: query)
-            completion(searchResults)
-        }
-        queue.addOperation(operation)
+//        queue.cancelAllOperations()
+//        let operation = BlockOperation()
+//        operation.addExecutionBlock { [weak self, weak operation] in
+//            guard let self = self, let operation = operation, !operation.isCancelled else {
+//                return
+//            }
+//            let query = SearchQuery(queryString: queryString, options: options)
+//            let searchResults = self._textView.search(for: query)
+//            completion(searchResults)
+//        }
+//        queue.addOperation(operation)
     }
 }
 

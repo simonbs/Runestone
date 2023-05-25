@@ -172,7 +172,6 @@ extension LineFragmentLayouter {
     ) {
         let lineFragment = lineFragmentController.lineFragment
         let lineFragmentView = lineFragmentReusableViewQueue.dequeueView(forKey: lineFragment.id)
-        lineFragmentView.layerIfLoaded?.zPosition = 50
         if lineFragmentView.superview == nil {
             containerView?.addSubview(lineFragmentView)
         }

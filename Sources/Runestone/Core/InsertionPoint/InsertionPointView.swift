@@ -1,21 +1,15 @@
-#if os(macOS)
-import AppKit
 import Combine
+import Foundation
+#if os(iOS)
+import UIKit
+#endif
 
-final class InsertionPointView: NSView {
+final class InsertionPointView: MultiPlatformView {
     var isBlinkingEnabled = false {
         didSet {
             if isBlinkingEnabled != oldValue {
                 blinkTimer?.invalidate()
-                if isBlinkingEnabled {
-                    blinkTimer = .scheduledTimer(
-                        timeInterval: 0.5,
-                        target: self,
-                        selector: #selector(blink),
-                        userInfo: nil,
-                        repeats: true
-                    )
-                }
+                rescheduleBlinkIfNeeded()
             }
         }
     }
@@ -31,13 +25,14 @@ final class InsertionPointView: NSView {
         }
     }
 
-    init(selectedRange: AnyPublisher<NSRange, Never>, renderer: InsertionPointRenderer) {
+    init(renderer: InsertionPointRenderer) {
         self.renderer = renderer
         super.init(frame: .zero)
+        #if os(macOS)
         wantsLayer = true
+        #endif
         backgroundColor = .clear
-        selectedRange.map { $0.location }.removeDuplicates().sink { [weak self] _ in
-            // Must redisplay when the selected range changes to ensure we draw the correct character in the block insertion point.
+        renderer.needsRender.sink { [weak self] _ in
             self?.setNeedsDisplay()
         }.store(in: &cancellables)
     }
@@ -46,15 +41,21 @@ final class InsertionPointView: NSView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    #if os(macOS)
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         if let context = NSGraphicsContext.current?.cgContext {
-            context.clear(bounds)
-            if isVisible {
-                renderer.render(in: bounds, to: context)
-            }
+            render(to: context)
         }
     }
+    #else
+    override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        if let context = UIGraphicsGetCurrentContext() {
+            render(to: context)
+        }
+    }
+    #endif
 
     func delayBlink() {
         let wasBlinking = isBlinkingEnabled
@@ -65,8 +66,27 @@ final class InsertionPointView: NSView {
 }
 
 private extension InsertionPointView {
+    private func render(to context: CGContext) {
+        context.clear(bounds)
+        if isVisible {
+            renderer.render(bounds, to: context)
+        }
+    }
+
+    private func rescheduleBlinkIfNeeded() {
+        guard isBlinkingEnabled else {
+            return
+        }
+        blinkTimer = .scheduledTimer(
+            timeInterval: 0.5,
+            target: self,
+            selector: #selector(blink),
+            userInfo: nil,
+            repeats: true
+        )
+    }
+
     @objc private func blink() {
         isVisible.toggle()
     }
 }
-#endif

@@ -3,7 +3,7 @@ import Foundation
 
 struct LineFragmentRendererFactory {
     let stringView: CurrentValueSubject<StringView, Never>
-    let invisibleCharacterSettings: InvisibleCharacterSettings
+    let showInvisibleCharacters: CurrentValueSubject<Bool, Never>
     let invisibleCharacterRenderer: InvisibleCharacterRenderer
 
     func makeRenderer(for lineFragment: LineFragment, in line: LineNode) -> LineFragmentRenderer {
@@ -11,7 +11,7 @@ struct LineFragmentRendererFactory {
             InvisibleCharactersLineFragmentRenderer(
                 line: line,
                 lineFragment: lineFragment,
-                invisibleCharacterSettings: invisibleCharacterSettings,
+                showInvisibleCharacters: showInvisibleCharacters,
                 invisibleCharacterRenderer: invisibleCharacterRenderer
             ),
             TextLineFragmentRenderer(lineFragment: lineFragment)

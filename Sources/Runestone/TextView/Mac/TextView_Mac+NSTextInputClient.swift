@@ -81,7 +81,7 @@ extension TextView: NSTextInputClient {
     /// - Parameter point: The point to test, in screen coordinates.
     /// - Returns: The character index, measured from the start of the receiver's text storage, of the character containing the given point.
     public func characterIndex(for point: NSPoint) -> Int {
-        return locationRaycaster.location(closestTo: point)
+        locationRaycaster.location(closestTo: point)
     }
 }
 #endif

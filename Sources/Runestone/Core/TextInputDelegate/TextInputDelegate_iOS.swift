@@ -1,13 +1,21 @@
 #if os(iOS)
+import Combine
 import UIKit
 
 final class TextInputDelegate_iOS: TextInputDelegate {
-    weak var inputDelegate: UITextInputDelegate?
+    private let textView: CurrentValueSubject<WeakBox<TextView>, Never>
+    private var inputDelegate: UITextInputDelegate? {
+        textView.value.value?.inputDelegate
+    }
 
-    private unowned let textView: TextView
+    init(textView: CurrentValueSubject<WeakBox<TextView>, Never>) {
+        self.textView = textView
+    }
 
     func selectionWillChange() {
-        inputDelegate?.selectionWillChange(textView)
+        if let textView = textView.value.value {
+            inputDelegate?.selectionWillChange(textView)
+        }
     }
 
     func selectionDidChange() {
@@ -15,6 +23,9 @@ final class TextInputDelegate_iOS: TextInputDelegate {
     }
 
     func selectionDidChange(sendAnonymously: Bool) {
+        guard let textView = textView.value.value else {
+            return
+        }
         if sendAnonymously {
             inputDelegate?.selectionDidChange(nil)
         } else {

@@ -1,6 +1,9 @@
 import CoreGraphics
 import CoreText
 import Foundation
+#if os(iOS)
+import UIKit
+#endif
 
 final class TextLineFragmentRenderer: LineFragmentRenderer {
     private let lineFragment: LineFragment

@@ -2,6 +2,9 @@ import Combine
 import CoreGraphics
 import CoreText
 import Foundation
+#if os(iOS)
+import UIKit
+#endif
 
 final class MarkedRangeLineFragmentRenderer: LineFragmentRenderer {
     private let lineFragment: LineFragment

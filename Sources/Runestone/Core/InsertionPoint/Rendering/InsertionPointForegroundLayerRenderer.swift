@@ -3,31 +3,57 @@ import CoreGraphics
 import CoreText
 import Foundation
 
-final class InsertionPointForegroundRenderer {
-    var defaultColor: MultiPlatformColor = .background
-    var invisibleCharactersColor: MultiPlatformColor = .background
+final class InsertionPointForegroundRenderer: InsertionPointRenderer {
+    let needsRender: AnyPublisher<Bool, Never>
 
     private let lineManager: CurrentValueSubject<LineManager, Never>
     private let lineControllerStorage: LineControllerStorage
     private let selectedRange: CurrentValueSubject<NSRange, Never>
     private let insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>
     private let invisibleCharacterRenderer: InvisibleCharacterRenderer
+    private let insertionPointTextColor: CurrentValueSubject<MultiPlatformColor, Never>
+    private let insertionPointInvisibleCharacterColor: CurrentValueSubject<MultiPlatformColor, Never>
+    private let opacity: CGFloat
+    private let _needsRender = CurrentValueSubject<Bool, Never>(false)
+    private var cancellables: Set<AnyCancellable> = []
 
     init(
         lineManager: CurrentValueSubject<LineManager, Never>,
         lineControllerStorage: LineControllerStorage,
         selectedRange: CurrentValueSubject<NSRange, Never>,
         insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>,
-        invisibleCharacterRenderer: InvisibleCharacterRenderer
+        invisibleCharacterRenderer: InvisibleCharacterRenderer,
+        insertionPointTextColor: CurrentValueSubject<MultiPlatformColor, Never>,
+        insertionPointInvisibleCharacterColor: CurrentValueSubject<MultiPlatformColor, Never>,
+        opacity: CGFloat
     ) {
         self.lineManager = lineManager
         self.lineControllerStorage = lineControllerStorage
         self.selectedRange = selectedRange
         self.insertionPointShape = insertionPointShape
         self.invisibleCharacterRenderer = invisibleCharacterRenderer
+        self.insertionPointTextColor = insertionPointTextColor
+        self.insertionPointInvisibleCharacterColor = insertionPointInvisibleCharacterColor
+        self.opacity = opacity
+        self.needsRender = _needsRender.eraseToAnyPublisher()
+        selectedRange.map { $0.location }.removeDuplicates().sink { [weak self] _ in
+            self?._needsRender.value = true
+        }.store(in: &cancellables)
+        Publishers.CombineLatest(
+            insertionPointTextColor,
+            insertionPointInvisibleCharacterColor
+        ).sink { [weak self] _, _ in
+            self?._needsRender.value = true
+        }.store(in: &cancellables)
     }
 
     func render(_ rect: CGRect, to context: CGContext) {
+        context.saveGState()
+        context.setAlpha(opacity)
+        defer {
+            context.restoreGState()
+            _needsRender.value = false
+        }
         guard insertionPointShape.value == .block else {
             return
         }
@@ -61,7 +87,7 @@ private extension InsertionPointForegroundRenderer {
         within rect: CGRect,
         to context: CGContext
     ) {
-        renderImage(ofColor: invisibleCharactersColor, in: rect, to: context) { innerContext in
+        renderImage(ofColor: insertionPointInvisibleCharacterColor.value, in: rect, to: context) { innerContext in
             let offsetX = CTLineGetOffsetForStringIndex(lineFragment.line, location - line.location, nil) * -1
             let offsetY = (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2 * -1
             innerContext.translateBy(x: offsetX, y: offsetY)
@@ -78,10 +104,16 @@ private extension InsertionPointForegroundRenderer {
         to context: CGContext
     ) {
         let offsetX = CTLineGetOffsetForStringIndex(lineFragment.line, lineLocalLocation, nil) * -1
+        #if os(iOS)
+        let offsetY = (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
+        #else
         let offsetY = lineFragment.scaledSize.height + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
+        #endif
         context.setupToDraw(lineFragment)
         context.translateBy(x: offsetX, y: offsetY)
+        #if os(macOS)
         context.scaleBy(x: 1, y: -1)
+        #endif
         CTLineDraw(lineFragment.line, context)
     }
 
@@ -91,14 +123,18 @@ private extension InsertionPointForegroundRenderer {
         within rect: CGRect,
         to context: CGContext
     ) {
-        renderImage(ofColor: defaultColor, in: rect, to: context) { innerContext in
+        renderImage(ofColor: insertionPointTextColor.value, in: rect, to: context) { innerContext in
             renderOriginalCharacter(atLineLocation: lineLocalLocation, in: lineFragment, within: rect, to: innerContext)
         }
     }
 
     private func renderImage(ofColor color: MultiPlatformColor, in rect: CGRect, to context: CGContext, using renderer: (CGContext) -> Void) {
         if let image = ImageRenderer.renderImage(ofSize: rect.size, using: renderer) {
-            RecolorImageRenderer.render(image, withColor: color, in: rect, to: context)
+            context.saveGState()
+            context.clip(to: rect, mask: image)
+            context.setFillColor(color.cgColor)
+            context.fill(rect)
+            context.restoreGState()
         }
     }
 }

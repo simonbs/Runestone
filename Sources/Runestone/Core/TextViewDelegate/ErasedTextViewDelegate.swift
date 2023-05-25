@@ -40,4 +40,16 @@ final class ErasedTextViewDelegate {
     func shouldChangeText(in range: NSRange, replacementText: String) -> Bool {
         delegate?.textView(textView, shouldChangeTextIn: range, replacementText: replacementText) ?? true
     }
+
+    func textViewDidChangeSelection() {
+        delegate?.textViewDidChangeSelection(textView)
+    }
+
+    func textViewDidBeginFloatingCursor() {
+        delegate?.textViewDidBeginFloatingCursor(textView)
+    }
+
+    func textViewDidEndFloatingCursor() {
+        delegate?.textViewDidEndFloatingCursor(textView)
+    }
 }

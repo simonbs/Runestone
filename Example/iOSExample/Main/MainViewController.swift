@@ -137,7 +137,14 @@ private extension MainViewController {
                     settings.highlightSelectedLine.toggle()
                     self?.updateTextViewSettings()
                     self?.setupMenuButton()
-                }
+                },
+                UIMenu(title: "Insertion Point Shape", children: InsertionPointShapeSetting.allCases.map { setting in
+                    UIAction(title: setting.title, state: settings.insertionPointShape == setting ? .on : .off) { [weak self] _ in
+                        settings.insertionPointShape = setting
+                        self?.updateTextViewSettings()
+                        self?.setupMenuButton()
+                    }
+                })
             ]),
             UIMenu(options: .displayInline, children: [
                 UIAction(title: "Allow Editing", state: settings.isEditable ? .on : .off) { [weak self] _ in
@@ -163,21 +170,21 @@ private extension MainViewController {
     }
 
     private func presentGoToLineAlert() {
-        let alertController = UIAlertController(title: "Go To Line", message: nil, preferredStyle: .alert)
-        alertController.addTextField { textField in
-            textField.placeholder = "42"
-            textField.keyboardType = .numberPad
-        }
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
-        let doneAction = UIAlertAction(title: "Go", style: .default) { [weak self, weak alertController] _ in
-            if let textField = alertController?.textFields?.first, let text = textField.text, !text.isEmpty, let lineNumber = Int(text) {
-                let lineIndex = lineNumber - 1
-                self?.contentView.textView.goToLine(lineIndex, select: .line)
-            }
-        }
-        alertController.addAction(cancelAction)
-        alertController.addAction(doneAction)
-        present(alertController, animated: true)
+//        let alertController = UIAlertController(title: "Go To Line", message: nil, preferredStyle: .alert)
+//        alertController.addTextField { textField in
+//            textField.placeholder = "42"
+//            textField.keyboardType = .numberPad
+//        }
+//        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+//        let doneAction = UIAlertAction(title: "Go", style: .default) { [weak self, weak alertController] _ in
+//            if let textField = alertController?.textFields?.first, let text = textField.text, !text.isEmpty, let lineNumber = Int(text) {
+//                let lineIndex = lineNumber - 1
+//                self?.contentView.textView.goToLine(lineIndex, select: .line)
+//            }
+//        }
+//        alertController.addAction(cancelAction)
+//        alertController.addAction(doneAction)
+//        present(alertController, animated: true)
     }
 
     private func presentThemePicker() {

@@ -148,11 +148,7 @@ public extension TextView {
     /// - Parameter range: Range of text to include in text view. The returned result may span a larger range than the one specified.
     /// - Returns: Text preview containing the specified range.
     func textPreview(containing range: NSRange) -> TextPreview? {
-        let textPreviewFactory = TextPreviewFactory(
-            lineManager: lineManager,
-            lineControllerStorage: lineControllerStorage
-        )
-        return textPreviewFactory.textPreview(containing: range)
+        textPreviewFactory.textPreview(containing: range)
     }
 
     /// Selects a highlighted range behind the selected range if possible.

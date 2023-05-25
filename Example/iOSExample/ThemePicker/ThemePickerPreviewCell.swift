@@ -58,12 +58,12 @@ extension ThemePickerPreviewCell {
 
     func populate(with viewModel: ViewModel) {
         let languageMode = TreeSitterLanguageMode(language: .javaScript, languageProvider: nil)
-        textView.setLanguageMode(languageMode)
-        textView.theme = viewModel.theme
-        textView.text = viewModel.text
+//        textView.setLanguageMode(languageMode)
+//        textView.theme = viewModel.theme
+//        textView.text = viewModel.text
         textView.backgroundColor = viewModel.theme.backgroundColor
-        textView.insertionPointColor = viewModel.theme.textColor
-        textView.selectionBarColor = viewModel.theme.textColor
-        textView.selectionHighlightColor = viewModel.theme.textColor.withAlphaComponent(0.2)
+//        textView.insertionPointColor = viewModel.theme.textColor
+//        textView.selectionBarColor = viewModel.theme.textColor
+//        textView.selectionHighlightColor = viewModel.theme.textColor.withAlphaComponent(0.2)
     }
 }

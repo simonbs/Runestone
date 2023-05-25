@@ -2,11 +2,26 @@ import Combine
 import CoreGraphics
 import Foundation
 
-struct TextSelectionRectFactory {
-    let characterBoundsProvider: CharacterBoundsProvider
-    let lineManager: CurrentValueSubject<LineManager, Never>
-    let contentArea: CurrentValueSubject<CGRect, Never>
-    let lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
+final class TextSelectionRectFactory {
+    private let characterBoundsProvider: CharacterBoundsProvider
+    private let lineManager: CurrentValueSubject<LineManager, Never>
+    private let lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
+    private var contentArea: CGRect = .zero
+    private var cancellables: Set<AnyCancellable> = []
+
+    init(
+        characterBoundsProvider: CharacterBoundsProvider,
+        lineManager: CurrentValueSubject<LineManager, Never>,
+        contentArea: AnyPublisher<CGRect, Never>,
+        lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
+    ) {
+        self.characterBoundsProvider = characterBoundsProvider
+        self.lineManager = lineManager
+        self.lineHeightMultiplier = lineHeightMultiplier
+        contentArea.sink { [weak self] contentArea in
+            self?.contentArea = contentArea
+        }.store(in: &cancellables)
+    }
 
     func selectionRects(in range: NSRange) -> [TextSelectionRect] {
         guard range.length > 0 else {
@@ -40,7 +55,6 @@ struct TextSelectionRectFactory {
 private extension TextSelectionRectFactory {
     private func createRectsInSingleLineFragment(from lowerRect: CGRect, to upperRect: CGRect, selectsLineEnding: Bool) -> [TextSelectionRect] {
         // Selecting text in the same line fragment.
-        let contentArea = contentArea.value
         let width = selectsLineEnding ? contentArea.width - (lowerRect.minX - contentArea.minX) : upperRect.maxX - lowerRect.minX
         let scaledHeight = lowerRect.height * lineHeightMultiplier.value
         let offsetY = lowerRect.minY - (scaledHeight - lowerRect.height) / 2
@@ -55,7 +69,6 @@ private extension TextSelectionRectFactory {
         selectsLineEnding: Bool
     ) -> [TextSelectionRect] {
         // Selecting text across line fragments and possibly across lines.
-        let contentArea = contentArea.value
         let startWidth = contentArea.width - (lowerRect.minX - contentArea.minX)
         let startScaledHeight = lowerRect.height * lineHeightMultiplier.value
         let startOffsetY = lowerRect.minY - (startScaledHeight - lowerRect.height) / 2

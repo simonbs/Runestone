@@ -100,11 +100,11 @@ final class KeyboardToolsView: UIInputView {
 
 private extension KeyboardToolsView {
     @objc private func shiftLeft() {
-        textView?.shiftLeft()
+//        textView?.shiftLeft()
     }
 
     @objc private func shiftRight() {
-        textView?.shiftRight()
+//        textView?.shiftRight()
     }
 
     @objc private func undo() {

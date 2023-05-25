@@ -1,4 +1,7 @@
 import Foundation
+#if os(iOS)
+import UIKit
+#endif
 
 enum TabWidthMeasurer {
     #if os(macOS)

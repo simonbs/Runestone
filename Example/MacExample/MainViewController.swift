@@ -12,7 +12,7 @@ final class MainViewController: NSViewController {
         let this = TextView()
         this.translatesAutoresizingMaskIntoConstraints = false
         this.textContainerInset = NSEdgeInsets(top: 0, left: 5, bottom: 0, right: 5)
-        this.showLineNumbers = true
+//        this.showLineNumbers = true
         this.showTabs = true
         this.showSpaces = true
         this.showLineBreaks = true
@@ -20,8 +20,8 @@ final class MainViewController: NSViewController {
         this.lineHeightMultiplier = 1.3
         this.kern = 0.3
         this.lineSelectionDisplayType = .line
-        this.gutterLeadingPadding = 4
-        this.gutterTrailingPadding = 4
+//        this.gutterLeadingPadding = 4
+//        this.gutterTrailingPadding = 4
         this.isLineWrappingEnabled = true
         this.indentStrategy = .space(length: 2)
         this.characterPairs = [

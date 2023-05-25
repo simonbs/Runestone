@@ -2,22 +2,42 @@ import Combine
 import CoreText
 import Foundation
 
-struct CharacterBoundsProvider {
-    let stringView: CurrentValueSubject<StringView, Never>
-    let lineManager: CurrentValueSubject<LineManager, Never>
-    let lineControllerStorage: LineControllerStorage
-    let contentArea: ContentArea
+final class CharacterBoundsProvider {
+    private let stringView: CurrentValueSubject<StringView, Never>
+    private let lineManager: CurrentValueSubject<LineManager, Never>
+    private let lineControllerStorage: LineControllerStorage
+    private var contentArea: CGRect = .zero
+    private var cancellables: Set<AnyCancellable> = []
+
+    init(
+        stringView: CurrentValueSubject<StringView, Never>,
+        lineManager: CurrentValueSubject<LineManager, Never>,
+        lineControllerStorage: LineControllerStorage,
+        contentArea: AnyPublisher<CGRect, Never>
+    ) {
+        self.stringView = stringView
+        self.lineManager = lineManager
+        self.lineControllerStorage = lineControllerStorage
+        contentArea.sink { [weak self] contentArea in
+            self?.contentArea = contentArea
+        }.store(in: &cancellables)
+    }
 
     func boundsOfComposedCharacterSequence(atLocation location: Int, moveToToNextLineFragmentIfNeeded: Bool) -> CGRect? {
-        guard location >= 0 && location < stringView.value.string.length else {
-            return nil
-        }
         guard let pair = lineAndActualLocation(atLocation: location, moveToToNextLineFragmentIfNeeded: moveToToNextLineFragmentIfNeeded) else {
             return nil
         }
-        let rawRange = stringView.value.string.rangeOfComposedCharacterSequence(at: pair.actualLocation)
-        let range = NSRange(location: rawRange.location - pair.line.location, length: rawRange.length)
+        guard location >= 0 && location <= stringView.value.string.length else {
+            return nil
+        }
         let lineController = lineControllerStorage.getOrCreateLineController(for: pair.line)
+        let range: NSRange
+        if location == stringView.value.string.length {
+            range = NSRange(location: location - pair.line.location, length: 0)
+        } else {
+            let composedRange = stringView.value.string.rangeOfComposedCharacterSequence(at: pair.actualLocation)
+            range = NSRange(location: composedRange.location - pair.line.location, length: composedRange.length)
+        }
         return boundsOfCharacter(inLineLocalRange: range, in: lineController)
     }
 }
@@ -38,8 +58,7 @@ private extension CharacterBoundsProvider {
         guard let bounds = lineLocalBoundingBox(in: lineLocalRange, localTo: lineController) else {
             return nil
         }
-        let originAdjustment = contentArea.rawValue.value.origin
-        let origin = CGPoint(x: bounds.minX + originAdjustment.x, y: lineController.line.yPosition + bounds.minY + originAdjustment.y)
+        let origin = CGPoint(x: bounds.minX + contentArea.origin.x, y: lineController.line.yPosition + bounds.minY + contentArea.origin.y)
         return CGRect(origin: origin, size: bounds.size)
     }
 

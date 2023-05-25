@@ -2,13 +2,8 @@ import Combine
 import Foundation
 
 struct TextPreviewFactory {
-    private let lineManager: CurrentValueSubject<LineManager, Never>
-    private let lineControllerStorage: LineControllerStorage
-
-    init(lineManager: CurrentValueSubject<LineManager, Never>, lineControllerStorage: LineControllerStorage) {
-        self.lineManager = lineManager
-        self.lineControllerStorage = lineControllerStorage
-    }
+    let lineManager: CurrentValueSubject<LineManager, Never>
+    let lineControllerStorage: LineControllerStorage
 
     func textPreview(containing needleRange: NSRange, peekLength: Int = 50) -> TextPreview? {
         let lines = lineManager.value.lines(in: needleRange)

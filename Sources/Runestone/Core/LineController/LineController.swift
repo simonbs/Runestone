@@ -157,19 +157,6 @@ final class LineController {
 //        }
 //    }
 
-    func firstRect(for lineLocalRange: NSRange) -> CGRect {
-        for lineFragment in typesetter.lineFragments {
-            if let insertionPointRange = lineFragment.insertionPointRange(forLineLocalRange: lineLocalRange) {
-                let finalIndex = min(lineFragment.visibleRange.upperBound, insertionPointRange.upperBound)
-                let xStart = CTLineGetOffsetForStringIndex(lineFragment.line, insertionPointRange.location, nil)
-                let xEnd = CTLineGetOffsetForStringIndex(lineFragment.line, finalIndex, nil)
-                let yPosition = lineFragment.yPosition + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
-                return CGRect(x: xStart, y: yPosition, width: xEnd - xStart, height: lineFragment.baseSize.height)
-            }
-        }
-        return CGRect(x: 0, y: 0, width: 0, height: estimatedLineHeight.scaledValue.value)
-    }
-
     func location(closestTo point: CGPoint) -> Int {
         guard let closestLineFragment = lineFragment(closestTo: point) else {
             return line.location

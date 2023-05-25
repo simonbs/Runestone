@@ -35,12 +35,14 @@ extension TextView {
         self.theme = theme
         backgroundColor = theme.backgroundColor
         insertionPointColor = theme.textColor
+        insertionPointForegroundColor = theme.backgroundColor
+        insertionPointInvisibleCharacterForegroundColor = theme.backgroundColor.withAlphaComponent(0.8)
         selectionBarColor = theme.textColor
         selectionHighlightColor = theme.textColor.withAlphaComponent(0.2)
     }
 
     func applySettings(from settings: UserDefaults) {
-        showLineNumbers = settings.showLineNumbers
+//        showLineNumbers = settings.showLineNumbers
         showTabs = settings.showInvisibleCharacters
         showSpaces = settings.showInvisibleCharacters
         showLineBreaks = settings.showInvisibleCharacters
@@ -49,5 +51,6 @@ extension TextView {
         isSelectable = settings.isSelectable
         lineSelectionDisplayType = settings.highlightSelectedLine ? .line : .disabled
         showPageGuide = settings.showPageGuide
+        insertionPointShape = settings.insertionPointShape.insertionPointShape
     }
 }

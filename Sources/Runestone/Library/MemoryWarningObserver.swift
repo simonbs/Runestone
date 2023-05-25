@@ -10,9 +10,6 @@ final class MemoryWarningObserver {
 
     init(handlers: [LowMemoryHandling]) {
         self.handlers = handlers
-    }
-
-    init() {
         subscribeToMemoryWarningNotification()
     }
 }
