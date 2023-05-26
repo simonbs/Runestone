@@ -9,7 +9,7 @@ public typealias MultiPlatformColor = UIColor
 #if os(iOS)
 extension UIColor {
     static var textBackgroundColor: UIColor {
-        .white
+        .systemBackground
     }
 
     static var insertionPointPlaceholderBackgroundColor: UIColor {

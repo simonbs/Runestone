@@ -24,6 +24,7 @@ final class MainViewController: NSViewController {
 //        this.gutterTrailingPadding = 4
         this.isLineWrappingEnabled = true
         this.indentStrategy = .space(length: 2)
+        this.insertionPointShape = .block
         this.characterPairs = [
             BasicCharacterPair(leading: "(", trailing: ")"),
             BasicCharacterPair(leading: "{", trailing: "}"),
@@ -82,6 +83,8 @@ private extension MainViewController {
         textView.wantsLayer = true
         textView.layer?.backgroundColor = theme.backgroundColor.cgColor
         textView.insertionPointColor = theme.textColor
+        textView.insertionPointForegroundColor = theme.backgroundColor
+        textView.insertionPointInvisibleCharacterForegroundColor = theme.backgroundColor.withAlphaComponent(0.6)
         textView.selectionHighlightColor = theme.textColor.withAlphaComponent(0.2)
     }
 }

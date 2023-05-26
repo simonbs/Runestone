@@ -44,6 +44,7 @@ final class CompositionRoot {
 
     // MARK: - Appearance
     let themeSettings = ThemeSettings()
+    let textViewBackgroundColor = CurrentValueSubject<MultiPlatformColor?, Never>(.textBackgroundColor)
     private(set) lazy var typesetSettings = TypesetSettings(font: themeSettings.font)
 
     // MARK: - Line Management
@@ -340,7 +341,7 @@ final class CompositionRoot {
     // MARK: - Insertion Point
     let insertionPointShape = CurrentValueSubject<InsertionPointShape, Never>(.verticalBar)
     let insertionPointVisibilityMode = CurrentValueSubject<InsertionPointVisibilityMode, Never>(.hiddenWhenMovingUnlessFarAway)
-    let insertionPointBackgroundColor = CurrentValueSubject<MultiPlatformColor, Never>(.textBackgroundColor)
+    let insertionPointBackgroundColor = CurrentValueSubject<MultiPlatformColor, Never>(.label)
     #if os(iOS)
     let insertionPointPlaceholderBackgroundColor = CurrentValueSubject<MultiPlatformColor, Never>(.insertionPointPlaceholderBackgroundColor)
     #else
@@ -379,7 +380,8 @@ final class CompositionRoot {
             insertionPointShape: insertionPointShape,
             isInsertionPointBeingMoved: isInsertionPointBeingMoved,
             insertionPointBackgroundColor: insertionPointBackgroundColor,
-            insertionPointPlaceholderBackgroundColor: insertionPointPlaceholderBackgroundColor
+            insertionPointPlaceholderBackgroundColor: insertionPointPlaceholderBackgroundColor,
+            textViewBackgroundColor: textViewBackgroundColor
         )
     }
     private func insertionPointForegroundRenderer(opacity: CGFloat = 1) -> InsertionPointForegroundRenderer {

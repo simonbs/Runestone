@@ -7,6 +7,7 @@ final class InsertionPointBackgroundRenderer: InsertionPointRenderer {
     private let insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>
     private let insertionPointBackgroundColor: CurrentValueSubject<MultiPlatformColor, Never>
     private let insertionPointPlaceholderBackgroundColor: CurrentValueSubject<MultiPlatformColor, Never>
+    private let textViewBackgroundColor: CurrentValueSubject<MultiPlatformColor?, Never>
     private let _needsRender = CurrentValueSubject<Bool, Never>(false)
     private var cancellables: Set<AnyCancellable> = []
     private var isInsertionPointBeingMoved = false {
@@ -21,11 +22,13 @@ final class InsertionPointBackgroundRenderer: InsertionPointRenderer {
         insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>,
         isInsertionPointBeingMoved: AnyPublisher<Bool, Never>,
         insertionPointBackgroundColor: CurrentValueSubject<MultiPlatformColor, Never>,
-        insertionPointPlaceholderBackgroundColor: CurrentValueSubject<MultiPlatformColor, Never>
+        insertionPointPlaceholderBackgroundColor: CurrentValueSubject<MultiPlatformColor, Never>,
+        textViewBackgroundColor: CurrentValueSubject<MultiPlatformColor?, Never>
     ) {
         self.insertionPointShape = insertionPointShape
         self.insertionPointBackgroundColor = insertionPointBackgroundColor
         self.insertionPointPlaceholderBackgroundColor = insertionPointPlaceholderBackgroundColor
+        self.textViewBackgroundColor = textViewBackgroundColor
         self.needsRender = _needsRender.eraseToAnyPublisher()
         isInsertionPointBeingMoved.sink { [weak self] isInsertionPointBeingMoved in
             self?.isInsertionPointBeingMoved = isInsertionPointBeingMoved
@@ -42,8 +45,11 @@ final class InsertionPointBackgroundRenderer: InsertionPointRenderer {
         defer {
             _needsRender.value = false
         }
+        let textViewBackgroundColor = textViewBackgroundColor.value ?? .textBackgroundColor
         let color = isInsertionPointBeingMoved ? insertionPointPlaceholderBackgroundColor.value : insertionPointBackgroundColor.value
         context.saveGState()
+        context.setFillColor(textViewBackgroundColor.cgColor)
+        context.fill([rect])
         context.setFillColor(color.cgColor)
         switch insertionPointShape.value {
         case .verticalBar:

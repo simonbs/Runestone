@@ -47,6 +47,14 @@ open class TextView: UIScrollView {
             textSetter.setText(newValue as NSString)
         }
     }
+    /// The view's background color.
+    open override var backgroundColor: UIColor? {
+        didSet {
+            if backgroundColor != oldValue {
+                textViewBackgroundColor.value = backgroundColor
+            }
+        }
+    }
     /// Colors and fonts to be used by the editor.
     @_RunestoneProxy(\TextView.themeSettings.theme.value)
     public var theme: Theme
@@ -361,6 +369,7 @@ open class TextView: UIScrollView {
     private let typesetSettings: TypesetSettings
     private let invisibleCharacterSettings: InvisibleCharacterSettings
     private let themeSettings: ThemeSettings
+    private let textViewBackgroundColor: CurrentValueSubject<MultiPlatformColor?, Never>
 
     private let _undoManager: UndoManager
     private let characterPairService: CharacterPairService
@@ -433,6 +442,7 @@ open class TextView: UIScrollView {
         typesetSettings = compositionRoot.typesetSettings
         invisibleCharacterSettings = compositionRoot.invisibleCharacterSettings
         themeSettings = compositionRoot.themeSettings
+        textViewBackgroundColor = compositionRoot.textViewBackgroundColor
 
         _undoManager = compositionRoot.undoManager
         characterPairService = compositionRoot.characterPairService
