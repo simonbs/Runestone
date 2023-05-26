@@ -12,9 +12,7 @@ final class InsertionPointLayouter {
         insertionPointViewFactory: InsertionPointViewFactory,
         frame: AnyPublisher<CGRect, Never>,
         containerView: CurrentValueSubject<WeakBox<TextView>, Never>,
-        selectedRange: AnyPublisher<NSRange, Never>,
-        isKeyWindow: AnyPublisher<Bool, Never>,
-        isFirstResponder: AnyPublisher<Bool, Never>,
+        isInsertionPointVisible: AnyPublisher<Bool, Never>,
         isInsertionPointBeingMoved: AnyPublisher<Bool, Never>
     ) {
         view = insertionPointViewFactory.makeView()
@@ -24,29 +22,15 @@ final class InsertionPointLayouter {
         view.layer?.zPosition = 1000
         #endif
         view.isHidden = true
-        selectedRange.removeDuplicates().sink { [weak self] _ in
-            self?.view.delayBlink()
-        }.store(in: &cancellabels)
-        let isInsertionPointShown = Publishers.CombineLatest3(
-            isKeyWindow,
-            isFirstResponder,
-            selectedRange
-        ).map { isKeyWindow, isFirstResponder, selectedRange in
-            #if os(iOS)
-            isFirstResponder && selectedRange.length == 0
-            #else
-            isKeyWindow && isFirstResponder && selectedRange.length == 0
-            #endif
-        }
-        isInsertionPointShown.sink { [weak self] isInsertionPointShown in
-            if isInsertionPointShown {
+        isInsertionPointVisible.sink { [weak self] isInsertionPointVisible in
+            if isInsertionPointVisible {
                 self?.view.isHidden = false
                 self?.view.delayBlink()
             } else {
                 self?.view.isHidden = true
             }
         }.store(in: &cancellabels)
-        Publishers.CombineLatest(isInsertionPointShown, isInsertionPointBeingMoved)
+        Publishers.CombineLatest(isInsertionPointVisible, isInsertionPointBeingMoved)
             .map { $0 && !$1 }
             .removeDuplicates()
             .sink { [weak self] isBlinkingEnabled in

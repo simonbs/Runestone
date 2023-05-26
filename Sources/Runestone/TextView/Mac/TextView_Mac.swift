@@ -225,17 +225,17 @@ open class TextView: NSView, NSMenuItemValidation {
     /// The color of the insertion point.
     ///
     /// This can be used to control the color of the caret.
-    @_RunestoneProxy(\TextView.insertionPointBackgroundRenderer.color)
+    @_RunestoneProxy(\TextView.insertionPointBackgroundColorSubject.value)
     public var insertionPointColor: NSColor
     /// The color of the insertion point.
     ///
     /// This can be used to control the color of the caret.
-    @_RunestoneProxy(\TextView.insertionPointForegroundRenderer.defaultColor)
+    @_RunestoneProxy(\TextView.insertionPointTextColorSubject.value)
     public var insertionPointForegroundColor: NSColor
     /// The color of the insertion point.
     ///
     /// This can be used to control the color of the caret.
-    @_RunestoneProxy(\TextView.insertionPointForegroundRenderer.invisibleCharactersColor)
+    @_RunestoneProxy(\TextView.insertionPointInvisibleCharacterColorSubject.value)
     public var insertionPointInvisibleCharacterForegroundColor: NSColor
     /// The color of the selection highlight.
     ///
@@ -287,7 +287,6 @@ open class TextView: NSView, NSMenuItemValidation {
     private let estimatedLineHeight: EstimatedLineHeight
     private let estimatedCharacterWidth: EstimatedCharacterWidth
     private let widestLineTracker: WidestLineTracker
-    private let contentArea: ContentArea
 
     let locationNavigator: LocationNavigator
     let locationRaycaster: LocationRaycaster
@@ -304,15 +303,17 @@ open class TextView: NSView, NSMenuItemValidation {
     let pageGuideLayouter: PageGuideLayouter
 
     private let insertionPointShapeSubject: CurrentValueSubject<InsertionPointShape, Never>
-    private let insertionPointBackgroundRenderer: InsertionPointBackgroundRenderer
-    private let insertionPointForegroundRenderer: InsertionPointForegroundRenderer
+    private let insertionPointBackgroundColorSubject: CurrentValueSubject<MultiPlatformColor, Never>
+    private let insertionPointTextColorSubject: CurrentValueSubject<MultiPlatformColor, Never>
+    private let insertionPointInvisibleCharacterColorSubject: CurrentValueSubject<MultiPlatformColor, Never>
 
     let viewportScroller: ViewportScroller
     let automaticViewportScroller: AutomaticViewportScroller
 
-    let textFinder = NSTextFinder()
     let searchService: SearchService
     let batchReplacer: BatchReplacer
+    let textPreviewFactory: TextPreviewFactory
+    let textFinder = NSTextFinder()
     private let textFinderClient = TextFinderClient()
 
     let highlightedRangeFragmentStore: HighlightedRangeFragmentStore
@@ -384,7 +385,6 @@ open class TextView: NSView, NSMenuItemValidation {
         estimatedLineHeight = compositionRoot.estimatedLineHeight
         estimatedCharacterWidth = compositionRoot.estimatedCharacterWidth
         widestLineTracker = compositionRoot.widestLineTracker
-        contentArea = compositionRoot.contentArea
 
         locationNavigator = compositionRoot.locationNavigator
         locationRaycaster = compositionRoot.locationRaycaster
@@ -401,14 +401,16 @@ open class TextView: NSView, NSMenuItemValidation {
         pageGuideLayouter = compositionRoot.pageGuideLayouter
 
         insertionPointShapeSubject = compositionRoot.insertionPointShape
-        insertionPointBackgroundRenderer = compositionRoot.insertionPointBackgroundRenderer
-        insertionPointForegroundRenderer = compositionRoot.insertionPointForegoundRenderer
+        insertionPointBackgroundColorSubject = compositionRoot.insertionPointBackgroundColor
+        insertionPointTextColorSubject = compositionRoot.insertionPointTextColor
+        insertionPointInvisibleCharacterColorSubject = compositionRoot.insertionPointInvisibleCharacterColor
 
         viewportScroller = compositionRoot.viewportScroller
         automaticViewportScroller = compositionRoot.automaticViewportScroller
 
         searchService = compositionRoot.searchService
         batchReplacer = compositionRoot.batchReplacer
+        textPreviewFactory = compositionRoot.textPreviewFactory
 
         highlightedRangeFragmentStore = compositionRoot.highlightedRangeFragmentStore
         highlightedRangeNavigator = compositionRoot.highlightedRangeNavigator

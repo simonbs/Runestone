@@ -24,7 +24,7 @@ final class UITextInputHelper {
     private let markedRange: CurrentValueSubject<NSRange?, Never>
     private let insertionPointFrameFactory: InsertionPointFrameFactory
     private let insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>
-    private let isInsertionPointFloating: CurrentValueSubject<Bool, Never>
+    private let floatingInsertionPointPosition: CurrentValueSubject<CGPoint?, Never>
     private let insertionPointViewFactory: InsertionPointViewFactory
     private let textEditState: TextEditState
     private let textInserter: TextInserter
@@ -52,7 +52,7 @@ final class UITextInputHelper {
         markedRange: CurrentValueSubject<NSRange?, Never>,
         insertionPointFrameFactory: InsertionPointFrameFactory,
         insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>,
-        isInsertionPointFloating: CurrentValueSubject<Bool, Never>,
+        floatingInsertionPointPosition: CurrentValueSubject<CGPoint?, Never>,
         insertionPointViewFactory: InsertionPointViewFactory,
         textEditState: TextEditState,
         textInserter: TextInserter,
@@ -75,7 +75,7 @@ final class UITextInputHelper {
         self.insertionPointFrameFactory = insertionPointFrameFactory
         self.insertionPointShape = insertionPointShape
         self.insertionPointViewFactory = insertionPointViewFactory
-        self.isInsertionPointFloating = isInsertionPointFloating
+        self.floatingInsertionPointPosition = floatingInsertionPointPosition
         self.textEditState = textEditState
         self.textInserter = textInserter
         self.textDeleter = textDeleter
@@ -120,10 +120,11 @@ extension UITextInputHelper {
         guard let textView, floatingInsertionPointView == nil, let position = closestPosition(to: point) else {
             return
         }
-        isInsertionPointFloating.value = true
+        floatingInsertionPointPosition.value = point
         let caretRect = caretRect(for: position)
         let caretOrigin = CGPoint(x: point.x - caretRect.width / 2, y: point.y - caretRect.height / 2)
         let insertionPointView = insertionPointViewFactory.makeView()
+        insertionPointView.isFloating = true
         insertionPointView.layer.zPosition = 5000
         insertionPointView.frame = CGRect(origin: caretOrigin, size: caretRect.size)
         textView.addSubview(insertionPointView)
@@ -135,13 +136,14 @@ extension UITextInputHelper {
         guard let floatingInsertionPointView, let position = closestPosition(to: point) else {
             return
         }
+        floatingInsertionPointPosition.value = point
         let caretRect = caretRect(for: position)
         let caretOrigin = CGPoint(x: point.x - caretRect.width / 2, y: point.y - caretRect.height / 2)
         floatingInsertionPointView.frame = CGRect(origin: caretOrigin, size: caretRect.size)
     }
 
     func endFloatingCursor() {
-        isInsertionPointFloating.value = false
+        floatingInsertionPointPosition.value = nil
         floatingInsertionPointView?.removeFromSuperview()
         floatingInsertionPointView = nil
         textViewDelegate.textViewDidEndFloatingCursor()

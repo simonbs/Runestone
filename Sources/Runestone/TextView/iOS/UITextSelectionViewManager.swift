@@ -4,79 +4,51 @@ import UIKit
 
 final class UITextSelectionViewManager {
     var containsCaret: Bool {
-        textSelectionView?.subviews.count == 1
+        caretView != nil
     }
 
-    private let _textView: CurrentValueSubject<WeakBox<TextView>, Never>
-    private let insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>
-    private let isInsertionPointPickedUp: CurrentValueSubject<Bool, Never>
+    private weak var textView: TextView?
+    private let floatingInsertionPointPosition: CurrentValueSubject<CGPoint?, Never>
     private var subviewsObserver: NSKeyValueObservation?
-    private var asd: NSKeyValueObservation?
+    private var floatingCaretViewPositionObserver: NSKeyValueObservation?
     private var cancellables: Set<AnyCancellable> = []
-    private let v = InsertionPointView(renderer: InsertionPointCompositeRenderer(renderers: []))
-    private var textView: TextView? {
-        _textView.value.value
-    }
+    private let insertionPointViewFactory: InsertionPointViewFactory
+    private var customFloatingCaretView: UIView?
+    private var insertionPointFrame: CGRect = .zero
 
     init(
         textView: CurrentValueSubject<WeakBox<TextView>, Never>,
-        insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>,
-        isInsertionPointPickedUp: CurrentValueSubject<Bool, Never>
+        insertionPointFrame: AnyPublisher<CGRect, Never>,
+        floatingInsertionPointPosition: CurrentValueSubject<CGPoint?, Never>,
+        insertionPointViewFactory: InsertionPointViewFactory
     ) {
-        self._textView = textView
-        self.insertionPointShape = insertionPointShape
-        self.isInsertionPointPickedUp = isInsertionPointPickedUp
-        insertionPointShape.sink { [weak self] _ in
-            self?.hideCaretIfNeeded()
-            self?.updateFloatingCursorAppearanceIfNeeded()
+        self.floatingInsertionPointPosition = floatingInsertionPointPosition
+        self.insertionPointViewFactory = insertionPointViewFactory
+        textView.sink { [weak self] box in
+            self?.textView = box.value
+        }.store(in: &cancellables)
+        insertionPointFrame.sink { [weak self] frame in
+            self?.insertionPointFrame = frame
+            if let center = self?.customFloatingCaretView?.center {
+                self?.layoutFloatingInsertionPointView(ofSize: frame.size, centeredAt: center)
+            }
         }.store(in: &cancellables)
     }
 
-    func hideCaretIfNeeded() {
-        caretView?.backgroundColor = .clear
-    }
-
-    func updateFloatingCursorAppearanceIfNeeded() {
-        textSelectionView?.layer.zPosition = 5000
-
-//        caretView?.backgroundColor = .red
-//        floatingCaretView?.backgroundColor = .purple
-
-
-
-//        let subviews = textSelectionView?.subviews ?? []
-////        subviews.first?.backgroundColor = .clear
-//        print(subviews.map(\.tag))
-//        guard subviews.count == 2 else {
-//            return
-//        }
-//        let floatingCursorView = subviews[0]
-//
-//        switch insertionPointShape.value {
-//        case .verticalBar:
-//            floatingCursorView.layer.cornerRadius = floatingCursorView.bounds.width / 2
-//        case .underline:
-//            floatingCursorView.layer.cornerRadius = floatingCursorView.bounds.height / 2
-//        case .block:
-//            floatingCursorView.layer.cornerRadius = 0
-//        }
-    }
-
     func setupCaretViewObserver() {
+        textSelectionView?.layer.zPosition = 5000
         // UIView.subviews isn't observable but CALayer.sublayers is. So we use the sublayers property to detect when the subviews of UITextSelectionView has changed so we can hide the caret if needed.
-        subviewsObserver = textSelectionView?.layer.observe(\.sublayers, options: .new) { [weak self] _, change in
-            guard let self else {
-                return
+        subviewsObserver = textSelectionView?.observe(\.layer.sublayers, options: .new) { [weak self] _, change in
+            // Need to dispatch in order for the change to be reflected in the textSelectionView.subviews property.
+            DispatchQueue.main.async { [weak self] in
+                self?.hideDefaultCaretViews()
+                self?.updateCustomFloatingCaretViewViewHiearachy()
+                self?.setupFloatingCaretViewPositionObserver()
+                self?.updateFloatingInsertionPointPosition()
+                if let size = self?.insertionPointFrame.size, let center = self?.floatingCaretView?.center {
+                    self?.layoutFloatingInsertionPointView(ofSize: size, centeredAt: center)
+                }
             }
-            self.hideCaretIfNeeded()
-            self.updateFloatingCursorAppearanceIfNeeded()
-            if let floatingCaretView = self.floatingCaretView {
-                print(change.newValue??.contains(where: { $0 === floatingCaretView.layer }))
-                self.isInsertionPointPickedUp.value = change.newValue??.contains(floatingCaretView.layer) ?? false
-            } else {
-                self.isInsertionPointPickedUp.value = false
-            }
-
         }
     }
 
@@ -107,17 +79,55 @@ private extension UITextSelectionViewManager {
         textSelectionView?.value(forKey: "m_floatingCaretView") as? UIView
     }
 
-//    private func checkIfInsertionPointPickedUp() -> Bool {
-//        guard let textSelectionView else {
-//            return false
-//        }
-//        guard textSelectionView.subviews.count == 2 else {
-//            return false
-//        }
-//        guard let textRangeViewClass = NSClassFromString("UITextRangeView") else {
-//            return false
-//        }
-//        return !textSelectionView.subviews.contains(where: { $0.isKind(of: textRangeViewClass) })
-//    }
+    private func setupFloatingCaretViewPositionObserver() {
+        floatingCaretViewPositionObserver = floatingCaretView?.observe(\.center, options: .new) { [weak self] _, change in
+            if let center = change.newValue, let size = self?.customFloatingCaretView?.frame.size {
+                self?.updateFloatingInsertionPointPosition()
+                self?.layoutFloatingInsertionPointView(ofSize: size, centeredAt: center)
+            }
+        }
+    }
+
+    private func updateFloatingInsertionPointPosition() {
+        if floatingCaretView?.superview != nil {
+            floatingInsertionPointPosition.value = floatingCaretView?.center
+        } else {
+            floatingInsertionPointPosition.value = nil
+        }
+    }
+
+    private func hideDefaultCaretViews() {
+        caretView?.isHidden = true
+        floatingCaretView?.isHidden = true
+    }
+
+    private func updateCustomFloatingCaretViewViewHiearachy() {
+        if floatingCaretView?.superview == nil {
+            customFloatingCaretView?.removeFromSuperview()
+            customFloatingCaretView = nil
+        } else {
+            let customFloatingCaretView = makeCustomfloatingCaretViewIfNeeded()
+            if customFloatingCaretView.superview == nil {
+                textSelectionView?.addSubview(customFloatingCaretView)
+            }
+        }
+    }
+
+    private func layoutFloatingInsertionPointView(ofSize size: CGSize, centeredAt center: CGPoint) {
+        let origin = CGPoint(x: center.x - size.width / 2, y: center.y - size.height / 2)
+        customFloatingCaretView?.frame = CGRect(origin: origin, size: size)
+    }
+
+    private func makeCustomfloatingCaretViewIfNeeded() -> UIView {
+        if let customFloatingCaretView {
+            return customFloatingCaretView
+        } else {
+            let customFloatingCaretView = insertionPointViewFactory.makeView()
+            customFloatingCaretView.isFloating = true
+            customFloatingCaretView.layer.zPosition = 5000
+            self.customFloatingCaretView = customFloatingCaretView
+            return customFloatingCaretView
+        }
+    }
 }
 #endif

@@ -11,6 +11,19 @@ extension UIColor {
     static var textBackgroundColor: UIColor {
         .white
     }
+
+    static var insertionPointPlaceholderBackgroundColor: UIColor {
+        UIColor { traitCollection in
+            switch traitCollection.userInterfaceStyle {
+            case .dark:
+                return UIColor(white: 1, alpha: 0.3)
+            case .light, .unspecified:
+                fallthrough
+            @unknown default:
+                return UIColor(white: 0, alpha: 0.3)
+            }
+        }
+    }
 }
 #endif
 

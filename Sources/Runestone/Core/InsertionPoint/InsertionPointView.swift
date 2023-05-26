@@ -1,3 +1,6 @@
+#if os(macOS)
+import AppKit
+#endif
 import Combine
 import Foundation
 #if os(iOS)
@@ -13,7 +16,17 @@ final class InsertionPointView: MultiPlatformView {
             }
         }
     }
-
+    #if os(iOS)
+    var isFloating = false {
+        didSet {
+            if isFloating != oldValue {
+                updateShadow()
+                updateTransform()
+            }
+        }
+    }
+    #endif
+    
     private let renderer: InsertionPointRenderer
     private var cancellables: Set<AnyCancellable> = []
     private var blinkTimer: Timer?
@@ -32,6 +45,10 @@ final class InsertionPointView: MultiPlatformView {
         wantsLayer = true
         #endif
         backgroundColor = .clear
+        #if os(iOS)
+        isUserInteractionEnabled = false
+        updateShadow()
+        #endif
         renderer.needsRender.sink { [weak self] _ in
             self?.setNeedsDisplay()
         }.store(in: &cancellables)
@@ -90,3 +107,29 @@ private extension InsertionPointView {
         isVisible.toggle()
     }
 }
+
+#if os(iOS)
+private extension InsertionPointView {
+    private func updateShadow() {
+        if isFloating {
+            layer.shadowOpacity = 0.2
+            layer.shadowColor = UIColor(red: 70 / 255, green: 110 / 255, blue: 185 / 255, alpha: 1).cgColor
+            layer.shadowRadius = 2
+            layer.shadowOffset = CGSize(width: 0, height: 8)
+        } else {
+            layer.shadowOpacity = 0
+            layer.shadowColor = nil
+            layer.shadowRadius = 0
+            layer.shadowOffset = .zero
+        }
+    }
+
+    private func updateTransform() {
+        if isFloating {
+            transform = CGAffineTransform(scaleX: 1.08, y: 1.08)
+        } else {
+            transform = .identity
+        }
+    }
+}
+#endif

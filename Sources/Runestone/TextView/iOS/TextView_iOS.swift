@@ -50,14 +50,6 @@ open class TextView: UIScrollView {
     /// Colors and fonts to be used by the editor.
     @_RunestoneProxy(\TextView.themeSettings.theme.value)
     public var theme: Theme
-    /// The view’s background color.
-    open override var backgroundColor: UIColor? {
-        didSet {
-            if backgroundColor != oldValue {
-                textViewBackgroundColorSubject.value = backgroundColor
-            }
-        }
-    }
     /// The autocorrection style for the text view.
     public var autocorrectionType: UITextAutocorrectionType = .default
     /// The autocapitalization style for the text view.
@@ -248,6 +240,11 @@ open class TextView: UIScrollView {
     /// Defaults to ``InsertionPointShape/verticalBar``.
     @_RunestoneProxy(\TextView.insertionPointShapeSubject.value)
     public var insertionPointShape: InsertionPointShape
+    /// The insertion point's visibility mode.
+    ///
+    /// Defaults to ``InsertionPointVisibilityMode/whenMovingAndFarAway``.
+    @_RunestoneProxy(\TextView.insertionPointVisibilityModeSubject.value)
+    public var insertionPointVisibilityMode: InsertionPointVisibilityMode
     /// The color of the insertion point.
     ///
     /// This can be used to control the color of the caret.
@@ -259,6 +256,11 @@ open class TextView: UIScrollView {
             }
         }
     }
+    /// The color of the insertion point when it is being moved.
+    ///
+    /// The insertion point assumes this color when it is being moved to depict where the insertion point will be placed when the moving operation ends.
+    @_RunestoneProxy(\TextView.insertionPointPlaceholderBackgroundColorSubject.value)
+    public var insertionPointPlaceholderBackgroundColor: UIColor
     /// The color of the insertion point.
     ///
     /// This can be used to control the color of the caret.
@@ -384,13 +386,13 @@ open class TextView: UIScrollView {
 
     private let insertionPointLayouter: InsertionPointLayouter
     private let lineFragmentLayouter: LineFragmentLayouter
-//    private let textSelectionLayouter: TextSelectionLayouter
     private let lineSelectionLayouter: LineSelectionLayouter
     private let pageGuideLayouter: PageGuideLayouter
 
-    private let textViewBackgroundColorSubject: CurrentValueSubject<MultiPlatformColor?, Never>
     private let insertionPointShapeSubject: CurrentValueSubject<InsertionPointShape, Never>
+    private let insertionPointVisibilityModeSubject: CurrentValueSubject<InsertionPointVisibilityMode, Never>
     private let insertionPointBackgroundColorSubject: CurrentValueSubject<MultiPlatformColor, Never>
+    private let insertionPointPlaceholderBackgroundColorSubject: CurrentValueSubject<MultiPlatformColor, Never>
     private let insertionPointTextColorSubject: CurrentValueSubject<MultiPlatformColor, Never>
     private let insertionPointInvisibleCharacterColorSubject: CurrentValueSubject<MultiPlatformColor, Never>
 
@@ -456,13 +458,13 @@ open class TextView: UIScrollView {
 
         insertionPointLayouter = compositionRoot.insertionPointLayouter
         lineFragmentLayouter = compositionRoot.lineFragmentLayouter
-//        textSelectionLayouter = compositionRoot.textSelectionLayouter
         lineSelectionLayouter = compositionRoot.lineSelectionLayouter
         pageGuideLayouter = compositionRoot.pageGuideLayouter
 
-        textViewBackgroundColorSubject = compositionRoot.textViewBackgroundColor
         insertionPointShapeSubject = compositionRoot.insertionPointShape
+        insertionPointVisibilityModeSubject = compositionRoot.insertionPointVisibilityMode
         insertionPointBackgroundColorSubject = compositionRoot.insertionPointBackgroundColor
+        insertionPointPlaceholderBackgroundColorSubject = compositionRoot.insertionPointPlaceholderBackgroundColor
         insertionPointTextColorSubject = compositionRoot.insertionPointTextColor
         insertionPointInvisibleCharacterColorSubject = compositionRoot.insertionPointInvisibleCharacterColor
 
@@ -481,7 +483,6 @@ open class TextView: UIScrollView {
         super.init(frame: frame)
         compositionRoot.textView.value = WeakBox(self)
         backgroundColor = .white
-        insertionPointColor = tintColor
         beginEditingGestureRecognizer.delegate = self
         beginEditingGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
         addGestureRecognizer(beginEditingGestureRecognizer)
@@ -509,8 +510,6 @@ open class TextView: UIScrollView {
         contentSizeService.updateContentSizeIfNeeded()
         textContainer.viewport.value = CGRect(origin: contentOffset, size: frame.size)
         lineFragmentLayouter.layoutIfNeeded()
-        textSelectionViewManager.hideCaretIfNeeded()
-        textSelectionViewManager.updateFloatingCursorAppearanceIfNeeded()
     }
 
     /// Called when the safe area of the view changes.

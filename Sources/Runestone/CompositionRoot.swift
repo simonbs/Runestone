@@ -339,12 +339,18 @@ final class CompositionRoot {
 
     // MARK: - Insertion Point
     let insertionPointShape = CurrentValueSubject<InsertionPointShape, Never>(.verticalBar)
+    let insertionPointVisibilityMode = CurrentValueSubject<InsertionPointVisibilityMode, Never>(.hiddenWhenMovingUnlessFarAway)
     let insertionPointBackgroundColor = CurrentValueSubject<MultiPlatformColor, Never>(.textBackgroundColor)
-    let textViewBackgroundColor = CurrentValueSubject<MultiPlatformColor?, Never>(nil)
+    #if os(iOS)
+    let insertionPointPlaceholderBackgroundColor = CurrentValueSubject<MultiPlatformColor, Never>(.insertionPointPlaceholderBackgroundColor)
+    #else
+    var insertionPointPlaceholderBackgroundColor: CurrentValueSubject<MultiPlatformColor, Never> {
+        insertionPointBackgroundColor
+    }
+    #endif
     let insertionPointTextColor = CurrentValueSubject<MultiPlatformColor, Never>(.label)
     let insertionPointInvisibleCharacterColor = CurrentValueSubject<MultiPlatformColor, Never>(.label)
-    private let isInsertionPointPickedUp = CurrentValueSubject<Bool, Never>(false)
-    private let isInsertionPointFloating = CurrentValueSubject<Bool, Never>(false)
+    private let floatingInsertionPointPosition = CurrentValueSubject<CGPoint?, Never>(nil)
     var insertionPointLayouter: InsertionPointLayouter {
         InsertionPointLayouter(
             insertionPointViewFactory: InsertionPointViewFactory(
@@ -352,9 +358,7 @@ final class CompositionRoot {
             ),
             frame: insertionPointFramePublisherFactory.makeFramePublisher(),
             containerView: textView,
-            selectedRange: selectedRange.eraseToAnyPublisher(),
-            isKeyWindow: keyWindowObserver.isKeyWindow.eraseToAnyPublisher(),
-            isFirstResponder: isFirstResponder.eraseToAnyPublisher(),
+            isInsertionPointVisible: isInsertionPointVisible,
             isInsertionPointBeingMoved: isInsertionPointBeingMoved
         )
     }
@@ -375,7 +379,7 @@ final class CompositionRoot {
             insertionPointShape: insertionPointShape,
             isInsertionPointBeingMoved: isInsertionPointBeingMoved,
             insertionPointBackgroundColor: insertionPointBackgroundColor,
-            textViewBackgroundColor: textViewBackgroundColor
+            insertionPointPlaceholderBackgroundColor: insertionPointPlaceholderBackgroundColor
         )
     }
     private func insertionPointForegroundRenderer(opacity: CGFloat = 1) -> InsertionPointForegroundRenderer {
@@ -411,6 +415,16 @@ final class CompositionRoot {
             estimatedLineHeight: estimatedLineHeight,
             estimatedCharacterWidth: estimatedCharacterWidth.rawValue
         )
+    }
+    private var isInsertionPointVisible: AnyPublisher<Bool, Never> {
+        InsertionPointVisiblePublisherFactory(
+            selectedRange: selectedRange.eraseToAnyPublisher(),
+            isKeyWindow: keyWindowObserver.isKeyWindow.eraseToAnyPublisher(),
+            isFirstResponder: isFirstResponder.eraseToAnyPublisher(),
+            insertionPointVisibilityMode: insertionPointVisibilityMode.eraseToAnyPublisher(),
+            floatingInsertionPointPosition: floatingInsertionPointPosition.eraseToAnyPublisher(),
+            insertionPointFrame: insertionPointFramePublisherFactory.makeFramePublisher()
+        ).makePublisher()
     }
     private var characterBoundsProvider: CharacterBoundsProvider {
         CharacterBoundsProvider(
@@ -497,6 +511,12 @@ final class CompositionRoot {
             textSetter: textSetter
         )
     }
+    var textPreviewFactory: TextPreviewFactory {
+        TextPreviewFactory(
+            lineManager: lineManager,
+            lineControllerStorage: lineControllerStorage
+        )
+    }
     var highlightedRangeFragmentStore: HighlightedRangeFragmentStore {
         HighlightedRangeFragmentStore(
             stringView: stringView,
@@ -519,9 +539,6 @@ final class CompositionRoot {
         #else
         EditMenuPresenter_Mac()
         #endif
-    }
-    private var editMenuController: EditMenuController {
-        EditMenuController()
     }
 
     // MARK: - Syntax Highlighting
@@ -576,7 +593,7 @@ final class CompositionRoot {
         markedRange: markedRange,
         insertionPointFrameFactory: insertionPointFrameFactory,
         insertionPointShape: insertionPointShape,
-        isInsertionPointFloating: isInsertionPointFloating,
+        floatingInsertionPointPosition: floatingInsertionPointPosition,
         insertionPointViewFactory: InsertionPointViewFactory(
             insertionPointRenderer: floatingInsertionPointRenderer
         ),
@@ -595,19 +612,19 @@ final class CompositionRoot {
     }
     private(set) lazy var textSelectionViewManager = UITextSelectionViewManager(
         textView: textView,
-        insertionPointShape: insertionPointShape,
-        isInsertionPointPickedUp: isInsertionPointPickedUp
+        insertionPointFrame: insertionPointFramePublisherFactory.makeFramePublisher(),
+        floatingInsertionPointPosition: floatingInsertionPointPosition,
+        insertionPointViewFactory: InsertionPointViewFactory(
+            insertionPointRenderer: floatingInsertionPointRenderer
+        )
     )
     var textSearchingHelper: UITextSearchingHelper {
         UITextSearchingHelper(textView: textView)
     }
-    var textPreviewFactory: TextPreviewFactory {
-        TextPreviewFactory(lineManager: lineManager, lineControllerStorage: lineControllerStorage)
+    private lazy var isInsertionPointBeingMoved = floatingInsertionPointPosition.map { $0 != nil }.eraseToAnyPublisher()
+    private var editMenuController: EditMenuController {
+        EditMenuController()
     }
-    private lazy var isInsertionPointBeingMoved = Publishers.CombineLatest(
-        isInsertionPointPickedUp,
-        isInsertionPointFloating
-    ).map { $0 || $1 }.eraseToAnyPublisher()
 
     func textInputStringTokenizer(for textInput: UIResponder & UITextInput) -> UITextInputStringTokenizer {
         TextInputStringTokenizer(textInput: textInput, stringTokenizer: stringTokenizer)
