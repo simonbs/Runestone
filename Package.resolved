@@ -1,0 +1,16 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "TreeSitter",
+        "repositoryURL": "https://github.com/ActuallyTaylor/tree-sitter-spm",
+        "state": {
+          "branch": "master",
+          "revision": "3860f9e8c683a730a53cd6fd594ff2d8cdc4c222",
+          "version": null
+        }
+      }
+    ]
+  },
+  "version": 1
+}
