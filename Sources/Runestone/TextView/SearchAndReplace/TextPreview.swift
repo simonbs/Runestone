@@ -34,10 +34,22 @@ public final class TextPreview {
     ///
     /// This is potentially an expensive operation and should ideally be done on-demand.
     public func prepare() {
-        forEachRangeInLineController { lineController, range in
+        let resultingAttributedString = NSMutableAttributedString()
+        var remainingLength = previewRange.length
+        for lineController in lineControllers {
+            let lineLocation = lineController.line.location
+            let lineLength = lineController.line.data.totalLength
+            let location = max(previewRange.location - lineLocation, 0)
+            let length = min(remainingLength, lineLength)
+            let range = NSRange(location: location, length: length)
             lineController.prepareToDisplayString(toLocation: range.upperBound, syntaxHighlightAsynchronously: false)
+            if let attributedString = lineController.attributedString {
+                let substring = attributedString.attributedSubstring(from: range)
+                resultingAttributedString.append(substring)
+                remainingLength -= range.length
+            }
         }
-        updateAttributedString()
+        attributedString = resultingAttributedString
     }
 
     /// Invalidate the syntax highlighted attributed string.
@@ -57,32 +69,6 @@ public final class TextPreview {
     public func cancelSyntaxHighlighting() {
         for lineController in lineControllers {
             lineController.cancelSyntaxHighlighting()
-        }
-    }
-}
-
-private extension TextPreview {
-    private func updateAttributedString() {
-        let resultingAttributedString = NSMutableAttributedString()
-        forEachRangeInLineController { lineController, range in
-            if let attributedString = lineController.attributedString, range.upperBound < attributedString.length {
-                let substring = attributedString.attributedSubstring(from: range)
-                resultingAttributedString.append(substring)
-            }
-        }
-        attributedString = resultingAttributedString
-    }
-
-    private func forEachRangeInLineController(_ handler: (LineController, NSRange) -> Void) {
-        var remainingLength = previewRange.length
-        for lineController in lineControllers {
-            let lineLocation = lineController.line.location
-            let lineLength = lineController.line.data.totalLength
-            let location = max(previewRange.location - lineLocation, 0)
-            let length = min(remainingLength, lineLength)
-            let range = NSRange(location: location, length: length)
-            remainingLength -= length
-            handler(lineController, range)
         }
     }
 }
