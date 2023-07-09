@@ -40,7 +40,6 @@
 
 - ``isLineWrappingEnabled``
 - ``lineBreakMode``
-- ``lengthOfInitallyLongestLine``
 
 ### Invisible Characters
 

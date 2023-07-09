@@ -14,12 +14,15 @@ public final class TextViewState {
     /// The information provided by the detected strategy can be used to update the ``TextView/indentStrategy`` on the text view to align with the existing strategy in a text.
     public private(set) var detectedIndentStrategy: DetectedIndentStrategy = .unknown
 
-    /// Line endings detected in the dtext.
+    /// Line endings detected in the text.
     ///
     /// The information pvoided by the detected line endings can be used to update the ``TextView/lineEndings`` on the text view to align with the existing line endings in a text.
     ///
     /// The value is `nil` if the line ending cannot be detected.
     public private(set) var detectedLineEndings: LineEnding?
+
+    /// The length of the longest line.
+    public private(set) var lengthOfLongestLine: Int?
 
     /// Creates state that can be passed to an instance of ``TextView``.
     /// - Parameters:
@@ -60,6 +63,7 @@ private extension TextViewState {
         lineManager.estimatedLineHeight = theme.font.totalLineHeight
         lineManager.rebuild()
         languageMode.parse(nsString)
+        lengthOfLongestLine = lineManager.initialLongestLine?.data.totalLength
         detectedIndentStrategy = languageMode.detectIndentStrategy()
         let lineEndingDetector = LineEndingDetector(lineManager: lineManager, stringView: stringView)
         detectedLineEndings = lineEndingDetector.detect()
