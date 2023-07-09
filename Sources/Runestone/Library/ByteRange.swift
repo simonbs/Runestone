@@ -28,7 +28,7 @@ struct ByteRange: Hashable {
         self.length = ByteCount(utf16Range.length * 2)
     }
 
-    func overlaps(_ otherRange: ByteRange) -> Bool {
+    func overlaps(_ otherRange: Self) -> Bool {
         let r1 = location ... location + length
         let r2 = otherRange.location ... otherRange.location + otherRange.length
         return r1.overlaps(r2)

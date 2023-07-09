@@ -31,7 +31,7 @@ enum StringModifier {
         }
     }
 
-    static func string(byApplying modifiers: [StringModifier], to string: String) -> String {
+    static func string(byApplying modifiers: [Self], to string: String) -> String {
         guard !modifiers.isEmpty else {
             return string
         }
