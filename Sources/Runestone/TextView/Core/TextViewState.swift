@@ -21,6 +21,9 @@ public final class TextViewState {
     /// The value is `nil` if the line ending cannot be detected.
     public private(set) var detectedLineEndings: LineEnding?
 
+    /// The length of the longest line.
+    public private(set) var lengthOfLongestLine: Int?
+
     /// Creates state that can be passed to an instance of ``TextView``.
     /// - Parameters:
     ///   - text: The text to display in the text view.
@@ -60,6 +63,7 @@ private extension TextViewState {
         lineManager.estimatedLineHeight = theme.font.totalLineHeight
         lineManager.rebuild()
         languageMode.parse(nsString)
+        lengthOfLongestLine = lineManager.initialLongestLine?.data.totalLength
         detectedIndentStrategy = languageMode.detectIndentStrategy()
         let lineEndingDetector = LineEndingDetector(lineManager: lineManager, stringView: stringView)
         detectedLineEndings = lineEndingDetector.detect()
