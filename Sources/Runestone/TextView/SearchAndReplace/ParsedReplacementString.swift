@@ -14,17 +14,17 @@ struct ParsedReplacementString: Equatable {
         case text(TextParameters)
         case placeholder(PlaceholderParameters)
 
-        static func text(_ text: String) -> Component {
+        static func text(_ text: String) -> Self {
             let parameters = TextParameters(text: text)
             return .text(parameters)
         }
 
-        static func placeholder(_ index: Int) -> Component {
+        static func placeholder(_ index: Int) -> Self {
             let parameters = PlaceholderParameters(modifiers: [], index: index)
             return .placeholder(parameters)
         }
 
-        static func placeholder(modifiers: [StringModifier], index: Int) -> Component {
+        static func placeholder(modifiers: [StringModifier], index: Int) -> Self {
             let parameters = PlaceholderParameters(modifiers: modifiers, index: index)
             return .placeholder(parameters)
         }
