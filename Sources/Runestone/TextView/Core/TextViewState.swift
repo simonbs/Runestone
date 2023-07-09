@@ -14,7 +14,7 @@ public final class TextViewState {
     /// The information provided by the detected strategy can be used to update the ``TextView/indentStrategy`` on the text view to align with the existing strategy in a text.
     public private(set) var detectedIndentStrategy: DetectedIndentStrategy = .unknown
 
-    /// Line endings detected in the dtext.
+    /// Line endings detected in the text.
     ///
     /// The information pvoided by the detected line endings can be used to update the ``TextView/lineEndings`` on the text view to align with the existing line endings in a text.
     ///
