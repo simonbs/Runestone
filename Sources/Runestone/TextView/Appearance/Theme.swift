@@ -68,11 +68,11 @@ public protocol Theme: AnyObject {
 
 public extension Theme {
     var gutterHairlineWidth: CGFloat {
-        1 / UIScreen.main.scale
+        hairlineLength
     }
 
     var pageGuideHairlineWidth: CGFloat {
-        1 / UIScreen.main.scale
+        hairlineLength
     }
 
     var markedTextBackgroundCornerRadius: CGFloat {
