@@ -13,11 +13,11 @@ let package = Package(
         .library(name: "Runestone", targets: ["Runestone"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/ActuallyTaylor/tree-sitter-spm", branch: "master")
+        .package(url: "https://github.com/tree-sitter/tree-sitter", branch: "master")
     ],
     targets: [
         .target(name: "Runestone", dependencies: [
-            .product(name: "TreeSitter", package: "tree-sitter-spm")
+            .product(name: "TreeSitter", package: "tree-sitter")
             ], resources: [.process("TextView/Appearance/Theme.xcassets")]),
         .target(name: "TestTreeSitterLanguages", cSettings: [.unsafeFlags(["-w"])]),
         .testTarget(name: "RunestoneTests", dependencies: ["Runestone", "TestTreeSitterLanguages"])
