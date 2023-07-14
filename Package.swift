@@ -13,7 +13,8 @@ let package = Package(
         .library(name: "Runestone", targets: ["Runestone"])
     ],
     dependencies: [
-        .package(url: "https://github.com/tree-sitter/tree-sitter", branch: "master")
+        // Pins tree-sitter to the merge commit when SPM was added. This will be changed to pin to a release, when a release is created that includes SPM.
+        .package(url: "https://github.com/tree-sitter/tree-sitter", .revision("9fd128ed604bb63348281bd4ac0d99705e713147")),
     ],
     targets: [
         .target(name: "Runestone", dependencies: [
