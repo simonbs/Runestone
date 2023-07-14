@@ -10,7 +10,7 @@ let package = Package(
         .iOS(.v14)
     ],
     products: [
-        .library(name: "Runestone", targets: ["Runestone"]),
+        .library(name: "Runestone", targets: ["Runestone"])
     ],
     dependencies: [
         .package(url: "https://github.com/tree-sitter/tree-sitter", branch: "master")
@@ -18,7 +18,7 @@ let package = Package(
     targets: [
         .target(name: "Runestone", dependencies: [
             .product(name: "TreeSitter", package: "tree-sitter")
-            ], resources: [.process("TextView/Appearance/Theme.xcassets")]),
+        ], resources: [.process("TextView/Appearance/Theme.xcassets")]),
         .target(name: "TestTreeSitterLanguages", cSettings: [.unsafeFlags(["-w"])]),
         .testTarget(name: "RunestoneTests", dependencies: ["Runestone", "TestTreeSitterLanguages"])
     ]
