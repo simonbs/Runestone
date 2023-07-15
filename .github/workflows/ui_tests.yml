@@ -18,7 +18,7 @@ env:
 jobs:
   run_korean_tests:
     name: Run Korean tests
-    runs-on: macos-latest
+    runs-on: macos-13
     env:
       SIMULATOR_NAME: UI Test (Korean)
       SCHEME: Host
@@ -82,7 +82,7 @@ jobs:
         run: xcrun simctl delete $SIMULATOR_UDID
   run_chinese_tests:
     name: Run Chinese tests
-    runs-on: macos-latest
+    runs-on: macos-13
     env:
       SIMULATOR_NAME: UI Test (Chinese)
       SCHEME: Host
