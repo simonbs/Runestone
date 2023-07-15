@@ -5,7 +5,6 @@ on:
   pull_request:
     branches: [ "main" ]
 env:
-  CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true
   DEVELOPER_DIR: /Applications/Xcode_14.3.1.app/Contents/Developer
 jobs:
   analyze:
