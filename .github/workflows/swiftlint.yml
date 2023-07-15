@@ -18,6 +18,8 @@ jobs:
         with:
           submodules: recursive
       - name: Install SwiftLint
-        run: brew install swiftlint
+        run: |
+          brew install swiftlint
+          brew link --overwrite swiftlint
       - name: SwiftLint
         run: /opt/homebrew/bin/swiftlint --quiet --strict --reporter github-actions-logging
