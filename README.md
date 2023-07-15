@@ -9,7 +9,8 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 [![Build and Test](https://github.com/simonbs/Runestone/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/simonbs/Runestone/actions/workflows/build_and_test.yml)
 [![UI Tests](https://github.com/simonbs/Runestone/actions/workflows/ui_tests.yml/badge.svg)](https://github.com/simonbs/Runestone/actions/workflows/ui_tests.yml)
 [![SwiftLint](https://github.com/simonbs/Runestone/actions/workflows/swiftlint.yml/badge.svg)](https://github.com/simonbs/Runestone/actions/workflows/swiftlint.yml)
-[![Twitter](https://img.shields.io/badge/twitter-@simonbs-blue.svg?style=flat)](https://twitter.com/simonbs)
+[![Twitter](https://img.shields.io/badge/Twitter-@simonbs-blue.svg?style=flat)](https://twitter.com/simonbs)
+[![Mastodon](https://img.shields.io/badge/Mastodon-@simonbs-blue.svg?style=flat)](https://mastodon.social/@simonbs)
 
 ## ✨ Features
 
