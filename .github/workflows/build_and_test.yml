@@ -1,5 +1,4 @@
 name: Build and Test
-
 on:
   workflow_dispatch: {}
   pull_request:
@@ -8,14 +7,18 @@ on:
       - 'Sources/**'
       - '!Sources/Runestone/Documentation.docc/**'
       - 'Tests/**'
-
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+env:
+  DEVELOPER_DIR: /Applications/Xcode_14.3.1.app/Contents/Developer
 jobs:
   build:
     name: Build and test on iPhone 14
-    runs-on: macOS-12
+    runs-on: macos-13
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Build

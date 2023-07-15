@@ -1,22 +1,18 @@
 name: Deploy Documentation
-
 on:
   workflow_dispatch:
-
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
-
-# Allow one concurrent deployment
 concurrency:
   group: "pages"
   cancel-in-progress: true
-
+env:
+  DEVELOPER_DIR: /Applications/Xcode_14.3.1.app/Contents/Developer
 jobs:
   build:
-    runs-on: macos-12
+    runs-on: macos-13
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -53,7 +49,6 @@ jobs:
           EOM
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v1
-
   deploy:
     environment:
       name: github-pages

@@ -1,9 +1,7 @@
 name: UI Tests
-
 concurrency: 
   group: ui-tests-${{ github.ref }}
   cancel-in-progress: true
-
 on:
   workflow_dispatch: {}
   pull_request:
@@ -12,18 +10,22 @@ on:
       - 'Sources/**'
       - '!Sources/Runestone/Documentation.docc/**'
       - 'UITests/HostUITests/**'
-
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+env:
+  DEVELOPER_DIR: /Applications/Xcode_14.3.1.app/Contents/Developer
 jobs:
   run_korean_tests:
     name: Run Korean tests
-    runs-on: macOS-12
+    runs-on: macos-13
     env:
       SIMULATOR_NAME: UI Test (Korean)
       SCHEME: Host
       PROJECT_PATH: UITests/UITests.xcodeproj
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Disable "Use the Same Keyboard Language as macOS"
@@ -80,14 +82,14 @@ jobs:
         run: xcrun simctl delete $SIMULATOR_UDID
   run_chinese_tests:
     name: Run Chinese tests
-    runs-on: macOS-12
+    runs-on: macos-13
     env:
       SIMULATOR_NAME: UI Test (Chinese)
       SCHEME: Host
       PROJECT_PATH: UITests/UITests.xcodeproj
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Disable "Use the Same Keyboard Language as macOS"
