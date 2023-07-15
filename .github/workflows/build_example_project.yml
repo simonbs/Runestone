@@ -5,6 +5,9 @@ on:
     branches: [ main ]
     paths:
       - 'Example/**'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 env:
   DEVELOPER_DIR: /Applications/Xcode_14.3.1.app/Contents/Developer
 jobs:
