@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           submodules: recursive
-      - name: Upgrade SwiftLint
-        run: brew upgrade swiftlint
+      - name: Install SwiftLint
+        run: brew install swiftlint
       - name: SwiftLint
-        run: swiftlint --quiet --strict --reporter github-actions-logging
+        run: /opt/homebrew/bin/swiftlint --quiet --strict --reporter github-actions-logging
