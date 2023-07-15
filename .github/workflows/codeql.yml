@@ -4,23 +4,21 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 env:
-  CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true
-
+  DEVELOPER_DIR: /Applications/Xcode_14.3.1.app/Contents/Developer
 jobs:
   analyze:
     name: Analyze
-    runs-on: macos-latest
-    
+    runs-on: macos-13
     permissions:
       security-events: write
-
     strategy:
       fail-fast: false
       matrix:
         language: [ "swift" ]
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

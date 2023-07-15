@@ -58,7 +58,7 @@ final class TreeSitterNode {
         return Self(node: node)
     }
 
-    func child(at index: Int) -> TreeSitterNode? {
+    func child(at index: Int) -> Self? {
         if index < childCount {
             let node = ts_node_child(rawValue, UInt32(index))
             return Self(node: node)

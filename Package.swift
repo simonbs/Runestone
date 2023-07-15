@@ -12,33 +12,14 @@ let package = Package(
     products: [
         .library(name: "Runestone", targets: ["Runestone"])
     ],
+    dependencies: [
+        // Pins tree-sitter to the merge commit when SPM was added. This will be changed to pin to a release, when a release is created that includes SPM.
+        .package(url: "https://github.com/tree-sitter/tree-sitter", .revision("9fd128ed604bb63348281bd4ac0d99705e713147"))
+    ],
     targets: [
-        .target(name: "Runestone",
-                dependencies: ["TreeSitter"],
-                resources: [.process("TextView/Appearance/Theme.xcassets")]),
-        .target(name: "TreeSitter",
-                path: "tree-sitter/lib",
-                exclude: [
-                    "binding_rust",
-                    "binding_web",
-                    "Cargo.toml",
-                    "README.md",
-                    "src/unicode/README.md",
-                    "src/unicode/LICENSE",
-                    "src/unicode/ICU_SHA",
-                    "src/get_changed_ranges.c",
-                    "src/tree_cursor.c",
-                    "src/stack.c",
-                    "src/node.c",
-                    "src/lexer.c",
-                    "src/parser.c",
-                    "src/language.c",
-                    "src/alloc.c",
-                    "src/subtree.c",
-                    "src/tree.c",
-                    "src/query.c"
-                ],
-                sources: ["src/lib.c"]),
+        .target(name: "Runestone", dependencies: [
+            .product(name: "TreeSitter", package: "tree-sitter")
+        ], resources: [.process("TextView/Appearance/Theme.xcassets")]),
         .target(name: "TestTreeSitterLanguages", cSettings: [.unsafeFlags(["-w"])]),
         .testTarget(name: "RunestoneTests", dependencies: ["Runestone", "TestTreeSitterLanguages"])
     ]
