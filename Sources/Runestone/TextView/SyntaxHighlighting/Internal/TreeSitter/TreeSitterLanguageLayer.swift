@@ -1,6 +1,7 @@
 import Foundation
 
 final class TreeSitterLanguageLayer {
+    // swiftlint:disable:next prefer_self_in_static_references
     typealias LayerAndNodeTuple = (layer: TreeSitterLanguageLayer, node: TreeSitterNode)
 
     let language: TreeSitterInternalLanguage
