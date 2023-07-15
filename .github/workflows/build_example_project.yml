@@ -1,12 +1,10 @@
 name: Build Example Project
-
 on:
   workflow_dispatch: {}
   pull_request:
     branches: [ main ]
     paths:
       - 'Example/**'
-
 jobs:
   build:
     name: Build example project for iPhone 14

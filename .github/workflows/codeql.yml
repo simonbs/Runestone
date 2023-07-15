@@ -4,23 +4,18 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
 env:
   CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true
-
 jobs:
   analyze:
     name: Analyze
     runs-on: macos-latest
-    
     permissions:
       security-events: write
-
     strategy:
       fail-fast: false
       matrix:
         language: [ "swift" ]
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

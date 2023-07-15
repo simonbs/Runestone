@@ -1,5 +1,4 @@
 name: SwiftLint
-
 on:
   workflow_dispatch: {}
   pull_request:
@@ -7,7 +6,6 @@ on:
       - '.github/workflows/swiftlint.yml'
       - '.swiftlint.yml'
       - '**/*.swift'
-
 jobs:
   SwiftLint:
     runs-on: ubuntu-latest

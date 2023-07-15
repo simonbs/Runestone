@@ -1,5 +1,4 @@
 name: Build and Test
-
 on:
   workflow_dispatch: {}
   pull_request:
@@ -8,7 +7,6 @@ on:
       - 'Sources/**'
       - '!Sources/Runestone/Documentation.docc/**'
       - 'Tests/**'
-
 jobs:
   build:
     name: Build and test on iPhone 14
