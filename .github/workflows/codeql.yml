@@ -25,6 +25,9 @@ jobs:
         uses: github/codeql-action/init@v2
         with:
           languages: ${{ matrix.language }}
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
       - name: Build
         run: xcodebuild -scheme Runestone -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 14'
       - name: Perform CodeQL Analysis
