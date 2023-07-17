@@ -1,5 +1,5 @@
-version: 1
 builder:
   configs:
   - platform: ios
     documentation_targets: [Runestone]
+    swift_version: 5.9
