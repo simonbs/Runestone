@@ -1,5 +1,3 @@
 version: 1
-builder:
-  configs:
-  - platform: ios
-    documentation_targets: [Runestone]
+external_links:
+  documentation: "https://docs.runestone.app"
