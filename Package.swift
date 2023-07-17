@@ -13,14 +13,22 @@ let package = Package(
         .library(name: "Runestone", targets: ["Runestone"])
     ],
     dependencies: [
-        // Pins tree-sitter to the merge commit when SPM was added. This will be changed to pin to a release, when a release is created that includes SPM.
-        .package(url: "https://github.com/tree-sitter/tree-sitter", .revision("9fd128ed604bb63348281bd4ac0d99705e713147"))
+        // Tree-sitter supports SPM but as of writing this, the official Tree-sitter repository has no versions published that contains the Package.swift file. Therefore, we depend on a fork of Tree-sitter that has a version published.
+        // We will pin against the official version of Tree-sitter as soon as a new version is published.
+        .package(url: "https://github.com/simonbs/tree-sitter", from: "0.20.9-beta-1")
     ],
     targets: [
         .target(name: "Runestone", dependencies: [
             .product(name: "TreeSitter", package: "tree-sitter")
-        ], resources: [.process("TextView/Appearance/Theme.xcassets")]),
-        .target(name: "TestTreeSitterLanguages", cSettings: [.unsafeFlags(["-w"])]),
-        .testTarget(name: "RunestoneTests", dependencies: ["Runestone", "TestTreeSitterLanguages"])
+        ], resources: [
+            .process("TextView/Appearance/Theme.xcassets")
+        ]),
+        .target(name: "TestTreeSitterLanguages", cSettings: [
+            .unsafeFlags(["-w"])
+        ]),
+        .testTarget(name: "RunestoneTests", dependencies: [
+            "Runestone",
+            "TestTreeSitterLanguages"
+        ])
     ]
 )
