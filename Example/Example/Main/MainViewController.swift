@@ -15,14 +15,18 @@ final class MainViewController: UIViewController {
         toolsView = KeyboardToolsView(textView: contentView.textView)
         super.init(nibName: nil, bundle: nil)
         title = "Example"
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(keyboardWillChangeFrame(_:)),
-                                               name: UIApplication.keyboardWillChangeFrameNotification,
-                                               object: nil)
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(keyboardWillHide(_:)),
-                                               name: UIApplication.keyboardWillHideNotification,
-                                               object: nil)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillChangeFrame(_:)),
+            name: UIApplication.keyboardWillChangeFrameNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillHide(_:)),
+            name: UIApplication.keyboardWillHideNotification,
+            object: nil
+        )
     }
 
     required init?(coder: NSCoder) {
