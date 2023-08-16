@@ -1,4 +1,4 @@
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 import UIKit
 
 protocol KeyboardObserverDelegate: AnyObject {

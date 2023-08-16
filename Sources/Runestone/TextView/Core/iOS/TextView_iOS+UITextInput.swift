@@ -1,5 +1,5 @@
 // swiftlint:disable file_length
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 import UIKit
 
 extension TextView: UITextInput {}

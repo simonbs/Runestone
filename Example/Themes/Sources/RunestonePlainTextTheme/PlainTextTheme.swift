@@ -3,13 +3,13 @@ import AppKit
 #endif
 import Runestone
 import RunestoneThemeCommon
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 import UIKit
 #endif
 
 public final class PlainTextTheme: EditorTheme {
     public let backgroundColor: MultiPlatformColor = .white
-    #if os(iOS)
+    #if os(iOS) || os(xrOS)
     public let userInterfaceStyle: UIUserInterfaceStyle = .light
     #endif
 

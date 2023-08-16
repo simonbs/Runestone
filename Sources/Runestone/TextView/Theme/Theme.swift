@@ -2,7 +2,7 @@
 import AppKit
 #endif
 import CoreGraphics
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 import UIKit
 #endif
 
@@ -55,7 +55,7 @@ public protocol Theme: AnyObject {
     ///
     /// See <doc:CreatingATheme> for more information on higlight names.
     func shadow(for highlightName: String) -> NSShadow?
-#if os(iOS)
+#if os(iOS) || os(xrOS)
     /// Highlighted range for a text range matching a search query.
     ///
     /// This function is called when highlighting a search result that was found using the standard find/replace interaction enabled using <doc:TextView/isFindInteractionEnabled>.
@@ -74,16 +74,20 @@ public extension Theme {
     var gutterHairlineWidth: CGFloat {
         #if os(iOS)
         return 1 / UIScreen.main.scale
-        #else
+        #elseif os(macOS)
         return 1 / NSScreen.main!.backingScaleFactor
+        #else
+        return 1
         #endif
     }
 
     var pageGuideHairlineWidth: CGFloat {
         #if os(iOS)
         return 1 / UIScreen.main.scale
-        #else
+        #elseif os(macOS)
         return 1 / NSScreen.main!.backingScaleFactor
+        #else
+        return 1
         #endif
     }
 
@@ -103,7 +107,7 @@ public extension Theme {
         nil
     }
 
-#if os(iOS)
+#if os(iOS) || os(xrOS)
     @available(iOS 16, *)
     func highlightedRange(forFoundTextRange foundTextRange: NSRange, ofStyle style: UITextSearchFoundTextStyle) -> HighlightedRange? {
         switch style {

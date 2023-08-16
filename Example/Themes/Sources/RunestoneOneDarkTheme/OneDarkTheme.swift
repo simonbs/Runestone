@@ -3,13 +3,13 @@ import AppKit
 #endif
 import Runestone
 import RunestoneThemeCommon
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 import UIKit
 #endif
 
 public final class OneDarkTheme: EditorTheme {
     public let backgroundColor = MultiPlatformColor(namedInModule: "OneDarkBackground")
-    #if os(iOS)
+    #if os(iOS) || os(xrOS)
     public let userInterfaceStyle: UIUserInterfaceStyle = .dark
     #endif
 
@@ -17,7 +17,7 @@ public final class OneDarkTheme: EditorTheme {
     public let textColor = MultiPlatformColor(namedInModule: "OneDarkForeground")
 
     public let gutterBackgroundColor = MultiPlatformColor(namedInModule: "OneDarkCurrentLine")
-    #if os(iOS)
+    #if os(iOS) || os(xrOS)
     public let gutterHairlineColor: MultiPlatformColor = .opaqueSeparator
     #else
     public let gutterHairlineColor: MultiPlatformColor = .separatorColor
@@ -73,7 +73,7 @@ public final class OneDarkTheme: EditorTheme {
     }
 }
 
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 public extension UIColor {
     convenience init(namedInModule name: String) {
         self.init(named: name, in: .module, compatibleWith: nil)!

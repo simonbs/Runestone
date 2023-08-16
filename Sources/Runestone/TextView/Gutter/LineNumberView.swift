@@ -1,7 +1,7 @@
 #if os(macOS)
 import AppKit
 #endif
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 import UIKit
 #endif
 
@@ -37,7 +37,7 @@ final class LineNumberView: MultiPlatformView, ReusableView {
 
     init() {
         super.init(frame: .zero)
-        #if os(iOS)
+        #if os(iOS) || os(xrOS)
         isOpaque = false
         #else
         layer?.isOpaque = false
@@ -48,7 +48,7 @@ final class LineNumberView: MultiPlatformView, ReusableView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    #if os(iOS)
+    #if os(iOS) || os(xrOS)
     override func draw(_ rect: CGRect) {
         super.draw(rect)
         _drawRect()

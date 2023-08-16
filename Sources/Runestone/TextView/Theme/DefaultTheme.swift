@@ -1,4 +1,4 @@
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 import UIKit
 #endif
 
@@ -69,7 +69,7 @@ public final class DefaultTheme: Runestone.Theme {
         }
     }
 
-#if os(iOS)
+#if os(iOS) || os(xrOS)
     @available(iOS 16.0, *)
     public func highlightedRange(forFoundTextRange foundTextRange: NSRange, ofStyle style: UITextSearchFoundTextStyle) -> HighlightedRange? {
         switch style {

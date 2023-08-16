@@ -1,4 +1,4 @@
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 import UIKit
 #endif
 
@@ -8,7 +8,7 @@ final class ReusableViewQueue<Key: Hashable, View: MultiPlatformView & ReusableV
     private var queuedViews: Set<View> = []
 
     init() {
-        #if os(iOS)
+        #if os(iOS) || os(xrOS)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(clearMemory),
@@ -19,7 +19,7 @@ final class ReusableViewQueue<Key: Hashable, View: MultiPlatformView & ReusableV
     }
 
     deinit {
-        #if os(iOS)
+        #if os(iOS) || os(xrOS)
         NotificationCenter.default.removeObserver(self)
         #endif
     }
@@ -57,7 +57,7 @@ final class ReusableViewQueue<Key: Hashable, View: MultiPlatformView & ReusableV
         }
     }
 
-    #if os(iOS)
+    #if os(iOS) || os(xrOS)
     @objc private func clearMemory() {
         queuedViews.removeAll()
     }

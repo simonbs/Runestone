@@ -1,7 +1,7 @@
 import CoreGraphics
 
 enum Caret {
-    #if os(iOS)
+    #if os(iOS) || os(xrOS)
     static let width: CGFloat = 2
     #else
     static let width: CGFloat = 1

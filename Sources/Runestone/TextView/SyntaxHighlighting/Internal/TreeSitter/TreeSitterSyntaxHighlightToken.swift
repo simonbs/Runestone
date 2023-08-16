@@ -1,7 +1,7 @@
 #if os(macOS)
 import AppKit
 #endif
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 import UIKit
 #endif
 

@@ -105,7 +105,7 @@ extension TextViewController {
 
 private extension TextViewController {
     private var skipInsertComponentCheck: Bool {
-        #if os(iOS)
+        #if os(iOS) || os(xrOS)
         return textView.isRestoringPreviouslyDeletedText
         #else
         return false

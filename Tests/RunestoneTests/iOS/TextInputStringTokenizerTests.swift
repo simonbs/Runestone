@@ -1,4 +1,4 @@
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 // swiftlint:disable force_cast
 @testable import Runestone
 import XCTest

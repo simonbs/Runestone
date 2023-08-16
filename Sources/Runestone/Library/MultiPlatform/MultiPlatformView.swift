@@ -6,7 +6,7 @@ import UIKit
 typealias MultiPlatformView = UIView
 #endif
 
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 extension UIView {
     var layerIfLoaded: CALayer? {
         layer

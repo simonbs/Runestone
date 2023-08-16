@@ -1,7 +1,7 @@
 #if os(macOS)
 import AppKit
 #endif
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 import UIKit
 #endif
 
@@ -27,11 +27,13 @@ final class PageGuideView: MultiPlatformView {
     override init(frame: CGRect) {
         #if os(iOS)
         hairlineWidth = 1 / UIScreen.main.scale
-        #else
+        #elseif os(macOS)
         hairlineWidth = 1 / NSScreen.main!.backingScaleFactor
+        #else
+        hairlineWidth = 1
         #endif
         super.init(frame: frame)
-        #if os(iOS)
+        #if os(iOS) || os(xrOS)
         isUserInteractionEnabled = false
         hairlineView.isUserInteractionEnabled = false
         #endif
@@ -42,7 +44,7 @@ final class PageGuideView: MultiPlatformView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    #if os(iOS)
+    #if os(iOS) || os(xrOS)
     override func layoutSubviews() {
         super.layoutSubviews()
         _layoutSubviews()

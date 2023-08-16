@@ -1,4 +1,4 @@
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 // swiftlint:disable file_length type_body_length
 import CoreText
 import UIKit

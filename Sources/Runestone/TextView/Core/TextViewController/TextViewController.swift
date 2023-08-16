@@ -30,11 +30,11 @@ final class TextViewController {
                 lineControllerStorage.removeAllLineControllers()
                 lineManager.rebuild()
                 if let oldSelectedRange = selectedRange {
-                    #if os(iOS)
+                    #if os(iOS) || os(xrOS)
                     textView.inputDelegate?.selectionWillChange(textView)
                     #endif
                     selectedRange = oldSelectedRange.capped(to: stringView.string.length)
-                    #if os(iOS)
+                    #if os(iOS) || os(xrOS)
                     textView.inputDelegate?.selectionDidChange(textView)
                     #endif
                 }
@@ -412,13 +412,13 @@ final class TextViewController {
     var showLineNumbers = false {
         didSet {
             if showLineNumbers != oldValue {
-                #if os(iOS)
+                #if os(iOS) || os(xrOS)
                 textView.inputDelegate?.selectionWillChange(textView)
                 #endif
                 gutterWidthService.showLineNumbers = showLineNumbers
                 lineFragmentLayoutManager.setNeedsLayout()
                 textView.setNeedsLayout()
-                #if os(iOS)
+                #if os(iOS) || os(xrOS)
                 textView.inputDelegate?.selectionDidChange(textView)
                 #endif
             }
@@ -441,7 +441,7 @@ final class TextViewController {
         didSet {
             if showPageGuide != oldValue {
                 if showPageGuide {
-                    #if os(iOS)
+                    #if os(iOS) || os(xrOS)
                     textView.addSubview(pageGuideController.guideView)
                     textView.sendSubviewToBack(pageGuideController.guideView)
                     #else
@@ -610,7 +610,7 @@ final class TextViewController {
         gutterWidthService.gutterTrailingPadding = gutterTrailingPadding
         setupContentSizeObserver()
         setupGutterWidthObserver()
-        #if os(iOS)
+        #if os(iOS) || os(xrOS)
         subscribeToMemoryWarningNotification()
         #endif
     }
@@ -639,7 +639,7 @@ final class TextViewController {
             timedUndoManager.removeAllActions()
         }
         if let oldSelectedRange = selectedRange {
-            #if os(iOS)
+            #if os(iOS) || os(xrOS)
             textView.inputDelegate?.selectionWillChange(textView)
             selectedRange = oldSelectedRange.capped(to: stringView.string.length)
             textView.inputDelegate?.selectionDidChange(textView)
@@ -776,7 +776,7 @@ extension TextViewController: IndentControllerDelegate {
     }
 
     func indentController(_ controller: IndentController, shouldSelect range: NSRange) {
-        #if os(iOS)
+        #if os(iOS) || os(xrOS)
         textView.inputDelegate?.selectionWillChange(textView)
         selectedRange = range
         textView.inputDelegate?.selectionDidChange(textView)

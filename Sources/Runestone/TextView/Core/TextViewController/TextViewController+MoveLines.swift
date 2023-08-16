@@ -23,7 +23,7 @@ private extension TextViewController {
         timedUndoManager.beginUndoGrouping()
         replaceText(in: operation.removeRange, with: "", undoActionName: undoActionName)
         replaceText(in: operation.replacementRange, with: operation.replacementString, undoActionName: undoActionName)
-        #if os(iOS)
+        #if os(iOS) || os(xrOS)
         textView.notifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
         #endif
         selectedRange = operation.selectedRange

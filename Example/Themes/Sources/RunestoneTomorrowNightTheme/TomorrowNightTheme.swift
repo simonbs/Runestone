@@ -3,13 +3,13 @@ import AppKit
 #endif
 import Runestone
 import RunestoneThemeCommon
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 import UIKit
 #endif
 
 public final class TomorrowNightTheme: EditorTheme {
     public let backgroundColor = MultiPlatformColor(namedInModule: "TomorrowNightBackground")
-    #if os(iOS)
+    #if os(iOS) || os(xrOS)
     public let userInterfaceStyle: UIUserInterfaceStyle = .dark
     #endif
 
@@ -69,7 +69,7 @@ public final class TomorrowNightTheme: EditorTheme {
     }
 }
 
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 public extension UIColor {
     convenience init(namedInModule name: String) {
         self.init(named: name, in: .module, compatibleWith: nil)!

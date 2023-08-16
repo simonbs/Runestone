@@ -11,12 +11,12 @@ extension TextViewController {
         timedUndoManager.beginUndoGrouping()
         timedUndoManager.setActionName(actionName)
         timedUndoManager.registerUndo(withTarget: self) { textViewController in
-            #if os(iOS)
+            #if os(iOS) || os(xrOS)
             textViewController.textView.inputDelegate?.selectionWillChange(textViewController.textView)
             #endif
             textViewController.replaceText(in: range, with: text)
             textViewController.selectedRange = oldSelectedRange
-            #if os(iOS)
+            #if os(iOS) || os(xrOS)
             textViewController.textView.inputDelegate?.selectionDidChange(textViewController.textView)
             #endif
         }

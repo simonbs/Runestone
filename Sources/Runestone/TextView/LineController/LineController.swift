@@ -5,7 +5,7 @@ import AppKit
 import CoreGraphics
 import CoreText
 import Foundation
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 import UIKit
 #endif
 

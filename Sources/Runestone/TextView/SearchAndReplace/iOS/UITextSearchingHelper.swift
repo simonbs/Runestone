@@ -1,4 +1,4 @@
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 import UIKit
 
 final class UITextSearchingHelper: NSObject {

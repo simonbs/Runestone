@@ -99,14 +99,14 @@ private extension TreeSitterSyntaxHighlighter {
             }
             var symbolicTraits: MultiPlatformFontDescriptor.SymbolicTraits = []
             if let isBold = attributedString.attribute(.isBold, at: token.range.location, effectiveRange: nil) as? Bool, isBold {
-                #if os(iOS)
+                #if os(iOS) || os(xrOS)
                 symbolicTraits.insert(.traitBold)
                 #else
                 symbolicTraits.insert(.bold)
                 #endif
             }
             if let isItalic = attributedString.attribute(.isItalic, at: token.range.location, effectiveRange: nil) as? Bool, isItalic {
-                #if os(iOS)
+                #if os(iOS) || os(xrOS)
                 symbolicTraits.insert(.traitItalic)
                 #else
                 symbolicTraits.insert(.italic)
@@ -164,7 +164,7 @@ private extension TreeSitterSyntaxHighlighter {
 
 private extension MultiPlatformFont {
     func withSymbolicTraits(_ symbolicTraits: MultiPlatformFontDescriptor.SymbolicTraits) -> MultiPlatformFont? {
-        #if os(iOS)
+        #if os(iOS) || os(xrOS)
         if let newFontDescriptor = fontDescriptor.withSymbolicTraits(symbolicTraits) {
             return MultiPlatformFont(descriptor: newFontDescriptor, size: pointSize)
         } else {

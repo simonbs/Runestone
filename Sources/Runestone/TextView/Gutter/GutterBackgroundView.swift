@@ -32,7 +32,7 @@ final class GutterBackgroundView: MultiPlatformView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    #if os(iOS)
+    #if os(iOS) || os(xrOS)
     override func layoutSubviews() {
         super.layoutSubviews()
         _layoutSubviews()

@@ -1,7 +1,7 @@
 #if os(macOS)
 import AppKit
 #endif
-#if os(iOS)
+#if os(iOS) || os(xrOS)
 import UIKit
 #endif
 
@@ -24,7 +24,7 @@ final class LineFragmentView: FlippedView, ReusableView {
     init() {
         super.init(frame: .zero)
         backgroundColor = .clear
-        #if os(iOS)
+        #if os(iOS) || os(xrOS)
         isUserInteractionEnabled = false
         #endif
     }
@@ -33,7 +33,7 @@ final class LineFragmentView: FlippedView, ReusableView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    #if os(iOS)
+    #if os(iOS) || os(xrOS)
     override func draw(_ rect: CGRect) {
         super.draw(rect)
         _drawRect()
@@ -45,7 +45,7 @@ final class LineFragmentView: FlippedView, ReusableView {
     }
     #endif
 
-    #if os(iOS)
+    #if os(iOS) || os(xrOS)
     func prepareForReuse() {
         _prepareForReuse()
     }
