@@ -17,7 +17,9 @@ extension TextView {
         textView.lineHeightMultiplier = 1.3
         textView.kern = 0.3
         textView.pageGuideColumn = 80
+        #if os(iOS)
         textView.inputAccessoryView = KeyboardToolsView(textView: textView)
+        #endif
         textView.characterPairs = [
             BasicCharacterPair(leading: "(", trailing: ")"),
             BasicCharacterPair(leading: "{", trailing: "}"),

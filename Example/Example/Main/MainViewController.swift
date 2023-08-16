@@ -9,10 +9,14 @@ final class MainViewController: UIViewController {
     }
 
     private let contentView = MainView()
+    #if os(iOS)
     private let toolsView: KeyboardToolsView
+    #endif
 
     init() {
+        #if os(iOS)
         toolsView = KeyboardToolsView(textView: contentView.textView)
+        #endif
         super.init(nibName: nil, bundle: nil)
         title = "Example"
         NotificationCenter.default.addObserver(
@@ -42,7 +46,9 @@ final class MainViewController: UIViewController {
         if #available(iOS 16, *) {
             contentView.textView.isFindInteractionEnabled = true
         }
+        #if os(iOS)
         contentView.textView.inputAccessoryView = toolsView
+        #endif
         setupMenuButton()
         setupTextView()
         updateTextViewSettings()

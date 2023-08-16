@@ -1,3 +1,4 @@
+#if os(iOS)
 import Runestone
 import UIKit
 
@@ -125,3 +126,4 @@ private extension KeyboardToolsView {
         redoButton.isEnabled = undoManager?.canRedo ?? false
     }
 }
+#endif
