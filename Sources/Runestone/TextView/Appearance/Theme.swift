@@ -91,7 +91,6 @@ public extension Theme {
         nil
     }
 
-#if compiler(>=5.7)
     @available(iOS 16, *)
     func highlightedRange(forFoundTextRange foundTextRange: NSRange, ofStyle style: UITextSearchFoundTextStyle) -> HighlightedRange? {
         switch style {
@@ -105,5 +104,4 @@ public extension Theme {
             return nil
         }
     }
-#endif
 }

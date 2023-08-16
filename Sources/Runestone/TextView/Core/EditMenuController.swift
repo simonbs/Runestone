@@ -11,24 +11,18 @@ protocol EditMenuControllerDelegate: AnyObject {
 final class EditMenuController: NSObject {
     weak var delegate: EditMenuControllerDelegate?
 
-#if compiler(>=5.7)
     @available(iOS 16, *)
     private var editMenuInteraction: UIEditMenuInteraction? {
         _editMenuInteraction as? UIEditMenuInteraction
     }
     private var _editMenuInteraction: Any?
-#endif
 
     func setupEditMenu(in view: UIView) {
-#if compiler(>=5.7)
         if #available(iOS 16, *) {
             setupEditMenuInteraction(in: view)
         } else {
             setupMenuController()
         }
-#else
-        setupMenuController()
-#endif
     }
 
     func presentEditMenu(from view: UIView, forTextIn range: NSRange) {
@@ -36,7 +30,6 @@ final class EditMenuController: NSObject {
         let endCaretRect = caretRect(at: range.location + range.length)
         let menuWidth = min(endCaretRect.maxX - startCaretRect.minX, view.frame.width)
         let menuRect = CGRect(x: startCaretRect.minX, y: startCaretRect.minY, width: menuWidth, height: startCaretRect.height)
-#if compiler(>=5.7)
         if #available(iOS 16, *) {
             let point = CGPoint(x: menuRect.midX, y: menuRect.minY)
             let configuration = UIEditMenuConfiguration(identifier: nil, sourcePoint: point)
@@ -45,9 +38,6 @@ final class EditMenuController: NSObject {
         } else {
             UIMenuController.shared.showMenu(from: view, rect: menuRect)
         }
-#else
-        UIMenuController.shared.showMenu(from: view, rect: menuRect)
-#endif
     }
 
     func editMenu(for textRange: UITextRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
@@ -59,14 +49,12 @@ final class EditMenuController: NSObject {
 }
 
 private extension EditMenuController {
-#if compiler(>=5.7)
     @available(iOS 16, *)
     private func setupEditMenuInteraction(in view: UIView) {
         let editMenuInteraction = UIEditMenuInteraction(delegate: self)
         _editMenuInteraction = editMenuInteraction
         view.addInteraction(editMenuInteraction)
     }
-#endif
 
     private func setupMenuController() {
         // This is not necessary starting from iOS 16.
@@ -100,12 +88,13 @@ private extension EditMenuController {
     }
 }
 
-#if compiler(>=5.7)
 @available(iOS 16, *)
 extension EditMenuController: UIEditMenuInteractionDelegate {
-    func editMenuInteraction(_ interaction: UIEditMenuInteraction,
-                             menuFor configuration: UIEditMenuConfiguration,
-                             suggestedActions: [UIMenuElement]) -> UIMenu? {
+    func editMenuInteraction(
+        _ interaction: UIEditMenuInteraction,
+        menuFor configuration: UIEditMenuConfiguration,
+        suggestedActions: [UIMenuElement]
+    ) -> UIMenu? {
         if let selectedRange = delegate?.selectedRange(for: self), let replaceAction = replaceActionIfAvailable(for: selectedRange) {
             return UIMenu(children: [replaceAction] + suggestedActions)
         } else {
@@ -113,4 +102,3 @@ extension EditMenuController: UIEditMenuInteractionDelegate {
         }
     }
 }
-#endif

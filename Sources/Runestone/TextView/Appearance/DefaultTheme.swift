@@ -67,7 +67,6 @@ public final class DefaultTheme: Runestone.Theme {
         }
     }
 
-#if compiler(>=5.7)
     @available(iOS 16.0, *)
     public func highlightedRange(forFoundTextRange foundTextRange: NSRange, ofStyle style: UITextSearchFoundTextStyle) -> HighlightedRange? {
         switch style {
@@ -83,7 +82,6 @@ public final class DefaultTheme: Runestone.Theme {
             return nil
         }
     }
-#endif
 }
 
 private extension UIColor {

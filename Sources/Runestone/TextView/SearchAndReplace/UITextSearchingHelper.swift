@@ -2,7 +2,6 @@ import UIKit
 
 final class UITextSearchingHelper: NSObject {
     weak var textView: TextView?
-#if compiler(>=5.7)
     var isFindInteractionEnabled = false {
         didSet {
             if isFindInteractionEnabled != oldValue {
@@ -32,7 +31,6 @@ final class UITextSearchingHelper: NSObject {
         }
     }
     private var _findInteraction: Any?
-#endif
 
     private let queue = OperationQueue()
     private var _textView: TextView {
@@ -54,7 +52,6 @@ final class UITextSearchingHelper: NSObject {
     }
 }
 
-#if compiler(>=5.7)
 @available(iOS 16, *)
 extension UITextSearchingHelper: UITextSearching {
     var supportsTextReplacement: Bool {
@@ -201,4 +198,3 @@ private extension SearchQuery.MatchMethod {
         }
     }
 }
-#endif
