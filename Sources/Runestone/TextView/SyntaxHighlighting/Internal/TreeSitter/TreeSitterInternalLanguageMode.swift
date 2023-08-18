@@ -1,5 +1,5 @@
 import Foundation
-import TreeSitterLib
+import TreeSitter
 
 protocol TreeSitterLanguageModeDelegate: AnyObject {
     func treeSitterLanguageMode(_ languageMode: TreeSitterInternalLanguageMode, bytesAt byteIndex: ByteCount) -> TreeSitterTextProviderResult?

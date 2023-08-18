@@ -1,5 +1,5 @@
 import Foundation
-import TreeSitterLib
+import TreeSitter
 
 /// Language to use for syntax highlighting with Tree-sitter.
 ///

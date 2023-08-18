@@ -1,4 +1,4 @@
-import TreeSitterLib
+import TreeSitter
 
 struct TreeSitterTextPoint {
     let rawValue: TSPoint

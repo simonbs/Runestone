@@ -1,4 +1,4 @@
-import TreeSitterLib
+import TreeSitter
 
 struct TreeSitterTextProviderResult {
     let bytes: UnsafePointer<Int8>

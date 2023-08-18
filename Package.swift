@@ -13,33 +13,16 @@ let package = Package(
     products: [
         .library(name: "Runestone", targets: ["Runestone"])
     ],
+    dependencies: [
+        // Tree-sitter supports SPM but as of writing this, the official Tree-sitter repository has no versions published that contains the Package.swift file. Therefore, we depend on a fork of Tree-sitter that has a version published.
+        // We will pin against the official version of Tree-sitter as soon as a new version is published.
+        .package(url: "https://github.com/simonbs/tree-sitter", from: "0.20.9-beta-1")
+    ],
     targets: [
         .target(name: "Runestone", dependencies: [
-            "TreeSitterLib"
+            .product(name: "TreeSitter", package: "tree-sitter")
         ], resources: [
             .process("TextView/Theme/Theme.xcassets")
-        ]),
-        .target(name: "TreeSitterLib", path: "tree-sitter/lib", exclude: [
-            "binding_rust",
-            "binding_web",
-            "Cargo.toml",
-            "README.md",
-            "src/unicode/README.md",
-            "src/unicode/LICENSE",
-            "src/unicode/ICU_SHA",
-            "src/get_changed_ranges.c",
-            "src/tree_cursor.c",
-            "src/stack.c",
-            "src/node.c",
-            "src/lexer.c",
-            "src/parser.c",
-            "src/language.c",
-            "src/alloc.c",
-            "src/subtree.c",
-            "src/tree.c",
-            "src/query.c"
-        ], sources: [
-            "src/lib.c"
         ]),
         .testTarget(name: "RunestoneTests", dependencies: [
             "Runestone",
