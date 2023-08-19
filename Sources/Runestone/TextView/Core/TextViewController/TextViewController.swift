@@ -632,7 +632,7 @@ final class TextViewController {
                 let newRange = NSRange(location: 0, length: newText.length)
                 timedUndoManager.endUndoGrouping()
                 timedUndoManager.beginUndoGrouping()
-                addUndoOperation(replacing: newRange, withText: oldText as String)
+                addUndoOperationForReplacingText(in: newRange, with: oldText as String)
                 timedUndoManager.endUndoGrouping()
             }
         } else {
@@ -772,6 +772,7 @@ extension TextViewController: LineControllerDelegate {
 // MARK: - IndentControllerDelegate
 extension TextViewController: IndentControllerDelegate {
     func indentController(_ controller: IndentController, shouldInsert text: String, in range: NSRange) {
+        addUndoOperationForReplacingText(in: range, with: text)
         replaceText(in: range, with: text)
     }
 

@@ -44,7 +44,8 @@ public extension TextView {
             undoManager?.endUndoGrouping()
             undoManager?.beginUndoGrouping()
         }
-        textViewController.replaceText(in: deleteRange, with: "", selectedRangeAfterUndo: selectedRange)
+        textViewController.addUndoOperationForReplacingText(in: deleteRange, with: "")
+        textViewController.replaceText(in: deleteRange, with: "")
         if isDeletingMultipleCharacters {
             undoManager?.endUndoGrouping()
         }
@@ -60,8 +61,10 @@ public extension TextView {
     /// Inserts a tab character.
     override func insertTab(_ sender: Any?) {
         let indentString = indentStrategy.string(indentLevel: 1)
-        if textViewController.shouldChangeText(in: textViewController.rangeForInsertingText, replacementText: indentString) {
-            textViewController.replaceText(in: textViewController.rangeForInsertingText, with: indentString)
+        let range = textViewController.rangeForInsertingText
+        if textViewController.shouldChangeText(in: range, replacementText: indentString) {
+            textViewController.addUndoOperationForReplacingText(in: range, with: indentString)
+            textViewController.replaceText(in: range, with: indentString)
         }
     }
 
@@ -83,6 +86,7 @@ public extension TextView {
         let selectedRange = selectedRange()
         if let string = NSPasteboard.general.string(forType: .string) {
             let preparedText = textViewController.prepareTextForInsertion(string)
+            textViewController.addUndoOperationForReplacingText(in: selectedRange, with: preparedText)
             textViewController.replaceText(in: selectedRange, with: preparedText)
         }
     }
@@ -94,6 +98,7 @@ public extension TextView {
         let selectedRange = selectedRange()
         if selectedRange.length > 0, let text = textViewController.text(in: selectedRange) {
             NSPasteboard.general.setString(text, forType: .string)
+            textViewController.addUndoOperationForReplacingText(in: selectedRange, with: preparedText)
             textViewController.replaceText(in: selectedRange, with: "")
         }
     }

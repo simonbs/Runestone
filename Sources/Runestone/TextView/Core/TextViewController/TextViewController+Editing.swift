@@ -10,16 +10,9 @@ extension TextViewController {
         stringView.substring(in: range.nonNegativeLength)
     }
 
-    func replaceText(
-        in range: NSRange,
-        with newString: String,
-        selectedRangeAfterUndo: NSRange? = nil,
-        undoActionName: String = L10n.Undo.ActionName.typing
-    ) {
+    func replaceText(in range: NSRange, with newString: String) {
         let nsNewString = newString as NSString
-        let currentText = text(in: range) ?? ""
         let newRange = NSRange(location: range.location, length: nsNewString.length)
-        addUndoOperation(replacing: newRange, withText: currentText, selectedRangeAfterUndo: selectedRangeAfterUndo, actionName: undoActionName)
         selectedRange = NSRange(location: newRange.upperBound, length: 0)
         let textEditHelper = TextEditHelper(stringView: stringView, lineManager: lineManager, lineEndings: lineEndings)
         let textEditResult = textEditHelper.replaceText(in: range, with: newString)
@@ -125,12 +118,15 @@ private extension TextViewController {
             return false
         }
         if selectedRange.length == 0 {
-            replaceText(in: selectedRange, with: characterPair.leading + characterPair.trailing)
+            let replacementText = characterPair.leading + characterPair.trailing
+            addUndoOperationForReplacingText(in: selectedRange, with: replacementText)
+            replaceText(in: selectedRange, with: replacementText)
             self.selectedRange = NSRange(location: range.location + characterPair.leading.count, length: 0)
             return true
         } else if let text = text(in: selectedRange) {
-            let modifiedText = characterPair.leading + text + characterPair.trailing
-            replaceText(in: selectedRange, with: modifiedText)
+            let replacementText = characterPair.leading + text + characterPair.trailing
+            addUndoOperationForReplacingText(in: selectedRange, with: replacementText)
+            replaceText(in: selectedRange, with: replacementText)
             self.selectedRange = NSRange(location: range.location + characterPair.leading.count, length: range.length)
             return true
         } else {

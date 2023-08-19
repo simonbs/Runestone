@@ -116,7 +116,9 @@ public extension TextView {
         guard textViewController.shouldChangeText(in: indexedRange.range.nonNegativeLength, replacementText: preparedText) else {
             return
         }
-        textViewController.replaceText(in: indexedRange.range.nonNegativeLength, with: preparedText)
+        let range = indexedRange.range.nonNegativeLength
+        textViewController.addUndoOperationForReplacingText(in: range, with: preparedText)
+        textViewController.replaceText(in: range, with: preparedText)
     }
 
     /// Inserts a character into the displayed text.
@@ -139,6 +141,7 @@ public extension TextView {
         if LineEnding(symbol: text) != nil {
             textViewController.indentController.insertLineBreak(in: selectedRange, using: lineEndings.symbol)
         } else {
+            textViewController.addUndoOperationForReplacingText(in: selectedRange, with: preparedText)
             textViewController.replaceText(in: selectedRange, with: preparedText)
         }
         layoutIfNeeded()
@@ -182,7 +185,8 @@ public extension TextView {
             undoManager?.endUndoGrouping()
             undoManager?.beginUndoGrouping()
         }
-        textViewController.replaceText(in: deleteRange, with: "", selectedRangeAfterUndo: selectedRangeAfterUndo)
+        textViewController.addUndoOperationForReplacingText(in: deleteRange, with: "", selectedRangeAfterUndo: selectedRangeAfterUndo)
+        textViewController.replaceText(in: deleteRange, with: "")
         // Sending selection changed without calling the input delegate directly. This ensures that both inputting Korean letters and deleting entire words with Option+Backspace works properly.
         sendSelectionChangedToTextSelectionView()
         if isDeletingMultipleCharacters {

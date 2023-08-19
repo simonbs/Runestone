@@ -25,6 +25,7 @@ extension TextView: NSTextInputClient {
         }
         let range = replacementRange.location == NSNotFound ? textViewController.rangeForInsertingText : replacementRange
         if textViewController.shouldChangeText(in: range, replacementText: string) {
+            textViewController.addUndoOperationForReplacingText(in: range, with: string)
             textViewController.replaceText(in: range, with: string)
         }
     }
