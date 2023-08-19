@@ -1,6 +1,6 @@
 import Combine
 import Foundation
-import TreeSitterLib
+import TreeSitter
 
 final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     var canHighlight: Bool {

@@ -1,4 +1,4 @@
-import TreeSitterLib
+import TreeSitter
 
 final class TreeSitterNode {
     var id: UnsafeRawPointer {

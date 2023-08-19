@@ -1,4 +1,4 @@
-import TreeSitterLib
+import TreeSitter
 
 struct TreeSitterTextRange {
     let rawValue: TSRange

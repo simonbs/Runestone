@@ -1,4 +1,4 @@
-import TreeSitterLib
+import TreeSitter
 
 final class TreeSitterQueryMatch {
     let captures: [TreeSitterCapture]

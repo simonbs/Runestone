@@ -1,4 +1,4 @@
-import TreeSitterLib
+import TreeSitter
 
 typealias TreeSitterReadCallback = (_ byteIndex: ByteCount, _ position: TreeSitterTextPoint) -> TreeSitterByteRead?
 

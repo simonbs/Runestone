@@ -1,5 +1,5 @@
 import Foundation
-import TreeSitterLib
+import TreeSitter
 
 final class TreeSitterParser {
     var language: UnsafePointer<TSLanguage>? {
