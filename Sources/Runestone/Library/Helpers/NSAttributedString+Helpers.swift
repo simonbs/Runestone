@@ -10,4 +10,11 @@ extension NSAttributedString {
         let attributingSubstring = attributedSubstring(from: range)
         return characterSet.containsAllCharacters(of: attributingSubstring.string)
     }
+
+    var hasForegroundColorAttribute: Bool {
+        guard length > 0 else {
+            return false
+        }
+        return attribute(.foregroundColor, at: 0, effectiveRange: nil) != nil
+    }
 }

@@ -315,6 +315,17 @@ open class TextView: UIScrollView {
     public var findInteraction: UIFindInteraction? {
         textSearchingHelper.findInteraction
     }
+    /// The behavior of inline text predictions for a text-entry area.
+    @available(iOS 17, *)
+    public var inlinePredictionType: UITextInlinePredictionType {
+        get {
+            UITextInlinePredictionType(_inlinePredictionType)
+        }
+        set {
+            _inlinePredictionType = TextInlinePredictionType(newValue)
+        }
+    }
+    private var _inlinePredictionType: TextInlinePredictionType = .default
     /// An affiliated view that provides a coordinate system for all geometric values in the protocol.
     ///
     /// This property returns the instance of `TextView` that holds the property.
@@ -375,7 +386,7 @@ open class TextView: UIScrollView {
     private let characterPairService: CharacterPairService
     let indentationChecker: IndentationChecker
 
-    let languageMode: CurrentValueSubject<InternalLanguageMode, Never>
+    let languageMode: CurrentValueSubject<any InternalLanguageMode, Never>
     let languageModeSetter: LanguageModeSetter
 
     private let textSetter: TextSetter

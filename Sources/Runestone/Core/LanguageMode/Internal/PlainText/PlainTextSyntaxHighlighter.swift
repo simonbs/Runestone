@@ -3,13 +3,10 @@ import CoreGraphics
 import Foundation
 
 final class PlainTextSyntaxHighlighter: SyntaxHighlighter {
-    let canHighlight = false
+    let operationQueue: OperationQueue
+    var inlinePredictionRange: NSRange?
 
-    func syntaxHighlight(_ input: SyntaxHighlighterInput) {}
-
-    func syntaxHighlight(_ input: SyntaxHighlighterInput, completion: @escaping AsyncCallback) {
-        completion(.success(()))
+    init(operationQueue: OperationQueue) {
+        self.operationQueue = operationQueue
     }
-
-    func cancel() {}
 }

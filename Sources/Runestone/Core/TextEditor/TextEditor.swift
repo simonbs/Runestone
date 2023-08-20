@@ -6,7 +6,7 @@ struct TextEditor {
     let stringView: CurrentValueSubject<StringView, Never>
     let lineManager: CurrentValueSubject<LineManager, Never>
     let lineControllerStorage: LineControllerStorage
-    let languageMode: CurrentValueSubject<InternalLanguageMode, Never>
+    let languageMode: CurrentValueSubject<any InternalLanguageMode, Never>
     let undoManager: UndoManager
     let viewport: CurrentValueSubject<CGRect, Never>
     let lineFragmentLayouter: LineFragmentLayouter

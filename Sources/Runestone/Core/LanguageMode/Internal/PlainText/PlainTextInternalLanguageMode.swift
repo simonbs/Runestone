@@ -2,6 +2,17 @@ import Combine
 import Foundation
 
 final class PlainTextInternalLanguageMode: InternalLanguageMode {
+    private let operationQueue = OperationQueue()
+
+    init() {
+        operationQueue.name = "TreeSitterLanguageMode"
+        operationQueue.qualityOfService = .userInitiated
+    }
+
+    deinit {
+        operationQueue.cancelAllOperations()
+    }
+
     func parse(_ text: NSString) {}
 
     func parse(_ text: NSString, completion: @escaping ((Bool) -> Void)) {
@@ -16,8 +27,8 @@ final class PlainTextInternalLanguageMode: InternalLanguageMode {
         nil
     }
 
-    func createSyntaxHighlighter(with theme: CurrentValueSubject<Theme, Never>) -> SyntaxHighlighter {
-        PlainTextSyntaxHighlighter()
+    func createSyntaxHighlighter(with theme: CurrentValueSubject<Theme, Never>) -> some SyntaxHighlighter {
+        PlainTextSyntaxHighlighter(operationQueue: operationQueue)
     }
 
     func highestSyntaxNode(at linePosition: LinePosition) -> SyntaxNode? {

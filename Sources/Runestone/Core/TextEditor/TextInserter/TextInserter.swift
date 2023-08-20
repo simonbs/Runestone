@@ -5,7 +5,7 @@ struct TextInserter {
     let lineManager: CurrentValueSubject<LineManager, Never>
     let selectedRange: CurrentValueSubject<NSRange, Never>
     let markedRange: CurrentValueSubject<NSRange?, Never>
-    let languageMode: CurrentValueSubject<InternalLanguageMode, Never>
+    let languageMode: CurrentValueSubject<any InternalLanguageMode, Never>
     let lineEndings: CurrentValueSubject<LineEnding, Never>
     let indentStrategy: CurrentValueSubject<IndentStrategy, Never>
     let textReplacer: TextReplacer

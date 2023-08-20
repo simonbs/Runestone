@@ -6,7 +6,7 @@ final class TextViewStateSetter {
     private let stringView: CurrentValueSubject<StringView, Never>
     private let lineManager: CurrentValueSubject<LineManager, Never>
     private let selectedRange: CurrentValueSubject<NSRange, Never>
-    private let languageMode: CurrentValueSubject<InternalLanguageMode, Never>
+    private let languageMode: CurrentValueSubject<any InternalLanguageMode, Never>
     private let lineControllerStorage: LineControllerStorage
     private let undoManager: TextEditingUndoManager
     private let themeSettings: ThemeSettings
@@ -18,7 +18,7 @@ final class TextViewStateSetter {
         stringView: CurrentValueSubject<StringView, Never>,
         lineManager: CurrentValueSubject<LineManager, Never>,
         selectedRange: CurrentValueSubject<NSRange, Never>,
-        languageMode: CurrentValueSubject<InternalLanguageMode, Never>,
+        languageMode: CurrentValueSubject<any InternalLanguageMode, Never>,
         lineControllerStorage: LineControllerStorage,
         undoManager: TextEditingUndoManager,
         themeSettings: ThemeSettings,

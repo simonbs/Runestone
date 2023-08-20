@@ -49,6 +49,17 @@ final class LineController {
     var lineFragments: [LineFragment] {
         typesetter.lineFragments
     }
+    var inlinePredictionRange: NSRange? {
+        get {
+            syntaxHighlighter.inlinePredictionRange
+        }
+        set {
+            if newValue != inlinePredictionRange {
+                syntaxHighlighter.inlinePredictionRange = newValue
+                invalidateSyntaxHighlighting()
+            }
+        }
+    }
 
     private let stringView: CurrentValueSubject<StringView, Never>
     private let estimatedLineHeight: EstimatedLineHeight
@@ -64,7 +75,7 @@ final class LineController {
     private var isTypesetterInvalid = true
     private var _lineHeight: CGFloat?
     private var lineFragmentTree: LineFragmentTree
-    private let syntaxHighlighter: SyntaxHighlighter
+    private let syntaxHighlighter: any SyntaxHighlighter
     private var cancellables: Set<AnyCancellable> = []
 
     init(
@@ -75,7 +86,7 @@ final class LineController {
         typesetter: LineTypesetter,
         defaultStringAttributes: DefaultStringAttributes,
         lineFragmentControllerFactory: LineFragmentControllerFactory,
-        syntaxHighlighter: SyntaxHighlighter
+        syntaxHighlighter: some SyntaxHighlighter
     ) {
         self.line = line
         self.stringView = stringView
@@ -145,17 +156,6 @@ final class LineController {
             lineFragmentController.lineFragmentView?.setNeedsDisplay()
         }
     }
-
-//    func setMarkedTextOnLineFragments(_ range: NSRange?) {
-//        for (_, lineFragmentController) in lineFragmentControllers {
-//            let lineFragment = lineFragmentController.lineFragment
-//            if let range = range, range.overlaps(lineFragment.visibleRange) {
-//                lineFragmentController.markedRange = range
-//            } else {
-//                lineFragmentController.markedRange = nil
-//            }
-//        }
-//    }
 
     func location(closestTo point: CGPoint) -> Int {
         guard let closestLineFragment = lineFragment(closestTo: point) else {
@@ -233,10 +233,6 @@ private extension LineController {
 
     private func updateSyntaxHighlightingIfNeeded(async: Bool) {
         guard isSyntaxHighlightingInvalid else {
-            return
-        }
-        guard syntaxHighlighter.canHighlight else {
-            isSyntaxHighlightingInvalid = false
             return
         }
         guard let input = createLineSyntaxHighlightInput() else {

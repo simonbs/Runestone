@@ -3,10 +3,6 @@ import Foundation
 import TreeSitter
 
 final class TreeSitterInternalLanguageMode: InternalLanguageMode {
-    var canHighlight: Bool {
-        rootLanguageLayer.canHighlight
-    }
-
     private let stringView: CurrentValueSubject<StringView, Never>
     private let lineManager: CurrentValueSubject<LineManager, Never>
     private let parser = TreeSitterParser()
@@ -79,7 +75,7 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
         rootLanguageLayer.captures(in: range)
     }
 
-    func createSyntaxHighlighter(with theme: CurrentValueSubject<Theme, Never>) -> SyntaxHighlighter {
+    func createSyntaxHighlighter(with theme: CurrentValueSubject<Theme, Never>) -> some SyntaxHighlighter {
         TreeSitterSyntaxHighlighter(
             stringView: stringView,
             languageMode: self,

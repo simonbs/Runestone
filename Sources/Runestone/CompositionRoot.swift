@@ -544,7 +544,7 @@ final class CompositionRoot {
     }
 
     // MARK: - Syntax Highlighting
-    let languageMode = CurrentValueSubject<InternalLanguageMode, Never>(PlainTextInternalLanguageMode())
+    let languageMode = CurrentValueSubject<any InternalLanguageMode, Never>(PlainTextInternalLanguageMode())
     var syntaxNodeRaycaster: SyntaxNodeRaycaster {
         SyntaxNodeRaycaster(lineManager: lineManager, languageMode: languageMode)
     }
@@ -560,6 +560,12 @@ final class CompositionRoot {
     }
     private var internalLanguageModeFactory: InternalLanguageModeFactory {
         InternalLanguageModeFactory(stringView: stringView, lineManager: lineManager)
+    }
+    private var inlinePredictionTextRangeApplicator: InlinePredictionTextRangeApplicator {
+        InlinePredictionTextRangeApplicator(
+            lineManager: lineManager,
+            lineControllerStorage: lineControllerStorage
+        )
     }
 
     // MARK: - iOS
@@ -607,7 +613,8 @@ final class CompositionRoot {
         firstRectFactory: firstRectFactory,
         locationRaycaster: locationRaycaster,
         characterNavigationLocationFactory: characterNavigationLocationFactory,
-        lineNavigationLocationFactory: lineNavigationLocationFactory
+        lineNavigationLocationFactory: lineNavigationLocationFactory,
+        inlinePredictionTextRangeApplicator: inlinePredictionTextRangeApplicator
     )
     var textRangeAdjustmentGestureTracker: UITextRangeAdjustmentGestureTracker {
         UITextRangeAdjustmentGestureTracker(selectedRange: selectedRange, viewportScroller: viewportScroller)

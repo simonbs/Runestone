@@ -2,12 +2,12 @@ import Combine
 
 final class LanguageModeSetter {
     private let stringView: CurrentValueSubject<StringView, Never>
-    private let languageMode: CurrentValueSubject<InternalLanguageMode, Never>
+    private let languageMode: CurrentValueSubject<any InternalLanguageMode, Never>
     private let internalLanguageModeFactory: InternalLanguageModeFactory
 
     init(
         stringView: CurrentValueSubject<StringView, Never>,
-        languageMode: CurrentValueSubject<InternalLanguageMode, Never>,
+        languageMode: CurrentValueSubject<any InternalLanguageMode, Never>,
         internalLanguageModeFactory: InternalLanguageModeFactory
     ) {
         self.stringView = stringView

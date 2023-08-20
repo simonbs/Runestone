@@ -9,7 +9,7 @@ struct InternalLanguageModeFactory {
         self.lineManager = lineManager
     }
 
-    func internalLanguageMode(from languageMode: LanguageMode) -> InternalLanguageMode {
+    func internalLanguageMode(from languageMode: LanguageMode) -> any InternalLanguageMode {
         switch languageMode {
         case is PlainTextLanguageMode:
             return PlainTextInternalLanguageMode()
@@ -25,7 +25,7 @@ struct InternalLanguageModeFactory {
         }
     }
 
-    func internalLanguageMode(from languageModeState: TextViewState.LanguageModeState) -> InternalLanguageMode {
+    func internalLanguageMode(from languageModeState: TextViewState.LanguageModeState) -> any InternalLanguageMode {
         switch languageModeState {
         case .plainText:
             return PlainTextInternalLanguageMode()

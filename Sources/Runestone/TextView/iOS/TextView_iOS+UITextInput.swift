@@ -128,6 +128,14 @@ public extension TextView {
     func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
         textInputHelper.setMarkedText(markedText, selectedRange: selectedRange)
     }
+    
+    /// Inserts the provided styled text and marks it to indicate that it is part of an active input session.
+    /// - Parameters:
+    ///   - markedText: The text to be marked.
+    ///   - selectedRange: A range within `markedText` that indicates the current selection. This range is always relative to `markedText`.
+    func setAttributedMarkedText(_ markedText: NSAttributedString?, selectedRange: NSRange) {
+        textInputHelper.setAttributedMarkedText(markedText, selectedRange: selectedRange)
+    }
 
     /// Unmarks the currently marked text.
     func unmarkText() {

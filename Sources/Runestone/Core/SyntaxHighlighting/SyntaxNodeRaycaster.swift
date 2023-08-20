@@ -2,11 +2,11 @@ import Combine
 
 final class SyntaxNodeRaycaster {
     private let lineManager: CurrentValueSubject<LineManager, Never>
-    private let languageMode: CurrentValueSubject<InternalLanguageMode, Never>
+    private let languageMode: CurrentValueSubject<any InternalLanguageMode, Never>
 
     init(
         lineManager: CurrentValueSubject<LineManager, Never>,
-        languageMode: CurrentValueSubject<InternalLanguageMode, Never>
+        languageMode: CurrentValueSubject<any InternalLanguageMode, Never>
     ) {
         self.lineManager = lineManager
         self.languageMode = languageMode

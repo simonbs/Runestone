@@ -35,6 +35,7 @@ final class UITextInputHelper {
     private let locationRaycaster: LocationRaycaster
     private let characterNavigationLocationFactory: CharacterNavigationLocationFactory
     private let lineNavigationLocationFactory: LineNavigationLocationFactory
+    private let inlinePredictionTextRangeApplicator: InlinePredictionTextRangeApplicator
     private var didCallPositionFromPositionWithOffset = false
     private weak var floatingInsertionPointView: UIView?
     private var textView: TextView? {
@@ -62,7 +63,8 @@ final class UITextInputHelper {
         firstRectFactory: FirstRectFactory,
         locationRaycaster: LocationRaycaster,
         characterNavigationLocationFactory: CharacterNavigationLocationFactory,
-        lineNavigationLocationFactory: LineNavigationLocationFactory
+        lineNavigationLocationFactory: LineNavigationLocationFactory,
+        inlinePredictionTextRangeApplicator: InlinePredictionTextRangeApplicator
     ) {
         self._textView = textView
         self.inputDelegate = inputDelegate
@@ -85,6 +87,7 @@ final class UITextInputHelper {
         self.locationRaycaster = locationRaycaster
         self.characterNavigationLocationFactory = characterNavigationLocationFactory
         self.lineNavigationLocationFactory = lineNavigationLocationFactory
+        self.inlinePredictionTextRangeApplicator = inlinePredictionTextRangeApplicator
     }
 
     func resetHasDeletedTextWithPendingLayoutSubviews() {
@@ -253,24 +256,39 @@ extension UITextInputHelper {
     }
 
     func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
-//        guard let range = textViewController.markedRange ?? textViewController.selectedRange else {
-//            return
-//        }
-//        let markedText = markedText ?? ""
-//        guard textViewController.shouldChangeText(in: range, replacementText: markedText) else {
-//            return
-//        }
-//        textViewController.markedRange = markedText.isEmpty ? nil : NSRange(location: range.location, length: markedText.utf16.count)
-//        textViewController.replaceText(in: range, with: markedText)
-//        // The selected range passed to setMarkedText(_:selectedRange:) is local to the marked range.
-//        let preferredSelectedRange = NSRange(location: range.location + selectedRange.location, length: selectedRange.length)
-//        inputDelegate?.selectionWillChange(self)
-//        textViewController._selectedRange = preferredSelectedRange.capped(to: textViewController.stringView.string.length)
-//        inputDelegate?.selectionDidChange(self)
-//        removeAndAddEditableTextInteraction()
+        if let markedText {
+            let attributedMarkedText = NSAttributedString(string: markedText)
+            setAttributedMarkedText(attributedMarkedText, selectedRange: selectedRange)
+        } else {
+            setAttributedMarkedText(nil, selectedRange: selectedRange)
+        }
+    }
+
+    func setAttributedMarkedText(_ markedText: NSAttributedString?, selectedRange: NSRange) {
+        let range = markedRange.value ?? self.selectedRange.value
+        let markedTextString = markedText?.string ?? ""
+        markedRange.value = if !markedTextString.isEmpty {
+            NSRange(location: range.location, length: markedTextString.utf16.count)
+        } else {
+            nil
+        }
+        textReplacer.replaceText(in: range, with: markedTextString)
+        let markedTextRange = NSRange(location: range.location, length: markedTextString.utf16.count)
+        if #available(iOS 17, *), let markedText, markedText.hasForegroundColorAttribute {
+            // If the text has a foreground color attribute then we assume it's an inline prediction.
+            inlinePredictionTextRangeApplicator.inlinePredictionRange = markedTextRange
+        }
+        // The selected range passed to setMarkedText(_:selectedRange:) is local to the marked range.
+        let preferredSelectedRange = NSRange(location: range.location + selectedRange.location, length: selectedRange.length)
+        let cappedSelectedRange = preferredSelectedRange.capped(to: stringView.value.string.length)
+        inputDelegate.selectionWillChange()
+        self.selectedRange.value = cappedSelectedRange
+        inputDelegate.selectionDidChange()
+        textInteractionManager.removeAndAddEditableTextInteraction()
     }
 
     func unmarkText() {
+        inlinePredictionTextRangeApplicator.inlinePredictionRange = nil
         inputDelegate.selectionWillChange()
         markedRange.value = nil
         inputDelegate.selectionDidChange()

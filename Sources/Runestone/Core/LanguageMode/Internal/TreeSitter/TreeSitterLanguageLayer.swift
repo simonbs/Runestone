@@ -6,9 +6,6 @@ final class TreeSitterLanguageLayer {
 
     let language: TreeSitterInternalLanguage
     private(set) var tree: TreeSitterTree?
-    var canHighlight: Bool {
-        parser.language != nil && tree != nil
-    }
 
     private let stringView: CurrentValueSubject<StringView, Never>
     private let lineManager: CurrentValueSubject<LineManager, Never>

@@ -1,30 +1,13 @@
 import Combine
 import Foundation
 
-enum TreeSitterSyntaxHighlighterError: LocalizedError {
-    case cancelled
-    case operationDeallocated
-
-    var errorDescription: String? {
-        switch self {
-        case .cancelled:
-            return "Operation was cancelled"
-        case .operationDeallocated:
-            return "The operation was deallocated"
-        }
-    }
-}
-
 final class TreeSitterSyntaxHighlighter: SyntaxHighlighter {
     let theme: CurrentValueSubject<Theme, Never>
-    var canHighlight: Bool {
-        languageMode.canHighlight
-    }
-
+    let operationQueue: OperationQueue
+    var inlinePredictionRange: NSRange?
+    
     private let stringView: CurrentValueSubject<StringView, Never>
     private let languageMode: TreeSitterInternalLanguageMode
-    private let operationQueue: OperationQueue
-    private var currentOperation: Operation?
 
     init(
         stringView: CurrentValueSubject<StringView, Never>,
@@ -38,51 +21,13 @@ final class TreeSitterSyntaxHighlighter: SyntaxHighlighter {
         self.operationQueue = operationQueue
     }
 
-    func syntaxHighlight(_ input: SyntaxHighlighterInput) {
-        let captures = languageMode.captures(in: input.byteRange)
-        let tokens = self.tokens(for: captures, localTo: input.byteRange)
+    func performHeavyBackgroundSafeWork(with input: SyntaxHighlighterInput) -> [TreeSitterCapture] {
+        languageMode.captures(in: input.byteRange)
+    }
+
+    func performWorkRequiringMainQueue(with input: SyntaxHighlighterInput, using result: [TreeSitterCapture]) {
+        let tokens = tokens(for: result, localTo: input.byteRange)
         setAttributes(for: tokens, on: input.attributedString)
-    }
-
-    func syntaxHighlight(_ input: SyntaxHighlighterInput, completion: @escaping AsyncCallback) {
-        let operation = BlockOperation()
-        operation.addExecutionBlock { [weak operation, weak self] in
-            guard let operation = operation, let self = self else {
-                DispatchQueue.main.async {
-                    completion(.failure(TreeSitterSyntaxHighlighterError.operationDeallocated))
-                }
-                return
-            }
-            guard !operation.isCancelled else {
-                DispatchQueue.main.async {
-                    completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
-                }
-                return
-            }
-            let captures = self.languageMode.captures(in: input.byteRange)
-            if !operation.isCancelled {
-                DispatchQueue.main.async {
-                    if !operation.isCancelled {
-                        let tokens = self.tokens(for: captures, localTo: input.byteRange)
-                        self.setAttributes(for: tokens, on: input.attributedString)
-                        completion(.success(()))
-                    } else {
-                        completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
-                    }
-                }
-            } else {
-                DispatchQueue.main.async {
-                    completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
-                }
-            }
-        }
-        currentOperation = operation
-        operationQueue.addOperation(operation)
-    }
-
-    func cancel() {
-        currentOperation?.cancel()
-        currentOperation = nil
     }
 }
 
