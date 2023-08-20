@@ -45,7 +45,7 @@ extension NSRange {
         capped(to: NSRange(location: 0, length: length))
     }
 
-    /// Crates a range that is local to the specified range.
+    /// Creates a range that is local to the specified range.
     /// - Parameter parentRange: The parent range.
     /// - Returns: A range that is local to the parent range.
     func local(to parentRange: NSRange) -> NSRange {
