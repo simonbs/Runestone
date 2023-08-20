@@ -11,6 +11,8 @@ final class UITextSelectionViewManager {
     private let floatingInsertionPointPosition: CurrentValueSubject<CGPoint?, Never>
     private var subviewsObserver: NSKeyValueObservation?
     private var floatingCaretViewPositionObserver: NSKeyValueObservation?
+    private var caretViewHiddenObserver: NSKeyValueObservation?
+    private var floatingCaretViewHiddenObserver: NSKeyValueObservation?
     private var cancellables: Set<AnyCancellable> = []
     private let insertionPointViewFactory: InsertionPointViewFactory
     private var customFloatingCaretView: UIView?
@@ -37,8 +39,13 @@ final class UITextSelectionViewManager {
 
     func setupCaretViewObserver() {
         textSelectionView?.layer.zPosition = 5000
-        // UIView.subviews isn't observable but CALayer.sublayers is. So we use the sublayers property to detect when the subviews of UITextSelectionView has changed so we can hide the caret if needed.
-        subviewsObserver = textSelectionView?.observe(\.layer.sublayers, options: .new) { [weak self] _, change in
+        let rootView = if #available(iOS 17, *) {
+            textView
+        } else {
+            textSelectionView
+        }
+        // UIView.subviews isn't observable but CALayer.sublayers is. So we observe the CALayer's sublayers to detect changes in the cursor view hierarchy.
+        subviewsObserver = rootView?.observe(\.layer.sublayers, options: .new) { [weak self] _, change in
             // Need to dispatch in order for the change to be reflected in the textSelectionView.subviews property.
             DispatchQueue.main.async { [weak self] in
                 self?.hideDefaultCaretViews()
@@ -64,7 +71,7 @@ final class UITextSelectionViewManager {
 
 private extension UITextSelectionViewManager {
     private var textSelectionView: UIView? {
-        if let klass = NSClassFromString("UITextSelectionView") {
+        if #unavailable(iOS 17), let klass = NSClassFromString("UITextSelectionView") {
             return textView?.subviews.first { $0.isKind(of: klass) }
         } else {
             return nil
@@ -72,11 +79,24 @@ private extension UITextSelectionViewManager {
     }
 
     private var caretView: UIView? {
-        textSelectionView?.value(forKey: "m_caretView") as? UIView
+        if #available(iOS 17, *), let klass = NSClassFromString("_UITextCursorView") {
+            return textView?.subviews.first { $0.isKind(of: klass) }
+        } else {
+            return textSelectionView?.value(forKey: "m_caretView") as? UIView
+        }
     }
 
     private var floatingCaretView: UIView? {
-        textSelectionView?.value(forKey: "m_floatingCaretView") as? UIView
+        if #available(iOS 17, *), let klass = NSClassFromString("_UITextCursorView") {
+            let cursorViews = textView?.subviews.filter { $0.isKind(of: klass) } ?? []
+            if cursorViews.count >= 2 {
+                return cursorViews.last
+            } else {
+                return nil
+            }
+        } else {
+            return textSelectionView?.value(forKey: "m_floatingCaretView") as? UIView
+        }
     }
 
     private func setupFloatingCaretViewPositionObserver() {
@@ -99,6 +119,16 @@ private extension UITextSelectionViewManager {
     private func hideDefaultCaretViews() {
         caretView?.isHidden = true
         floatingCaretView?.isHidden = true
+        caretViewHiddenObserver = caretView?.observe(\.isHidden) { [weak self] _, _ in
+            if let caretView = self?.caretView, !caretView.isHidden {
+                caretView.isHidden = true
+            }
+        }
+        floatingCaretViewHiddenObserver = floatingCaretView?.observe(\.isHidden) { [weak self] _, _ in
+            if let floatingCaretView = self?.floatingCaretView, !floatingCaretView.isHidden {
+                floatingCaretView.isHidden = true
+            }
+        }
     }
 
     private func updateCustomFloatingCaretViewViewHiearachy() {
@@ -108,7 +138,11 @@ private extension UITextSelectionViewManager {
         } else {
             let customFloatingCaretView = makeCustomfloatingCaretViewIfNeeded()
             if customFloatingCaretView.superview == nil {
-                textSelectionView?.addSubview(customFloatingCaretView)
+                if #available(iOS 17, *) {
+                    textView?.addSubview(customFloatingCaretView)
+                } else {
+                    textSelectionView?.addSubview(customFloatingCaretView)
+                }
             }
         }
     }
