@@ -182,7 +182,7 @@ extension UITextInputHelper {
         // The backtick will remain marked unless we manually clear the marked range.
         markedRange.value = nil
         textInserter.insertText(text)
-//        layoutIfNeeded()
+        textView?.layoutIfNeeded()
     }
 
     func deleteBackward() {
