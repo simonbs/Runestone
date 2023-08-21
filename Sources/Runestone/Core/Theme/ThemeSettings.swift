@@ -10,6 +10,8 @@ final class ThemeSettings {
     let pageGuideBackgroundColor: CurrentValueSubject<MultiPlatformColor, Never>
     let pageGuideHairlineColor: CurrentValueSubject<MultiPlatformColor, Never>
     let pageGuideHairlineWidth: CurrentValueSubject<CGFloat, Never>
+    let markedTextBackgroundColor: CurrentValueSubject<MultiPlatformColor, Never>
+    let markedTextBackgroundCornerRadius: CurrentValueSubject<CGFloat, Never>
 
     private var cancellables: Set<AnyCancellable> = []
 
@@ -22,6 +24,8 @@ final class ThemeSettings {
         self.pageGuideBackgroundColor = CurrentValueSubject(theme.pageGuideBackgroundColor)
         self.pageGuideHairlineColor = CurrentValueSubject(theme.pageGuideHairlineColor)
         self.pageGuideHairlineWidth = CurrentValueSubject(theme.pageGuideHairlineWidth)
+        self.markedTextBackgroundColor = CurrentValueSubject(theme.markedTextBackgroundColor)
+        self.markedTextBackgroundCornerRadius = CurrentValueSubject(theme.markedTextBackgroundCornerRadius)
         setupObservers()
     }
 }
@@ -34,9 +38,14 @@ private extension ThemeSettings {
         setupObserver(assigning: \.pageGuideBackgroundColor, to: \.pageGuideBackgroundColor.value)
         setupObserver(assigning: \.pageGuideHairlineColor, to: \.pageGuideHairlineColor.value)
         setupObserver(assigning: \.pageGuideHairlineWidth, to: \.pageGuideHairlineWidth.value)
+        setupObserver(assigning: \.markedTextBackgroundColor, to: \.markedTextBackgroundColor.value)
+        setupObserver(assigning: \.markedTextBackgroundCornerRadius, to: \.markedTextBackgroundCornerRadius.value)
     }
 
-    private func setupObserver<T>(assigning sourceKeyPath: KeyPath<Theme, T>, to destinationKeyPath: ReferenceWritableKeyPath<ThemeSettings, T>) {
+    private func setupObserver<T>(
+        assigning sourceKeyPath: KeyPath<Theme, T>,
+        to destinationKeyPath: ReferenceWritableKeyPath<ThemeSettings, T>
+    ) {
         theme.map(sourceKeyPath).sink { [weak self] value in
             self?[keyPath: destinationKeyPath] = value
         }.store(in: &cancellables)

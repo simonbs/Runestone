@@ -8,13 +8,13 @@ import UIKit
 
 final class MarkedRangeLineFragmentRenderer: LineFragmentRenderer {
     private let lineFragment: LineFragment
-    private let markedRange: NSRange?
+    private let markedRange: CurrentValueSubject<NSRange?, Never>
     private let backgroundColor: CurrentValueSubject<MultiPlatformColor, Never>
     private let backgroundCornerRadius: CurrentValueSubject<CGFloat, Never>
 
     init(
         lineFragment: LineFragment,
-        markedRange: NSRange?,
+        markedRange: CurrentValueSubject<NSRange?, Never>,
         backgroundColor: CurrentValueSubject<MultiPlatformColor, Never>,
         backgroundCornerRadius: CurrentValueSubject<CGFloat, Never>
     ) {
@@ -25,7 +25,7 @@ final class MarkedRangeLineFragmentRenderer: LineFragmentRenderer {
     }
 
     func render() {
-        guard let markedRange = markedRange else {
+        guard let markedRange = markedRange.value else {
             return
         }
         guard let context = UIGraphicsGetCurrentContext() else {

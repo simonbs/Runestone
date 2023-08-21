@@ -27,13 +27,14 @@ final class LineFragmentController {
         line: LineNode,
         lineFragment: LineFragment,
         rendererFactory: LineFragmentRendererFactory,
-        selectedRange: CurrentValueSubject<NSRange, Never>
+        selectedRange: CurrentValueSubject<NSRange, Never>,
+        markedRange: CurrentValueSubject<NSRange?, Never>
     ) {
         self.line = line
         self.lineFragment = lineFragment
         self.renderer = rendererFactory.makeRenderer(for: lineFragment, in: line)
         self.rendererFactory = rendererFactory
-        selectedRange.sink { [weak self] _ in
+        Publishers.CombineLatest(selectedRange, markedRange).sink { [weak self] _, _ in
             self?.lineFragmentView?.setNeedsDisplay()
         }.store(in: &cancellables)
     }
