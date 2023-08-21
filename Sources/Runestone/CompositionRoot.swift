@@ -83,6 +83,7 @@ final class CompositionRoot {
     private var lineFragmentControllerFactory: LineFragmentControllerFactory {
         LineFragmentControllerFactory(
             selectedRange: selectedRange,
+            markedRange: markedRange,
             rendererFactory: lineFragmentRendererFactory
         )
     }
@@ -90,7 +91,10 @@ final class CompositionRoot {
         LineFragmentRendererFactory(
             stringView: stringView,
             showInvisibleCharacters: invisibleCharacterSettings.showInvisibleCharacters,
-            invisibleCharacterRenderer: invisibleCharacterRenderer
+            invisibleCharacterRenderer: invisibleCharacterRenderer,
+            markedRange: markedRange,
+            markedTextBackgroundColor: themeSettings.markedTextBackgroundColor,
+            markedTextBackgroundCornerRadius: themeSettings.markedTextBackgroundCornerRadius
         )
     }
     private var defaultStringAttributes: DefaultStringAttributes {
