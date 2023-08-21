@@ -633,22 +633,22 @@ open class TextView: UIScrollView {
 //        }
 //    }
 //
-//    /// Returns the farthest descendant of the receiver in the view hierarchy (including itself) that contains a specified point.
-//    /// - Parameters:
-//    ///   - point: A point specified in the receiver's local coordinate system (bounds).
-//    ///   - event: The event that warranted a call to this method. If you are calling this method from outside your event-handling code, you may specify nil.
-//    /// - Returns: The view object that is the farthest descendent of the current view and contains point. Returns nil if the point lies completely outside the receiver's view hierarchy.
-//    override open func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-//        guard isSelectable else {
-//            return nil
-//        }
-//        // We end our current undo group when the user touches the view.
-//        let result = super.hitTest(point, with: event)
-//        if result === self {
-//            undoManager?.endUndoGrouping()
-//        }
-//        return result
-//    }
+    /// Returns the farthest descendant of the receiver in the view hierarchy (including itself) that contains a specified point.
+    /// - Parameters:
+    ///   - point: A point specified in the receiver's local coordinate system (bounds).
+    ///   - event: The event that warranted a call to this method. If you are calling this method from outside your event-handling code, you may specify nil.
+    /// - Returns: The view object that is the farthest descendent of the current view and contains point. Returns nil if the point lies completely outside the receiver's view hierarchy.
+    override open func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        guard isSelectable else {
+            return nil
+        }
+        // We end our current undo group when the user touches the view.
+        let result = super.hitTest(point, with: event)
+        if result === self {
+            undoManager?.endUndoGrouping()
+        }
+        return result
+    }
 //
 //    /// Tells the object when a button is released.
 //    /// - Parameters:
