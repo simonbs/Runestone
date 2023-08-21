@@ -576,21 +576,25 @@ open class TextView: UIScrollView {
         }
         return didResignFirstResponder
     }
-//
-//    /// Replace the selected range with the specified text.
-//    ///
-//    /// - Parameter obj: Text to replace the selected range with.
-//    @objc func replace(_ obj: NSObject) {
-//        /// When autocorrection is enabled and the user tap on a misspelled word, UITextInteraction will present
-//        /// a UIMenuController with suggestions for the correct spelling of the word. Selecting a suggestion will
-//        /// cause UITextInteraction to call the non-existing -replace(_:) function and pass an instance of the private
-//        /// UITextReplacement type as parameter. We can't make autocorrection work properly without using private API.
-//        if let replacementText = obj.value(forKey: "_repl" + "Ttnemeca".reversed() + "ext") as? String {
-//            if let indexedRange = obj.value(forKey: "_r" + "gna".reversed() + "e") as? IndexedRange {
-//                replace(indexedRange, withText: replacementText)
-//            }
-//        }
-//    }
+
+    /// Replace the selected range with the specified text.
+    ///
+    /// - Parameter obj: Text to replace the selected range with.
+    @objc func replace(_ obj: NSObject) {
+        /// When autocorrection is enabled and the user tap on a misspelled word, UITextInteraction will present
+        /// a UIMenuController with suggestions for the correct spelling of the word. Selecting a suggestion will
+        /// cause UITextInteraction to call the non-existing -replace(_:) function and pass an instance of the private
+        /// UITextReplacement type as parameter. We can't make autocorrection work properly without using private API.
+        guard let replacementText = obj.value(forKey: "_repl" + "Ttnemeca".reversed() + "ext") as? String else {
+            return
+        }
+        guard let indexedRange = obj.value(forKey: "_r" + "gna".reversed() + "e") as? IndexedRange else {
+            return
+        }
+        inputDelegate?.selectionWillChange(self)
+        replace(indexedRange, withText: replacementText)
+        inputDelegate?.selectionDidChange(self)
+    }
 //
 //    /// Requests the receiving responder to enable or disable the specified command in the user interface.
 //    /// - Parameters:
