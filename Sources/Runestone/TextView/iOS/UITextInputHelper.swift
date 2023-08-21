@@ -176,11 +176,6 @@ extension UITextInputHelper {
         defer {
             textEditState.isRestoringPreviouslyDeletedText = false
         }
-        // If we're inserting text then we can't have a marked range. However, UITextInput doesn't always clear the marked range
-        // before calling -insertText(_:), so we do it manually. This issue can be tested by entering a backtick (`) in an empty
-        // document, then pressing any arrow key (up, right, down or left) followed by the return key.
-        // The backtick will remain marked unless we manually clear the marked range.
-        markedRange.value = nil
         textInserter.insertText(text)
         textView?.layoutIfNeeded()
     }

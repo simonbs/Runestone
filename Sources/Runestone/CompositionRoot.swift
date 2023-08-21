@@ -638,6 +638,14 @@ final class CompositionRoot {
     private var editMenuController: EditMenuController {
         EditMenuController()
     }
+    var pressesHandler: PressesHandler {
+        PressesHandler(
+            locationNavigator: locationNavigator,
+            textView: textView,
+            stringView: stringView,
+            markedRange: markedRange
+        )
+    }
 
     func textInputStringTokenizer(for textInput: UIResponder & UITextInput) -> UITextInputStringTokenizer {
         TextInputStringTokenizer(textInput: textInput, stringTokenizer: stringTokenizer)

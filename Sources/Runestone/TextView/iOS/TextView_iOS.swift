@@ -429,6 +429,8 @@ open class TextView: UIScrollView {
 
     private let textSelectionViewManager: UITextSelectionViewManager
 
+    private let pressesHandler: PressesHandler
+
     /// Create a new text view.
     /// - Parameter frame: The frame rectangle of the text view.
     override public init(frame: CGRect) {
@@ -501,6 +503,8 @@ open class TextView: UIScrollView {
         highlightedRangeNavigator = compositionRoot.highlightedRangeNavigator
 
         textSelectionViewManager = compositionRoot.textSelectionViewManager
+
+        pressesHandler = compositionRoot.pressesHandler
         super.init(frame: frame)
         compositionRoot.textView.value = WeakBox(self)
         backgroundColor = .white
@@ -649,17 +653,15 @@ open class TextView: UIScrollView {
         }
         return result
     }
-//
-//    /// Tells the object when a button is released.
-//    /// - Parameters:
-//    ///   - presses: A set of UIPress instances that represent the buttons that the user is no longer pressing.
-//    ///   - event: The event to which the presses belong.
-//    override open func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-//        super.pressesEnded(presses, with: event)
-//        if let keyCode = presses.first?.key?.keyCode, presses.count == 1, textViewController.markedRange != nil {
-//            handleKeyPressDuringMultistageTextInput(keyCode: keyCode)
-//        }
-//    }
+
+    /// Tells the object when a button is released.
+    /// - Parameters:
+    ///   - presses: A set of UIPress instances that represent the buttons that the user is no longer pressing.
+    ///   - event: The event to which the presses belong.
+    override open func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        super.pressesEnded(presses, with: event)
+        pressesHandler.handlePressesEnded(presses, with: event)
+    }
 }
 
 //extension TextView {
