@@ -111,41 +111,51 @@ private extension MainViewController {
 
     private func makeSettingsMenuElements() -> [UIMenuElement] {
         let settings = UserDefaults.standard
+        var topElements: [UIMenuElement] = [
+            UIAction(title: "Show Line Numbers", state: settings.showLineNumbers ? .on : .off) { [weak self] _ in
+                settings.showLineNumbers.toggle()
+                self?.updateTextViewSettings()
+                self?.setupMenuButton()
+            },
+            UIAction(title: "Show Page Guide", state: settings.showPageGuide ? .on : .off) { [weak self] _ in
+                settings.showPageGuide.toggle()
+                self?.updateTextViewSettings()
+                self?.setupMenuButton()
+            },
+            UIAction(title: "Show Invisible Characters", state: settings.showInvisibleCharacters ? .on : .off) { [weak self] _ in
+                settings.showInvisibleCharacters.toggle()
+                self?.updateTextViewSettings()
+                self?.setupMenuButton()
+            },
+            UIAction(title: "Wrap Lines", state: settings.wrapLines ? .on : .off) { [weak self] _ in
+                settings.wrapLines.toggle()
+                self?.updateTextViewSettings()
+                self?.setupMenuButton()
+            },
+            UIAction(title: "Highlight Selected Line", state: settings.highlightSelectedLine ? .on : .off) { [weak self] _ in
+                settings.highlightSelectedLine.toggle()
+                self?.updateTextViewSettings()
+                self?.setupMenuButton()
+            },
+            UIMenu(title: "Insertion Point Shape", children: InsertionPointShapeSetting.allCases.map { setting in
+                UIAction(title: setting.title, state: settings.insertionPointShape == setting ? .on : .off) { [weak self] _ in
+                    settings.insertionPointShape = setting
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                }
+            })
+        ]
+        if #available(iOS 17, *) {
+            topElements += [
+                UIAction(title: "Enable Inline Prediction", state: settings.isInlinePredictionEnabled ? .on : .off) { [weak self] _ in
+                    settings.isInlinePredictionEnabled.toggle()
+                    self?.updateTextViewSettings()
+                    self?.setupMenuButton()
+                }
+            ]
+        }
         return [
-            UIMenu(options: .displayInline, children: [
-                UIAction(title: "Show Line Numbers", state: settings.showLineNumbers ? .on : .off) { [weak self] _ in
-                    settings.showLineNumbers.toggle()
-                    self?.updateTextViewSettings()
-                    self?.setupMenuButton()
-                },
-                UIAction(title: "Show Page Guide", state: settings.showPageGuide ? .on : .off) { [weak self] _ in
-                    settings.showPageGuide.toggle()
-                    self?.updateTextViewSettings()
-                    self?.setupMenuButton()
-                },
-                UIAction(title: "Show Invisible Characters", state: settings.showInvisibleCharacters ? .on : .off) { [weak self] _ in
-                    settings.showInvisibleCharacters.toggle()
-                    self?.updateTextViewSettings()
-                    self?.setupMenuButton()
-                },
-                UIAction(title: "Wrap Lines", state: settings.wrapLines ? .on : .off) { [weak self] _ in
-                    settings.wrapLines.toggle()
-                    self?.updateTextViewSettings()
-                    self?.setupMenuButton()
-                },
-                UIAction(title: "Highlight Selected Line", state: settings.highlightSelectedLine ? .on : .off) { [weak self] _ in
-                    settings.highlightSelectedLine.toggle()
-                    self?.updateTextViewSettings()
-                    self?.setupMenuButton()
-                },
-                UIMenu(title: "Insertion Point Shape", children: InsertionPointShapeSetting.allCases.map { setting in
-                    UIAction(title: setting.title, state: settings.insertionPointShape == setting ? .on : .off) { [weak self] _ in
-                        settings.insertionPointShape = setting
-                        self?.updateTextViewSettings()
-                        self?.setupMenuButton()
-                    }
-                })
-            ]),
+            UIMenu(options: .displayInline, children: topElements),
             UIMenu(options: .displayInline, children: [
                 UIAction(title: "Allow Editing", state: settings.isEditable ? .on : .off) { [weak self] _ in
                     settings.isEditable.toggle()

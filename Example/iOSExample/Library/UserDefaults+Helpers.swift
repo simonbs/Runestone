@@ -9,9 +9,10 @@ extension UserDefaults {
         static let highlightSelectedLine = "RunestoneExample.highlightSelectedLine"
         static let showPageGuide = "RunestoneExample.showPageGuide"
         static let theme = "RunestoneExample.theme"
+        static let insertionPointShape = "RunestoneExample.insertionPointShape"
+        static let isInlinePredictionEnabled = "RunestoneExample.isInlinePredictionEnabled"
         static let isEditable = "RunestoneExample.isEditable"
         static let isSelectable = "RunestoneExample.isSelectable"
-        static let insertionPointShape = "RunestoneExample.insertionPointShape"
     }
 
     var text: String? {
@@ -86,7 +87,14 @@ extension UserDefaults {
             set(newValue.rawValue, forKey: Key.insertionPointShape)
         }
     }
-
+    var isInlinePredictionEnabled: Bool {
+        get {
+            bool(forKey: Key.isInlinePredictionEnabled)
+        }
+        set {
+            set(newValue, forKey: Key.isInlinePredictionEnabled)
+        }
+    }
     var isEditable: Bool {
         get {
             bool(forKey: Key.isEditable)
@@ -95,7 +103,6 @@ extension UserDefaults {
             set(newValue, forKey: Key.isEditable)
         }
     }
-
     var isSelectable: Bool {
         get {
             bool(forKey: Key.isSelectable)

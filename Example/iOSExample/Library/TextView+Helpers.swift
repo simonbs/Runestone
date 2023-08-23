@@ -52,5 +52,8 @@ extension TextView {
         lineSelectionDisplayType = settings.highlightSelectedLine ? .line : .disabled
         showPageGuide = settings.showPageGuide
         insertionPointShape = settings.insertionPointShape.insertionPointShape
+        if #available(iOS 17, *) {
+            inlinePredictionType = settings.isInlinePredictionEnabled ? .yes : .no
+        }
     }
 }
