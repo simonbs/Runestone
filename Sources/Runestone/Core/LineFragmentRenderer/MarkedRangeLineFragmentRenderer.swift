@@ -9,23 +9,26 @@ import UIKit
 final class MarkedRangeLineFragmentRenderer: LineFragmentRenderer {
     private let lineFragment: LineFragment
     private let markedRange: CurrentValueSubject<NSRange?, Never>
+    private let inlinePredictionRange: CurrentValueSubject<NSRange?, Never>
     private let backgroundColor: CurrentValueSubject<MultiPlatformColor, Never>
     private let backgroundCornerRadius: CurrentValueSubject<CGFloat, Never>
 
     init(
         lineFragment: LineFragment,
         markedRange: CurrentValueSubject<NSRange?, Never>,
+        inlinePredictionRange: CurrentValueSubject<NSRange?, Never>,
         backgroundColor: CurrentValueSubject<MultiPlatformColor, Never>,
         backgroundCornerRadius: CurrentValueSubject<CGFloat, Never>
     ) {
         self.lineFragment = lineFragment
         self.markedRange = markedRange
+        self.inlinePredictionRange = inlinePredictionRange
         self.backgroundColor = backgroundColor
         self.backgroundCornerRadius = backgroundCornerRadius
     }
 
     func render() {
-        guard let markedRange = markedRange.value else {
+        guard let markedRange = markedRange.value, inlinePredictionRange.value == nil else {
             return
         }
         guard let context = UIGraphicsGetCurrentContext() else {

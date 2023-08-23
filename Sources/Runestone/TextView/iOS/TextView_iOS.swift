@@ -427,6 +427,8 @@ open class TextView: UIScrollView {
     private let highlightedRangeFragmentStore: HighlightedRangeFragmentStore
     let highlightedRangeNavigator: HighlightedRangeNavigator
 
+    private let inlinePredictionRangeApplicator: InlinePredictionRangeApplicator
+
     private let textSelectionViewProvider: UITextSelectionViewProvider
     private let standardCaretColorUpdater: StandardCaretColorUpdater
 
@@ -502,6 +504,8 @@ open class TextView: UIScrollView {
 
         highlightedRangeFragmentStore = compositionRoot.highlightedRangeFragmentStore
         highlightedRangeNavigator = compositionRoot.highlightedRangeNavigator
+
+        inlinePredictionRangeApplicator = compositionRoot.inlinePredictionRangeApplicator
 
         textSelectionViewProvider = compositionRoot.textSelectionViewProvider
         standardCaretColorUpdater = compositionRoot.standardCaretColorUpdater

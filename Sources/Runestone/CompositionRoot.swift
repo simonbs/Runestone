@@ -14,6 +14,7 @@ final class CompositionRoot {
     private(set) lazy var editorState = EditorState(textView: textView, textViewDelegate: textViewDelegate)
     let selectedRange = CurrentValueSubject<NSRange, Never>(NSRange(location: 0, length: 0))
     let markedRange = CurrentValueSubject<NSRange?, Never>(nil)
+    private let inlinePredictionRange = CurrentValueSubject<NSRange?, Never>(nil)
     let textContainer = TextContainer()
     private var stringTokenizer: StringTokenizer {
         StringTokenizer(
@@ -93,6 +94,7 @@ final class CompositionRoot {
             showInvisibleCharacters: invisibleCharacterSettings.showInvisibleCharacters,
             invisibleCharacterRenderer: invisibleCharacterRenderer,
             markedRange: markedRange,
+            inlinePredictionRange: inlinePredictionRange,
             markedTextBackgroundColor: themeSettings.markedTextBackgroundColor,
             markedTextBackgroundCornerRadius: themeSettings.markedTextBackgroundCornerRadius
         )
@@ -565,10 +567,11 @@ final class CompositionRoot {
     private var internalLanguageModeFactory: InternalLanguageModeFactory {
         InternalLanguageModeFactory(stringView: stringView, lineManager: lineManager)
     }
-    private var inlinePredictionTextRangeApplicator: InlinePredictionTextRangeApplicator {
-        InlinePredictionTextRangeApplicator(
+    var inlinePredictionRangeApplicator: InlinePredictionRangeApplicator {
+        InlinePredictionRangeApplicator(
             lineManager: lineManager,
-            lineControllerStorage: lineControllerStorage
+            lineControllerStorage: lineControllerStorage,
+            inlinePredictionRange: inlinePredictionRange
         )
     }
 
@@ -604,6 +607,7 @@ final class CompositionRoot {
         stringView: stringView,
         selectedRange: selectedRange,
         markedRange: markedRange,
+        inlinePredictionRange: inlinePredictionRange,
         insertionPointFrameFactory: insertionPointFrameFactory,
         insertionPointShape: insertionPointShape,
         floatingInsertionPointPosition: floatingInsertionPointPosition,
@@ -618,8 +622,7 @@ final class CompositionRoot {
         firstRectFactory: firstRectFactory,
         locationRaycaster: locationRaycaster,
         characterNavigationLocationFactory: characterNavigationLocationFactory,
-        lineNavigationLocationFactory: lineNavigationLocationFactory,
-        inlinePredictionTextRangeApplicator: inlinePredictionTextRangeApplicator
+        lineNavigationLocationFactory: lineNavigationLocationFactory
     )
     var textRangeAdjustmentGestureTracker: UITextRangeAdjustmentGestureTracker {
         UITextRangeAdjustmentGestureTracker(selectedRange: selectedRange, viewportScroller: viewportScroller)

@@ -21,6 +21,7 @@ final class UITextInputHelper {
     private let stringView: CurrentValueSubject<StringView, Never>
     private let selectedRange: CurrentValueSubject<NSRange, Never>
     private let markedRange: CurrentValueSubject<NSRange?, Never>
+    private let inlinePredictionRange: CurrentValueSubject<NSRange?, Never>
     private let insertionPointFrameFactory: InsertionPointFrameFactory
     private let insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>
     private let floatingInsertionPointPosition: CurrentValueSubject<CGPoint?, Never>
@@ -34,7 +35,6 @@ final class UITextInputHelper {
     private let locationRaycaster: LocationRaycaster
     private let characterNavigationLocationFactory: CharacterNavigationLocationFactory
     private let lineNavigationLocationFactory: LineNavigationLocationFactory
-    private let inlinePredictionTextRangeApplicator: InlinePredictionTextRangeApplicator
     private var didCallPositionFromPositionWithOffset = false
     private weak var floatingInsertionPointView: UIView?
     private var textView: TextView? {
@@ -49,6 +49,7 @@ final class UITextInputHelper {
         stringView: CurrentValueSubject<StringView, Never>,
         selectedRange: CurrentValueSubject<NSRange, Never>,
         markedRange: CurrentValueSubject<NSRange?, Never>,
+        inlinePredictionRange: CurrentValueSubject<NSRange?, Never>,
         insertionPointFrameFactory: InsertionPointFrameFactory,
         insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>,
         floatingInsertionPointPosition: CurrentValueSubject<CGPoint?, Never>,
@@ -61,8 +62,7 @@ final class UITextInputHelper {
         firstRectFactory: FirstRectFactory,
         locationRaycaster: LocationRaycaster,
         characterNavigationLocationFactory: CharacterNavigationLocationFactory,
-        lineNavigationLocationFactory: LineNavigationLocationFactory,
-        inlinePredictionTextRangeApplicator: InlinePredictionTextRangeApplicator
+        lineNavigationLocationFactory: LineNavigationLocationFactory
     ) {
         self._textView = textView
         self.inputDelegate = inputDelegate
@@ -71,6 +71,7 @@ final class UITextInputHelper {
         self.stringView = stringView
         self.selectedRange = selectedRange
         self.markedRange = markedRange
+        self.inlinePredictionRange = inlinePredictionRange
         self.insertionPointFrameFactory = insertionPointFrameFactory
         self.insertionPointShape = insertionPointShape
         self.insertionPointViewFactory = insertionPointViewFactory
@@ -84,7 +85,6 @@ final class UITextInputHelper {
         self.locationRaycaster = locationRaycaster
         self.characterNavigationLocationFactory = characterNavigationLocationFactory
         self.lineNavigationLocationFactory = lineNavigationLocationFactory
-        self.inlinePredictionTextRangeApplicator = inlinePredictionTextRangeApplicator
     }
 
     func resetHasDeletedTextWithPendingLayoutSubviews() {
@@ -265,10 +265,11 @@ extension UITextInputHelper {
             nil
         }
         textReplacer.replaceText(in: range, with: markedTextString)
-        let markedTextRange = NSRange(location: range.location, length: markedTextString.utf16.count)
-        if #available(iOS 17, *), let markedText, markedText.hasForegroundColorAttribute {
+        inlinePredictionRange.value = if #available(iOS 17, *), markedText?.hasForegroundColorAttribute ?? false {
             // If the text has a foreground color attribute then we assume it's an inline prediction.
-            inlinePredictionTextRangeApplicator.inlinePredictionRange = markedTextRange
+            markedRange.value
+        } else {
+            nil
         }
         // The selected range passed to setMarkedText(_:selectedRange:) is local to the marked range.
         let preferredSelectedRange = NSRange(location: range.location + selectedRange.location, length: selectedRange.length)
@@ -280,7 +281,7 @@ extension UITextInputHelper {
     }
 
     func unmarkText() {
-        inlinePredictionTextRangeApplicator.inlinePredictionRange = nil
+        inlinePredictionRange.value = nil
         inputDelegate.selectionWillChange()
         markedRange.value = nil
         inputDelegate.selectionDidChange()
