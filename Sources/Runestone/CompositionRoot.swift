@@ -584,7 +584,9 @@ final class CompositionRoot {
         isEditable: editorState.isEditable,
         isSelectable: editorState.isSelectable,
         beginEditingGestureRecognizer: beginEditingGestureRecognizer,
-        textSelectionViewManager: textSelectionViewManager
+        standardCaretHider: standardCaretHider,
+        standardFloatingCaretHider: standardFloatingCaretHider,
+        customFloatingCaretLayouter: customFloatingCaretLayouter
     )
     var memoryWarningObserver: MemoryWarningObserver {
         MemoryWarningObserver(handlers: [
@@ -599,7 +601,6 @@ final class CompositionRoot {
         inputDelegate: textInputDelegate,
         textViewDelegate: textViewDelegate,
         textInteractionManager: textInteractionManager,
-        textSelectionViewManager: textSelectionViewManager,
         stringView: stringView,
         selectedRange: selectedRange,
         markedRange: markedRange,
@@ -623,14 +624,44 @@ final class CompositionRoot {
     var textRangeAdjustmentGestureTracker: UITextRangeAdjustmentGestureTracker {
         UITextRangeAdjustmentGestureTracker(selectedRange: selectedRange, viewportScroller: viewportScroller)
     }
-    private(set) lazy var textSelectionViewManager = UITextSelectionViewManager(
-        textView: textView,
-        insertionPointFrame: insertionPointFramePublisherFactory.makeFramePublisher(),
-        floatingInsertionPointPosition: floatingInsertionPointPosition,
-        insertionPointViewFactory: InsertionPointViewFactory(
-            insertionPointRenderer: floatingInsertionPointRenderer
+    var textSelectionViewProvider: UITextSelectionViewProvider {
+        UITextSelectionViewProvider(textView: textView)
+    }
+    private var caretParentViewProvider: StandardCaretParentViewProvider {
+        StandardCaretParentViewProvider(textView: textView, textSelectionViewProvider: textSelectionViewProvider)
+    }
+    private var standardCaretViewProvider: StandardCaretViewProvider {
+        StandardCaretViewProvider(textView: textView, textSelectionViewProvider: textSelectionViewProvider)
+    }
+    private var standardFloatingCaretViewProvider: StandardFloatingCaretViewProvider {
+        StandardFloatingCaretViewProvider(textView: textView, textSelectionViewProvider: textSelectionViewProvider)
+    }
+    var standardCaretColorUpdater: StandardCaretColorUpdater {
+        StandardCaretColorUpdater(textSelectionViewProvider: textSelectionViewProvider)
+    }
+    var standardCaretHider: StandardCaretHider {
+        StandardCaretHider(
+            caretParentViewProvider: caretParentViewProvider,
+            caretViewProvider: standardCaretViewProvider
         )
-    )
+    }
+    var standardFloatingCaretHider: StandardFloatingCaretHider {
+        StandardFloatingCaretHider(
+            caretParentViewProvider: caretParentViewProvider,
+            floatingCaretViewProvider: standardFloatingCaretViewProvider
+        )
+    }
+    var customFloatingCaretLayouter: CustomFloatingCaretLayouter {
+        CustomFloatingCaretLayouter(
+            caretParentViewProvider: caretParentViewProvider,
+            floatingCaretViewProvider: standardFloatingCaretViewProvider,
+            insertionPointFrame: insertionPointFramePublisherFactory.makeFramePublisher(),
+            floatingInsertionPointPosition: floatingInsertionPointPosition,
+            insertionPointViewFactory: InsertionPointViewFactory(
+                insertionPointRenderer: floatingInsertionPointRenderer
+            )
+        )
+    }
     var textSearchingHelper: UITextSearchingHelper {
         UITextSearchingHelper(textView: textView)
     }

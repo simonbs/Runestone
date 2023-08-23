@@ -260,7 +260,7 @@ open class TextView: UIScrollView {
     @objc public var insertionPointColor: UIColor {
         didSet {
             if insertionPointColor != oldValue {
-                textSelectionViewManager.updateInsertionPointColor()
+                standardCaretColorUpdater.updateStandardCaretColor()
             }
         }
     }
@@ -427,7 +427,8 @@ open class TextView: UIScrollView {
     private let highlightedRangeFragmentStore: HighlightedRangeFragmentStore
     let highlightedRangeNavigator: HighlightedRangeNavigator
 
-    private let textSelectionViewManager: UITextSelectionViewManager
+    private let textSelectionViewProvider: UITextSelectionViewProvider
+    private let standardCaretColorUpdater: StandardCaretColorUpdater
 
     private let pressesHandler: PressesHandler
 
@@ -502,7 +503,8 @@ open class TextView: UIScrollView {
         highlightedRangeFragmentStore = compositionRoot.highlightedRangeFragmentStore
         highlightedRangeNavigator = compositionRoot.highlightedRangeNavigator
 
-        textSelectionViewManager = compositionRoot.textSelectionViewManager
+        textSelectionViewProvider = compositionRoot.textSelectionViewProvider
+        standardCaretColorUpdater = compositionRoot.standardCaretColorUpdater
 
         pressesHandler = compositionRoot.pressesHandler
         super.init(frame: frame)
@@ -535,6 +537,8 @@ open class TextView: UIScrollView {
         contentSizeService.updateContentSizeIfNeeded()
         textContainer.viewport.value = CGRect(origin: contentOffset, size: frame.size)
         lineFragmentLayouter.layoutIfNeeded()
+        // Set the frame of UITextSelectionView to *anything* to workaround an issue where the selection highlight is not shown the first time the user selects text.
+        textSelectionViewProvider.textSelectionView?.frame = .zero
     }
 
     /// Called when the safe area of the view changes.

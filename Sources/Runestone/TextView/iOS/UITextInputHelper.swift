@@ -18,7 +18,6 @@ final class UITextInputHelper {
     private let inputDelegate: TextInputDelegate
     private let textViewDelegate: ErasedTextViewDelegate
     private let textInteractionManager: UITextInteractionManager
-    private let textSelectionViewManager: UITextSelectionViewManager
     private let stringView: CurrentValueSubject<StringView, Never>
     private let selectedRange: CurrentValueSubject<NSRange, Never>
     private let markedRange: CurrentValueSubject<NSRange?, Never>
@@ -47,7 +46,6 @@ final class UITextInputHelper {
         inputDelegate: TextInputDelegate,
         textViewDelegate: ErasedTextViewDelegate,
         textInteractionManager: UITextInteractionManager,
-        textSelectionViewManager: UITextSelectionViewManager,
         stringView: CurrentValueSubject<StringView, Never>,
         selectedRange: CurrentValueSubject<NSRange, Never>,
         markedRange: CurrentValueSubject<NSRange?, Never>,
@@ -70,7 +68,6 @@ final class UITextInputHelper {
         self.inputDelegate = inputDelegate
         self.textViewDelegate = textViewDelegate
         self.textInteractionManager = textInteractionManager
-        self.textSelectionViewManager = textSelectionViewManager
         self.stringView = stringView
         self.selectedRange = selectedRange
         self.markedRange = markedRange

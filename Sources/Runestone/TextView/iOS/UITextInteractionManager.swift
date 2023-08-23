@@ -9,7 +9,9 @@ final class UITextInteractionManager: NSObject {
     private let editableTextInteraction = UITextInteraction(for: .editable)
     private let nonEditableTextInteraction = UITextInteraction(for: .nonEditable)
     private let beginEditingGestureRecognizer: UIGestureRecognizer
-    private let textSelectionViewManager: UITextSelectionViewManager
+    private let standardCaretHider: StandardCaretHider
+    private let standardFloatingCaretHider: StandardFloatingCaretHider
+    private let customFloatingCaretLayouter: CustomFloatingCaretLayouter
     private var isPerformingNonEditableTextInteraction = false
     private var cancellables: Set<AnyCancellable> = []
     private var textView: TextView? {
@@ -21,13 +23,17 @@ final class UITextInteractionManager: NSObject {
         isEditable: CurrentValueSubject<Bool, Never>,
         isSelectable: CurrentValueSubject<Bool, Never>,
         beginEditingGestureRecognizer: UIGestureRecognizer,
-        textSelectionViewManager: UITextSelectionViewManager
+        standardCaretHider: StandardCaretHider,
+        standardFloatingCaretHider: StandardFloatingCaretHider,
+        customFloatingCaretLayouter: CustomFloatingCaretLayouter
     ) {
         self._textView = textView
         self.isEditable = isEditable
         self.isSelectable = isSelectable
         self.beginEditingGestureRecognizer = beginEditingGestureRecognizer
-        self.textSelectionViewManager = textSelectionViewManager
+        self.standardCaretHider = standardCaretHider
+        self.standardFloatingCaretHider = standardFloatingCaretHider
+        self.customFloatingCaretLayouter = customFloatingCaretLayouter
         super.init()
         editableTextInteraction.delegate = self
         nonEditableTextInteraction.delegate = self
@@ -38,30 +44,36 @@ final class UITextInteractionManager: NSObject {
     }
 
     func installEditableInteraction() {
-        if editableTextInteraction.view == nil {
-//            isInputAccessoryViewEnabled = true
-            textView?.removeInteraction(nonEditableTextInteraction)
-            textView?.addInteraction(editableTextInteraction)
-            textSelectionViewManager.setupCaretViewObserver()
+        guard editableTextInteraction.view == nil else {
+            return
         }
+//      isInputAccessoryViewEnabled = true
+        textView?.removeInteraction(nonEditableTextInteraction)
+        textView?.addInteraction(editableTextInteraction)
+        standardCaretHider.setupCaretViewObserver()
+        standardFloatingCaretHider.setupFloatingCaretViewObserver()
+        customFloatingCaretLayouter.setupFloatingCaretViewObserver()
     }
 
     func installNonEditableInteraction() {
-        if nonEditableTextInteraction.view == nil {
-//            isInputAccessoryViewEnabled = false
-            textView?.removeInteraction(editableTextInteraction)
-            textView?.addInteraction(nonEditableTextInteraction)
-            textSelectionViewManager.setupCaretViewObserver()
-            for gestureRecognizer in nonEditableTextInteraction.gesturesForFailureRequirements {
-                gestureRecognizer.require(toFail: beginEditingGestureRecognizer)
-            }
+        guard nonEditableTextInteraction.view == nil else {
+            return
+        }
+//      isInputAccessoryViewEnabled = false
+        textView?.removeInteraction(editableTextInteraction)
+        textView?.addInteraction(nonEditableTextInteraction)
+        standardCaretHider.setupCaretViewObserver()
+        standardFloatingCaretHider.setupFloatingCaretViewObserver()
+        customFloatingCaretLayouter.setupFloatingCaretViewObserver()
+        for gestureRecognizer in nonEditableTextInteraction.gesturesForFailureRequirements {
+            gestureRecognizer.require(toFail: beginEditingGestureRecognizer)
         }
     }
 
     func removeAndAddEditableTextInteraction() {
         // There seems to be a bug in UITextInput (or UITextInteraction?) where updating the markedTextRange of a UITextInput will cause the caret to disappear. Removing the editable text interaction and adding it back will work around this issue.
         DispatchQueue.main.async {
-            if !self.textSelectionViewManager.containsCaret && self.editableTextInteraction.view != nil {
+            if self.editableTextInteraction.view != nil {
                 self.textView?.removeInteraction(self.editableTextInteraction)
                 self.textView?.addInteraction(self.editableTextInteraction)
             }
