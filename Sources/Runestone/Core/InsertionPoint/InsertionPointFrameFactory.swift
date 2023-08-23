@@ -67,10 +67,13 @@ extension InsertionPointFrameFactory {
         if let bounds = characterBoundsProvider.boundsOfComposedCharacterSequence(atLocation: location, moveToToNextLineFragmentIfNeeded: true) {
             let width = displayableCharacterWidth(forCharacterAtLocation: location, widthActualWidth: bounds.width)
             return CGRect(x: bounds.minX, y: bounds.minY, width: width, height: bounds.height)
-        } else {
+        } else if let line = lineManager.value.line(containingCharacterAt: location) {
             let size = CGSize(width: estimatedCharacterWidth.value, height: estimatedLineHeight.rawValue.value)
-            let offsetOrigin = CGPoint(x: contentArea.origin.x, y: contentArea.origin.y + (estimatedLineHeight.scaledValue.value - size.height) / 2)
-            return CGRect(origin: offsetOrigin, size: size)
+            let offsetOriginX = contentArea.origin.x
+            let offsetOriginY = contentArea.origin.y + line.yPosition + (estimatedLineHeight.scaledValue.value - size.height) / 2
+            return CGRect(x: offsetOriginX, y: offsetOriginY, width: size.width, height: size.height)
+        } else {
+            fatalError("Unexpected case hit in \(#function)")
         }
     }
 
