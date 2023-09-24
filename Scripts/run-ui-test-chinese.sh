@@ -6,7 +6,7 @@ PROJECT_PATH="${SCRIPT_PATH}/../UITests/UITests.xcodeproj"
 # Disable "Use the Same Keyboard Language as macOS" in Simulator.app.
 defaults write com.apple.iphonesimulator EnableKeyboardSync -bool NO
 # Create the simulator we will use for the tests.
-xcrun simctl create "${SIMULATOR_NAME}" "iPhone 8" 2> /dev/null
+xcrun simctl create "${SIMULATOR_NAME}" "iPhone 13" "iOS15.5" 2> /dev/null
 # Find the UDID of the newly created simulator.
 SIMULATOR_UDID=`xcrun simctl list --json devices | jq -r ".devices | flatten | .[] | select(.name == \"${SIMULATOR_NAME}\").udid"`
 # Edit the simulator's .GlobalPreferences.plist to use the Chinese language.
