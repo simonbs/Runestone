@@ -2,7 +2,6 @@ import UIKit
 
 final class UITextSearchingHelper: NSObject {
     weak var textView: TextView?
-#if compiler(>=5.7)
     var isFindInteractionEnabled = false {
         didSet {
             if isFindInteractionEnabled != oldValue {
@@ -17,7 +16,6 @@ final class UITextSearchingHelper: NSObject {
     @available(iOS 16, *)
     var findInteraction: UIFindInteraction? {
         get {
-            // swiftlint:disable implicit_return
             guard let _findInteraction = _findInteraction else {
                 return nil
             }
@@ -25,14 +23,12 @@ final class UITextSearchingHelper: NSObject {
                 fatalError("Expected _findInteraction to be of type \(UIFindInteraction.self)")
             }
             return findInteraction
-            // swiftlint:enable implicit_return
         }
         set {
             _findInteraction = newValue
         }
     }
     private var _findInteraction: Any?
-#endif
 
     private let queue = OperationQueue()
     private var _textView: TextView {
@@ -54,7 +50,6 @@ final class UITextSearchingHelper: NSObject {
     }
 }
 
-#if compiler(>=5.7)
 @available(iOS 16, *)
 extension UITextSearchingHelper: UITextSearching {
     var supportsTextReplacement: Bool {
@@ -201,4 +196,3 @@ private extension SearchQuery.MatchMethod {
         }
     }
 }
-#endif

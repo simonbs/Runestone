@@ -35,11 +35,9 @@ final class MainViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-#if compiler(>=5.7)
         if #available(iOS 16, *) {
             contentView.textView.isFindInteractionEnabled = true
         }
-#endif
         contentView.textView.inputAccessoryView = toolsView
         setupMenuButton()
         setupTextView()
@@ -48,7 +46,6 @@ final class MainViewController: UIViewController {
 }
 
 private extension MainViewController {
-#if compiler(>=5.7)
     @available(iOS 16, *)
     @objc private func presentFind() {
         contentView.textView.findInteraction?.presentFindNavigator(showingReplace: false)
@@ -58,7 +55,6 @@ private extension MainViewController {
     @objc private func presentFindAndReplace() {
         contentView.textView.findInteraction?.presentFindNavigator(showingReplace: true)
     }
-#endif
 
     private func setupTextView() {
         var text = ""
@@ -89,7 +85,6 @@ private extension MainViewController {
 
     private func makeFeaturesMenuElements() -> [UIMenuElement] {
         var menuElements: [UIMenuElement] = []
-#if compiler(>=5.7)
         if #available(iOS 16, *) {
             menuElements += [
                 UIMenu(options: .displayInline, children: [
@@ -102,7 +97,6 @@ private extension MainViewController {
                 ])
             ]
         }
-#endif
         menuElements += [
             UIAction(title: "Go to Line") { [weak self] _ in
                 self?.presentGoToLineAlert()
