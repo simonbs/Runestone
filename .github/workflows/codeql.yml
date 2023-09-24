@@ -33,7 +33,7 @@ jobs:
           xcodebuild\
             -scheme Runestone\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=iPhone 15 Pro,OS=17.0"
+            -destination "platform=iOS Simulator,name=iPhone 14 Pro,OS=17.0"
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2
         with:

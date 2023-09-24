@@ -13,7 +13,7 @@ env:
   DEVELOPER_DIR: /Applications/Xcode_15.0.app/Contents/Developer
 jobs:
   build:
-    name: Build example project for iPhone 15
+    name: Build example project for iPhone 14
     runs-on: macos-13
     steps:
       - name: Checkout
@@ -26,4 +26,4 @@ jobs:
             -project Example/Example.xcodeproj\
             -scheme Example\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=iPhone 15 Pro,OS=17.0"
+            -destination "platform=iOS Simulator,name=iPhone 14 Pro,OS=17.0"
