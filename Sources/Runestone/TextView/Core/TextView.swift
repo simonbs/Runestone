@@ -1394,6 +1394,10 @@ extension TextView: TextInputViewDelegate {
             if !view.viewHierarchyContainsCaret && self.editableTextInteraction.view != nil {
                 view.removeInteraction(self.editableTextInteraction)
                 view.addInteraction(self.editableTextInteraction)
+                if #available(iOS 17, *) {
+                    self.textInputView.sbs_textSelectionDisplayInteraction?.isActivated = true
+                    self.textInputView.sbs_textSelectionDisplayInteraction?.sbs_enableCursorBlinks()
+                }
             }
         }
     }
