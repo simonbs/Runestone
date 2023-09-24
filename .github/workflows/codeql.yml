@@ -8,7 +8,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 env:
-  DEVELOPER_DIR: /Applications/Xcode_14.3.1.app/Contents/Developer
+  DEVELOPER_DIR: /Applications/Xcode_15.0.app
 jobs:
   analyze:
     name: Analyze
@@ -29,7 +29,11 @@ jobs:
         with:
           languages: ${{ matrix.language }}
       - name: Build
-        run: xcodebuild -scheme Runestone -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 14'
+        run: |
+          xcodebuild\
+            -scheme Runestone\
+            -sdk iphonesimulator\
+            -destination 'platform=iOS Simulator,name=iPhone 15'
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2
         with:

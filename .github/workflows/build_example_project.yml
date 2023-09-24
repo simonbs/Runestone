@@ -9,10 +9,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 env:
-  DEVELOPER_DIR: /Applications/Xcode_14.3.1.app/Contents/Developer
+  DEVELOPER_DIR: /Applications/Xcode_15.0.app
 jobs:
   build:
-    name: Build example project for iPhone 14
+    name: Build example project for iPhone 15
     runs-on: macos-13
     steps:
       - name: Checkout
@@ -21,4 +21,8 @@ jobs:
           submodules: recursive
       - name: Build
         run: |
-          xcodebuild build -project Example/Example.xcodeproj -scheme Example -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 14'
+          xcodebuild build\
+            -project Example/Example.xcodeproj\
+            -scheme Example\
+            -sdk iphonesimulator\
+            -destination 'platform=iOS Simulator,name=iPhone 15'
