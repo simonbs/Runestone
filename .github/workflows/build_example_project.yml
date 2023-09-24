@@ -4,12 +4,13 @@ on:
   pull_request:
     branches: [ main ]
     paths:
+      - '.github/workflows/build_example_project.yml'
       - 'Example/**'
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 env:
-  DEVELOPER_DIR: /Applications/Xcode_14.3.1.app/Contents/Developer
+  DEVELOPER_DIR: /Applications/Xcode_15.0.app/Contents/Developer
 jobs:
   build:
     name: Build example project for iPhone 14
@@ -21,4 +22,8 @@ jobs:
           submodules: recursive
       - name: Build
         run: |
-          xcodebuild build -project Example/Example.xcodeproj -scheme Example -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 14'
+          xcodebuild build\
+            -project Example/Example.xcodeproj\
+            -scheme Example\
+            -sdk iphonesimulator\
+            -destination "platform=iOS Simulator,name=iPhone 14 Pro,OS=17.0"
