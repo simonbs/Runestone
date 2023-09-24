@@ -564,7 +564,6 @@ open class TextView: UIScrollView {
     }
     /// When enabled the text view will present a menu with actions actions such as Copy and Replace after navigating to a highlighted range.
     public var showMenuAfterNavigatingToHighlightedRange = true
-#if compiler(>=5.7)
     /// A boolean value that enables a text view’s built-in find interaction.
     ///
     /// After enabling the find interaction, use [`presentFindNavigator(showingReplace:)`](https://developer.apple.com/documentation/uikit/uifindinteraction/3975832-presentfindnavigator) on <doc:findInteraction> to present the find navigator.
@@ -586,18 +585,15 @@ open class TextView: UIScrollView {
     public var findInteraction: UIFindInteraction? {
         textSearchingHelper.findInteraction
     }
-#endif
 
     private let textInputView: TextInputView
     private let editableTextInteraction = UITextInteraction(for: .editable)
     private let nonEditableTextInteraction = UITextInteraction(for: .nonEditable)
-#if compiler(>=5.7)
     @available(iOS 16.0, *)
     private var editMenuInteraction: UIEditMenuInteraction? {
         _editMenuInteraction as? UIEditMenuInteraction
     }
     private var _editMenuInteraction: Any?
-#endif
     private let tapGestureRecognizer = QuickTapGestureRecognizer()
     private var _inputAccessoryView: UIView?
     private let _inputAssistantItem = UITextInputAssistantItem()
