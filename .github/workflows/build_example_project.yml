@@ -26,4 +26,4 @@ jobs:
             -project Example/Example.xcodeproj\
             -scheme Example\
             -sdk iphonesimulator\
-            -destination 'platform=iOS Simulator,name=iPhone 15'
+            -destination "platform=iOS Simulator,name=iPhone 15 Pro,OS=17.0"
