@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ "swift" ]
+        language: [ "swift", "c-cpp" ]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
