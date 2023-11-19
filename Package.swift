@@ -19,6 +19,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "Runestone", dependencies: [
+            "RunestoneMacros",
             .product(name: "TreeSitter", package: "tree-sitter")
         ], resources: [
             .process("Core/Theme/Theme.xcassets")
@@ -27,6 +28,14 @@ let package = Package(
 //            "Runestone",
 //            "TestTreeSitterLanguages"
 //        ])
+        .macro(name: "RunestoneMacros", dependencies: [
+            .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+            .product(name: "SwiftCompilerPlugin", package: "swift-syntax")
+        ]),
+        .testTarget(name: "RunestoneMacrosTests", dependencies: [
+            "RunestoneMacros",
+            .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
+        ]),
 //        .target(name: "TestTreeSitterLanguages", path: "Tests/TestTreeSitterLanguages", cSettings: [
 //            .unsafeFlags(["-w"])
 //        ]),
