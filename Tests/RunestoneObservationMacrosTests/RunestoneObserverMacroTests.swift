@@ -22,14 +22,14 @@ final class RunestoneObserverMacroTests: XCTestCase {
             expandedSource: """
             final class ViewModel {
 
-                private let _observerRegistry = RunestoneObservationMacro.ObserverRegistry()
+                private let _observerRegistry = RunestoneObservation.ObserverRegistry()
 
-                func observe<T: RunestoneObservationMacro.Observable, U>(
+                func observe<T: RunestoneObservation.Observable, U>(
                     _ keyPath: KeyPath<T, U>,
                     of observable: T,
-                    receiving changeType: RunestoneObservationMacro.PropertyChangeType = .didSet,
-                    options: RunestoneObservationMacro.ObservationOptions = [],
-                    handler: @escaping RunestoneObservationMacro.ObservationChangeHandler<U>
+                    receiving changeType: RunestoneObservation.PropertyChangeType = .didSet,
+                    options: RunestoneObservation.ObservationOptions = [],
+                    handler: @escaping RunestoneObservation.ObservationChangeHandler<U>
                 ) {
                     _observerRegistry.registerObserver(
                         observing: keyPath,

@@ -79,7 +79,7 @@ extension RunestoneObservableMacro: ExtensionMacro {
         return [
             try ExtensionDeclSyntax(
                """
-               extension \(raw: className): RunestoneObservationMacro.Observable {}
+               extension \(raw: className): RunestoneObservation.Observable {}
                """
             )
         ]
@@ -90,7 +90,7 @@ private extension RunestoneObservableMacro {
     private static func makeObservableRegistryVariable(forTypeNamed typeName: String) throws -> DeclSyntax {
         let syntax = try VariableDeclSyntax(
            """
-           private let _observableRegistry = RunestoneObservationMacro.ObservableRegistry<\(raw: typeName)>()
+           private let _observableRegistry = RunestoneObservation.ObservableRegistry<\(raw: typeName)>()
            """
         )
         return DeclSyntax(syntax)
@@ -100,12 +100,12 @@ private extension RunestoneObservableMacro {
         let syntax = try FunctionDeclSyntax(
            """
            func registerObserver<T>(
-               _ observer: some RunestoneObservationMacro.Observer,
+               _ observer: some RunestoneObservation.Observer,
                observing keyPath: KeyPath<\(raw: typeName), T>,
-               receiving changeType: RunestoneObservationMacro.PropertyChangeType,
-               options: RunestoneObservationMacro.ObservationOptions = [],
-               handler: @escaping RunestoneObservationMacro.ObservationChangeHandler<T>
-           ) -> RunestoneObservationMacro.ObservationId {
+               receiving changeType: RunestoneObservation.PropertyChangeType,
+               options: RunestoneObservation.ObservationOptions = [],
+               handler: @escaping RunestoneObservation.ObservationChangeHandler<T>
+           ) -> RunestoneObservation.ObservationId {
                return _observableRegistry.registerObserver(
                    observer,
                    observing: keyPath,
@@ -123,7 +123,7 @@ private extension RunestoneObservableMacro {
     private static func makeDeregisterObserverFunction() throws -> DeclSyntax {
         let syntax = try FunctionDeclSyntax(
            """
-           func cancelObservation(withId observationId: RunestoneObservationMacro.ObservationId) {
+           func cancelObservation(withId observationId: RunestoneObservation.ObservationId) {
                _observableRegistry.cancelObservation(withId: observationId)
            }
            """
