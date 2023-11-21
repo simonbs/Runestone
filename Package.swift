@@ -20,6 +20,7 @@ let package = Package(
     targets: [
         .target(name: "Runestone", dependencies: [
             "RunestoneMacros",
+            "RunestoneObservation",
             .product(name: "TreeSitter", package: "tree-sitter")
         ], resources: [
             .process("Core/Theme/Theme.xcassets")
