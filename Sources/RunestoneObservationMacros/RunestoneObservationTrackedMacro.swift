@@ -18,29 +18,25 @@ public struct RunestoneObservationTrackedMacro: AccessorMacro {
         let willSetSyntax: AccessorDeclSyntax =
            """
            willSet {
-               if newValue != \(raw: propertyName) {
-                   _observableRegistry.publishChange(
-                       ofType: .willSet,
-                       changing: \\.\(raw: propertyName),
-                       on: self,
-                       from: \(raw: propertyName),
-                       to: newValue
-                   )
-               }
+                _observableRegistry.publishChange(
+                    ofType: .willSet,
+                    changing: \\.\(raw: propertyName),
+                    on: self,
+                    from: \(raw: propertyName),
+                    to: newValue
+                )
            }
            """
         let didSetSyntax: AccessorDeclSyntax =
            """
            didSet {
-               if \(raw: propertyName) != oldValue {
-                   _observableRegistry.publishChange(
-                       ofType: .didSet,
-                       changing: \\.\(raw: propertyName),
-                       on: self,
-                       from: oldValue,
-                       to: \(raw: propertyName)
-                   )
-               }
+                _observableRegistry.publishChange(
+                    ofType: .didSet,
+                    changing: \\.\(raw: propertyName),
+                    on: self,
+                    from: oldValue,
+                    to: \(raw: propertyName)
+                )
            }
            """
         return [willSetSyntax, didSetSyntax]

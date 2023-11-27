@@ -20,15 +20,32 @@ public final class ObservableRegistry<ObservableType: Observable> {
         from oldValue: T,
         to newValue: T
     ) {
-        do {
-            let propertyChangeId = PropertyChangeId(for: observable, publishing: changeType, of: keyPath)
-            let observations = observationStore.observations(for: propertyChangeId)
-            for observation in observations {
-                try observation.handler.invoke(changingFrom: oldValue, to: newValue)
-            }
-        } catch {
-            fatalError(error.localizedDescription)
+        skipComparisonAndPublishChange(
+            ofType: changeType,
+            changing: keyPath,
+            on: observable,
+            from: oldValue,
+            to: newValue
+        )
+    }
+
+    public func publishChange<T: Equatable>(
+        ofType changeType: PropertyChangeType,
+        changing keyPath: KeyPath<ObservableType, T>,
+        on observable: ObservableType,
+        from oldValue: T,
+        to newValue: T
+    ) {
+        guard oldValue != newValue else {
+            return
         }
+        skipComparisonAndPublishChange(
+            ofType: changeType,
+            changing: keyPath,
+            on: observable,
+            from: oldValue,
+            to: newValue
+        )
     }
 
     public func registerObserver<T>(
@@ -59,6 +76,24 @@ public final class ObservableRegistry<ObservableType: Observable> {
 }
 
 private extension ObservableRegistry {
+    private func skipComparisonAndPublishChange<T>(
+        ofType changeType: PropertyChangeType,
+        changing keyPath: KeyPath<ObservableType, T>,
+        on observable: ObservableType,
+        from oldValue: T,
+        to newValue: T
+    ) {
+        do {
+            let propertyChangeId = PropertyChangeId(for: observable, publishing: changeType, of: keyPath)
+            let observations = observationStore.observations(for: propertyChangeId)
+            for observation in observations {
+                try observation.handler.invoke(changingFrom: oldValue, to: newValue)
+            }
+        } catch {
+            fatalError(error.localizedDescription)
+        }
+    }
+
     private func deregisterAllObservers() {
         for observation in observationStore.observations {
             observation.invokeCancelOnObserver()

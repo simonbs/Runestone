@@ -9,7 +9,7 @@ final class ObservableRegistryTests: XCTestCase {
         let sut = ObservableRegistry<MockObservable>(storingIn: observationStore)
         _ = sut.registerObserver(
             observer,
-            observing: \.value,
+            observing: \.str,
             on: observable,
             receiving: .willSet
         ) { _, _ in}
@@ -23,7 +23,7 @@ final class ObservableRegistryTests: XCTestCase {
         var didReceiveValue = false
         _ = sut.registerObserver(
             observer,
-            observing: \.value,
+            observing: \.str,
             on: observable,
             receiving: .willSet
         ) { _, _ in
@@ -39,7 +39,7 @@ final class ObservableRegistryTests: XCTestCase {
         var didReceiveValue = false
         _ = sut.registerObserver(
             observer,
-            observing: \.value,
+            observing: \.str,
             on: observable,
             receiving: .willSet,
             options: .initialValue
@@ -52,13 +52,13 @@ final class ObservableRegistryTests: XCTestCase {
     func test_it_sends_initial_value_to_handler_when_initialvalue_option_specified() {
         let observer = MockObserver()
         let observable = MockObservable()
-        observable.value = "foo"
+        observable.str = "foo"
         let sut = ObservableRegistry<MockObservable>()
         var receivedOldValue: String?
         var receivedNewValue: String?
         _ = sut.registerObserver(
             observer,
-            observing: \.value,
+            observing: \.str,
             on: observable,
             receiving: .willSet,
             options: .initialValue
@@ -77,7 +77,7 @@ final class ObservableRegistryTests: XCTestCase {
         let sut = ObservableRegistry<MockObservable>(storingIn: observationStore)
         let observationId = sut.registerObserver(
             observer,
-            observing: \.value,
+            observing: \.str,
             on: observable,
             receiving: .willSet
         ) { _, _ in }
@@ -92,7 +92,7 @@ final class ObservableRegistryTests: XCTestCase {
         var sut: ObservableRegistry<MockObservable>? = ObservableRegistry(storingIn: observationStore)
         _ = sut?.registerObserver(
             observer,
-            observing: \.value,
+            observing: \.str,
             on: observable,
             receiving: .willSet
         ) { _, _ in }
@@ -106,7 +106,7 @@ final class ObservableRegistryTests: XCTestCase {
         var sut: ObservableRegistry<MockObservable>? = ObservableRegistry()
         _ = sut?.registerObserver(
             observer,
-            observing: \.value,
+            observing: \.str,
             on: observable,
             receiving: .willSet
         ) { _, _ in }
@@ -122,7 +122,7 @@ final class ObservableRegistryTests: XCTestCase {
         var didCallDidSetHandler = false
         _ = sut.registerObserver(
             observer,
-            observing: \.value,
+            observing: \.str,
             on: observable,
             receiving: .willSet
         ) { _, _ in
@@ -130,13 +130,13 @@ final class ObservableRegistryTests: XCTestCase {
         }
         _ = sut.registerObserver(
             observer,
-            observing: \.value,
+            observing: \.str,
             on: observable,
             receiving: .didSet
         ) { _, _ in
             didCallDidSetHandler = true
         }
-        sut.publishChange(ofType: .didSet, changing: \.value, on: observable, from: "foo", to: "bar")
+        sut.publishChange(ofType: .didSet, changing: \.str, on: observable, from: "foo", to: "bar")
         XCTAssertFalse(didCallWillSetHandler)
         XCTAssertTrue(didCallDidSetHandler)
     }
@@ -149,7 +149,7 @@ final class ObservableRegistryTests: XCTestCase {
         var didCallDidSetHandler = false
         _ = sut.registerObserver(
             observer,
-            observing: \.value,
+            observing: \.str,
             on: observable,
             receiving: .willSet
         ) { _, _ in
@@ -157,13 +157,13 @@ final class ObservableRegistryTests: XCTestCase {
         }
         _ = sut.registerObserver(
             observer,
-            observing: \.value,
+            observing: \.str,
             on: observable,
             receiving: .didSet
         ) { _, _ in
             didCallDidSetHandler = true
         }
-        sut.publishChange(ofType: .willSet, changing: \.value, on: observable, from: "foo", to: "bar")
+        sut.publishChange(ofType: .willSet, changing: \.str, on: observable, from: "foo", to: "bar")
         XCTAssertTrue(didCallWillSetHandler)
         XCTAssertFalse(didCallDidSetHandler)
     }
@@ -176,15 +176,90 @@ final class ObservableRegistryTests: XCTestCase {
         var receivedNewValue: String?
         _ = sut.registerObserver(
             observer,
-            observing: \.value,
+            observing: \.str,
             on: observable,
             receiving: .didSet
         ) { oldValue, newValue in
             receivedOldValue = oldValue
             receivedNewValue = newValue
         }
-        sut.publishChange(ofType: .didSet, changing: \.value, on: observable, from: "foo", to: "bar")
+        sut.publishChange(ofType: .didSet, changing: \.str, on: observable, from: "foo", to: "bar")
         XCTAssertEqual(receivedOldValue, "foo")
         XCTAssertEqual(receivedNewValue, "bar")
+    }
+
+    func test_it_publishes_change_when_equatable_value_has_changed() {
+        let observer = MockObserver()
+        let observable = MockObservable()
+        let sut = ObservableRegistry<MockObservable>()
+        var didPublish = false
+        _ = sut.registerObserver(
+            observer,
+            observing: \.equatableObj,
+            on: observable,
+            receiving: .didSet
+        ) { oldValue, newValue in
+            didPublish = true
+        }
+        let oldValue = MyEquatableType("foo")
+        let newValue = MyEquatableType("bar")
+        sut.publishChange(
+            ofType: .didSet, 
+            changing: \.equatableObj,
+            on: observable,
+            from: oldValue,
+            to: newValue
+        )
+        XCTAssertTrue(didPublish)
+    }
+
+    func test_it_skips_publishing_change_when_equatable_value_has_not_changed() {
+        let observer = MockObserver()
+        let observable = MockObservable()
+        let sut = ObservableRegistry<MockObservable>()
+        var didPublish = false
+        _ = sut.registerObserver(
+            observer,
+            observing: \.equatableObj,
+            on: observable,
+            receiving: .didSet
+        ) { oldValue, newValue in
+            didPublish = true
+        }
+        let oldValue = MyEquatableType("foo")
+        let newValue = MyEquatableType("foo")
+        sut.publishChange(
+            ofType: .didSet,
+            changing: \.equatableObj,
+            on: observable,
+            from: oldValue,
+            to: newValue
+        )
+        XCTAssertFalse(didPublish)
+    }
+
+    func test_it_always_publishes_change_for_non_equatable_types_even_when_they_have_not_changed() {
+        let observer = MockObserver()
+        let observable = MockObservable()
+        let sut = ObservableRegistry<MockObservable>()
+        var didPublish = false
+        _ = sut.registerObserver(
+            observer,
+            observing: \.nonEquatableObj,
+            on: observable,
+            receiving: .didSet
+        ) { oldValue, newValue in
+            didPublish = true
+        }
+        let oldValue = MyNonEquatableType("foo")
+        let newValue = MyNonEquatableType("foo")
+        sut.publishChange(
+            ofType: .didSet,
+            changing: \.nonEquatableObj,
+            on: observable,
+            from: oldValue,
+            to: newValue
+        )
+        XCTAssertTrue(didPublish)
     }
 }

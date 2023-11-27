@@ -6,7 +6,7 @@ final class ObservationTests: XCTestCase {
         var didCallHandler = false
         let observable = MockObservable()
         let observer = MockObserver()
-        let propertyChangeId = PropertyChangeId(for: observable, publishing: .didSet, of: \.value)
+        let propertyChangeId = PropertyChangeId(for: observable, publishing: .didSet, of: \.str)
         let sut = Observation(
             observer: observer,
             propertyChangeId: propertyChangeId
@@ -20,7 +20,7 @@ final class ObservationTests: XCTestCase {
     func test_it_invokes_cancel_on_observer() {
         let observable = MockObservable()
         let observer = MockObserver()
-        let propertyChangeId = PropertyChangeId(for: observable, publishing: .didSet, of: \.value)
+        let propertyChangeId = PropertyChangeId(for: observable, publishing: .didSet, of: \.str)
         let sut = Observation(
             observer: observer,
             propertyChangeId: propertyChangeId

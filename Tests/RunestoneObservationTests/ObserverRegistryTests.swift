@@ -6,7 +6,7 @@ final class ObserverRegistryTests: XCTestCase {
         let observableStore = ObservableStoreSpy()
         let sut = ObserverRegistry(observableStore: observableStore)
         let observable = MockObservable()
-        sut.registerObserver(observing: \.value, of: observable, receiving: .willSet) { _, _ in }
+        sut.registerObserver(observing: \.str, of: observable, receiving: .willSet) { _, _ in }
         XCTAssertNotNil(observableStore.addedObservationId)
     }
 
@@ -14,7 +14,7 @@ final class ObserverRegistryTests: XCTestCase {
         let observableStore = ObservableStoreSpy()
         let sut = ObserverRegistry(observableStore: observableStore)
         let observable = MockObservable()
-        sut.registerObserver(observing: \.value, of: observable, receiving: .willSet) { _, _ in }
+        sut.registerObserver(observing: \.str, of: observable, receiving: .willSet) { _, _ in }
         XCTAssertNotNil(observableStore.addedObservationId)
         sut.cancelObservation(withId: observableStore.addedObservationId!)
         XCTAssertNotNil(observableStore.removedObservationId)
@@ -26,7 +26,7 @@ final class ObserverRegistryTests: XCTestCase {
         let observableStore = ObservableStoreSpy()
         let sut = ObserverRegistry(observableStore: observableStore)
         let observable = MockObservable()
-        sut.registerObserver(observing: \.value, of: observable, receiving: .willSet) { _, _ in }
+        sut.registerObserver(observing: \.str, of: observable, receiving: .willSet) { _, _ in }
         sut.cancelObservation(withId: observableStore.addedObservationId!)
         XCTAssertFalse(observable.didCancel)
     }
@@ -35,7 +35,7 @@ final class ObserverRegistryTests: XCTestCase {
         let observableStore = ObservableStoreSpy()
         var sut: ObserverRegistry? = ObserverRegistry(observableStore: observableStore)
         let observable = MockObservable()
-        sut?.registerObserver(observing: \.value, of: observable, receiving: .willSet) { _, _ in }
+        sut?.registerObserver(observing: \.str, of: observable, receiving: .willSet) { _, _ in }
         sut = nil
         XCTAssertTrue(observable.didCancel)
     }
@@ -44,7 +44,7 @@ final class ObserverRegistryTests: XCTestCase {
         let observableStore = ObservableStoreSpy()
         var sut: ObserverRegistry? = ObserverRegistry(observableStore: observableStore)
         let observable = MockObservable()
-        sut?.registerObserver(observing: \.value, of: observable, receiving: .willSet) { _, _ in }
+        sut?.registerObserver(observing: \.str, of: observable, receiving: .willSet) { _, _ in }
         sut = nil
         XCTAssertTrue(observableStore.didRemoveAll)
     }

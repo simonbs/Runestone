@@ -1,7 +1,25 @@
 @testable import RunestoneObservation
 
+struct MyEquatableType: Equatable {
+    let str: String
+
+    init(_ str: String) {
+        self.str = str
+    }
+}
+
+struct MyNonEquatableType {
+    let str: String
+
+    init(_ str: String) {
+        self.str = str
+    }
+}
+
 final class MockObservable: Observable {
-    var value = "foo"
+    var str = "foo"
+    let equatableObj = MyEquatableType("foo")
+    let nonEquatableObj = MyNonEquatableType("foo")
 
     private(set) var didCancel = false
 
