@@ -253,7 +253,7 @@ extension TextInputStringTokenizerTests {
 private extension TextInputStringTokenizerTests {
     private var sampleText: String {
         // swiftlint:disable line_length
-        return """
+        """
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras commodo pretium lorem et scelerisque. Sed urna massa, eleifend vel suscipit et, finibus ut nisi. Praesent ullamcorper justo ut lectus faucibus venenatis. Suspendisse lobortis libero sed odio iaculis, quis blandit ante accumsan.
 
 Quisque sed hendrerit diam. Quisque ut enim ligula.

@@ -2,7 +2,8 @@ name: Build and Test
 on:
   workflow_dispatch: {}
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
     paths:
       - '.github/workflows/build_and_test.yml'
       - 'Sources/**'
@@ -12,10 +13,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 env:
-  DEVELOPER_DIR: /Applications/Xcode_15.0.app/Contents/Developer
+  DEVELOPER_DIR: /Applications/Xcode_15.0.1.app/Contents/Developer
 jobs:
   build:
-    name: Build and test on iPhone 14
+    name: Build and test
     runs-on: macos-13
     steps:
       - name: Checkout
@@ -27,10 +28,10 @@ jobs:
           xcodebuild build-for-testing\
             -scheme Runestone\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=iPhone 14 Pro,OS=17.0"
+            -destination "platform=iOS Simulator,name=iPhone 15 Pro,OS=latest"
       - name: Test
         run: |
           xcodebuild test-without-building\
             -scheme Runestone\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=iPhone 14 Pro,OS=17.0"
+            -destination "platform=iOS Simulator,name=iPhone 15 Pro,OS=latest"
