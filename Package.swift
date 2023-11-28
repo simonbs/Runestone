@@ -13,9 +13,7 @@ let package = Package(
         .library(name: "Runestone", targets: ["Runestone"])
     ],
     dependencies: [
-        // Tree-sitter supports SPM but as of writing this, the official Tree-sitter repository has no versions published that contains the Package.swift file. Therefore, we depend on a fork of Tree-sitter that has a version published.
-        // We will pin against the official version of Tree-sitter as soon as a new version is published.
-        .package(url: "https://github.com/simonbs/tree-sitter", from: "0.20.9-beta-1")
+        .package(url: "https://github.com/tree-sitter/tree-sitter", revision: "3b0159d25559b603af566ade3c83d930bf466db1")
     ],
     targets: [
         .target(name: "Runestone", dependencies: [
