@@ -2,7 +2,8 @@ name: UI Tests
 on:
   workflow_dispatch: {}
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
     paths:
       - '.github/workflows/ui_tests.yml'
       - 'Sources/**'

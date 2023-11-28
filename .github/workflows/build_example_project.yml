@@ -2,7 +2,8 @@ name: Build Example Project
 on:
   workflow_dispatch: {}
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
     paths:
       - '.github/workflows/build_example_project.yml'
       - 'Example/**'
