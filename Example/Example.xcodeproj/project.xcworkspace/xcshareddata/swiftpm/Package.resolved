@@ -1,0 +1,16 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "TreeSitter",
+        "repositoryURL": "https://github.com/simonbs/tree-sitter",
+        "state": {
+          "branch": null,
+          "revision": "f88ae4ebe351d8aa99c31a17111607017d805118",
+          "version": "0.20.9-beta-1"
+        }
+      }
+    ]
+  },
+  "version": 1
+}
