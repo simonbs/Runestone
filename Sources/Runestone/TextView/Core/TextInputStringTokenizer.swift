@@ -28,12 +28,6 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         }
     }
 
-    override func isPosition(_ position: UITextPosition,
-                             withinTextUnit granularity: UITextGranularity,
-                             inDirection direction: UITextDirection) -> Bool {
-        super.isPosition(position, withinTextUnit: granularity, inDirection: direction)
-    }
-
     override func position(from position: UITextPosition,
                            toBoundary granularity: UITextGranularity,
                            inDirection direction: UITextDirection) -> UITextPosition? {
@@ -46,12 +40,6 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
         } else {
             return super.position(from: position, toBoundary: granularity, inDirection: direction)
         }
-    }
-
-    override func rangeEnclosingPosition(_ position: UITextPosition,
-                                         with granularity: UITextGranularity,
-                                         inDirection direction: UITextDirection) -> UITextRange? {
-        super.rangeEnclosingPosition(position, with: granularity, inDirection: direction)
     }
 }
 
@@ -129,7 +117,7 @@ private extension TextInputStringTokenizer {
     private func isPosition(_ position: UITextPosition, atParagraphBoundaryInDirection direction: UITextDirection) -> Bool {
         // I can't seem to make Ctrl+A, Ctrl+E, Cmd+Left, and Cmd+Right work properly if this function returns anything but false.
         // I've tried various ways of determining the paragraph boundary but UIKit doesn't seem to be happy with anything I come up with ultimately leading to incorrect keyboard navigation. I haven't yet found any drawbacks to returning false in all cases.
-        return false
+        false
     }
 
     private func position(from position: UITextPosition, toParagraphBoundaryInDirection direction: UITextDirection) -> UITextPosition? {
