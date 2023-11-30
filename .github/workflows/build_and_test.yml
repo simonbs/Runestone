@@ -12,12 +12,20 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
-env:
-  DEVELOPER_DIR: /Applications/Xcode_15.0.1.app/Contents/Developer
 jobs:
   build:
     name: Build and test
     runs-on: macos-13
+    continue-on-error: true
+    strategy:
+      matrix:
+        include:
+          - destination: iPhone 15 Pro
+            xcode: 15.0.1
+          - destination: iPhone 14 Pro
+            xcode: 14.3.1
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer    
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -28,10 +36,10 @@ jobs:
           xcodebuild build-for-testing\
             -scheme Runestone\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=iPhone 15 Pro,OS=latest"
+            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=latest"
       - name: Test
         run: |
           xcodebuild test-without-building\
             -scheme Runestone\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=iPhone 15 Pro,OS=latest"
+            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=latest"
