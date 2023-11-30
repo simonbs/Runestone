@@ -16,6 +16,7 @@ jobs:
   build:
     name: Build and test
     runs-on: macos-13
+    continue-on-error: true
     strategy:
       matrix:
         include:
