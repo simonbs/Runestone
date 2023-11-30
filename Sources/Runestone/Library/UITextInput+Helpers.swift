@@ -1,5 +1,7 @@
 import UIKit
 
+#if compiler(>=5.9)
+
 @available(iOS 17, *)
 extension UITextInput where Self: NSObject {
     var sbs_textSelectionDisplayInteraction: UITextSelectionDisplayInteraction? {
@@ -17,3 +19,5 @@ extension UITextInput where Self: NSObject {
         return interactionAssistant.value(forKey: selectionViewManagerKey) as? UITextSelectionDisplayInteraction
     }
 }
+
+#endif
