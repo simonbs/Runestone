@@ -2,16 +2,16 @@ import Combine
 import CoreGraphics
 import Foundation
 
-final class TextSelectionRectFactory {
-    private let characterBoundsProvider: CharacterBoundsProvider
-    private let lineManager: CurrentValueSubject<LineManager, Never>
+final class TextSelectionRectFactory<LineManagerType: LineManaging> {
+    private let characterBoundsProvider: CharacterBoundsProvider<LineManagerType>
+    private let lineManager: LineManagerType
     private let lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
     private var contentArea: CGRect = .zero
     private var cancellables: Set<AnyCancellable> = []
 
     init(
-        characterBoundsProvider: CharacterBoundsProvider,
-        lineManager: CurrentValueSubject<LineManager, Never>,
+        characterBoundsProvider: CharacterBoundsProvider<LineManagerType>,
+        lineManager: LineManagerType,
         contentArea: AnyPublisher<CGRect, Never>,
         lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
     ) {
@@ -27,7 +27,7 @@ final class TextSelectionRectFactory {
         guard range.length > 0 else {
             return []
         }
-        guard let endLine = lineManager.value.line(containingCharacterAt: range.upperBound) else {
+        guard let endLine = lineManager.line(containingCharacterAt: range.upperBound) else {
             return []
         }
         let adjustedRange = NSRange(location: range.location, length: range.length - 1)

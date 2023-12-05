@@ -1,10 +1,9 @@
-import Combine
 import Foundation
 
-final class LineFragmentController {
-    var lineFragment: LineFragment {
+final class LineFragmentController<LineFragmentType: LineFragment> {
+    var lineFragment: LineFragmentType {
         didSet {
-            if lineFragment !== oldValue {
+            if lineFragment != oldValue {
                 renderer = rendererFactory.makeRenderer(for: lineFragment, in: line)
                 lineFragmentView?.renderer = renderer
             }
@@ -20,22 +19,19 @@ final class LineFragmentController {
 
     private let line: LineNode
     private var renderer: LineFragmentRenderer
-    private let rendererFactory: LineFragmentRendererFactory
-    private var cancellables: Set<AnyCancellable> = []
+    private let rendererFactory: LineFragmentRendererFactory<LineFragmentType>
 
     init(
         line: LineNode,
-        lineFragment: LineFragment,
-        rendererFactory: LineFragmentRendererFactory,
-        selectedRange: CurrentValueSubject<NSRange, Never>,
-        markedRange: CurrentValueSubject<NSRange?, Never>
+        lineFragment: LineFragmentType,
+        rendererFactory: LineFragmentRendererFactory<LineFragmentType>
     ) {
         self.line = line
         self.lineFragment = lineFragment
-        self.renderer = rendererFactory.makeRenderer(for: lineFragment, in: line)
         self.rendererFactory = rendererFactory
-        Publishers.CombineLatest(selectedRange, markedRange).sink { [weak self] _, _ in
-            self?.lineFragmentView?.setNeedsDisplay()
-        }.store(in: &cancellables)
+        self.renderer = rendererFactory.makeRenderer(for: lineFragment, in: line)
+//        Publishers.CombineLatest(selectedRange, markedRange).sink { [weak self] _, _ in
+//            self?.lineFragmentView?.setNeedsDisplay()
+//        }.store(in: &cancellables)
     }
 }

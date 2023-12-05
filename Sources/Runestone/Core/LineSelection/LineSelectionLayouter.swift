@@ -1,37 +1,38 @@
+import _RunestoneMultiPlatform
 import Combine
 import Foundation
 
-final class LineSelectionLayouter {
+final class LineSelectionLayouter<LineManagerType: LineManaging> {
     let lineSelectionDisplayType = CurrentValueSubject<LineSelectionDisplayType, Never>(.disabled)
 
     private let lineSelectionView = MultiPlatformView()
     private var cancellables: Set<AnyCancellable> = []
 
-    init(
-        selectedRange: CurrentValueSubject<NSRange, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>,
-        viewport: CurrentValueSubject<CGRect, Never>,
-        textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>,
-        lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>,
-        backgroundColor: CurrentValueSubject<MultiPlatformColor, Never>,
-        containerView: CurrentValueSubject<WeakBox<TextView>, Never>
-    ) {
-        lineSelectionView.layerIfLoaded?.zPosition = -1000
-        containerView.value.value?.addSubview(lineSelectionView)
-        setupBackgroundColorSubscriber(backgroundColor: backgroundColor)
-        setupHiddenSubscriber(
-            lineSelectionDisplayType: lineSelectionDisplayType,
-            selectedRange: selectedRange
-        )
-        setupFrameSubscriber(
-            lineSelectionDisplayType: lineSelectionDisplayType,
-            selectedRange: selectedRange,
-            lineManager: lineManager,
-            viewport: viewport,
-            textContainerInset: textContainerInset,
-            lineHeightMultiplier: lineHeightMultiplier
-        )
-    }
+//    init(
+//        selectedRange: CurrentValueSubject<NSRange, Never>,
+//        lineManager: LineManagerType,
+//        viewport: CurrentValueSubject<CGRect, Never>,
+//        textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>,
+//        lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>,
+//        backgroundColor: CurrentValueSubject<MultiPlatformColor, Never>,
+//        containerView: CurrentValueSubject<WeakBox<TextView>, Never>
+//    ) {
+//        lineSelectionView.layerIfLoaded?.zPosition = -1000
+//        containerView.value.value?.addSubview(lineSelectionView)
+//        setupBackgroundColorSubscriber(backgroundColor: backgroundColor)
+//        setupHiddenSubscriber(
+//            lineSelectionDisplayType: lineSelectionDisplayType,
+//            selectedRange: selectedRange
+//        )
+//        setupFrameSubscriber(
+//            lineSelectionDisplayType: lineSelectionDisplayType,
+//            selectedRange: selectedRange,
+//            lineManager: lineManager,
+//            viewport: viewport,
+//            textContainerInset: textContainerInset,
+//            lineHeightMultiplier: lineHeightMultiplier
+//        )
+//    }
 }
 
 private extension LineSelectionLayouter {
@@ -53,15 +54,15 @@ private extension LineSelectionLayouter {
     private func setupFrameSubscriber(
         lineSelectionDisplayType: CurrentValueSubject<LineSelectionDisplayType, Never>,
         selectedRange: CurrentValueSubject<NSRange, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>,
+        lineManager: LineManagerType,
         viewport: CurrentValueSubject<CGRect, Never>,
         textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>,
         lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
     ) {
-        Publishers.CombineLatest(
-            Publishers.CombineLatest3(lineSelectionDisplayType, selectedRange, lineManager),
-            Publishers.CombineLatest3(viewport, textContainerInset, lineHeightMultiplier)
-        ).sink { [weak self] tupleA, tupleB in
+//        Publishers.CombineLatest(
+//            Publishers.CombineLatest(lineSelectionDisplayType, selectedRange),
+//            Publishers.CombineLatest3(viewport, textContainerInset, lineHeightMultiplier)
+//        ).sink { [weak self] tupleA, tupleB in
 //            guard let self else {
 //                return
 //            }
@@ -79,6 +80,6 @@ private extension LineSelectionLayouter {
 //            if let frame = rectFactory.rect {
 //                self.lineSelectionView.frame = frame
 //            }
-        }.store(in: &cancellables)
+//        }.store(in: &cancellables)
     }
 }

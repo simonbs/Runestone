@@ -1,11 +1,11 @@
 import Combine
 import Foundation
 
-final class SearchService {
-    private let stringView: CurrentValueSubject<StringView, Never>
-    private let textLocationConverter: TextLocationConverter
+final class SearchService<LineManagerType: LineManaging> {
+    private let stringView: StringView
+    private let textLocationConverter: TextLocationConverter<LineManagerType>
 
-    init(stringView: CurrentValueSubject<StringView, Never>, textLocationConverter: TextLocationConverter) {
+    init(stringView: StringView, textLocationConverter: TextLocationConverter<LineManagerType>) {
         self.stringView = stringView
         self.textLocationConverter = textLocationConverter
     }
@@ -23,7 +23,7 @@ final class SearchService {
         let replacementStringParser = ReplacementStringParser(string: replacementText)
         let parsedReplacementString = replacementStringParser.parse()
         return search(for: query) { textCheckingResult in
-            let replacementText = parsedReplacementString.string(byMatching: textCheckingResult, in: stringView.value.string)
+            let replacementText = parsedReplacementString.string(byMatching: textCheckingResult, in: stringView.string)
             return searchReplaceResult(in: textCheckingResult.range, replacementText: replacementText)
         }
     }
@@ -40,7 +40,7 @@ private extension SearchService {
         guard !query.text.isEmpty else {
             return []
         }
-        let matches = query.matches(in: stringView.value.string)
+        let matches = query.matches(in: stringView.string)
         return matches.compactMap { textCheckingResult in
             if textCheckingResult.range.length > 0, let mappedValue = mapper(textCheckingResult) {
                 return mappedValue

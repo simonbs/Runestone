@@ -1,10 +1,8 @@
-import Combine
-
 struct SyntaxHighlighterFactory {
-    let theme: CurrentValueSubject<Theme, Never>
-    let languageMode: CurrentValueSubject<any InternalLanguageMode, Never>
+    let theme: Theme
+    let languageMode: any InternalLanguageMode
 
     func makeSyntaxHighlighter() -> any SyntaxHighlighter {
-        languageMode.value.createSyntaxHighlighter(with: theme)
+        languageMode.createSyntaxHighlighter(with: theme)
     }
 }

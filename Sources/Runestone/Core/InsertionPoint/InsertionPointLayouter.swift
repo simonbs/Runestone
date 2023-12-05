@@ -9,9 +9,9 @@ final class InsertionPointLayouter {
     private var cancellabels: Set<AnyCancellable> = []
 
     init(
+        containerView: UIView,
         insertionPointViewFactory: InsertionPointViewFactory,
         frame: AnyPublisher<CGRect, Never>,
-        containerView: CurrentValueSubject<WeakBox<TextView>, Never>,
         isInsertionPointVisible: AnyPublisher<Bool, Never>,
         isInsertionPointBeingMoved: AnyPublisher<Bool, Never>
     ) {
@@ -36,12 +36,12 @@ final class InsertionPointLayouter {
             .sink { [weak self] isBlinkingEnabled in
                 self?.view.isBlinkingEnabled = isBlinkingEnabled
             }.store(in: &cancellabels)
-        containerView.sink { [weak self] box in
-            if let self {
-                self.view.removeFromSuperview()
-                box.value?.addSubview(self.view)
-            }
-        }.store(in: &cancellabels)
+//        containerView.sink { [weak self] box in
+//            if let self {
+//                self.view.removeFromSuperview()
+//                box.value?.addSubview(self.view)
+//            }
+//        }.store(in: &cancellabels)
         frame.sink { [weak self] frame in
             self?.view.frame = frame
         }.store(in: &cancellabels)

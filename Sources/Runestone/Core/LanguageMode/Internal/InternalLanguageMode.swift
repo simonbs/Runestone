@@ -1,4 +1,3 @@
-import Combine
 import Foundation
 
 struct InsertLineBreakIndentStrategy {
@@ -7,11 +6,10 @@ struct InsertLineBreakIndentStrategy {
 }
 
 protocol InternalLanguageMode: AnyObject {
-    associatedtype SyntaxHighlighterType: SyntaxHighlighter
     func parse(_ text: NSString)
     func parse(_ text: NSString, completion: @escaping ((Bool) -> Void))
     func textDidChange(_ change: TextEdit) -> LineChangeSet
-    func createSyntaxHighlighter(with theme: CurrentValueSubject<Theme, Never>) -> SyntaxHighlighterType
+    func createSyntaxHighlighter(with theme: Theme) -> any SyntaxHighlighter
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode?
     func strategyForInsertingLineBreak(
         from startLinePosition: LinePosition,

@@ -1,7 +1,11 @@
+import _RunestoneTreeSitter
 import Foundation
 
 protocol TreeSitterInjectedLanguageMapperDelegate: AnyObject {
-    func treeSitterInjectedLanguageMapper(_ mapper: TreeSitterInjectedLanguageMapper, textIn textRange: TreeSitterTextRange) -> String?
+    func treeSitterInjectedLanguageMapper(
+        _ mapper: TreeSitterInjectedLanguageMapper,
+        textIn textRange: TreeSitterTextRange
+    ) -> String?
 }
 
 final class TreeSitterInjectedLanguageMapper {

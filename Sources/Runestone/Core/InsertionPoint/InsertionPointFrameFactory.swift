@@ -2,10 +2,9 @@ import Combine
 import CoreText
 import Foundation
 
-final class InsertionPointFrameFactory {
-    private let lineManager: CurrentValueSubject<LineManager, Never>
-    private let characterBoundsProvider: CharacterBoundsProvider
-    private let lineControllerStorage: LineControllerStorage
+final class InsertionPointFrameFactory<LineManagerType: LineManaging> {
+    private let lineManager: LineManagerType
+    private let characterBoundsProvider: CharacterBoundsProvider<LineManagerType>
     private let insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>
     private let estimatedLineHeight: EstimatedLineHeight
     private let estimatedCharacterWidth: CurrentValueSubject<CGFloat, Never>
@@ -13,9 +12,8 @@ final class InsertionPointFrameFactory {
     private var cancellables: Set<AnyCancellable> = []
 
     init(
-        lineManager: CurrentValueSubject<LineManager, Never>,
-        characterBoundsProvider: CharacterBoundsProvider,
-        lineControllerStorage: LineControllerStorage,
+        lineManager: LineManagerType,
+        characterBoundsProvider: CharacterBoundsProvider<LineManagerType>,
         insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>,
         contentArea: AnyPublisher<CGRect, Never>,
         estimatedLineHeight: EstimatedLineHeight,
@@ -23,7 +21,6 @@ final class InsertionPointFrameFactory {
     ) {
         self.lineManager = lineManager
         self.characterBoundsProvider = characterBoundsProvider
-        self.lineControllerStorage = lineControllerStorage
         self.insertionPointShape = insertionPointShape
         self.estimatedLineHeight = estimatedLineHeight
         self.estimatedCharacterWidth = estimatedCharacterWidth
@@ -67,7 +64,7 @@ extension InsertionPointFrameFactory {
         if let bounds = characterBoundsProvider.boundsOfComposedCharacterSequence(atLocation: location, moveToToNextLineFragmentIfNeeded: true) {
             let width = displayableCharacterWidth(forCharacterAtLocation: location, widthActualWidth: bounds.width)
             return CGRect(x: bounds.minX, y: bounds.minY, width: width, height: bounds.height)
-        } else if let line = lineManager.value.line(containingCharacterAt: location) {
+        } else if let line = lineManager.line(containingCharacterAt: location) {
             let size = CGSize(width: estimatedCharacterWidth.value, height: estimatedLineHeight.rawValue.value)
             let offsetOriginX = contentArea.origin.x
             let offsetOriginY = contentArea.origin.y + line.yPosition + (estimatedLineHeight.scaledValue.value - size.height) / 2
@@ -77,13 +74,16 @@ extension InsertionPointFrameFactory {
         }
     }
 
-    private func displayableCharacterWidth(forCharacterAtLocation location: Int, widthActualWidth actualWidth: CGFloat) -> CGFloat {
-        guard let line = lineManager.value.line(containingCharacterAt: location) else {
+    private func displayableCharacterWidth(
+        forCharacterAtLocation location: Int,
+        widthActualWidth actualWidth: CGFloat
+    ) -> CGFloat {
+        guard let line = lineManager.line(containingCharacterAt: location) else {
             return actualWidth
         }
         // If the insertion point is placed at the last character in a line, i.e. before a line break, then we make sure to return the estimated character width.
         let lineLocalLocation = location - line.location
-        if lineLocalLocation == line.data.length {
+        if lineLocalLocation == line.length {
             return estimatedCharacterWidth.value
         } else {
             return actualWidth

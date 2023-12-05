@@ -1,14 +1,18 @@
+import _RunestoneStringUtilities
+import _RunestoneTreeSitter
 import Combine
 import Foundation
 
-final class TreeSitterLanguageLayer {
+final class TreeSitterLanguageLayer<
+    TreeSitterStringViewType: TreeSitterStringView, LineManagerType: LineManaging
+> {
     typealias LayerAndNodeTuple = (layer: TreeSitterLanguageLayer, node: TreeSitterNode)
 
     let language: TreeSitterInternalLanguage
     private(set) var tree: TreeSitterTree?
 
-    private let stringView: CurrentValueSubject<StringView, Never>
-    private let lineManager: CurrentValueSubject<LineManager, Never>
+    private let stringView: TreeSitterStringViewType
+    private let lineManager: LineManagerType
     private let parser: TreeSitterParser
     private var childLanguageLayers: [UnsafeRawPointer: TreeSitterLanguageLayer] = [:]
     private weak var parentLanguageLayer: TreeSitterLanguageLayer?
@@ -22,8 +26,8 @@ final class TreeSitterLanguageLayer {
     }
 
     init(
-        stringView: CurrentValueSubject<StringView, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>,
+        stringView: TreeSitterStringViewType,
+        lineManager: LineManagerType,
         language: TreeSitterInternalLanguage,
         languageProvider: TreeSitterLanguageProvider?,
         parser: TreeSitterParser,
@@ -68,7 +72,10 @@ extension TreeSitterLanguageLayer {
         return result
     }
 
-    private func apply(_ edit: TreeSitterInputEdit, parsing ranges: [TreeSitterTextRange] = []) -> LineChangeSet {
+    private func apply(
+        _ edit: TreeSitterInputEdit,
+        parsing ranges: [TreeSitterTextRange] = []
+    ) -> LineChangeSet {
         // Apply edit to tree.
         let oldTree = tree
         tree?.apply(edit)
@@ -83,7 +90,7 @@ extension TreeSitterLanguageLayer {
                 let startRow = Int(changedRange.startPoint.row)
                 let endRow = Int(changedRange.endPoint.row)
                 for row in startRow ... endRow {
-                    let line = lineManager.value.line(atRow: row)
+                    let line = lineManager[row]
                     lineChangeSet.markLineEdited(line)
                 }
             }
@@ -109,10 +116,13 @@ extension TreeSitterLanguageLayer {
         if let injectionsQuery = language.injectionsQuery, let node = tree?.rootNode {
             let queryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
             queryCursor.execute()
-            let captures = queryCursor.validCaptures(in: stringView.value)
+            let captures = queryCursor.validCaptures(in: stringView)
             let injectedLanguages = injectedLanguages(from: captures)
             for injectedLanguage in injectedLanguages {
-                if let childLanguageLayer = childLanguageLayer(withID: injectedLanguage.id, forLanguageNamed: injectedLanguage.languageName) {
+                if let childLanguageLayer = childLanguageLayer(
+                    withID: injectedLanguage.id,
+                    forLanguageNamed: injectedLanguage.languageName
+                ) {
                     childLanguageLayer.parse([injectedLanguage.textRange], from: text)
                 }
             }
@@ -141,7 +151,7 @@ extension TreeSitterLanguageLayer {
         let queryCursor = TreeSitterQueryCursor(query: highlightsQuery, node: tree.rootNode)
         queryCursor.setQueryRange(range)
         queryCursor.execute()
-        let captures = queryCursor.validCaptures(in: stringView.value)
+        let captures = queryCursor.validCaptures(in: stringView)
         let capturesInChildren = childLanguageLayers.values.reduce(into: []) { $0 += $1.allValidCaptures(in: range) }
         return captures + capturesInChildren
     }
@@ -150,7 +160,10 @@ extension TreeSitterLanguageLayer {
 // MARK: - Child Language Layers
 private extension TreeSitterLanguageLayer {
     @discardableResult
-    private func childLanguageLayer(withID id: UnsafeRawPointer, forLanguageNamed languageName: String) -> TreeSitterLanguageLayer? {
+    private func childLanguageLayer(
+        withID id: UnsafeRawPointer,
+        forLanguageNamed languageName: String
+    ) -> TreeSitterLanguageLayer? {
         if let childLanguageLayer = childLanguageLayers[id] {
             return childLanguageLayer
         } else if let language = languageProvider?.treeSitterLanguage(named: languageName) {
@@ -177,7 +190,7 @@ private extension TreeSitterLanguageLayer {
         }
         let injectionsQueryCursor = TreeSitterQueryCursor(query: injectionsQuery, node: node)
         injectionsQueryCursor.execute()
-        let captures = injectionsQueryCursor.validCaptures(in: stringView.value)
+        let captures = injectionsQueryCursor.validCaptures(in: stringView)
         let injectedLanguages = injectedLanguages(from: captures)
         let capturedIDs = injectedLanguages.map(\.id)
         let currentIDs = Array(childLanguageLayers.keys)
@@ -193,7 +206,10 @@ private extension TreeSitterLanguageLayer {
         // Update layers for current captures.
         let lineChangeSet = LineChangeSet()
         for injectedLanguage in injectedLanguages {
-            if let childLanguageLayer = childLanguageLayer(withID: injectedLanguage.id, forLanguageNamed: injectedLanguage.languageName) {
+            if let childLanguageLayer = childLanguageLayer(
+                withID: injectedLanguage.id,
+                forLanguageNamed: injectedLanguage.languageName
+            ) {
                 let childLineChangeSet = childLanguageLayer.apply(edit, parsing: [injectedLanguage.textRange])
                 lineChangeSet.formUnion(with: childLineChangeSet)
             }
@@ -210,10 +226,13 @@ private extension TreeSitterLanguageLayer {
 
 // MARK: - TreeSitterInjectedLanguageMapperDelegate
 extension TreeSitterLanguageLayer: TreeSitterInjectedLanguageMapperDelegate {
-    func treeSitterInjectedLanguageMapper(_ mapper: TreeSitterInjectedLanguageMapper, textIn textRange: TreeSitterTextRange) -> String? {
+    func treeSitterInjectedLanguageMapper(
+        _ mapper: TreeSitterInjectedLanguageMapper,
+        textIn textRange: TreeSitterTextRange
+    ) -> String? {
         let byteRange = ByteRange(from: textRange.startByte, to: textRange.endByte)
         let range = NSRange(byteRange)
-        return stringView.value.substring(in: range)
+        return stringView.substring(in: range)
     }
 }
 

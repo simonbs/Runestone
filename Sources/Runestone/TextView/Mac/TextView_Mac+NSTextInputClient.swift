@@ -12,7 +12,8 @@ extension TextView: NSTextInputClient {
 
     /// The current selection range of the text view.
     public func selectedRange() -> NSRange {
-        selectedRangeSubject.value.nonNegativeLength
+//        selectedRangeSubject.value.nonNegativeLength
+        return NSRange(location: NSNotFound, length: NSNotFound)
     }
 
     /// Inserts the given string into the receiver, replacing the specified content.
@@ -23,11 +24,11 @@ extension TextView: NSTextInputClient {
         guard let string = string as? String else {
             return
         }
-        if replacementRange.location == NSNotFound {
-            textInserter.insertText(string)
-        } else {
-            textReplacer.replaceText(in: replacementRange, with: string)
-        }
+//        if replacementRange.location == NSNotFound {
+//            textInserter.insertText(string)
+//        } else {
+//            textReplacer.replaceText(in: replacementRange, with: string)
+//        }
     }
 
     /// Inserts the provided text and marks it to indicate that it is part of an active input session.
@@ -38,19 +39,21 @@ extension TextView: NSTextInputClient {
 
     /// Unmarks the marked text.
     public func unmarkText() {
-        markedRangeSubject.value = nil
+//        markedRangeSubject.value = nil
     }
 
     /// Returns the range of the marked text.
     /// - Returns: The range of marked text or {NSNotFound, 0} if there is no marked range.
     public func markedRange() -> NSRange {
-        markedRangeSubject.value ?? NSRange(location: NSNotFound, length: 0)
+//        markedRangeSubject.value ?? NSRange(location: NSNotFound, length: 0)
+        return NSRange(location: NSNotFound, length: NSNotFound)
     }
 
     /// Returns a Boolean value indicating whether the receiver has marked text.
     /// - Returns: `true` if the receiver has marked text; otherwise `false.
     public func hasMarkedText() -> Bool {
-        (markedRangeSubject.value?.length ?? 0) > 0
+//        (markedRangeSubject.value?.length ?? 0) > 0
+        return false
     }
 
     /// Returns an attributed string derived from the given range in the receiver's text storage.
@@ -81,7 +84,8 @@ extension TextView: NSTextInputClient {
     /// - Parameter point: The point to test, in screen coordinates.
     /// - Returns: The character index, measured from the start of the receiver's text storage, of the character containing the given point.
     public func characterIndex(for point: NSPoint) -> Int {
-        locationRaycaster.location(closestTo: point)
+//        locationRaycaster.location(closestTo: point)
+        0
     }
 }
 #endif

@@ -1,12 +1,12 @@
 import Combine
 import Foundation
 
-struct LineFragmentRendererStringProvider {
-    private let stringView: CurrentValueSubject<StringView, Never>
+struct LineFragmentRendererStringProvider<LineFragmentType: LineFragment> {
+    private let stringView: any StringView
     private let line: LineNode
-    private let lineFragment: LineFragment
+    private let lineFragment: LineFragmentType
 
-    init(stringView: CurrentValueSubject<StringView, Never>, line: LineNode, lineFragment: LineFragment) {
+    init(stringView: some StringView, line: LineNode, lineFragment: LineFragmentType) {
         self.stringView = stringView
         self.line = line
         self.lineFragment = lineFragment
@@ -18,6 +18,6 @@ struct LineFragmentRendererStringProvider {
             location: line.location + lineFragmentRange.location,
             length: lineFragmentRange.length
         )
-        return stringView.value.substring(in: lineRange)
+        return stringView.substring(in: lineRange)
     }
 }

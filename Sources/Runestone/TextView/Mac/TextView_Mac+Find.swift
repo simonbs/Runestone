@@ -16,9 +16,9 @@ extension TextView {
             assertionFailure("Cannot create NSTextFinder.Action from menu item with tag \(menuItem.tag)")
             return
         }
-        textFinder.performAction(action)
-        textFinder.findBarContainer?.findBarView?.wantsLayer = true
-        textFinder.findBarContainer?.findBarView?.layer?.zPosition = 1000
+//        textFinder.performAction(action)
+//        textFinder.findBarContainer?.findBarView?.wantsLayer = true
+//        textFinder.findBarContainer?.findBarView?.layer?.zPosition = 1000
 //        if action == .showFindInterface || action == .showReplaceInterface || action == .hideFindInterface || action == .hideReplaceInterface {
 //            textViewController.lineFragmentLayouter.setNeedsLayout()
 //            textViewController.lineFragmentLayouter.layoutIfNeeded()

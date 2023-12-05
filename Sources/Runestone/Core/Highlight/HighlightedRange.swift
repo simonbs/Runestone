@@ -1,3 +1,4 @@
+import _RunestoneMultiPlatform
 import Foundation
 
 /// Range of text to highlight.
@@ -17,7 +18,12 @@ public final class HighlightedRange {
     ///   - range: Range in the text to highlight.
     ///   - color: Color to highlight the text with.
     ///   - cornerRadius: Corner radius of the highlight. A value of zero or less means no corner radius. Defaults to 0.
-    public init(id: String = UUID().uuidString, range: NSRange, color: MultiPlatformColor, cornerRadius: CGFloat = 0) {
+    public init(
+        id: String = UUID().uuidString,
+        range: NSRange,
+        color: MultiPlatformColor,
+        cornerRadius: CGFloat = 0
+    ) {
         self.id = id
         self.range = range
         self.color = color

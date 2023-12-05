@@ -1,3 +1,4 @@
+import _RunestoneMultiPlatform
 import Combine
 import CoreGraphics
 import CoreText
@@ -6,15 +7,15 @@ import Foundation
 import UIKit
 #endif
 
-final class MarkedRangeLineFragmentRenderer: LineFragmentRenderer {
-    private let lineFragment: LineFragment
+final class MarkedRangeLineFragmentRenderer<LineFragmentType: LineFragment>: LineFragmentRenderer {
+    private let lineFragment: LineFragmentType
     private let markedRange: CurrentValueSubject<NSRange?, Never>
     private let inlinePredictionRange: CurrentValueSubject<NSRange?, Never>
     private let backgroundColor: CurrentValueSubject<MultiPlatformColor, Never>
     private let backgroundCornerRadius: CurrentValueSubject<CGFloat, Never>
 
     init(
-        lineFragment: LineFragment,
+        lineFragment: LineFragmentType,
         markedRange: CurrentValueSubject<NSRange?, Never>,
         inlinePredictionRange: CurrentValueSubject<NSRange?, Never>,
         backgroundColor: CurrentValueSubject<MultiPlatformColor, Never>,
@@ -41,7 +42,12 @@ final class MarkedRangeLineFragmentRenderer: LineFragmentRenderer {
         context.setFillColor(backgroundColor.value.cgColor)
         if backgroundCornerRadius.value > 0 {
             let cornerRadius = backgroundCornerRadius.value
-            let path = CGPath(roundedRect: rect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
+            let path = CGPath(
+                roundedRect: rect,
+                cornerWidth: cornerRadius,
+                cornerHeight: cornerRadius,
+                transform: nil
+            )
             context.addPath(path)
             context.fillPath()
         } else {

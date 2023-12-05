@@ -1,3 +1,4 @@
+import _RunestoneMultiPlatform
 import Combine
 import CoreGraphics
 
@@ -7,7 +8,10 @@ final class EstimatedLineHeight {
 
     private var cancellables: Set<AnyCancellable> = []
 
-    init(font: AnyPublisher<MultiPlatformFont, Never>, lineHeightMultiplier: AnyPublisher<CGFloat, Never>) {
+    init(
+        font: AnyPublisher<MultiPlatformFont, Never>,
+        lineHeightMultiplier: AnyPublisher<CGFloat, Never>
+    ) {
         Publishers.CombineLatest(font, lineHeightMultiplier).sink { [weak self] font, lineHeightMultiplier in
             self?.rawValue.value = font.actualLineHeight
             self?.scaledValue.value = font.actualLineHeight * lineHeightMultiplier

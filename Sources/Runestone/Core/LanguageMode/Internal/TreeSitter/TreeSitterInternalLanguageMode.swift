@@ -1,17 +1,21 @@
+import _RunestoneStringUtilities
+import _RunestoneTreeSitter
 import Combine
 import Foundation
 import TreeSitter
 
-final class TreeSitterInternalLanguageMode: InternalLanguageMode {
-    private let stringView: CurrentValueSubject<StringView, Never>
-    private let lineManager: CurrentValueSubject<LineManager, Never>
+final class TreeSitterInternalLanguageMode<
+    StringViewType: StringView, LineManagerType: LineManaging
+>: InternalLanguageMode {
+    private let stringView: StringViewType
+    private let lineManager: LineManagerType
     private let parser = TreeSitterParser()
-    private let rootLanguageLayer: TreeSitterLanguageLayer
+    private let rootLanguageLayer: TreeSitterLanguageLayer<StringViewType, LineManagerType>
     private let operationQueue = OperationQueue()
 
     init(
-        stringView: CurrentValueSubject<StringView, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>,
+        stringView: StringViewType,
+        lineManager: LineManagerType,
         language: TreeSitterInternalLanguage,
         languageProvider: TreeSitterLanguageProvider?,
         parser: TreeSitterParser = TreeSitterParser(),
@@ -75,7 +79,7 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
         rootLanguageLayer.captures(in: range)
     }
 
-    func createSyntaxHighlighter(with theme: CurrentValueSubject<Theme, Never>) -> some SyntaxHighlighter {
+    func createSyntaxHighlighter(with theme: Theme) -> any SyntaxHighlighter {
         TreeSitterSyntaxHighlighter(
             stringView: stringView,
             languageMode: self,
@@ -96,8 +100,8 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
         }
         let indentService = TreeSitterIndentService(
             indentationScopes: indentationScopes,
-            stringView: stringView.value,
-            lineManager: lineManager.value,
+            stringView: stringView,
+            lineManager: lineManager,
             indentLengthInSpaces: indentStrategy.lengthInSpaces
         )
         let startNode = startLayerAndNode?.node
@@ -125,8 +129,8 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
             return .unknown
         }
         let detector = TreeSitterIndentStrategyDetector(
-            string: stringView.value.string,
-            lineManager: lineManager.value,
+            string: stringView.string,
+            lineManager: lineManager,
             tree: tree
         )
         return detector.detect()

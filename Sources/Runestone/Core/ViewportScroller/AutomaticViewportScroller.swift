@@ -1,7 +1,7 @@
 import Combine
 import Foundation
 
-final class AutomaticViewportScroller {
+final class AutomaticViewportScroller<LineManagerType: LineManaging> {
     private struct SelectedRangeChange {
         let old: NSRange
         let new: NSRange
@@ -27,10 +27,13 @@ final class AutomaticViewportScroller {
     var isAutomaticScrollEnabled = true
 
     private let selectedRange: CurrentValueSubject<NSRange, Never>
-    private let viewportScroller: ViewportScroller
+    private let viewportScroller: ViewportScroller<LineManagerType>
     private var cancellables: Set<AnyCancellable> = []
 
-    init(selectedRange: CurrentValueSubject<NSRange, Never>, viewportScroller: ViewportScroller) {
+    init(
+        selectedRange: CurrentValueSubject<NSRange, Never>,
+        viewportScroller: ViewportScroller<LineManagerType>
+    ) {
         self.selectedRange = selectedRange
         self.viewportScroller = viewportScroller
         selectedRange.scan(SelectedRangeChange(selectedRange.value)) { change, selectedRange in

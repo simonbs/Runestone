@@ -1,26 +1,11 @@
-import Foundation
-
 extension String {
-    var byteCount: ByteCount {
-        ByteCount(utf16.count * 2)
-    }
-
-    static var preferredUTF16Encoding: String.Encoding {
-        // Implementation from https://github.com/ChimeHQ/SwiftTreeSitter/blob/main/Sources/SwiftTreeSitter/String%2BData.swift
-        let dataA = "abc".data(using: .utf16LittleEndian)
-        let dataB = "abc".data(using: .utf16)?.suffix(from: 2)
-        return dataA == dataB ? .utf16LittleEndian : .utf16BigEndian
-    }
-
-    var isLineBreak: Bool {
-        !contains { !$0.isLineBreak }
-    }
-}
-
-extension String.Element {
-    var isLineBreak: Bool {
-        self == Symbol.Character.lineFeed
-        || self == Symbol.Character.carriageReturn
-        || self == Symbol.Character.carriageReturnLineFeed
+    func replacingAllLineEndings(with preferredLineEnding: LineEnding) -> String {
+        // Ensure all line endings match our preferred line endings.
+        var result = self
+        let lineEndingsToReplace: [LineEnding] = [.crlf, .cr, .lf].filter { $0 != preferredLineEnding }
+        for lineEnding in lineEndingsToReplace {
+            result = result.replacingOccurrences(of: lineEnding.symbol, with: preferredLineEnding.symbol)
+        }
+        return result
     }
 }

@@ -1,3 +1,4 @@
+import _RunestoneMultiPlatform
 #if os(macOS)
 import AppKit
 #endif
@@ -13,8 +14,14 @@ final class PageGuideView: MultiPlatformView {
             }
         }
     }
-    @_RunestoneProxy(\PageGuideView.hairlineView.backgroundColor)
-    var hairlineColor: MultiPlatformColor?
+    var hairlineColor: MultiPlatformColor? {
+        get {
+            hairlineView.backgroundColor
+        }
+        set {
+            hairlineView.backgroundColor = newValue
+        }
+    }
 
     private let hairlineView = MultiPlatformView()
 

@@ -1,4 +1,4 @@
-import Foundation
+import _RunestoneTreeSitter
 
 struct TreeSitterInjectedLanguage {
     let id: UnsafeRawPointer

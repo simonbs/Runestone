@@ -1,3 +1,4 @@
+import _RunestoneMultiPlatform
 #if os(macOS)
 import AppKit
 #endif
@@ -15,7 +16,13 @@ final class TreeSitterSyntaxHighlightToken {
         range.length == 0 || (textColor == nil && font == nil && shadow == nil)
     }
 
-    init(range: NSRange, textColor: MultiPlatformColor?, shadow: NSShadow?, font: MultiPlatformFont?, fontTraits: FontTraits) {
+    init(
+        range: NSRange,
+        textColor: MultiPlatformColor?,
+        shadow: NSShadow?,
+        font: MultiPlatformFont?,
+        fontTraits: FontTraits
+    ) {
         self.range = range
         self.textColor = textColor
         self.shadow = shadow

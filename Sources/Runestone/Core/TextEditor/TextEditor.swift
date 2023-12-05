@@ -1,69 +1,81 @@
-import Combine
 import Foundation
 
-struct TextEditor {
-    let textViewDelegate: ErasedTextViewDelegate
-    let stringView: CurrentValueSubject<StringView, Never>
-    let lineManager: CurrentValueSubject<LineManager, Never>
-    let lineControllerStorage: LineControllerStorage
-    let languageMode: CurrentValueSubject<any InternalLanguageMode, Never>
-    let undoManager: UndoManager
-    let viewport: CurrentValueSubject<CGRect, Never>
-    let lineFragmentLayouter: LineFragmentLayouter
+struct TextEditor: TextEditing {
+    typealias State = MarkedRangeReadable & SelectedRangeWritable
 
-    func replaceText(in range: NSRange, with newString: String) {
-        let lineManagerEditor = LineManagerEditor(lineManager: lineManager.value)
-        let lineManagerEdit = lineManagerEditor.replaceText(in: range, with: newString) {
-            stringView.value.replaceText(in: range, with: newString)
+    let state: State
+    let stringView: StringView
+    let stringTokenizer: StringTokenizing
+    let textReplacer: TextReplacing
+
+    func insertText(_ text: String) {
+        let insertRange = state.markedRange ?? state.selectedRange.nonNegativeLength
+        textReplacer.replaceText(in: insertRange, with: text)
+    }
+
+    func replaceText(in range: NSRange, with newText: String) {
+        textReplacer.replaceText(in: range, with: newText)
+    }
+
+    func deleteBackward() {
+        if let deleteBackwardRange {
+            textReplacer.replaceText(in: deleteBackwardRange, with: "")
         }
-        let textEdit = TextEdit(replacing: range, with: newString, lineManagerEdit: lineManagerEdit)
-        let languageModeLineChangeSet = languageMode.value.textDidChange(textEdit)
-        textEdit.lineChangeSet.formUnion(with: languageModeLineChangeSet)
-        for removedLine in textEdit.lineChangeSet.removedLines {
-            lineControllerStorage.removeLineController(withID: removedLine.id)
+    }
+
+    func deleteForward() {
+        if let deleteForwardRange {
+            textReplacer.replaceText(in: deleteForwardRange, with: "")
         }
-        let editedLineIDs = Set(textEdit.lineChangeSet.editedLines.map(\.id))
-        redisplayLines(withIDs: editedLineIDs)
-//        if didAddOrRemoveLines {
-//            gutterWidthService.invalidateLineNumberWidth()
-//        }
-        lineFragmentLayouter.setNeedsLayout()
-        lineFragmentLayouter.layoutIfNeeded()
-        textViewDelegate.textViewDidChange()
-//        if !textStoreChange.lineChangeSet.insertedLines.isEmpty || !textStoreChange.lineChangeSet.removedLines.isEmpty {
-//            invalidateContentSizeIfNeeded()
-//        }
+    }
+
+    func deleteWordForward() {
+        if let range = range(deleting: .word, inDirection: .forward) {
+            textReplacer.replaceText(in: range, with: "")
+        }
+    }
+
+    func deleteWordBackward() {
+        if let range = range(deleting: .word, inDirection: .backward) {
+            textReplacer.replaceText(in: range, with: "")
+        }
     }
 }
 
 private extension TextEditor {
-    func redisplayLines(withIDs lineIDs: Set<LineNodeID>) {
-        for lineID in lineIDs {
-            guard let lineController = lineControllerStorage[lineID] else {
-                continue
-            }
-            lineController.invalidateString()
-            lineController.invalidateTypesetting()
-            lineController.invalidateSyntaxHighlighting()
-            guard lineFragmentLayouter.visibleLineIDs.contains(lineID) else {
-                continue
-            }
-            let lineYPosition = lineController.line.yPosition
-            let lineLocalMaxY = lineYPosition + (viewport.value.maxY - lineYPosition)
-            lineController.prepareToDisplayString(to: .yPosition(lineLocalMaxY), syntaxHighlightAsynchronously: false)
+    private var deleteBackwardRange: NSRange? {
+        var range = state.markedRange ?? state.selectedRange
+        if range.length == 0 {
+            range.location -= 1
+            range.length = 1
         }
+        guard range.location >= 0 else {
+            return nil
+        }
+        return stringView.string.customRangeOfComposedCharacterSequences(for: range)
     }
-}
 
-private extension TextEdit {
-    init(replacing range: NSRange, with newString: String, lineManagerEdit: LineManagerEdit) {
-        self.init(
-            byteRange: ByteRange(utf16Range: range),
-            bytesAdded: newString.byteCount,
-            oldEndLinePosition: lineManagerEdit.oldEndLinePosition,
-            startLinePosition: lineManagerEdit.startLinePosition,
-            newEndLinePosition: lineManagerEdit.newEndLinePosition,
-            lineChangeSet: lineManagerEdit.lineChangeSet
-        )
+    private var deleteForwardRange: NSRange? {
+        guard state.selectedRange.location < stringView.string.length else {
+            return nil
+        }
+        return NSRange(location: state.selectedRange.location, length: 1)
+    }
+
+    private func range(
+        deleting boundary: TextBoundary,
+        inDirection direction: TextDirection
+    ) -> NSRange? {
+        let sourceLocation = state.selectedRange.location
+        guard let destinationLocation = stringTokenizer.location(
+            from: sourceLocation,
+            toBoundary: boundary,
+            inDirection: direction
+        ) else {
+            return nil
+        }
+        let lowerBound = min(sourceLocation, destinationLocation)
+        let upperBound = max(sourceLocation, destinationLocation)
+        return NSRange(location: lowerBound, length: upperBound - lowerBound)
     }
 }

@@ -1,1 +1,3 @@
-typealias LineFragmentTree = RedBlackTree<LineFragmentNodeID, Int, LineFragmentNodeData>
+import _RunestoneRedBlackTree
+
+typealias LineFragmentTree = RedBlackTree<Int, LineFragmentNodeData>

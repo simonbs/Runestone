@@ -14,14 +14,15 @@ import UIKit
 /// The function takes an instance of ``TextViewState`` as input which can be created on a background queue to avoid blocking the main queue while doing the initial parse of a text.
 open class TextView: UIScrollView {
     /// Delegate to receive callbacks for events triggered by the editor.
-    public weak var editorDelegate: TextViewDelegate? {
-        get {
-            textViewDelegate.delegate
-        }
-        set {
-            textViewDelegate.delegate = newValue
-        }
-    }
+    public weak var editorDelegate: TextViewDelegate?
+//    public weak var editorDelegate: TextViewDelegate? {
+//        get {
+//            textViewDelegate.delegate
+//        }
+//        set {
+//            textViewDelegate.delegate = newValue
+//        }
+//    }
     /// An input delegate that receives a notification when text changes or when the selection changes.
     @objc public weak var inputDelegate: UITextInputDelegate?
     /// Returns a Boolean value indicating whether this object can become the first responder.
@@ -29,35 +30,39 @@ open class TextView: UIScrollView {
         !isFirstResponder && isEditable
     }
     /// A Boolean value that indicates whether the text view is editable.
-    @_RunestoneProxy(\TextView.editorState.isEditable.value)
-    public var isEditable: Bool
+//    @Proxy(\TextView.editorState.isEditable.value)
+//    public var isEditable: Bool
+    public private(set) var isEditable = true
     /// A Boolean value that indicates whether the text view is selectable.
-    @_RunestoneProxy(\TextView.editorState.isSelectable.value)
-    public var isSelectable: Bool
+//    @Proxy(\TextView.editorState.isSelectable.value)
+//    public var isSelectable: Bool
+    public private(set) var isSelectable = true
     /// Whether the text view is in a state where the contents can be edited.
-    public var isEditing: Bool {
-        editorState.isEditing.value
-    }
+    public private(set) var isEditing = false
+//    public var isEditing: Bool {
+//        editorState.isEditing.value
+//    }
     /// The text that the text view displays.
-    public var text: String {
-        get {
-            stringView.value.string as String
-        }
-        set {
-            textSetter.setText(newValue as NSString)
-        }
-    }
+    public var text: String = ""
+//    public var text: String {
+//        get {
+//            stringView.string as String
+//        }
+//        set {
+//            textSetter.setText(newValue as NSString)
+//        }
+//    }
     /// The view's background color.
     open override var backgroundColor: UIColor? {
         didSet {
             if backgroundColor != oldValue {
-                textViewBackgroundColor.value = backgroundColor
+//                textViewBackgroundColor.value = backgroundColor
             }
         }
     }
     /// Colors and fonts to be used by the editor.
-    @_RunestoneProxy(\TextView.themeSettings.theme.value)
-    public var theme: Theme
+//    @Proxy(\TextView.themeSettings.theme.value)
+//    public var theme: Theme
     /// The autocorrection style for the text view.
     public var autocorrectionType: UITextAutocorrectionType = .default
     /// The autocapitalization style for the text view.
@@ -79,11 +84,11 @@ open class TextView: UIScrollView {
     /// Character pairs are used by the editor to automatically insert a trailing character when the user types the leading character.
     ///
     /// Common usages of this includes the \" character to surround strings and { } to surround a scope.
-    @_RunestoneProxy(\TextView.characterPairService.characterPairs)
-    public var characterPairs: [CharacterPair]
+//    @Proxy(\TextView.characterPairService.characterPairs)
+//    public var characterPairs: [CharacterPair]
     /// Determines what should happen to the trailing component of a character pair when deleting the leading component. Defaults to `disabled` meaning that nothing will happen.
-    @_RunestoneProxy(\TextView.characterPairService.trailingComponentDeletionMode)
-    public var characterPairTrailingComponentDeletionMode: CharacterPairTrailingComponentDeletionMode
+//    @Proxy(\TextView.characterPairService.trailingComponentDeletionMode)
+//    public var characterPairTrailingComponentDeletionMode: CharacterPairTrailingComponentDeletionMode
     /// Enable to show line numbers in the gutter.
 //    public var showLineNumbers: Bool {
 //        get {
@@ -94,69 +99,69 @@ open class TextView: UIScrollView {
 //        }
 //    }
     /// Enable to show highlight the selected lines. The selection is only shown in the gutter when multiple lines are selected.
-    @_RunestoneProxy(\TextView.lineSelectionLayouter.lineSelectionDisplayType.value)
-    public var lineSelectionDisplayType: LineSelectionDisplayType
+//    @Proxy(\TextView.lineSelectionLayouter.lineSelectionDisplayType.value)
+//    public var lineSelectionDisplayType: LineSelectionDisplayType
     /// The text view renders invisible tabs when enabled. The `tabsSymbol` is used to render tabs.
-    @_RunestoneProxy(\TextView.invisibleCharacterSettings.showTabs.value)
-    public var showTabs: Bool
+//    @Proxy(\TextView.invisibleCharacterSettings.showTabs.value)
+//    public var showTabs: Bool
     /// The text view renders invisible spaces when enabled.
     ///
     /// The `spaceSymbol` is used to render spaces.
-    @_RunestoneProxy(\TextView.invisibleCharacterSettings.showSpaces.value)
-    public var showSpaces: Bool
+//    @Proxy(\TextView.invisibleCharacterSettings.showSpaces.value)
+//    public var showSpaces: Bool
     /// The text view renders invisible spaces when enabled.
     ///
     /// The `nonBreakingSpaceSymbol` is used to render spaces.
-    @_RunestoneProxy(\TextView.invisibleCharacterSettings.showNonBreakingSpaces.value)
-    public var showNonBreakingSpaces: Bool
+//    @Proxy(\TextView.invisibleCharacterSettings.showNonBreakingSpaces.value)
+//    public var showNonBreakingSpaces: Bool
     /// The text view renders invisible line breaks when enabled.
     ///
     /// The `lineBreakSymbol` is used to render line breaks.
-    @_RunestoneProxy(\TextView.invisibleCharacterSettings.showLineBreaks.value)
-    public var showLineBreaks: Bool
+//    @Proxy(\TextView.invisibleCharacterSettings.showLineBreaks.value)
+//    public var showLineBreaks: Bool
     /// The text view renders invisible soft line breaks when enabled.
     ///
     /// The `softLineBreakSymbol` is used to render line breaks. These line breaks are typically represented by the U+2028 unicode character. Runestone does not provide any key commands for inserting these but supports rendering them.
-    @_RunestoneProxy(\TextView.invisibleCharacterSettings.showSoftLineBreaks.value)
-    public var showSoftLineBreaks: Bool
+//    @Proxy(\TextView.invisibleCharacterSettings.showSoftLineBreaks.value)
+//    public var showSoftLineBreaks: Bool
     /// Symbol used to display tabs.
     ///
     /// The value is only used when invisible tab characters is enabled. The default is ▸.
     ///
     /// Common characters for this symbol include ▸, ⇥, ➜, ➞, and ❯.
-    @_RunestoneProxy(\TextView.invisibleCharacterSettings.tabSymbol.value)
-    public var tabSymbol: String
+//    @Proxy(\TextView.invisibleCharacterSettings.tabSymbol.value)
+//    public var tabSymbol: String
     /// Symbol used to display spaces.
     ///
     /// The value is only used when showing invisible space characters is enabled. The default is ·.
     ///
     /// Common characters for this symbol include ·, •, and _.
-    @_RunestoneProxy(\TextView.invisibleCharacterSettings.spaceSymbol.value)
-    public var spaceSymbol: String
+//    @Proxy(\TextView.invisibleCharacterSettings.spaceSymbol.value)
+//    public var spaceSymbol: String
     /// Symbol used to display non-breaking spaces.
     ///
     /// The value is only used when showing invisible space characters is enabled. The default is ·.
     ///
     /// Common characters for this symbol include ·, •, and _.
-    @_RunestoneProxy(\TextView.invisibleCharacterSettings.nonBreakingSpaceSymbol.value)
-    public var nonBreakingSpaceSymbol: String
+//    @Proxy(\TextView.invisibleCharacterSettings.nonBreakingSpaceSymbol.value)
+//    public var nonBreakingSpaceSymbol: String
     /// Symbol used to display line break.
     ///
     /// The value is only used when showing invisible line break characters is enabled. The default is ¬.
     ///
     /// Common characters for this symbol include ¬, ↵, ↲, ⤶, and ¶.
-    @_RunestoneProxy(\TextView.invisibleCharacterSettings.lineBreakSymbol.value)
-    public var lineBreakSymbol: String
+//    @Proxy(\TextView.invisibleCharacterSettings.lineBreakSymbol.value)
+//    public var lineBreakSymbol: String
     /// Symbol used to display soft line breaks.
     ///
     /// The value is only used when showing invisible soft line break characters is enabled. The default is ¬.
     ///
     /// Common characters for this symbol include ¬, ↵, ↲, ⤶, and ¶.
-    @_RunestoneProxy(\TextView.invisibleCharacterSettings.softLineBreakSymbol.value)
-    public var softLineBreakSymbol: String
+//    @Proxy(\TextView.invisibleCharacterSettings.softLineBreakSymbol.value)
+//    public var softLineBreakSymbol: String
     /// The strategy used when indenting text.
-    @_RunestoneProxy(\TextView.typesetSettings.indentStrategy.value)
-    public var indentStrategy: IndentStrategy
+//    @Proxy(\TextView.typesetSettings.indentStrategy.value)
+//    public var indentStrategy: IndentStrategy
     /// The amount of padding before the line numbers inside the gutter.
 //    public var gutterLeadingPadding: CGFloat {
 //        get {
@@ -185,100 +190,94 @@ open class TextView: UIScrollView {
 //        }
 //    }
     /// The amount of spacing surrounding the lines.
-    @_RunestoneProxy(\TextView.textContainer.inset.value)
-    public var textContainerInset: UIEdgeInsets
+//    @Proxy(\TextView.textContainer.inset.value)
+//    public var textContainerInset: UIEdgeInsets
     /// When line wrapping is disabled, users can scroll the text view horizontally to see the entire line.
     ///
     /// Line wrapping is enabled by default.
-    @_RunestoneProxy(\TextView.typesetSettings.isLineWrappingEnabled.value)
-    public var isLineWrappingEnabled: Bool
+//    @Proxy(\TextView.typesetSettings.isLineWrappingEnabled.value)
+//    public var isLineWrappingEnabled: Bool
     /// Line break mode for text view. The default value is .byWordWrapping meaning that wrapping occurs on word boundaries.
-    @_RunestoneProxy(\TextView.typesetSettings.lineBreakMode.value)
-    public var lineBreakMode: LineBreakMode
+//    @Proxy(\TextView.typesetSettings.lineBreakMode.value)
+//    public var lineBreakMode: LineBreakMode
     /// Width of the gutter.
 //    public var gutterWidth: CGFloat {
 //        gutterWidthService.gutterWidth
 //    }
     /// The line-height is multiplied with the value.
-    @_RunestoneProxy(\TextView.typesetSettings.lineHeightMultiplier.value)
-    public var lineHeightMultiplier: CGFloat
+//    @Proxy(\TextView.typesetSettings.lineHeightMultiplier.value)
+//    public var lineHeightMultiplier: CGFloat
     /// The number of points by which to adjust kern. The default value is 0 meaning that kerning is disabled.
-    @_RunestoneProxy(\TextView.typesetSettings.kern.value)
-    public var kern: CGFloat
+//    @Proxy(\TextView.typesetSettings.kern.value)
+//    public var kern: CGFloat
     /// The text view shows a page guide when enabled. Use `pageGuideColumn` to specify the location of the page guide.
-    @_RunestoneProxy(\TextView.pageGuideLayouter.isEnabled)
-    public var showPageGuide: Bool
+//    @Proxy(\TextView.pageGuideLayouter.isEnabled)
+//    public var showPageGuide: Bool
     /// Specifies the location of the page guide. Use `showPageGuide` to specify if the page guide should be shown.
-    @_RunestoneProxy(\TextView.pageGuideLayouter.column)
-    public var pageGuideColumn: Int
+//    @Proxy(\TextView.pageGuideLayouter.column)
+//    public var pageGuideColumn: Int
     /// Automatically scrolls the text view to show the caret when typing or moving the caret.
-    @_RunestoneProxy(\TextView.automaticViewportScroller.isAutomaticScrollEnabled)
-    public var isAutomaticScrollEnabled: Bool
+//    @Proxy(\TextView.automaticViewportScroller.isAutomaticScrollEnabled)
+//    public var isAutomaticScrollEnabled: Bool
     /// Amount of overscroll to add in the vertical direction.
     ///
     /// The overscroll is a factor of the scrollable area height and will not take into account any insets. 0 means no overscroll and 1 means an amount equal to the height of the text view. Detaults to 0.
-    @_RunestoneProxy(\TextView.contentSizeService.verticalOverscrollFactor.value)
-    public var verticalOverscrollFactor: CGFloat
+//    @Proxy(\TextView.contentSizeService.verticalOverscrollFactor.value)
+//    public var verticalOverscrollFactor: CGFloat
     /// Amount of overscroll to add in the horizontal direction.
     ///
     /// The overscroll is a factor of the scrollable area height and will not take into account any insets or the width of the gutter. 0 means no overscroll and 1 means an amount equal to the width of the text view. Detaults to 0.
-    @_RunestoneProxy(\TextView.contentSizeService.horizontalOverscrollFactor.value)
-    public var horizontalOverscrollFactor: CGFloat
-    /// The length of the line that was longest when opening the document.
-    ///
-    /// This will return nil if the line is no longer available. The value will not be kept updated as the text is changed. The value can be used to determine if a document contains a very long line in which case the performance may be degraded when editing the line.
-    public var lengthOfInitallyLongestLine: Int? {
-        lineManager.value.initialLongestLine?.data.totalLength
-    }
+//    @Proxy(\TextView.contentSizeService.horizontalOverscrollFactor.value)
+//    public var horizontalOverscrollFactor: CGFloat
     /// Ranges in the text to be highlighted. The color defined by the background will be drawen behind the text.
-    @_RunestoneProxy(\TextView.highlightedRangeFragmentStore.highlightedRanges.value)
-    public var highlightedRanges: [HighlightedRange]
+//    @Proxy(\TextView.highlightedRangeFragmentStore.highlightedRanges.value)
+//    public var highlightedRanges: [HighlightedRange]
     /// Wheter the text view should loop when navigating through highlighted ranges using `selectPreviousHighlightedRange` or `selectNextHighlightedRange` on the text view.
-    @_RunestoneProxy(\TextView.highlightedRangeNavigator.loopingMode)
-    public var highlightedRangeLoopingMode: HighlightedRangeLoopingMode
+//    @Proxy(\TextView.highlightedRangeNavigator.loopingMode)
+//    public var highlightedRangeLoopingMode: HighlightedRangeLoopingMode
     /// Line endings to use when inserting a line break.
     ///
     /// The value only affects new line breaks inserted in the text view and changing this value does not change the line endings of the text in the text view. Defaults to Unix (LF).
     ///
     /// The TextView will only update the line endings when text is modified through an external event, such as when the user typing on the keyboard, when the user is replacing selected text, and when pasting text into the text view. In all other cases, you should make sure that the text provided to the text view uses the desired line endings. This includes when calling ``TextView/setState(_:addUndoAction:)``.
-    @_RunestoneProxy(\TextView.typesetSettings.lineEndings.value)
-    public var lineEndings: LineEnding
+//    @Proxy(\TextView.typesetSettings.lineEndings.value)
+//    public var lineEndings: LineEnding
     /// The shape of the insertion point.
     ///
     /// Defaults to ``InsertionPointShape/verticalBar``.
-    @_RunestoneProxy(\TextView.insertionPointShapeSubject.value)
-    public var insertionPointShape: InsertionPointShape
+//    @Proxy(\TextView.insertionPointShapeSubject.value)
+//    public var insertionPointShape: InsertionPointShape
     /// The insertion point's visibility mode.
     ///
     /// Defaults to ``InsertionPointVisibilityMode/whenMovingAndFarAway``.
-    @_RunestoneProxy(\TextView.insertionPointVisibilityModeSubject.value)
-    public var insertionPointVisibilityMode: InsertionPointVisibilityMode
+//    @Proxy(\TextView.insertionPointVisibilityModeSubject.value)
+//    public var insertionPointVisibilityMode: InsertionPointVisibilityMode
     /// The color of the insertion point.
     ///
     /// This can be used to control the color of the caret.
-    @_RunestoneProxy(\TextView.insertionPointBackgroundColorSubject.value)
-    @objc public var insertionPointColor: UIColor {
-        didSet {
-            if insertionPointColor != oldValue {
-                standardCaretColorUpdater.updateStandardCaretColor()
-            }
-        }
-    }
+//    @Proxy(\TextView.insertionPointBackgroundColorSubject.value)
+//    @objc public var insertionPointColor: UIColor {
+//        didSet {
+//            if insertionPointColor != oldValue {
+//                standardCaretColorUpdater.updateStandardCaretColor()
+//            }
+//        }
+//    }
     /// The color of the insertion point when it is being moved.
     ///
     /// The insertion point assumes this color when it is being moved to depict where the insertion point will be placed when the moving operation ends.
-    @_RunestoneProxy(\TextView.insertionPointPlaceholderBackgroundColorSubject.value)
-    public var insertionPointPlaceholderBackgroundColor: UIColor
+//    @Proxy(\TextView.insertionPointPlaceholderBackgroundColorSubject.value)
+//    public var insertionPointPlaceholderBackgroundColor: UIColor
     /// The color of the insertion point.
     ///
     /// This can be used to control the color of the caret.
-    @_RunestoneProxy(\TextView.insertionPointTextColorSubject.value)
-    public var insertionPointForegroundColor: UIColor
+//    @Proxy(\TextView.insertionPointTextColorSubject.value)
+//    public var insertionPointForegroundColor: UIColor
     /// The color of the insertion point.
     ///
     /// This can be used to control the color of the caret.
-    @_RunestoneProxy(\TextView.insertionPointInvisibleCharacterColorSubject.value)
-    public var insertionPointInvisibleCharacterForegroundColor: UIColor
+//    @Proxy(\TextView.insertionPointInvisibleCharacterColorSubject.value)
+//    public var insertionPointInvisibleCharacterForegroundColor: UIColor
     /// The color of the selection bar.
     ///
     /// It is most common to set this to the same color as the color used for the insertion point.
@@ -288,24 +287,24 @@ open class TextView: UIScrollView {
     /// It is most common to set this to the same color as the color used for the insertion point.
     @objc public var selectionHighlightColor: UIColor = .label.withAlphaComponent(0.2)
     /// The object that the document uses to support undo/redo operations.
-    override open var undoManager: UndoManager? {
-        _undoManager
-    }
+//    override open var undoManager: UndoManager? {
+//        _undoManager
+//    }
     /// When enabled the text view will present a menu with actions actions such as Copy and Replace after navigating to a highlighted range.
-    @_RunestoneProxy(\TextView.highlightedRangeNavigator.showMenuAfterNavigatingToHighlightedRange)
-    public var showMenuAfterNavigatingToHighlightedRange: Bool
+//    @Proxy(\TextView.highlightedRangeNavigator.showMenuAfterNavigatingToHighlightedRange)
+//    public var showMenuAfterNavigatingToHighlightedRange: Bool
     /// A boolean value that enables a text view's built-in find interaction.
     ///
     /// After enabling the find interaction, use [`presentFindNavigator(showingReplace:)`](https://developer.apple.com/documentation/uikit/uifindinteraction/3975832-presentfindnavigator) on <doc:findInteraction> to present the find navigator.
-    @available(iOS 16, *)
-    public var isFindInteractionEnabled: Bool {
-        get {
-            textSearchingHelper.isFindInteractionEnabled
-        }
-        set {
-            textSearchingHelper.isFindInteractionEnabled = newValue
-        }
-    }
+//    @available(iOS 16, *)
+//    public var isFindInteractionEnabled: Bool {
+//        get {
+//            textSearchingHelper.isFindInteractionEnabled
+//        }
+//        set {
+//            textSearchingHelper.isFindInteractionEnabled = newValue
+//        }
+//    }
     /// The text view's built-in find interaction.
     ///
     /// Set <doc:isFindInteractionEnabled> to true to enable the text view's built-in find interaction. This method returns nil when the interaction isn't enabled.
@@ -313,7 +312,8 @@ open class TextView: UIScrollView {
     /// Call [`presentFindNavigator(showingReplace:)`](https://developer.apple.com/documentation/uikit/uifindinteraction/3975832-presentfindnavigator) on the UIFindInteraction object to invoke the find interaction and display the find panel.
     @available(iOS 16, *)
     public var findInteraction: UIFindInteraction? {
-        textSearchingHelper.findInteraction
+//        textSearchingHelper.findInteraction
+        return nil
     }
     /// The behavior of inline text predictions for a text-entry area.
     @available(iOS 17, *)
@@ -333,26 +333,26 @@ open class TextView: UIScrollView {
         self
     }
     /// The custom input accessory view to display when the receiver becomes the first responder.
-    override public var inputAccessoryView: UIView? {
-        get {
-            if isInputAccessoryViewEnabled {
-                return _inputAccessoryView
-            } else {
-                return nil
-            }
-        }
-        set {
-            _inputAccessoryView = newValue
-        }
-    }
+//    override public var inputAccessoryView: UIView? {
+//        get {
+//            if isInputAccessoryViewEnabled {
+//                return _inputAccessoryView
+//            } else {
+//                return nil
+//            }
+//        }
+//        set {
+//            _inputAccessoryView = newValue
+//        }
+//    }
 
 //    private let textSearchingHelper: UITextSearchingHelper
 //    private let editMenuController = EditMenuController()
 //    private let keyboardObserver = KeyboardObserver()
-    private var isInputAccessoryViewEnabled = false
-    private var _inputAccessoryView: UIView?
-    private let beginEditingGestureRecognizer: UIGestureRecognizer
-    private var isPerformingNonEditableTextInteraction = false
+//    private var isInputAccessoryViewEnabled = false
+//    private var _inputAccessoryView: UIView?
+    private let tapGestureRecognizer = QuickTapGestureRecognizer()
+//    private var isPerformingNonEditableTextInteraction = false
     private var shouldBeginEditing: Bool {
         isEditable && (editorDelegate?.textViewShouldBeginEditing(self) ?? true)
     }
@@ -360,171 +360,131 @@ open class TextView: UIScrollView {
         editorDelegate?.textViewShouldEndEditing(self) ?? true
     }
 
-    private let _scrollView: CurrentValueSubject<WeakBox<MultiPlatformScrollView>, Never>
-    private let textViewDelegate: ErasedTextViewDelegate
-    private let _isFirstResponder: CurrentValueSubject<Bool, Never>
-    private let textInteractionManager: UITextInteractionManager
-    private let textViewNeedsLayoutObserver: TextViewNeedsLayoutObserver
-    private var boundsObserver: AnyCancellable?
+    private let stringView = NSMutableStringView()
+    private lazy var lineManager = LineManager(state: stateStore, stringView: stringView)
 
-    let textInputHelper: UITextInputHelper
-    private let textRangeAdjustmentGestureTracker: UITextRangeAdjustmentGestureTracker
+//
+//    private let proxyScrollView: ProxyScrollView
+//    private let textViewDelegate: ErasedTextViewDelegate
+    private var _isFirstResponder = false
+//    private let _isFirstResponder: CurrentValueSubject<Bool, Never>
+//    private let textInteractionManager: UITextInteractionManager
+//    private let textViewNeedsLayoutObserver: TextViewNeedsLayoutObserver
+//    private var boundsObserver: AnyCancellable?
 
-    let stringView: CurrentValueSubject<StringView, Never>
-    private let lineManager: CurrentValueSubject<LineManager, Never>
+    private lazy var viewport = ScrollViewViewport(scrollView: self)
+    private let stateStore = TextViewStateStore()
+    
+    private(set) lazy var textInputClient = UITextInputClient(
+        stateStore: stateStore,
+        stringView: stringView,
+        tokenizer: TextInputStringTokenizer(
+            textInput: self,
+            stringTokenizer: StringTokenizer(
+                stringView: stringView,
+                lineManager: lineManager
+            )
+        ),
+        textEditor: TextEditor(
+            state: stateStore,
+            stringView: stringView,
+            stringTokenizer: StringTokenizer(
+                stringView: stringView,
+                lineManager: lineManager
+            ),
+            textReplacer: CompositeTextReplacer(
+                StringViewTextReplacer(stringView: stringView),
+                LineManagerTextReplacer(lineManager: lineManager),
+                LayoutingTextReplacer(
+                    textLayouter: TextLayouter(
+                        viewport: viewport,
+                        lineManager: lineManager
+                    )
+                )
+            )
+        )
+    )
+//    private let textRangeAdjustmentGestureTracker: UITextRangeAdjustmentGestureTracker
+//
+//    let stringView: any StringView
+//    private let lineManager: any LineManaging
+//
+//    private let selectedRangeSubject: CurrentValueSubject<NSRange, Never>
+//    private let markedRangeSubject: CurrentValueSubject<NSRange?, Never>
+//
+//    private let textContainer: TextContainer
+//    private let typesetSettings: TypesetSettings
+//    private let invisibleCharacterSettings: InvisibleCharacterSettings
+//    private let themeSettings: ThemeSettings
+//    private let textViewBackgroundColor: CurrentValueSubject<MultiPlatformColor?, Never>
+//
+//    private let _undoManager: UndoManager
+//    let indentationChecker: IndentationChecker
+//
+//    let languageMode: ProxyInternalLanguageMode
+//    let languageModeSetter: LanguageModeSetter<NSMutableStringView, ProxyInternalLanguageMode>
+//
+//    private let textSetter: TextSetter<NSMutableStringView, RedBlackTreeLineManager<NSMutableStringView>, ProxyInternalLanguageMode>
+//    let textViewStateSetter: TextViewStateSetter
 
-    private let selectedRangeSubject: CurrentValueSubject<NSRange, Never>
-    private let markedRangeSubject: CurrentValueSubject<NSRange?, Never>
+//    private let editorState: EditorState
+//    let textReplacer: TextReplacing
+//    let textShifter: TextShifter
+//
+//    private let contentSizeService: ContentSizeService
+//
+//    private let locationRaycaster: LocationRaycaster
+//    let lineMover: LineMover
+//    let goToLineNavigator: GoToLineNavigator<RedBlackTreeLineManager<NSMutableStringView>>
+//    let syntaxNodeRaycaster: SyntaxNodeRaycaster<RedBlackTreeLineManager<NSMutableStringView>, ProxyInternalLanguageMode>
+//    let textLocationConverter: TextLocationConverter
+//
+//    private let insertionPointLayouter: InsertionPointLayouter
+//    private let lineFragmentLayouter: LineFragmentLayouter
+//    private let lineSelectionLayouter: LineSelectionLayouter
+//    private let pageGuideLayouter: PageGuideLayouter
+//
+//    private let insertionPointShapeSubject: CurrentValueSubject<InsertionPointShape, Never>
+//    private let insertionPointVisibilityModeSubject: CurrentValueSubject<InsertionPointVisibilityMode, Never>
+//    private let insertionPointBackgroundColorSubject: CurrentValueSubject<MultiPlatformColor, Never>
+//    private let insertionPointPlaceholderBackgroundColorSubject: CurrentValueSubject<MultiPlatformColor, Never>
+//    private let insertionPointTextColorSubject: CurrentValueSubject<MultiPlatformColor, Never>
+//    private let insertionPointInvisibleCharacterColorSubject: CurrentValueSubject<MultiPlatformColor, Never>
+//
+//    let viewportScroller: ViewportScroller
+//    private let automaticViewportScroller: AutomaticViewportScroller
+//
+//    private let textSearchingHelper: UITextSearchingHelper
+//    let searchService: SearchService
+//    let batchReplacer: BatchReplacer<
+//        NSMutableStringView, 
+//        RedBlackTreeLineManager<NSMutableStringView>,
+//        TextSetter<NSMutableStringView, RedBlackTreeLineManager<NSMutableStringView>, ProxyInternalLanguageMode>
+//    >
+//    let textPreviewFactory: TextPreviewFactory
+//
+//    private let highlightedRangeFragmentStore: HighlightedRangeFragmentStore
+//    let highlightedRangeNavigator: HighlightedRangeNavigator
 
-    private let textContainer: TextContainer
-    private let typesetSettings: TypesetSettings
-    private let invisibleCharacterSettings: InvisibleCharacterSettings
-    private let themeSettings: ThemeSettings
-    private let textViewBackgroundColor: CurrentValueSubject<MultiPlatformColor?, Never>
+//    private let inlinePredictionRangeApplicator: InlinePredictionRangeApplicator
 
-    private let _undoManager: UndoManager
-    private let characterPairService: CharacterPairService
-    let indentationChecker: IndentationChecker
+//    private let textSelectionViewProvider: UITextSelectionViewProvider
+//    private let standardCaretColorUpdater: StandardCaretColorUpdater
 
-    let languageMode: CurrentValueSubject<any InternalLanguageMode, Never>
-    let languageModeSetter: LanguageModeSetter
+//    private let pressesHandler: PressesHandler<NSMutableStringView>
 
-    private let textSetter: TextSetter
-    let textViewStateSetter: TextViewStateSetter
-
-    private let editorState: EditorState
-    let textReplacer: TextReplacer
-    let textShifter: TextShifter
-
-    private let contentSizeService: ContentSizeService
-
-    private let locationRaycaster: LocationRaycaster
-    let lineMover: LineMover
-    let goToLineNavigator: GoToLineNavigator
-    let syntaxNodeRaycaster: SyntaxNodeRaycaster
-    let textLocationConverter: TextLocationConverter
-
-    private let insertionPointLayouter: InsertionPointLayouter
-    private let lineFragmentLayouter: LineFragmentLayouter
-    private let lineSelectionLayouter: LineSelectionLayouter
-    private let pageGuideLayouter: PageGuideLayouter
-
-    private let insertionPointShapeSubject: CurrentValueSubject<InsertionPointShape, Never>
-    private let insertionPointVisibilityModeSubject: CurrentValueSubject<InsertionPointVisibilityMode, Never>
-    private let insertionPointBackgroundColorSubject: CurrentValueSubject<MultiPlatformColor, Never>
-    private let insertionPointPlaceholderBackgroundColorSubject: CurrentValueSubject<MultiPlatformColor, Never>
-    private let insertionPointTextColorSubject: CurrentValueSubject<MultiPlatformColor, Never>
-    private let insertionPointInvisibleCharacterColorSubject: CurrentValueSubject<MultiPlatformColor, Never>
-
-    let viewportScroller: ViewportScroller
-    private let automaticViewportScroller: AutomaticViewportScroller
-
-    private let textSearchingHelper: UITextSearchingHelper
-    let searchService: SearchService
-    let batchReplacer: BatchReplacer
-    let textPreviewFactory: TextPreviewFactory
-
-    private let highlightedRangeFragmentStore: HighlightedRangeFragmentStore
-    let highlightedRangeNavigator: HighlightedRangeNavigator
-
-    private let inlinePredictionRangeApplicator: InlinePredictionRangeApplicator
-
-    private let textSelectionViewProvider: UITextSelectionViewProvider
-    private let standardCaretColorUpdater: StandardCaretColorUpdater
-
-    private let pressesHandler: PressesHandler
+    private let textInteractionEditingStateChangeHandler = UITextInteractionEditingStateChangeHandler()
+    private lazy var editingStateChangeHandler = CompositeEditingStateChangeHandler([
+        textInteractionEditingStateChangeHandler
+    ])
 
     /// Create a new text view.
     /// - Parameter frame: The frame rectangle of the text view.
     override public init(frame: CGRect) {
-        let compositionRoot = CompositionRoot()
-        _scrollView = compositionRoot.scrollView
-        textViewDelegate = compositionRoot.textViewDelegate
-        _isFirstResponder = compositionRoot.isFirstResponder
-        textInteractionManager = compositionRoot.textInteractionManager
-        textViewNeedsLayoutObserver = compositionRoot.textViewNeedsLayoutObserver
-        beginEditingGestureRecognizer = compositionRoot.beginEditingGestureRecognizer
-
-        textInputHelper = compositionRoot.textInputHelper
-        textRangeAdjustmentGestureTracker = compositionRoot.textRangeAdjustmentGestureTracker
-
-        stringView = compositionRoot.stringView
-        lineManager = compositionRoot.lineManager
-
-        selectedRangeSubject = compositionRoot.selectedRange
-        markedRangeSubject = compositionRoot.markedRange
-
-        textContainer = compositionRoot.textContainer
-        typesetSettings = compositionRoot.typesetSettings
-        invisibleCharacterSettings = compositionRoot.invisibleCharacterSettings
-        themeSettings = compositionRoot.themeSettings
-        textViewBackgroundColor = compositionRoot.textViewBackgroundColor
-
-        _undoManager = compositionRoot.undoManager
-        characterPairService = compositionRoot.characterPairService
-        indentationChecker = compositionRoot.indentationChecker
-
-        languageMode = compositionRoot.languageMode
-        languageModeSetter = compositionRoot.languageModeSetter
-
-        textSetter = compositionRoot.textSetter
-        textViewStateSetter = compositionRoot.textViewStateSetter
-
-        editorState = compositionRoot.editorState
-        textReplacer = compositionRoot.textReplacer
-        textShifter = compositionRoot.textShifter
-
-        contentSizeService = compositionRoot.contentSizeService
-
-        locationRaycaster = compositionRoot.locationRaycaster
-        lineMover = compositionRoot.lineMover
-        goToLineNavigator = compositionRoot.goToLineNavigator
-        syntaxNodeRaycaster = compositionRoot.syntaxNodeRaycaster
-        textLocationConverter = compositionRoot.textLocationConverter
-
-        insertionPointLayouter = compositionRoot.insertionPointLayouter
-        lineFragmentLayouter = compositionRoot.lineFragmentLayouter
-        lineSelectionLayouter = compositionRoot.lineSelectionLayouter
-        pageGuideLayouter = compositionRoot.pageGuideLayouter
-
-        insertionPointShapeSubject = compositionRoot.insertionPointShape
-        insertionPointVisibilityModeSubject = compositionRoot.insertionPointVisibilityMode
-        insertionPointBackgroundColorSubject = compositionRoot.insertionPointBackgroundColor
-        insertionPointPlaceholderBackgroundColorSubject = compositionRoot.insertionPointPlaceholderBackgroundColor
-        insertionPointTextColorSubject = compositionRoot.insertionPointTextColor
-        insertionPointInvisibleCharacterColorSubject = compositionRoot.insertionPointInvisibleCharacterColor
-
-        viewportScroller = compositionRoot.viewportScroller
-        automaticViewportScroller = compositionRoot.automaticViewportScroller
-
-        textSearchingHelper = compositionRoot.textSearchingHelper
-        searchService = compositionRoot.searchService
-        batchReplacer = compositionRoot.batchReplacer
-        textPreviewFactory = compositionRoot.textPreviewFactory
-
-        highlightedRangeFragmentStore = compositionRoot.highlightedRangeFragmentStore
-        highlightedRangeNavigator = compositionRoot.highlightedRangeNavigator
-
-        inlinePredictionRangeApplicator = compositionRoot.inlinePredictionRangeApplicator
-
-        textSelectionViewProvider = compositionRoot.textSelectionViewProvider
-        standardCaretColorUpdater = compositionRoot.standardCaretColorUpdater
-
-        pressesHandler = compositionRoot.pressesHandler
         super.init(frame: frame)
-        compositionRoot.textView.value = WeakBox(self)
-        backgroundColor = .white
-        beginEditingGestureRecognizer.delegate = self
-        beginEditingGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
-        addGestureRecognizer(beginEditingGestureRecognizer)
-        textInteractionManager.installNonEditableInteraction()
-        textInputHelper.tokenizer = compositionRoot.textInputStringTokenizer(for: self)
-
-//        keyboardObserver.delegate = self
-//        textSearchingHelper.textView = self
-//        editMenuController.delegate = self
-//        editMenuController.setupEditMenu(in: self)
-//        textViewController.highlightedRangeNavigator.delegate = self
+        textInteractionEditingStateChangeHandler.textInput = self
+        tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
+        addGestureRecognizer(tapGestureRecognizer)
     }
 
     /// The initializer has not been implemented.
@@ -536,37 +496,40 @@ open class TextView: UIScrollView {
     /// Lays out subviews.
     override open func layoutSubviews() {
         super.layoutSubviews()
-        textInputHelper.resetHasDeletedTextWithPendingLayoutSubviews()
-        textInputHelper.notifyInputDelegateFromLayoutSubviewsIfNeeded()
-        contentSizeService.updateContentSizeIfNeeded()
-        textContainer.viewport.value = CGRect(origin: contentOffset, size: frame.size)
-        lineFragmentLayouter.layoutIfNeeded()
-        // Set the frame of UITextSelectionView to *anything* to workaround an issue where the selection highlight is not shown the first time the user selects text.
-        textSelectionViewProvider.textSelectionView?.frame = .zero
+//        textInputHelper.resetHasDeletedTextWithPendingLayoutSubviews()
+//        textInputHelper.notifyInputDelegateFromLayoutSubviewsIfNeeded()
+//        contentSizeService.updateContentSizeIfNeeded()
+//        textContainer.viewport.value = CGRect(origin: contentOffset, size: frame.size)
+//        lineFragmentLayouter.layoutIfNeeded()
+        // Set the frame of UITextSelectionView to *anything* to workaround an issue where
+        // the selection highlight is not shown the first time the user selects text.
+//        textSelectionViewProvider.textSelectionView?.frame = .zero
     }
 
     /// Called when the safe area of the view changes.
     override open func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
-        textContainer.safeAreaInsets.value = safeAreaInsets
-        layoutIfNeeded()
+//        textContainer.safeAreaInsets.value = safeAreaInsets
+//        layoutIfNeeded()
     }
 
     /// Asks UIKit to make this object the first responder in its window.
     @discardableResult
     override open func becomeFirstResponder() -> Bool {
-        guard !editorState.isEditing.value && shouldBeginEditing else {
+        guard !isEditing && shouldBeginEditing else {
             return false
         }
         if canBecomeFirstResponder {
-            willBeginEditing()
+            editingStateChangeHandler.willBeginEditing()
         }
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if didBecomeFirstResponder {
-            _isFirstResponder.value = true
-            didBeginEditing()
+            _isFirstResponder = true
+            isEditing = true
+            editingStateChangeHandler.didBeginEditing()
         } else {
-            didCancelBeginEditing()
+            isEditing = false
+            editingStateChangeHandler.didCancelBeginEditing()
         }
         return didBecomeFirstResponder
     }
@@ -579,8 +542,9 @@ open class TextView: UIScrollView {
         }
         let didResignFirstResponder = super.resignFirstResponder()
         if didResignFirstResponder {
-            _isFirstResponder.value = false
-            didEndEditing()
+            _isFirstResponder = false
+            isEditing = false
+            editingStateChangeHandler.didEndEditing()
         }
         return didResignFirstResponder
     }
@@ -660,9 +624,9 @@ open class TextView: UIScrollView {
         }
         // We end our current undo group when the user touches the view.
         let result = super.hitTest(point, with: event)
-        if result === self {
-            undoManager?.endUndoGrouping()
-        }
+//        if result === self {
+//            undoManager?.endUndoGrouping()
+//        }
         return result
     }
 
@@ -672,7 +636,7 @@ open class TextView: UIScrollView {
     ///   - event: The event to which the presses belong.
     override open func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         super.pressesEnded(presses, with: event)
-        pressesHandler.handlePressesEnded(presses, with: event)
+//        pressesHandler.handlePressesEnded(presses, with: event)
     }
 }
 
@@ -688,64 +652,63 @@ open class TextView: UIScrollView {
 //        // Even the Swift Playgrounds app does not get this right for all languages in all cases, so there seems to be some workarounds needed due bugs in internal classes in UIKit that communicate with instances of UITextInput.
 //        inputDelegate?.selectionDidChange(nil)
 //    }
-//
 //}
 
 private extension TextView {
-    private func willBeginEditing() {
-        guard isEditable else {
-            return
-        }
-        editorState.isEditing.value = !isPerformingNonEditableTextInteraction
+//    private func willBeginEditing() {
+//        guard isEditable else {
+//            return
+//        }
+//        editorState.isEditing.value = !isPerformingNonEditableTextInteraction
         // If a developer is programmatically calling becomeFirstResponder() then we might not have a selected range.
         // We set the selectedRange instead of the selectedTextRange to avoid invoking any delegates.
 //        if textViewController.selectedRange == nil && !isPerformingNonEditableTextInteraction {
 //            textViewController.selectedRange = NSRange(location: 0, length: 0)
 //        }
         // Ensure selection is laid out without animation.
-        UIView.performWithoutAnimation {
-            layoutIfNeeded()
-        }
+//        UIView.performWithoutAnimation {
+//            layoutIfNeeded()
+//        }
         // The editable interaction must be installed early in the -becomeFirstResponder() call
-        if !isPerformingNonEditableTextInteraction {
-            textInteractionManager.installEditableInteraction()
-        }
-    }
+//        if !isPerformingNonEditableTextInteraction {
+//            textInteractionManager.installEditableInteraction()
+//        }
+//    }
 
-    private func didBeginEditing() {
-        if !isPerformingNonEditableTextInteraction {
-            editorDelegate?.textViewDidBeginEditing(self)
-        }
-    }
+//    private func didBeginEditing() {
+//        if !isPerformingNonEditableTextInteraction {
+//            editorDelegate?.textViewDidBeginEditing(self)
+//        }
+//    }
 
-    private func didCancelBeginEditing() {
+//    private func didCancelBeginEditing() {
         // This is called in the case where:
         // 1. The view is the first responder.
         // 2. A view is presented modally on top of the editor.
         // 3. The modally presented view is dismissed.
         // 4. The responder chain attempts to make the text view first responder again but super.becomeFirstResponder() returns false.
-        editorState.isEditing.value = false
-        textInteractionManager.installEditableInteraction()
-    }
+//        editorState.isEditing.value = false
+//        textInteractionManager.installEditableInteraction()
+//    }
 
-    private func didEndEditing() {
-        editorState.isEditing.value = false
-        textInteractionManager.installNonEditableInteraction()
-        editorDelegate?.textViewDidEndEditing(self)
-    }
+//    private func didEndEditing() {
+//        editorState.isEditing.value = false
+//        textInteractionManager.installNonEditableInteraction()
+//        editorDelegate?.textViewDidEndEditing(self)
+//    }
 
     @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
-        guard editorState.isSelectable.value, gestureRecognizer.state == .ended else {
+        guard isSelectable, gestureRecognizer.state == .ended else {
             return
         }
-        let point = gestureRecognizer.location(in: self)
-        let oldSelectedRange = selectedRangeSubject.value
-        let index = locationRaycaster.location(closestTo: point)
-        selectedRangeSubject.value = NSRange(location: index, length: 0)
-        if selectedRangeSubject.value != oldSelectedRange {
-            layoutIfNeeded()
-        }
-        textInteractionManager.installEditableInteraction()
+//        let point = gestureRecognizer.location(in: self)
+//        let oldSelectedRange = selectedRangeSubject.value
+//        let index = locationRaycaster.location(closestTo: point)
+//        selectedRangeSubject.value = NSRange(location: index, length: 0)
+//        if selectedRangeSubject.value != oldSelectedRange {
+//            layoutIfNeeded()
+//        }
+//        textInteractionManager.installEditableInteraction()
         becomeFirstResponder()
     }
 
@@ -789,7 +752,7 @@ private extension TextView {
 // MARK: - UIGestureRecognizerDelegate
 extension TextView: UIGestureRecognizerDelegate {
     override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        if gestureRecognizer === beginEditingGestureRecognizer {
+        if gestureRecognizer === tapGestureRecognizer {
             return !isEditing && !isDragging && !isDecelerating && shouldBeginEditing
         } else {
             return super.gestureRecognizerShouldBegin(gestureRecognizer)
@@ -800,7 +763,7 @@ extension TextView: UIGestureRecognizerDelegate {
         _ gestureRecognizer: UIGestureRecognizer,
         shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
     ) -> Bool {
-        textRangeAdjustmentGestureTracker.beginTrackingGestureRecognizerIfNeeded(gestureRecognizer)
+//        textRangeAdjustmentGestureTracker.beginTrackingGestureRecognizerIfNeeded(gestureRecognizer)
         return gestureRecognizer !== panGestureRecognizer
     }
 }
@@ -822,7 +785,7 @@ extension TextView: UIGestureRecognizerDelegate {
 //        let caretFactory = CaretFactory(
 //            stringView: textViewController.stringView,
 //            lineManager: textViewController.lineManager,
-//            lineControllerStorage: textViewController.lineControllerStorage,
+//            LineControllerStore: textViewController.LineControllerStore,
 //            textContainerInset: textViewController.textContainerInset
 //        )
 //        return caretFactory.caret(at: location, allowMovingCaretToNextLineFragment: false)

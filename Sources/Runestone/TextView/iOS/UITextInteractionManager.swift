@@ -1,11 +1,10 @@
 #if os(iOS)
-import Combine
 import UIKit
 
 final class UITextInteractionManager: NSObject {
-    private let _textView: CurrentValueSubject<WeakBox<TextView>, Never>
-    private let isEditable: CurrentValueSubject<Bool, Never>
-    private let isSelectable: CurrentValueSubject<Bool, Never>
+    typealias State = IsEditableReadable & IsSelectableReadable
+
+    private let state: State
     private let editableTextInteraction = UITextInteraction(for: .editable)
     private let nonEditableTextInteraction = UITextInteraction(for: .nonEditable)
     private let beginEditingGestureRecognizer: UIGestureRecognizer
@@ -13,23 +12,15 @@ final class UITextInteractionManager: NSObject {
     private let standardFloatingCaretHider: StandardFloatingCaretHider
     private let customFloatingCaretLayouter: CustomFloatingCaretLayouter
     private var isPerformingNonEditableTextInteraction = false
-    private var cancellables: Set<AnyCancellable> = []
-    private var textView: TextView? {
-        _textView.value.value
-    }
 
     init(
-        textView: CurrentValueSubject<WeakBox<TextView>, Never>,
-        isEditable: CurrentValueSubject<Bool, Never>,
-        isSelectable: CurrentValueSubject<Bool, Never>,
+        state: State,
         beginEditingGestureRecognizer: UIGestureRecognizer,
         standardCaretHider: StandardCaretHider,
         standardFloatingCaretHider: StandardFloatingCaretHider,
         customFloatingCaretLayouter: CustomFloatingCaretLayouter
     ) {
-        self._textView = textView
-        self.isEditable = isEditable
-        self.isSelectable = isSelectable
+        self.state = state
         self.beginEditingGestureRecognizer = beginEditingGestureRecognizer
         self.standardCaretHider = standardCaretHider
         self.standardFloatingCaretHider = standardFloatingCaretHider
@@ -37,31 +28,27 @@ final class UITextInteractionManager: NSObject {
         super.init()
         editableTextInteraction.delegate = self
         nonEditableTextInteraction.delegate = self
-        textView.map(\.value).sink { [weak self] textView in
-            self?.editableTextInteraction.textInput = textView
-            self?.nonEditableTextInteraction.textInput = textView
-        }.store(in: &cancellables)
     }
 
-    func installEditableInteraction() {
+    func installEditableInteraction(in view: UIView) {
         guard editableTextInteraction.view == nil else {
             return
         }
 //      isInputAccessoryViewEnabled = true
-        textView?.removeInteraction(nonEditableTextInteraction)
-        textView?.addInteraction(editableTextInteraction)
+        nonEditableTextInteraction.view?.removeInteraction(nonEditableTextInteraction)
+        view.addInteraction(editableTextInteraction)
         standardCaretHider.setupCaretViewObserver()
         standardFloatingCaretHider.setupFloatingCaretViewObserver()
         customFloatingCaretLayouter.setupFloatingCaretViewObserver()
     }
 
-    func installNonEditableInteraction() {
+    func installNonEditableInteraction(in view: UIView) {
         guard nonEditableTextInteraction.view == nil else {
             return
         }
 //      isInputAccessoryViewEnabled = false
-        textView?.removeInteraction(editableTextInteraction)
-        textView?.addInteraction(nonEditableTextInteraction)
+        editableTextInteraction.view?.removeInteraction(editableTextInteraction)
+        view.addInteraction(nonEditableTextInteraction)
         standardCaretHider.setupCaretViewObserver()
         standardFloatingCaretHider.setupFloatingCaretViewObserver()
         customFloatingCaretLayouter.setupFloatingCaretViewObserver()
@@ -71,11 +58,14 @@ final class UITextInteractionManager: NSObject {
     }
 
     func removeAndAddEditableTextInteraction() {
-        // There seems to be a bug in UITextInput (or UITextInteraction?) where updating the markedTextRange of a UITextInput will cause the caret to disappear. Removing the editable text interaction and adding it back will work around this issue.
+        // There seems to be a bug in UITextInput (or UITextInteraction?) where updating
+        // the markedTextRange of a UITextInput will cause the caret to disappear. Removing
+        // the editable text interaction and adding it back will work around this issue.
         DispatchQueue.main.async {
             if self.editableTextInteraction.view != nil {
-                self.textView?.removeInteraction(self.editableTextInteraction)
-                self.textView?.addInteraction(self.editableTextInteraction)
+                let view = self.editableTextInteraction.view
+                view?.removeInteraction(self.editableTextInteraction)
+                view?.addInteraction(self.editableTextInteraction)
             }
         }
     }
@@ -84,10 +74,12 @@ final class UITextInteractionManager: NSObject {
 extension UITextInteractionManager: UITextInteractionDelegate {
     func interactionShouldBegin(_ interaction: UITextInteraction, at point: CGPoint) -> Bool {
         if interaction.textInteractionMode == .editable {
-            return isEditable.value
+            return state.isEditable
         } else if interaction.textInteractionMode == .nonEditable {
-            // The private UITextLoupeInteraction and UITextNonEditableInteractionclass will end up in this case. The latter is likely created from UITextInteraction(for: .nonEditable) but we want to disable both when selection is disabled.
-            return isSelectable.value
+            // The private UITextLoupeInteraction and UITextNonEditableInteractionclass will end
+            // up in this case. The latter is likely created from UITextInteraction(for: .nonEditable)
+            // but we want to disable both when selection is disabled.
+            return state.isSelectable
         } else {
             return true
         }
@@ -95,8 +87,9 @@ extension UITextInteractionManager: UITextInteractionDelegate {
 
     func interactionWillBegin(_ interaction: UITextInteraction) {
         if interaction.textInteractionMode == .nonEditable {
-            // When long-pressing our instance of UITextInput, the UITextInteraction will make the text input first responder.
-            // In this case the user wants to select text in the text view but not start editing, so we set a flag that tells us
+            // When long-pressing our instance of UITextInput, the UITextInteraction will
+            // make the text input first responder. In this case the user wants to select
+            // text in the text view but not start editing, so we set a flag that tells us
             // that we should not install editable text interaction in this case.
             isPerformingNonEditableTextInteraction = true
         }

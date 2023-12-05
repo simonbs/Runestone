@@ -27,7 +27,7 @@ final class PlainTextInternalLanguageMode: InternalLanguageMode {
         nil
     }
 
-    func createSyntaxHighlighter(with theme: CurrentValueSubject<Theme, Never>) -> some SyntaxHighlighter {
+    func createSyntaxHighlighter(with theme: Theme) -> any SyntaxHighlighter {
         PlainTextSyntaxHighlighter(operationQueue: operationQueue)
     }
 

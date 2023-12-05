@@ -5,10 +5,10 @@ import Foundation
 import UIKit
 #endif
 
-final class TextLineFragmentRenderer: LineFragmentRenderer {
-    private let lineFragment: LineFragment
+final class TextLineFragmentRenderer<LineFragmentType: LineFragment>: LineFragmentRenderer {
+    private let lineFragment: LineFragmentType
 
-    init(lineFragment: LineFragment) {
+    init(lineFragment: LineFragmentType) {
         self.lineFragment = lineFragment
     }
 

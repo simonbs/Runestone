@@ -3,14 +3,16 @@ import CoreText
 import UIKit
 #endif
 
-final class HighlightedRangeLineFragmentRenderer: LineFragmentRenderer {
-    private let lineFragment: LineFragment
-    private let stringProvider: LineFragmentRendererStringProvider
+final class HighlightedRangeLineFragmentRenderer<
+    LineFragmentType: LineFragment
+>: LineFragmentRenderer {
+    private let lineFragment: LineFragmentType
+    private let stringProvider: LineFragmentRendererStringProvider<LineFragmentType>
     private let highlightedRangeFragments: [HighlightedRangeFragment]
 
     init(
-        lineFragment: LineFragment,
-        stringProvider: LineFragmentRendererStringProvider,
+        lineFragment: LineFragmentType,
+        stringProvider: LineFragmentRendererStringProvider<LineFragmentType>,
         highlightedRangeFragments: [HighlightedRangeFragment]
     ) {
         self.lineFragment = lineFragment

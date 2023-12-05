@@ -18,15 +18,32 @@ struct InvisibleCharacterRenderer {
         let position: HorizontalPosition
     }
 
-    let stringView: CurrentValueSubject<StringView, Never>
+    let stringView: any StringView
     let invisibleCharacterSettings: InvisibleCharacterSettings
 
-    func canRenderInvisibleCharacter(atLocation location: Int, alignedTo lineFragment: LineFragment, in line: LineNode) -> Bool {
-        configurationForRenderingInvisibleCharacter(atLocation: location, alignedTo: lineFragment, in: line) != nil
+    func canRenderInvisibleCharacter(
+        atLocation location: Int, 
+        alignedTo lineFragment: some LineFragment,
+        in line: some Line
+    ) -> Bool {
+        let configuration = configurationForRenderingInvisibleCharacter(
+            atLocation: location, 
+            alignedTo: lineFragment,
+            in: line
+        )
+        return configuration != nil
     }
 
-    func renderInvisibleCharacter(atLocation location: Int, alignedTo lineFragment: LineFragment, in line: LineNode) {
-        if let configuration = configurationForRenderingInvisibleCharacter(atLocation: location, alignedTo: lineFragment, in: line) {
+    func renderInvisibleCharacter(
+        atLocation location: Int,
+        alignedTo lineFragment: some LineFragment,
+        in line: some Line
+    ) {
+        if let configuration = configurationForRenderingInvisibleCharacter(
+            atLocation: location,
+            alignedTo: lineFragment,
+            in: line
+        ) {
             render(configuration.symbol, at: configuration.position, in: lineFragment)
         }
     }
@@ -35,14 +52,14 @@ struct InvisibleCharacterRenderer {
 private extension InvisibleCharacterRenderer {
     private func configurationForRenderingInvisibleCharacter(
         atLocation location: Int,
-        alignedTo lineFragment: LineFragment,
-        in line: LineNode
+        alignedTo lineFragment: some LineFragment,
+        in line: some Line
     ) -> RenderConfiguration? {
         guard invisibleCharacterSettings.showInvisibleCharacters.value else {
             return nil
         }
         let range = NSRange(location: location, length: 1)
-        guard let character = stringView.value.substring(in: range)?.first else {
+        guard let character = stringView.substring(in: range)?.first else {
             return nil
         }
         let lineLocalLocation = location - line.location
@@ -61,7 +78,11 @@ private extension InvisibleCharacterRenderer {
         }
     }
 
-    private func render(_ symbol: String, at horizontalPosition: HorizontalPosition, in lineFragment: LineFragment) {
+    private func render(
+        _ symbol: String,
+        at horizontalPosition: HorizontalPosition,
+        in lineFragment: some LineFragment
+    ) {
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.alignment = .center
         let attrs: [NSAttributedString.Key: Any] = [
@@ -79,7 +100,7 @@ private extension InvisibleCharacterRenderer {
     private func xPositionDrawingSymbol(
         ofSize symbolSize: CGSize,
         at horizontalPosition: HorizontalPosition,
-        in lineFragment: LineFragment
+        in lineFragment: some LineFragment
     ) -> CGFloat {
         switch horizontalPosition {
         case .character(let index):

@@ -7,15 +7,15 @@ import Foundation
 import UIKit
 #endif
 
-final class InvisibleCharactersLineFragmentRenderer: LineFragmentRenderer {
-    private let line: LineNode
-    private let lineFragment: LineFragment
+final class InvisibleCharactersLineFragmentRenderer<LineType: Line>: LineFragmentRenderer {
+    private let line: LineType
+    private let lineFragment: LineType.LineFragmentType
     private let showInvisibleCharacters: CurrentValueSubject<Bool, Never>
     private let invisibleCharacterRenderer: InvisibleCharacterRenderer
 
     init(
-        line: LineNode,
-        lineFragment: LineFragment,
+        line: LineType,
+        lineFragment: LineType.LineFragmentType,
         showInvisibleCharacters: CurrentValueSubject<Bool, Never>,
         invisibleCharacterRenderer: InvisibleCharacterRenderer
     ) {

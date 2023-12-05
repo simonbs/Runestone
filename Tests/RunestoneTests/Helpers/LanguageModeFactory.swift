@@ -79,7 +79,7 @@ enum LanguageModeFactory {
         lineManager.rebuild()
         return TreeSitterInternalLanguageMode(
             stringView: CurrentValueSubject(stringView),
-            lineManager: CurrentValueSubject(lineManager),
+            lineManager: lineManager,
             language: language.internalLanguage,
             languageProvider: nil
         )

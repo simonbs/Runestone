@@ -2,6 +2,15 @@
   "object": {
     "pins": [
       {
+        "package": "swift-syntax",
+        "repositoryURL": "https://github.com/apple/swift-syntax.git",
+        "state": {
+          "branch": null,
+          "revision": "6ad4ea24b01559dde0773e3d091f1b9e36175036",
+          "version": "509.0.2"
+        }
+      },
+      {
         "package": "TreeSitter",
         "repositoryURL": "https://github.com/simonbs/tree-sitter",
         "state": {

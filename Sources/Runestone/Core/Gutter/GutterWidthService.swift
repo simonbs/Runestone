@@ -1,9 +1,10 @@
+import _RunestoneMultiPlatform
 import Combine
 import CoreGraphics
 import Foundation
 
-final class GutterWidthService {
-    let lineManager: CurrentValueSubject<LineManager, Never>
+final class GutterWidthService<LineManagerType: LineManaging> {
+    let lineManager: LineManagerType
     var font = MultiPlatformFont.monospacedSystemFont(ofSize: 14, weight: .regular) {
         didSet {
             if font != oldValue {
@@ -35,7 +36,7 @@ final class GutterWidthService {
         }
     }
     var lineNumberWidth: CGFloat {
-        let lineCount = lineManager.value.lineCount
+        let lineCount = lineManager.lineCount
         let hasLineCountChanged = lineCount != previousLineCount
         let hasFontChanged = font != previousFont
         if let lineNumberWidth = _lineNumberWidth, !hasLineCountChanged && !hasFontChanged {
@@ -44,7 +45,7 @@ final class GutterWidthService {
             let lineNumberWidth = computeLineNumberWidth()
             _lineNumberWidth = lineNumberWidth
             previousFont = font
-            previousLineCount = lineManager.value.lineCount
+            previousLineCount = lineManager.lineCount
             sendGutterWidthUpdatedIfNeeded()
             return lineNumberWidth
         }
@@ -56,7 +57,7 @@ final class GutterWidthService {
     private var previousFont: MultiPlatformFont?
     private var previouslySentGutterWidth: CGFloat?
 
-    init(lineManager: CurrentValueSubject<LineManager, Never>) {
+    init(lineManager: LineManagerType) {
         self.lineManager = lineManager
     }
 
@@ -67,7 +68,7 @@ final class GutterWidthService {
 
 private extension GutterWidthService {
     private func computeLineNumberWidth() -> CGFloat {
-        let characterCount = "\(lineManager.value.lineCount)".count
+        let characterCount = "\(lineManager.lineCount)".count
         let wideLineNumberString = String(repeating: "8", count: {
             if let gutterMinimumCharacterCount = gutterMinimumCharacterCount, gutterMinimumCharacterCount > characterCount {
                 return gutterMinimumCharacterCount

@@ -5,7 +5,7 @@ import UIKit
 final class MainViewController: UIViewController {
     override var textInputContextIdentifier: String? {
         // Returning a unique identifier makes iOS remember the user's selection of keyboard.
-        return "RunestoneExample.Main"
+        "RunestoneExample.Main"
     }
 
     private let contentView = MainView()
@@ -39,10 +39,10 @@ final class MainViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        if #available(iOS 16, *) {
-            contentView.textView.isFindInteractionEnabled = true
-        }
-        contentView.textView.inputAccessoryView = toolsView
+//        if #available(iOS 16, *) {
+//            contentView.textView.isFindInteractionEnabled = true
+//        }
+//        contentView.textView.inputAccessoryView = toolsView
         setupMenuButton()
         setupTextView()
         updateTextViewSettings()
@@ -61,18 +61,19 @@ private extension MainViewController {
     }
 
     private func setupTextView() {
-        var text = ""
-        if !ProcessInfo.processInfo.disableTextPersistance, let persistedText = UserDefaults.standard.text {
-            text = persistedText
-        }
-        let themeSetting = UserDefaults.standard.theme
-        let theme = themeSetting.makeTheme()
-        let state = TextViewState(text: text, theme: theme, language: .javaScript)
-        if ProcessInfo.processInfo.useCRLFLineEndings {
-            contentView.textView.lineEndings = .crlf
-        }
+        let text = ""
+//        let text = if !ProcessInfo.processInfo.disableTextPersistance {
+//            UserDefaults.standard.text ?? ""
+//        } else {
+//            ""
+//        }
+//        let state = TextViewState(text: text, theme: theme)
+//        if ProcessInfo.processInfo.useCRLFLineEndings {
+//            contentView.textView.lineEndings = .crlf
+//        }
         contentView.textView.editorDelegate = self
-        contentView.textView.setState(state)
+        contentView.textView.text = text
+//        contentView.textView.theme = UserDefaults.standard.theme.makeTheme()
     }
 
     private func updateTextViewSettings() {
@@ -109,6 +110,7 @@ private extension MainViewController {
         return menuElements
     }
 
+    // swiftlint:disable:next function_body_length
     private func makeSettingsMenuElements() -> [UIMenuElement] {
         let settings = UserDefaults.standard
         var topElements: [UIMenuElement] = [

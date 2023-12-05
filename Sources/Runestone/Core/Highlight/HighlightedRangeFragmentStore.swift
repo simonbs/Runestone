@@ -1,31 +1,37 @@
 import Combine
 import Foundation
 
-final class HighlightedRangeFragmentStore {
+final class HighlightedRangeFragmentStore<LineManagerType: LineManaging> {
     let highlightedRanges = CurrentValueSubject<[HighlightedRange], Never>([])
 
-    private let stringView: CurrentValueSubject<StringView, Never>
-    private let lineManager: CurrentValueSubject<LineManager, Never>
-    private var lineMap: [LineNodeID: [HighlightedRangeFragment]] = [:]
+    private let stringView: StringView
+    private let lineManager: LineManagerType
+    private var lineMap: [LineID: [HighlightedRangeFragment]] = [:]
     private var lineFragmentMap: [LineFragmentID: [HighlightedRangeFragment]] = [:]
     private var cancellables: Set<AnyCancellable> = []
 
-    init(
-        stringView: CurrentValueSubject<StringView, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>
-    ) {
+    init(stringView: StringView, lineManager: LineManagerType) {
         self.stringView = stringView
         self.lineManager = lineManager
-        Publishers.CombineLatest3(stringView, lineManager, highlightedRanges).sink { [weak self] _, _, _ in
+//        Publishers.CombineLatest(stringView, highlightedRanges).sink { [weak self] _, _ in
+//            self?.invalidate()
+//        }.store(in: &cancellables)
+        highlightedRanges.sink { [weak self] _ in
             self?.invalidate()
         }.store(in: &cancellables)
     }
 
-    func highlightedRangeFragments(for lineFragment: LineFragment, inLineWithID lineID: LineNodeID) -> [HighlightedRangeFragment] {
+    func highlightedRangeFragments(
+        for lineFragment: some LineFragment,
+        inLineWithID lineID: LineID
+    ) -> [HighlightedRangeFragment] {
         if let highlightedRangeFragments = lineFragmentMap[lineFragment.id] {
             return highlightedRangeFragments
         } else {
-            let highlightedRangeFragments = createHighlightedRangeFragments(for: lineFragment, inLineWithID: lineID)
+            let highlightedRangeFragments = createHighlightedRangeFragments(
+                for: lineFragment,
+                inLineWithID: lineID
+            )
             lineFragmentMap[lineFragment.id] = highlightedRangeFragments
             return highlightedRangeFragments
         }
@@ -39,12 +45,12 @@ private extension HighlightedRangeFragmentStore {
         lineMap = createHighlightedRangeFragmentsPerLine()
     }
 
-    private func createHighlightedRangeFragmentsPerLine() -> [LineNodeID: [HighlightedRangeFragment]] {
-        var result: [LineNodeID: [HighlightedRangeFragment]] = [:]
+    private func createHighlightedRangeFragmentsPerLine() -> [LineID: [HighlightedRangeFragment]] {
+        var result: [LineID: [HighlightedRangeFragment]] = [:]
         for highlightedRange in highlightedRanges.value where highlightedRange.range.length > 0 {
-            let lines = lineManager.value.lines(in: highlightedRange.range)
+            let lines = lineManager.lines(in: highlightedRange.range)
             for line in lines {
-                let lineRange = NSRange(location: line.location, length: line.data.totalLength)
+                let lineRange = NSRange(location: line.location, length: line.totalLength)
                 guard highlightedRange.range.overlaps(lineRange) else {
                     continue
                 }
@@ -70,8 +76,8 @@ private extension HighlightedRangeFragmentStore {
     }
 
     private func createHighlightedRangeFragments(
-        for lineFragment: LineFragment,
-        inLineWithID lineID: LineNodeID
+        for lineFragment: some LineFragment,
+        inLineWithID lineID: LineID
     ) -> [HighlightedRangeFragment] {
         guard let highlightedRangeFragments = lineMap[lineID] else {
             return []
@@ -81,8 +87,10 @@ private extension HighlightedRangeFragmentStore {
                 return nil
             }
             let cappedRange = highlightedRangeFragment.range.capped(to: lineFragment.range)
-            let containsStart = highlightedRangeFragment.containsStart && cappedRange.lowerBound == highlightedRangeFragment.range.lowerBound
-            let containsEnd = highlightedRangeFragment.containsEnd && cappedRange.upperBound == highlightedRangeFragment.range.upperBound
+            let containsStart = highlightedRangeFragment.containsStart 
+            && cappedRange.lowerBound == highlightedRangeFragment.range.lowerBound
+            let containsEnd = highlightedRangeFragment.containsEnd 
+            && cappedRange.upperBound == highlightedRangeFragment.range.upperBound
             return HighlightedRangeFragment(
                 range: cappedRange,
                 containsStart: containsStart,

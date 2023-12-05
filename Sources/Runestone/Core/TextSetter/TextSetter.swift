@@ -1,44 +1,42 @@
-import Combine
 import Foundation
 
-final class TextSetter {
+final class TextSetter<LineManagerType: LineManaging>: TextSetting {
+    typealias State = SelectedRangeWritable
+
+    private let state: State
     private let textInputDelegate: TextInputDelegate
-    private let stringView: CurrentValueSubject<StringView, Never>
-    private let lineManager: CurrentValueSubject<LineManager, Never>
-    private let selectedRange: CurrentValueSubject<NSRange, Never>
-    private let languageMode: CurrentValueSubject<any InternalLanguageMode, Never>
-    private let lineControllerStorage: LineControllerStorage
+    private let stringView: StringView
+    private let lineManager: LineManagerType
+    private let languageMode: InternalLanguageMode
     private let undoManager: TextEditingUndoManager
 
     init(
+        state: State,
         textInputDelegate: TextInputDelegate,
-        stringView: CurrentValueSubject<StringView, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>,
-        selectedRange: CurrentValueSubject<NSRange, Never>,
-        languageMode: CurrentValueSubject<any InternalLanguageMode, Never>,
-        lineControllerStorage: LineControllerStorage,
+        stringView: StringView,
+        lineManager: LineManagerType,
+        languageMode: InternalLanguageMode,
         undoManager: TextEditingUndoManager
     ) {
+        self.state = state
         self.textInputDelegate = textInputDelegate
         self.stringView = stringView
         self.lineManager = lineManager
-        self.selectedRange = selectedRange
         self.languageMode = languageMode
-        self.lineControllerStorage = lineControllerStorage
         self.undoManager = undoManager
     }
 
     func setText(_ newText: NSString, preservingUndoStack: Bool = false) {
-        guard newText != stringView.value.string else {
+        guard newText != stringView.string else {
             return
         }
-        let oldSelectedRange = selectedRange.value
-        stringView.value.string = newText
-        languageMode.value.parse(newText)
-        lineControllerStorage.removeAllLineControllers()
-        lineManager.value.rebuild()
+        let oldSelectedRange = state.selectedRange
+        stringView.string = newText
+        languageMode.parse(newText)
+//        lineControllerStore.removeAllLineControllers()
+//        lineManager.rebuild()
         textInputDelegate.selectionWillChange()
-        selectedRange.value = oldSelectedRange.capped(to: stringView.value.string.length)
+        state.selectedRange = oldSelectedRange.capped(to: stringView.length)
         textInputDelegate.selectionDidChange()
 //        contentSizeService.reset()
 //        gutterWidthService.invalidateLineNumberWidth()

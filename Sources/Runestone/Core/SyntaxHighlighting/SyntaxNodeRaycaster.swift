@@ -1,20 +1,12 @@
 import Combine
 
-final class SyntaxNodeRaycaster {
-    private let lineManager: CurrentValueSubject<LineManager, Never>
-    private let languageMode: CurrentValueSubject<any InternalLanguageMode, Never>
-
-    init(
-        lineManager: CurrentValueSubject<LineManager, Never>,
-        languageMode: CurrentValueSubject<any InternalLanguageMode, Never>
-    ) {
-        self.lineManager = lineManager
-        self.languageMode = languageMode
-    }
+struct SyntaxNodeRaycaster<LineManagerType: LineManaging, LanguageModeType: InternalLanguageMode> {
+    let lineManager: LineManagerType
+    let languageMode: LanguageModeType
 
     func syntaxNode(at location: Int) -> SyntaxNode? {
-        if let linePosition = lineManager.value.linePosition(at: location) {
-            return languageMode.value.syntaxNode(at: linePosition)
+        if let linePosition = lineManager.linePosition(at: location) {
+            return languageMode.syntaxNode(at: linePosition)
         } else {
             return nil
         }

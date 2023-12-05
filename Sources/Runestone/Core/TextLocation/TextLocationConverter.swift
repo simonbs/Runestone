@@ -1,14 +1,14 @@
 import Combine
 
-final class TextLocationConverter {
-    private let lineManager: CurrentValueSubject<LineManager, Never>
+final class TextLocationConverter<LineManagerType: LineManaging> {
+    private let lineManager: LineManagerType
 
-    init(lineManager: CurrentValueSubject<LineManager, Never>) {
+    init(lineManager: LineManagerType) {
         self.lineManager = lineManager
     }
 
     func textLocation(at location: Int) -> TextLocation? {
-        if let linePosition = lineManager.value.linePosition(at: location) {
+        if let linePosition = lineManager.linePosition(at: location) {
             return TextLocation(linePosition)
         } else {
             return nil
@@ -17,11 +17,11 @@ final class TextLocationConverter {
 
     func location(at textLocation: TextLocation) -> Int? {
         let lineIndex = textLocation.lineNumber
-        guard lineIndex >= 0 && lineIndex < lineManager.value.lineCount else {
+        guard lineIndex >= 0 && lineIndex < lineManager.lineCount else {
             return nil
         }
-        let line = lineManager.value.line(atRow: lineIndex)
-        guard textLocation.column >= 0 && textLocation.column <= line.data.totalLength else {
+        let line = lineManager[lineIndex]
+        guard textLocation.column >= 0 && textLocation.column <= line.totalLength else {
             return nil
         }
         return line.location + textLocation.column

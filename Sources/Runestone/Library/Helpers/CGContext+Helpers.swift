@@ -7,7 +7,7 @@ import UIKit
 #endif
 
 extension CGContext {
-    func setupToDraw(_ lineFragment: LineFragment) {
+    func setupToDraw(_ lineFragment: some LineFragment) {
         let verticalCenteringOffset = (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
         textMatrix = .identity
         textPosition = CGPoint(x: 0, y: lineFragment.descent + verticalCenteringOffset)

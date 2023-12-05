@@ -1,12 +1,18 @@
+import _RunestoneTreeSitter
 import Foundation
 
-final class TreeSitterIndentService {
+final class TreeSitterIndentService<LineManagerType: LineManaging> {
     private let indentationScopes: TreeSitterIndentationScopes
     private let stringView: StringView
-    private let lineManager: LineManager
+    private let lineManager: LineManagerType
     private let indentLengthInSpaces: Int
 
-    init(indentationScopes: TreeSitterIndentationScopes, stringView: StringView, lineManager: LineManager, indentLengthInSpaces: Int) {
+    init(
+        indentationScopes: TreeSitterIndentationScopes, 
+        stringView: StringView, 
+        lineManager: LineManagerType,
+        indentLengthInSpaces: Int
+    ) {
         self.indentationScopes = indentationScopes
         self.stringView = stringView
         self.lineManager = lineManager
@@ -134,9 +140,9 @@ private extension TreeSitterIndentService {
 
     private func indentLevelOfLine(atRow row: Int) -> Int {
         // Get indentation level of line before the supplied line position.
-        let line = lineManager.line(atRow: row)
+        let line = lineManager[row]
         let measurer = IndentLevelMeasurer(stringView: stringView, indentLengthInSpaces: indentLengthInSpaces)
-        return measurer.indentLevel(ofLineStartingAt: line.location, ofLength: line.data.totalLength)
+        return measurer.indentLevel(ofLineStartingAt: line.location, ofLength: line.totalLength)
     }
 
     /// Finds the deepest child node that contains the specified location. This is used in languages where whitespace denotes a block.

@@ -1,3 +1,4 @@
+import _RunestoneMultiPlatform
 import Foundation
 
 final class HighlightedRangeFragment: Equatable {
@@ -7,7 +8,13 @@ final class HighlightedRangeFragment: Equatable {
     let color: MultiPlatformColor
     let cornerRadius: CGFloat
 
-    init(range: NSRange, containsStart: Bool, containsEnd: Bool, color: MultiPlatformColor, cornerRadius: CGFloat) {
+    init(
+        range: NSRange,
+        containsStart: Bool,
+        containsEnd: Bool,
+        color: MultiPlatformColor,
+        cornerRadius: CGFloat
+    ) {
         self.range = range
         self.containsStart = containsStart
         self.containsEnd = containsEnd

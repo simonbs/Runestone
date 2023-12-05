@@ -1,18 +1,17 @@
 import Combine
 import Foundation
 
-struct LineFragmentControllerFactory {
-    let selectedRange: CurrentValueSubject<NSRange, Never>
-    let markedRange: CurrentValueSubject<NSRange?, Never>
-    let rendererFactory: LineFragmentRendererFactory
+struct LineFragmentControllerFactory<LineFragmentType: LineFragment> {
+    let rendererFactory: LineFragmentRendererFactory<LineFragmentType>
 
-    func makeLineFragmentController(for lineFragment: LineFragment, in line: LineNode) -> LineFragmentController {
+    func makeLineFragmentController(
+        for lineFragment: LineFragmentType,
+        in line: LineNode
+    ) -> LineFragmentController<LineFragmentType> {
         LineFragmentController(
             line: line,
             lineFragment: lineFragment,
-            rendererFactory: rendererFactory,
-            selectedRange: selectedRange,
-            markedRange: markedRange
+            rendererFactory: rendererFactory
         )
     }
 }

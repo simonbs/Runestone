@@ -1,3 +1,4 @@
+import _RunestoneTreeSitter
 import TreeSitter
 
 final class TreeSitterInternalLanguage {

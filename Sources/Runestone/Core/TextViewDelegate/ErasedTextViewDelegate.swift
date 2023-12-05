@@ -4,12 +4,12 @@ import Foundation
 final class ErasedTextViewDelegate {
     weak var delegate: TextViewDelegate?
 
-    private let _textView: CurrentValueSubject<WeakBox<TextView>, Never>
+    private weak var _textView: TextView?
     private var textView: TextView {
-        _textView.value.value!
+        _textView!
     }
 
-    init(textView: CurrentValueSubject<WeakBox<TextView>, Never>) {
+    init(textView: TextView) {
         _textView = textView
     }
 
@@ -29,11 +29,11 @@ final class ErasedTextViewDelegate {
         delegate?.textViewDidLoopToFirstHighlightedRange(textView)
     }
 
-    func shouldInsert(_ characterPair: CharacterPair, in range: NSRange) -> Bool {
+    func shouldInsert(_ characterPair: some CharacterPair, in range: NSRange) -> Bool {
         delegate?.textView(textView, shouldInsert: characterPair, in: range) ?? true
     }
 
-    func shouldSkipTrailingComponent(of characterPair: CharacterPair, in range: NSRange) -> Bool {
+    func shouldSkipTrailingComponent(of characterPair: some CharacterPair, in range: NSRange) -> Bool {
         delegate?.textView(textView, shouldSkipTrailingComponentOf: characterPair, in: range) ?? true
     }
 

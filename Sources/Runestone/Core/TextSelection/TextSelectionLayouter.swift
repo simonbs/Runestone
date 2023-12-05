@@ -6,13 +6,13 @@ final class TextSelectionLayouter {
     let backgroundColor = CurrentValueSubject<MultiPlatformColor, Never>(.label.withAlphaComponent(0.2))
 
     private let textSelectionRectFactory: TextSelectionRectFactory
-    private let containerView: CurrentValueSubject<WeakBox<TextView>, Never>
+    private let containerView: CurrentValueSubject<TextView, Never>
     private let viewQueue = ReusableViewQueue<String, LineSelectionView>()
     private var cancellables = Set<AnyCancellable>()
 
     init(
         textSelectionRectFactory: TextSelectionRectFactory,
-        containerView: CurrentValueSubject<WeakBox<TextView>, Never>,
+        containerView: CurrentValueSubject<TextView, Never>,
         viewport: CurrentValueSubject<CGRect, Never>,
         selectedRange: CurrentValueSubject<NSRange, Never>
     ) {
@@ -68,7 +68,7 @@ private extension TextSelectionLayouter {
             view.frame = selectionRect.rect
             view.backgroundColor = backgroundColor.value
             view.layer?.zPosition = 500
-            containerView.value.value?.addSubview(view)
+            containerView.value.addSubview(view)
             appearedViewKeys.insert(key)
         }
         let disappearedViewKeys = Set(viewQueue.visibleViews.keys).subtracting(appearedViewKeys)

@@ -1,9 +1,10 @@
+import _RunestoneRedBlackTree
 import CoreGraphics
 
-final class LineFragmentFrameQuery: RedBlackTreeSearchQuery {
-    typealias NodeID = LineFragmentNodeID
+final class LineFragmentFrameQuery<LineFragmentType: LineFragment>: RedBlackTreeTraversingSearchQuery {
     typealias NodeValue = Int
     typealias NodeData = LineFragmentNodeData
+    typealias Node = RedBlackTreeNode<Int, LineFragmentNodeData>
 
     private let range: ClosedRange<CGFloat>
 
@@ -11,15 +12,15 @@ final class LineFragmentFrameQuery: RedBlackTreeSearchQuery {
         self.range = range
     }
 
-    func shouldTraverseLeftChildren(of node: RedBlackTreeNode<LineFragmentNodeID, Int, LineFragmentNodeData>) -> Bool {
+    func shouldTraverseLeftChildren(of node: Node) -> Bool {
         node.data.totalLineFragmentHeight >= range.lowerBound
     }
 
-    func shouldTraverseRightChildren(of node: RedBlackTreeNode<LineFragmentNodeID, Int, LineFragmentNodeData>) -> Bool {
+    func shouldTraverseRightChildren(of node: Node) -> Bool {
         node.data.totalLineFragmentHeight <= range.upperBound
     }
 
-    func shouldInclude(_ node: RedBlackTreeNode<LineFragmentNodeID, Int, LineFragmentNodeData>) -> Bool {
+    func isMatch(_ node: Node) -> Bool {
         let minY = node.data.totalLineFragmentHeight - node.data.lineFragmentHeight
         let maxY = node.data.totalLineFragmentHeight
         return range.overlaps(minY ... maxY)

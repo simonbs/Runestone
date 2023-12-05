@@ -1,3 +1,4 @@
+import _RunestoneStringUtilities
 import Foundation
 
 struct SyntaxHighlighterInput {

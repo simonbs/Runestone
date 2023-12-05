@@ -1,10 +1,13 @@
+import _RunestoneTreeSitter
 import Combine
 
-struct InternalLanguageModeFactory {
-    private let stringView: CurrentValueSubject<StringView, Never>
-    private let lineManager: CurrentValueSubject<LineManager, Never>
+struct InternalLanguageModeFactory<
+    StringViewType: StringView, LineManagerType: LineManaging
+> {
+    private let stringView: StringViewType
+    private let lineManager: LineManagerType
 
-    init(stringView: CurrentValueSubject<StringView, Never>, lineManager: CurrentValueSubject<LineManager, Never>) {
+    init(stringView: StringViewType, lineManager: LineManagerType) {
         self.stringView = stringView
         self.lineManager = lineManager
     }
@@ -25,19 +28,19 @@ struct InternalLanguageModeFactory {
         }
     }
 
-    func internalLanguageMode(from languageModeState: TextViewState.LanguageModeState) -> any InternalLanguageMode {
-        switch languageModeState {
-        case .plainText:
-            return PlainTextInternalLanguageMode()
-        case .treeSitter(let parameters):
-            return TreeSitterInternalLanguageMode(
-                stringView: stringView,
-                lineManager: lineManager,
-                language: parameters.language,
-                languageProvider: parameters.languageProvider,
-                parser: parameters.parser,
-                tree: parameters.tree
-            )
-        }
-    }
+//    func internalLanguageMode(from languageModeState: TextViewState.LanguageModeState) -> any InternalLanguageMode {
+//        switch languageModeState {
+//        case .plainText:
+//            return PlainTextInternalLanguageMode()
+//        case .treeSitter(let parameters):
+//            return TreeSitterInternalLanguageMode(
+//                stringView: stringView,
+//                lineManager: lineManager,
+//                language: parameters.language,
+//                languageProvider: parameters.languageProvider,
+//                parser: parameters.parser,
+//                tree: parameters.tree
+//            )
+//        }
+//    }
 }

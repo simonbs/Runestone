@@ -31,18 +31,9 @@ final class UITextSearchingHelper: NSObject {
     }
     private var _findInteraction: Any?
 
-    private let textView: CurrentValueSubject<WeakBox<TextView>, Never>
     private let queue = OperationQueue()
-    private var _textView: TextView {
-        if let textView = textView.value.value {
-            return textView
-        } else {
-            fatalError("Text view has been deallocated.")
-        }
-    }
 
-    init(textView: CurrentValueSubject<WeakBox<TextView>, Never>) {
-        self.textView = textView
+    override init() {
         super.init()
         queue.qualityOfService = .userInitiated
         queue.maxConcurrentOperationCount = 1
@@ -60,7 +51,8 @@ extension UITextSearchingHelper: UITextSearching {
     }
 
     var selectedTextRange: UITextRange? {
-        _textView.selectedTextRange
+//        _textView.selectedTextRange
+        nil
     }
 
     func compare(_ foundRange: UITextRange, toRange: UITextRange, document: AnyHashable??) -> ComparisonResult {
@@ -115,7 +107,7 @@ extension UITextSearchingHelper: UITextSearching {
     }
 
     func replace(foundTextRange: UITextRange, document: AnyHashable??, withText replacementText: String) {
-        _textView.replace(foundTextRange, withText: replacementText)
+//        _textView.replace(foundTextRange, withText: replacementText)
     }
 
     func shouldReplace(foundTextRange: UITextRange, document: AnyHashable??, withText replacementText: String) -> Bool {
@@ -140,17 +132,17 @@ extension UITextSearchingHelper: UITextSearching {
 private extension UITextSearchingHelper {
     private func addFindInteraction() {
         if #available(iOS 16, *), findInteraction == nil {
-            let findInteraction = UIFindInteraction(sessionDelegate: self)
-            self.findInteraction = findInteraction
-            _textView.addInteraction(findInteraction)
+//            let findInteraction = UIFindInteraction(sessionDelegate: self)
+//            self.findInteraction = findInteraction
+//            _textView.addInteraction(findInteraction)
         }
     }
 
     private func removeFindInteraction() {
-        if #available(iOS 16, *), let findInteraction = findInteraction {
-            self.findInteraction = nil
-            _textView.removeInteraction(findInteraction)
-        }
+//        if #available(iOS 16, *), let findInteraction = findInteraction {
+//            self.findInteraction = nil
+//            _textView.removeInteraction(findInteraction)
+//        }
     }
 
     @available(iOS 16.0, *)

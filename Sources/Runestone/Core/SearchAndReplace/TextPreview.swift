@@ -21,23 +21,23 @@ public final class TextPreview {
     /// The string is not available until after calling ``TextPreview/prepare()`` on the text preview. Preparing the preview is potentially an expensive operation and should ideally be done on-demand.
     public private(set) var attributedString: NSAttributedString?
 
-    private let lineControllers: [LineController]
+    private let lines: [any Line]
 
-    init(needleRange: NSRange, previewRange: NSRange, needleInPreviewRange: NSRange, lineControllers: [LineController]) {
+    init(needleRange: NSRange, previewRange: NSRange, needleInPreviewRange: NSRange, lines: [any Line]) {
         self.needleRange = needleRange
         self.previewRange = previewRange
         self.needleInPreviewRange = needleInPreviewRange
-        self.lineControllers = lineControllers
+        self.lines = lines
     }
 
     /// Assigns a value to the attributed string.
     ///
     /// This is potentially an expensive operation and should ideally be done on-demand.
     public func prepare() {
-        forEachRangeInLineController { lineController, range in
-            lineController.prepareToDisplayString(to: .location(range.upperBound), syntaxHighlightAsynchronously: false)
-        }
-        updateAttributedString()
+//        forEachRangeInLine { line, range in
+//            lineController.prepareToDisplayString(to: .location(range.upperBound), syntaxHighlightAsynchronously: false)
+//        }
+//        updateAttributedString()
     }
 
     /// Invalidate the syntax highlighted attributed string.
@@ -46,43 +46,41 @@ public final class TextPreview {
     ///
     /// This may be called to update the attributed string when it is known that the appearance have changed and the text preview must be updated. For example, when adjusting the kerning of the text in the text view.
     public func invalidateSyntaxHighlighting() {
-        for lineController in lineControllers {
-            lineController.invalidateSyntaxHighlighting()
-        }
+//        for line in lines {
+//            line.invalidateSyntaxHighlighting()
+//        }
     }
 
     /// Cancels syntax highlighting the text in the text preview.
     ///
     /// Call this when the preview should no longer be shown. For example, if showing the text preview in a collection view cell or table view cell, you may call this when the cell disappears from the screen.
     public func cancelSyntaxHighlighting() {
-        for lineController in lineControllers {
-            lineController.cancelSyntaxHighlighting()
-        }
+//        for line in lines {
+//            line.cancelSyntaxHighlighting()
+//        }
     }
 }
 
 private extension TextPreview {
     private func updateAttributedString() {
-        let resultingAttributedString = NSMutableAttributedString()
-        forEachRangeInLineController { lineController, range in
-            if let attributedString = lineController.attributedString, range.upperBound < attributedString.length {
-                let substring = attributedString.attributedSubstring(from: range)
-                resultingAttributedString.append(substring)
-            }
-        }
-        attributedString = resultingAttributedString
+//        let resultingAttributedString = NSMutableAttributedString()
+//        forEachRangeInLine { line, range in
+//            if let attributedString = line.attributedString, range.upperBound < attributedString.length {
+//                let substring = attributedString.attributedSubstring(from: range)
+//                resultingAttributedString.append(substring)
+//            }
+//        }
+//        attributedString = resultingAttributedString
     }
 
-    private func forEachRangeInLineController(_ handler: (LineController, NSRange) -> Void) {
+    private func forEachRangeInLine(_ handler: (any Line, NSRange) -> Void) {
         var remainingLength = previewRange.length
-        for lineController in lineControllers {
-            let lineLocation = lineController.line.location
-            let lineLength = lineController.line.data.totalLength
-            let location = max(previewRange.location - lineLocation, 0)
-            let length = min(remainingLength, lineLength)
+        for line in lines {
+            let location = max(previewRange.location - line.location, 0)
+            let length = min(remainingLength, line.totalLength)
             let range = NSRange(location: location, length: length)
             remainingLength -= length
-            handler(lineController, range)
+            handler(line, range)
         }
     }
 }

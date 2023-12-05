@@ -17,7 +17,7 @@ struct StandardFloatingCaretViewProvider {
         guard let klass = NSClassFromString("_UITextCursorView") else {
             return nil
         }
-        let cursorViews = textView?.subviews.filter { $0.isKind(of: klass) } ?? []
+        let cursorViews = view?.subviews.filter { $0.isKind(of: klass) } ?? []
         guard cursorViews.count >= 2 else {
             return nil
         }
@@ -26,23 +26,14 @@ struct StandardFloatingCaretViewProvider {
 
     // swiftlint:disable:next type_name
     private var floatingCaretView_preiOS17: UIView? {
-        textSelectionView?.value(forKey: "m_floatingCaretView") as? UIView
+        textSelectionViewProvider.textSelectionView?.value(forKey: "m_floatingCaretView") as? UIView
     }
 
-    private let _textView: CurrentValueSubject<WeakBox<TextView>, Never>
+    private weak var view: UIView?
     private let textSelectionViewProvider: UITextSelectionViewProvider
-    private var textView: TextView? {
-        _textView.value.value
-    }
-    private var textSelectionView: UIView? {
-        textSelectionViewProvider.textSelectionView
-    }
 
-    init(
-        textView: CurrentValueSubject<WeakBox<TextView>, Never>,
-        textSelectionViewProvider: UITextSelectionViewProvider
-    ) {
-        self._textView = textView
+    init(view: UIView, textSelectionViewProvider: UITextSelectionViewProvider) {
+        self.view = view
         self.textSelectionViewProvider = textSelectionViewProvider
     }
 }

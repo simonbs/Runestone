@@ -1,10 +1,10 @@
 #if os(iOS)
 import UIKit
 
-final class TextInputStringTokenizer: UITextInputStringTokenizer {
-    private let stringTokenizer: StringTokenizer
+final class TextInputStringTokenizer<StringTokenizerType: StringTokenizing>: UITextInputStringTokenizer {
+    private let stringTokenizer: StringTokenizerType
 
-    init(textInput: UIResponder & UITextInput, stringTokenizer: StringTokenizer) {
+    init(textInput: UIResponder & UITextInput, stringTokenizer: StringTokenizerType) {
         self.stringTokenizer = stringTokenizer
         super.init(textInput: textInput)
     }

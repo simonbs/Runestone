@@ -1,10 +1,10 @@
 import Foundation
 
-final class LineEndingDetector {
+final class LineEndingDetector<LineManagerType: LineManaging> {
     private let stringView: StringView
-    private let lineManager: LineManager
+    private let lineManager: LineManagerType
 
-    init(stringView: StringView, lineManager: LineManager) {
+    init(stringView: StringView, lineManager: LineManagerType) {
         self.stringView = stringView
         self.lineManager = lineManager
     }
@@ -17,8 +17,8 @@ final class LineEndingDetector {
         var lineEndingCountMap: [LineEnding: Int] = [:]
         while let line = iterator.next(), shouldScan {
             let lineLocation = line.location
-            let lineLength = line.data.totalLength
-            let delimiterLength = line.data.delimiterLength
+            let lineLength = line.totalLength
+            let delimiterLength = line.delimiterLength
             let delimiterRange = NSRange(location: lineLocation + lineLength - delimiterLength, length: delimiterLength)
             if let character = stringView.substring(in: delimiterRange), let lineEnding = LineEnding(symbol: character) {
                 scannedLineCount += 1

@@ -5,7 +5,8 @@ final class TextFinderClient: NSObject, NSTextFinderClient {
     weak var textView: TextView?
 
     var string: String {
-        textView?.text ?? ""
+//        textView?.text ?? ""
+        ""
     }
 
     var isEditable: Bool {

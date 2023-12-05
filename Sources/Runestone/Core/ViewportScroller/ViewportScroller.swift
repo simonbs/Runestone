@@ -1,36 +1,34 @@
+import _RunestoneMultiPlatform
 import Combine
 import CoreGraphics
 import Foundation
 
-final class ViewportScroller {
-    private let _scrollView: CurrentValueSubject<WeakBox<MultiPlatformScrollView>, Never>
+final class ViewportScroller<LineManagerType: LineManaging> {
+    private weak var scrollView: MultiPlatformScrollView?
     private let textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>
-    private let insertionPointFrameFactory: InsertionPointFrameFactory
+    private let insertionPointFrameFactory: InsertionPointFrameFactory<LineManagerType>
     private let lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
-    private let lineFragmentLayouter: LineFragmentLayouter
+    private let textLayouter: TextLayouting
     private let contentSizeService: ContentSizeService
-    private var scrollView: MultiPlatformScrollView? {
-        _scrollView.value.value
-    }
 
     init(
-        scrollView: CurrentValueSubject<WeakBox<MultiPlatformScrollView>, Never>,
+        scrollView: MultiPlatformScrollView,
         textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>,
-        insertionPointFrameFactory: InsertionPointFrameFactory,
+        insertionPointFrameFactory: InsertionPointFrameFactory<LineManagerType>,
         lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>,
-        lineFragmentLayouter: LineFragmentLayouter,
+        textLayouter: TextLayouting,
         contentSizeService: ContentSizeService
     ) {
-        self._scrollView = scrollView
+        self.scrollView = scrollView
         self.textContainerInset = textContainerInset
         self.insertionPointFrameFactory = insertionPointFrameFactory
         self.lineHeightMultiplier = lineHeightMultiplier
-        self.lineFragmentLayouter = lineFragmentLayouter
+        self.textLayouter = textLayouter
         self.contentSizeService = contentSizeService
     }
 
     func scroll(toVisibleRange range: NSRange) {
-        lineFragmentLayouter.layoutLines(toLocation: range.upperBound)
+        textLayouter.layoutText(toLocation: range.upperBound)
         contentSizeService.updateContentSizeIfNeeded()
         justScrollRangeToVisible(range)
     }

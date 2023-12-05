@@ -1,11 +1,12 @@
+import _RunestoneTreeSitter
 import Foundation
 
-final class TreeSitterIndentStrategyDetector {
+final class TreeSitterIndentStrategyDetector<LineManagerType: LineManaging> {
     private let string: NSString
-    private let lineManager: LineManager
+    private let lineManager: LineManagerType
     private let tree: TreeSitterTree
 
-    init(string: NSString, lineManager: LineManager, tree: TreeSitterTree) {
+    init(string: NSString, lineManager: LineManagerType, tree: TreeSitterTree) {
         self.string = string
         self.lineManager = lineManager
         self.tree = tree
@@ -28,7 +29,7 @@ final class TreeSitterIndentStrategyDetector {
             if node.type == "comment" {
                 continue
             }
-            if line.data.length <= 0 {
+            if line.length <= 0 {
                 continue
             }
             scannedLineWithContentCount += 1
@@ -38,7 +39,11 @@ final class TreeSitterIndentStrategyDetector {
             if character == Symbol.tab {
                 lineCountBeginningWithTab += 1
             } else if character == Symbol.space {
-                let spaceCount = numberOfSpacesAtBeginning(of: line, lineLocation: lineLocation, lowestSpaceCount: lowestSpaceCount)
+                let spaceCount = numberOfSpacesAtBeginning(
+                    of: line,
+                    lineLocation: lineLocation,
+                    lowestSpaceCount: lowestSpaceCount
+                )
                 if spaceCount > 1 {
                     lowestSpaceCount = min(spaceCount, lowestSpaceCount)
                     lineCountBeginningWithSpace += 1
@@ -62,15 +67,20 @@ final class TreeSitterIndentStrategyDetector {
 }
 
 private extension TreeSitterIndentStrategyDetector {
-    private func numberOfSpacesAtBeginning(of line: LineNode, lineLocation: Int, lowestSpaceCount: Int) -> Int {
+    private func numberOfSpacesAtBeginning(
+        of line: LineManagerType.LineType,
+        lineLocation: Int,
+        lowestSpaceCount: Int
+    ) -> Int {
         var range = NSRange(location: lineLocation, length: 1)
         var character = string.substring(with: range)
         var spaceCount = 0
         let stringLength = string.length
-        while spaceCount < line.data.totalLength
+        while spaceCount < line.totalLength
                 && character == Symbol.space
                 && spaceCount < lowestSpaceCount
-                && range.location < stringLength - 1 {
+                && range.location < stringLength - 1
+        {
             spaceCount += 1
             range = NSRange(location: range.location + 1, length: 1)
             character = string.substring(with: range)

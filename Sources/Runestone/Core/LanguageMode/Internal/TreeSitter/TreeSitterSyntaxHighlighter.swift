@@ -1,18 +1,23 @@
+import _RunestoneMultiPlatform
+import _RunestoneStringUtilities
+import _RunestoneTreeSitter
 import Combine
 import Foundation
 
-final class TreeSitterSyntaxHighlighter: SyntaxHighlighter {
-    let theme: CurrentValueSubject<Theme, Never>
+final class TreeSitterSyntaxHighlighter<
+    StringViewType: StringView, LineManagerType: LineManaging
+>: SyntaxHighlighter {
+    let theme: Theme
     let operationQueue: OperationQueue
     var inlinePredictionRange: NSRange?
     
-    private let stringView: CurrentValueSubject<StringView, Never>
-    private let languageMode: TreeSitterInternalLanguageMode
+    private let stringView: StringView
+    private let languageMode: TreeSitterInternalLanguageMode<StringViewType, LineManagerType>
 
     init(
-        stringView: CurrentValueSubject<StringView, Never>,
-        languageMode: TreeSitterInternalLanguageMode,
-        theme: CurrentValueSubject<Theme, Never>,
+        stringView: StringView,
+        languageMode: TreeSitterInternalLanguageMode<StringViewType, LineManagerType>,
+        theme: Theme,
         operationQueue: OperationQueue
     ) {
         self.stringView = stringView
@@ -32,7 +37,10 @@ final class TreeSitterSyntaxHighlighter: SyntaxHighlighter {
 }
 
 private extension TreeSitterSyntaxHighlighter {
-    private func setAttributes(for tokens: [TreeSitterSyntaxHighlightToken], on attributedString: NSMutableAttributedString) {
+    private func setAttributes(
+        for tokens: [TreeSitterSyntaxHighlightToken],
+        on attributedString: NSMutableAttributedString
+    ) {
         attributedString.beginEditing()
         for token in tokens {
             var attributes: [NSAttributedString.Key: Any] = [:]
@@ -64,7 +72,7 @@ private extension TreeSitterSyntaxHighlighter {
                 #endif
             }
             let currentFont = attributedString.attribute(.font, at: token.range.location, effectiveRange: nil) as? MultiPlatformFont
-            let baseFont = token.font ?? theme.value.font
+            let baseFont = token.font ?? theme.font
             let newFont: MultiPlatformFont
             if !symbolicTraits.isEmpty {
                 newFont = baseFont.withSymbolicTraits(symbolicTraits) ?? baseFont
@@ -81,7 +89,10 @@ private extension TreeSitterSyntaxHighlighter {
         attributedString.endEditing()
     }
 
-    private func tokens(for captures: [TreeSitterCapture], localTo localRange: ByteRange) -> [TreeSitterSyntaxHighlightToken] {
+    private func tokens(
+        for captures: [TreeSitterCapture],
+        localTo localRange: ByteRange
+    ) -> [TreeSitterSyntaxHighlightToken] {
         var tokens: [TreeSitterSyntaxHighlightToken] = []
         for capture in captures where capture.byteRange.overlaps(localRange) {
             // We highlight each line separately but a capture may extend beyond a line,
@@ -105,11 +116,17 @@ private extension TreeSitterSyntaxHighlighter {
 private extension TreeSitterSyntaxHighlighter {
     private func token(from capture: TreeSitterCapture, in byteRange: ByteRange) -> TreeSitterSyntaxHighlightToken {
         let range = NSRange(byteRange)
-        let textColor = theme.value.textColor(for: capture.name)
-        let shadow = theme.value.shadow(for: capture.name)
-        let font = theme.value.font(for: capture.name)
-        let fontTraits = theme.value.fontTraits(for: capture.name)
-        return TreeSitterSyntaxHighlightToken(range: range, textColor: textColor, shadow: shadow, font: font, fontTraits: fontTraits)
+        let textColor = theme.textColor(for: capture.name)
+        let shadow = theme.shadow(for: capture.name)
+        let font = theme.font(for: capture.name)
+        let fontTraits = theme.fontTraits(for: capture.name)
+        return TreeSitterSyntaxHighlightToken(
+            range: range,
+            textColor: textColor,
+            shadow: shadow,
+            font: font,
+            fontTraits: fontTraits
+        )
     }
 }
 

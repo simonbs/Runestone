@@ -5,26 +5,17 @@ import UIKit
 struct StandardCaretParentViewProvider {
     var parentView: UIView? {
         if #available(iOS 17, *) {
-            textView
+            view
         } else {
-            textSelectionView
+            textSelectionViewProvider.textSelectionView
         }
     }
 
-    private let _textView: CurrentValueSubject<WeakBox<TextView>, Never>
+    private weak var view: UIView?
     private let textSelectionViewProvider: UITextSelectionViewProvider
-    private var textView: TextView? {
-        _textView.value.value
-    }
-    private var textSelectionView: UIView? {
-        textSelectionViewProvider.textSelectionView
-    }
 
-    init(
-        textView: CurrentValueSubject<WeakBox<TextView>, Never>,
-        textSelectionViewProvider: UITextSelectionViewProvider
-    ) {
-        self._textView = textView
+    init(view: UIView, textSelectionViewProvider: UITextSelectionViewProvider) {
+        self.view = view
         self.textSelectionViewProvider = textSelectionViewProvider
     }
 }

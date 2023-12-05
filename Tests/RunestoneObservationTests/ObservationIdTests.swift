@@ -1,4 +1,4 @@
-@testable import RunestoneObservation
+@testable import _RunestoneObservation
 import XCTest
 
 final class ObservationIdTests: XCTestCase {

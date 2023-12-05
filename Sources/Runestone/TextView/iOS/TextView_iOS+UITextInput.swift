@@ -7,19 +7,19 @@ extension TextView: UITextInput {}
 public extension TextView {
     /// The text position for the beginning of a document.
     var beginningOfDocument: UITextPosition {
-        textInputHelper.beginningOfDocument
+        textInputClient.beginningOfDocument
     }
     /// The text position for the end of a document.
     var endOfDocument: UITextPosition {
-        textInputHelper.endOfDocument
+        textInputClient.endOfDocument
     }
     /// Returns a Boolean value indicating whether the text view currently contains any text.
     var hasText: Bool {
-        textInputHelper.hasText
+        textInputClient.hasText
     }
     /// An input tokenizer that provides information about the granularity of text units.
     var tokenizer: UITextInputTokenizer {
-        textInputHelper.tokenizer
+        textInputClient.tokenizer
     }
 }
 
@@ -29,24 +29,24 @@ public extension TextView {
     /// - Parameter position: An object that identifies a location in a text input area.
     /// - Returns: A rectangle that defines the area for drawing the caret.
     func caretRect(for position: UITextPosition) -> CGRect {
-        textInputHelper.caretRect(for: position)
+        textInputClient.caretRect(for: position)
     }
 
     /// Called at the beginning of the gesture that the system uses to manipulate the cursor.
     /// - Parameter point: The point at which the gesture occurred in your view.
     func beginFloatingCursor(at point: CGPoint) {
-        textInputHelper.beginFloatingCursor(at: point)
+        textInputClient.beginFloatingCursor(at: point)
     }
 
     /// Called to move the floating cursor to a new location.
     /// - Parameter point: The new touch point in the underlying view.
     func updateFloatingCursor(at point: CGPoint) {
-        textInputHelper.updateFloatingCursor(at: point)
+        textInputClient.updateFloatingCursor(at: point)
     }
 
     /// Called at the end of the gesture that the system uses to manipulate the cursor.
     func endFloatingCursor() {
-        textInputHelper.endFloatingCursor()
+        textInputClient.endFloatingCursor()
     }
 }
 
@@ -56,7 +56,7 @@ public extension TextView {
     /// - Parameter range: A range of text in a document.
     /// - Returns: A substring of a document that falls within the specified range.
     func text(in range: UITextRange) -> String? {
-        textInputHelper.text(in: range)
+        textInputClient.text(in: range)
     }
 
     /// Replaces the text in a document that is in the specified range.
@@ -64,18 +64,18 @@ public extension TextView {
     ///   - range: A range of text in a document.
     ///   - text: A string to replace the text in range.
     func replace(_ range: UITextRange, withText text: String) {
-        textInputHelper.replace(range, withText: text)
+        textInputClient.replace(range, withText: text)
     }
 
     /// Inserts a character into the displayed text.
     /// - Parameter text: A string object representing the character typed on the system keyboard.
     func insertText(_ text: String) {
-        textInputHelper.insertText(text)
+        textInputClient.insertText(text)
     }
 
     /// Deletes a character from the displayed text.
     func deleteBackward() {
-        textInputHelper.deleteBackward()
+        textInputClient.deleteBackward()
     }
 }
 
@@ -84,10 +84,10 @@ public extension TextView {
     /// The range of selected text in a document.
     var selectedTextRange: UITextRange? {
         get {
-            textInputHelper.selectedTextRange
+            textInputClient.selectedTextRange
         }
         set {
-            textInputHelper.selectedTextRange = newValue
+            textInputClient.selectedTextRange = newValue
         }
     }
 
@@ -95,7 +95,7 @@ public extension TextView {
     /// - Parameter range: An object representing a range in a document's text.
     /// - Returns: An array of UITextSelectionRect objects that encompass the selection.
     func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
-        textInputHelper.selectionRects(for: range)
+        textInputClient.selectionRects(for: range)
     }
 }
 
@@ -104,20 +104,20 @@ public extension TextView {
     /// A dictionary of attributes that describes how to draw marked text.
     var markedTextStyle: [NSAttributedString.Key: Any]? {
         get {
-            textInputHelper.markedTextStyle
+            textInputClient.markedTextStyle
         }
         set {
-            textInputHelper.markedTextStyle = newValue
+            textInputClient.markedTextStyle = newValue
         }
     }
 
     /// The range of currently marked text in a document.
     var markedTextRange: UITextRange? {
         get {
-            textInputHelper.markedTextRange
+            textInputClient.markedTextRange
         }
         set {
-            textInputHelper.markedTextRange = newValue
+            textInputClient.markedTextRange = newValue
         }
     }
 
@@ -126,7 +126,7 @@ public extension TextView {
     ///   - markedText: The text to be marked.
     ///   - selectedRange: A range within `markedText` that indicates the current selection. This range is always relative to `markedText`.
     func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
-        textInputHelper.setMarkedText(markedText, selectedRange: selectedRange)
+        textInputClient.setMarkedText(markedText, selectedRange: selectedRange)
     }
     
     /// Inserts the provided styled text and marks it to indicate that it is part of an active input session.
@@ -134,12 +134,12 @@ public extension TextView {
     ///   - markedText: The text to be marked.
     ///   - selectedRange: A range within `markedText` that indicates the current selection. This range is always relative to `markedText`.
     func setAttributedMarkedText(_ markedText: NSAttributedString?, selectedRange: NSRange) {
-        textInputHelper.setAttributedMarkedText(markedText, selectedRange: selectedRange)
+        textInputClient.setAttributedMarkedText(markedText, selectedRange: selectedRange)
     }
 
     /// Unmarks the currently marked text.
     func unmarkText() {
-        textInputHelper.unmarkText()
+        textInputClient.unmarkText()
     }
 }
 
@@ -151,7 +151,7 @@ public extension TextView {
     ///   - toPosition: An object that represents another location in a document.
     /// - Returns: An object that represents the range between `fromPosition` and `toPosition`.
     func textRange(from fromPosition: UITextPosition, to toPosition: UITextPosition) -> UITextRange? {
-        textInputHelper.textRange(from: fromPosition, to: toPosition)
+        textInputClient.textRange(from: fromPosition, to: toPosition)
     }
 
     /// Returns the text position at a specified offset from another text position.
@@ -160,7 +160,7 @@ public extension TextView {
     ///   - offset: A character offset from position. It can be a positive or negative value.
     /// - Returns: A custom UITextPosition object that represents the location in a document that is at the specified offset from position.
     func position(from position: UITextPosition, offset: Int) -> UITextPosition? {
-        textInputHelper.position(from: position, offset: offset)
+        textInputClient.position(from: position, offset: offset)
     }
 
     /// Returns the text position at a specified offset in a specified direction from another text position.
@@ -170,7 +170,7 @@ public extension TextView {
     ///   - offset: A character offset from position.
     /// - Returns: Returns the text position at a specified offset in a specified direction from another text position.
     func position(from position: UITextPosition, in direction: UITextLayoutDirection, offset: Int) -> UITextPosition? {
-        textInputHelper.position(from: position, in: direction, offset: offset)
+        textInputClient.position(from: position, in: direction, offset: offset)
     }
 
     /// Returns how one text position compares to another text position.
@@ -179,7 +179,7 @@ public extension TextView {
     ///   - other: A custom object that represents another location within a document.
     /// - Returns: A value that indicates whether the two text positions are identical or whether one is before the other.
     func compare(_ position: UITextPosition, to other: UITextPosition) -> ComparisonResult {
-        textInputHelper.compare(position, to: other)
+        textInputClient.compare(position, to: other)
     }
 
     /// Returns the number of UTF-16 characters between one text position and another text position.
@@ -188,7 +188,7 @@ public extension TextView {
     ///   - toPosition: A custom object that represents another location within document.
     /// - Returns: The number of UTF-16 characters between `fromPosition` and `toPosition`.
     func offset(from: UITextPosition, to toPosition: UITextPosition) -> Int {
-        textInputHelper.offset(from: from, to: toPosition)
+        textInputClient.offset(from: from, to: toPosition)
     }
 
     /// Returns the text position that is at the farthest extent in a specified layout direction within a range of text.
@@ -197,7 +197,7 @@ public extension TextView {
     ///   - direction: A constant that indicates a direction of layout (right, left, up, down).
     /// - Returns: A text-position object that identifies a location in the visible text.
     func position(within range: UITextRange, farthestIn direction: UITextLayoutDirection) -> UITextPosition? {
-        textInputHelper.position(within: range, farthestIn: direction)
+        textInputClient.position(within: range, farthestIn: direction)
     }
 
     /// Returns a text range from a specified text position to its farthest extent in a certain direction of layout.
@@ -206,21 +206,21 @@ public extension TextView {
     ///   - direction: A constant that indicates a direction of layout (right, left, up, down).
     /// - Returns: A text-range object that represents the distance from `position` to the farthest extent in `direction`.
     func characterRange(byExtending position: UITextPosition, in direction: UITextLayoutDirection) -> UITextRange? {
-        textInputHelper.characterRange(byExtending: position, in: direction)
+        textInputClient.characterRange(byExtending: position, in: direction)
     }
 
     /// Returns the first rectangle that encloses a range of text in a document.
     /// - Parameter range: An object that represents a range of text in a document.
     /// - Returns: The first rectangle in a range of text. You might use this rectangle to draw a correction rectangle. The “first” in the name refers the rectangle enclosing the first line when the range encompasses multiple lines of text.
     func firstRect(for range: UITextRange) -> CGRect {
-        textInputHelper.firstRect(for: range)
+        textInputClient.firstRect(for: range)
     }
 
     /// Returns the position in a document that is closest to a specified point.
     /// - Parameter point: A point in the view that is drawing a document's text.
     /// - Returns: An object locating a position in a document that is closest to `point`.
     func closestPosition(to point: CGPoint) -> UITextPosition? {
-        textInputHelper.closestPosition(to: point)
+        textInputClient.closestPosition(to: point)
     }
 
     /// Returns the position in a document that is closest to a specified point in a specified range.
@@ -229,14 +229,14 @@ public extension TextView {
     ///   - range: An object representing a range in a document's text.
     /// - Returns: An object representing the character position in range that is closest to `point`.
     func closestPosition(to point: CGPoint, within range: UITextRange) -> UITextPosition? {
-        textInputHelper.closestPosition(to: point, within: range)
+        textInputClient.closestPosition(to: point, within: range)
     }
 
     /// Returns the character or range of characters that is at a specified point in a document.
     /// - Parameter point: A point in the view that is drawing a document's text.
     /// - Returns: An object representing a range that encloses a character (or characters) at `point`.
     func characterRange(at point: CGPoint) -> UITextRange? {
-        textInputHelper.characterRange(at: point)
+        textInputClient.characterRange(at: point)
     }
 }
 
@@ -248,7 +248,7 @@ public extension TextView {
     ///   - direction: A constant that indicates a direction of storage (forward or backward).
     /// - Returns: A constant that represents a writing direction (for example, left-to-right or right-to-left).
     func baseWritingDirection(for position: UITextPosition, in direction: UITextStorageDirection) -> NSWritingDirection {
-        textInputHelper.baseWritingDirection(for: position, in: direction)
+        textInputClient.baseWritingDirection(for: position, in: direction)
     }
 
     /// Sets the base writing direction for a specified range of text in a document.
@@ -256,7 +256,7 @@ public extension TextView {
     ///   - writingDirection: A constant that represents a writing direction (for example, left-to-right or right-to-left)
     ///   - range: An object that represents a range of text in a document.
     func setBaseWritingDirection(_ writingDirection: NSWritingDirection, for range: UITextRange) {
-        textInputHelper.setBaseWritingDirection(writingDirection, for: range)
+        textInputClient.setBaseWritingDirection(writingDirection, for: range)
     }
 }
 #endif

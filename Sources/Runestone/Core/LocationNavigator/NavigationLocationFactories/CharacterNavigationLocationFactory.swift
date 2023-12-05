@@ -1,13 +1,13 @@
 import Combine
 
 struct CharacterNavigationLocationFactory {
-    private let stringView: CurrentValueSubject<StringView, Never>
+    let stringView: StringView
 
-    init(stringView: CurrentValueSubject<StringView, Never>) {
-        self.stringView = stringView
-    }
-
-    func location(movingFrom sourceLocation: Int, byCharacterCount offset: Int = 1, inDirection direction: TextDirection) -> Int {
+    func location(
+        movingFrom sourceLocation: Int,
+        byCharacterCount offset: Int = 1,
+        inDirection direction: TextDirection
+    ) -> Int {
         let naiveNewLocation: Int
         switch direction {
         case .forward:
@@ -15,13 +15,13 @@ struct CharacterNavigationLocationFactory {
         case .backward:
             naiveNewLocation = sourceLocation - offset
         }
-        guard naiveNewLocation >= 0 && naiveNewLocation <= stringView.value.string.length else {
+        guard naiveNewLocation >= 0 && naiveNewLocation <= stringView.length else {
             return sourceLocation
         }
-        guard naiveNewLocation > 0 && naiveNewLocation < stringView.value.string.length else {
+        guard naiveNewLocation > 0 && naiveNewLocation < stringView.length else {
             return naiveNewLocation
         }
-        let range = stringView.value.string.customRangeOfComposedCharacterSequence(at: naiveNewLocation)
+        let range = stringView.string.customRangeOfComposedCharacterSequence(at: naiveNewLocation)
         guard naiveNewLocation > range.location && naiveNewLocation < range.location + range.length else {
             return naiveNewLocation
         }

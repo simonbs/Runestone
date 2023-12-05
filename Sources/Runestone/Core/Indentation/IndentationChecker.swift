@@ -1,13 +1,13 @@
 import Combine
 
-struct IndentationChecker {
-    private let stringView: CurrentValueSubject<StringView, Never>
-    private let lineManager: CurrentValueSubject<LineManager, Never>
+struct IndentationChecker<LineManagerType: LineManaging> {
+    private let stringView: StringView
+    private let lineManager: LineManagerType
     private let indentStrategy: CurrentValueSubject<IndentStrategy, Never>
 
     init(
-        stringView: CurrentValueSubject<StringView, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>,
+        stringView: StringView,
+        lineManager: LineManagerType,
         indentStrategy: CurrentValueSubject<IndentStrategy, Never>
     ) {
         self.stringView = stringView
@@ -16,7 +16,7 @@ struct IndentationChecker {
     }
 
     func isIndentation(at location: Int) -> Bool {
-        guard let line = lineManager.value.line(containingCharacterAt: location) else {
+        guard let line = lineManager.line(containingCharacterAt: location) else {
             return false
         }
         let localLocation = location - line.location
@@ -24,10 +24,13 @@ struct IndentationChecker {
             return false
         }
         let indentLevelMeasurer = IndentLevelMeasurer(
-            stringView: stringView.value,
+            stringView: stringView,
             indentLengthInSpaces: indentStrategy.value.lengthInSpaces
         )
-        let indentLevel = indentLevelMeasurer.indentLevel(ofLineStartingAt: line.location, ofLength: line.data.totalLength)
+        let indentLevel = indentLevelMeasurer.indentLevel(
+            ofLineStartingAt: line.location,
+            ofLength: line.totalLength
+        )
         let indentString = indentStrategy.value.string(indentLevel: indentLevel)
         return localLocation <= indentString.utf16.count
     }

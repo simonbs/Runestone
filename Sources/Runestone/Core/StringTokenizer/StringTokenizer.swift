@@ -1,31 +1,23 @@
 import Combine
 import Foundation
 
-final class StringTokenizer {
-    private let _stringView: CurrentValueSubject<StringView, Never>
-    private let _lineManager: CurrentValueSubject<LineManager, Never>
-    private let lineControllerStorage: LineControllerStorage
+struct StringTokenizer<StringViewType: StringView, LineManagerType: LineManaging>: StringTokenizing {
+    let stringView: StringViewType
+    let lineManager: LineManagerType
+
     private var newlineCharacters: [Character] {
-        [Symbol.Character.lineFeed, Symbol.Character.carriageReturn, Symbol.Character.carriageReturnLineFeed]
-    }
-    private var stringView: StringView {
-        _stringView.value
-    }
-    private var lineManager: LineManager {
-        _lineManager.value
+        [
+            Symbol.Character.lineFeed,
+            Symbol.Character.carriageReturn,
+            Symbol.Character.carriageReturnLineFeed
+        ]
     }
 
-    init(
-        stringView: CurrentValueSubject<StringView, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>,
-        lineControllerStorage: LineControllerStorage
-    ) {
-        self._lineManager = lineManager
-        self._stringView = stringView
-        self.lineControllerStorage = lineControllerStorage
-    }
-
-    func isLocation(_ location: Int, atBoundary boundary: TextBoundary, inDirection direction: TextDirection) -> Bool {
+    func isLocation(
+        _ location: Int,
+        atBoundary boundary: TextBoundary,
+        inDirection direction: TextDirection
+    ) -> Bool {
         switch boundary {
         case .word:
             return isLocation(location, atWordBoundaryInDirection: direction)
@@ -38,7 +30,11 @@ final class StringTokenizer {
         }
     }
 
-    func location(from location: Int, toBoundary boundary: TextBoundary, inDirection direction: TextDirection) -> Int? {
+    func location(
+        from location: Int,
+        toBoundary boundary: TextBoundary,
+        inDirection direction: TextDirection
+    ) -> Int? {
         switch boundary {
         case .word:
             return self.location(from: location, toWordBoundaryInDirection: direction)
@@ -60,23 +56,20 @@ private extension StringTokenizer {
         }
         let lineLocation = line.location
         let lineLocalLocation = location - lineLocation
-        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
-        guard lineLocalLocation >= 0 && lineLocalLocation <= line.data.totalLength else {
+        guard lineLocalLocation >= 0 && lineLocalLocation <= line.totalLength else {
             return false
         }
-        guard let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation) else {
-            return false
-        }
+        let lineFragment = line.lineFragment(containingCharacterAt: lineLocalLocation)
         switch direction {
         case .forward:
-            let isLastLineFragment = lineFragmentNode.index == lineController.numberOfLineFragments - 1
+            let isLastLineFragment = lineFragment.index == line.numberOfLineFragments - 1
             if isLastLineFragment {
-                return location == lineLocation + lineFragmentNode.location + lineFragmentNode.value - line.data.delimiterLength
+                return location == lineLocation + lineFragment.location + lineFragment.length - line.delimiterLength
             } else {
-                return location == lineLocation + lineFragmentNode.location + lineFragmentNode.value
+                return location == lineLocation + lineFragment.location + lineFragment.length
             }
         case .backward:
-            return location == lineLocation + lineFragmentNode.location
+            return location == lineLocation + lineFragment.location
         }
     }
 
@@ -84,22 +77,19 @@ private extension StringTokenizer {
         guard let line = lineManager.line(containingCharacterAt: location) else {
             return nil
         }
-        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let lineLocation = line.location
         let lineLocalLocation = location - lineLocation
-        guard let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation) else {
-            return nil
-        }
+        let lineFragment = line.lineFragment(containingCharacterAt: lineLocalLocation)
         if direction == .forward {
             if location == stringView.string.length {
                 return location
             } else {
-                let lineFragmentRangeUpperBound = lineFragmentNode.location + lineFragmentNode.value
+                let lineFragmentRangeUpperBound = lineFragment.location + lineFragment.length
                 let preferredLocation = lineLocation + lineFragmentRangeUpperBound
-                let lineEndLocation = lineLocation + line.data.totalLength
+                let lineEndLocation = lineLocation + line.totalLength
                 if preferredLocation == lineEndLocation {
                     // Navigate to end of line but before the delimiter (\n etc.)
-                    return preferredLocation - line.data.delimiterLength
+                    return preferredLocation - line.delimiterLength
                 } else {
                     // Navigate to the end of the line but before the last character. This is a hack that avoids an issue where the caret is placed on the next line. The approach seems to be similar to what Textastic is doing.
                     let lastCharacterRange = stringView.string.customRangeOfComposedCharacterSequence(at: lineFragmentRangeUpperBound)
@@ -109,7 +99,7 @@ private extension StringTokenizer {
         } else if location == 0 {
             return location
         } else {
-            return lineLocation + lineFragmentNode.location
+            return lineLocation + lineFragment.location
         }
     }
 }
@@ -117,8 +107,11 @@ private extension StringTokenizer {
 // MARK: - Paragraphs
 private extension StringTokenizer {
     private func isLocation(_ location: Int, atParagraphBoundaryInDirection direction: TextDirection) -> Bool {
-        // I can't seem to make Ctrl+A, Ctrl+E, Cmd+Left, and Cmd+Right work properly if this function returns anything but false.
-        // I've tried various ways of determining the paragraph boundary but UIKit doesn't seem to be happy with anything I come up with ultimately leading to incorrect keyboard navigation. I haven't yet found any drawbacks to returning false in all cases.
+        // I can't seem to make Ctrl+A, Ctrl+E, Cmd+Left, and Cmd+Right work properly if this
+        // function returns anything but false. I've tried various ways of determining the
+        // paragraph boundary but UIKit doesn't seem to be happy with anything I come up with
+        // ultimately leading to incorrect keyboard navigation. I haven't yet found any drawbacks
+        // to returning false in all cases.
         return false
     }
 
@@ -133,7 +126,10 @@ private extension StringTokenizer {
                     guard let currentString = stringView.composedSubstring(at: currentIndex) else {
                         break
                     }
-                    if currentString.count == 1, let character = currentString.first, newlineCharacters.contains(character) {
+                    if currentString.count == 1,
+                       let character = currentString.first,
+                       newlineCharacters.contains(character)
+                    {
                         break
                     }
                     currentIndex += 1
@@ -149,7 +145,10 @@ private extension StringTokenizer {
                     guard let currentString = stringView.composedSubstring(at: currentIndex) else {
                         break
                     }
-                    if currentString.count == 1, let character = currentString.first, newlineCharacters.contains(character) {
+                    if currentString.count == 1,
+                       let character = currentString.first,
+                       newlineCharacters.contains(character)
+                    {
                         currentIndex += 1
                         break
                     }
@@ -173,7 +172,8 @@ private extension StringTokenizer {
                 if location == stringView.string.length {
                     return alphanumerics.containsAllCharacters(of: previousCharacter)
                 } else if let character = stringView.composedSubstring(at: location) {
-                    return alphanumerics.containsAllCharacters(of: previousCharacter) && !alphanumerics.containsAllCharacters(of: character)
+                    return alphanumerics.containsAllCharacters(of: previousCharacter) 
+                    && !alphanumerics.containsAllCharacters(of: character)
                 } else {
                     return false
                 }
@@ -187,7 +187,8 @@ private extension StringTokenizer {
                 if location == 0 {
                     return alphanumerics.containsAllCharacters(of: string)
                 } else if let previousCharacter = stringView.composedSubstring(at: location - 1) {
-                    return alphanumerics.containsAllCharacters(of: string) && !alphanumerics.containsAllCharacters(of: previousCharacter)
+                    return alphanumerics.containsAllCharacters(of: string) 
+                    && !alphanumerics.containsAllCharacters(of: previousCharacter)
                 } else {
                     return false
                 }

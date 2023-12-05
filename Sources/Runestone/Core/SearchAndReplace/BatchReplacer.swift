@@ -1,45 +1,36 @@
 import Combine
 import Foundation
 
-final class BatchReplacer {
-    private let stringView: CurrentValueSubject<StringView, Never>
-    private let lineManager: CurrentValueSubject<LineManager, Never>
-    private let selectedRange: CurrentValueSubject<NSRange, Never>
-    private let textSetter: TextSetter
+struct BatchReplacer<LineManagerType: LineManaging> {
+    typealias State = SelectedRangeWritable
 
-    init(
-        stringView: CurrentValueSubject<StringView, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>,
-        selectedRange: CurrentValueSubject<NSRange, Never>,
-        textSetter: TextSetter
-    ) {
-        self.stringView = stringView
-        self.lineManager = lineManager
-        self.selectedRange = selectedRange
-        self.textSetter = textSetter
-    }
+    let state: State
+    let stringView: StringView
+    let lineManager: LineManagerType
+    let textSetter: TextSetting
 
     func replaceText(in batchReplaceSet: BatchReplaceSet) {
         guard !batchReplaceSet.replacements.isEmpty else {
             return
         }
-        let oldLinePosition = lineManager.value.linePosition(at: selectedRange.value.location)
-        let newString = stringView.value.string.applying(batchReplaceSet)
+        let oldLinePosition = lineManager.linePosition(at: state.selectedRange.location)
+        let newString = stringView.string.applying(batchReplaceSet)
         textSetter.setText(newString, preservingUndoStack: true)
-        // By restoring the selected range using the old line position we can better preserve the old selected language.
+        // By restoring the selected range using the old line position
+        // we can better preserve the old selected language.
         moveCaret(to: oldLinePosition)
     }
 }
 
 private extension BatchReplacer {
     private func moveCaret(to linePosition: LinePosition?) {
-        guard let linePosition, linePosition.row < lineManager.value.lineCount else {
-            selectedRange.value = NSRange(location: stringView.value.string.length, length: 0)
+        guard let linePosition, linePosition.row < lineManager.lineCount else {
+            state.selectedRange = NSRange(location: stringView.length, length: 0)
             return
         }
-        let line = lineManager.value.line(atRow: linePosition.row)
-        let location = line.location + min(linePosition.column, line.data.length)
-        selectedRange.value = NSRange(location: location, length: 0)
+        let line = lineManager[linePosition.row]
+        let location = line.location + min(linePosition.column, line.length)
+        state.selectedRange = NSRange(location: location, length: 0)
     }
 }
 

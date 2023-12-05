@@ -1,29 +1,29 @@
 import Combine
 import Foundation
 
-final class TextShifter {
-    private let stringView: CurrentValueSubject<StringView, Never>
-    private let lineManager: CurrentValueSubject<LineManager, Never>
+final class TextShifter<LineManagerType: LineManaging> {
+    private let stringView: StringView
+    private let lineManager: LineManagerType
     private let selectedRange: CurrentValueSubject<NSRange, Never>
     private let indentStrategy: CurrentValueSubject<IndentStrategy, Never>
-    private let textEditor: TextEditor
+    private let textReplacer: TextReplacing
 
     init(
-        stringView: CurrentValueSubject<StringView, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>,
+        stringView: StringView,
+        lineManager: LineManagerType,
         indentStrategy: CurrentValueSubject<IndentStrategy, Never>,
         selectedRange: CurrentValueSubject<NSRange, Never>,
-        textEditor: TextEditor
+        textReplacer: TextReplacing
     ) {
         self.stringView = stringView
         self.lineManager = lineManager
         self.indentStrategy = indentStrategy
         self.selectedRange = selectedRange
-        self.textEditor = textEditor
+        self.textReplacer = textReplacer
     }
 
     func shiftLeft() {
-        let lines = lineManager.value.lines(in: selectedRange.value)
+        let lines = lineManager.lines(in: selectedRange.value)
         let originalRange = range(surrounding: lines)
         var newSelectedRange = selectedRange.value
         var replacementString: String?
@@ -31,8 +31,8 @@ final class TextShifter {
         let utf8IndentLength = indentString.count
         let utf16IndentLength = indentString.utf16.count
         for (lineIndex, line) in lines.enumerated() {
-            let lineRange = NSRange(location: line.location, length: line.data.totalLength)
-            let lineString = stringView.value.substring(in: lineRange) ?? ""
+            let lineRange = NSRange(location: line.location, length: line.totalLength)
+            let lineString = stringView.substring(in: lineRange) ?? ""
             guard lineString.hasPrefix(indentString) else {
                 replacementString = (replacementString ?? "") + lineString
                 continue
@@ -56,21 +56,21 @@ final class TextShifter {
             }
         }
         if let replacementString = replacementString {
-            textEditor.replaceText(in: originalRange, with: replacementString)
+            textReplacer.replaceText(in: originalRange, with: replacementString)
             selectedRange.value = newSelectedRange
         }
     }
 
     func shiftRight() {
-        let lines = lineManager.value.lines(in: selectedRange.value)
+        let lines = lineManager.lines(in: selectedRange.value)
         let originalRange = range(surrounding: lines)
         var newSelectedRange = selectedRange.value
         var replacementString: String?
         let indentString = indentStrategy.value.string(indentLevel: 1)
         let indentLength = indentString.utf16.count
         for (lineIndex, line) in lines.enumerated() {
-            let lineRange = NSRange(location: line.location, length: line.data.totalLength)
-            let lineString = stringView.value.substring(in: lineRange) ?? ""
+            let lineRange = NSRange(location: line.location, length: line.totalLength)
+            let lineString = stringView.substring(in: lineRange) ?? ""
             replacementString = (replacementString ?? "") + indentString + lineString
             if lineIndex == 0 {
                 newSelectedRange.location += indentLength
@@ -79,18 +79,18 @@ final class TextShifter {
             }
         }
         if let replacementString = replacementString {
-            textEditor.replaceText(in: originalRange, with: replacementString)
+            textReplacer.replaceText(in: originalRange, with: replacementString)
             selectedRange.value = newSelectedRange
         }
     }
 }
 
 private extension TextShifter {
-    private func range(surrounding lines: [LineNode]) -> NSRange {
+    private func range(surrounding lines: [LineManagerType.LineType]) -> NSRange {
         let firstLine = lines[0]
         let lastLine = lines[lines.count - 1]
         let location = firstLine.location
-        let length = (lastLine.location - location) + lastLine.data.totalLength
+        let length = (lastLine.location - location) + lastLine.totalLength
         return NSRange(location: location, length: length)
     }
 }

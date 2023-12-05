@@ -1,4 +1,4 @@
-@testable import RunestoneObservation
+@testable import _RunestoneObservation
 
 struct MyEquatableType: Equatable {
     let str: String

@@ -1,47 +1,33 @@
 import Combine
 import Foundation
 
-final class GoToLineNavigator {
-    private let _textView: CurrentValueSubject<WeakBox<TextView>, Never>
-    private let lineManager: CurrentValueSubject<LineManager, Never>
-    private let selectedRange: CurrentValueSubject<NSRange, Never>
-    private let viewportScroller: ViewportScroller
-    private var textView: TextView? {
-        _textView.value.value
-    }
+struct GoToLineNavigator<LineManagerType: LineManaging> {
+    typealias State = SelectedRangeWritable
 
-    init(
-        textView: CurrentValueSubject<WeakBox<TextView>, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>,
-        selectedRange: CurrentValueSubject<NSRange, Never>,
-        viewportScroller: ViewportScroller
-    ) {
-        self._textView = textView
-        self.lineManager = lineManager
-        self.selectedRange = selectedRange
-        self.viewportScroller = viewportScroller
-    }
+    let state: State
+    let lineManager: LineManagerType
+    let viewportScroller: ViewportScroller<LineManagerType>
 
     func goToLine(_ lineIndex: Int, select selection: GoToLineSelection = .beginning) -> Bool {
-        guard lineIndex >= 0 && lineIndex < lineManager.value.lineCount else {
+        guard lineIndex >= 0 && lineIndex < lineManager.lineCount else {
             return false
         }
         // I'm not exactly sure why this is necessary but if the text view is the first responder as we jump
         // to the line and we don't resign the first responder first, the caret will disappear after we have
         // jumped to the specified line.
-        textView?.resignFirstResponder()
-        textView?.becomeFirstResponder()
-        let line = lineManager.value.line(atRow: lineIndex)
+//        proxyView.view?.resignFirstResponder()
+//        proxyView.view?.becomeFirstResponder()
+        let line = lineManager[lineIndex]
         let visibleRange =  NSRange(location: line.location, length: 0)
         viewportScroller.scroll(toVisibleRange: visibleRange)
-        textView?.layoutIfNeeded()
+//        proxyView.view?.layoutIfNeeded()
         switch selection {
         case .beginning:
-            selectedRange.value = NSRange(location: line.location, length: 0)
+            state.selectedRange = NSRange(location: line.location, length: 0)
         case .end:
-            selectedRange.value = NSRange(location: line.data.length, length: line.data.length)
+            state.selectedRange = NSRange(location: line.length, length: line.length)
         case .line:
-            selectedRange.value = NSRange(location: line.location, length: line.data.length)
+            state.selectedRange = NSRange(location: line.location, length: line.length)
         }
         return true
     }

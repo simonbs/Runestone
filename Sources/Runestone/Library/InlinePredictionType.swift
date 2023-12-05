@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 enum TextInlinePredictionType {
@@ -35,3 +36,4 @@ extension TextInlinePredictionType {
         }
     }
 }
+#endif

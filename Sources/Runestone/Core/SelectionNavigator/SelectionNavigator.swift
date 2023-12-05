@@ -1,7 +1,7 @@
 import Combine
 import Foundation
 
-final class SelectionNavigator {
+final class SelectionNavigator<LineManagerType: LineManaging> {
     private struct BracketPair {
         let opening: String
         let closing: String
@@ -16,30 +16,29 @@ final class SelectionNavigator {
         }
     }
 
-    private let stringView: CurrentValueSubject<StringView, Never>
-    private let lineManager: CurrentValueSubject<LineManager, Never>
-    private let selectedRange: CurrentValueSubject<NSRange, Never>
-    private let lineControllerStorage: LineControllerStorage
-    private let stringTokenizer: StringTokenizer
+    typealias State = SelectedRangeWritable
+
+    private let state: State
+    private let stringView: StringView
+    private let lineManager: LineManagerType
+    private let stringTokenizer: StringTokenizing
     private let characterNavigationLocationFactory: CharacterNavigationLocationFactory
     private let wordNavigationLocationFactory: WordNavigationLocationFactory
     private let lineNavigationLocationFactory: LineNavigationLocationFactory
     private var selectionOrigin: Int?
 
     init(
-        stringView: CurrentValueSubject<StringView, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>,
-        selectedRange: CurrentValueSubject<NSRange, Never>,
-        lineControllerStorage: LineControllerStorage,
-        stringTokenizer: StringTokenizer,
+        state: State,
+        stringView: StringView,
+        lineManager: LineManagerType,
+        stringTokenizer: StringTokenizing,
         characterNavigationLocationFactory: CharacterNavigationLocationFactory,
         wordNavigationLocationFactory: WordNavigationLocationFactory,
         lineNavigationLocationFactory: LineNavigationLocationFactory
     ) {
+        self.state = state
         self.stringView = stringView
         self.lineManager = lineManager
-        self.selectedRange = selectedRange
-        self.lineControllerStorage = lineControllerStorage
         self.stringTokenizer = stringTokenizer
         self.characterNavigationLocationFactory = characterNavigationLocationFactory
         self.wordNavigationLocationFactory = wordNavigationLocationFactory
@@ -48,30 +47,30 @@ final class SelectionNavigator {
 
     func moveLeftAndModifySelection() {
         lineNavigationLocationFactory.reset()
-        selectedRange.value = range(moving: selectedRange.value, by: .character, inDirection: .backward)
+        state.selectedRange = range(moving: state.selectedRange, by: .character, inDirection: .backward)
     }
 
     func moveRightAndModifySelection() {
         lineNavigationLocationFactory.reset()
-        selectedRange.value = range(moving: selectedRange.value, by: .character, inDirection: .forward)
+        state.selectedRange = range(moving: state.selectedRange, by: .character, inDirection: .forward)
     }
 
     func moveUpAndModifySelection() {
-        selectedRange.value = range(moving: selectedRange.value, by: .line, inDirection: .backward)
+        state.selectedRange = range(moving: state.selectedRange, by: .line, inDirection: .backward)
     }
 
     func moveDownAndModifySelection() {
-        selectedRange.value = range(moving: selectedRange.value, by: .line, inDirection: .forward)
+        state.selectedRange = range(moving: state.selectedRange, by: .line, inDirection: .forward)
     }
 
     func moveWordLeftAndModifySelection() {
         lineNavigationLocationFactory.reset()
-        selectedRange.value = range(moving: selectedRange.value, by: .word, inDirection: .backward)
+        state.selectedRange = range(moving: state.selectedRange, by: .word, inDirection: .backward)
     }
 
     func moveWordRightAndModifySelection() {
         lineNavigationLocationFactory.reset()
-        selectedRange.value = range(moving: selectedRange.value, by: .word, inDirection: .forward)
+        state.selectedRange = range(moving: state.selectedRange, by: .word, inDirection: .forward)
     }
 
     func moveToBeginningOfLineAndModifySelection() {
@@ -105,28 +104,32 @@ final class SelectionNavigator {
     }
 
     func startDraggingSelection(from location: Int) {
-        selectedRange.value = rangeByStartDraggingSelection(from: location)
+        state.selectedRange = rangeByStartDraggingSelection(from: location)
     }
 
     func extendDraggedSelection(to location: Int) {
-        selectedRange.value = rangeByExtendingDraggedSelection(to: location)
+        state.selectedRange = rangeByExtendingDraggedSelection(to: location)
     }
 
     func selectWord(at location: Int) {
-        selectedRange.value = rangeBySelectingWord(at: location)
+        state.selectedRange = rangeBySelectingWord(at: location)
     }
 
     func selectLine(at location: Int) {
-        selectedRange.value = rangeBySelectingLine(at: location)
+        state.selectedRange = rangeBySelectingLine(at: location)
     }
 }
 
 private extension SelectionNavigator {
     private func move(toBoundary boundary: TextBoundary, inDirection direction: TextDirection) {
-        selectedRange.value = range(moving: selectedRange.value, toBoundary: boundary, inDirection: direction)
+        state.selectedRange = range(moving: state.selectedRange, toBoundary: boundary, inDirection: direction)
     }
 
-    private func range(moving range: NSRange, by granularity: TextGranularity, inDirection direction: TextDirection) -> NSRange {
+    private func range(
+        moving range: NSRange,
+        by granularity: TextGranularity,
+        inDirection direction: TextDirection
+    ) -> NSRange {
         if range.length == 0 {
             selectionOrigin = range.location
             lineNavigationLocationFactory.reset()
@@ -135,30 +138,54 @@ private extension SelectionNavigator {
         switch (granularity, anchoringDirection) {
         case (.character, .backward):
             lineNavigationLocationFactory.reset()
-            let upperBound = characterNavigationLocationFactory.location(movingFrom: range.upperBound, inDirection: direction)
+            let upperBound = characterNavigationLocationFactory.location(
+                movingFrom: range.upperBound,
+                inDirection: direction
+            )
             return range.withUpperBound(upperBound)
         case (.character, .forward):
             lineNavigationLocationFactory.reset()
-            let lowerBound = characterNavigationLocationFactory.location(movingFrom: range.lowerBound, inDirection: direction)
+            let lowerBound = characterNavigationLocationFactory.location(
+                movingFrom: range.lowerBound,
+                inDirection: direction
+            )
             return range.withLowerBound(lowerBound)
         case (.word, .backward):
             lineNavigationLocationFactory.reset()
-            let upperBound = wordNavigationLocationFactory.location(movingFrom: range.upperBound, inDirection: direction)
+            let upperBound = wordNavigationLocationFactory.location(
+                movingFrom: range.upperBound,
+                inDirection: direction
+            )
             return range.withUpperBound(upperBound)
         case (.word, .forward):
             lineNavigationLocationFactory.reset()
-            let lowerBound = wordNavigationLocationFactory.location(movingFrom: range.lowerBound, inDirection: direction)
+            let lowerBound = wordNavigationLocationFactory.location(
+                movingFrom: range.lowerBound,
+                inDirection: direction
+            )
             return range.withLowerBound(lowerBound)
         case (.line, .backward):
-            let upperBound = lineNavigationLocationFactory.location(movingFrom: range.upperBound, byLineCount: 1, inDirection: direction)
+            let upperBound = lineNavigationLocationFactory.location(
+                movingFrom: range.upperBound,
+                byLineCount: 1,
+                inDirection: direction
+            )
             return range.withUpperBound(upperBound)
         case (.line, .forward):
-            let lowerBound = lineNavigationLocationFactory.location(movingFrom: range.lowerBound, byLineCount: 1, inDirection: direction)
+            let lowerBound = lineNavigationLocationFactory.location(
+                movingFrom: range.lowerBound,
+                byLineCount: 1,
+                inDirection: direction
+            )
             return range.withLowerBound(lowerBound)
         }
     }
 
-    private func range(moving range: NSRange, toBoundary boundary: TextBoundary, inDirection direction: TextDirection) -> NSRange {
+    private func range(
+        moving range: NSRange,
+        toBoundary boundary: TextBoundary,
+        inDirection direction: TextDirection
+    ) -> NSRange {
         lineNavigationLocationFactory.reset()
         if range.length == 0 {
             selectionOrigin = range.location
@@ -166,13 +193,21 @@ private extension SelectionNavigator {
         let anchoringDirection = anchoringDirection(moving: range, inDirection: direction)
         switch anchoringDirection {
         case .backward:
-            if let upperBound = stringTokenizer.location(from: range.upperBound, toBoundary: boundary, inDirection: direction) {
+            if let upperBound = stringTokenizer.location(
+                from: range.upperBound,
+                toBoundary: boundary,
+                inDirection: direction
+            ) {
                 return range.withUpperBound(upperBound)
             } else {
                 return range
             }
         case .forward:
-            if let lowerBound = stringTokenizer.location(from: range.lowerBound, toBoundary: boundary, inDirection: direction) {
+            if let lowerBound = stringTokenizer.location(
+                from: range.lowerBound,
+                toBoundary: boundary,
+                inDirection: direction
+            ) {
                 return range.withLowerBound(lowerBound)
             } else {
                 return range
@@ -197,12 +232,12 @@ private extension SelectionNavigator {
     }
 
     private func rangeBySelectingWord(at location: Int) -> NSRange {
-        guard location >= 0 && location < stringView.value.string.length else {
+        guard location >= 0 && location < stringView.string.length else {
             return NSRange(location: location, length: 0)
         }
-        let character = stringView.value.string.character(at: location)
-        let substringRange = stringView.value.string.customRangeOfComposedCharacterSequence(at: location)
-        let substring = stringView.value.string.substring(with: substringRange)
+        let character = stringView.string.character(at: location)
+        let substringRange = stringView.string.customRangeOfComposedCharacterSequence(at: location)
+        let substring = stringView.string.substring(with: substringRange)
         let selectableSymbols = [Symbol.carriageReturnLineFeed, Symbol.carriageReturn, Symbol.lineFeed]
         let bracketPairs = [
             BracketPair(opening: "(", closing: ")"),
@@ -227,17 +262,12 @@ private extension SelectionNavigator {
     }
 
     private func rangeBySelectingLine(at location: Int) -> NSRange {
-        guard let line = lineManager.value.line(containingCharacterAt: location) else {
+        guard let line = lineManager.line(containingCharacterAt: location) else {
             return NSRange(location: location, length: 0)
         }
-        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let lineLocalLocation = location - line.location
-        guard let lineFragment = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation) else {
-            return NSRange(location: location, length: 0)
-        }
-        guard let range = lineFragment.data.lineFragment?.range else {
-            return NSRange(location: location, length: 0)
-        }
+        let lineFragment = line.lineFragment(containingCharacterAt: lineLocalLocation)
+        let range = lineFragment.range
         return NSRange(location: line.location + range.location, length: range.length)
     }
 
@@ -254,16 +284,26 @@ private extension SelectionNavigator {
     private func rangeOfWhitespace(matching character: unichar, at location: Int) -> NSRange {
         var lowerBound = location
         var upperBound = location + 1
-        while lowerBound > 0 && lowerBound < stringView.value.string.length && stringView.value.string.character(at: lowerBound - 1) == character {
+        while lowerBound > 0
+                && lowerBound < stringView.string.length
+                && stringView.string.character(at: lowerBound - 1) == character
+        {
             lowerBound -= 1
         }
-        while upperBound >= 0 && upperBound < stringView.value.string.length && stringView.value.string.character(at: upperBound) == character {
+        while upperBound >= 0
+                && upperBound < stringView.string.length
+                && stringView.string.character(at: upperBound) == character
+        {
             upperBound += 1
         }
         return NSRange(location: lowerBound, length: upperBound - lowerBound)
     }
 
-    private func range(enclosing characterPair: BracketPair, inDirection direction: TextDirection, startingAt location: Int) -> NSRange {
+    private func range(
+        enclosing characterPair: BracketPair, 
+        inDirection direction: TextDirection,
+        startingAt location: Int
+    ) -> NSRange {
         func advanceLocation(_ location: Int) -> Int {
             switch direction {
             case .forward:
@@ -275,12 +315,14 @@ private extension SelectionNavigator {
         // Keep track of how many unclosed brackets we have. Whenever we reach zero we have found our end location.
         var unclosedBracketsCount = 1
         var endLocation = advanceLocation(location)
-        // In this case an "opening" component can actually be a closing component, e.g. "}", if that's what the user double clicked. That closing bracket "opens" our selection and we need to find the needle component, e.g. "{".
+        // In this case an "opening" component can actually be a closing component, e.g. "}", 
+        // if that's what the user double clicked. That closing bracket "opens" our selection
+        // and we need to find the needle component, e.g. "{".
         let openingComponent = characterPair.component(inDirection: direction.opposite)
         let needleComponent = characterPair.component(inDirection: direction)
-        while endLocation > 0 && endLocation < stringView.value.string.length && unclosedBracketsCount > 0 {
+        while endLocation > 0 && endLocation < stringView.string.length && unclosedBracketsCount > 0 {
             let characterRange = NSRange(location: endLocation, length: 1)
-            let substring = stringView.value.string.substring(with: characterRange)
+            let substring = stringView.string.substring(with: characterRange)
             if substring == openingComponent {
                 unclosedBracketsCount += 1
             }

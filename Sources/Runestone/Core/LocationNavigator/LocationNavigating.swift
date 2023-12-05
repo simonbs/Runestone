@@ -1,0 +1,15 @@
+protocol LocationNavigating {
+    func moveLeft()
+    func moveRight()
+    func moveUp()
+    func moveDown()
+    func moveWordLeft()
+    func moveWordRight()
+    func moveToBeginningOfLine()
+    func moveToEndOfLine()
+    func moveToBeginningOfParagraph()
+    func moveToEndOfParagraph()
+    func moveToBeginningOfDocument()
+    func moveToEndOfDocument()
+    func move(to location: Int)
+}

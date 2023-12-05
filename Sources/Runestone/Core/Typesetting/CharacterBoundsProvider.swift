@@ -2,68 +2,75 @@ import Combine
 import CoreText
 import Foundation
 
-final class CharacterBoundsProvider {
-    private let stringView: CurrentValueSubject<StringView, Never>
-    private let lineManager: CurrentValueSubject<LineManager, Never>
-    private let lineControllerStorage: LineControllerStorage
+final class CharacterBoundsProvider<LineManagerType: LineManaging> {
+    private let stringView: StringView
+    private let lineManager: LineManagerType
     private var contentArea: CGRect = .zero
     private var cancellables: Set<AnyCancellable> = []
 
     init(
-        stringView: CurrentValueSubject<StringView, Never>,
-        lineManager: CurrentValueSubject<LineManager, Never>,
-        lineControllerStorage: LineControllerStorage,
+        stringView: StringView,
+        lineManager: LineManagerType,
         contentArea: AnyPublisher<CGRect, Never>
     ) {
         self.stringView = stringView
         self.lineManager = lineManager
-        self.lineControllerStorage = lineControllerStorage
         contentArea.sink { [weak self] contentArea in
             self?.contentArea = contentArea
         }.store(in: &cancellables)
     }
 
-    func boundsOfComposedCharacterSequence(atLocation location: Int, moveToToNextLineFragmentIfNeeded: Bool) -> CGRect? {
-        guard let pair = lineAndActualLocation(atLocation: location, moveToToNextLineFragmentIfNeeded: moveToToNextLineFragmentIfNeeded) else {
+    func boundsOfComposedCharacterSequence(
+        atLocation location: Int,
+        moveToToNextLineFragmentIfNeeded: Bool
+    ) -> CGRect? {
+        guard let pair = lineAndActualLocation(
+            atLocation: location,
+            moveToToNextLineFragmentIfNeeded: moveToToNextLineFragmentIfNeeded
+        ) else {
             return nil
         }
-        guard location >= 0 && location <= stringView.value.string.length else {
+        guard location >= 0 && location <= stringView.length else {
             return nil
         }
-        let lineController = lineControllerStorage.getOrCreateLineController(for: pair.line)
         let range: NSRange
-        if location == stringView.value.string.length {
+        if location == stringView.length {
             range = NSRange(location: location - pair.line.location, length: 0)
         } else {
-            let composedRange = stringView.value.string.rangeOfComposedCharacterSequence(at: pair.actualLocation)
+            let composedRange = stringView.string.rangeOfComposedCharacterSequence(at: pair.actualLocation)
             range = NSRange(location: composedRange.location - pair.line.location, length: composedRange.length)
         }
-        return boundsOfCharacter(inLineLocalRange: range, in: lineController)
+        return boundsOfCharacter(inLineLocalRange: range, in: pair.line)
     }
 }
 
 private extension CharacterBoundsProvider {
-    private func lineAndActualLocation(atLocation location: Int, moveToToNextLineFragmentIfNeeded: Bool) -> (line: LineNode, actualLocation: Int)? {
-        guard let line = lineManager.value.line(containingCharacterAt: location) else {
+    private func lineAndActualLocation(
+        atLocation location: Int,
+        moveToToNextLineFragmentIfNeeded: Bool
+    ) -> (line: any Line, actualLocation: Int)? {
+        guard let line = lineManager.line(containingCharacterAt: location) else {
             return nil
         }
-        if moveToToNextLineFragmentIfNeeded && moveToNextLineFragment(forLocation: location - line.location, in: line) {
-            return lineAndActualLocation(atLocation: location + 1, moveToToNextLineFragmentIfNeeded: false)
-        } else {
+        guard moveToToNextLineFragmentIfNeeded else {
             return (line, location)
         }
+        guard moveToNextLineFragment(forLocation: location - line.location, in: line) else {
+            return (line, location)
+        }
+        return lineAndActualLocation(atLocation: location + 1, moveToToNextLineFragmentIfNeeded: false)
     }
 
-    private func boundsOfCharacter(inLineLocalRange lineLocalRange: NSRange, in lineController: LineController) -> CGRect? {
-        guard let bounds = lineLocalBoundingBox(in: lineLocalRange, localTo: lineController) else {
+    private func boundsOfCharacter(inLineLocalRange lineLocalRange: NSRange, in line: some Line) -> CGRect? {
+        guard let bounds = lineLocalBoundingBox(in: lineLocalRange, localTo: line) else {
             return nil
         }
-        let origin = CGPoint(x: bounds.minX + contentArea.origin.x, y: lineController.line.yPosition + bounds.minY + contentArea.origin.y)
+        let origin = CGPoint(x: bounds.minX + contentArea.origin.x, y: line.yPosition + bounds.minY + contentArea.origin.y)
         return CGRect(origin: origin, size: bounds.size)
     }
 
-    private func lineLocalBoundingBox(in lineLocalRange: NSRange, localTo lineController: LineController) -> CGRect? {
-        for lineFragment in lineController.lineFragments {
+    private func lineLocalBoundingBox(in lineLocalRange: NSRange, localTo line: some Line) -> CGRect? {
+        for lineFragment in line.lineFragments {
             if let insertionPointRange = lineFragment.insertionPointRange(forLineLocalRange: lineLocalRange) {
                 let minXPosition = CTLineGetOffsetForStringIndex(lineFragment.line, insertionPointRange.lowerBound, nil)
                 let maxXPosition = CTLineGetOffsetForStringIndex(lineFragment.line, insertionPointRange.upperBound, nil)
@@ -74,17 +81,14 @@ private extension CharacterBoundsProvider {
         return nil
     }
 
-    private func moveToNextLineFragment(forLocation location: Int, in line: LineNode) -> Bool {
-        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
-        guard lineController.numberOfLineFragments > 0 else {
+    private func moveToNextLineFragment(forLocation location: Int, in line: some Line) -> Bool {
+        guard line.numberOfLineFragments > 0 else {
             return false
         }
-        guard let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: location) else {
+        let lineFragment = line.lineFragment(containingCharacterAt: location)
+        guard lineFragment.index > 0 else {
             return false
         }
-        guard lineFragmentNode.index > 0 else {
-            return false
-        }
-        return location == lineFragmentNode.data.lineFragment?.range.location
+        return location == lineFragment.range.location
     }
 }
