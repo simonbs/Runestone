@@ -17,10 +17,24 @@ let package = Package(
         .package(path: "../Runestone")
     ],
     targets: [
-        .target(name: "RunestoneTomorrowTheme", dependencies: ["Runestone", "RunestoneThemeCommon"], resources: [.process("Colors.xcassets")]),
-        .target(name: "RunestoneTomorrowNightTheme", dependencies: ["Runestone", "RunestoneThemeCommon"], resources: [.process("Colors.xcassets")]),
-        .target(name: "RunestoneOneDarkTheme", dependencies: ["Runestone", "RunestoneThemeCommon"], resources: [.process("Colors.xcassets")]),
-        .target(name: "RunestonePlainTextTheme", dependencies: ["Runestone", "RunestoneThemeCommon"]),
-        .target(name: "RunestoneThemeCommon", dependencies: ["Runestone"])
+        .target(name: "RunestoneTomorrowTheme", dependencies: [
+            "Runestone",
+            "RunestoneThemeCommon"
+        ], resources: [.process("Colors.xcassets")]),
+        .target(name: "RunestoneTomorrowNightTheme", dependencies: [
+            "Runestone",
+            "RunestoneThemeCommon"
+        ], resources: [.process("Colors.xcassets")]),
+        .target(name: "RunestoneOneDarkTheme", dependencies: [
+            "Runestone",
+            "RunestoneThemeCommon"
+        ], resources: [.process("Colors.xcassets")]),
+        .target(name: "RunestonePlainTextTheme", dependencies: [
+            "Runestone",
+            "RunestoneThemeCommon"
+        ]),
+        .target(name: "RunestoneThemeCommon", dependencies: [
+            "Runestone"
+        ])
     ]
 )
