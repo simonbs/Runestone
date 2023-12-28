@@ -22,23 +22,22 @@ final class RunestoneObservationTrackedMacroTests: XCTestCase {
             expandedSource: """
             final class ViewModel {
                 var foo: String = "" {
-                    willSet {
-                         _observableRegistry.publishChange(
-                             ofType: .willSet,
-                             changing: \\.foo,
-                             on: self,
-                             from: foo,
-                             to: newValue
-                         )
+                    @storageRestrictions(initializes: _foo)
+                    init(initialValue) {
+                        _foo = initialValue
                     }
-                    didSet {
-                         _observableRegistry.publishChange(
-                             ofType: .didSet,
-                             changing: \\.foo,
-                             on: self,
-                             from: oldValue,
-                             to: foo
-                         )
+                    set {
+                        _observableRegistry.mutating(
+                            \\.foo,
+                            on: self,
+                            changingFrom: foo,
+                            to: newValue
+                        ) {
+                            _foo = newValue
+                        }
+                    }
+                    get {
+                         _foo
                     }
                 }
             }

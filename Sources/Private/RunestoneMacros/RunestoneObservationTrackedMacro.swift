@@ -3,7 +3,12 @@ import SwiftCompilerPluginMessageHandling
 import SwiftSyntaxMacros
 import SwiftDiagnostics
 
-public struct RunestoneObservationTrackedMacro: AccessorMacro {
+public struct RunestoneObservationTrackedMacro {}
+
+extension RunestoneObservationTrackedMacro: AccessorMacro {
+    private static let trackedMacroName = "RunestoneObservationTracked"
+    private static let ignoredMacroName = "RunestoneObservationIgnored"
+
     public static func expansion(
         of node: AttributeSyntax,
         providingAccessorsOf declaration: some DeclSyntaxProtocol,
@@ -15,30 +20,62 @@ public struct RunestoneObservationTrackedMacro: AccessorMacro {
         guard let propertyName = variableDecl.identifier?.trimmed.text else {
             return []
         }
-        let willSetSyntax: AccessorDeclSyntax =
+        let initSyntax: AccessorDeclSyntax =
            """
-           willSet {
-                _observableRegistry.publishChange(
-                    ofType: .willSet,
-                    changing: \\.\(raw: propertyName),
-                    on: self,
-                    from: \(raw: propertyName),
-                    to: newValue
-                )
+           @storageRestrictions(initializes: _\(raw: propertyName))
+           init(initialValue) {
+               _\(raw: propertyName) = initialValue
            }
            """
-        let didSetSyntax: AccessorDeclSyntax =
+        let setSyntax: AccessorDeclSyntax =
            """
-           didSet {
-                _observableRegistry.publishChange(
-                    ofType: .didSet,
-                    changing: \\.\(raw: propertyName),
-                    on: self,
-                    from: oldValue,
-                    to: \(raw: propertyName)
-                )
+           set {
+               _observableRegistry.mutating(
+                   \\.\(raw: propertyName),
+                   on: self,
+                   changingFrom: \(raw: propertyName),
+                   to: newValue
+               ) {
+                   _\(raw: propertyName) = newValue
+               }
            }
            """
-        return [willSetSyntax, didSetSyntax]
+        let getSyntax: AccessorDeclSyntax =
+           """
+           get {
+                _\(raw: propertyName)
+           }
+           """
+        return [initSyntax, setSyntax, getSyntax]
+    }
+}
+
+extension RunestoneObservationTrackedMacro: PeerMacro {
+    public static func expansion(
+        of node: AttributeSyntax,
+        providingPeersOf declaration: some DeclSyntaxProtocol,
+        in context: some MacroExpansionContext
+    ) throws -> [DeclSyntax] {
+        guard let variableDecl = declaration.as(VariableDeclSyntax.self) else {
+            return []
+        }
+        guard variableDecl.isValidForObservation else {
+            return []
+        }
+        guard !variableDecl.hasMacroApplication(ignoredMacroName) else {
+            return []
+        }
+        guard !variableDecl.hasMacroApplication(trackedMacroName) else {
+            return []
+        }
+        let ignoredAttribute = AttributeSyntax(
+            leadingTrivia: .space,
+            atSign: .atSignToken(),
+            attributeName: IdentifierTypeSyntax(name: .identifier(ignoredMacroName)),
+            trailingTrivia: .space
+        )
+        return [
+            DeclSyntax(variableDecl.privatePrefixed("_", addingAttribute: ignoredAttribute))
+        ]
     }
 }

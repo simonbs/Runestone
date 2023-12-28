@@ -13,39 +13,33 @@ package final class ObservableRegistry<ObservableType: Observable> {
         deregisterAllObservers()
     }
 
-    package func publishChange<T>(
-        ofType changeType: PropertyChangeType,
-        changing keyPath: KeyPath<ObservableType, T>,
+    package func mutating<T>(
+        _ keyPath: KeyPath<ObservableType, T>,
         on observable: ObservableType,
-        from oldValue: T,
-        to newValue: T
+        changingFrom oldValue: T,
+        to newValue: T,
+        using handler: () -> Void
     ) {
-        skipComparisonAndPublishChange(
-            ofType: changeType,
-            changing: keyPath,
-            on: observable,
-            from: oldValue,
-            to: newValue
-        )
+        publishChange(ofType: .willSet, changing: keyPath, on: observable, from: oldValue, to: newValue)
+        handler()
+        publishChange(ofType: .didSet, changing: keyPath, on: observable, from: oldValue, to: newValue)
     }
 
-    package func publishChange<T: Equatable>(
-        ofType changeType: PropertyChangeType,
-        changing keyPath: KeyPath<ObservableType, T>,
+    package func mutating<T: Equatable>(
+        _ keyPath: KeyPath<ObservableType, T>,
         on observable: ObservableType,
-        from oldValue: T,
-        to newValue: T
+        changingFrom oldValue: T,
+        to newValue: T,
+        handler: () -> Void
     ) {
-        guard oldValue != newValue else {
-            return
+        let isDifferentValue = oldValue != newValue
+        if isDifferentValue {
+            publishChange(ofType: .willSet, changing: keyPath, on: observable, from: oldValue, to: newValue)
         }
-        skipComparisonAndPublishChange(
-            ofType: changeType,
-            changing: keyPath,
-            on: observable,
-            from: oldValue,
-            to: newValue
-        )
+        handler()
+        if isDifferentValue {
+            publishChange(ofType: .didSet, changing: keyPath, on: observable, from: oldValue, to: newValue)
+        }
     }
 
     package func registerObserver<T>(
@@ -75,8 +69,8 @@ package final class ObservableRegistry<ObservableType: Observable> {
     }
 }
 
-private extension ObservableRegistry {
-    private func skipComparisonAndPublishChange<T>(
+extension ObservableRegistry {
+    func publishChange<T>(
         ofType changeType: PropertyChangeType,
         changing keyPath: KeyPath<ObservableType, T>,
         on observable: ObservableType,
@@ -93,7 +87,9 @@ private extension ObservableRegistry {
             fatalError(error.localizedDescription)
         }
     }
+}
 
+private extension ObservableRegistry {
     private func deregisterAllObservers() {
         for observation in observationStore.observations {
             observation.invokeCancelOnObserver()

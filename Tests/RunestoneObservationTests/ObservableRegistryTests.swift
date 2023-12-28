@@ -228,13 +228,7 @@ final class ObservableRegistryTests: XCTestCase {
         }
         let oldValue = MyEquatableType("foo")
         let newValue = MyEquatableType("foo")
-        sut.publishChange(
-            ofType: .didSet,
-            changing: \.equatableObj,
-            on: observable,
-            from: oldValue,
-            to: newValue
-        )
+        sut.mutating(\.equatableObj, on: observable, changingFrom: oldValue, to: newValue) {}
         XCTAssertFalse(didPublish)
     }
 
@@ -261,5 +255,109 @@ final class ObservableRegistryTests: XCTestCase {
             to: newValue
         )
         XCTAssertTrue(didPublish)
+    }
+
+    func test_it_invokes_handler_when_mutating_non_equatable_value() {
+        let observable = MockObservable()
+        let sut = ObservableRegistry<MockObservable>()
+        let oldValue = MyNonEquatableType("foo")
+        let newValue = MyNonEquatableType("foo")
+        var didInvokeHandler = false
+        sut.mutating(\.nonEquatableObj, on: observable, changingFrom: oldValue, to: newValue) {
+            didInvokeHandler = true
+        }
+        XCTAssertTrue(didInvokeHandler)
+    }
+
+    func test_it_invokes_handler_when_mutating_equatable_value() {
+        let observable = MockObservable()
+        let sut = ObservableRegistry<MockObservable>()
+        let oldValue = MyEquatableType("foo")
+        let newValue = MyEquatableType("bar")
+        var didInvokeHandler = false
+        sut.mutating(\.equatableObj, on: observable, changingFrom: oldValue, to: newValue) {
+            didInvokeHandler = true
+        }
+        XCTAssertTrue(didInvokeHandler)
+    }
+
+    func test_it_publishes_will_set_when_changing_non_equatable_value() {
+        let observer = MockObserver()
+        let observable = MockObservable()
+        let sut = ObservableRegistry<MockObservable>()
+        var didReceiveValue = false
+        _ = sut.registerObserver(
+            observer,
+            observing: \.str,
+            on: observable,
+            receiving: .willSet,
+            options: .initialValue
+        ) { _, _ in
+            didReceiveValue = true
+        }
+        let oldValue = MyNonEquatableType("foo")
+        let newValue = MyNonEquatableType("foo")
+        sut.mutating(\.nonEquatableObj, on: observable, changingFrom: oldValue, to: newValue) {}
+        XCTAssertTrue(didReceiveValue)
+    }
+
+    func test_it_publishes_did_set_when_changing_non_equatable_value() {
+        let observer = MockObserver()
+        let observable = MockObservable()
+        let sut = ObservableRegistry<MockObservable>()
+        var didReceiveValue = false
+        _ = sut.registerObserver(
+            observer,
+            observing: \.str,
+            on: observable,
+            receiving: .willSet,
+            options: .initialValue
+        ) { _, _ in
+            didReceiveValue = true
+        }
+        let oldValue = MyNonEquatableType("foo")
+        let newValue = MyNonEquatableType("foo")
+        sut.mutating(\.nonEquatableObj, on: observable, changingFrom: oldValue, to: newValue) {}
+        XCTAssertTrue(didReceiveValue)
+    }
+
+    func test_it_publishes_will_set_when_changing_equatable_value() {
+        let observer = MockObserver()
+        let observable = MockObservable()
+        let sut = ObservableRegistry<MockObservable>()
+        var didReceiveValue = false
+        _ = sut.registerObserver(
+            observer,
+            observing: \.str,
+            on: observable,
+            receiving: .willSet,
+            options: .initialValue
+        ) { _, _ in
+            didReceiveValue = true
+        }
+        let oldValue = MyEquatableType("foo")
+        let newValue = MyEquatableType("bar")
+        sut.mutating(\.equatableObj, on: observable, changingFrom: oldValue, to: newValue) {}
+        XCTAssertTrue(didReceiveValue)
+    }
+
+    func test_it_publishes_did_set_when_changing_equatable_value() {
+        let observer = MockObserver()
+        let observable = MockObservable()
+        let sut = ObservableRegistry<MockObservable>()
+        var didReceiveValue = false
+        _ = sut.registerObserver(
+            observer,
+            observing: \.str,
+            on: observable,
+            receiving: .willSet,
+            options: .initialValue
+        ) { _, _ in
+            didReceiveValue = true
+        }
+        let oldValue = MyEquatableType("foo")
+        let newValue = MyEquatableType("bar")
+        sut.mutating(\.equatableObj, on: observable, changingFrom: oldValue, to: newValue) {}
+        XCTAssertTrue(didReceiveValue)
     }
 }

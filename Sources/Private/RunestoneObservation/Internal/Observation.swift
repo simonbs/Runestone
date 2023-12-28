@@ -5,10 +5,6 @@ final class Observation {
         init(_ observer: some Observer) {
             self.observer = observer
         }
-
-        deinit {
-            print("Deinit \(type(of: self))")
-        }
     }
     
     let id: ObservationId
@@ -26,10 +22,6 @@ final class Observation {
         self.propertyChangeId = propertyChangeId
         self.weakObserver = WeakObserver(observer)
         self.handler = AnyObservationChangeHandler(handler)
-    }
-
-    deinit {
-        print("Deinit \(type(of: self))")
     }
 
     func invokeCancelOnObserver() {

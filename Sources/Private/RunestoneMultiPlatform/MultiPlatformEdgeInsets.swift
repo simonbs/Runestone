@@ -14,7 +14,7 @@ package extension NSEdgeInsets {
 }
 
 extension NSEdgeInsets: Equatable {
-    package static func == (lhs: NSEdgeInsets, rhs: NSEdgeInsets) -> Bool {
+    public static func == (lhs: NSEdgeInsets, rhs: NSEdgeInsets) -> Bool {
         lhs.left == rhs.left && lhs.top == rhs.top && lhs.right == rhs.right && lhs.bottom == rhs.bottom
     }
 }

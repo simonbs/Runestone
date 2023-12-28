@@ -6,13 +6,14 @@ package macro RunestoneObservable() = #externalMacro(
     type: "RunestoneObservableMacro"
 )
 
-@attached(memberAttribute)
+@attached(accessor, names: named(willSet))
 package macro RunestoneObservationIgnored() = #externalMacro(
     module: "_RunestoneMacros",
-    type: "RunestoneObservableMacro"
+    type: "RunestoneObservationIgnoredMacro"
 )
 
-@attached(accessor, names: named(willSet), named(didSet))
+@attached(accessor, names: named(init), named(get), named(set))
+@attached(peer, names: prefixed(`_`))
 package macro RunestoneObservationTracked() = #externalMacro(
     module: "_RunestoneMacros",
     type: "RunestoneObservationTrackedMacro"
