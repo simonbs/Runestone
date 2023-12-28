@@ -21,9 +21,9 @@ extension TextView: NSTextInputClient {
     ///   - string: The text to insert.
     ///   - replacementRange: The range of content to replace in the receiver's text storage.
     public func insertText(_ string: Any, replacementRange: NSRange) {
-        guard let string = string as? String else {
-            return
-        }
+//        guard let string = string as? String else {
+//            return
+//        }
 //        if replacementRange.location == NSNotFound {
 //            textInserter.insertText(string)
 //        } else {
