@@ -1,8 +1,8 @@
-import Combine
-@testable import Runestone
-import XCTest
-
-final class CharacterBoundsProviderTests: XCTestCase {
+//import Combine
+//@testable import Runestone
+//import XCTest
+//
+//final class CharacterBoundsProviderTests: XCTestCase {
 //    func testGetBoundsOfFirstCharacter() {
 //        let compositionRoot = CompositionRoot(preparingToDisplay: "Hello world!")
 //        let characterBoundsProvider = compositionRoot.characterBoundsProvider
@@ -65,4 +65,4 @@ final class CharacterBoundsProviderTests: XCTestCase {
 //        XCTAssertGreaterThan(bounds.height, 1)
 //        XCTAssertGreaterThan(bounds.minY, 0)
 //    }
-}
+//}

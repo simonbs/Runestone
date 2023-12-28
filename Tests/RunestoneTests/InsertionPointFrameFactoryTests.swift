@@ -1,7 +1,7 @@
-@testable import Runestone
-import XCTest
-
-final class InsertionPointFrameFactoryTests: XCTestCase {
+//@testable import Runestone
+//import XCTest
+//
+//final class InsertionPointFrameFactoryTests: XCTestCase {
 //    func testVerticalBarFrameInFrontOfFirstCharacter() {
 //        let compositionRoot = CompositionRoot(preparingToDisplay: "Hello world!")
 //        compositionRoot.insertionPointShape.value = .verticalBar
@@ -103,4 +103,4 @@ final class InsertionPointFrameFactoryTests: XCTestCase {
 //        XCTAssertEqual(frame.width, 42)
 //        XCTAssertEqual(frame.height, 16.5, accuracy: 0.1)
 //    }
-}
+//}
