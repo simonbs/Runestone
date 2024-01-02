@@ -11,7 +11,7 @@ package final class RedBlackTreeNode<NodeValue: RedBlackTreeNodeValue, NodeData>
     package internal(set) var nodeTotalCount: Int
     package internal(set) var left: RedBlackTreeNode?
     package internal(set) var right: RedBlackTreeNode?
-    package let data: NodeData
+    package var data: NodeData
     package var tree: Tree {
         if let tree = _tree {
             return tree
@@ -20,16 +20,16 @@ package final class RedBlackTreeNode<NodeValue: RedBlackTreeNodeValue, NodeData>
         }
     }
     package var offset: NodeValue {
-        let query = ValueOffsetFromRedBlackTreeNodeQuery(targetNode: self)
+        let query = ValueOffsetFromRedBlackTreeNodeQuery(targetNode: self, minimumValue: tree.minimumValue)
         let querier = OffsetFromRedBlackTreeNodeQuerier(querying: tree)
         return querier.offset(for: query)!
     }
-
-    var color: RedBlackTreeNodeColor = .black
-    weak var parent: RedBlackTreeNode?
-    var index: Int {
+    package var index: Int {
         tree.index(of: self)
     }
+    
+    var color: RedBlackTreeNodeColor = .black
+    weak var parent: RedBlackTreeNode?
 
     private weak var _tree: Tree?
 

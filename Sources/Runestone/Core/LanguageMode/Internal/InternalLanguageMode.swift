@@ -6,9 +6,10 @@ struct InsertLineBreakIndentStrategy {
 }
 
 protocol InternalLanguageMode: AnyObject {
+    associatedtype LineType: Line
     func parse(_ text: NSString)
     func parse(_ text: NSString, completion: @escaping ((Bool) -> Void))
-    func textDidChange(_ change: TextEdit) -> LineChangeSet
+    func textDidChange(_ change: TextEdit<LineType>) -> LineChangeSet<LineType>
     func createSyntaxHighlighter(with theme: Theme) -> any SyntaxHighlighter
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode?
     func strategyForInsertingLineBreak(

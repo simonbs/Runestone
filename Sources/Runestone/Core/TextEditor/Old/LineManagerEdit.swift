@@ -1,8 +1,8 @@
 import Foundation
 
-struct LineManagerEdit {
+struct LineManagerEdit<LineType: Line> {
     let oldEndLinePosition: LinePosition
     let startLinePosition: LinePosition
     let newEndLinePosition: LinePosition
-    let lineChangeSet: LineChangeSet
+    let lineChangeSet: LineChangeSet<LineType>
 }

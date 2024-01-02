@@ -1,7 +1,7 @@
 import Combine
 import Foundation
 
-final class PlainTextInternalLanguageMode: InternalLanguageMode {
+final class PlainTextInternalLanguageMode<LineType: Line>: InternalLanguageMode {
     private let operationQueue = OperationQueue()
 
     init() {
@@ -19,7 +19,7 @@ final class PlainTextInternalLanguageMode: InternalLanguageMode {
         completion(true)
     }
 
-    func textDidChange(_ change: TextEdit) -> LineChangeSet {
+    func textDidChange(_ change: TextEdit<LineType>) -> LineChangeSet<LineType> {
         LineChangeSet()
     }
 

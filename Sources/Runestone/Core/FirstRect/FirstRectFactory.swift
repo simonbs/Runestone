@@ -11,18 +11,18 @@ struct FirstRectFactory<LineManagerType: LineManaging> {
     let textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>
 
     func firstRect(for range: NSRange) -> CGRect {
-        guard let line = lineManager.line(containingCharacterAt: range.location) else {
+//        guard let line = lineManager.line(containingCharacterAt: range.location) else {
             fatalError("Cannot find first rect.")
-        }
-        let lineLocalLocation = range.location - line.location
-        let lineLocalLength = min(range.length, line.totalLength)
-        let lineLocalRange = NSRange(location: lineLocalLocation, length: lineLocalLength)
-        let lineContentsRect = firstRect(for: lineLocalRange, in: line.lineFragments)
-        let visibleWidth = viewport.value.width - gutterWidthService.gutterWidth
-        let xPosition = lineContentsRect.minX + textContainerInset.value.left + gutterWidthService.gutterWidth
-        let yPosition = line.yPosition + lineContentsRect.minY + textContainerInset.value.top
-        let width = min(lineContentsRect.width, visibleWidth)
-        return CGRect(x: xPosition, y: yPosition, width: width, height: lineContentsRect.height)
+//        }
+//        let lineLocalLocation = range.location - line.location
+//        let lineLocalLength = min(range.length, line.totalLength)
+//        let lineLocalRange = NSRange(location: lineLocalLocation, length: lineLocalLength)
+//        let lineContentsRect = firstRect(for: lineLocalRange, in: line.lineFragments)
+//        let visibleWidth = viewport.value.width - gutterWidthService.gutterWidth
+//        let xPosition = lineContentsRect.minX + textContainerInset.value.left + gutterWidthService.gutterWidth
+//        let yPosition = line.yPosition + lineContentsRect.minY + textContainerInset.value.top
+//        let width = min(lineContentsRect.width, visibleWidth)
+//        return CGRect(x: xPosition, y: yPosition, width: width, height: lineContentsRect.height)
     }
 }
 

@@ -15,8 +15,8 @@ struct StatelessLineNavigationLocationFactory<
             return sourceLocation
         }
         let lineLocalLocation = max(min(sourceLocation - line.location, line.totalLength), 0)
-        let lineFragment = line.lineFragment(containingCharacterAt: lineLocalLocation)
-        let lineFragmentLocalLocation = lineLocalLocation - lineFragment.location
+        let lineFragment = line.lineFragment(containingLocation: lineLocalLocation)
+        let lineFragmentLocalLocation = lineLocalLocation - lineFragment.range.location
         return location(
             movingFrom: lineFragmentLocalLocation,
             inLineFragmentAt: lineFragment.index,
@@ -64,10 +64,8 @@ private extension StatelessLineNavigationLocationFactory {
     ) -> Int {
         let destinationLineFragment = line.lineFragment(atIndex: lineFragmentIndex)
         let lineLocation = line.location
-        let preferredLocation = lineLocation + destinationLineFragment.location + location
-        let lineFragmentMaximumLocation = lineLocation
-        + destinationLineFragment.location
-        + destinationLineFragment.length
+        let preferredLocation = lineLocation + destinationLineFragment.range.location + location
+        let lineFragmentMaximumLocation = lineLocation + destinationLineFragment.range.upperBound
         let lineMaximumLocation = lineLocation + line.length
         let maximumLocation = min(lineFragmentMaximumLocation, lineMaximumLocation)
         let naiveLocation = min(preferredLocation, maximumLocation)

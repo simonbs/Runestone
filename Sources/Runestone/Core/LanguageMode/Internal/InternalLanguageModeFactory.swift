@@ -2,7 +2,8 @@ import _RunestoneTreeSitter
 import Combine
 
 struct InternalLanguageModeFactory<
-    StringViewType: StringView, LineManagerType: LineManaging
+    StringViewType: StringView,
+    LineManagerType: LineManaging
 > {
     private let stringView: StringViewType
     private let lineManager: LineManagerType
@@ -15,7 +16,7 @@ struct InternalLanguageModeFactory<
     func internalLanguageMode(from languageMode: LanguageMode) -> any InternalLanguageMode {
         switch languageMode {
         case is PlainTextLanguageMode:
-            return PlainTextInternalLanguageMode()
+            return PlainTextInternalLanguageMode<LineManagerType.LineType>()
         case let languageMode as TreeSitterLanguageMode:
             return TreeSitterInternalLanguageMode(
                 stringView: stringView,

@@ -59,16 +59,3 @@ private extension _TextEditor {
 //        }
     }
 }
-
-private extension TextEdit {
-    init(replacing range: NSRange, with newString: String, lineManagerEdit: LineManagerEdit) {
-        self.init(
-            byteRange: ByteRange(utf16Range: range),
-            bytesAdded: newString.byteCount,
-            oldEndLinePosition: lineManagerEdit.oldEndLinePosition,
-            startLinePosition: lineManagerEdit.startLinePosition,
-            newEndLinePosition: lineManagerEdit.newEndLinePosition,
-            lineChangeSet: lineManagerEdit.lineChangeSet
-        )
-    }
-}

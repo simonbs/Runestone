@@ -8,7 +8,7 @@ final class ViewportScroller<LineManagerType: LineManaging> {
     private let textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>
     private let insertionPointFrameFactory: InsertionPointFrameFactory<LineManagerType>
     private let lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
-    private let textLayouter: TextLayouting
+    private let textRenderer: TextRendering
     private let contentSizeService: ContentSizeService
 
     init(
@@ -16,19 +16,19 @@ final class ViewportScroller<LineManagerType: LineManaging> {
         textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>,
         insertionPointFrameFactory: InsertionPointFrameFactory<LineManagerType>,
         lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>,
-        textLayouter: TextLayouting,
+        textRenderer: TextRendering,
         contentSizeService: ContentSizeService
     ) {
         self.scrollView = scrollView
         self.textContainerInset = textContainerInset
         self.insertionPointFrameFactory = insertionPointFrameFactory
         self.lineHeightMultiplier = lineHeightMultiplier
-        self.textLayouter = textLayouter
+        self.textRenderer = textRenderer
         self.contentSizeService = contentSizeService
     }
 
     func scroll(toVisibleRange range: NSRange) {
-        textLayouter.layoutText(toLocation: range.upperBound)
+        textRenderer.renderText(toLocation: range.upperBound)
         contentSizeService.updateContentSizeIfNeeded()
         justScrollRangeToVisible(range)
     }

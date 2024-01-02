@@ -9,6 +9,7 @@ struct IndexFromRedBlackTreeNodeQuery<
     typealias Offset = Int
 
     let targetNode: Node
+    let minimumValue: Int
 
     func offset(for node: Node) -> Offset {
         1

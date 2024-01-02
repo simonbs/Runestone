@@ -4,6 +4,7 @@ import Foundation
 package final class RedBlackTree<NodeValue: RedBlackTreeNodeValue, NodeData> {
     package typealias Node = RedBlackTreeNode<NodeValue, NodeData>
 
+    package let minimumValue: NodeValue
     // swiftlint:disable:next implicitly_unwrapped_optional
     package private(set) var root: Node!
     package var nodeTotalCount: Int {
@@ -15,11 +16,22 @@ package final class RedBlackTree<NodeValue: RedBlackTreeNodeValue, NodeData> {
 
     private let childrenUpdater: AnyRedBlackTreeChildrenUpdater<NodeValue, NodeData>
 
+    convenience package init(minimumValue: NodeValue, rootValue: NodeValue, rootData: NodeData) {
+        self.init(
+            minimumValue: minimumValue,
+            rootValue: rootValue,
+            rootData: rootData, 
+            childrenUpdater: NullObjectRedBlackTreeChildrenUpdater()
+        )
+    }
+
     package init<ChildrenUpdater: RedBlackTreeChildrenUpdating>(
+        minimumValue: NodeValue,
         rootValue: NodeValue,
         rootData: NodeData,
         childrenUpdater: ChildrenUpdater
     ) where ChildrenUpdater.NodeValue == NodeValue, ChildrenUpdater.NodeData == NodeData {
+        self.minimumValue = minimumValue
         self.childrenUpdater = AnyRedBlackTreeChildrenUpdater(
             ParentTraversingRedBlackTreeChildrenUpdater(
                 CompositeRedBlackTreeChildrenUpdater([
@@ -67,6 +79,10 @@ package final class RedBlackTree<NodeValue: RedBlackTreeNodeValue, NodeData> {
         return index
     }
 
+    package func updateAfterChangingChildren(of node: Node) {
+        childrenUpdater.updateChildren(of: node)
+    }
+
     package func node(atIndex index: Int) -> Node {
         assert(index >= 0)
         assert(index < root.nodeTotalCount)
@@ -107,9 +123,9 @@ package final class RedBlackTree<NodeValue: RedBlackTreeNodeValue, NodeData> {
             leftMost.right = removedNode.right
             leftMost.right?.parent = leftMost
             leftMost.color = removedNode.color
-            _ = childrenUpdater.updateChildren(of: leftMost)
+            childrenUpdater.updateChildren(of: leftMost)
             if let leftMostParent = leftMost.parent {
-                _ = childrenUpdater.updateChildren(of: leftMostParent)
+                childrenUpdater.updateChildren(of: leftMostParent)
             }
         } else {
             // Either removedNode.left or removedNode.right is null.
@@ -117,7 +133,7 @@ package final class RedBlackTree<NodeValue: RedBlackTreeNodeValue, NodeData> {
             let childNode = removedNode.left ?? removedNode.right
             replace(removedNode, with: childNode)
             if let parentNode {
-                _ = childrenUpdater.updateChildren(of: parentNode)
+                childrenUpdater.updateChildren(of: parentNode)
             }
             if removedNode.color == .black {
                 if childNode != nil && childNode?.color == .red {
@@ -144,7 +160,7 @@ private extension RedBlackTree {
         parentNode.left = newNode
         newNode.parent = parentNode
         newNode.color = .red
-        _ = childrenUpdater.updateChildren(of: parentNode)
+        childrenUpdater.updateChildren(of: parentNode)
         fixTree(afterInserting: newNode)
     }
 
@@ -153,7 +169,7 @@ private extension RedBlackTree {
         parentNode.right = newNode
         newNode.parent = parentNode
         newNode.color = .red
-        _ = childrenUpdater.updateChildren(of: parentNode)
+        childrenUpdater.updateChildren(of: parentNode)
         fixTree(afterInserting: newNode)
     }
 
@@ -305,7 +321,7 @@ private extension RedBlackTree {
         // Set q's left child to be p.
         q.left = p
         p.parent = q
-        _ = childrenUpdater.updateChildren(of: p)
+        childrenUpdater.updateChildren(of: p)
     }
 
     private func rotateRight(_ p: Node) {
@@ -322,7 +338,7 @@ private extension RedBlackTree {
         // Set q's right child to be p.
         q.right = p
         p.parent = q
-        _ = childrenUpdater.updateChildren(of: p)
+        childrenUpdater.updateChildren(of: p)
     }
 
     private func sibling(to node: Node) -> Node? {
@@ -360,7 +376,7 @@ private extension RedBlackTree {
         if subtreeHeight == 1 {
             node.color = .red
         }
-        _ = childrenUpdater.updateChildren(of: node)
+        childrenUpdater.updateChildren(of: node)
         return node
     }
 
@@ -403,8 +419,9 @@ extension RedBlackTree: CustomDebugStringConvertible {
 }
 
 extension RedBlackTree where NodeData == Void {
-    convenience init(rootValue: NodeValue) {
+    convenience init(minimumValue: NodeValue, rootValue: NodeValue) {
         self.init(
+            minimumValue: minimumValue,
             rootValue: rootValue,
             rootData: (),
             childrenUpdater: NullObjectRedBlackTreeChildrenUpdater()

@@ -7,15 +7,13 @@ struct LineManagerEditor<LineManagerType: LineManaging> {
         in range: NSRange,
         with newString: String,
         updatingModelUsing updateModel: () -> Void
-    ) -> LineManagerEdit {
+    ) -> LineManagerEdit<LineManagerType.LineType> {
         let nsNewString = newString as NSString
         let oldEndLinePosition = lineManager.linePosition(at: range.location + range.length)!
         updateModel()
-        let lineChangeSet = LineChangeSet()
-        let lineChangeSetFromRemovingCharacters = lineManager.removeText(in: range)
-        lineChangeSet.formUnion(with: lineChangeSetFromRemovingCharacters)
-        let lineChangeSetFromInsertingCharacters = lineManager.insertText(nsNewString, at: range.location)
-        lineChangeSet.formUnion(with: lineChangeSetFromInsertingCharacters)
+        let removalLineChangeSet = lineManager.removeText(in: range)
+        let insertionLineChangeSet = lineManager.insertText(nsNewString, at: range.location)
+        let lineChangeSet = removalLineChangeSet.union(insertionLineChangeSet)
         let startLinePosition = lineManager.linePosition(at: range.location)!
         let newEndLinePosition = lineManager.linePosition(at: range.location + nsNewString.length)!
         return LineManagerEdit(

@@ -1,28 +1,41 @@
 import CoreText
 import Foundation
 
-struct LineBreakSuggester {
-    let lineBreakMode: LineBreakMode
-    let typesetter: CTTypesetter
-    let attributedString: NSAttributedString
-    let constrainingWidth: CGFloat
+struct LineBreakSuggester: LineBreakSuggesting {
+    typealias State = IsLineWrappingEnabledReadable & LineBreakModeReadable
 
-    func suggestLineBreak(startingAt startOffset: Int) -> Int {
-        switch lineBreakMode {
+    private let state: State
+    private let maximumLineFragmentWidthProvider: MaximumLineFragmentWidthProviding
+    private var lineBreakSuggester: LineBreakSuggesting {
+        switch state.lineBreakMode {
         case .byWordWrapping:
-            let lineBreakSuggester = WordWrappingLineBreakSuggester(
-                typesetter: typesetter,
-                attributedString: attributedString,
-                constrainingWidth: constrainingWidth
+            WordWrappingLineBreakSuggester(
+                maximumLineFragmentWidthProvider: maximumLineFragmentWidthProvider
             )
-            return lineBreakSuggester.suggestLineBreak(startingAt: startOffset)
         case .byCharWrapping:
-            let lineBreakSuggester = CharacterLineBreakSuggester(
-                typesetter: typesetter,
-                attributedString: attributedString,
-                constrainingWidth: constrainingWidth
+            CharacterLineBreakSuggester(
+                maximumLineFragmentWidthProvider: maximumLineFragmentWidthProvider
             )
-            return lineBreakSuggester.suggestLineBreak(startingAt: startOffset)
         }
+    }
+
+    init(state: State, maximumLineFragmentWidthProvider: MaximumLineFragmentWidthProviding) {
+        self.state = state
+        self.maximumLineFragmentWidthProvider = maximumLineFragmentWidthProvider
+    }
+
+    func suggestLineBreak(
+        after location: Int,
+        in attributedString: NSAttributedString,
+        typesetUsing typesetter: CTTypesetter
+    ) -> Int {
+        guard state.isLineWrappingEnabled else {
+            return attributedString.length
+        }
+        return lineBreakSuggester.suggestLineBreak(
+            after: location,
+            in: attributedString,
+            typesetUsing: typesetter
+        )
     }
 }

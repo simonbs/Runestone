@@ -58,7 +58,7 @@ struct CharacterPairTextEditor: TextEditing {
 
 private extension CharacterPairTextEditor {
     private func handleInsertingCharacterPair(withTrailingComponent text: String, in range: NSRange) -> Bool {
-        guard let characterPair = state.characterPairs.first(withTrailingComponent: text) else {
+        guard let characterPair = state.characterPairs.first(where: { $0.trailing == text }) else {
             return false
         }
         // When typing the trailing component of a character pair, e.g. ) or } and the cursor is in front of
@@ -78,7 +78,7 @@ private extension CharacterPairTextEditor {
     }
 
     private func handleInsertingCharacterPair(withLeadingComponent text: String, in range: NSRange) -> Bool {
-        guard let characterPair = state.characterPairs.first(withLeadingComponent: text) else {
+        guard let characterPair = state.characterPairs.first(where: { $0.leading == text }) else {
             return false
         }
         guard textViewDelegate.shouldInsert(characterPair, in: range) else {
@@ -113,15 +113,5 @@ private extension CharacterPairTextEditor {
         }
         let deleteLength = trailingComponentRange.upperBound - range.lowerBound
         return NSRange(location: range.lowerBound, length: deleteLength)
-    }
-}
-
-private extension Collection where Element == CharacterPair {
-    func first(withLeadingComponent text: String) -> CharacterPair? {
-        first { $0.leading == text }
-    }
-
-    func first(withTrailingComponent text: String) -> CharacterPair? {
-        first { $0.trailing == text }
     }
 }

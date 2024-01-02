@@ -266,7 +266,7 @@ private extension SelectionNavigator {
             return NSRange(location: location, length: 0)
         }
         let lineLocalLocation = location - line.location
-        let lineFragment = line.lineFragment(containingCharacterAt: lineLocalLocation)
+        let lineFragment = line.lineFragment(containingLocation: lineLocalLocation)
         let range = lineFragment.range
         return NSRange(location: line.location + range.location, length: range.length)
     }

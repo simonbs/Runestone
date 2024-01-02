@@ -11,33 +11,41 @@ struct TextEditor: TextEditing {
     func insertText(_ text: String) {
         let insertRange = state.markedRange ?? state.selectedRange.nonNegativeLength
         textReplacer.replaceText(in: insertRange, with: text)
+        let selectionLocation = insertRange.upperBound + text.utf16.count
+        state.selectedRange = NSRange(location: selectionLocation, length: 0)
     }
 
     func replaceText(in range: NSRange, with newText: String) {
         textReplacer.replaceText(in: range, with: newText)
+        let selectionLocation = range.lowerBound + newText.utf16.count
+        state.selectedRange = NSRange(location: selectionLocation, length: 0)
     }
 
     func deleteBackward() {
         if let deleteBackwardRange {
             textReplacer.replaceText(in: deleteBackwardRange, with: "")
+            state.selectedRange = NSRange(location: deleteBackwardRange.location, length: 0)
         }
     }
 
     func deleteForward() {
         if let deleteForwardRange {
             textReplacer.replaceText(in: deleteForwardRange, with: "")
+            state.selectedRange = NSRange(location: deleteForwardRange.location, length: 0)
         }
     }
 
     func deleteWordForward() {
         if let range = range(deleting: .word, inDirection: .forward) {
             textReplacer.replaceText(in: range, with: "")
+            state.selectedRange = NSRange(location: range.location, length: 0)
         }
     }
 
     func deleteWordBackward() {
         if let range = range(deleting: .word, inDirection: .backward) {
             textReplacer.replaceText(in: range, with: "")
+            state.selectedRange = NSRange(location: range.location, length: 0)
         }
     }
 }

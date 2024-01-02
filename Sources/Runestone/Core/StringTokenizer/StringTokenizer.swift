@@ -59,17 +59,17 @@ private extension StringTokenizer {
         guard lineLocalLocation >= 0 && lineLocalLocation <= line.totalLength else {
             return false
         }
-        let lineFragment = line.lineFragment(containingCharacterAt: lineLocalLocation)
+        let lineFragment = line.lineFragment(containingLocation: lineLocalLocation)
         switch direction {
         case .forward:
             let isLastLineFragment = lineFragment.index == line.numberOfLineFragments - 1
             if isLastLineFragment {
-                return location == lineLocation + lineFragment.location + lineFragment.length - line.delimiterLength
+                return location == lineLocation + lineFragment.range.upperBound - line.delimiterLength
             } else {
-                return location == lineLocation + lineFragment.location + lineFragment.length
+                return location == lineLocation + lineFragment.range.upperBound
             }
         case .backward:
-            return location == lineLocation + lineFragment.location
+            return location == lineLocation + lineFragment.range.location
         }
     }
 
@@ -79,12 +79,12 @@ private extension StringTokenizer {
         }
         let lineLocation = line.location
         let lineLocalLocation = location - lineLocation
-        let lineFragment = line.lineFragment(containingCharacterAt: lineLocalLocation)
+        let lineFragment = line.lineFragment(containingLocation: lineLocalLocation)
         if direction == .forward {
             if location == stringView.string.length {
                 return location
             } else {
-                let lineFragmentRangeUpperBound = lineFragment.location + lineFragment.length
+                let lineFragmentRangeUpperBound = lineFragment.range.upperBound
                 let preferredLocation = lineLocation + lineFragmentRangeUpperBound
                 let lineEndLocation = lineLocation + line.totalLength
                 if preferredLocation == lineEndLocation {
@@ -99,7 +99,7 @@ private extension StringTokenizer {
         } else if location == 0 {
             return location
         } else {
-            return lineLocation + lineFragment.location
+            return lineLocation + lineFragment.range.location
         }
     }
 }

@@ -5,7 +5,8 @@ import Foundation
 import TreeSitter
 
 final class TreeSitterInternalLanguageMode<
-    StringViewType: StringView, LineManagerType: LineManaging
+    StringViewType: StringView,
+    LineManagerType: LineManaging
 >: InternalLanguageMode {
     private let stringView: StringViewType
     private let lineManager: LineManagerType
@@ -61,7 +62,7 @@ final class TreeSitterInternalLanguageMode<
         operationQueue.addOperation(operation)
     }
 
-    func textDidChange(_ edit: TextEdit) -> LineChangeSet {
+    func textDidChange(_ edit: TextEdit<LineManagerType.LineType>) -> LineChangeSet<LineManagerType.LineType> {
         let bytesRemoved = edit.byteRange.length
         let bytesAdded = edit.bytesAdded
         let edit = TreeSitterInputEdit(
@@ -95,7 +96,9 @@ final class TreeSitterInternalLanguageMode<
     ) -> InsertLineBreakIndentStrategy {
         let startLayerAndNode = rootLanguageLayer.layerAndNode(at: startLinePosition)
         let endLayerAndNode = rootLanguageLayer.layerAndNode(at: endLinePosition)
-        guard let indentationScopes = startLayerAndNode?.layer.language.indentationScopes ?? endLayerAndNode?.layer.language.indentationScopes else {
+        guard let indentationScopes = startLayerAndNode?.layer.language.indentationScopes
+                ?? endLayerAndNode?.layer.language.indentationScopes
+        else {
             return InsertLineBreakIndentStrategy(indentLevel: 0, insertExtraLineBreak: false)
         }
         let indentService = TreeSitterIndentService(

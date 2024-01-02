@@ -1,12 +1,16 @@
-import CoreGraphics
+import _RunestoneRedBlackTree
 import Foundation
 
 final class ManagedLine: Line {
     typealias LineFragmentType = ManagedLineFragment
 
     let id: LineID = UUID()
-    let index: Int = 0
-    let location: Int = 0
+    var index: Int {
+        indexReader!.index
+    }
+    var location: Int {
+        locationReader!.location
+    }
     var totalLength = 0
     var length: Int {
         totalLength - delimiterLength
@@ -17,10 +21,16 @@ final class ManagedLine: Line {
         }
     }
     let yPosition: CGFloat = 0
-    var height: CGFloat
+    private(set) var height: CGFloat
     var totalHeight: CGFloat = 0
-    let numberOfLineFragments: Int = 0
-    let lineFragments: [LineFragmentType] = []
+    var numberOfLineFragments: Int {
+        lineFragmentManager.numberOfLineFragments
+    }
+    weak var indexReader: ManagedLineIndexReading?
+    weak var locationReader: ManagedLineLocationReading?
+
+    private let typesetter: Typesetting
+    private var lineFragmentManager = LineFragmentManager()
 
 //    var byteCount = ByteCount(0)
 //    var totalByteCount = ByteCount(0)
@@ -36,24 +46,48 @@ final class ManagedLine: Line {
 //        ByteRange(location: startByte, length: byteCount)
 //    }
 
-    init(height: CGFloat) {
-        self.height = height
+    init(typesetter: Typesetting, estimatedHeight: CGFloat) {
+        self.typesetter = typesetter
+        self.height = estimatedHeight
     }
 
     func location(closestTo localPoint: CGPoint) -> Int {
         0
     }
 
-    func lineFragment(containingCharacterAt location: Int) -> ManagedLineFragment {
-        fatalError()
+    func invalidateTypesetText() {
+        lineFragmentManager.reset()
+        typesetter.invalidateTypesetText(in: self)
+    }
+
+    func typesetText(toLocation location: Int) {
+        let lineFragments = typesetter.typesetText(in: self, toLocation: location)
+        lineFragmentManager.addTypesetLineFragments(lineFragments)
+    }
+
+    func typesetText(toYOffset yOffset: CGFloat) {
+        let lineFragments = typesetter.typesetText(in: self, toYOffset: yOffset)
+        lineFragmentManager.addTypesetLineFragments(lineFragments)
+    }
+
+    func lineFragment(containingLocation location: Int) -> ManagedLineFragment {
+        lineFragmentManager.lineFragment(containingLocation: location)
     }
 
     func lineFragment(atIndex index: Int) -> ManagedLineFragment {
-        fatalError()
+        lineFragmentManager.lineFragment(atIndex: index)
+    }
+
+    func lineFragments(in rect: CGRect) -> [ManagedLineFragment] {
+        lineFragmentManager.lineFragments(withYOffsetIn: rect.minY - yPosition ... rect.maxY - yPosition)
     }
 }
 
-extension ManagedLine: Equatable {
+extension ManagedLine: Hashable {
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
     static func == (lhs: ManagedLine, rhs: ManagedLine) -> Bool {
         lhs.id == rhs.id
     }

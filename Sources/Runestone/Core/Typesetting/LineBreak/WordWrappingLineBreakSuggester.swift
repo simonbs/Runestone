@@ -1,19 +1,28 @@
 import CoreText
 import Foundation
 
-struct WordWrappingLineBreakSuggester {
-    let typesetter: CTTypesetter
-    let attributedString: NSAttributedString
-    let constrainingWidth: CGFloat
+struct WordWrappingLineBreakSuggester: LineBreakSuggesting {
+    let maximumLineFragmentWidthProvider: MaximumLineFragmentWidthProviding
 
-    func suggestLineBreak(startingAt startOffset: Int) -> Int {
-        let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingWidth))
-        guard startOffset + length < attributedString.length else {
+    func suggestLineBreak(
+        after location: Int,
+        in attributedString: NSAttributedString,
+        typesetUsing typesetter: CTTypesetter
+    ) -> Int {
+        let length = CTTypesetterSuggestLineBreak(
+            typesetter,
+            location,
+            Double(maximumLineFragmentWidthProvider.maximumLineFragmentWidth)
+        )
+        guard location + length < attributedString.length else {
             // We've reached the end of the line.
             return length
         }
-        let lastCharacterIndex = startOffset + length - 1
-        let prefersLineBreakAfterCharacter = prefersInsertingLineBreakAfterCharacter(at: lastCharacterIndex)
+        let lastCharacterIndex = location + length - 1
+        let prefersLineBreakAfterCharacter = prefersInsertingLineBreak(
+            afterCharacterAt: lastCharacterIndex,
+            in: attributedString
+        )
         guard !prefersLineBreakAfterCharacter else {
             // We're breaking at a whitespace so we return the break suggested by CTTypesetter.
             return length
@@ -24,7 +33,11 @@ struct WordWrappingLineBreakSuggester {
         // 2. It fixes an issue where breaking in the middle of the /> ligature would cause the slash not to be drawn. More info in this tweet:
         //    https://twitter.com/simonbs/status/1515961709671899137
         let maximumLookback = min(length, 100)
-        if let lookbackLength = lookbackToFindFirstLineBreakableCharacter(startingAt: startOffset + length, maximumLookback: maximumLookback) {
+        if let lookbackLength = lookbackToFindFirstLineBreakableCharacter(
+            startingAt: location + length, 
+            in: attributedString,
+            maximumLookback: maximumLookback
+        ) {
             return length - lookbackLength
         } else {
             return length
@@ -33,11 +46,15 @@ struct WordWrappingLineBreakSuggester {
 }
 
 private extension WordWrappingLineBreakSuggester {
-    private func lookbackToFindFirstLineBreakableCharacter(startingAt startLocation: Int, maximumLookback: Int) -> Int? {
+    private func lookbackToFindFirstLineBreakableCharacter(
+        startingAt startLocation: Int,
+        in attributedString: NSAttributedString,
+        maximumLookback: Int
+    ) -> Int? {
         var lookback = 0
         var foundWhitespace = false
         while lookback < maximumLookback && !foundWhitespace {
-            if prefersInsertingLineBreakAfterCharacter(at: startLocation - lookback) {
+            if prefersInsertingLineBreak(afterCharacterAt: startLocation - lookback, in: attributedString) {
                 foundWhitespace = true
             } else {
                 lookback += 1
@@ -51,7 +68,10 @@ private extension WordWrappingLineBreakSuggester {
         }
     }
 
-    private func prefersInsertingLineBreakAfterCharacter(at location: Int) -> Bool {
+    private func prefersInsertingLineBreak(
+        afterCharacterAt location: Int,
+        in attributedString: NSAttributedString
+    ) -> Bool {
         let range = NSRange(location: location, length: 1)
         let attributedSubstring = attributedString.attributedSubstring(from: range)
         let string = attributedSubstring.string.trimmingCharacters(in: .whitespaces)

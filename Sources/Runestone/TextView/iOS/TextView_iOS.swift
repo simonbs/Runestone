@@ -360,8 +360,24 @@ open class TextView: UIScrollView {
         editorDelegate?.textViewShouldEndEditing(self) ?? true
     }
 
-    private let stringView = NSMutableStringView()
-    private lazy var lineManager = LineManager(state: stateStore, stringView: stringView)
+    private let stringView = NSMutableAttributedStringView()
+    private lazy var lineManager = LineManager(
+        state: stateStore,
+        stringView: stringView,
+        lineFactory: ManagedLineFactory(
+            typesetter: Typesetter(
+                state: stateStore,
+                stringView: stringView,
+                lineBreakSuggester: LineBreakSuggester(
+                    state: stateStore,
+                    maximumLineFragmentWidthProvider: ScrollViewMaximumLineFragmentWidthProvider(
+                        state: stateStore,
+                        viewport: viewport
+                    )
+                )
+            )
+        )
+    )
 
 //
 //    private let proxyScrollView: ProxyScrollView
@@ -394,11 +410,17 @@ open class TextView: UIScrollView {
             ),
             textReplacer: CompositeTextReplacer(
                 StringViewTextReplacer(stringView: stringView),
-                LineManagerTextReplacer(lineManager: lineManager),
-                LayoutingTextReplacer(
-                    textLayouter: TextLayouter(
+                LineManagerTextReplacer(
+                    lineManager: lineManager,
+                    changeSetHandler: TypesettingInvalidatingLineChangeSetHandler()
+                ),
+                RenderingTextReplacer(
+                    textRenderer: TextRenderer(
                         viewport: viewport,
-                        lineManager: lineManager
+                        lineManager: lineManager,
+                        lineTextRenderer: LineTextRenderer(
+                            viewport: viewport
+                        )
                     )
                 )
             )
@@ -485,6 +507,11 @@ open class TextView: UIScrollView {
         textInteractionEditingStateChangeHandler.textInput = self
         tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
         addGestureRecognizer(tapGestureRecognizer)
+        // Ensure viewport is initialized so we forward frame changes.
+        _ = viewport
+
+
+        _ = textInputClient
     }
 
     /// The initializer has not been implemented.
@@ -496,6 +523,7 @@ open class TextView: UIScrollView {
     /// Lays out subviews.
     override open func layoutSubviews() {
         super.layoutSubviews()
+
 //        textInputHelper.resetHasDeletedTextWithPendingLayoutSubviews()
 //        textInputHelper.notifyInputDelegateFromLayoutSubviewsIfNeeded()
 //        contentSizeService.updateContentSizeIfNeeded()

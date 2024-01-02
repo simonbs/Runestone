@@ -7,6 +7,7 @@ struct YPositionFromLineNodeQuery: OffsetFromRedBlackTreeNodeQuery {
     typealias Offset = CGFloat
 
     let targetNode: Node
+    let minimumValue: CGFloat = 0
 
     func offset(for node: Node) -> CGFloat {
         node.data.height

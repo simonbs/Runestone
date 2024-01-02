@@ -1,3 +1,4 @@
+import _RunestoneMultiPlatform
 import Combine
 import Foundation
 #if os(iOS)
@@ -9,7 +10,7 @@ final class InsertionPointLayouter {
     private var cancellabels: Set<AnyCancellable> = []
 
     init(
-        containerView: UIView,
+        containerView: MultiPlatformView,
         insertionPointViewFactory: InsertionPointViewFactory,
         frame: AnyPublisher<CGRect, Never>,
         isInsertionPointVisible: AnyPublisher<Bool, Never>,

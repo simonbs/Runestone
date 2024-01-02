@@ -1,13 +1,13 @@
 import Foundation
 
-final class RedBlackTreeTraversingSearchMatch<
+package final class RedBlackTreeTraversingSearchMatch<
     NodeValue: RedBlackTreeNodeValue, Data
 > {
-    typealias Node = RedBlackTreeNode<NodeValue, Data>
+    package typealias Node = RedBlackTreeNode<NodeValue, Data>
 
-    let offset: NodeValue
-    let value: NodeValue
-    let node: Node
+    package let offset: NodeValue
+    package let value: NodeValue
+    package let node: Node
 
     init(offset: NodeValue, value: NodeValue, node: Node) {
         self.offset = offset

@@ -1,9 +1,11 @@
 import _RunestoneRedBlackTree
 import Foundation
 
-final class LineManager: LineManaging {
+final class LineManager<
+    LineFactoryType: LineFactory
+>: LineManaging where LineFactoryType.LineType == ManagedLine {
     typealias State = EstimatedLineHeightReadable
-    typealias LineType = ManagedLine
+    typealias LineType = LineFactoryType.LineType
 
     var lineCount: Int {
         tree.nodeTotalCount
@@ -11,23 +13,29 @@ final class LineManager: LineManaging {
 
     private let state: State
     private let stringView: StringView
+    private let lineFactory: LineFactoryType
     private var tree: RedBlackTree<Int, LineType>
 
-    init(state: State, stringView: StringView) {
+    init(state: State, stringView: StringView, lineFactory: LineFactoryType) {
         self.state = state
         self.stringView = stringView
+        self.lineFactory = lineFactory
+        let rootLine = lineFactory.makeLine(estimatingHeightTo: state.estimatedLineHeight)
         self.tree = RedBlackTree(
+            minimumValue: 0,
             rootValue: 0,
-            rootData: LineType(height: state.estimatedLineHeight),
+            rootData: rootLine,
             childrenUpdater: CompositeRedBlackTreeChildrenUpdater([
                 AnyRedBlackTreeChildrenUpdater(TotalLineHeightRedBlackTreeChildrenUpdater()),
 //                AnyRedBlackTreeChildrenUpdater(TotalByteCountRedBlackTreeChildrenUpdater())
             ])
         )
+        rootLine.indexReader = tree.root
+        rootLine.locationReader = tree.root
     }
 
-    func insertText(_ text: NSString, at location: Int) -> LineChangeSet {
-        let changeSet = LineChangeSet()
+    func insertText(_ text: NSString, at location: Int) -> LineChangeSet<LineType> {
+        var changeSet = LineChangeSet<LineType>()
         guard var line = lineNode(containingCharacterAt: location) else {
             return LineChangeSet()
         }
@@ -36,17 +44,17 @@ final class LineManager: LineManaging {
         if location > lineLocation + line.data.length {
             // Inserting in the middle of a delimiter.
             let otherChangeSetA = setLength(of: line, to: line.value - 1)
-            changeSet.formUnion(with: otherChangeSetA)
+            changeSet = changeSet.union(otherChangeSetA)
             // Add new line.
             line = insertLine(ofLength: 1, after: line)
             changeSet.markLineInserted(line.data)
             let otherChangeSetB = setLength(of: line, to: 1, newLine: &line)
-            changeSet.formUnion(with: otherChangeSetB)
+            changeSet = changeSet.union(otherChangeSetB)
         }
         guard let rangeOfFirstNewLine = NewLineFinder.rangeOfNextNewLine(in: text, startingAt: 0) else {
             // No newline is being inserted. All the text is in a single line.
             let otherChangeSet = setLength(of: line, to: line.value + text.length)
-            changeSet.formUnion(with: otherChangeSet)
+            changeSet = changeSet.union(otherChangeSet)
             return changeSet
         }
         var lastDelimiterEnd = 0
@@ -57,11 +65,11 @@ final class LineManager: LineManaging {
             lineLocation = Int(line.location)
             let lengthAfterInsertionPos = lineLocation + line.value - (location + lastDelimiterEnd)
             let otherChangeSetA = setLength(of: line, to: lineBreakLocation - lineLocation, newLine: &line)
-            changeSet.formUnion(with: otherChangeSetA)
+            changeSet = changeSet.union(otherChangeSetA)
             var newLine = insertLine(ofLength: lengthAfterInsertionPos, after: line)
             changeSet.markLineInserted(newLine.data)
             let otherChangeSetB = setLength(of: newLine, to: lengthAfterInsertionPos, newLine: &newLine)
-            changeSet.formUnion(with: otherChangeSetB)
+            changeSet = changeSet.union(otherChangeSetB)
             line = newLine
             lastDelimiterEnd = rangeOfNewLine.location + rangeOfNewLine.length
             if let rangeOfNextNewLine = NewLineFinder.rangeOfNextNewLine(in: text, startingAt: lastDelimiterEnd) {
@@ -73,12 +81,12 @@ final class LineManager: LineManaging {
         // Insert rest of last delimiter.
         if lastDelimiterEnd != text.length {
             let otherChangeSet = setLength(of: line, to: line.value + text.length - lastDelimiterEnd)
-            changeSet.formUnion(with: otherChangeSet)
+            changeSet = changeSet.union(otherChangeSet)
         }
         return changeSet
     }
 
-    func removeText(in range: NSRange) -> LineChangeSet {
+    func removeText(in range: NSRange) -> LineChangeSet<LineType> {
         guard range.length > 0 else {
             return LineChangeSet()
         }
@@ -87,12 +95,12 @@ final class LineManager: LineManaging {
         }
         if range.location > Int(startLineNode.location) + startLineNode.data.length {
             // Deleting starting in the middle of a delimiter.
-            let changeSet = LineChangeSet()
+            var changeSet = LineChangeSet<LineType>()
             let otherChangeSetA = setLength(of: startLineNode, to: startLineNode.value - 1)
-            changeSet.formUnion(with: otherChangeSetA)
+            changeSet = changeSet.union(otherChangeSetA)
             let removeRange = NSRange(location: range.location, length: range.length - 1)
             let otherChangeSetB = removeText(in: removeRange)
-            changeSet.formUnion(with: otherChangeSetB)
+            changeSet = changeSet.union(otherChangeSetB)
             return changeSet
         } else if range.location + range.length < Int(startLineNode.location) + startLineNode.value {
             // Removing a part of the start line.
@@ -109,7 +117,7 @@ final class LineManager: LineManaging {
                 // Removing characters in the last line.
                 return setLength(of: startLineNode, to: startLineNode.value - range.length)
             } else {
-                let changeSet = LineChangeSet()
+                var changeSet = LineChangeSet<LineType>()
                 let charactersLeftInEndLine = Int(endLine.location) + endLine.value - (range.location + range.length)
                 // Remove all lines between startLine and endLine, excluding startLine but including endLine.
                 var tmp = startLineNode.next
@@ -123,17 +131,17 @@ final class LineManager: LineManaging {
                 } while lineToRemove !== endLine
                 let newLength = startLineNode.value - charactersRemovedInStartLine + charactersLeftInEndLine
                 let otherChangeSet = setLength(of: startLineNode, to: newLength)
-                changeSet.formUnion(with: otherChangeSet)
+                changeSet = changeSet.union(otherChangeSet)
                 return changeSet
             }
         }
     }
 
-    func line(containingCharacterAt location: Int) -> ManagedLine? {
+    func line(containingCharacterAt location: Int) -> LineType? {
         lineNode(containingCharacterAt: location)?.data
     }
 
-    func line(atYOffset yOffset: CGFloat) -> ManagedLine? {
+    func line(atYOffset yOffset: CGFloat) -> LineType? {
         lineNode(atYOffset: yOffset)?.data
     }
 
@@ -211,7 +219,7 @@ private extension LineManager {
         return querier.node(for: query)
     }
 
-    private func setLength(of lineNode: LineNode, to newTotalLength: Int) -> LineChangeSet {
+    private func setLength(of lineNode: LineNode, to newTotalLength: Int) -> LineChangeSet<LineType> {
         var newLine: LineNode = lineNode
         return setLength(of: lineNode, to: newTotalLength, newLine: &newLine)
     }
@@ -220,8 +228,8 @@ private extension LineManager {
         of lineNode: LineNode,
         to newTotalLength: Int,
         newLine: inout LineNode
-    ) -> LineChangeSet {
-        let changeSet = LineChangeSet()
+    ) -> LineChangeSet<LineType> {
+        var changeSet = LineChangeSet<LineType>()
         changeSet.markLineEdited(lineNode.data)
 //        let range = NSRange(location: line.location, length: newTotalLength)
 //        let substring = stringView.substring(in: range)
@@ -230,10 +238,11 @@ private extension LineManager {
             || newTotalLength != lineNode.data.totalLength
 //            || newByteCount != line.data.byteCount
         {
+            print(newTotalLength)
             lineNode.value = newTotalLength
             lineNode.data.totalLength = newTotalLength
 //            line.data.byteCount = newByteCount
-//            tree.updateAfterChangingChildren(of: line)
+            tree.updateAfterChangingChildren(of: lineNode)
         }
         // Determine new delimiter length.
         if newTotalLength == 0 {
@@ -252,7 +261,7 @@ private extension LineManager {
                     tree.remove(lineNode)
 //                    didRemoveLine.send(())
                     let otherChangeSet = setLength(of: previousLine, to: previousLine.value + 1, newLine: &newLine)
-                    changeSet.formUnion(with: otherChangeSet)
+                    changeSet = changeSet.union(otherChangeSet)
                 } else {
                     lineNode.data.delimiterLength = 1
                 }
@@ -266,19 +275,21 @@ private extension LineManager {
 
     @discardableResult
     private func insertLine(ofLength length: Int, after otherLine: LineNode) -> LineNode {
-        let data = LineType(height: state.estimatedLineHeight)
-        let insertedLine = tree.insertNode(value: length, data: data, after: otherLine)
+        let data = lineFactory.makeLine(estimatingHeightTo: state.estimatedLineHeight)
+        let insertedNode = tree.insertNode(value: length, data: data, after: otherLine)
+        data.indexReader = insertedNode
+        data.locationReader = insertedNode
 //        let range = NSRange(location: insertedLine.location, length: length)
 //        let substring = stringView.substring(in: range)
 //        let byteCount = substring?.byteCount ?? 0
-        insertedLine.data.totalLength = length
+        insertedNode.data.totalLength = length
 //        insertedLine.data.byteCount = byteCount
 //        insertedLine.data.totalByteCount = byteCount
 //        insertedLine.data.node = insertedLine
         // Call updateAfterChangingChildren(of:) to update the values of nodeTotalByteCount.
 //        tree.updateAfterChangingChildren(of: insertedLine)
 //        didInsertLine.send(())
-        return insertedLine
+        return insertedNode
     }
 
     private func getCharacter(at location: Int) -> String? {
@@ -286,3 +297,13 @@ private extension LineManager {
         return stringView.substring(in: range)
     }
 }
+
+extension RedBlackTreeNode<Int, ManagedLine>: ManagedLineLocationReading {
+    var location: Int {
+        print("- - - - - - - - -")
+        return 0
+        return offset
+    }
+}
+
+extension RedBlackTreeNode<Int, ManagedLine>: ManagedLineIndexReading {}

@@ -62,7 +62,7 @@ final class InsertionPointForegroundRenderer<
             return
         }
         let lineLocalLocation = location - line.location
-        let lineFragment = line.lineFragment(containingCharacterAt: lineLocalLocation)
+        let lineFragment = line.lineFragment(containingLocation: lineLocalLocation)
         if invisibleCharacterRenderer.canRenderInvisibleCharacter(
             atLocation: location,
             alignedTo: lineFragment,

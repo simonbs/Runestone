@@ -92,8 +92,8 @@ private extension LineSelectionRectPublisher {
         }
         let lineLocalLowerBound = selectedRange.lowerBound - firstLine.location
         let lineLocalUpperBound = selectedRange.upperBound - lastLine.location
-        let startLineFragment = firstLine.lineFragment(containingCharacterAt: lineLocalLowerBound)
-        let endLineFragment = lastLine.lineFragment(containingCharacterAt: lineLocalUpperBound)
+        let startLineFragment = firstLine.lineFragment(containingLocation: lineLocalLowerBound)
+        let endLineFragment = lastLine.lineFragment(containingLocation: lineLocalUpperBound)
         let origin = CGPoint(x: viewport.minX, y: textContainerInset.top + startLineFragment.yPosition)
         let height = endLineFragment.yPosition + endLineFragment.scaledSize.height - origin.y
         let size = CGSize(width: viewport.width, height: height)

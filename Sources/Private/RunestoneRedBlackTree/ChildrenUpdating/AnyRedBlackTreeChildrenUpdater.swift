@@ -21,6 +21,7 @@ package struct AnyRedBlackTreeChildrenUpdater<
         }
     }
 
+    @discardableResult
     package func updateChildren(of node: Node) -> Bool {
         _updateChildren(node)
     }

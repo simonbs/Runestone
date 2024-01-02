@@ -1,10 +1,10 @@
 import Combine
 import Foundation
 
-final class ProxyInternalLanguageMode: InternalLanguageMode {
-    var languageMode: any InternalLanguageMode
+final class ProxyInternalLanguageMode<InternalLanguageModeType: InternalLanguageMode>: InternalLanguageMode {
+    var languageMode: InternalLanguageModeType
 
-    init(languageMode: some InternalLanguageMode) {
+    init(languageMode: InternalLanguageModeType) {
         self.languageMode = languageMode
     }
 
@@ -16,7 +16,9 @@ final class ProxyInternalLanguageMode: InternalLanguageMode {
         languageMode.parse(text, completion: completion)
     }
     
-    func textDidChange(_ change: TextEdit) -> LineChangeSet {
+    func textDidChange(
+        _ change: TextEdit<InternalLanguageModeType.LineType>
+    ) -> LineChangeSet<InternalLanguageModeType.LineType> {
         languageMode.textDidChange(change)
     }
     

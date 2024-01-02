@@ -9,6 +9,7 @@ struct ValueOffsetFromRedBlackTreeNodeQuery<
     typealias Offset = NodeValueType
 
     let targetNode: Node
+    let minimumValue: NodeValueType
 
     func offset(for node: Node) -> NodeValueType {
         node.value
@@ -18,3 +19,4 @@ struct ValueOffsetFromRedBlackTreeNodeQuery<
         node.nodeTotalValue
     }
 }
+

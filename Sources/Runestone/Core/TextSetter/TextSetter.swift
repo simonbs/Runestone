@@ -1,13 +1,16 @@
 import Foundation
 
-final class TextSetter<LineManagerType: LineManaging>: TextSetting {
+final class TextSetter<
+    LineManagerType: LineManaging,
+    InternalLanguageModeType: InternalLanguageMode
+>: TextSetting {
     typealias State = SelectedRangeWritable
 
     private let state: State
     private let textInputDelegate: TextInputDelegate
     private let stringView: StringView
     private let lineManager: LineManagerType
-    private let languageMode: InternalLanguageMode
+    private let languageMode: InternalLanguageModeType
     private let undoManager: TextEditingUndoManager
 
     init(
@@ -15,7 +18,7 @@ final class TextSetter<LineManagerType: LineManaging>: TextSetting {
         textInputDelegate: TextInputDelegate,
         stringView: StringView,
         lineManager: LineManagerType,
-        languageMode: InternalLanguageMode,
+        languageMode: InternalLanguageModeType,
         undoManager: TextEditingUndoManager
     ) {
         self.state = state

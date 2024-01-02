@@ -70,14 +70,14 @@ private extension CharacterBoundsProvider {
     }
 
     private func lineLocalBoundingBox(in lineLocalRange: NSRange, localTo line: some Line) -> CGRect? {
-        for lineFragment in line.lineFragments {
-            if let insertionPointRange = lineFragment.insertionPointRange(forLineLocalRange: lineLocalRange) {
-                let minXPosition = CTLineGetOffsetForStringIndex(lineFragment.line, insertionPointRange.lowerBound, nil)
-                let maxXPosition = CTLineGetOffsetForStringIndex(lineFragment.line, insertionPointRange.upperBound, nil)
-                let yPosition = lineFragment.yPosition + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
-                return CGRect(x: minXPosition, y: yPosition, width: maxXPosition - minXPosition, height: lineFragment.baseSize.height)
-            }
-        }
+//        for lineFragment in line.lineFragments {
+//            if let insertionPointRange = lineFragment.insertionPointRange(forLineLocalRange: lineLocalRange) {
+//                let minXPosition = CTLineGetOffsetForStringIndex(lineFragment.line, insertionPointRange.lowerBound, nil)
+//                let maxXPosition = CTLineGetOffsetForStringIndex(lineFragment.line, insertionPointRange.upperBound, nil)
+//                let yPosition = lineFragment.yPosition + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
+//                return CGRect(x: minXPosition, y: yPosition, width: maxXPosition - minXPosition, height: lineFragment.baseSize.height)
+//            }
+//        }
         return nil
     }
 
@@ -85,7 +85,7 @@ private extension CharacterBoundsProvider {
         guard line.numberOfLineFragments > 0 else {
             return false
         }
-        let lineFragment = line.lineFragment(containingCharacterAt: location)
+        let lineFragment = line.lineFragment(containingLocation: location)
         guard lineFragment.index > 0 else {
             return false
         }

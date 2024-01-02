@@ -41,7 +41,7 @@ final class TotalLineHeightTracker<LineManagerType: LineManaging> {
         guard abs(newHeight - line.data.height) >= CGFloat.ulpOfOne else {
             return
         }
-        line.data.height = newHeight
+//        line.data.height = newHeight
 //        lineManager.updateAfterChangingChildren(of: line)
         cachedTotalLinesHeight = nil
         isTotalLineHeightInvalid = true

@@ -55,9 +55,9 @@ final class UITextInputClient {
 // MARK: - Caret
 extension UITextInputClient {
     func caretRect(for position: UITextPosition) -> CGRect {
-        guard let indexedPosition = position as? IndexedPosition else {
-            fatalError("Expected position to be of type \(IndexedPosition.self)")
-        }
+//        guard let indexedPosition = position as? IndexedPosition else {
+//            fatalError("Expected position to be of type \(IndexedPosition.self)")
+//        }
 //        return insertionPointFrameFactory.frameOfInsertionPoint(at: indexedPosition.index)
         return CGRect(x: 5, y: 5, width: 5, height: 16)
 //        return .zero
@@ -134,7 +134,7 @@ extension UITextInputClient {
 extension UITextInputClient {
     var selectedTextRange: UITextRange? {
         get {
-            return IndexedRange(stateStore.selectedRange)
+            IndexedRange(stateStore.selectedRange)
         }
         set {
             // We should not use this setter. It's intended for UIKit to use. It'll invoke the setter in various scenarios, for example when navigating the text using the keyboard.

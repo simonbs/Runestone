@@ -1,14 +1,18 @@
 import Foundation
 
-struct RedBlackTreeTraversingSearcher<
+package struct RedBlackTreeTraversingSearcher<
     NodeValue: RedBlackTreeNodeValue, NodeData
 > {
-    typealias Tree = RedBlackTree<NodeValue, NodeData>
-    typealias Match = RedBlackTreeTraversingSearchMatch<NodeValue, NodeData>
+    package typealias Tree = RedBlackTree<NodeValue, NodeData>
+    package typealias Match = RedBlackTreeTraversingSearchMatch<NodeValue, NodeData>
 
-    let tree: Tree
+    private let tree: Tree
 
-    func search<Query: RedBlackTreeTraversingSearchQuery>(
+    package init(tree: Tree) {
+        self.tree = tree
+    }
+
+    package func search<Query: RedBlackTreeTraversingSearchQuery>(
         for query: Query
     ) -> [Match] where Query.NodeValue == NodeValue, Query.NodeData == NodeData {
         search(for: query, startingAt: tree.root)

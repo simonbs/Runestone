@@ -1,6 +1,9 @@
 import Foundation
 
-struct IndentationTextEditor<LineManagerType: LineManaging>: TextEditing {
+struct IndentationTextEditor<
+    LineManagerType: LineManaging, 
+    InternalLanguageModeType: InternalLanguageMode
+>: TextEditing {
     typealias State = IndentStrategyReadable
     & LineEndingsReadable
     & MarkedRangeReadable
@@ -9,7 +12,7 @@ struct IndentationTextEditor<LineManagerType: LineManaging>: TextEditing {
     let state: State
     let stringView: StringView
     let lineManager: LineManagerType
-    let languageMode: InternalLanguageMode
+    let languageMode: InternalLanguageModeType
     let textEditor: TextEditing
 
     func insertText(_ text: String) {

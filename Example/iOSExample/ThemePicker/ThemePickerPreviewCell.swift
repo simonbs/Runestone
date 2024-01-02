@@ -57,7 +57,7 @@ extension ThemePickerPreviewCell {
     }
 
     func populate(with viewModel: ViewModel) {
-        let languageMode = TreeSitterLanguageMode(language: .javaScript, languageProvider: nil)
+//        let languageMode = TreeSitterLanguageMode(language: .javaScript, languageProvider: nil)
 //        textView.setLanguageMode(languageMode)
 //        textView.theme = viewModel.theme
 //        textView.text = viewModel.text

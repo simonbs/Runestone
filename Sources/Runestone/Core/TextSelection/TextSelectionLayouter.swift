@@ -1,17 +1,18 @@
 #if os(macOS)
+import _RunestoneMultiPlatform
 import Combine
 import Foundation
 
-final class TextSelectionLayouter {
+final class TextSelectionLayouter<LineManagerType: LineManaging> {
     let backgroundColor = CurrentValueSubject<MultiPlatformColor, Never>(.label.withAlphaComponent(0.2))
 
-    private let textSelectionRectFactory: TextSelectionRectFactory
+    private let textSelectionRectFactory: TextSelectionRectFactory<LineManagerType>
     private let containerView: CurrentValueSubject<TextView, Never>
     private let viewQueue = ReusableViewQueue<String, LineSelectionView>()
     private var cancellables = Set<AnyCancellable>()
 
     init(
-        textSelectionRectFactory: TextSelectionRectFactory,
+        textSelectionRectFactory: TextSelectionRectFactory<LineManagerType>,
         containerView: CurrentValueSubject<TextView, Never>,
         viewport: CurrentValueSubject<CGRect, Never>,
         selectedRange: CurrentValueSubject<NSRange, Never>

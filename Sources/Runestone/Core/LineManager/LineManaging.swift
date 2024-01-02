@@ -3,8 +3,8 @@ import Foundation
 protocol LineManaging {
     associatedtype LineType: Line
     var lineCount: Int { get }
-    func insertText(_ text: NSString, at location: Int) -> LineChangeSet
-    func removeText(in range: NSRange) -> LineChangeSet
+    func insertText(_ text: NSString, at location: Int) -> LineChangeSet<LineType>
+    func removeText(in range: NSRange) -> LineChangeSet<LineType>
     func line(containingCharacterAt location: Int) -> LineType?
     func line(atYOffset yOffset: CGFloat) -> LineType?
     func lines(in range: NSRange) -> [LineType]
@@ -53,7 +53,8 @@ extension LineManaging {
             } else {
                 return nil
             }
-        } else if let startLine = line(containingCharacterAt: range.lowerBound), let endLine = line(containingCharacterAt: range.upperBound) {
+        } else if let startLine = line(containingCharacterAt: range.lowerBound),
+                  let endLine = line(containingCharacterAt: range.upperBound) {
             return (startLine, endLine)
         } else {
             return nil

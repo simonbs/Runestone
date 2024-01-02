@@ -1,8 +1,9 @@
 import Foundation
 
 struct NullObjectRedBlackTreeChildrenUpdater<
-    _NodeValue: RedBlackTreeNodeValue, _NodeData>
-: RedBlackTreeChildrenUpdating {
+    _NodeValue: RedBlackTreeNodeValue,
+    _NodeData
+>: RedBlackTreeChildrenUpdating {
     typealias NodeValue = _NodeValue
     typealias NodeData = _NodeData
 

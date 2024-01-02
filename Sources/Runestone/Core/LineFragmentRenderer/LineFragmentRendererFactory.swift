@@ -11,7 +11,7 @@ struct LineFragmentRendererFactory<LineFragmentType: LineFragment> {
 //    let markedTextBackgroundCornerRadius: CurrentValueSubject<CGFloat, Never>
 
     func makeRenderer(for lineFragment: LineFragmentType, in line: LineNode) -> LineFragmentRenderer {
-        DummyLineFragmentRenderer()
+        fatalError("Not implemented")
 //        CompositeLineFragmentRenderer(renderers: [
 //            MarkedRangeLineFragmentRenderer(
 //                lineFragment: lineFragment,
@@ -28,11 +28,5 @@ struct LineFragmentRendererFactory<LineFragmentType: LineFragment> {
 //            ),
 //            TextLineFragmentRenderer(lineFragment: lineFragment)
 //        ])
-    }
-}
-
-private final class DummyLineFragmentRenderer: LineFragmentRenderer {
-    func render() {
-        print("Rendering not implemented")
     }
 }

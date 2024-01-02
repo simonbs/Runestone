@@ -1,10 +1,16 @@
 import Foundation
 
-struct LineManagerTextReplacer<LineManagerType: LineManager>: TextReplacing {
+struct LineManagerTextReplacer<
+    LineManagerType: LineManaging,
+    LineChangeSetHandlingType: LineChangeSetHandling
+>: TextReplacing {
     let lineManager: LineManagerType
+    let changeSetHandler: LineChangeSetHandlingType
 
     func replaceText(in range: NSRange, with newText: String) {
-        _ = lineManager.removeText(in: range)
-        _ = lineManager.insertText(newText as NSString, at: range.location)
+        let removalChangeSet = lineManager.removeText(in: range)
+        let insertionChangeSet = lineManager.insertText(newText as NSString, at: range.location)
+        let changeSet = removalChangeSet.union(insertionChangeSet)
+        changeSetHandler.handle(changeSet)
     }
 }
