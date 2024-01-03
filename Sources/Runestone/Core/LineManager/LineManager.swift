@@ -300,9 +300,7 @@ private extension LineManager {
 
 extension RedBlackTreeNode<Int, ManagedLine>: ManagedLineLocationReading {
     var location: Int {
-        print("- - - - - - - - -")
-        return 0
-        return offset
+        offset
     }
 }
 
