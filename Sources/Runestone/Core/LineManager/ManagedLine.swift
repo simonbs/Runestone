@@ -20,14 +20,21 @@ final class ManagedLine: Line {
             assert(delimiterLength >= 0 && delimiterLength <= 2)
         }
     }
-    let yPosition: CGFloat = 0
+    var yPosition: CGFloat {
+        yPositionReader!.yPosition
+    }
     private(set) var height: CGFloat
-    var totalHeight: CGFloat = 0
+    var totalHeight: CGFloat = 0 {
+        didSet {
+            print("Did set total height: \(totalHeight)")
+        }
+    }
     var numberOfLineFragments: Int {
         lineFragmentManager.numberOfLineFragments
     }
     weak var indexReader: ManagedLineIndexReading?
     weak var locationReader: ManagedLineLocationReading?
+    weak var yPositionReader: ManagedLineYPositionReading?
 
     private let typesetter: Typesetting
     private var lineFragmentManager = LineFragmentManager()

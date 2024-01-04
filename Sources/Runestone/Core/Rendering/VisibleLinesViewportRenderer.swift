@@ -1,34 +1,33 @@
 import Foundation
 
-final class TextRenderer<
+struct VisibleLinesViewportRenderer<
     ViewportType: Viewport,
     LineManagerType: LineManaging,
-    LineTextRendererType: LineTextRendering
->: TextRendering where LineManagerType.LineType == LineTextRendererType.LineType {
-    private let viewport: ViewportType
-    private let lineManager: LineManagerType
-    private let lineTextRenderer: LineTextRendererType
+    VisibleLinesRenderingType: VisibleLinesRendering
+>: ViewportRendering where VisibleLinesRenderingType.LineType == LineManagerType.LineType {
+    let viewport: ViewportType
+    let lineManager: LineManagerType
+    let visibleLinesRenderer: VisibleLinesRenderingType
 
-    init(
-        viewport: ViewportType,
-        lineManager: LineManagerType,
-        lineTextRenderer: LineTextRendererType
-    ) {
-        self.viewport = viewport
-        self.lineManager = lineManager
-        self.lineTextRenderer = lineTextRenderer
-    }
-
-    func renderVisibleText() {
-        var needleYOffset = viewport.minY
-        var previousLine: LineManagerType.LineType?
-        while let line = lineManager.line(atYOffset: needleYOffset),
-              line != previousLine,
-              needleYOffset < viewport.maxY {
-            lineTextRenderer.renderVisibleText(in: line)
-            needleYOffset = line.yPosition + line.height
-            previousLine = line
+    func renderViewport() {
+        var visibleLines: [VisibleLine<LineManagerType.LineType>] = []
+         var workingLine: LineManagerType.LineType? = lineManager.line(atYOffset: viewport.minY)
+        while let line = workingLine {
+            line.typesetText(toYOffset: viewport.maxY)
+            let lineFragments = line.lineFragments(in: viewport.rect)
+            let visibleLine = VisibleLine(line: line, lineFragments: lineFragments)
+            visibleLines.append(visibleLine)
+            let lineIndex = line.index
+            let isWithinViewport = line.yPosition + line.height < viewport.maxY
+            let hasMoreLines = lineIndex < lineManager.lineCount - 1
+            if isWithinViewport && hasMoreLines && !lineFragments.isEmpty {
+                workingLine = lineManager[lineIndex + 1]
+            } else {
+                workingLine = nil
+            }
+            print("+ Line \(line.index) @ Y=\(line.yPosition), H=\(line.height)")
         }
+        visibleLinesRenderer.renderVisibleLines(visibleLines)
         //        let oldVisibleLineIDs = visibleLineIDs
         //        let oldVisibleLineFragmentIDs = Set(lineFragmentViews.visibleViews.keys)
         //        var nextLine = lineManager.line(containingYOffset: viewport.minY)
@@ -85,6 +84,4 @@ final class TextRenderer<
         //            scrollView.contentOffset = CGPoint(x: scrollView.contentOffset.x, y: scrollView.contentOffset.y + contentOffsetAdjustmentY)
         //        }
     }
-
-    func renderText(toLocation location: Int) {}
 }

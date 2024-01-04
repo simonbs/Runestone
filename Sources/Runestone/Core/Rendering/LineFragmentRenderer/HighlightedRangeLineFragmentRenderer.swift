@@ -4,42 +4,35 @@ import CoreText
 import UIKit
 #endif
 
-final class HighlightedRangeLineFragmentRenderer<
-    LineFragmentType: LineFragment
->: LineFragmentRenderer {
-    private let lineFragment: LineFragmentType
-    private let stringProvider: LineFragmentRendererStringProvider<LineFragmentType>
-    private let highlightedRangeFragments: [HighlightedRangeFragment]
+struct HighlightedRangeLineFragmentRenderer<StringViewType: StringView>: LineFragmentRendering {
+    let stringView: StringViewType
+    let highlightedRangeFragments: [HighlightedRangeFragment]
 
-    init(
-        lineFragment: LineFragmentType,
-        stringProvider: LineFragmentRendererStringProvider<LineFragmentType>,
-        highlightedRangeFragments: [HighlightedRangeFragment]
+    func render<LineType: Line>(
+        _ lineFragment: LineType.LineFragmentType,
+        in line: LineType,
+        to context: CGContext
     ) {
-        self.lineFragment = lineFragment
-        self.stringProvider = stringProvider
-        self.highlightedRangeFragments = highlightedRangeFragments
-    }
-
-    func render() {
         guard !highlightedRangeFragments.isEmpty else {
-            return
-        }
-        guard let context = UIGraphicsGetCurrentContext() else {
             return
         }
         context.saveGState()
         for highlightedRange in highlightedRangeFragments {
-            render(highlightedRange, in: context)
+            render(highlightedRange, highlighting: lineFragment, in: line, to: context)
         }
         context.restoreGState()
     }
 }
 
 private extension HighlightedRangeLineFragmentRenderer {
-    private func render(_ highlightedRange: HighlightedRangeFragment, in context: CGContext) {
+    private func render<LineType: Line>(
+        _ highlightedRange: HighlightedRangeFragment,
+        highlighting lineFragment: LineType.LineFragmentType,
+        in line: LineType,
+        to context: CGContext
+    ) {
         let startX = CTLineGetOffsetForStringIndex(lineFragment.line, highlightedRange.range.lowerBound, nil)
-        let endX = endX(for: highlightedRange, in: context)
+        let endX = endX(for: highlightedRange, highlighting: lineFragment, in: line, context: context)
         let cornerRadius = highlightedRange.cornerRadius
         let rect = CGRect(x: startX, y: 0, width: endX - startX, height: lineFragment.scaledSize.height)
         let roundedPath = CGPath(roundedRect: rect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
@@ -61,19 +54,33 @@ private extension HighlightedRangeLineFragmentRenderer {
         }
     }
 
-    private func endX(for highlightedRange: HighlightedRangeFragment, in context: CGContext) -> CGFloat {
-        if shouldHighlightLineEnding(for: highlightedRange) {
+    private func endX<LineType: Line>(
+        for highlightedRange: HighlightedRangeFragment,
+        highlighting lineFragment: LineType.LineFragmentType,
+        in line: LineType,
+        context: CGContext
+    ) -> CGFloat {
+        if shouldHighlightLineEnding(for: highlightedRange, highlighting: lineFragment, in: line) {
             return CGFloat(context.width)
         } else {
             return CTLineGetOffsetForStringIndex(lineFragment.line, highlightedRange.range.upperBound, nil)
         }
     }
 
-    private func shouldHighlightLineEnding(for highlightedRangeFragment: HighlightedRangeFragment) -> Bool {
+    private func shouldHighlightLineEnding<LineType: Line>(
+        for highlightedRangeFragment: HighlightedRangeFragment,
+        highlighting lineFragment: LineType.LineFragmentType,
+        in line: LineType
+    ) -> Bool {
         guard highlightedRangeFragment.range.upperBound == lineFragment.range.upperBound else {
             return false
         }
-        guard let lastCharacter = stringProvider.string?.last else {
+        let lineFragmentRange = lineFragment.visibleRange
+        let lineRange = NSRange(
+            location: line.location + lineFragmentRange.location,
+            length: lineFragmentRange.length
+        )
+        guard let lastCharacter = stringView.substring(in: lineRange)?.last else {
             return false
         }
         return lastCharacter.isLineBreak

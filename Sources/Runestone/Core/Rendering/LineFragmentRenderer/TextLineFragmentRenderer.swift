@@ -6,17 +6,12 @@ import Foundation
 import UIKit
 #endif
 
-final class TextLineFragmentRenderer<LineFragmentType: LineFragment>: LineFragmentRenderer {
-    private let lineFragment: LineFragmentType
-
-    init(lineFragment: LineFragmentType) {
-        self.lineFragment = lineFragment
-    }
-
-    func render() {
-        guard let context = UIGraphicsGetCurrentContext() else {
-            return
-        }
+struct TextLineFragmentRenderer: LineFragmentRendering {
+    func render<LineType: Line>(
+        _ lineFragment: LineType.LineFragmentType,
+        in line: LineType,
+        to context: CGContext
+    ) {
         context.saveGState()
         context.textMatrix = .identity
         context.translateBy(x: 0, y: lineFragment.scaledSize.height)

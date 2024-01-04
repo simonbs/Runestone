@@ -1,9 +1,9 @@
 import Foundation
 
 struct RenderingTextReplacer: TextReplacing {
-    let textRenderer: TextRendering
+    let viewportRenderer: ViewportRendering
 
     func replaceText(in range: NSRange, with newText: String) {
-        textRenderer.renderVisibleText()
+        viewportRenderer.renderViewport()
     }
 }

@@ -1,0 +1,3 @@
+protocol ViewportRendering {
+    func renderViewport()
+}

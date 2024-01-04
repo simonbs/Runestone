@@ -415,11 +415,12 @@ open class TextView: UIScrollView {
                     changeSetHandler: TypesettingInvalidatingLineChangeSetHandler()
                 ),
                 RenderingTextReplacer(
-                    textRenderer: TextRenderer(
+                    viewportRenderer: VisibleLinesViewportRenderer(
                         viewport: viewport,
                         lineManager: lineManager,
-                        lineTextRenderer: LineTextRenderer(
-                            viewport: viewport
+                        visibleLinesRenderer: LineFragmentVisibleLinesRenderer(
+                            hostLayer: layer,
+                            renderer: TextLineFragmentRenderer()
                         )
                     )
                 )

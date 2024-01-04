@@ -28,7 +28,7 @@ final class NSMutableAttributedStringView: StringView {
     }
 
     func attributedSubstring(in range: NSRange) -> NSAttributedString? {
-        guard range.location >= 0 && range.upperBound <= internalString.length && range.length > 0 else {
+        guard range.location >= 0 && range.upperBound <= internalString.length else {
             return nil
         }
         return internalString.attributedSubstring(from: range)

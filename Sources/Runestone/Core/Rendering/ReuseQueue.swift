@@ -4,7 +4,7 @@ import UIKit
 #endif
 
 protocol ReusableValue: Hashable {
-    init()
+    static func makeReusableValue() -> Self
     func prepareForReuse()
 }
 
@@ -47,7 +47,7 @@ final class ReuseQueue<Key: Hashable, Value: ReusableValue> {
             activeValues[key] = value
             return value
         } else {
-            let value = Value()
+            let value = Value.makeReusableValue()
             activeValues[key] = value
             return value
         }

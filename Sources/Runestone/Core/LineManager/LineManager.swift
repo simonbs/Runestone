@@ -1,6 +1,8 @@
 import _RunestoneRedBlackTree
 import Foundation
 
+typealias LineNode = RedBlackTreeNode<Int, ManagedLine>
+
 final class LineManager<
     LineFactoryType: LineFactory
 >: LineManaging where LineFactoryType.LineType == ManagedLine {
@@ -32,6 +34,7 @@ final class LineManager<
         )
         rootLine.indexReader = tree.root
         rootLine.locationReader = tree.root
+        rootLine.yPositionReader = tree.root
     }
 
     func insertText(_ text: NSString, at location: Int) -> LineChangeSet<LineType> {
@@ -274,10 +277,11 @@ private extension LineManager {
 
     @discardableResult
     private func insertLine(ofLength length: Int, after otherLine: LineNode) -> LineNode {
-        let data = lineFactory.makeLine(estimatingHeightTo: state.estimatedLineHeight)
-        let insertedNode = tree.insertNode(value: length, data: data, after: otherLine)
-        data.indexReader = insertedNode
-        data.locationReader = insertedNode
+        let line = lineFactory.makeLine(estimatingHeightTo: state.estimatedLineHeight)
+        let insertedNode = tree.insertNode(value: length, data: line, after: otherLine)
+        line.indexReader = insertedNode
+        line.locationReader = insertedNode
+        line.yPositionReader = insertedNode
 //        let range = NSRange(location: insertedLine.location, length: length)
 //        let substring = stringView.substring(in: range)
 //        let byteCount = substring?.byteCount ?? 0
@@ -297,10 +301,18 @@ private extension LineManager {
     }
 }
 
-extension RedBlackTreeNode<Int, ManagedLine>: ManagedLineLocationReading {
+extension LineNode: ManagedLineLocationReading {
     var location: Int {
         offset
     }
 }
 
-extension RedBlackTreeNode<Int, ManagedLine>: ManagedLineIndexReading {}
+extension LineNode: ManagedLineIndexReading {}
+
+extension LineNode: ManagedLineYPositionReading {
+    var yPosition: CGFloat {
+        let query = YPositionFromLineNodeQuery(targetNode: self)
+        let querier = OffsetFromRedBlackTreeNodeQuerier(querying: tree)
+        return querier.offset(for: query)!
+    }
+}
