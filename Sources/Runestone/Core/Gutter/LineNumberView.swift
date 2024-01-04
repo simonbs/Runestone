@@ -6,7 +6,7 @@ import AppKit
 import UIKit
 #endif
 
-final class LineNumberView: MultiPlatformView, ReusableView {
+final class LineNumberView: MultiPlatformView {
     var textColor: MultiPlatformColor = .black {
         didSet {
             if textColor != oldValue {
