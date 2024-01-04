@@ -19,7 +19,6 @@ package struct OffsetFromRedBlackTreeNodeQuerier<NodeValue: RedBlackTreeNodeValu
         }
         var workingNode = query.targetNode
         while let parentNode = workingNode.parent {
-            print("Add")
             if workingNode === workingNode.parent?.right {
                 if let leftNode = workingNode.parent?.left {
                     offset += query.totalOffset(for: leftNode)

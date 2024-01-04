@@ -238,7 +238,6 @@ private extension LineManager {
             || newTotalLength != lineNode.data.totalLength
 //            || newByteCount != line.data.byteCount
         {
-            print(newTotalLength)
             lineNode.value = newTotalLength
             lineNode.data.totalLength = newTotalLength
 //            line.data.byteCount = newByteCount
