@@ -10,6 +10,8 @@ struct LineFragmentVisibleLinesRenderer<LineType: Line>: VisibleLinesRendering {
     private let layerQueue = ReuseQueue<LineFragmentID, LineFragmentLayer<LineType>>()
 
     func renderVisibleLines(_ visibleLines: [VisibleLine<LineType>]) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         let visibleIDs: Set<LineFragmentID> = visibleLines.reduce(into: []) {
             $0.formUnion(Set($1.lineFragments.map(\.id)))
         }
@@ -26,7 +28,9 @@ struct LineFragmentVisibleLinesRenderer<LineType: Line>: VisibleLinesRendering {
                 layer.frame = CGRect(origin: origin, size: lineFragment.scaledSize)
                 layer.backgroundColor = UIColor.red.cgColor
                 hostLayer.insertSublayer(layer, at: 0)
+                print("\(line.index) @ \(layer.frame)")
             }
         }
+        CATransaction.commit()
     }
 }
