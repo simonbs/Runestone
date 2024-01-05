@@ -52,7 +52,7 @@
 ////        gutterWidthService.invalidateLineNumberWidth()
 ////        highlightedRangeService.invalidateHighlightedRangeFragments()
 //        textInputDelegate.selectionWillChange()
-//        selectedRange.value = oldSelectedRange.capped(to: stringView.string.length)
+//        selectedRange.value = oldSelectedRange.capped(to: stringView.length)
 //        textInputDelegate.selectionDidChange()
 //    }
 //}

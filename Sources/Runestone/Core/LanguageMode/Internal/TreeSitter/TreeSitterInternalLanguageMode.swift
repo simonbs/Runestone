@@ -132,7 +132,7 @@ final class TreeSitterInternalLanguageMode<
             return .unknown
         }
         let detector = TreeSitterIndentStrategyDetector(
-            string: stringView.string,
+            string: stringView.string as NSString,
             lineManager: lineManager,
             tree: tree
         )

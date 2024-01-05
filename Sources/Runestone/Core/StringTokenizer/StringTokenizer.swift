@@ -81,7 +81,7 @@ private extension StringTokenizer {
         let lineLocalLocation = location - lineLocation
         let lineFragment = line.lineFragment(containingLocation: lineLocalLocation)
         if direction == .forward {
-            if location == stringView.string.length {
+            if location == stringView.length {
                 return location
             } else {
                 let lineFragmentRangeUpperBound = lineFragment.range.upperBound
@@ -118,11 +118,11 @@ private extension StringTokenizer {
     private func location(from location: Int, toParagraphBoundaryInDirection direction: TextDirection) -> Int? {
         switch direction {
         case .forward:
-            if location == stringView.string.length {
+            if location == stringView.length {
                 return location
             } else {
                 var currentIndex = location
-                while currentIndex < stringView.string.length {
+                while currentIndex < stringView.length {
                     guard let currentString = stringView.composedSubstring(at: currentIndex) else {
                         break
                     }
@@ -169,7 +169,7 @@ private extension StringTokenizer {
             if location == 0 {
                 return false
             } else if let previousCharacter = stringView.composedSubstring(at: location - 1) {
-                if location == stringView.string.length {
+                if location == stringView.length {
                     return alphanumerics.containsAllCharacters(of: previousCharacter)
                 } else if let character = stringView.composedSubstring(at: location) {
                     return alphanumerics.containsAllCharacters(of: previousCharacter) 
@@ -181,7 +181,7 @@ private extension StringTokenizer {
                 return false
             }
         case .backward:
-            if location == stringView.string.length {
+            if location == stringView.length {
                 return false
             } else if let string = stringView.composedSubstring(at: location) {
                 if location == 0 {
@@ -207,12 +207,12 @@ private extension StringTokenizer {
             case .backward:
                 preferredIndex = index - 1
             }
-            return min(max(preferredIndex, 0), stringView.string.length)
+            return min(max(preferredIndex, 0), stringView.length)
         }
         func hasReachedEnd(at index: Int) -> Bool {
             switch direction {
             case .forward:
-                return index == stringView.string.length
+                return index == stringView.length
             case .backward:
                 return index == 0
             }
@@ -235,7 +235,7 @@ private extension StringTokenizer {
         case .backward:
             return location == 0
         case .forward:
-            return location == stringView.string.length
+            return location == stringView.length
         }
     }
 
@@ -244,7 +244,7 @@ private extension StringTokenizer {
         case .backward:
             return 0
         case .forward:
-            return stringView.string.length
+            return stringView.length
         }
     }
 }
@@ -257,7 +257,7 @@ private extension CharacterSet {
 
 private extension StringView {
     func composedSubstring(at location: Int) -> String? {
-        guard location >= 0 && location < string.length else {
+        guard location >= 0 && location < length else {
             return nil
         }
         let range = string.customRangeOfComposedCharacterSequence(at: location)

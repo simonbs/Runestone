@@ -57,7 +57,7 @@
 //
 //    func layoutLines(toLocation location: Int) {
 ////        var nextLine: LineNode? = lineManager.firstLine
-////        let isLocationEndOfString = location >= stringView.string.length
+////        let isLocationEndOfString = location >= stringView.length
 ////        while let line = nextLine {
 ////            let lineLocation = line.location
 ////            let endTypesettingLocation = min(lineLocation + line.data.length, location) - lineLocation

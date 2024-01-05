@@ -232,12 +232,12 @@ private extension SelectionNavigator {
     }
 
     private func rangeBySelectingWord(at location: Int) -> NSRange {
-        guard location >= 0 && location < stringView.string.length else {
+        guard location >= 0 && location < stringView.length else {
             return NSRange(location: location, length: 0)
         }
-        let character = stringView.string.character(at: location)
+        let character = stringView.character(at: location)
         let substringRange = stringView.string.customRangeOfComposedCharacterSequence(at: location)
-        let substring = stringView.string.substring(with: substringRange)
+        let substring = stringView.substring(in: substringRange)!
         let selectableSymbols = [Symbol.carriageReturnLineFeed, Symbol.carriageReturn, Symbol.lineFeed]
         let bracketPairs = [
             BracketPair(opening: "(", closing: ")"),
@@ -285,14 +285,14 @@ private extension SelectionNavigator {
         var lowerBound = location
         var upperBound = location + 1
         while lowerBound > 0
-                && lowerBound < stringView.string.length
-                && stringView.string.character(at: lowerBound - 1) == character
+                && lowerBound < stringView.length
+                && stringView.character(at: lowerBound - 1) == character
         {
             lowerBound -= 1
         }
         while upperBound >= 0
-                && upperBound < stringView.string.length
-                && stringView.string.character(at: upperBound) == character
+                && upperBound < stringView.length
+                && stringView.character(at: upperBound) == character
         {
             upperBound += 1
         }
@@ -320,9 +320,9 @@ private extension SelectionNavigator {
         // and we need to find the needle component, e.g. "{".
         let openingComponent = characterPair.component(inDirection: direction.opposite)
         let needleComponent = characterPair.component(inDirection: direction)
-        while endLocation > 0 && endLocation < stringView.string.length && unclosedBracketsCount > 0 {
+        while endLocation > 0 && endLocation < stringView.length && unclosedBracketsCount > 0 {
             let characterRange = NSRange(location: endLocation, length: 1)
-            let substring = stringView.string.substring(with: characterRange)
+            let substring = stringView.substring(in: characterRange)
             if substring == openingComponent {
                 unclosedBracketsCount += 1
             }

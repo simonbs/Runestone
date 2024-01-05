@@ -3,11 +3,12 @@ import _RunestoneTreeSitter
 import Foundation
 
 protocol StringView: AnyObject, TreeSitterStringView {
-    var string: NSString { get set }
+    var string: String { get set }
     var attributedString: NSAttributedString { get }
     func substring(in range: NSRange) -> String?
     func attributedSubstring(in range: NSRange) -> NSAttributedString?
     func replaceText(in range: NSRange, with string: String)
+    func character(at location: Int) -> unichar
     func bytes(in range: ByteRange) -> BytesView?
 }
 

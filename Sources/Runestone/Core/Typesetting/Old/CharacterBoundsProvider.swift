@@ -37,7 +37,8 @@ final class CharacterBoundsProvider<LineManagerType: LineManaging> {
         if location == stringView.length {
             range = NSRange(location: location - pair.line.location, length: 0)
         } else {
-            let composedRange = stringView.string.rangeOfComposedCharacterSequence(at: pair.actualLocation)
+            let nsString = stringView.string as NSString
+            let composedRange = nsString.rangeOfComposedCharacterSequence(at: pair.actualLocation)
             range = NSRange(location: composedRange.location - pair.line.location, length: composedRange.length)
         }
         return boundsOfCharacter(inLineLocalRange: range, in: pair.line)

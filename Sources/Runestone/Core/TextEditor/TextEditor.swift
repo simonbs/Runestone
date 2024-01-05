@@ -64,7 +64,7 @@ private extension TextEditor {
     }
 
     private var deleteForwardRange: NSRange? {
-        guard state.selectedRange.location < stringView.string.length else {
+        guard state.selectedRange.location < stringView.length else {
             return nil
         }
         return NSRange(location: state.selectedRange.location, length: 1)

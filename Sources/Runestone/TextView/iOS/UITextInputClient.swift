@@ -10,10 +10,10 @@ final class UITextInputClient {
         IndexedPosition(index: 0)
     }
     var endOfDocument: UITextPosition {
-        IndexedPosition(index: stringView.string.length)
+        IndexedPosition(index: stringView.length)
     }
     var hasText: Bool {
-        stringView.string.length > 0
+        stringView.length > 0
     }
 
     private let stateStore: StateStore
@@ -101,7 +101,7 @@ extension UITextInputClient {
 extension UITextInputClient {
     func text(in range: UITextRange) -> String? {
         if let indexedRange = range as? IndexedRange {
-            return stringView.string.substring(with: indexedRange.range)
+            return stringView.substring(in: indexedRange.range)
         } else {
             return nil
         }
@@ -223,7 +223,7 @@ extension UITextInputClient {
 //        }
 //        // The selected range passed to setMarkedText(_:selectedRange:) is local to the marked range.
 //        let preferredSelectedRange = NSRange(location: range.location + selectedRange.location, length: selectedRange.length)
-//        let cappedSelectedRange = preferredSelectedRange.capped(to: stringView.string.length)
+//        let cappedSelectedRange = preferredSelectedRange.capped(to: stringView.length)
 //        inputDelegate.selectionWillChange()
 //        state.selectedRange = cappedSelectedRange
 //        inputDelegate.selectionDidChange()
@@ -255,7 +255,7 @@ extension UITextInputClient {
 //            return nil
 //        }
 //        let newPosition = indexedPosition.index + offset
-//        guard newPosition >= 0 && newPosition <= stringView.string.length else {
+//        guard newPosition >= 0 && newPosition <= stringView.length else {
 //            return nil
 //        }
 //        didCallPositionFromPositionWithOffset = true
@@ -353,7 +353,7 @@ extension UITextInputClient {
 //            let leftIndex = max(indexedPosition.index - 1, 0)
 //            return IndexedRange(location: leftIndex, length: indexedPosition.index - leftIndex)
 //        case .right, .down:
-//            let rightIndex = min(indexedPosition.index + 1, stringView.string.length)
+//            let rightIndex = min(indexedPosition.index + 1, stringView.length)
 //            return IndexedRange(location: indexedPosition.index, length: rightIndex - indexedPosition.index)
 //        @unknown default:
 //            return nil

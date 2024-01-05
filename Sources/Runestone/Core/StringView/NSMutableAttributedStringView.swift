@@ -2,12 +2,12 @@ import _RunestoneStringUtilities
 import Foundation
 
 final class NSMutableAttributedStringView: StringView {
-    var string: NSString {
+    var string: String {
         get {
-            internalString.mutableString
+            attributedString.string
         }
         set {
-            internalString = NSMutableAttributedString(string: newValue as String)
+            internalString = NSMutableAttributedString(string: newValue)
         }
     }
     var attributedString: NSAttributedString {
@@ -36,5 +36,9 @@ final class NSMutableAttributedStringView: StringView {
 
     func replaceText(in range: NSRange, with string: String) {
         internalString.replaceCharacters(in: range, with: string)
+    }
+
+    func character(at location: Int) -> unichar {
+        internalString.mutableString.character(at: location)
     }
 }

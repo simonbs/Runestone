@@ -34,7 +34,7 @@ struct LocationRaycaster<LineManagerType: LineManaging> {
 //            if point.y >= lastLine.yPosition, let lineController = LineControllerStore[lastLine.id] {
 //                return closestIndex(to: point, in: lineController)
 //            } else {
-//                return stringView.string.length
+//                return stringView.length
 //            }
 //        }
     }

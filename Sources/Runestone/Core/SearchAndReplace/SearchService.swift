@@ -23,7 +23,10 @@ final class SearchService<LineManagerType: LineManaging> {
         let replacementStringParser = ReplacementStringParser(string: replacementText)
         let parsedReplacementString = replacementStringParser.parse()
         return search(for: query) { textCheckingResult in
-            let replacementText = parsedReplacementString.string(byMatching: textCheckingResult, in: stringView.string)
+            let replacementText = parsedReplacementString.string(
+                byMatching: textCheckingResult,
+                in: stringView.string as NSString
+            )
             return searchReplaceResult(in: textCheckingResult.range, replacementText: replacementText)
         }
     }
@@ -40,7 +43,7 @@ private extension SearchService {
         guard !query.text.isEmpty else {
             return []
         }
-        let matches = query.matches(in: stringView.string)
+        let matches = query.matches(in: stringView.string as NSString)
         return matches.compactMap { textCheckingResult in
             if textCheckingResult.range.length > 0, let mappedValue = mapper(textCheckingResult) {
                 return mappedValue

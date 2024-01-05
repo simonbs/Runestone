@@ -29,13 +29,13 @@ final class TextSetter<
         self.undoManager = undoManager
     }
 
-    func setText(_ newText: NSString, preservingUndoStack: Bool = false) {
+    func setText(_ newText: String, preservingUndoStack: Bool = false) {
         guard newText != stringView.string else {
             return
         }
         let oldSelectedRange = state.selectedRange
         stringView.string = newText
-        languageMode.parse(newText)
+        languageMode.parse(newText as NSString)
 //        lineControllerStore.removeAllLineControllers()
 //        lineManager.rebuild()
         textInputDelegate.selectionWillChange()

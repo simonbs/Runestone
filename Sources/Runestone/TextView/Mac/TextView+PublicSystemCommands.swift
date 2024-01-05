@@ -59,7 +59,7 @@ public extension TextView {
     ///
     /// - Parameter sender: The object calling this method.
     override func selectAll(_ sender: Any?) {
-//        let stringLength = stringView.string.length
+//        let stringLength = stringView.length
 //        selectedRangeSubject.value = NSRange(location: 0, length: stringLength)
     }
 

@@ -191,7 +191,7 @@ final class LineManager<
 //            workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: stringView.string, startingAt: lastDelimiterEnd)
 //            totalLineHeight += estimatedLineHeight
 //        }
-//        let totalLength = stringView.string.length - lastDelimiterEnd
+//        let totalLength = stringView.length - lastDelimiterEnd
 //        let substringRange = NSRange(location: lastDelimiterEnd, length: totalLength)
 //        let substring = stringView.string.substring(with: substringRange)
 //        line.value = totalLength

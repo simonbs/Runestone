@@ -14,7 +14,7 @@ struct BatchReplacer<LineManagerType: LineManaging> {
             return
         }
         let oldLinePosition = lineManager.linePosition(at: state.selectedRange.location)
-        let newString = stringView.string.applying(batchReplaceSet)
+        let newString = stringView.string.applying(batchReplaceSet) as String
         textSetter.setText(newString, preservingUndoStack: true)
         // By restoring the selected range using the old line position
         // we can better preserve the old selected language.
