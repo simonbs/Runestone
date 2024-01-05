@@ -25,7 +25,6 @@ struct VisibleLinesViewportRenderer<
             } else {
                 workingLine = nil
             }
-            print("+ Line \(line.index) @ Y=\(line.yPosition), H=\(line.height)")
         }
         visibleLinesRenderer.renderVisibleLines(visibleLines)
         //        let oldVisibleLineIDs = visibleLineIDs
