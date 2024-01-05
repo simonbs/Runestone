@@ -1,8 +1,5 @@
 import QuartzCore
 
-
-import UIKit
-
 struct LineFragmentVisibleLinesRenderer<LineType: Line>: VisibleLinesRendering {
     let hostLayer: CALayer
     let renderer: LineFragmentRendering
@@ -26,7 +23,6 @@ struct LineFragmentVisibleLinesRenderer<LineType: Line>: VisibleLinesRendering {
                 layer.lineFragment = lineFragment
                 layer.renderer = renderer
                 layer.frame = CGRect(origin: origin, size: lineFragment.scaledSize)
-                layer.backgroundColor = UIColor.red.cgColor
                 hostLayer.insertSublayer(layer, at: 0)
                 print("\(line.index) @ \(layer.frame)")
             }
