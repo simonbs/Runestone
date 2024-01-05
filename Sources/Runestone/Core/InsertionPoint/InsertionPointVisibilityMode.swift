@@ -1,5 +1,3 @@
-import Foundation
-
 /// Visibility mode for the insertion point.
 ///
 /// Specifies when the insertion point is visible. The default visiblity is ``InsertionPointVisibilityMode/whenMovingAndFarAway``.

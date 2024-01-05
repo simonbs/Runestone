@@ -1,5 +1,3 @@
-import Foundation
-
 struct InsertionPointViewFactory {
     let insertionPointRenderer: InsertionPointRenderer
 

@@ -1,5 +1,3 @@
-import Foundation
-
 /// Shape of the insertion point.
 public enum InsertionPointShape {
     /// Vertical bar shape.
