@@ -23,12 +23,15 @@ final class ManagedLine: Line {
     var yPosition: CGFloat {
         yPositionReader!.yPosition
     }
-    private(set) var height: CGFloat
-    var totalHeight: CGFloat = 0 {
-        didSet {
-            print("Did set total height: \(totalHeight)")
+    var height: CGFloat {
+        guard lineFragmentManager.numberOfLineFragments > 0 else {
+            return estimatedHeight
         }
+        let lineFragmentIndex = lineFragmentManager.numberOfLineFragments - 1
+        let lineFragment = lineFragmentManager.lineFragment(atIndex: lineFragmentIndex)
+        return lineFragment.yPosition + lineFragment.scaledSize.height
     }
+    var totalHeight: CGFloat = 0
     var numberOfLineFragments: Int {
         lineFragmentManager.numberOfLineFragments
     }
@@ -36,6 +39,7 @@ final class ManagedLine: Line {
     weak var locationReader: ManagedLineLocationReading?
     weak var yPositionReader: ManagedLineYPositionReading?
 
+    private let estimatedHeight: CGFloat
     private let typesetter: Typesetting
     private var lineFragmentManager = LineFragmentManager()
 
@@ -55,7 +59,7 @@ final class ManagedLine: Line {
 
     init(typesetter: Typesetting, estimatedHeight: CGFloat) {
         self.typesetter = typesetter
-        self.height = estimatedHeight
+        self.estimatedHeight = estimatedHeight
     }
 
     func location(closestTo localPoint: CGPoint) -> Int {
