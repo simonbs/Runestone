@@ -41,7 +41,9 @@ private extension NSString {
         let mutableSubstring = mutableCopy() as! NSMutableString
         var totalChangeInLength = 0
         var replacedRanges: [NSRange] = []
-        for replacement in sortedReplacements where !replacedRanges.contains(where: { $0.overlaps(replacement.range) }) {
+        for replacement in sortedReplacements where !replacedRanges.contains(where: {
+            $0.overlaps(replacement.range)
+        }) {
             let range = replacement.range
             let adjustedRange = NSRange(location: range.location + totalChangeInLength, length: range.length)
             mutableSubstring.replaceCharacters(in: adjustedRange, with: replacement.text)
