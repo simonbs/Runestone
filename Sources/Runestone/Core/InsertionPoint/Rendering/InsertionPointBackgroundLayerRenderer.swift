@@ -47,18 +47,32 @@ final class InsertionPointBackgroundRenderer: InsertionPointRenderer {
             _needsRender.value = false
         }
         let textViewBackgroundColor = textViewBackgroundColor.value ?? .textBackgroundColor
-        let color = isInsertionPointBeingMoved ? insertionPointPlaceholderBackgroundColor.value : insertionPointBackgroundColor.value
+        let color = if isInsertionPointBeingMoved {
+            insertionPointPlaceholderBackgroundColor.value
+        } else {
+            insertionPointBackgroundColor.value
+        }
         context.saveGState()
         context.setFillColor(textViewBackgroundColor.cgColor)
         context.fill([rect])
         context.setFillColor(color.cgColor)
         switch insertionPointShape.value {
         case .verticalBar:
-            let path = CGPath(roundedRect: rect, cornerWidth: rect.width / 2, cornerHeight: rect.width / 2, transform: nil)
+            let path = CGPath(
+                roundedRect: rect, 
+                cornerWidth: rect.width / 2,
+                cornerHeight: rect.width / 2,
+                transform: nil
+            )
             context.addPath(path)
             context.fillPath()
         case .underline:
-            let path = CGPath(roundedRect: rect, cornerWidth: rect.height / 2, cornerHeight: rect.height / 2, transform: nil)
+            let path = CGPath(
+                roundedRect: rect,
+                cornerWidth: rect.height / 2,
+                cornerHeight: rect.height / 2,
+                transform: nil
+            )
             context.addPath(path)
             context.fillPath()
         case .block:

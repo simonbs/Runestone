@@ -57,17 +57,27 @@ extension InsertionPointFrameFactory {
 
     private func underlineInsertionPointFrame(at location: Int) -> CGRect {
         let blockFrame = blockInsertionPointFrame(at: location)
-        return CGRect(x: blockFrame.minX, y: blockFrame.maxY - fixedLength, width: blockFrame.width, height: fixedLength)
+        return CGRect(
+            x: blockFrame.minX,
+            y: blockFrame.maxY - fixedLength,
+            width: blockFrame.width,
+            height: fixedLength
+        )
     }
 
     private func blockInsertionPointFrame(at location: Int) -> CGRect {
-        if let bounds = characterBoundsProvider.boundsOfComposedCharacterSequence(atLocation: location, moveToToNextLineFragmentIfNeeded: true) {
+        if let bounds = characterBoundsProvider.boundsOfComposedCharacterSequence(
+            atLocation: location, 
+            moveToToNextLineFragmentIfNeeded: true
+        ) {
             let width = displayableCharacterWidth(forCharacterAtLocation: location, widthActualWidth: bounds.width)
             return CGRect(x: bounds.minX, y: bounds.minY, width: width, height: bounds.height)
         } else if let line = lineManager.line(containingCharacterAt: location) {
             let size = CGSize(width: estimatedCharacterWidth.value, height: estimatedLineHeight.rawValue.value)
             let offsetOriginX = contentArea.origin.x
-            let offsetOriginY = contentArea.origin.y + line.yPosition + (estimatedLineHeight.scaledValue.value - size.height) / 2
+            let offsetOriginY = contentArea.origin.y 
+            + line.yPosition
+            + (estimatedLineHeight.scaledValue.value - size.height) / 2
             return CGRect(x: offsetOriginX, y: offsetOriginY, width: size.width, height: size.height)
         } else {
             fatalError("Unexpected case hit in \(#function)")
@@ -81,7 +91,8 @@ extension InsertionPointFrameFactory {
         guard let line = lineManager.line(containingCharacterAt: location) else {
             return actualWidth
         }
-        // If the insertion point is placed at the last character in a line, i.e. before a line break, then we make sure to return the estimated character width.
+        // If the insertion point is placed at the last character in a line, i.e. before a line break,
+        // then we make sure to return the estimated character width.
         let lineLocalLocation = location - line.location
         if lineLocalLocation == line.length {
             return estimatedCharacterWidth.value
