@@ -17,6 +17,10 @@ extension StringView {
         attributedString.length
     }
 
+    var byteCount: ByteCount {
+        string.byteCount
+    }
+
     func substring(in range: NSRange) -> String? {
         attributedSubstring(in: range)?.string
     }

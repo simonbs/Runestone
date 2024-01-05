@@ -13,9 +13,6 @@ final class NSMutableAttributedStringView: StringView {
     var attributedString: NSAttributedString {
         internalString
     }
-    var byteCount: ByteCount {
-        string.byteCount
-    }
 
     private var internalString: NSMutableAttributedString
 
