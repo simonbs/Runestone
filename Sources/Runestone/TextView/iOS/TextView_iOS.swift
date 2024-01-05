@@ -360,7 +360,10 @@ open class TextView: UIScrollView {
         editorDelegate?.textViewShouldEndEditing(self) ?? true
     }
 
-    private let stringView = NSMutableAttributedStringView()
+    private lazy var stringView = ThemedStringView(
+        stringView: NSMutableAttributedStringView(),
+        state: stateStore
+    )
     private lazy var lineManager = LineManager(
         state: stateStore,
         stringView: stringView,

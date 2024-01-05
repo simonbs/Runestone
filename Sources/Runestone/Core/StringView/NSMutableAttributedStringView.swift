@@ -38,4 +38,8 @@ final class NSMutableAttributedStringView: StringView {
     func character(at location: Int) -> unichar {
         internalString.mutableString.character(at: location)
     }
+
+    func setAttributes(_ attributes: [NSAttributedString.Key: Any], forTextInRange range: NSRange) {
+        internalString.addAttributes(attributes, range: range)
+    }
 }
