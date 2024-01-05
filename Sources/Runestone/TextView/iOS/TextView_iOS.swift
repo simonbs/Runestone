@@ -422,6 +422,7 @@ open class TextView: UIScrollView {
                         viewport: viewport,
                         lineManager: lineManager,
                         visibleLinesRenderer: LineFragmentVisibleLinesRenderer(
+                            state: stateStore,
                             hostLayer: layer,
                             renderer: TextLineFragmentRenderer()
                         )

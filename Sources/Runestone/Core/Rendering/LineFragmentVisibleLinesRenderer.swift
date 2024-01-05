@@ -1,6 +1,9 @@
 import QuartzCore
 
 struct LineFragmentVisibleLinesRenderer<LineType: Line>: VisibleLinesRendering {
+    typealias State = TextContainerInsetReadable
+
+    let state: State
     let hostLayer: CALayer
     let renderer: LineFragmentRendering
 
@@ -18,7 +21,10 @@ struct LineFragmentVisibleLinesRenderer<LineType: Line>: VisibleLinesRendering {
             let line = visibleLine.line
             for lineFragment in visibleLine.lineFragments {
                 let layer = layerQueue.dequeueValue(forKey: lineFragment.id)
-                let origin = CGPoint(x: 0, y: line.yPosition + lineFragment.yPosition)
+                let origin = CGPoint(
+                    x: state.textContainerInset.left, 
+                    y: state.textContainerInset.top + line.yPosition + lineFragment.yPosition
+                )
                 layer.line = line
                 layer.lineFragment = lineFragment
                 layer.renderer = renderer
