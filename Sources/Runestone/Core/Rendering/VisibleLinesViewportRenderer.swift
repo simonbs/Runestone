@@ -11,7 +11,7 @@ struct VisibleLinesViewportRenderer<
 
     func renderViewport() {
         var visibleLines: [VisibleLine<LineManagerType.LineType>] = []
-         var workingLine: LineManagerType.LineType? = lineManager.line(atYOffset: viewport.minY)
+        var workingLine: LineManagerType.LineType? = lineManager.line(atYOffset: viewport.minY)
         while let line = workingLine {
             line.typesetText(toYOffset: viewport.maxY)
             let lineFragments = line.lineFragments(in: viewport.rect)
