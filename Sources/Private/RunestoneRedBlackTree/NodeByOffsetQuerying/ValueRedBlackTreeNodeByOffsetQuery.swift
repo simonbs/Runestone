@@ -9,9 +9,11 @@ package struct ValueRedBlackTreeNodeByOffsetQuery<
     package typealias Offset = NodeValueType
 
     package let targetOffset: NodeValueType
+    package let minimumOffset: NodeValueType
 
     package init(querying tree: RedBlackTree<NodeValue, NodeData>, for targetOffset: NodeValueType) {
         self.targetOffset = targetOffset
+        self.minimumOffset = tree.minimumValue
     }
 
     package func offset(for node: Node) -> NodeValueType {

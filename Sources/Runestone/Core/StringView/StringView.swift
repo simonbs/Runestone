@@ -9,6 +9,7 @@ protocol StringView: AnyObject, TreeSitterStringView {
     func attributedSubstring(in range: NSRange) -> NSAttributedString?
     func setAttributes(_ attributes: [NSAttributedString.Key: Any], forTextInRange range: NSRange)
     func replaceText(in range: NSRange, with string: String)
+    func rangeOfComposedCharacterSequence(at location: Int) -> NSRange
     func character(at location: Int) -> unichar
     func bytes(in range: ByteRange) -> BytesView?
 }
@@ -39,5 +40,11 @@ extension StringView {
             return nil
         }
         return BytesView(bytes: buffer, length: ByteCount(usedLength))
+    }
+
+    func rangeOfComposedCharacterSequence(at location: Int) -> NSRange {
+        let index = string.index(string.startIndex, offsetBy: location)
+        let indexRange = string.rangeOfComposedCharacterSequence(at: index)
+        return NSRange(indexRange, in: string)
     }
 }

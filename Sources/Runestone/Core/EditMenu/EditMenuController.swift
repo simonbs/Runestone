@@ -42,7 +42,9 @@ final class EditMenuController: NSObject {
     }
 
     func editMenu(for textRange: UITextRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
-        guard let textRange = textRange as? IndexedRange, let replaceAction = replaceActionIfAvailable(for: textRange.range) else {
+        guard let textRange = textRange as? RunestoneUITextRange,
+              let replaceAction = replaceActionIfAvailable(for: textRange.range)
+        else {
             return UIMenu(children: suggestedActions)
         }
         return UIMenu(children: suggestedActions + [replaceAction])

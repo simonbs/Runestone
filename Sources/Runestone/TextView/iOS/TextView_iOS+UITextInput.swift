@@ -97,6 +97,13 @@ public extension TextView {
     func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
         textInputClient.selectionRects(for: range)
     }
+
+    /// Returns the first rectangle that encloses a range of text in a document.
+    /// - Parameter range: An object that represents a range of text in a document.
+    /// - Returns: The first rectangle in a range of text. You might use this rectangle to draw a correction rectangle. The “first” in the name refers the rectangle enclosing the first line when the range encompasses multiple lines of text.
+    func firstRect(for range: UITextRange) -> CGRect {
+        textInputClient.firstRect(for: range)
+    }
 }
 
 // MARK: - Marking
@@ -143,7 +150,7 @@ public extension TextView {
     }
 }
 
-// MARK: - Ranges and Positions
+// MARK: - Navigation
 public extension TextView {
     /// Returns the range between two text positions.
     /// - Parameters:
@@ -207,13 +214,6 @@ public extension TextView {
     /// - Returns: A text-range object that represents the distance from `position` to the farthest extent in `direction`.
     func characterRange(byExtending position: UITextPosition, in direction: UITextLayoutDirection) -> UITextRange? {
         textInputClient.characterRange(byExtending: position, in: direction)
-    }
-
-    /// Returns the first rectangle that encloses a range of text in a document.
-    /// - Parameter range: An object that represents a range of text in a document.
-    /// - Returns: The first rectangle in a range of text. You might use this rectangle to draw a correction rectangle. The “first” in the name refers the rectangle enclosing the first line when the range encompasses multiple lines of text.
-    func firstRect(for range: UITextRange) -> CGRect {
-        textInputClient.firstRect(for: range)
     }
 
     /// Returns the position in a document that is closest to a specified point.

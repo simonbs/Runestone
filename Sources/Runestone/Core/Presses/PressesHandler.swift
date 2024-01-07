@@ -7,7 +7,7 @@ struct PressesHandler: PressesHandling {
 
     let state: State
     let stringView: StringView
-    let locationNavigator: LocationNavigating
+    let textNavigator: TextNavigator
 
     private var textInput: UITextInput? {
 //        proxyView.view as? UITextInput
@@ -42,16 +42,16 @@ private extension PressesHandler {
         }
         switch keyCode {
         case .keyboardUpArrow:
-            locationNavigator.moveUp()
+            textNavigator.move(inDirection: .up)
             textInput?.unmarkText()
         case .keyboardRightArrow:
-            locationNavigator.moveRight()
+            textNavigator.move(inDirection: .right)
             textInput?.unmarkText()
         case .keyboardDownArrow:
-            locationNavigator.moveDown()
+            textNavigator.move(inDirection: .down)
             textInput?.unmarkText()
         case .keyboardLeftArrow:
-            locationNavigator.moveLeft()
+            textNavigator.move(inDirection: .left)
             textInput?.unmarkText()
         case .keyboardEscape:
             textInput?.unmarkText()

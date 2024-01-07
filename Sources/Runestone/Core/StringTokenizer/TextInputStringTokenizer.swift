@@ -1,10 +1,10 @@
 #if os(iOS)
 import UIKit
 
-final class TextInputStringTokenizer<StringTokenizerType: StringTokenizing>: UITextInputStringTokenizer {
-    private let stringTokenizer: StringTokenizerType
+final class TextInputStringTokenizer: UITextInputStringTokenizer {
+    private let stringTokenizer: StringTokenizing
 
-    init(textInput: UIResponder & UITextInput, stringTokenizer: StringTokenizerType) {
+    init(textInput: UIResponder & UITextInput, stringTokenizer: StringTokenizing) {
         self.stringTokenizer = stringTokenizer
         super.init(textInput: textInput)
     }
@@ -14,14 +14,14 @@ final class TextInputStringTokenizer<StringTokenizerType: StringTokenizing>: UIT
         atBoundary granularity: UITextGranularity,
         inDirection direction: UITextDirection
     ) -> Bool {
-        guard let indexedPosition = position as? IndexedPosition else {
+        guard let position = position as? RunestoneUITextPosition else {
             return false
         }
         guard let boundary = TextBoundary(granularity) else {
             return super.isPosition(position, atBoundary: granularity, inDirection: direction)
         }
         let direction = TextDirection(direction)
-        return stringTokenizer.isLocation(indexedPosition.index, atBoundary: boundary, inDirection: direction)
+        return stringTokenizer.isLocation(position.location, atBoundary: boundary, inDirection: direction)
     }
 
     override func isPosition(
@@ -37,17 +37,21 @@ final class TextInputStringTokenizer<StringTokenizerType: StringTokenizing>: UIT
         toBoundary granularity: UITextGranularity,
         inDirection direction: UITextDirection
     ) -> UITextPosition? {
-        guard let indexedPosition = position as? IndexedPosition else {
+        guard let position = position as? RunestoneUITextPosition else {
             return nil
         }
         guard let boundary = TextBoundary(granularity) else {
             return super.position(from: position, toBoundary: granularity, inDirection: direction)
         }
         let direction = TextDirection(direction)
-        guard let location = stringTokenizer.location(from: indexedPosition.index, toBoundary: boundary, inDirection: direction) else {
+        guard let location = stringTokenizer.location(
+            from: position.location, 
+            toBoundary: boundary, 
+            inDirection: direction
+        ) else {
             return nil
         }
-        return IndexedPosition(index: location)
+        return RunestoneUITextPosition(location)
     }
 
     override func rangeEnclosingPosition(

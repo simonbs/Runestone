@@ -393,10 +393,8 @@ open class TextView: UIScrollView {
 
     private lazy var viewport = ScrollViewViewport(scrollView: self)
     private let stateStore = TextViewStateStore()
-    
+
     private(set) lazy var textInputClient = UITextInputClient(
-        stateStore: stateStore,
-        stringView: stringView,
         tokenizer: TextInputStringTokenizer(
             textInput: self,
             stringTokenizer: StringTokenizer(
@@ -404,32 +402,68 @@ open class TextView: UIScrollView {
                 lineManager: lineManager
             )
         ),
-        textEditor: TextEditor(
-            state: stateStore,
+        textEditingHandler: UITextInputClientTextEditingHandler(
             stringView: stringView,
-            stringTokenizer: StringTokenizer(
+            textEditor: TextEditor(
+                state: stateStore,
                 stringView: stringView,
-                lineManager: lineManager
-            ),
-            textReplacer: CompositeTextReplacer(
-                StringViewTextReplacer(stringView: stringView),
-                LineManagerTextReplacer(
-                    lineManager: lineManager,
-                    changeSetHandler: TypesettingInvalidatingLineChangeSetHandler()
+                stringTokenizer: StringTokenizer(
+                    stringView: stringView,
+                    lineManager: lineManager
                 ),
-                RenderingTextReplacer(
-                    viewportRenderer: VisibleLinesViewportRenderer(
-                        viewport: viewport,
+                textReplacer: CompositeTextReplacer(
+                    StringViewTextReplacer(
+                        stringView: stringView
+                    ),
+                    LineManagerTextReplacer(
                         lineManager: lineManager,
-                        visibleLinesRenderer: LineFragmentVisibleLinesRenderer(
-                            state: stateStore,
-                            hostLayer: layer,
-                            renderer: TextLineFragmentRenderer()
+                        changeSetHandler: TypesettingInvalidatingLineChangeSetHandler()
+                    ),
+                    RenderingTextReplacer(
+                        viewportRenderer: VisibleLinesViewportRenderer(
+                            viewport: viewport,
+                            lineManager: lineManager,
+                            visibleLinesRenderer: LineFragmentVisibleLinesRenderer(
+                                state: stateStore,
+                                hostLayer: layer,
+                                renderer: TextLineFragmentRenderer()
+                            )
                         )
                     )
                 )
             )
-        )
+        ), 
+        insertionPointHandler: UITextInputClientInsertionPointHandler(
+            rectProvider: LineBreakHandlingInsertionPointRectProvider(
+                decorating: ShapeSettingInsertionPointRectProvider(
+                    state: stateStore,
+                    lineManaging: lineManager,
+                    stringView: stringView,
+                    characterBoundsProvider: CharacterBoundsProvider(
+                        state: stateStore,
+                        stringView: stringView,
+                        lineManager: lineManager
+                    )
+                ),
+                state: stateStore,
+                stringView: stringView,
+                lineManager: lineManager
+            ),
+            floatHandler: InsertionPointFloatHandler()
+        ),
+        navigationHandler: UITextInputClientNavigationHandler(
+            state: stateStore,
+            stringView: stringView,
+            navigationLocationProvider: TextNavigationLocationProvider(
+                stringView: stringView,
+                lineManager: lineManager
+            ),
+            selectionEventHandler: UITextInputSelectionEventHandler(
+                textInput: self
+            )
+        ),
+        selectionHandler: UITextInputClientSelectionHandler(),
+        markHandler: UITextInputClientMarkHandler()
     )
 //    private let textRangeAdjustmentGestureTracker: UITextRangeAdjustmentGestureTracker
 //
@@ -593,7 +627,7 @@ open class TextView: UIScrollView {
         guard let replacementText = obj.value(forKey: "_repl" + "Ttnemeca".reversed() + "ext") as? String else {
             return
         }
-        guard let indexedRange = obj.value(forKey: "_r" + "gna".reversed() + "e") as? IndexedRange else {
+        guard let indexedRange = obj.value(forKey: "_r" + "gna".reversed() + "e") as? RunestoneUITextRange else {
             return
         }
         inputDelegate?.selectionWillChange(self)

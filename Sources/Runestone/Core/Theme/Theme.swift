@@ -120,3 +120,10 @@ public extension Theme {
     }
 #endif
 }
+
+extension Theme {
+    var estimatedCharacterSize: CGSize {
+        let width = ("8" as NSString).size(withAttributes: [.font: font]).width
+        return CGSize(width: width, height: font.actualLineHeight)
+    }
+}

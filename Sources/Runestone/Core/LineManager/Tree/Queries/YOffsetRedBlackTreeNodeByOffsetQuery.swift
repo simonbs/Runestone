@@ -7,9 +7,11 @@ struct YOffsetRedBlackTreeNodeByOffsetQuery: RedBlackTreeNodeByOffsetQuery {
     typealias Offset = CGFloat
 
     let targetOffset: CGFloat
+    let minimumOffset: CGFloat
 
     init(querying tree: RedBlackTree<NodeValue, NodeData>, for targetOffset: CGFloat) {
         self.targetOffset = targetOffset
+        self.minimumOffset = 0
     }
 
     func offset(for node: Node) -> CGFloat {

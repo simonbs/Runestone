@@ -56,7 +56,9 @@ extension UITextSearchingHelper: UITextSearching {
     }
 
     func compare(_ foundRange: UITextRange, toRange: UITextRange, document: AnyHashable??) -> ComparisonResult {
-        guard let foundRange = foundRange as? IndexedRange, let toRange = toRange as? IndexedRange else {
+        guard let foundRange = foundRange as? RunestoneUITextRange,
+              let toRange = toRange as? RunestoneUITextRange
+        else {
             fatalError("Expected indexed ranges.")
         }
         if foundRange.range.location < toRange.range.location {
@@ -75,7 +77,7 @@ extension UITextSearchingHelper: UITextSearching {
     func performTextSearch(queryString: String, options: UITextSearchOptions, resultAggregator: UITextSearchAggregator<AnyHashable?>) {
         performTextSearch(for: queryString, options: options) { searchResults in
             for searchResult in searchResults {
-                let textRange = IndexedRange(searchResult.range)
+                let textRange = RunestoneUITextRange(searchResult.range)
                 resultAggregator.foundRange(textRange, searchString: queryString, document: nil)
             }
             resultAggregator.finishedSearching()

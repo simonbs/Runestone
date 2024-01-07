@@ -2,15 +2,15 @@ import Combine
 import CoreGraphics
 import Foundation
 
-final class TextSelectionRectFactory<LineManagerType: LineManaging> {
-    private let characterBoundsProvider: CharacterBoundsProvider<LineManagerType>
+final class TextSelectionRectFactory<StringViewType: StringView, LineManagerType: LineManaging> {
+    private let characterBoundsProvider: CharacterBoundsProvider<StringViewType, LineManagerType>
     private let lineManager: LineManagerType
     private let lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
     private var contentArea: CGRect = .zero
     private var cancellables: Set<AnyCancellable> = []
 
     init(
-        characterBoundsProvider: CharacterBoundsProvider<LineManagerType>,
+        characterBoundsProvider: CharacterBoundsProvider<StringViewType, LineManagerType>,
         lineManager: LineManagerType,
         contentArea: AnyPublisher<CGRect, Never>,
         lineHeightMultiplier: CurrentValueSubject<CGFloat, Never>
@@ -32,15 +32,15 @@ final class TextSelectionRectFactory<LineManagerType: LineManaging> {
         }
         let adjustedRange = NSRange(location: range.location, length: range.length - 1)
         let selectsLineEnding = range.upperBound == endLine.location
-        guard let lowerRect = characterBoundsProvider.boundsOfComposedCharacterSequence(
-            atLocation: adjustedRange.lowerBound,
-            moveToToNextLineFragmentIfNeeded: false
+        guard let lowerRect = characterBoundsProvider.boundsOfCharacter(
+            atLocation: adjustedRange.lowerBound
+//            moveToToNextLineFragmentIfNeeded: false
         ) else {
             return []
         }
-        guard let upperRect = characterBoundsProvider.boundsOfComposedCharacterSequence(
-            atLocation: adjustedRange.upperBound,
-            moveToToNextLineFragmentIfNeeded: false
+        guard let upperRect = characterBoundsProvider.boundsOfCharacter(
+            atLocation: adjustedRange.upperBound
+//            moveToToNextLineFragmentIfNeeded: false
         ) else {
             return []
         }

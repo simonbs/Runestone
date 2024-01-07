@@ -8,6 +8,7 @@ final class TextViewStateStore {
     var characterPairTrailingComponentDeletionMode: CharacterPairTrailingComponentDeletionMode = .disabled
     var estimatedLineHeight: CGFloat = 20
     var indentStrategy: IndentStrategy = .tab(length: 4)
+    var insertionPointShape: InsertionPointShape = .verticalBar
     var isLineWrappingEnabled = true
     var kern: CGFloat = 0
     var lineBreakMode: LineBreakMode = .byWordWrapping
@@ -22,6 +23,7 @@ final class TextViewStateStore {
 extension TextViewStateStore: CharacterPairsReadable {}
 extension TextViewStateStore: EstimatedLineHeightReadable {}
 extension TextViewStateStore: IndentStrategyReadable {}
+extension TextViewStateStore: InsertionPointShapeReadable {}
 extension TextViewStateStore: IsLineWrappingEnabledReadable {}
 extension TextViewStateStore: KernReadable {}
 extension TextViewStateStore: LineBreakModeReadable {}
