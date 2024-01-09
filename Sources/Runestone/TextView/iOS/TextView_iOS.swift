@@ -435,7 +435,7 @@ open class TextView: UIScrollView {
         ), 
         insertionPointHandler: UITextInputClientInsertionPointHandler(
             rectProvider: LineBreakHandlingInsertionPointRectProvider(
-                decorating: ShapeSettingInsertionPointRectProvider(
+                insertionPointRectProvider: ShapeSettingInsertionPointRectProvider(
                     state: stateStore,
                     lineManaging: lineManager,
                     stringView: stringView,

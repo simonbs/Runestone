@@ -5,22 +5,10 @@ struct LineBreakHandlingInsertionPointRectProvider<
 >: InsertionPointRectProviding {
     typealias State = ThemeReadable
 
-    private let insertionPointRectProvider: InsertionPointRectProviding
-    private let state: State
-    private let stringView: StringView
-    private let lineManager: LineManagerType
-
-    init(
-        decorating insertionPointRectProvider: InsertionPointRectProviding,
-        state: State,
-        stringView: StringView,
-        lineManager: LineManagerType
-    ) {
-        self.insertionPointRectProvider = insertionPointRectProvider
-        self.state = state
-        self.stringView = stringView
-        self.lineManager = lineManager
-    }
+    let insertionPointRectProvider: InsertionPointRectProviding
+    let state: State
+    let stringView: StringView
+    let lineManager: LineManagerType
 
     func insertionPointRect(atLocation location: Int) -> CGRect {
         let range = NSRange(location: location - 1, length: 1)

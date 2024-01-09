@@ -3,17 +3,9 @@ import Foundation
 struct LineFragmentEndHandlingInsertionPointRectProvider<
     LineManagerType: LineManaging
 >: InsertionPointRectProviding {
-    private let insertionPointRectProvider: InsertionPointRectProviding
-    private let lineManager: LineManagerType
-
-    init(
-        decorating insertionPointRectProvider: InsertionPointRectProviding,
-        lineManager: LineManagerType
-    ) {
-        self.insertionPointRectProvider = insertionPointRectProvider
-        self.lineManager = lineManager
-    }
-
+    let insertionPointRectProvider: InsertionPointRectProviding
+    let lineManager: LineManagerType
+    
     func insertionPointRect(atLocation location: Int) -> CGRect {
         if shouldMoveToNextLineFragment(forInsertionPointAtLocation: location) {
             return insertionPointRectProvider.insertionPointRect(atLocation: location + 1)
