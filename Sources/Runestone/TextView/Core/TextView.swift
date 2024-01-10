@@ -596,7 +596,6 @@ open class TextView: UIScrollView {
     private var _editMenuInteraction: Any?
     private let tapGestureRecognizer = QuickTapGestureRecognizer()
     private var _inputAccessoryView: UIView?
-    private let _inputAssistantItem = UITextInputAssistantItem()
     private var isPerformingNonEditableTextInteraction = false
     private var delegateAllowsEditingToBegin: Bool {
         guard isEditable else {
