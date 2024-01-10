@@ -212,10 +212,12 @@ open class TextView: UIScrollView {
         }
     }
     #endif
+    #if !os(visionOS)
     /// The input assistant to use when configuring the keyboard's shortcuts bar.
     override public var inputAssistantItem: UITextInputAssistantItem {
         textInputView.inputAssistantItem
     }
+    #endif
     /// Returns a Boolean value indicating whether this object can become the first responder.
     override public var canBecomeFirstResponder: Bool {
         !textInputView.isFirstResponder && isEditable
