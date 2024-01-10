@@ -51,7 +51,6 @@ public protocol Theme: AnyObject {
     ///
     /// See <doc:CreatingATheme> for more information on higlight names.
     func shadow(for highlightName: String) -> NSShadow?
-#if compiler(>=5.7)
     /// Highlighted range for a text range matching a search query.
     ///
     /// This function is called when highlighting a search result that was found using the standard find/replace interaction enabled using <doc:TextView/isFindInteractionEnabled>.
@@ -63,7 +62,6 @@ public protocol Theme: AnyObject {
     /// - Returns: The object used for highlighting the provided text range, or `nil` if the range should not be highlighted.
     @available(iOS 16, *)
     func highlightedRange(forFoundTextRange foundTextRange: NSRange, ofStyle style: UITextSearchFoundTextStyle) -> HighlightedRange?
-#endif
 }
 
 public extension Theme {

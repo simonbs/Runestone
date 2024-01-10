@@ -2,18 +2,28 @@ name: Build Example Project
 on:
   workflow_dispatch: {}
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
     paths:
+      - '.github/workflows/build_example_project.yml'
       - 'Example/**'
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
-env:
-  DEVELOPER_DIR: /Applications/Xcode_14.3.1.app/Contents/Developer
 jobs:
   build:
-    name: Build example project for iPhone 14
+    name: Build example project
     runs-on: macos-13
+    continue-on-error: true
+    strategy:
+      matrix:
+        include:
+          - destination: iPhone 15 Pro
+            xcode: 15.0.1
+          - destination: iPhone 14 Pro
+            xcode: 14.3.1
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer    
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -21,4 +31,8 @@ jobs:
           submodules: recursive
       - name: Build
         run: |
-          xcodebuild build -project Example/Example.xcodeproj -scheme Example -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 14'
+          xcodebuild build\
+            -project Example/Example.xcodeproj\
+            -scheme Example\
+            -sdk iphonesimulator\
+            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=latest"

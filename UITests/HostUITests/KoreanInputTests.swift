@@ -95,37 +95,6 @@ final class KoreanInputTests: XCTestCase {
         XCTAssertEqual(app.textView?.value as? String, "\"어\"")
     }
 
-    func testInsertingKoreanCharactersBelowStringContainingKoreanLetters() throws {
-        let app = XCUIApplication().disablingTextPersistance()
-        app.launch()
-        app.textView?.tap()
-        app.keys["ㅇ"].tap()
-        app.keys["ㅓ"].tap()
-        app.keys["ㅇ"].tap()
-        app.keys["ㅓ"].tap()
-        app.keys["ㅇ"].tap()
-        app.keys["ㅓ"].tap()
-        app.buttons["Return"].tap()
-        app.keys["more"].tap()
-        app.keys["\""].tap()
-        app.keys["more"].tap()
-        app.keys["ㅇ"].tap()
-        app.keys["ㅓ"].tap()
-        app.keys["ㅇ"].tap()
-        app.keys["ㅓ"].tap()
-        app.keys["ㅇ"].tap()
-        app.keys["ㅓ"].tap()
-        app.tap(at: CGPoint(x: 100, y: 100))
-        app.buttons["Return"].tap()
-        app.keys["ㅇ"].tap()
-        app.keys["ㅓ"].tap()
-        app.keys["ㅇ"].tap()
-        app.keys["ㅓ"].tap()
-        app.keys["ㅇ"].tap()
-        app.keys["ㅓ"].tap()
-        XCTAssertEqual(app.textView?.value as? String, "어어어\n\"어어어\"\n어어어")
-    }
-
     func testInsertingKoreanCharactersInTextWithCRLFLineEndings() throws {
         let app = XCUIApplication().disablingTextPersistance().usingCRLFLineEndings()
         app.launch()

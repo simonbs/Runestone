@@ -5,7 +5,7 @@ import UIKit
 final class MainViewController: UIViewController {
     override var textInputContextIdentifier: String? {
         // Returning a unique identifier makes iOS remember the user's selection of keyboard.
-        return "RunestoneExample.Main"
+        "RunestoneExample.Main"
     }
 
     private let contentView = MainView()

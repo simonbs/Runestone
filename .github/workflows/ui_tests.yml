@@ -2,8 +2,10 @@ name: UI Tests
 on:
   workflow_dispatch: {}
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
     paths:
+      - '.github/workflows/ui_tests.yml'
       - 'Sources/**'
       - '!Sources/Runestone/Documentation.docc/**'
       - 'UITests/HostUITests/**'
@@ -11,7 +13,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 env:
-  DEVELOPER_DIR: /Applications/Xcode_14.3.1.app/Contents/Developer
+  DEVELOPER_DIR: /Applications/Xcode_15.0.1.app/Contents/Developer
 jobs:
   run_korean_tests:
     name: Run Korean tests
@@ -28,7 +30,7 @@ jobs:
       - name: Disable "Use the Same Keyboard Language as macOS"
         run: defaults write com.apple.iphonesimulator EnableKeyboardSync -bool NO
       - name: Create Simulator
-        run: xcrun simctl create "${SIMULATOR_NAME}" "iPhone 8"
+        run: xcrun simctl create "${SIMULATOR_NAME}" "iPhone 13" "iOS15.5"
       - name: Find Simulator UDID
         run: |
           TMP_SIMULATOR_UDID=`xcrun simctl list --json devices | jq -r ".devices | flatten | .[] | select(.name == \"${SIMULATOR_NAME}\").udid"`
@@ -92,7 +94,7 @@ jobs:
       - name: Disable "Use the Same Keyboard Language as macOS"
         run: defaults write com.apple.iphonesimulator EnableKeyboardSync -bool NO
       - name: Create Simulator
-        run: xcrun simctl create "${SIMULATOR_NAME}" "iPhone 8"
+        run: xcrun simctl create "${SIMULATOR_NAME}" "iPhone 13" "iOS15.5"
       - name: Find Simulator UDID
         run: |
           TMP_SIMULATOR_UDID=`xcrun simctl list --json devices | jq -r ".devices | flatten | .[] | select(.name == \"${SIMULATOR_NAME}\").udid"`

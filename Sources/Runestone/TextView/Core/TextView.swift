@@ -1234,6 +1234,12 @@ private extension TextView {
             isInputAccessoryViewEnabled = true
             textInputView.removeInteraction(nonEditableTextInteraction)
             textInputView.addInteraction(editableTextInteraction)
+            #if compiler(>=5.9)
+            if #available(iOS 17, *) {
+                // Workaround a bug where the caret does not appear until the user taps again on iOS 17 (FB12622609).
+                textInputView.sbs_textSelectionDisplayInteraction?.isActivated = true
+            }
+            #endif
         }
     }
 
@@ -1386,6 +1392,12 @@ extension TextView: TextInputViewDelegate {
             if !view.viewHierarchyContainsCaret && self.editableTextInteraction.view != nil {
                 view.removeInteraction(self.editableTextInteraction)
                 view.addInteraction(self.editableTextInteraction)
+                #if compiler(>=5.9)
+                if #available(iOS 17, *) {
+                    self.textInputView.sbs_textSelectionDisplayInteraction?.isActivated = true
+                    self.textInputView.sbs_textSelectionDisplayInteraction?.sbs_enableCursorBlinks()
+                }
+                #endif
             }
         }
     }
