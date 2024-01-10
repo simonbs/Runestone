@@ -40,8 +40,8 @@ final class ThemePickerViewController: UITableViewController {
         super.init(style: .insetGrouped)
         title = "Theme"
         navigationItem.leftBarButtonItem = UIBarButtonItem(
-            barButtonSystemItem: .done, 
-            target: self, 
+            barButtonSystemItem: .done,
+            target: self,
             action: #selector(done)
         )
     }
