@@ -1,5 +1,6 @@
 import Runestone
 import RunestoneJavaScriptLanguage
+import SwiftUI
 import UIKit
 
 final class MainViewController: UIViewController {
@@ -49,6 +50,17 @@ final class MainViewController: UIViewController {
         #if os(iOS)
         contentView.textView.inputAccessoryView = toolsView
         #endif
+        #if os(visionOS)
+        ornaments = [
+            UIHostingOrnament(sceneAnchor: .topTrailing, contentAlignment: .bottomTrailing) {
+                HStack {
+                    SwiftUIMenuButton(selectionHandler: self)
+                        .glassBackgroundEffect()
+                }
+                .padding(.trailing)
+            }
+        ]
+        #endif
         setupMenuButton()
         setupTextView()
         updateTextViewSettings()
@@ -89,83 +101,8 @@ private extension MainViewController {
     }
 
     private func setupMenuButton() {
-        let menu = UIMenu(children: makeFeaturesMenuElements() + makeSettingsMenuElements() + makeThemeMenuElements())
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), menu: menu)
-    }
-
-    private func makeFeaturesMenuElements() -> [UIMenuElement] {
-        var menuElements: [UIMenuElement] = []
-        if #available(iOS 16, *) {
-            menuElements += [
-                UIMenu(options: .displayInline, children: [
-                    UIAction(title: "Find") { [weak self] _ in
-                        self?.presentFind()
-                    },
-                    UIAction(title: "Find and Replace") { [weak self] _ in
-                        self?.presentFindAndReplace()
-                    }
-                ])
-            ]
-        }
-        menuElements += [
-            UIAction(title: "Go to Line") { [weak self] _ in
-                self?.presentGoToLineAlert()
-            }
-        ]
-        return menuElements
-    }
-
-    private func makeSettingsMenuElements() -> [UIMenuElement] {
-        let settings = UserDefaults.standard
-        return [
-            UIMenu(options: .displayInline, children: [
-                UIAction(title: "Show Line Numbers", state: settings.showLineNumbers ? .on : .off) { [weak self] _ in
-                    settings.showLineNumbers.toggle()
-                    self?.updateTextViewSettings()
-                    self?.setupMenuButton()
-                },
-                UIAction(title: "Show Page Guide", state: settings.showPageGuide ? .on : .off) { [weak self] _ in
-                    settings.showPageGuide.toggle()
-                    self?.updateTextViewSettings()
-                    self?.setupMenuButton()
-                },
-                UIAction(title: "Show Invisible Characters", state: settings.showInvisibleCharacters ? .on : .off) { [weak self] _ in
-                    settings.showInvisibleCharacters.toggle()
-                    self?.updateTextViewSettings()
-                    self?.setupMenuButton()
-                },
-                UIAction(title: "Wrap Lines", state: settings.wrapLines ? .on : .off) { [weak self] _ in
-                    settings.wrapLines.toggle()
-                    self?.updateTextViewSettings()
-                    self?.setupMenuButton()
-                },
-                UIAction(title: "Highlight Selected Line", state: settings.highlightSelectedLine ? .on : .off) { [weak self] _ in
-                    settings.highlightSelectedLine.toggle()
-                    self?.updateTextViewSettings()
-                    self?.setupMenuButton()
-                }
-            ]),
-            UIMenu(options: .displayInline, children: [
-                UIAction(title: "Allow Editing", state: settings.isEditable ? .on : .off) { [weak self] _ in
-                    settings.isEditable.toggle()
-                    self?.updateTextViewSettings()
-                    self?.setupMenuButton()
-                },
-                UIAction(title: "Allow Selection", state: settings.isSelectable ? .on : .off) { [weak self] _ in
-                    settings.isSelectable.toggle()
-                    self?.updateTextViewSettings()
-                    self?.setupMenuButton()
-                }
-            ])
-        ]
-    }
-
-    private func makeThemeMenuElements() -> [UIMenuElement] {
-        [
-            UIAction(title: "Theme") { [weak self] _ in
-                self?.presentThemePicker()
-            }
-        ]
+        let menuButton = MenuButton.makeConfigured(with: self)
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: menuButton)
     }
 
     private func presentGoToLineAlert() {
@@ -220,6 +157,47 @@ extension MainViewController: TextViewDelegate {
 
     func textView(_ textView: TextView, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool {
         true
+    }
+}
+
+extension MainViewController: MenuSelectionHandler {
+    // swiftlint:disable:next cyclomatic_complexity
+    func handleSelection(of menuItem: MenuItem) {
+        switch menuItem {
+        case .presentFind:
+            if #available(iOS 16, *) {
+                presentFind()
+            }
+        case .presentFindAndReplace:
+            if #available(iOS 16, *) {
+                presentFindAndReplace()
+            }
+        case .presentGoToLine:
+            presentGoToLineAlert()
+        case .presentThemePicker:
+            presentThemePicker()
+        case .toggleEditable:
+            UserDefaults.standard.isEditable.toggle()
+            updateTextViewSettings()
+        case .toggleInvisibleCharacters:
+            UserDefaults.standard.showInvisibleCharacters.toggle()
+            updateTextViewSettings()
+        case .toggleHighlightSelectedLine:
+            UserDefaults.standard.highlightSelectedLine.toggle()
+            updateTextViewSettings()
+        case .toggleLineNumbers:
+            UserDefaults.standard.showLineNumbers.toggle()
+            updateTextViewSettings()
+        case .togglePageGuide:
+            UserDefaults.standard.showPageGuide.toggle()
+            updateTextViewSettings()
+        case .toggleSelectable:
+            UserDefaults.standard.isSelectable.toggle()
+            updateTextViewSettings()
+        case .toggleWrapLines:
+            UserDefaults.standard.wrapLines.toggle()
+            updateTextViewSettings()
+        }
     }
 }
 

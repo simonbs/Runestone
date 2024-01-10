@@ -12,7 +12,11 @@ extension TextView {
         textView.smartDashesType = .no
         textView.smartQuotesType = .no
         textView.smartInsertDeleteType = .no
+        #if os(iOS)
         textView.textContainerInset = UIEdgeInsets(top: 5, left: 5, bottom: 5, right: 5)
+        #else
+        textView.textContainerInset = UIEdgeInsets(top: 15, left: 5, bottom: 15, right: 5)
+        #endif
         textView.lineSelectionDisplayType = .line
         textView.lineHeightMultiplier = 1.3
         textView.kern = 0.3

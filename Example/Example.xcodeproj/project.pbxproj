@@ -12,6 +12,10 @@
 		7216EACC2829A3C6001B6D39 /* RunestonePlainTextTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EACB2829A3C6001B6D39 /* RunestonePlainTextTheme */; };
 		7216EACE2829A3C6001B6D39 /* RunestoneTomorrowNightTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EACD2829A3C6001B6D39 /* RunestoneTomorrowNightTheme */; };
 		7216EAD02829A3C6001B6D39 /* RunestoneTomorrowTheme in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EACF2829A3C6001B6D39 /* RunestoneTomorrowTheme */; };
+		72417DCA2B4E7315009EB32B /* SwiftUIMenuButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72417DC92B4E7315009EB32B /* SwiftUIMenuButton.swift */; };
+		72417DD02B4E7492009EB32B /* MenuSelectionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72417DCF2B4E7492009EB32B /* MenuSelectionHandler.swift */; };
+		72417DD22B4E74A0009EB32B /* MenuItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72417DD12B4E74A0009EB32B /* MenuItem.swift */; };
+		72417DD42B4E7645009EB32B /* MenuButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72417DD32B4E7645009EB32B /* MenuButton.swift */; };
 		72AC54812826B2A90037ED21 /* Runestone in Frameworks */ = {isa = PBXBuildFile; productRef = 72AC54802826B2A90037ED21 /* Runestone */; };
 		72D2718229126F190070FA88 /* ProcessInfo+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D2718129126F190070FA88 /* ProcessInfo+Helpers.swift */; };
 		AC480601279EE0180015F712 /* BasicCharacterPair.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC480600279EE0180015F712 /* BasicCharacterPair.swift */; };
@@ -32,6 +36,10 @@
 
 /* Begin PBXFileReference section */
 		7216EAC62829A16C001B6D39 /* Themes */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Themes; sourceTree = "<group>"; };
+		72417DC92B4E7315009EB32B /* SwiftUIMenuButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUIMenuButton.swift; sourceTree = "<group>"; };
+		72417DCF2B4E7492009EB32B /* MenuSelectionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuSelectionHandler.swift; sourceTree = "<group>"; };
+		72417DD12B4E74A0009EB32B /* MenuItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuItem.swift; sourceTree = "<group>"; };
+		72417DD32B4E7645009EB32B /* MenuButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuButton.swift; sourceTree = "<group>"; };
 		7243F9BA282D73E9005AAABF /* Example.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Example.entitlements; sourceTree = "<group>"; };
 		72AC54762826B1F00037ED21 /* Languages */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Languages; sourceTree = "<group>"; };
 		72AC54772826B23D0037ED21 /* Runestone */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Runestone; path = ..; sourceTree = "<group>"; };
@@ -71,6 +79,17 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		72417DD52B4E7A85009EB32B /* Menu */ = {
+			isa = PBXGroup;
+			children = (
+				72417DC92B4E7315009EB32B /* SwiftUIMenuButton.swift */,
+				72417DCF2B4E7492009EB32B /* MenuSelectionHandler.swift */,
+				72417DD12B4E74A0009EB32B /* MenuItem.swift */,
+				72417DD32B4E7645009EB32B /* MenuButton.swift */,
+			);
+			path = Menu;
+			sourceTree = "<group>";
+		};
 		72AC54722826B0E40037ED21 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
@@ -93,9 +112,10 @@
 		AC832D592798C73300EC6832 /* Main */ = {
 			isa = PBXGroup;
 			children = (
+				72417DD52B4E7A85009EB32B /* Menu */,
+				AC85537E27A849DF00F7916D /* KeyboardToolsView.swift */,
 				ACFDF4C427983C2700059A1B /* MainView.swift */,
 				ACFDF4B427983BAA00059A1B /* MainViewController.swift */,
-				AC85537E27A849DF00F7916D /* KeyboardToolsView.swift */,
 			);
 			path = Main;
 			sourceTree = "<group>";
@@ -273,11 +293,15 @@
 				ACFDF4B327983BAA00059A1B /* SceneDelegate.swift in Sources */,
 				AC85537D27A845BB00F7916D /* CodeSample.swift in Sources */,
 				AC85537927A83D2000F7916D /* ThemeSetting.swift in Sources */,
+				72417DD02B4E7492009EB32B /* MenuSelectionHandler.swift in Sources */,
+				72417DD22B4E74A0009EB32B /* MenuItem.swift in Sources */,
 				AC85538527A84CF600F7916D /* TextView+Helpers.swift in Sources */,
+				72417DCA2B4E7315009EB32B /* SwiftUIMenuButton.swift in Sources */,
 				ACB08AD527A81ADF00EB6819 /* ThemePickerPreviewCell.swift in Sources */,
 				72D2718229126F190070FA88 /* ProcessInfo+Helpers.swift in Sources */,
 				AC5F0253279C74A1001D1E43 /* UserDefaults+Helpers.swift in Sources */,
 				AC480601279EE0180015F712 /* BasicCharacterPair.swift in Sources */,
+				72417DD42B4E7645009EB32B /* MenuButton.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
