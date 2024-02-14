@@ -50,7 +50,7 @@ final class MainViewController: UIViewController {
         #if os(iOS)
         contentView.textView.inputAccessoryView = toolsView
         #endif
-        #if os(visionOS)
+        #if compiler(>=5.9) && os(visionOS)
         ornaments = [
             UIHostingOrnament(sceneAnchor: .topTrailing, contentAlignment: .bottomTrailing) {
                 HStack {
