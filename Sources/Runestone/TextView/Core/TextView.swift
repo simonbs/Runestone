@@ -197,7 +197,7 @@ open class TextView: UIScrollView {
             textInputView.selectedTextRange = newValue
         }
     }
-    #if !os(visionOS)
+    #if compiler(<5.9) || !os(visionOS)
     /// The custom input accessory view to display when the receiver becomes the first responder.
     override public var inputAccessoryView: UIView? {
         get {
@@ -212,7 +212,7 @@ open class TextView: UIScrollView {
         }
     }
     #endif
-    #if !os(visionOS)
+    #if compiler(<5.9) || !os(visionOS)
     /// The input assistant to use when configuring the keyboard's shortcuts bar.
     override public var inputAssistantItem: UITextInputAssistantItem {
         textInputView.inputAssistantItem
