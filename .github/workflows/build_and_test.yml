@@ -31,6 +31,10 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
+      - name: Use HTTPS
+        run: |
+          git config --global url."https://github.com/".insteadOf git@github.com:
+          git config --global url."https://".insteadOf git://
       - name: Build
         run: |
           xcodebuild build-for-testing\
