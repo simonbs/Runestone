@@ -21,7 +21,7 @@ jobs:
       matrix:
         include:
           - destination: iPhone 15 Pro
-            xcode: 15.0.1
+            xcode: 15.2
           - destination: iPhone 14 Pro
             xcode: 14.3.1
     env:
