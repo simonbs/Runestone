@@ -13,7 +13,7 @@ let package = Package(
         .library(name: "Runestone", targets: ["Runestone"])
     ],
     dependencies: [
-        .package(url: "git@github.com:tree-sitter/tree-sitter.git", from: "0.20.9")
+        .package(url: "https://github.com/tree-sitter/tree-sitter", from: "0.20.9")
     ],
     targets: [
         .target(name: "Runestone", dependencies: [
