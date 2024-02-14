@@ -18,15 +18,20 @@ jobs:
     strategy:
       matrix:
         include:
-          - destination: iPhone 15 Pro
-            xcode: 15.0.1
-          - destination: iPhone 14 Pro
+          - platform: iOS Simulator
+            destination: iPhone 15 Pro
+            xcode: 15.2
+          - platform: iOS Simulator
+            destination: iPhone 14 Pro
             xcode: 14.3.1
+          - platform: visionOS Simulator
+            destination: Apple Vision Pro
+            xcode: 15.2
     env:
       DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer    
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Build
@@ -35,4 +40,4 @@ jobs:
             -project Example/Example.xcodeproj\
             -scheme Example\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=latest"
+            -destination "platform=${{ matrix.platform }},name=${{ matrix.destination }},OS=latest"
