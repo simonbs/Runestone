@@ -24,9 +24,6 @@ jobs:
           - platform: iOS Simulator
             destination: iPhone 14 Pro
             xcode: 14.3.1
-          - platform: visionOS Simulator
-            destination: Apple Vision Pro
-            xcode: 15.2
     env:
       DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer    
     steps:
