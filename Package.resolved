@@ -3,7 +3,7 @@
     "pins": [
       {
         "package": "TreeSitter",
-        "repositoryURL": "git@github.com:tree-sitter/tree-sitter.git",
+        "repositoryURL": "https://github.com/tree-sitter/tree-sitter",
         "state": {
           "branch": null,
           "revision": "98be227227af10cc7a269cb3ffb23686c0610b17",
