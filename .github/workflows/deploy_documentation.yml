@@ -8,6 +8,8 @@ permissions:
 concurrency:
   group: "pages"
   cancel-in-progress: true
+env:
+  DEVELOPER_DIR: /Applications/Xcode_15.2.app/Contents/Developer
 jobs:
   build:
     runs-on: macos-14
