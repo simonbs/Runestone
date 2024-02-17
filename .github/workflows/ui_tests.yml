@@ -17,7 +17,7 @@ env:
 jobs:
   run_korean_tests:
     name: Run Korean tests
-    runs-on: macos-14
+    runs-on: macos-12
     env:
       SIMULATOR_NAME: UI Test (Korean)
       SCHEME: Host
@@ -30,7 +30,7 @@ jobs:
       - name: Disable "Use the Same Keyboard Language as macOS"
         run: defaults write com.apple.iphonesimulator EnableKeyboardSync -bool NO
       - name: Create Simulator
-        run: xcrun simctl create "${SIMULATOR_NAME}" "iPhone 14" "iOS16.4"
+        run: xcrun simctl create "${SIMULATOR_NAME}" "iPhone 13" "iOS15.5"
       - name: Find Simulator UDID
         run: |
           TMP_SIMULATOR_UDID=`xcrun simctl list --json devices | jq -r ".devices | flatten | .[] | select(.name == \"${SIMULATOR_NAME}\").udid"`
@@ -94,7 +94,7 @@ jobs:
       - name: Disable "Use the Same Keyboard Language as macOS"
         run: defaults write com.apple.iphonesimulator EnableKeyboardSync -bool NO
       - name: Create Simulator
-        run: xcrun simctl create "${SIMULATOR_NAME}" "iPhone 14" "iOS16.4"
+        run: xcrun simctl create "${SIMULATOR_NAME}" "iPhone 13" "iOS15.5"
       - name: Find Simulator UDID
         run: |
           TMP_SIMULATOR_UDID=`xcrun simctl list --json devices | jq -r ".devices | flatten | .[] | select(.name == \"${SIMULATOR_NAME}\").udid"`
