@@ -11,11 +11,10 @@ concurrency:
   cancel-in-progress: true
 jobs:
   SwiftLint:
-    runs-on: macos-14
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - name: Run SwiftLint
+        uses: norio-nomura/action-swiftlint@3.2.1
         with:
-          submodules: recursive
-      - name: SwiftLint
-        run: swiftlint --quiet --strict --reporter github-actions-logging
+          args: --strict
