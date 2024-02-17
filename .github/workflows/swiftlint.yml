@@ -1,7 +1,11 @@
 name: SwiftLint
 on:
   workflow_dispatch: {}
-  pull_request: {}
+  pull_request:
+    paths:
+      - '.github/workflows/swiftlint.yml'
+      - '.swiftlint.yml'
+      - '**/*.swift'
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
