@@ -4,11 +4,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - '.github/workflows/build_and_test.yml'
-      - 'Sources/**'
-      - '!Sources/Runestone/Documentation.docc/**'
-      - 'Tests/**'
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -31,13 +26,24 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            src:
+              - '.github/workflows/build_and_test.yml'
+              - 'Sources/**'
+              - '!Sources/Runestone/Documentation.docc/**'
+              - 'Tests/**'
       - name: Build
+        if: steps.changes.outputs.src == 'true'
         run: |
           xcodebuild build-for-testing\
             -scheme Runestone\
             -sdk iphonesimulator\
             -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=latest"
       - name: Test
+        if: steps.changes.outputs.src == 'true'
         run: |
           xcodebuild test-without-building\
             -scheme Runestone\
