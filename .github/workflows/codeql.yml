@@ -10,7 +10,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 env:
-  DEVELOPER_DIR: /Applications/Xcode_15.0.1.app/Contents/Developer
+  XCODEBUILD_DESTINATION: iPhone 15 Pro
+  XCODEBUILD_OS: 17.2
 jobs:
   analyze:
     name: Analyze
@@ -22,21 +23,36 @@ jobs:
       matrix:
         language: [ "swift", "c-cpp" ]
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Check for changed files
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            src:
+              - 'Example/**'
+              - 'Sources/**'
+              - 'Tests/**'
+              - 'UITests/**'
       - name: Initialize CodeQL
+        if: steps.changes.outputs.src == 'true'
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
       - name: Build
+        if: steps.changes.outputs.src == 'true'
         run: |
+          set -o pipefail\
           xcodebuild\
             -scheme Runestone\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=iPhone 15 Pro,OS=latest"
+            -destination "platform=iOS Simulator,name=${{ env.XCODEBUILD_DESTINATION }},OS=${{ env.XCODEBUILD_OS }}"\
+          | xcbeautify --renderer github-actions
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
+        if: steps.changes.outputs.src == 'true'
         with:
           category: "/language:${{matrix.language}}"
