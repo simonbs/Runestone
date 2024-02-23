@@ -10,6 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
+    name: Build Documentation
     runs-on: macos-14
     steps:
       - name: Checkout
@@ -48,6 +49,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
   deploy:
+    name: Deploy Documentation
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
