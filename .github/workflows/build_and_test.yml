@@ -19,8 +19,8 @@ jobs:
             device: iPhone 15 Pro
             os: 17.2
           - xcode: 14.3.1
-            device: iPhone 15 Pro
-            os: 17.2
+            device: iPhone 14 Pro
+            os: 16.4
     env:
       DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer    
     steps:
