@@ -1,6 +1,6 @@
 name: Deploy Documentation
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
 permissions:
   contents: read
   pages: write
