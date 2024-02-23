@@ -9,6 +9,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
+    name: Build Documentation
     runs-on: macos-14
     steps:
       - name: Checkout
