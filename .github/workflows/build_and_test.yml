@@ -26,8 +26,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Check for changed files
         uses: dorny/paths-filter@v3
         id: changes
@@ -41,7 +39,7 @@ jobs:
       - name: Build
         if: steps.changes.outputs.src == 'true'
         run: |
-          set -o pipefail\
+          set -o pipefail &&\
           xcodebuild build-for-testing\
             -scheme Runestone\
             -sdk iphonesimulator\
@@ -50,7 +48,7 @@ jobs:
       - name: Test
         if: steps.changes.outputs.src == 'true'
         run: |
-          set -o pipefail\
+          set -o pipefail &&\
           xcodebuild test-without-building\
             -scheme Runestone\
             -sdk iphonesimulator\

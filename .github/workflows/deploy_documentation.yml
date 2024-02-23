@@ -10,20 +10,21 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
+    name: Build Documentation
     runs-on: macos-14
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Build Documentation
         run: |
+          set -o pipefail &&\
           xcodebuild docbuild\
             -scheme Runestone\
             -destination 'generic/platform=iOS'\
-            -derivedDataPath ../DerivedData
+            -derivedDataPath ../DerivedData\
+          | xcbeautify --renderer github-actions
       - name: Process Archive
         run: |
           mkdir _site
@@ -48,6 +49,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
   deploy:
+    name: Deploy Documentation
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

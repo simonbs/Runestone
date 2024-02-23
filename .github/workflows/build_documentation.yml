@@ -1,0 +1,33 @@
+name: Build Documentation
+on:
+  workflow_dispatch: {}
+  pull_request:
+    branches:
+      - main
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    name: Build Documentation
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check for changed files
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            src:
+              - '.github/workflows/build_documentation.yml'
+              - 'Sources/**'
+      - name: Build Documentation
+        if: steps.changes.outputs.src == 'true'
+        run: |
+          set -o pipefail &&\
+          xcodebuild docbuild\
+            -scheme Runestone\
+            -destination 'generic/platform=iOS'\
+            -derivedDataPath ../DerivedData\
+          | xcbeautify --renderer github-actions
