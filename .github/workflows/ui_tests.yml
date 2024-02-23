@@ -1,3 +1,16 @@
+# ---
+# This workflow is disabled because multi-stage input, which is used when writing text
+# in languages like Korean and Chinese, is broken in the iOS 16 and iOS 17 simulators.
+# However, it still works on the device. Multi-stage text input does work in the
+# iOS 15 simulator, which is used in this workflow.
+# 
+# The iOS 15 simulators are not installed on GitHub's macOS 13 and macOS 14 runners,
+# but they are installed in GitHub's macOS 12 runners. However, the iOS 15 simulators
+# are only available in Xcode 13.4.1 on those runners, and Xcode 14.3.1 cannot be used
+# to build this project as the tree-sitter dependency uses Swift tools version 5.8,
+# which is not supported by Xcode 13.4.1. In fact, the most recent version installed on
+# the macOS 12 runners is Xcode 14.3, which does not support Swift tools version 5.8 either.
+# ---
 name: UI Tests
 on:
   workflow_dispatch: {}
