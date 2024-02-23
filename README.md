@@ -7,8 +7,10 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fsimonbs%2FRunestone%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/simonbs/Runestone)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fsimonbs%2FRunestone%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/simonbs/Runestone)
 [![Build and Test](https://github.com/simonbs/Runestone/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/simonbs/Runestone/actions/workflows/build_and_test.yml)
-[![SwiftLint](https://github.com/simonbs/Runestone/actions/workflows/swiftlint.yml/badge.svg)](https://github.com/simonbs/Runestone/actions/workflows/swiftlint.yml)
+[![Build Documentation](https://github.com/simonbs/Runestone/actions/workflows/build_documentation.yml/badge.svg)](https://github.com/simonbs/Runestone/actions/workflows/build_documentation.yml)
+[![Build Example Project](https://github.com/simonbs/Runestone/actions/workflows/build_example_project.yml/badge.svg)](https://github.com/simonbs/Runestone/actions/workflows/build_example_project.yml)
 [![CodeQL](https://github.com/simonbs/Runestone/actions/workflows/codeql.yml/badge.svg)](https://github.com/simonbs/Runestone/actions/workflows/codeql.yml)
+[![SwiftLint](https://github.com/simonbs/Runestone/actions/workflows/swiftlint.yml/badge.svg)](https://github.com/simonbs/Runestone/actions/workflows/swiftlint.yml)
 [![Twitter](https://img.shields.io/badge/Twitter-@simonbs-blue.svg?style=flat)](https://twitter.com/simonbs)
 [![Mastodon](https://img.shields.io/badge/Mastodon-@simonbs-blue.svg?style=flat)](https://mastodon.social/@simonbs)
 
