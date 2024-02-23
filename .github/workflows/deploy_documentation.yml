@@ -14,16 +14,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Build Documentation
         run: |
+          set -o pipefail &&\
           xcodebuild docbuild\
             -scheme Runestone\
             -destination 'generic/platform=iOS'\
-            -derivedDataPath ../DerivedData
+            -derivedDataPath ../DerivedData\
+          | xcbeautify --renderer github-actions
       - name: Process Archive
         run: |
           mkdir _site
