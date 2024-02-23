@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    name: Build example project
+    name: Build Example Project (Xcode ${{ matrix.xcode }})
     runs-on: macos-14
     continue-on-error: true
     strategy:
