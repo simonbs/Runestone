@@ -44,10 +44,12 @@ jobs:
       - name: Build
         if: steps.changes.outputs.src == 'true'
         run: |
+          set -o pipefail\
           xcodebuild\
             -scheme Runestone\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=iPhone 15 Pro,OS=latest"
+            -destination "platform=iOS Simulator,name=iPhone 15 Pro,OS=latest"\
+          | xcbeautify --renderer github-actions
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         if: steps.changes.outputs.src == 'true'
