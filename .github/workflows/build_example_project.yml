@@ -15,12 +15,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - platform: iOS Simulator
+          - xcode: 15.2
             destination: iPhone 15 Pro
-            xcode: 15.2
-          - platform: iOS Simulator
+            os: 17.2
+          - xcode: 14.3.1
             destination: iPhone 14 Pro
-            xcode: 14.3.1
+            os: 16.4
     env:
       DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
     steps:
@@ -45,5 +45,5 @@ jobs:
             -project Example/Example.xcodeproj\
             -scheme Example\
             -sdk iphonesimulator\
-            -destination "platform=${{ matrix.platform }},name=${{ matrix.destination }},OS=latest"\
+            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}"\
           | xcbeautify --renderer github-actions
