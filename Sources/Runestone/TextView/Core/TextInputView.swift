@@ -47,6 +47,16 @@ final class TextInputView: UIView, UITextInput {
                     shouldNotifyInputDelegate = true
                     didCallPositionFromPositionInDirectionWithOffset = false
                 }
+                // This is a consequence of our workaround that ensures multi-stage input, such as when entering Korean,
+                // works correctly. The workaround causes bugs when selecting words using Shift + Option + Arrow Keys
+                // followed by Shift + Arrow Keys if we do not treat it as a special case.
+                // The consequence of not having this workaround is that Shift + Arrow Keys may adjust the wrong end of
+                // the selected text when followed by navigating between word boundaries usign Shift + Option + Arrow Keys.
+                if customTokenizer.didCallPositionFromPositionToWordBoundary && !didCallDeleteBackward {
+                    shouldNotifyInputDelegate = true
+                    customTokenizer.didCallPositionFromPositionToWordBoundary = false
+                }
+                didCallDeleteBackward = false
                 notifyInputDelegateAboutSelectionChangeInLayoutSubviews = !shouldNotifyInputDelegate
                 if shouldNotifyInputDelegate {
                     inputDelegate?.selectionWillChange(self)
@@ -594,6 +604,7 @@ final class TextInputView: UIView, UITextInput {
     private var notifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
     private var notifyDelegateAboutSelectionChangeInLayoutSubviews = false
     private var didCallPositionFromPositionInDirectionWithOffset = false
+    private var didCallDeleteBackward = false
     private var hasDeletedTextWithPendingLayoutSubviews = false
     private var preserveUndoStackWhenSettingString = false
     private var cancellables: [AnyCancellable] = []
@@ -1116,6 +1127,7 @@ extension TextInputView {
     }
 
     func deleteBackward() {
+        didCallDeleteBackward = true
         guard let selectedRange = markedRange ?? selectedRange, selectedRange.length > 0 else {
             return
         }
