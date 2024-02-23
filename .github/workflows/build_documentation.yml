@@ -24,7 +24,7 @@ jobs:
       - name: Build Documentation
         if: steps.changes.outputs.src == 'true'
         run: |
-          set -o pipefail\
+          set -o pipefail &&\
           xcodebuild docbuild\
             -scheme Runestone\
             -destination 'generic/platform=iOS'\
