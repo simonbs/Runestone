@@ -41,14 +41,18 @@ jobs:
       - name: Build
         if: steps.changes.outputs.src == 'true'
         run: |
+          set -o pipefail\
           xcodebuild build-for-testing\
             -scheme Runestone\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=${{ matrix.device }},OS=${{ matrix.os }}"
+            -destination "platform=iOS Simulator,name=${{ matrix.device }},OS=${{ matrix.os }}"\
+          | xcbeautify --renderer github-actions
       - name: Test
         if: steps.changes.outputs.src == 'true'
         run: |
+          set -o pipefail\
           xcodebuild test-without-building\
             -scheme Runestone\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=${{ matrix.device }},OS=${{ matrix.os }}"
+            -destination "platform=iOS Simulator,name=${{ matrix.device }},OS=${{ matrix.os }}"\
+          | xcbeautify --renderer github-actions
