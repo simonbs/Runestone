@@ -40,8 +40,10 @@ jobs:
       - name: Build
         if: steps.changes.outputs.src == 'true'
         run: |
+          set -o pipefail\
           xcodebuild build\
             -project Example/Example.xcodeproj\
             -scheme Example\
             -sdk iphonesimulator\
-            -destination "platform=${{ matrix.platform }},name=${{ matrix.destination }},OS=latest"
+            -destination "platform=${{ matrix.platform }},name=${{ matrix.destination }},OS=latest"\
+          | xcbeautify --renderer github-actions
