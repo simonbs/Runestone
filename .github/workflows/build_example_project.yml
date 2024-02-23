@@ -4,27 +4,23 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - '.github/workflows/build_example_project.yml'
-      - 'Example/**'
-      - 'Sources/**'
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   build:
-    name: Build example project
+    name: Build Example Project (Xcode ${{ matrix.xcode }})
     runs-on: macos-14
     continue-on-error: true
     strategy:
       matrix:
         include:
-          - platform: iOS Simulator
+          - xcode: 15.2
             destination: iPhone 15 Pro
-            xcode: 15.2
-          - platform: iOS Simulator
+            os: 17.2
+          - xcode: 14.3.1
             destination: iPhone 14 Pro
-            xcode: 14.3.1
+            os: 16.4
     env:
       DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
     steps:
@@ -32,10 +28,22 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Check for changed files
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            src:
+              - '.github/workflows/build_example_project.yml'
+              - 'Example/**'
+              - 'Sources/**'
       - name: Build
+        if: steps.changes.outputs.src == 'true'
         run: |
+          set -o pipefail\
           xcodebuild build\
             -project Example/Example.xcodeproj\
             -scheme Example\
             -sdk iphonesimulator\
-            -destination "platform=${{ matrix.platform }},name=${{ matrix.destination }},OS=latest"
+            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}"\
+          | xcbeautify --renderer github-actions

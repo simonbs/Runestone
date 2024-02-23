@@ -1,6 +1,6 @@
 name: Deploy Documentation
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
 permissions:
   contents: read
   pages: write
@@ -8,8 +8,6 @@ permissions:
 concurrency:
   group: "pages"
   cancel-in-progress: true
-env:
-  DEVELOPER_DIR: /Applications/Xcode_15.2.app/Contents/Developer
 jobs:
   build:
     runs-on: macos-14
