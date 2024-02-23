@@ -9,14 +9,18 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    name: Build and test
+    name: Build and Test (Xcode ${{ matrix.xcode }})
     runs-on: macos-14
     continue-on-error: true
     strategy:
       matrix:
         include:
           - xcode: 15.2
+            device: iPhone 15 Pro
+            os: 17.2
           - xcode: 14.3.1
+            device: iPhone 15 Pro
+            os: 17.2
     env:
       DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer    
     steps:
@@ -40,11 +44,11 @@ jobs:
           xcodebuild build-for-testing\
             -scheme Runestone\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=generic/platform=iOS Simulator,OS=latest"
+            -destination "platform=iOS Simulator,name=${{ matrix.device }},OS=${{ matrix.os }}"
       - name: Test
         if: steps.changes.outputs.src == 'true'
         run: |
           xcodebuild test-without-building\
             -scheme Runestone\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=generic/platform=iOS Simulator,OS=latest"
+            -destination "platform=iOS Simulator,name=${{ matrix.device }},OS=${{ matrix.os }}"
