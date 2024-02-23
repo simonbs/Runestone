@@ -15,10 +15,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - destination: iPhone 15 Pro
-            xcode: 15.2
-          - destination: iPhone 14 Pro
-            xcode: 14.3.1
+          - xcode: 15.2
+            destination: iPhone 15 Pro
+            os: 17.2
+          - xcode: 14.3.1
+            destination: iPhone 14 Pro
+            os: 16.4
     env:
       DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer    
     steps:
@@ -42,11 +44,11 @@ jobs:
           xcodebuild build-for-testing\
             -scheme Runestone\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=latest"
+            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}"
       - name: Test
         if: steps.changes.outputs.src == 'true'
         run: |
           xcodebuild test-without-building\
             -scheme Runestone\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=latest"
+            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}"
