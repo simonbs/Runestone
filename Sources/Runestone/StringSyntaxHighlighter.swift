@@ -78,8 +78,9 @@ public final class StringSyntaxHighlighter {
 
 private extension StringSyntaxHighlighter {
     private func applyLineHeightMultiplier(to attributedString: NSMutableAttributedString) {
+        let scaledLineHeight = theme.font.totalLineHeight * lineHeightMultiplier
         let mutableParagraphStyle = getMutableParagraphStyle(from: attributedString)
-        mutableParagraphStyle.lineSpacing = (theme.font.totalLineHeight * lineHeightMultiplier) - theme.font.totalLineHeight
+        mutableParagraphStyle.lineSpacing = scaledLineHeight - theme.font.totalLineHeight
         let range = NSRange(location: 0, length: attributedString.length)
         attributedString.beginEditing()
         attributedString.removeAttribute(.paragraphStyle, range: range)
