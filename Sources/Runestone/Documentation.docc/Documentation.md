@@ -61,12 +61,14 @@ Syntax highlighting is based on GitHub's [Tree-sitter](https://github.com/tree-s
 
 - <doc:Syntax-Highlighting-the-Text>
 - <doc:AddingATreeSitterLanguage>
+- <doc:SyntaxHighlightingAString>
 - ``LanguageMode``
 - ``PlainTextLanguageMode``
 - ``TreeSitterLanguageMode``
 - ``TreeSitterLanguage``
 - ``TreeSitterLanguageProvider``
 - ``SyntaxNode``
+- ``StringSyntaxHighlighter``
 
 ### Indentation
 
