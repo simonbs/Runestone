@@ -2,22 +2,10 @@ import Foundation
 import UIKit
 
 struct DefaultStringAttributes {
-    private let textColor: UIColor
-    private let font: UIFont
-    private let kern: CGFloat
-    private let tabWidth: CGFloat
-
-    init(
-        textColor: UIColor,
-        font: UIFont,
-        kern: CGFloat,
-        tabWidth: CGFloat
-    ) {
-        self.textColor = textColor
-        self.font = font
-        self.kern = kern
-        self.tabWidth = tabWidth
-    }
+    let textColor: UIColor
+    let font: UIFont
+    let kern: CGFloat
+    let tabWidth: CGFloat
 
     func apply(to attributedString: NSMutableAttributedString) {
         let paragraphStyle = NSMutableParagraphStyle()
