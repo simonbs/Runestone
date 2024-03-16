@@ -64,7 +64,7 @@ final class LineController {
     var kern: CGFloat = 0 {
         didSet {
             if kern != oldValue {
-                syntaxHighlighter?.kern = kern
+                isDefaultAttributesInvalid = true
             }
         }
     }
@@ -240,22 +240,17 @@ private extension LineController {
     private func updateDefaultAttributesIfNecessary() {
         if isDefaultAttributesInvalid {
             if let input = createLineSyntaxHighlightInput() {
-                syntaxHighlighter?.setDefaultAttributes(on: input.attributedString)
+                let defaultStringAttributes = DefaultStringAttributes(
+                    textColor: theme.textColor,
+                    font: theme.font,
+                    kern: kern,
+                    tabWidth: tabWidth
+                )
+                defaultStringAttributes.apply(to: input.attributedString)
             }
-            updateParagraphStyle()
             isDefaultAttributesInvalid = false
             isSyntaxHighlightingInvalid = true
             isTypesetterInvalid = true
-        }
-    }
-
-    private func updateParagraphStyle() {
-        if let attributedString = attributedString {
-            let paragraphStyle = NSMutableParagraphStyle()
-            paragraphStyle.tabStops = []
-            paragraphStyle.defaultTabInterval = tabWidth
-            let range = NSRange(location: 0, length: attributedString.length)
-            attributedString.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
         }
     }
 
