@@ -1623,9 +1623,7 @@ extension TextInputView: LineControllerStorageDelegate {
 // MARK: - LineControllerDelegate
 extension TextInputView: LineControllerDelegate {
     func lineSyntaxHighlighter(for lineController: LineController) -> LineSyntaxHighlighter? {
-        let syntaxHighlighter = languageMode.createLineSyntaxHighlighter()
-        syntaxHighlighter.kern = kern
-        return syntaxHighlighter
+        languageMode.createLineSyntaxHighlighter()
     }
 
     func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController) {
