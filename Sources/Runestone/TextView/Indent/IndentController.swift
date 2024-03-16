@@ -30,12 +30,7 @@ final class IndentController {
         if let tabWidth = _tabWidth {
             return tabWidth
         } else {
-            let str = String(repeating: " ", count: indentStrategy.tabLength)
-            let maxSize = CGSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude)
-            let options: NSStringDrawingOptions = [.usesFontLeading, .usesLineFragmentOrigin]
-            let attributes: [NSAttributedString.Key: Any] = [.font: indentFont]
-            let bounds = str.boundingRect(with: maxSize, options: options, attributes: attributes, context: nil)
-            let tabWidth = round(bounds.size.width)
+            let tabWidth = TabWidthMeasurer.tabWidth(tabLength: indentStrategy.tabLength, font: indentFont)
             if tabWidth != _tabWidth {
                 _tabWidth = tabWidth
                 delegate?.indentControllerDidUpdateTabWidth(self)
