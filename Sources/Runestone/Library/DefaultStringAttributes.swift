@@ -9,8 +9,8 @@ struct DefaultStringAttributes {
 
     func apply(to attributedString: NSMutableAttributedString) {
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.tabStops = (0 ..< 20).map {
-            NSTextTab(textAlignment: .natural, location: CGFloat($0) * tabWidth)
+        paragraphStyle.tabStops = (0 ..< 20).map { index in
+            NSTextTab(textAlignment: .natural, location: CGFloat(index) * tabWidth)
         }
         paragraphStyle.defaultTabInterval = tabWidth
         let range = NSRange(location: 0, length: attributedString.length)
