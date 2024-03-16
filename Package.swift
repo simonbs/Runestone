@@ -19,6 +19,7 @@ let package = Package(
         .target(name: "Runestone", dependencies: [
             .product(name: "TreeSitter", package: "tree-sitter")
         ], resources: [
+            .copy("PrivacyInfo.xcprivacy"),
             .process("TextView/Appearance/Theme.xcassets")
         ]),
         .target(name: "TestTreeSitterLanguages", cSettings: [
