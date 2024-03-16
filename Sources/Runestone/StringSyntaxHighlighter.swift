@@ -20,7 +20,7 @@ public final class StringSyntaxHighlighter {
     public var tabLength: Int = 4
     /// The line-height is multiplied with the value.
     public var lineHeightMultiplier: CGFloat = 1
-    
+
     /// Creates an object that can syntax highlight a text.
     /// - Parameters:
     ///   - theme: The theme to use when syntax highlighting the text.
@@ -35,11 +35,11 @@ public final class StringSyntaxHighlighter {
         self.language = language
         self.languageProvider = languageProvider
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
+
     /// Syntax highlights the text using the configured syntax highlighter.
     /// - Parameter text: The text to be syntax highlighted.
     /// - Returns: An attributed string containing the syntax highlighted text.
@@ -78,20 +78,27 @@ public final class StringSyntaxHighlighter {
 
 private extension StringSyntaxHighlighter {
     private func applyLineHeightMultiplier(to attributedString: NSMutableAttributedString) {
-        let mutableParagraphStyle = if let paragraphStyle = attributedString.attribute(
-            .paragraphStyle,
-            at: 0, 
-            effectiveRange: nil
-        ) as? NSParagraphStyle {
-            paragraphStyle.mutableCopy() as! NSMutableParagraphStyle
-        } else {
-            NSMutableParagraphStyle()
-        }
+        let mutableParagraphStyle = getMutableParagraphStyle(from: attributedString)
         mutableParagraphStyle.lineSpacing = (theme.font.totalLineHeight * lineHeightMultiplier) - theme.font.totalLineHeight
         let range = NSRange(location: 0, length: attributedString.length)
         attributedString.beginEditing()
         attributedString.removeAttribute(.paragraphStyle, range: range)
         attributedString.addAttribute(.paragraphStyle, value: mutableParagraphStyle, range: range)
         attributedString.endEditing()
+    }
+
+    private func getMutableParagraphStyle(
+        from attributedString: NSMutableAttributedString
+    ) -> NSMutableParagraphStyle {
+        guard let attributeValue = attributedString.attribute(.paragraphStyle, at: 0, effectiveRange: nil) else {
+            return NSMutableParagraphStyle()
+        }
+        guard let paragraphStyle = attributeValue as? NSParagraphStyle else {
+            fatalError("Expected .paragraphStyle attribute to be instance of NSParagraphStyle")
+        }
+        guard let mutableParagraphStyle = paragraphStyle.mutableCopy() as? NSMutableParagraphStyle else {
+            fatalError("Expected mutableCopy() to return an instance of NSMutableParagraphStyle")
+        }
+        return mutableParagraphStyle
     }
 }
