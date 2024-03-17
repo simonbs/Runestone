@@ -185,7 +185,7 @@ open class TextView: UIScrollView {
             }
         }
         set {
-            textInputView.selectedRange = newValue
+            textInputView.selectedTextRange = IndexedRange(newValue)
         }
     }
     /// The current selection range of the text view as a UITextRange.
