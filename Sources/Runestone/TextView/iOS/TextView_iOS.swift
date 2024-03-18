@@ -562,7 +562,6 @@ open class TextView: UIScrollView {
     /// Lays out subviews.
     override open func layoutSubviews() {
         super.layoutSubviews()
-
 //        textInputHelper.resetHasDeletedTextWithPendingLayoutSubviews()
 //        textInputHelper.notifyInputDelegateFromLayoutSubviewsIfNeeded()
 //        contentSizeService.updateContentSizeIfNeeded()
