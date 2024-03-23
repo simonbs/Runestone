@@ -1,13 +1,13 @@
 import Combine
 import Foundation
 
-struct BatchReplacer<LineManagerType: LineManaging> {
+struct BatchReplacer<StringViewType: StringView, LineManagerType: LineManaging> {
     typealias State = SelectedRangeWritable
 
     let state: State
     let stringView: StringView
     let lineManager: LineManagerType
-    let textSetter: TextSetting
+    let textSetter: TextSetter<StringViewType, LineManagerType>
 
     func replaceText(in batchReplaceSet: BatchReplaceSet) {
         guard !batchReplaceSet.replacements.isEmpty else {
@@ -15,7 +15,8 @@ struct BatchReplacer<LineManagerType: LineManaging> {
         }
         let oldLinePosition = lineManager.linePosition(at: state.selectedRange.location)
         let newString = stringView.string.applying(batchReplaceSet) as String
-        textSetter.setText(newString, preservingUndoStack: true)
+//        textSetter.setText(newString, preservingUndoStack: true)
+        textSetter.setText(newString)
         // By restoring the selected range using the old line position
         // we can better preserve the old selected language.
         moveCaret(to: oldLinePosition)
