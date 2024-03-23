@@ -61,8 +61,6 @@ extension UITextInputClient {
         textEditingHandler.text(in: range)
     }
 
-    // ...
-
     func replace(_ range: UITextRange, withText text: String) {
         textEditingHandler.replace(range, withText: text)
     }
