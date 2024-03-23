@@ -3,7 +3,7 @@ import UIKit
 
 final class MainView: UIView {
     let textView: TextView = {
-        let this = TextView.makeConfigured(usingSettings: .standard)
+        let this = TextView(readingSettingsFrom: .standard)
         this.translatesAutoresizingMaskIntoConstraints = false
         return this
     }()

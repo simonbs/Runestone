@@ -5,7 +5,7 @@ import UIKit
 final class ThemePickerPreviewCell: UITableViewCell {
     let textView: TextView = {
         let settings = UserDefaults.standard
-        let this = TextView.makeConfigured(usingSettings: .standard)
+        let this = TextView(readingSettingsFrom: .standard)
         this.translatesAutoresizingMaskIntoConstraints = false
         return this
     }()
