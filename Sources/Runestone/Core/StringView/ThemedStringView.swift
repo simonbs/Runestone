@@ -12,6 +12,7 @@ final class ThemedStringView<
         }
         set {
             stringView.string = newValue
+            reapplyDefaultAttributes()
         }
     }
 
