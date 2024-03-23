@@ -245,7 +245,6 @@ open class TextView: NSView, NSMenuItemValidation {
 //    let textViewDelegate: ErasedTextViewDelegate
 //    let isFirstResponder: CurrentValueSubject<Bool, Never>
 //    private let keyWindowObserver: KeyWindowObserver
-//    private let textViewNeedsLayoutObserver: TextViewNeedsLayoutObserver
 //    private var boundsObserver: AnyCancellable?
 //    private var windowDidResignKeyObserver: AnyCancellable?
 //
@@ -345,7 +344,6 @@ open class TextView: NSView, NSMenuItemValidation {
 //        textViewDelegate = compositionRoot.textViewDelegate
 //        isFirstResponder = compositionRoot.isFirstResponder
 //        keyWindowObserver = compositionRoot.keyWindowObserver
-//        textViewNeedsLayoutObserver = compositionRoot.textViewNeedsLayoutObserver
 //
 //        stringView = compositionRoot.stringView
 //        lineManager = compositionRoot.lineManager

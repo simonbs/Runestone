@@ -387,7 +387,6 @@ open class TextView: UIScrollView {
     private var _isFirstResponder = false
 //    private let _isFirstResponder: CurrentValueSubject<Bool, Never>
 //    private let textInteractionManager: UITextInteractionManager
-//    private let textViewNeedsLayoutObserver: TextViewNeedsLayoutObserver
 //    private var boundsObserver: AnyCancellable?
 
     private lazy var viewport = ScrollViewViewport(scrollView: self)
