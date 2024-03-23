@@ -12,10 +12,10 @@
     {
       "identity" : "tree-sitter",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/simonbs/tree-sitter",
+      "location" : "https://github.com/tree-sitter/tree-sitter",
       "state" : {
-        "revision" : "f88ae4ebe351d8aa99c31a17111607017d805118",
-        "version" : "0.20.9-beta-1"
+        "revision" : "98be227227af10cc7a269cb3ffb23686c0610b17",
+        "version" : "0.20.9"
       }
     }
   ],

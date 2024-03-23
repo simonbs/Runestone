@@ -16,7 +16,7 @@ let package = Package(
         // has no versions published that contains the Package.swift file. Therefore, we depend
         // on a fork of Tree-sitter that has a version published. We will pin against the official
         // version of Tree-sitter as soon as a new version is published.
-        .package(url: "https://github.com/simonbs/tree-sitter", from: "0.20.9-beta-1"),
+        .package(url: "https://github.com/tree-sitter/tree-sitter", .upToNextMinor(from: "0.20.9")),
         .package(url: "https://github.com/apple/swift-syntax.git", from: "509.0.0")
     ],
     targets: [
