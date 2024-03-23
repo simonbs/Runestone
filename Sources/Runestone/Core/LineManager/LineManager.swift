@@ -32,9 +32,7 @@ final class LineManager<
 //                AnyRedBlackTreeChildrenUpdater(TotalByteCountRedBlackTreeChildrenUpdater())
             ])
         )
-        rootLine.indexReader = tree.root
-        rootLine.locationReader = tree.root
-        rootLine.yPositionReader = tree.root
+        rootLine.setup(with: tree.root)
     }
 
     func insertText(_ text: NSString, at location: Int) -> LineChangeSet<LineType> {
@@ -156,54 +154,38 @@ final class LineManager<
         tree.node(atIndex: row).data
     }
 
-//    func rebuild() {
-//        // Reset the tree so we only have a single line.
-//        let rootData = LineNodeData(lineHeight: estimatedLineHeight)
-//        tree.reset(rootValue: 0, rootData: rootData)
-//        rootData.node = tree.root
-//        initialLongestLine = nil
-//        // Iterate over lines in the string.
-//        var line = tree.node(atIndex: 0)
-//        var workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: stringView.string, startingAt: 0)
-//        var lines: [LineNode] = []
-//        var lastDelimiterEnd = 0
-//        var totalLineHeight: CGFloat = 0
-//        var longestLineLength: Int = 0
-//        while let newLineRange = workingNewLineRange {
-//            let totalLength = newLineRange.location + newLineRange.length - lastDelimiterEnd
-//            let substringRange = NSRange(location: lastDelimiterEnd, length: totalLength)
-//            let substring = stringView.string.substring(with: substringRange)
-//            line.value = totalLength
-//            line.data.totalLength = totalLength
-//            line.data.delimiterLength = newLineRange.length
-//            line.data.lineHeight = estimatedLineHeight
-//            line.data.totalLineHeight = totalLineHeight
-//            line.data.byteCount = substring.byteCount
-//            lastDelimiterEnd = newLineRange.location + newLineRange.length
-//            lines.append(line)
-//            if totalLength > longestLineLength {
-//                longestLineLength = totalLength
-//                initialLongestLine = line
-//            }
-//            let data = LineNodeData(lineHeight: estimatedLineHeight)
-//            line = LineNode(tree: tree, value: 0, data: data)
-//            data.node = line
-//            workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: stringView.string, startingAt: lastDelimiterEnd)
-//            totalLineHeight += estimatedLineHeight
-//        }
-//        let totalLength = stringView.length - lastDelimiterEnd
-//        let substringRange = NSRange(location: lastDelimiterEnd, length: totalLength)
-//        let substring = stringView.string.substring(with: substringRange)
-//        line.value = totalLength
-//        line.data.totalLength = totalLength
-//        line.data.byteCount = substring.byteCount
-//        lines.append(line)
-//        if totalLength > longestLineLength {
-//            longestLineLength = totalLength
-//            initialLongestLine = line
-//        }
-//        tree.rebuild(from: lines)
-//    }
+    func rebuild() {
+        // Reset the tree so we only have a single line.
+        let rootLine = lineFactory.makeLine(estimatingHeightTo: state.estimatedLineHeight)
+        tree.reset(rootValue: 0, rootData: rootLine)
+        rootLine.setup(with: tree.root)
+        let nsString = stringView.string as NSString
+        // Iterate over lines in the string.
+        var lineNode = tree.node(atIndex: 0)
+        var workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: nsString, startingAt: 0)
+        var lines: [LineNode] = []
+        var lastDelimiterEnd = 0
+        var totalLineHeight: CGFloat = 0
+        while let newLineRange = workingNewLineRange {
+            let totalLength = newLineRange.location + newLineRange.length - lastDelimiterEnd
+            lineNode.value = totalLength
+            lineNode.data.totalLength = totalLength
+            lineNode.data.delimiterLength = newLineRange.length
+            lineNode.data.totalHeight = totalLineHeight
+            lastDelimiterEnd = newLineRange.location + newLineRange.length
+            lines.append(lineNode)
+            let line = lineFactory.makeLine(estimatingHeightTo: state.estimatedLineHeight)
+            lineNode = RedBlackTree<Int, LineType>.Node(tree: tree, value: 0, data: line)
+            line.setup(with: lineNode)
+            workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: nsString, startingAt: lastDelimiterEnd)
+            totalLineHeight += state.estimatedLineHeight
+        }
+        let totalLength = stringView.length - lastDelimiterEnd
+        lineNode.value = totalLength
+        lineNode.data.totalLength = totalLength
+        lines.append(lineNode)
+        tree.rebuild(from: lines)
+    }
 }
 
 private extension LineManager {
@@ -279,9 +261,7 @@ private extension LineManager {
     private func insertLine(ofLength length: Int, after otherLine: LineNode) -> LineNode {
         let line = lineFactory.makeLine(estimatingHeightTo: state.estimatedLineHeight)
         let insertedNode = tree.insertNode(value: length, data: line, after: otherLine)
-        line.indexReader = insertedNode
-        line.locationReader = insertedNode
-        line.yPositionReader = insertedNode
+        line.setup(with: insertedNode)
 //        let range = NSRange(location: insertedLine.location, length: length)
 //        let substring = stringView.substring(in: range)
 //        let byteCount = substring?.byteCount ?? 0
@@ -314,5 +294,13 @@ extension LineNode: ManagedLineYPositionReading {
         let query = YPositionFromLineNodeQuery(targetNode: self)
         let querier = OffsetFromRedBlackTreeNodeQuerier(querying: tree)
         return querier.offset(for: query)!
+    }
+}
+
+private extension ManagedLine {
+    func setup(with node: LineNode) {
+        indexReader = node
+        locationReader = node
+        yPositionReader = node
     }
 }

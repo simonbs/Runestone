@@ -45,11 +45,11 @@ package final class RedBlackTree<NodeValue: RedBlackTreeNodeValue, NodeData> {
         self.root.color = .black
     }
 
-    func reset(rootValue: NodeValue, rootData: NodeData) {
+    package func reset(rootValue: NodeValue, rootData: NodeData) {
         root = Node(tree: self, value: rootValue, data: rootData)
     }
 
-    func rebuild(from nodes: [Node]) {
+    package func rebuild(from nodes: [Node]) {
         assert(!nodes.isEmpty, "Cannot rebuild tree from empty set of nodes")
         let height = getTreeHeight(nodeCount: nodes.count)
         root = buildTree(from: nodes, start: 0, end: nodes.count, subtreeHeight: height)

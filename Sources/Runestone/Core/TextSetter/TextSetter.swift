@@ -1,54 +1,45 @@
 import Foundation
 
-final class TextSetter<
-    LineManagerType: LineManaging,
-    InternalLanguageModeType: InternalLanguageMode
->: TextSetting {
+final class TextSetter<StringViewType: StringView, LineManagerType: LineManaging> {
     typealias State = SelectedRangeWritable
 
     private let state: State
-    private let textInputDelegate: TextInputDelegate
-    private let stringView: StringView
+    private let stringView: StringViewType
     private let lineManager: LineManagerType
-    private let languageMode: InternalLanguageModeType
-    private let undoManager: TextEditingUndoManager
+    private let viewportRenderer: ViewportRendering
 
     init(
         state: State,
-        textInputDelegate: TextInputDelegate,
-        stringView: StringView,
+        stringView: StringViewType,
         lineManager: LineManagerType,
-        languageMode: InternalLanguageModeType,
-        undoManager: TextEditingUndoManager
+        viewportRenderer: ViewportRendering
     ) {
         self.state = state
-        self.textInputDelegate = textInputDelegate
         self.stringView = stringView
         self.lineManager = lineManager
-        self.languageMode = languageMode
-        self.undoManager = undoManager
+        self.viewportRenderer = viewportRenderer
     }
 
-    func setText(_ newText: String, preservingUndoStack: Bool = false) {
+    func setText(_ newText: String) {
         guard newText != stringView.string else {
             return
         }
         let oldSelectedRange = state.selectedRange
         stringView.string = newText
-        languageMode.parse(newText as NSString)
-//        lineControllerStore.removeAllLineControllers()
-//        lineManager.rebuild()
-        textInputDelegate.selectionWillChange()
+//        languageMode.parse(newText as NSString)
+        lineManager.rebuild()
+//        textInputDelegate.selectionWillChange()
         state.selectedRange = oldSelectedRange.capped(to: stringView.length)
-        textInputDelegate.selectionDidChange()
+//        textInputDelegate.selectionDidChange()
 //        contentSizeService.reset()
 //        gutterWidthService.invalidateLineNumberWidth()
 //        highlightedRangeService.invalidateHighlightedRangeFragments()
 //        invalidateLines()
 //        lineFragmentLayouter.setNeedsLayout()
 //        lineFragmentLayouter.layoutIfNeeded()
-        if !preservingUndoStack {
-            undoManager.removeAllActions()
-        }
+//        if !preservingUndoStack {
+//            undoManager.removeAllActions()
+//        }
+        viewportRenderer.renderViewport()
     }
 }

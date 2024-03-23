@@ -43,15 +43,14 @@ open class TextView: UIScrollView {
 //        editorState.isEditing.value
 //    }
     /// The text that the text view displays.
-    public var text: String = ""
-//    public var text: String {
-//        get {
-//            stringView.string as String
-//        }
-//        set {
-//            textSetter.setText(newValue as NSString)
-//        }
-//    }
+    public var text: String {
+        get {
+            stringView.string
+        }
+        set {
+            textSetter.setText(newValue)
+        }
+    }
     /// The view's background color.
     open override var backgroundColor: UIColor? {
         didSet {
@@ -420,15 +419,7 @@ open class TextView: UIScrollView {
                         changeSetHandler: TypesettingInvalidatingLineChangeSetHandler()
                     ),
                     RenderingTextReplacer(
-                        viewportRenderer: VisibleLinesViewportRenderer(
-                            viewport: viewport,
-                            lineManager: lineManager,
-                            visibleLinesRenderer: LineFragmentVisibleLinesRenderer(
-                                state: stateStore,
-                                hostLayer: layer,
-                                renderer: TextLineFragmentRenderer()
-                            )
-                        )
+                        viewportRenderer: viewportRenderer
                     )
                 )
             )
@@ -465,6 +456,22 @@ open class TextView: UIScrollView {
         selectionHandler: UITextInputClientSelectionHandler(),
         markHandler: UITextInputClientMarkHandler()
     )
+    private lazy var viewportRenderer = VisibleLinesViewportRenderer(
+        viewport: viewport,
+        lineManager: lineManager,
+        visibleLinesRenderer: LineFragmentVisibleLinesRenderer(
+            state: stateStore,
+            hostLayer: layer,
+            renderer: TextLineFragmentRenderer()
+        )
+    )
+    private lazy var textSetter = TextSetter(
+        state: stateStore,
+        stringView: stringView,
+        lineManager: lineManager,
+        viewportRenderer: viewportRenderer
+    )
+
 //    private let textRangeAdjustmentGestureTracker: UITextRangeAdjustmentGestureTracker
 //
 //    let stringView: any StringView

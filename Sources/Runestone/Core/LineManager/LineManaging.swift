@@ -11,6 +11,7 @@ protocol LineManaging {
     func firstAndLastLine(in range: NSRange) -> (LineType, LineType)?
     func linePosition(at location: Int) -> LinePosition?
     func makeLineIterator() -> AnyIterator<LineType>
+    func rebuild()
     subscript(row: Int) -> LineType { get }
 }
 

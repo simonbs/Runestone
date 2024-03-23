@@ -33,7 +33,7 @@ package final class RedBlackTreeNode<NodeValue: RedBlackTreeNodeValue, NodeData>
 
     private weak var _tree: Tree?
 
-    init(tree: Tree, value: NodeValue, data: NodeData) {
+    package init(tree: Tree, value: NodeValue, data: NodeData) {
         self._tree = tree
         self.nodeTotalCount = 1
         self.nodeTotalValue = value
