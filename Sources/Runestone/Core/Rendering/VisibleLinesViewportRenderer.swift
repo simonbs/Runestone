@@ -1,13 +1,31 @@
 import Foundation
+import _RunestoneObservation
 
-struct VisibleLinesViewportRenderer<
+@RunestoneObserver
+final class VisibleLinesViewportRenderer<
     ViewportType: Viewport,
     LineManagerType: LineManaging,
     VisibleLinesRenderingType: VisibleLinesRendering
 >: ViewportRendering where VisibleLinesRenderingType.LineType == LineManagerType.LineType {
-    let viewport: ViewportType
-    let lineManager: LineManagerType
-    let visibleLinesRenderer: VisibleLinesRenderingType
+    private var viewport: ViewportType
+    private let lineManager: LineManagerType
+    private let visibleLinesRenderer: VisibleLinesRenderingType
+
+    init(
+        viewport: ViewportType,
+        lineManager: LineManagerType,
+        visibleLinesRenderer: VisibleLinesRenderingType
+    ) {
+        self.viewport = viewport
+        self.lineManager = lineManager
+        self.visibleLinesRenderer = visibleLinesRenderer
+        observe(\.origin, of: viewport) { [weak self] _, _ in
+            self?.renderViewport()
+        }
+        observe(\.size, of: viewport) { [weak self] _, _ in
+            self?.renderViewport()
+        }
+    }
 
     func renderViewport() {
         var visibleLines: [VisibleLine<LineManagerType.LineType>] = []
