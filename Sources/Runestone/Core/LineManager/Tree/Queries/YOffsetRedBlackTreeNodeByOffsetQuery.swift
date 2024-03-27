@@ -1,9 +1,16 @@
 import _RunestoneRedBlackTree
 import Foundation
 
-struct YOffsetRedBlackTreeNodeByOffsetQuery: RedBlackTreeNodeByOffsetQuery {
+protocol YOffsetRedBlackTreeNodeByOffsetQuerable {
+    var height: CGFloat { get }
+    var totalHeight: CGFloat { get }
+}
+
+struct YOffsetRedBlackTreeNodeByOffsetQuery<
+    T: YOffsetRedBlackTreeNodeByOffsetQuerable
+>: RedBlackTreeNodeByOffsetQuery {
     typealias NodeValue = Int
-    typealias NodeData = ManagedLine
+    typealias NodeData = T
     typealias Offset = CGFloat
 
     let targetOffset: CGFloat

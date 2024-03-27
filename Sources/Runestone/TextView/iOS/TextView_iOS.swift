@@ -444,6 +444,7 @@ open class TextView: UIScrollView {
         navigationHandler: UITextInputClientNavigationHandler(
             state: stateStore,
             stringView: stringView,
+            lineManager: lineManager,
             navigationLocationProvider: TextNavigationLocationProvider(
                 stringView: stringView,
                 lineManager: lineManager
@@ -773,13 +774,9 @@ private extension TextView {
         guard isSelectable, gestureRecognizer.state == .ended else {
             return
         }
-//        let point = gestureRecognizer.location(in: self)
-//        let oldSelectedRange = selectedRangeSubject.value
-//        let index = locationRaycaster.location(closestTo: point)
-//        selectedRangeSubject.value = NSRange(location: index, length: 0)
-//        if selectedRangeSubject.value != oldSelectedRange {
-//            layoutIfNeeded()
-//        }
+        let point = gestureRecognizer.location(in: self)
+        let position = textInputClient.closestPosition(to: point) as! RunestoneUITextPosition
+        stateStore.selectedRange = NSRange(location: position.location, length: 0)
 //        textInteractionManager.installEditableInteraction()
         becomeFirstResponder()
     }

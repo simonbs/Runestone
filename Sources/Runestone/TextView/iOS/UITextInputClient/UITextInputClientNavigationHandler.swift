@@ -1,7 +1,7 @@
 import UIKit
 
-final class UITextInputClientNavigationHandler {
-    typealias State = SelectedRangeReadable & SelectedRangeWritable
+final class UITextInputClientNavigationHandler<LineManagerType: LineManaging> {
+    typealias State = SelectedRangeReadable & SelectedRangeWritable & TextContainerInsetReadable
 
     var beginningOfDocument: UITextPosition {
         RunestoneUITextPosition(0)
@@ -54,6 +54,7 @@ final class UITextInputClientNavigationHandler {
     
     private let state: State
     private let stringView: StringView
+    private let lineManager: LineManagerType
     private let navigationLocationProvider: TextNavigationLocationProviding
     private let selectionEventHandler: SelectionEventHandling
     private var didCallPositionFromPositionWithOffset = false
@@ -61,11 +62,13 @@ final class UITextInputClientNavigationHandler {
     init(
         state: State,
         stringView: StringView,
+        lineManager: LineManagerType,
         navigationLocationProvider: TextNavigationLocationProviding,
         selectionEventHandler: SelectionEventHandling
     ) {
         self.state = state
         self.stringView = stringView
+        self.lineManager = lineManager
         self.navigationLocationProvider = navigationLocationProvider
         self.selectionEventHandler = selectionEventHandler
     }
@@ -180,9 +183,16 @@ final class UITextInputClientNavigationHandler {
     }
 
     func closestPosition(to point: CGPoint) -> UITextPosition? {
-//        let index = locationRaycaster.location(closestTo: point)
-//        return IndexedPosition(index: index)
-        return nil
+        let insetPoint = CGPoint(x: point.x - state.textContainerInset.left, y: point.y - state.textContainerInset.top)
+        if let line = lineManager.line(atYOffset: insetPoint.y) {
+            let lineLocalPoint = CGPoint(x: insetPoint.x, y: insetPoint.y - line.yPosition)
+            let location = line.location(closestTo: lineLocalPoint)
+            return RunestoneUITextPosition(location)
+        } else if point.y <= 0 {
+            return RunestoneUITextPosition(0)
+        } else {
+            return RunestoneUITextPosition(stringView.length)
+        }
     }
 
     func closestPosition(to point: CGPoint, within range: UITextRange) -> UITextPosition? {

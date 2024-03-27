@@ -1,4 +1,5 @@
 import _RunestoneRedBlackTree
+import CoreText
 import Foundation
 
 final class ManagedLine: Line {
@@ -63,7 +64,11 @@ final class ManagedLine: Line {
     }
 
     func location(closestTo localPoint: CGPoint) -> Int {
-        0
+        guard let closestLineFragment = lineFragmentManager.lineFragment(atYOffset: localPoint.y) else {
+            return location
+        }
+        let localLocation = min(CTLineGetStringIndexForPosition(closestLineFragment.line, localPoint), length)
+        return location + localLocation
     }
 
     func invalidateTypesetText() {
@@ -111,3 +116,5 @@ extension ManagedLine: Hashable {
         lhs.id == rhs.id
     }
 }
+
+extension ManagedLine: YOffsetRedBlackTreeNodeByOffsetQuerable {}

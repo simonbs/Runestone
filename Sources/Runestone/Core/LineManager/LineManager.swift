@@ -141,7 +141,10 @@ final class LineManager<LineFactoryType: LineFactory>: LineManaging where LineFa
     }
 
     func line(atYOffset yOffset: CGFloat) -> LineType? {
-        lineNode(atYOffset: yOffset)?.data
+        let query = YOffsetRedBlackTreeNodeByOffsetQuery(querying: tree, for: yOffset)
+        let querier = RedBlackTreeNodeByOffsetQuerier(querying: tree)
+        let node = querier.node(for: query)
+        return node?.data
     }
 
     func makeLineIterator() -> AnyIterator<LineType> {
@@ -193,12 +196,6 @@ private extension LineManager {
             return nil
         }
         let query = ValueRedBlackTreeNodeByOffsetQuery(querying: tree, for: location)
-        let querier = RedBlackTreeNodeByOffsetQuerier(querying: tree)
-        return querier.node(for: query)
-    }
-
-    private func lineNode(atYOffset offset: CGFloat) -> LineNode? {
-        let query = YOffsetRedBlackTreeNodeByOffsetQuery(querying: tree, for: offset)
         let querier = RedBlackTreeNodeByOffsetQuerier(querying: tree)
         return querier.node(for: query)
     }

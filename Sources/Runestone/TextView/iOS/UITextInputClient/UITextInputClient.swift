@@ -1,7 +1,7 @@
 #if os(iOS)
 import UIKit
 
-final class UITextInputClient {
+final class UITextInputClient<LineManagerType: LineManaging> {
     let tokenizer: UITextInputTokenizer
     var beginningOfDocument: UITextPosition {
         navigationHandler.beginningOfDocument
@@ -15,7 +15,7 @@ final class UITextInputClient {
 
     private let textEditingHandler: UITextInputClientTextEditingHandler
     private let insertionPointHandler: UITextInputClientInsertionPointHandler
-    private let navigationHandler: UITextInputClientNavigationHandler
+    private let navigationHandler: UITextInputClientNavigationHandler<LineManagerType>
     private let selectionHandler: UITextInputClientSelectionHandler
     private let markHandler: UITextInputClientMarkHandler
 
@@ -23,7 +23,7 @@ final class UITextInputClient {
         tokenizer: UITextInputTokenizer,
         textEditingHandler: UITextInputClientTextEditingHandler,
         insertionPointHandler: UITextInputClientInsertionPointHandler,
-        navigationHandler: UITextInputClientNavigationHandler,
+        navigationHandler: UITextInputClientNavigationHandler<LineManagerType>,
         selectionHandler: UITextInputClientSelectionHandler,
         markHandler: UITextInputClientMarkHandler
     ) {

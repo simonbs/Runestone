@@ -10,14 +10,15 @@ struct ManagedLineFragment: LineFragment {
     let baseSize: CGSize
     let scaledSize: CGSize
     let yPosition: CGFloat
-    var totalHeight: CGFloat = 0
-    var line: CTLine {
-        _line!
+    var height: CGFloat {
+        scaledSize.height
     }
-
-    private var _line: CTLine?
+    var totalHeight: CGFloat = 0
+    let line: CTLine
 
     init() {
+        let attributedString = CFAttributedStringCreate(kCFAllocatorDefault, "" as NSString, [:] as CFDictionary)!
+        let line = CTLineCreateWithAttributedString(attributedString)
         self.init(
             index: 0,
             range: NSRange(location: 0, length: 0),
@@ -26,7 +27,7 @@ struct ManagedLineFragment: LineFragment {
             baseSize: .zero,
             scaledSize: .zero,
             yPosition: 0,
-            line: nil
+            line: line
         )
     }
 
@@ -51,7 +52,7 @@ struct ManagedLineFragment: LineFragment {
         baseSize: CGSize,
         scaledSize: CGSize,
         yPosition: CGFloat,
-        line: CTLine?
+        line: CTLine
     ) {
         self.index = index
         self.range = range
@@ -60,10 +61,12 @@ struct ManagedLineFragment: LineFragment {
         self.baseSize = baseSize
         self.scaledSize = scaledSize
         self.yPosition = yPosition
-        self._line = line
+        self.line = line
     }
 
     func insertionPointRange(forLineLocalRange lineLocalRange: NSRange) -> NSRange? {
         nil
     }
 }
+
+extension ManagedLineFragment: YOffsetRedBlackTreeNodeByOffsetQuerable {}

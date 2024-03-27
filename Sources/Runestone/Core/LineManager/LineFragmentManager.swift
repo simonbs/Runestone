@@ -61,6 +61,13 @@ final class LineFragmentManager {
         let searcher = RedBlackTreeTraversingSearcher<Int, ManagedLineFragment>(tree: tree)
         return searcher.search(for: query).map(\.node.data)
     }
+
+    func lineFragment(atYOffset yOffset: CGFloat) -> ManagedLineFragment? {
+        let query = YOffsetRedBlackTreeNodeByOffsetQuery(querying: tree, for: yOffset)
+        let querier = RedBlackTreeNodeByOffsetQuerier(querying: tree)
+        let node = querier.node(for: query)
+        return node?.data
+    }
 }
 
 private extension RedBlackTreeNode where NodeData == ManagedLineFragment {
