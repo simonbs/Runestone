@@ -196,23 +196,23 @@ final class UITextInputClientNavigationHandler<LineManagerType: LineManaging> {
     }
 
     func closestPosition(to point: CGPoint, within range: UITextRange) -> UITextPosition? {
-//        guard let indexedRange = range as? IndexedRange else {
-//            return nil
-//        }
-//        let index = locationRaycaster.location(closestTo: point)
-//        let minimumIndex = indexedRange.range.lowerBound
-//        let maximumIndex = indexedRange.range.upperBound
-//        let cappedIndex = min(max(index, minimumIndex), maximumIndex)
-//        return IndexedPosition(index: cappedIndex)
-        return nil
+        guard let range = range as? RunestoneUITextRange else {
+            return nil
+        }
+        guard let position = closestPosition(to: point) as? RunestoneUITextPosition else {
+            return nil
+        }
+        let cappedLocation = min(max(position.location, range.range.lowerBound), range.range.upperBound)
+        return RunestoneUITextPosition(cappedLocation)
     }
 
     func characterRange(at point: CGPoint) -> UITextRange? {
-//        let index = locationRaycaster.location(closestTo: point)
-//        let cappedIndex = max(index - 1, 0)
-//        let range = stringView.string.customRangeOfComposedCharacterSequence(at: cappedIndex)
-//        return IndexedRange(range)
-        return nil
+        guard let position = closestPosition(to: point) as? RunestoneUITextPosition else {
+            return nil
+        }
+        let cappedLocation = max(position.location - 1, 0)
+        let range = stringView.string.customRangeOfComposedCharacterSequence(at: cappedLocation)
+        return RunestoneUITextRange(range)
     }
 }
 
