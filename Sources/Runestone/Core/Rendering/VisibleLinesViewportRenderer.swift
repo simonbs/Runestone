@@ -38,7 +38,6 @@ final class VisibleLinesViewportRenderer<
             let lineIndex = line.index
             let isWithinViewport = line.yPosition + line.height < viewport.maxY
             let hasMoreLines = lineIndex < lineManager.lineCount - 1
-        
             workingLine = if isWithinViewport && hasMoreLines && !lineFragments.isEmpty {
                 lineManager[lineIndex + 1]
             } else {
