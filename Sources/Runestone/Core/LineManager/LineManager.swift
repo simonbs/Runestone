@@ -3,9 +3,7 @@ import Foundation
 
 typealias LineNode = RedBlackTreeNode<Int, ManagedLine>
 
-final class LineManager<
-    LineFactoryType: LineFactory
->: LineManaging where LineFactoryType.LineType == ManagedLine {
+final class LineManager<LineFactoryType: LineFactory>: LineManaging where LineFactoryType.LineType == ManagedLine {
     typealias State = EstimatedLineHeightReadable
     typealias LineType = LineFactoryType.LineType
 
@@ -32,7 +30,7 @@ final class LineManager<
 //                AnyRedBlackTreeChildrenUpdater(TotalByteCountRedBlackTreeChildrenUpdater())
             ])
         )
-        rootLine.setup(with: tree.root)
+        rootLine.node = tree.root
     }
 
     func insertText(_ text: NSString, at location: Int) -> LineChangeSet<LineType> {
@@ -158,12 +156,12 @@ final class LineManager<
         // Reset the tree so we only have a single line.
         let rootLine = lineFactory.makeLine(estimatingHeightTo: state.estimatedLineHeight)
         tree.reset(rootValue: 0, rootData: rootLine)
-        rootLine.setup(with: tree.root)
+        rootLine.node = tree.root
         let nsString = stringView.string as NSString
         // Iterate over lines in the string.
         var lineNode = tree.node(atIndex: 0)
         var workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: nsString, startingAt: 0)
-        var lines: [LineNode] = []
+        var lineNodes: [LineNode] = []
         var lastDelimiterEnd = 0
         var totalLineHeight: CGFloat = 0
         while let newLineRange = workingNewLineRange {
@@ -173,18 +171,19 @@ final class LineManager<
             lineNode.data.delimiterLength = newLineRange.length
             lineNode.data.totalHeight = totalLineHeight
             lastDelimiterEnd = newLineRange.location + newLineRange.length
-            lines.append(lineNode)
+            lineNodes.append(lineNode)
             let line = lineFactory.makeLine(estimatingHeightTo: state.estimatedLineHeight)
             lineNode = RedBlackTree<Int, LineType>.Node(tree: tree, value: 0, data: line)
-            line.setup(with: lineNode)
+            line.node = lineNode
             workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: nsString, startingAt: lastDelimiterEnd)
             totalLineHeight += state.estimatedLineHeight
         }
         let totalLength = stringView.length - lastDelimiterEnd
         lineNode.value = totalLength
         lineNode.data.totalLength = totalLength
-        lines.append(lineNode)
-        tree.rebuild(from: lines)
+        lineNode.data.totalHeight = totalLineHeight
+        lineNodes.append(lineNode)
+        tree.rebuild(from: lineNodes)
     }
 }
 
@@ -260,19 +259,19 @@ private extension LineManager {
     @discardableResult
     private func insertLine(ofLength length: Int, after otherLine: LineNode) -> LineNode {
         let line = lineFactory.makeLine(estimatingHeightTo: state.estimatedLineHeight)
-        let insertedNode = tree.insertNode(value: length, data: line, after: otherLine)
-        line.setup(with: insertedNode)
+        let node = tree.insertNode(value: length, data: line, after: otherLine)
+        line.node = node
 //        let range = NSRange(location: insertedLine.location, length: length)
 //        let substring = stringView.substring(in: range)
 //        let byteCount = substring?.byteCount ?? 0
-        insertedNode.data.totalLength = length
+        node.data.totalLength = length
 //        insertedLine.data.byteCount = byteCount
 //        insertedLine.data.totalByteCount = byteCount
 //        insertedLine.data.node = insertedLine
         // Call updateAfterChangingChildren(of:) to update the values of nodeTotalByteCount.
 //        tree.updateAfterChangingChildren(of: insertedLine)
 //        didInsertLine.send(())
-        return insertedNode
+        return node
     }
 
     private func getCharacter(at location: Int) -> String? {
@@ -281,26 +280,8 @@ private extension LineManager {
     }
 }
 
-extension LineNode: ManagedLineLocationReading {
+private extension LineNode {
     var location: Int {
         offset
-    }
-}
-
-extension LineNode: ManagedLineIndexReading {}
-
-extension LineNode: ManagedLineYPositionReading {
-    var yPosition: CGFloat {
-        let query = YPositionFromLineNodeQuery(targetNode: self)
-        let querier = OffsetFromRedBlackTreeNodeQuerier(querying: tree)
-        return querier.offset(for: query)!
-    }
-}
-
-private extension ManagedLine {
-    func setup(with node: LineNode) {
-        indexReader = node
-        locationReader = node
-        yPositionReader = node
     }
 }

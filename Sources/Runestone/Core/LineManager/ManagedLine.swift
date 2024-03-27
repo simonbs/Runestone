@@ -5,11 +5,12 @@ final class ManagedLine: Line {
     typealias LineFragmentType = ManagedLineFragment
 
     let id: LineID = UUID()
+    weak var node: RedBlackTreeNode<Int, ManagedLine>?
     var index: Int {
-        indexReader!.index
+        node!.index
     }
     var location: Int {
-        locationReader!.location
+        node!.offset
     }
     var totalLength = 0
     var length: Int {
@@ -21,7 +22,9 @@ final class ManagedLine: Line {
         }
     }
     var yPosition: CGFloat {
-        yPositionReader!.yPosition
+        let query = YPositionFromLineNodeQuery(targetNode: node!)
+        let querier = OffsetFromRedBlackTreeNodeQuerier(querying: node!.tree)
+        return querier.offset(for: query)!
     }
     var height: CGFloat {
         guard lineFragmentManager.numberOfLineFragments > 0 else {
@@ -35,9 +38,6 @@ final class ManagedLine: Line {
     var numberOfLineFragments: Int {
         lineFragmentManager.numberOfLineFragments
     }
-    weak var indexReader: ManagedLineIndexReading?
-    weak var locationReader: ManagedLineLocationReading?
-    weak var yPositionReader: ManagedLineYPositionReading?
 
     private let estimatedHeight: CGFloat
     private let typesetter: Typesetting
@@ -73,12 +73,12 @@ final class ManagedLine: Line {
 
     func typesetText(toLocation location: Int) {
         let lineFragments = typesetter.typesetText(in: self, toLocation: location)
-        lineFragmentManager.addTypesetLineFragments(lineFragments)
+        handleTypesetLineFragments(lineFragments)
     }
 
     func typesetText(toYOffset yOffset: CGFloat) {
         let lineFragments = typesetter.typesetText(in: self, toYOffset: yOffset)
-        lineFragmentManager.addTypesetLineFragments(lineFragments)
+        handleTypesetLineFragments(lineFragments)
     }
 
     func lineFragment(containingLocation location: Int) -> ManagedLineFragment {
@@ -91,6 +91,14 @@ final class ManagedLine: Line {
 
     func lineFragments(in rect: CGRect) -> [ManagedLineFragment] {
         lineFragmentManager.lineFragments(withYOffsetIn: rect.minY - yPosition ... rect.maxY - yPosition)
+    }
+}
+
+private extension ManagedLine {
+    private func handleTypesetLineFragments(_ lineFragments: [TypesetLineFragment]) {
+        lineFragmentManager.addTypesetLineFragments(lineFragments)
+        // Update total line height.
+        node!.tree.updateAfterChangingChildren(of: node!)
     }
 }
 
