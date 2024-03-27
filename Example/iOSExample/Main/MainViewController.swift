@@ -61,12 +61,11 @@ private extension MainViewController {
     }
 
     private func setupTextView() {
-        let text = ""
-//        let text = if !ProcessInfo.processInfo.disableTextPersistance {
-//            UserDefaults.standard.text ?? ""
-//        } else {
-//            ""
-//        }
+        let text = if !ProcessInfo.processInfo.disableTextPersistance {
+            UserDefaults.standard.text ?? ""
+        } else {
+            ""
+        }
 //        let state = TextViewState(text: text, theme: theme)
 //        if ProcessInfo.processInfo.useCRLFLineEndings {
 //            contentView.textView.lineEndings = .crlf
