@@ -16,7 +16,8 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     private let lineManager: LineManager
     private let rootLanguageLayer: TreeSitterLanguageLayer
     private let operationQueue = OperationQueue()
-
+    private let parseLock = NSLock()
+    
     init(language: TreeSitterInternalLanguage, languageProvider: TreeSitterLanguageProvider?, stringView: StringView, lineManager: LineManager) {
         self.stringView = stringView
         self.lineManager = lineManager
@@ -37,7 +38,9 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     }
 
     func parse(_ text: NSString) {
-        rootLanguageLayer.parse(text)
+        parseLock.withLock {
+            rootLanguageLayer.parse(text)
+        }
     }
 
     func parse(_ text: NSString, completion: @escaping ((Bool) -> Void)) {
