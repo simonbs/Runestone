@@ -1,4 +1,20 @@
+import Foundation
+
 struct AnyObservationChangeHandler {
+    private enum ObservationError: LocalizedError {
+        case mismatchOldValueType(expectedType: Any.Type, actualType: Any.Type)
+        case mismatchNewValueType(expectedType: Any.Type, actualType: Any.Type)
+
+        var errorDescription: String? {
+            switch self {
+            case .mismatchOldValueType(let expectedType, let actualType):
+                "Receieved old value of unexpected type \(actualType) but expected \(expectedType)"
+            case .mismatchNewValueType(let expectedType, let actualType):
+                "Receieved new value of unexpected type \(actualType) but expected \(expectedType)"
+            }
+        }
+    }
+
     private let handler: (Any, Any) throws -> Void
 
     init<T>(_ handler: @escaping (T, T) -> Void) {

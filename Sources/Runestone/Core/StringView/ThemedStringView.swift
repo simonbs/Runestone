@@ -4,7 +4,7 @@ import Foundation
 @RunestoneObserver
 final class ThemedStringView<
     StringViewType: StringView,
-    State: _RunestoneObservation.Observable & KernReadable & ThemeReadable
+    State: KernReadable & ThemeReadable
 >: StringView {
     var string: String {
         get {
@@ -33,10 +33,10 @@ final class ThemedStringView<
     init(stringView: StringViewType, state: State) {
         self.stringView = stringView
         self.state = state
-        observe(\.theme, of: state) { [weak self] _, _ in
+        observe(state.theme) { [weak self] _, _ in
             self?.reapplyDefaultAttributes()
         }
-        observe(\.kern, of: state) { [weak self] _, _ in
+        observe(state.kern) { [weak self] _, _ in
             self?.reapplyDefaultAttributes()
         }
     }

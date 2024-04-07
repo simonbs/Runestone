@@ -27,8 +27,8 @@ final class RunestoneObservationTrackedMacroTests: XCTestCase {
                         _foo = initialValue
                     }
                     set {
-                        _observableRegistry.mutating(
-                            \\.foo,
+                        _observableRegistrar.withMutation(
+                            of: \\.foo,
                             on: self,
                             changingFrom: foo,
                             to: newValue
@@ -37,7 +37,8 @@ final class RunestoneObservationTrackedMacroTests: XCTestCase {
                         }
                     }
                     get {
-                         _foo
+                         _observableRegistrar.access(\\.foo, on: self)
+                         return _foo
                     }
                 }
             }

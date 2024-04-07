@@ -4,7 +4,7 @@ import Foundation
 
 @RunestoneObservable @RunestoneObserver
 final class ScrollViewMaximumLineFragmentWidthProvider: MaximumLineFragmentWidthProviding {
-    typealias State = TextContainerInsetReadable & _RunestoneObservation.Observable
+    typealias State = TextContainerInsetReadable
 
     private(set) var maximumLineFragmentWidth: CGFloat = 0
 
@@ -27,10 +27,10 @@ final class ScrollViewMaximumLineFragmentWidthProvider: MaximumLineFragmentWidth
         textContainerInset = state.textContainerInset
         size = viewport.size
         recompute()
-        observe(\.textContainerInset, of: state) { [weak self] _, newValue in
+        observe(state.textContainerInset) { [weak self] _, newValue in
             self?.textContainerInset = newValue
         }
-        observe(\.size, of: viewport) { [weak self] _, newValue in
+        observe(viewport.size) { [weak self] _, newValue in
             self?.size = newValue
         }
     }

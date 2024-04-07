@@ -1,7 +1,7 @@
 import _RunestoneObservation
 import Foundation
 
-protocol Viewport: CustomDebugStringConvertible, _RunestoneObservation.Observable {
+protocol Viewport: CustomDebugStringConvertible {
     var origin: CGPoint { get }
     var size: CGSize { get }
 }

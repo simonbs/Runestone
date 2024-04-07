@@ -24,31 +24,7 @@ final class RunestoneObservableMacroTests: XCTestCase {
                 @RunestoneObservationTracked
                 var foo: String = ""
 
-                private let _observableRegistry = _RunestoneObservation.ObservableRegistry<ViewModel>()
-
-                func registerObserver<T>(
-                    _ observer: some _RunestoneObservation.Observer,
-                    observing keyPath: KeyPath<ViewModel, T>,
-                    receiving changeType: _RunestoneObservation.PropertyChangeType,
-                    options: _RunestoneObservation.ObservationOptions = [],
-                    handler: @escaping _RunestoneObservation.ObservationChangeHandler<T>
-                ) -> _RunestoneObservation.ObservationId {
-                    return _observableRegistry.registerObserver(
-                        observer,
-                        observing: keyPath,
-                        on: self,
-                        receiving: changeType,
-                        options: options,
-                        handler: handler
-                    )
-                }
-
-                func cancelObservation(withId observationId: _RunestoneObservation.ObservationId) {
-                    _observableRegistry.cancelObservation(withId: observationId)
-                }
-            }
-
-            extension ViewModel: _RunestoneObservation.Observable {
+                private let _observableRegistrar = _RunestoneObservation.ObservableRegistrar()
             }
             """,
             macros: testMacros
@@ -58,7 +34,7 @@ final class RunestoneObservableMacroTests: XCTestCase {
         #endif
     }
 
-    func test_it_skips_tracking_properties_with_runestoneobservationignored_annotation() throws {
+    func test_it_skips_tracking_properties_withRunestoneObservationignored_annotation() throws {
         #if canImport(_RunestoneMacros)
         assertMacroExpansion(
             """
@@ -76,31 +52,7 @@ final class RunestoneObservableMacroTests: XCTestCase {
                 @RunestoneObservationIgnored
                 var bar: String = ""
 
-                private let _observableRegistry = _RunestoneObservation.ObservableRegistry<ViewModel>()
-
-                func registerObserver<T>(
-                    _ observer: some _RunestoneObservation.Observer,
-                    observing keyPath: KeyPath<ViewModel, T>,
-                    receiving changeType: _RunestoneObservation.PropertyChangeType,
-                    options: _RunestoneObservation.ObservationOptions = [],
-                    handler: @escaping _RunestoneObservation.ObservationChangeHandler<T>
-                ) -> _RunestoneObservation.ObservationId {
-                    return _observableRegistry.registerObserver(
-                        observer,
-                        observing: keyPath,
-                        on: self,
-                        receiving: changeType,
-                        options: options,
-                        handler: handler
-                    )
-                }
-
-                func cancelObservation(withId observationId: _RunestoneObservation.ObservationId) {
-                    _observableRegistry.cancelObservation(withId: observationId)
-                }
-            }
-
-            extension ViewModel: _RunestoneObservation.Observable {
+                private let _observableRegistrar = _RunestoneObservation.ObservableRegistrar()
             }
             """,
             macros: [
@@ -112,7 +64,7 @@ final class RunestoneObservableMacroTests: XCTestCase {
         #endif
     }
 
-    func test_it_skips_adding_runestoneobservationtracked_annotation_when_already_added() throws {
+    func test_it_skips_addingRunestoneObservationtracked_annotation_when_already_added() throws {
         #if canImport(_RunestoneMacros)
         assertMacroExpansion(
             """
@@ -127,31 +79,7 @@ final class RunestoneObservableMacroTests: XCTestCase {
                 @RunestoneObservationTracked
                 var foo: String = ""
 
-                private let _observableRegistry = _RunestoneObservation.ObservableRegistry<ViewModel>()
-
-                func registerObserver<T>(
-                    _ observer: some _RunestoneObservation.Observer,
-                    observing keyPath: KeyPath<ViewModel, T>,
-                    receiving changeType: _RunestoneObservation.PropertyChangeType,
-                    options: _RunestoneObservation.ObservationOptions = [],
-                    handler: @escaping _RunestoneObservation.ObservationChangeHandler<T>
-                ) -> _RunestoneObservation.ObservationId {
-                    return _observableRegistry.registerObserver(
-                        observer,
-                        observing: keyPath,
-                        on: self,
-                        receiving: changeType,
-                        options: options,
-                        handler: handler
-                    )
-                }
-
-                func cancelObservation(withId observationId: _RunestoneObservation.ObservationId) {
-                    _observableRegistry.cancelObservation(withId: observationId)
-                }
-            }
-
-            extension ViewModel: _RunestoneObservation.Observable {
+                private let _observableRegistrar = _RunestoneObservation.ObservableRegistrar()
             }
             """,
             macros: [

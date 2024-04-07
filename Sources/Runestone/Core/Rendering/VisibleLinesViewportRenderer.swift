@@ -19,10 +19,10 @@ final class VisibleLinesViewportRenderer<
         self.viewport = viewport
         self.lineManager = lineManager
         self.visibleLinesRenderer = visibleLinesRenderer
-        observe(\.origin, of: viewport) { [weak self] _, _ in
+        observe(viewport.origin) { [weak self] _, _ in
             self?.renderViewport()
         }
-        observe(\.size, of: viewport) { [weak self] _, _ in
+        observe(viewport.size) { [weak self] _, _ in
             self?.renderViewport()
         }
     }

@@ -52,80 +52,16 @@ extension RunestoneObservableMacro: MemberMacro {
         }
         let typeName = identified.name.text
         return [
-            try makeObservableRegistryVariable(forTypeNamed: typeName),
-            try makeRegisterObserverFunction(forTypeNamed: typeName),
-            try makeDeregisterObserverFunction()
-        ]
-    }
-}
-
-extension RunestoneObservableMacro: ExtensionMacro {
-    public static func expansion(
-        of node: AttributeSyntax,
-        attachedTo declaration: some DeclGroupSyntax,
-        providingExtensionsOf type: some TypeSyntaxProtocol,
-        conformingTo protocols: [TypeSyntax],
-        in context: some MacroExpansionContext
-    ) throws -> [ExtensionDeclSyntax] {
-        guard let classDecl = declaration.as(ClassDeclSyntax.self) else {
-            let diagnostic = Diagnostic(
-                node: declaration,
-                message: RunestoneMacroDiagnostic.onlyApplicableToClass
-            )
-            context.diagnose(diagnostic)
-            return []
-        }
-        let className = classDecl.name.text
-        return [
-            try ExtensionDeclSyntax(
-               """
-               extension \(raw: className): _RunestoneObservation.Observable {}
-               """
-            )
+            try makeObservableRegistrarVariable(forTypeNamed: typeName)
         ]
     }
 }
 
 private extension RunestoneObservableMacro {
-    private static func makeObservableRegistryVariable(forTypeNamed typeName: String) throws -> DeclSyntax {
+    private static func makeObservableRegistrarVariable(forTypeNamed typeName: String) throws -> DeclSyntax {
         let syntax = try VariableDeclSyntax(
            """
-           private let _observableRegistry = _RunestoneObservation.ObservableRegistry<\(raw: typeName)>()
-           """
-        )
-        return DeclSyntax(syntax)
-    }
-
-    private static func makeRegisterObserverFunction(forTypeNamed typeName: String) throws -> DeclSyntax {
-        let syntax = try FunctionDeclSyntax(
-           """
-           func registerObserver<T>(
-               _ observer: some _RunestoneObservation.Observer,
-               observing keyPath: KeyPath<\(raw: typeName), T>,
-               receiving changeType: _RunestoneObservation.PropertyChangeType,
-               options: _RunestoneObservation.ObservationOptions = [],
-               handler: @escaping _RunestoneObservation.ObservationChangeHandler<T>
-           ) -> _RunestoneObservation.ObservationId {
-               return _observableRegistry.registerObserver(
-                   observer,
-                   observing: keyPath,
-                   on: self,
-                   receiving: changeType,
-                   options: options,
-                   handler: handler
-               )
-           }
-           """
-        )
-        return DeclSyntax(syntax)
-    }
-
-    private static func makeDeregisterObserverFunction() throws -> DeclSyntax {
-        let syntax = try FunctionDeclSyntax(
-           """
-           func cancelObservation(withId observationId: _RunestoneObservation.ObservationId) {
-               _observableRegistry.cancelObservation(withId: observationId)
-           }
+           private let _observableRegistrar = _RunestoneObservation.ObservableRegistrar()
            """
         )
         return DeclSyntax(syntax)

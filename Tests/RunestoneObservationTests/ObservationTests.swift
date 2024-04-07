@@ -2,30 +2,13 @@
 import XCTest
 
 final class ObservationTests: XCTestCase {
-    func test_it_stores_handler() throws {
-        var didCallHandler = false
+    func test_it_removes_observation_from_observation_store_when_cancelling() {
+        let observationStore = ObservationStoreSpy()
+        let observerRegistrar = ObserverRegistrar(observationStore: observationStore)
         let observable = MockObservable()
-        let observer = MockObserver()
-        let propertyChangeId = PropertyChangeId(for: observable, publishing: .didSet, of: \.str)
-        let sut = Observation(
-            observer: observer,
-            propertyChangeId: propertyChangeId
-        ) { (_: String, _: String) in
-            didCallHandler = true
-        }
-        try sut.handler.invoke(changingFrom: "foo", to: "bar")
-        XCTAssertTrue(didCallHandler)
-    }
-
-    func test_it_invokes_cancel_on_observer() {
-        let observable = MockObservable()
-        let observer = MockObserver()
-        let propertyChangeId = PropertyChangeId(for: observable, publishing: .didSet, of: \.str)
-        let sut = Observation(
-            observer: observer,
-            propertyChangeId: propertyChangeId
-        ) { (_: String, _: String) in }
-        sut.invokeCancelOnObserver()
-        XCTAssertTrue(observer.didCancel)
+        let sut = observerRegistrar.registerObserver(tracking: { observable.str }, receiving: .willSet) { _, _ in }
+        XCTAssertNotNil(observationStore.addedObservationId)
+        sut.cancel()
+        XCTAssertNotNil(observationStore.removedObservationId)
     }
 }

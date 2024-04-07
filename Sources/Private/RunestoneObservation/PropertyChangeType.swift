@@ -1,4 +1,4 @@
-package enum PropertyChangeType {
+public enum PropertyChangeType {
     case willSet
     case didSet
 }

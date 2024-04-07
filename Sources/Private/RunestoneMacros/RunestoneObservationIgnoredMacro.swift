@@ -9,6 +9,6 @@ public struct RunestoneObservationIgnoredMacro: AccessorMacro {
         providingAccessorsOf declaration: some DeclSyntaxProtocol,
         in context: some MacroExpansionContext
     ) throws -> [AccessorDeclSyntax] {
-        return []
+        []
     }
 }

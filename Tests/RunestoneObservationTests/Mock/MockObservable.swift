@@ -16,24 +16,9 @@ struct MyNonEquatableType {
     }
 }
 
-final class MockObservable: Observable {
+@RunestoneObservable
+final class MockObservable {
     var str = "foo"
     let equatableObj = MyEquatableType("foo")
     let nonEquatableObj = MyNonEquatableType("foo")
-
-    private(set) var didCancel = false
-
-    func registerObserver<T>(
-        _ observer: some Observer,
-        observing keyPath: KeyPath<MockObservable, T>,
-        receiving changeType: PropertyChangeType,
-        options: ObservationOptions,
-        handler: @escaping ObservationChangeHandler<T>
-    ) -> ObservationId {
-         ObservationId()
-    }
-    
-    func cancelObservation(withId observationId: ObservationId) {
-        didCancel = true
-    }
 }
