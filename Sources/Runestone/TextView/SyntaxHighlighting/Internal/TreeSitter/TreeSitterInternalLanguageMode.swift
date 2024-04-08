@@ -17,7 +17,7 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     private let rootLanguageLayer: TreeSitterLanguageLayer
     private let operationQueue = OperationQueue()
     private let parseLock = NSLock()
-    
+
     init(language: TreeSitterInternalLanguage, languageProvider: TreeSitterLanguageProvider?, stringView: StringView, lineManager: LineManager) {
         self.stringView = stringView
         self.lineManager = lineManager
