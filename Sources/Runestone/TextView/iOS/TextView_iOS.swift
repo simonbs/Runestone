@@ -1,5 +1,6 @@
 #if os(iOS)
 // swiftlint:disable file_length type_body_length
+import _RunestoneProxy
 import Combine
 import CoreText
 import UIKit
@@ -60,8 +61,8 @@ open class TextView: UIScrollView {
         }
     }
     /// Colors and fonts to be used by the editor.
-//    @Proxy(\TextView.themeSettings.theme.value)
-//    public var theme: Theme
+    @RunestoneProxy(\TextView.stateStore.theme)
+    public var theme: Theme
     /// The autocorrection style for the text view.
     public var autocorrectionType: UITextAutocorrectionType = .default
     /// The autocapitalization style for the text view.
@@ -83,8 +84,8 @@ open class TextView: UIScrollView {
     /// Character pairs are used by the editor to automatically insert a trailing character when the user types the leading character.
     ///
     /// Common usages of this includes the \" character to surround strings and { } to surround a scope.
-//    @Proxy(\TextView.characterPairService.characterPairs)
-//    public var characterPairs: [CharacterPair]
+    @RunestoneProxy(\TextView.stateStore.characterPairs)
+    public var characterPairs: [CharacterPair]
     /// Determines what should happen to the trailing component of a character pair when deleting the leading component. Defaults to `disabled` meaning that nothing will happen.
 //    @Proxy(\TextView.characterPairService.trailingComponentDeletionMode)
 //    public var characterPairTrailingComponentDeletionMode: CharacterPairTrailingComponentDeletionMode
@@ -101,66 +102,66 @@ open class TextView: UIScrollView {
 //    @Proxy(\TextView.lineSelectionLayouter.lineSelectionDisplayType.value)
 //    public var lineSelectionDisplayType: LineSelectionDisplayType
     /// The text view renders invisible tabs when enabled. The `tabsSymbol` is used to render tabs.
-//    @Proxy(\TextView.invisibleCharacterSettings.showTabs.value)
-//    public var showTabs: Bool
+    @RunestoneProxy(\TextView.stateStore.showTabs)
+    public var showTabs: Bool
     /// The text view renders invisible spaces when enabled.
     ///
     /// The `spaceSymbol` is used to render spaces.
-//    @Proxy(\TextView.invisibleCharacterSettings.showSpaces.value)
-//    public var showSpaces: Bool
+    @RunestoneProxy(\TextView.stateStore.showSpaces)
+    public var showSpaces: Bool
     /// The text view renders invisible spaces when enabled.
     ///
     /// The `nonBreakingSpaceSymbol` is used to render spaces.
-//    @Proxy(\TextView.invisibleCharacterSettings.showNonBreakingSpaces.value)
-//    public var showNonBreakingSpaces: Bool
+    @RunestoneProxy(\TextView.stateStore.showNonBreakingSpaces)
+    public var showNonBreakingSpaces: Bool
     /// The text view renders invisible line breaks when enabled.
     ///
     /// The `lineBreakSymbol` is used to render line breaks.
-//    @Proxy(\TextView.invisibleCharacterSettings.showLineBreaks.value)
-//    public var showLineBreaks: Bool
+    @RunestoneProxy(\TextView.stateStore.showLineBreaks)
+    public var showLineBreaks: Bool
     /// The text view renders invisible soft line breaks when enabled.
     ///
     /// The `softLineBreakSymbol` is used to render line breaks. These line breaks are typically represented by the U+2028 unicode character. Runestone does not provide any key commands for inserting these but supports rendering them.
-//    @Proxy(\TextView.invisibleCharacterSettings.showSoftLineBreaks.value)
-//    public var showSoftLineBreaks: Bool
+    @RunestoneProxy(\TextView.stateStore.showSoftLineBreaks)
+    public var showSoftLineBreaks: Bool
     /// Symbol used to display tabs.
     ///
     /// The value is only used when invisible tab characters is enabled. The default is ▸.
     ///
     /// Common characters for this symbol include ▸, ⇥, ➜, ➞, and ❯.
-//    @Proxy(\TextView.invisibleCharacterSettings.tabSymbol.value)
-//    public var tabSymbol: String
+    @RunestoneProxy(\TextView.stateStore.tabSymbol)
+    public var tabSymbol: String
     /// Symbol used to display spaces.
     ///
     /// The value is only used when showing invisible space characters is enabled. The default is ·.
     ///
     /// Common characters for this symbol include ·, •, and _.
-//    @Proxy(\TextView.invisibleCharacterSettings.spaceSymbol.value)
-//    public var spaceSymbol: String
+    @RunestoneProxy(\TextView.stateStore.spaceSymbol)
+    public var spaceSymbol: String
     /// Symbol used to display non-breaking spaces.
     ///
     /// The value is only used when showing invisible space characters is enabled. The default is ·.
     ///
     /// Common characters for this symbol include ·, •, and _.
-//    @Proxy(\TextView.invisibleCharacterSettings.nonBreakingSpaceSymbol.value)
-//    public var nonBreakingSpaceSymbol: String
+    @RunestoneProxy(\TextView.stateStore.nonBreakingSpaceSymbol)
+    public var nonBreakingSpaceSymbol: String
     /// Symbol used to display line break.
     ///
     /// The value is only used when showing invisible line break characters is enabled. The default is ¬.
     ///
     /// Common characters for this symbol include ¬, ↵, ↲, ⤶, and ¶.
-//    @Proxy(\TextView.invisibleCharacterSettings.lineBreakSymbol.value)
-//    public var lineBreakSymbol: String
+    @RunestoneProxy(\TextView.stateStore.lineBreakSymbol)
+    public var lineBreakSymbol: String
     /// Symbol used to display soft line breaks.
     ///
     /// The value is only used when showing invisible soft line break characters is enabled. The default is ¬.
     ///
     /// Common characters for this symbol include ¬, ↵, ↲, ⤶, and ¶.
-//    @Proxy(\TextView.invisibleCharacterSettings.softLineBreakSymbol.value)
-//    public var softLineBreakSymbol: String
+    @RunestoneProxy(\TextView.stateStore.softLineBreakSymbol)
+    public var softLineBreakSymbol: String
     /// The strategy used when indenting text.
-//    @Proxy(\TextView.typesetSettings.indentStrategy.value)
-//    public var indentStrategy: IndentStrategy
+    @RunestoneProxy(\TextView.stateStore.indentStrategy)
+    public var indentStrategy: IndentStrategy
     /// The amount of padding before the line numbers inside the gutter.
 //    public var gutterLeadingPadding: CGFloat {
 //        get {
@@ -189,26 +190,26 @@ open class TextView: UIScrollView {
 //        }
 //    }
     /// The amount of spacing surrounding the lines.
-//    @Proxy(\TextView.textContainer.inset.value)
-//    public var textContainerInset: UIEdgeInsets
+    @RunestoneProxy(\TextView.stateStore.textContainerInset)
+    public var textContainerInset: UIEdgeInsets
     /// When line wrapping is disabled, users can scroll the text view horizontally to see the entire line.
     ///
     /// Line wrapping is enabled by default.
-//    @Proxy(\TextView.typesetSettings.isLineWrappingEnabled.value)
-//    public var isLineWrappingEnabled: Bool
+    @RunestoneProxy(\TextView.stateStore.isLineWrappingEnabled)
+    public var isLineWrappingEnabled: Bool
     /// Line break mode for text view. The default value is .byWordWrapping meaning that wrapping occurs on word boundaries.
-//    @Proxy(\TextView.typesetSettings.lineBreakMode.value)
-//    public var lineBreakMode: LineBreakMode
+    @RunestoneProxy(\TextView.stateStore.lineBreakMode)
+    public var lineBreakMode: LineBreakMode
     /// Width of the gutter.
 //    public var gutterWidth: CGFloat {
 //        gutterWidthService.gutterWidth
 //    }
     /// The line-height is multiplied with the value.
-//    @Proxy(\TextView.typesetSettings.lineHeightMultiplier.value)
-//    public var lineHeightMultiplier: CGFloat
+    @RunestoneProxy(\TextView.stateStore.lineHeightMultiplier)
+    public var lineHeightMultiplier: CGFloat
     /// The number of points by which to adjust kern. The default value is 0 meaning that kerning is disabled.
-//    @Proxy(\TextView.typesetSettings.kern.value)
-//    public var kern: CGFloat
+    @RunestoneProxy(\TextView.stateStore.kern)
+    public var kern: CGFloat
     /// The text view shows a page guide when enabled. Use `pageGuideColumn` to specify the location of the page guide.
 //    @Proxy(\TextView.pageGuideLayouter.isEnabled)
 //    public var showPageGuide: Bool
@@ -221,13 +222,13 @@ open class TextView: UIScrollView {
     /// Amount of overscroll to add in the vertical direction.
     ///
     /// The overscroll is a factor of the scrollable area height and will not take into account any insets. 0 means no overscroll and 1 means an amount equal to the height of the text view. Detaults to 0.
-//    @Proxy(\TextView.contentSizeService.verticalOverscrollFactor.value)
-//    public var verticalOverscrollFactor: CGFloat
+    @RunestoneProxy(\TextView.stateStore.verticalOverscrollFactor)
+    public var verticalOverscrollFactor: CGFloat
     /// Amount of overscroll to add in the horizontal direction.
     ///
     /// The overscroll is a factor of the scrollable area height and will not take into account any insets or the width of the gutter. 0 means no overscroll and 1 means an amount equal to the width of the text view. Detaults to 0.
-//    @Proxy(\TextView.contentSizeService.horizontalOverscrollFactor.value)
-//    public var horizontalOverscrollFactor: CGFloat
+    @RunestoneProxy(\TextView.stateStore.horizontalOverscrollFactor)
+    public var horizontalOverscrollFactor: CGFloat
     /// Ranges in the text to be highlighted. The color defined by the background will be drawen behind the text.
 //    @Proxy(\TextView.highlightedRangeFragmentStore.highlightedRanges.value)
 //    public var highlightedRanges: [HighlightedRange]
@@ -239,13 +240,13 @@ open class TextView: UIScrollView {
     /// The value only affects new line breaks inserted in the text view and changing this value does not change the line endings of the text in the text view. Defaults to Unix (LF).
     ///
     /// The TextView will only update the line endings when text is modified through an external event, such as when the user typing on the keyboard, when the user is replacing selected text, and when pasting text into the text view. In all other cases, you should make sure that the text provided to the text view uses the desired line endings. This includes when calling ``TextView/setState(_:addUndoAction:)``.
-//    @Proxy(\TextView.typesetSettings.lineEndings.value)
-//    public var lineEndings: LineEnding
+    @RunestoneProxy(\TextView.stateStore.lineEndings)
+    public var lineEndings: LineEnding
     /// The shape of the insertion point.
     ///
     /// Defaults to ``InsertionPointShape/verticalBar``.
-//    @Proxy(\TextView.insertionPointShapeSubject.value)
-//    public var insertionPointShape: InsertionPointShape
+    @RunestoneProxy(\TextView.stateStore.insertionPointShape)
+    public var insertionPointShape: InsertionPointShape
     /// The insertion point's visibility mode.
     ///
     /// Defaults to ``InsertionPointVisibilityMode/whenMovingAndFarAway``.
@@ -389,8 +390,14 @@ open class TextView: UIScrollView {
 //    private let textInteractionManager: UITextInteractionManager
 //    private var boundsObserver: AnyCancellable?
 
-    private lazy var viewport = ScrollViewViewport(scrollView: self)
     private let stateStore = TextViewStateStore()
+    private lazy var viewport = ScrollViewViewport(scrollView: self)
+    private lazy var contentSizeService = ContentSizeService(
+        state: stateStore,
+        scrollView: self,
+        viewport: viewport,
+        lineManager: lineManager
+    )
 
     private(set) lazy var textInputClient = UITextInputClient(
         tokenizer: TextInputStringTokenizer(
@@ -415,7 +422,12 @@ open class TextView: UIScrollView {
                     ),
                     LineManagerTextReplacer(
                         lineManager: lineManager,
-                        changeSetHandler: TypesettingInvalidatingLineChangeSetHandler()
+                        changeSetHandler: CompositeLineChangeSetHandler(
+                            TypesettingInvalidatingLineChangeSetHandler(),
+                            ContentSizeUpdatingLineChangeSetHandler(
+                                contentSizeService: contentSizeService
+                            )
+                        )
                     ),
                     RenderingTextReplacer(
                         viewportRenderer: viewportRenderer
@@ -459,10 +471,13 @@ open class TextView: UIScrollView {
     private lazy var viewportRenderer = VisibleLinesViewportRenderer(
         viewport: viewport,
         lineManager: lineManager,
-        visibleLinesRenderer: LineFragmentVisibleLinesRenderer(
-            state: stateStore,
-            hostLayer: layer,
-            renderer: TextLineFragmentRenderer()
+        visibleLinesRenderer: SizeTrackingVisibleLinesRenderer(
+            visibleLinesRenderer: LineFragmentVisibleLinesRenderer(
+                state: stateStore,
+                hostLayer: layer,
+                renderer: TextLineFragmentRenderer()
+            ),
+            contentSizeService: contentSizeService
         )
     )
     private lazy var textSetter = TextSetter(
@@ -553,10 +568,9 @@ open class TextView: UIScrollView {
         textInteractionEditingStateChangeHandler.textInput = self
         tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
         addGestureRecognizer(tapGestureRecognizer)
-        // Ensure viewport is initialized so we forward frame changes.
+        // Ensure lazy objects are initialized.
         _ = viewport
-
-
+        _ = contentSizeService
         _ = textInputClient
     }
 

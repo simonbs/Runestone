@@ -27,6 +27,7 @@ final class ManagedLine: Line {
         let querier = OffsetFromRedBlackTreeNodeQuerier(querying: node!.tree)
         return querier.offset(for: query)!
     }
+    private(set) var width: CGFloat = 0
     var height: CGFloat {
         guard lineFragmentManager.numberOfLineFragments > 0 else {
             return estimatedHeight
@@ -72,6 +73,7 @@ final class ManagedLine: Line {
     }
 
     func invalidateTypesetText() {
+        width = 0
         lineFragmentManager.reset()
         typesetter.invalidateTypesetText(in: self)
     }
@@ -104,6 +106,9 @@ private extension ManagedLine {
         lineFragmentManager.addTypesetLineFragments(lineFragments)
         // Update total line height.
         node!.tree.updateAfterChangingChildren(of: node!)
+        if let maxLineFragment = lineFragments.max(by: { $0.scaledSize.width < $1.scaledSize.width }) {
+            width = max(width, maxLineFragment.scaledSize.width)
+        }
     }
 }
 

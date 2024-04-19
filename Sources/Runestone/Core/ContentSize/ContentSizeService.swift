@@ -1,115 +1,173 @@
-import Combine
+import _RunestoneMultiPlatform
+import _RunestoneObservation
 import CoreGraphics
+import Foundation
 
-final class ContentSizeService {
-//    let contentSize = CurrentValueSubject<CGSize, Never>(.zero)
-//    let horizontalOverscrollFactor = CurrentValueSubject<CGFloat, Never>(1)
-//    let verticalOverscrollFactor = CurrentValueSubject<CGFloat, Never>(1)
+@RunestoneObserver
+final class ContentSizeService<LineManagerType: LineManaging> {
+    typealias State = TextContainerInsetReadable
+    & IsLineWrappingEnabledReadable
+    & InsertionPointShapeReadable
+    & OverscrollFactorReadable
+    & EstimatedCharacterWidthReadable
+    & EstimatedLineHeightReadable
+    & InvisibleCharacterConfigurationReadable
 
-//    private let proxyScrollView: ProxyScrollView
-//    private let totalLineHeightTracker: TotalLineHeightTracker
-//    private let widestLineTracker: WidestLineTracker
-//    private let viewport: CurrentValueSubject<CGRect, Never>
-//    private let textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>
-//    private let isLineWrappingEnabled: CurrentValueSubject<Bool, Never>
-//    private let maximumLineBreakSymbolWidth: CurrentValueSubject<CGFloat, Never>
-//    private let estimatedCharacterWidth: EstimatedCharacterWidth
-//    private let insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>
-//    private var cancellables: Set<AnyCancellable> = []
-//    private var hasPendingContentSizeUpdate = false
-//    private var contentWidth: CGFloat {
-//        guard let lineWidth = widestLineTracker.lineWidth else {
-//            return 0
-//        }
-//        let preferredWidth = lineWidth
-//        + max(lineBreakInvisibleCharacterWidth, insertionPointWidth)
-//        + textContainerInset.value.left + textContainerInset.value.right
-//        + viewport.value.width * horizontalOverscrollFactor.value
-//        return max(preferredWidth, viewport.value.width)
-//    }
-//    private var contentHeight: CGFloat {
-//        let totalTextContainerInset = textContainerInset.value.top + textContainerInset.value.bottom
-//        let overscrollAmount = viewport.value.height * verticalOverscrollFactor.value
-//        let preferredHeight = totalLineHeightTracker.totalLineHeight + totalTextContainerInset + overscrollAmount
-//        return max(preferredHeight, viewport.value.height)
-//    }
-//    private var lineBreakInvisibleCharacterWidth: CGFloat {
-//        maximumLineBreakSymbolWidth.value
-//    }
-//    private var insertionPointWidth: CGFloat {
-//        switch insertionPointShape.value {
-//        case .underline, .block:
-//            return estimatedCharacterWidth.rawValue.value
-//        case .verticalBar:
-//            return 0
-//        }
-//    }
-
-    init() {}
-
-//    init(
-//        proxyScrollView: ProxyScrollView,
-//        totalLineHeightTracker: TotalLineHeightTracker,
-//        widestLineTracker: WidestLineTracker,
-//        viewport: CurrentValueSubject<CGRect, Never>,
-//        textContainerInset: CurrentValueSubject<MultiPlatformEdgeInsets, Never>,
-//        isLineWrappingEnabled: CurrentValueSubject<Bool, Never>,
-//        maximumLineBreakSymbolWidth: CurrentValueSubject<CGFloat, Never>,
-//        estimatedCharacterWidth: EstimatedCharacterWidth,
-//        insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>
-//    ) {
-//        self.proxyScrollView = proxyScrollView
-//        self.totalLineHeightTracker = totalLineHeightTracker
-//        self.widestLineTracker = widestLineTracker
-//        self.viewport = viewport
-//        self.textContainerInset = textContainerInset
-//        self.isLineWrappingEnabled = isLineWrappingEnabled
-//        self.maximumLineBreakSymbolWidth = maximumLineBreakSymbolWidth
-//        self.estimatedCharacterWidth = estimatedCharacterWidth
-//        self.insertionPointShape = insertionPointShape
-//        setupHasPendingContentSizeUpdateSetters()
-//    }
-
-    func updateContentSizeIfNeeded() {
-//        guard let scrollView = proxyScrollView.scrollView, hasPendingContentSizeUpdate else {
-//            return
-//        }
+    private let state: State
+    private weak var scrollView: MultiPlatformScrollView?
+    private let viewport: Viewport
+    private let lineManager: LineManagerType
+    private var lineIdTrackedForWidth: LineID?
+    private var lineSizes: [LineID: CGSize] = [:]
+    private var hasPendingContentSizeUpdate = false
+    private var longestLineWidth: CGFloat {
+        if let lineIdTrackedForWidth, let lineSize = lineSizes[lineIdTrackedForWidth] {
+            return lineSize.width
+        } else {
+            lineIdTrackedForWidth = nil
+            var longestLineWidth: CGFloat = 0
+            for (lineID, lineSize) in lineSizes {
+                if lineSize.width > longestLineWidth {
+                    lineIdTrackedForWidth = lineID
+                    longestLineWidth = lineSize.width
+                }
+            }
+            return longestLineWidth
+        }
+    }
+    private var cachedTotalLineHeight: CGFloat?
+    private var totalLineHeight: CGFloat {
+        if let cachedTotalLineHeight {
+            return cachedTotalLineHeight
+        } else {
+            let estimatedHeight = state.estimatedLineHeight * CGFloat(lineManager.lineCount - lineSizes.count)
+            let observedHeight = lineSizes.values.reduce(0) { $0 + $1.height }
+            let result = estimatedHeight + observedHeight
+            cachedTotalLineHeight = result
+            return result
+        }
+    }
+    private var contentWidth: CGFloat {
+        guard !state.isLineWrappingEnabled else {
+            return viewport.width
+        }
+        let preferredWidth = longestLineWidth
+        + max(state.maximumLineBreakSymbolWidth, insertionPointWidth)
+        + state.textContainerInset.left + state.textContainerInset.right
+        + viewport.width * state.horizontalOverscrollFactor
+        return max(preferredWidth, viewport.width)
+    }
+    private var contentHeight: CGFloat {
+        let totalTextContainerInset = state.textContainerInset.top + state.textContainerInset.bottom
+        let overscrollAmount = viewport.height * state.verticalOverscrollFactor
+        let preferredHeight = totalLineHeight + totalTextContainerInset + overscrollAmount
+        return max(preferredHeight, viewport.height)
+    }
+    private var allowsContentSizeUpdate: Bool {
+        guard let view = scrollView else {
+            return false
+        }
         // We don't want to update the content size when the scroll view is "bouncing" near the gutter,
         // or at the end of a line since it causes flickering when updating the content size while scrolling.
         // However, we do allow updating the content size if the text view is scrolled far enough on
         // the y-axis as that means it will soon run out of text to display.
-//        let gutterBounceOffset = scrollView.contentInset.left * -1
-//        let lineEndBounceOffset = scrollView.contentSize.width - scrollView.frame.size.width + scrollView.contentInset.right
-//        let isBouncingAtGutter = scrollView.contentOffset.x < gutterBounceOffset
-//        let isBouncingAtLineEnd = scrollView.contentOffset.x > lineEndBounceOffset
-//        let isBouncingHorizontally = isBouncingAtGutter || isBouncingAtLineEnd
-//        let isCriticalUpdate = scrollView.contentOffset.y > scrollView.contentSize.height - scrollView.frame.height * 1.5
-//        let isScrolling = scrollView.isDragging || scrollView.isDecelerating
-//        guard !isBouncingHorizontally || isCriticalUpdate || !isScrolling else {
-//            return
-//        }
-//        hasPendingContentSizeUpdate = false
-//        let oldContentOffset = scrollView.contentOffset
-//        scrollView.contentSize = CGSize(width: contentWidth, height: contentHeight)
-//        scrollView.contentOffset = oldContentOffset
-//        contentSize.value = CGSize(width: contentWidth, height: contentHeight)
+        let leadingBounceOffset = view.contentInset.left * -1
+        let trailingBounceOffset = view.contentSize.width - view.frame.size.width + view.contentInset.right
+        let isBouncingAtLeading = view.contentOffset.x < leadingBounceOffset
+        let isBouncingAtTrailing = view.contentOffset.x > trailingBounceOffset
+        let isBouncingHorizontally = isBouncingAtLeading || isBouncingAtTrailing
+        let criticalYContentOffset = view.contentSize.height - view.frame.height * 1.5
+        let isCriticalUpdate = view.contentOffset.y > criticalYContentOffset
+        let isScrolling = view.isDragging || view.isDecelerating
+        return !isBouncingHorizontally || isCriticalUpdate || !isScrolling
+    }
+    private var insertionPointWidth: CGFloat {
+        switch state.insertionPointShape {
+        case .underline, .block:
+            return state.estimatedCharacterWidth
+        case .verticalBar:
+            return 0
+        }
+    }
+
+    init(state: State, scrollView: MultiPlatformScrollView, viewport: Viewport, lineManager: LineManagerType) {
+        self.scrollView = scrollView
+        self.state = state
+        self.viewport = viewport
+        self.lineManager = lineManager
+        observe(state.textContainerInset) { [unowned self] _, _ in
+            hasPendingContentSizeUpdate = true
+            updateContentSizeIfNeeded()
+        }
+        observe(state.horizontalOverscrollFactor) { [unowned self] _, _ in
+            hasPendingContentSizeUpdate = true
+            updateContentSizeIfNeeded()
+        }
+        observe(state.verticalOverscrollFactor) { [unowned self] _, _ in
+            hasPendingContentSizeUpdate = true
+            updateContentSizeIfNeeded()
+        }
+        observe(state.isLineWrappingEnabled) { [unowned self] _, _ in
+            hasPendingContentSizeUpdate = true
+            updateContentSizeIfNeeded()
+        }
+        observe(state.insertionPointShape) { [unowned self] _, _ in
+            hasPendingContentSizeUpdate = true
+            updateContentSizeIfNeeded()
+        }
+        observe(state.estimatedCharacterWidth) { [unowned self] _, _ in
+            hasPendingContentSizeUpdate = true
+            updateContentSizeIfNeeded()
+        }
+        observe(viewport.size) { [unowned self] _, _ in
+            updateContentSizeIfNeeded()
+        }
+        observe(viewport.size) { [unowned self] _, _ in
+            updateContentSizeIfNeeded()
+        }
+    }
+
+    func setSize(_ size: CGSize, ofLineWithID lineID: LineID) {
+        let oldValue = lineSizes[lineID]
+        lineSizes[lineID] = size
+        if size.height != oldValue?.height {
+            cachedTotalLineHeight = nil
+            hasPendingContentSizeUpdate = true
+        }
+        if let lineIdTrackedForWidth, let lineSize = lineSizes[lineIdTrackedForWidth], size.width > lineSize.width {
+            self.lineIdTrackedForWidth = lineID
+            hasPendingContentSizeUpdate = true
+        } else if lineID == lineIdTrackedForWidth || lineIdTrackedForWidth == nil {
+            hasPendingContentSizeUpdate = true
+        }
+        updateContentSizeIfNeeded()
+    }
+
+    func removeLine(withID lineID: LineID) {
+        if lineSizes.removeValue(forKey: lineID) != nil {
+            cachedTotalLineHeight = nil
+            hasPendingContentSizeUpdate = true
+        }
+        if lineID == lineIdTrackedForWidth {
+            lineIdTrackedForWidth = nil
+            hasPendingContentSizeUpdate = true
+        }
+        updateContentSizeIfNeeded()
     }
 }
 
 private extension ContentSizeService {
-    private func setupHasPendingContentSizeUpdateSetters() {
-//        Publishers.MergeMany(
-//            widestLineTracker.$isLineWidthInvalid.filter { $0 }.eraseToAnyPublisher(),
-//            totalLineHeightTracker.$isTotalLineHeightInvalid.filter { $0 }.eraseToAnyPublisher(),
-//            viewport.map(\.size).removeDuplicates().map { _ in true }.eraseToAnyPublisher(),
-//            isLineWrappingEnabled.removeDuplicates().map { _ in true }.eraseToAnyPublisher(),
-//            horizontalOverscrollFactor.removeDuplicates().map { _ in true }.eraseToAnyPublisher(),
-//            verticalOverscrollFactor.removeDuplicates().map { _ in true }.eraseToAnyPublisher(),
-//            maximumLineBreakSymbolWidth.removeDuplicates().map { _ in true }.eraseToAnyPublisher(),
-//            estimatedCharacterWidth.rawValue.removeDuplicates().map { _ in true }.eraseToAnyPublisher(),
-//            insertionPointShape.removeDuplicates().map { _ in true }.eraseToAnyPublisher()
-//        ).sink { [weak self] _ in
-//            self?.hasPendingContentSizeUpdate = true
-//        }.store(in: &cancellables)
+    private func updateContentSizeIfNeeded() {
+        guard let scrollView, hasPendingContentSizeUpdate else {
+            return
+        }
+        guard allowsContentSizeUpdate else {
+            return
+        }
+        hasPendingContentSizeUpdate = false
+        let oldContentOffset = scrollView.contentOffset
+        scrollView.contentSize = CGSize(width: contentWidth, height: contentHeight)
+        scrollView.contentOffset = oldContentOffset
+        print("📜 \(scrollView.contentSize)")
     }
 }

@@ -11,6 +11,7 @@ protocol Line: Hashable {
     var totalLength: Int { get }
     var delimiterLength: Int { get }
     var yPosition: CGFloat { get }
+    var width: CGFloat { get }
     var height: CGFloat { get }
     var numberOfLineFragments: Int { get }
     func invalidateTypesetText()
@@ -25,5 +26,9 @@ protocol Line: Hashable {
 extension Line {
     var totalLength: Int {
         length + delimiterLength
+    }
+
+    var size: CGSize {
+        CGSize(width: width, height: height)
     }
 }

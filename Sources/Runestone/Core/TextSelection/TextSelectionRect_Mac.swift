@@ -8,7 +8,13 @@ final class TextSelectionRect {
     let containsEnd: Bool
     let isVertical: Bool
 
-    init(rect: CGRect, writingDirection: NSWritingDirection, containsStart: Bool, containsEnd: Bool, isVertical: Bool = false) {
+    init(
+        rect: CGRect, 
+        writingDirection: NSWritingDirection,
+        containsStart: Bool,
+        containsEnd: Bool,
+        isVertical: Bool = false
+    ) {
         self.rect = rect
         self.writingDirection = writingDirection
         self.containsStart = containsStart

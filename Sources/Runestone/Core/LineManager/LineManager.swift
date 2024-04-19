@@ -126,7 +126,6 @@ final class LineManager<LineFactoryType: LineFactory>: LineManaging where LineFa
                     tmp = tmp.next
                     changeSet.markLineRemoved(lineToRemove.data)
                     tree.remove(lineToRemove)
-//                    didRemoveLine.send(())
                 } while lineToRemove !== endLine
                 let newLength = startLineNode.value - charactersRemovedInStartLine + charactersLeftInEndLine
                 let otherChangeSet = setLength(of: startLineNode, to: newLength)
@@ -239,7 +238,6 @@ private extension LineManager {
                     let previousLine = lineNode.previous
                     changeSet.markLineRemoved(lineNode.data)
                     tree.remove(lineNode)
-//                    didRemoveLine.send(())
                     let otherChangeSet = setLength(of: previousLine, to: previousLine.value + 1, newLine: &newLine)
                     changeSet = changeSet.union(otherChangeSet)
                 } else {
@@ -267,7 +265,6 @@ private extension LineManager {
 //        insertedLine.data.node = insertedLine
         // Call updateAfterChangingChildren(of:) to update the values of nodeTotalByteCount.
 //        tree.updateAfterChangingChildren(of: insertedLine)
-//        didInsertLine.send(())
         return node
     }
 

@@ -24,7 +24,13 @@ final class TextSelectionRect: UITextSelectionRect {
     private let _containsEnd: Bool
     private let _isVertical: Bool
 
-    init(rect: CGRect, writingDirection: NSWritingDirection, containsStart: Bool, containsEnd: Bool, isVertical: Bool = false) {
+    init(
+        rect: CGRect,
+        writingDirection: NSWritingDirection,
+        containsStart: Bool,
+        containsEnd: Bool,
+        isVertical: Bool = false
+    ) {
         _rect = rect
         _writingDirection = writingDirection
         _containsStart = containsStart

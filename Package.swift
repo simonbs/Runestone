@@ -25,6 +25,7 @@ let package = Package(
             "_RunestoneMacros",
             "_RunestoneMultiPlatform",
             "_RunestoneObservation",
+            "_RunestoneProxy",
             "_RunestoneRedBlackTree",
             "_RunestoneTreeSitter"
         ], resources: [
