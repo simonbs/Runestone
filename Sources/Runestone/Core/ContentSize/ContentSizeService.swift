@@ -165,6 +165,10 @@ private extension ContentSizeService {
             return
         }
         hasPendingContentSizeUpdate = false
+        let newContentSize = CGSize(width: contentWidth, height: contentHeight)
+        guard newContentSize != scrollView.contentSize else {
+            return
+        }
         let oldContentOffset = scrollView.contentOffset
         scrollView.contentSize = CGSize(width: contentWidth, height: contentHeight)
         scrollView.contentOffset = oldContentOffset
