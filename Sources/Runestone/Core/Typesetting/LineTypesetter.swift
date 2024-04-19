@@ -4,6 +4,8 @@ import Foundation
 
 final class LineTypesetter: LineTypesetting {
     typealias State = LineHeightMultiplierReadable
+    & LineBreakModeReadable
+    & IsLineWrappingEnabledReadable
 
     private typealias TypesetPredicate = (TypesetLineFragment) -> Bool
 
@@ -19,8 +21,8 @@ final class LineTypesetter: LineTypesetting {
 //    }
 
     private let state: State
+    private let viewport: Viewport
     private let attributedString: NSAttributedString
-    private let lineBreakSuggester: LineBreakSuggesting
     private let typesetter: CTTypesetter
     private var nextLocation = 0
     private var nextYOffset: CGFloat = 0
@@ -29,14 +31,10 @@ final class LineTypesetter: LineTypesetting {
         nextLocation >= attributedString.length
     }
 
-    init(
-        state: State,
-        attributedString: NSAttributedString,
-        lineBreakSuggester: LineBreakSuggesting
-    ) {
+    init(state: State, viewport: Viewport, attributedString: NSAttributedString) {
         self.state = state
+        self.viewport = viewport
         self.attributedString = attributedString
-        self.lineBreakSuggester = lineBreakSuggester
         self.typesetter = CTTypesetterCreateWithAttributedString(attributedString)
     }
 
@@ -101,11 +99,16 @@ private extension LineTypesetter {
     }
 
     private func nextLineFragment(from typesetter: CTTypesetter) -> TypesetLineFragment {
-        let length = lineBreakSuggester.suggestLineBreak(
-            after: nextLocation,
-            in: attributedString,
-            typesetUsing: typesetter
-        )
+        let length = if state.isLineWrappingEnabled {
+            typesetter.suggestLineBreak(
+                after: nextLocation,
+                in: attributedString,
+                using: state.lineBreakMode,
+                maximumLineFragmentWidth: viewport.width
+            )
+        } else {
+            attributedString.length
+        }
         let visibleRange = NSRange(location: nextLocation, length: length)
         let cfVisibleRange = CFRangeMake(visibleRange.location, visibleRange.length)
         let line = CTTypesetterCreateLine(typesetter, cfVisibleRange)

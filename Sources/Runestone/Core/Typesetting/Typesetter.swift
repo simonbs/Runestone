@@ -3,16 +3,18 @@ import Foundation
 
 final class Typesetter: Typesetting {
     typealias State = LineHeightMultiplierReadable
+    & LineBreakModeReadable
+    & IsLineWrappingEnabledReadable
 
     private let state: State
     private let stringView: StringView
-    private let lineBreakSuggester: LineBreakSuggesting
+    private let viewport: Viewport
     private var map: [LineID: LineTypesetter] = [:]
 
-    init(state: State, stringView: StringView, lineBreakSuggester: LineBreakSuggesting) {
+    init(state: State, stringView: StringView, viewport: Viewport) {
         self.state = state
         self.stringView = stringView
-        self.lineBreakSuggester = lineBreakSuggester
+        self.viewport = viewport
     }
 
     func invalidateTypesetText(in line: some Line) {
@@ -37,11 +39,7 @@ private extension Typesetter {
         guard let attributedString = stringView.attributedSubstring(in: range) else {
             fatalError("Failed reading attributed string to typeset")
         }
-        let typesetter = LineTypesetter(
-            state: state,
-            attributedString: attributedString,
-            lineBreakSuggester: lineBreakSuggester
-        )
+        let typesetter = LineTypesetter(state: state, viewport: viewport, attributedString: attributedString)
         map[line.id] = typesetter
         return typesetter
     }

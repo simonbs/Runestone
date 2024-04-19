@@ -371,13 +371,7 @@ open class TextView: UIScrollView {
             typesetter: Typesetter(
                 state: stateStore,
                 stringView: stringView,
-                lineBreakSuggester: LineBreakSuggester(
-                    state: stateStore,
-                    maximumLineFragmentWidthProvider: ScrollViewMaximumLineFragmentWidthProvider(
-                        state: stateStore,
-                        viewport: viewport
-                    )
-                )
+                viewport: viewport
             )
         )
     )
