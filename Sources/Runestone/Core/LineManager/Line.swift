@@ -2,7 +2,7 @@ import Foundation
 
 typealias LineID = UUID
 
-protocol Line: Hashable {
+protocol Line: AnyObject, Hashable {
     associatedtype LineFragmentType: LineFragment
     var id: LineID { get }
     var index: Int { get }
