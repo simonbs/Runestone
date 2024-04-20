@@ -45,20 +45,6 @@ final class ManagedLine: Line {
     private let typesetter: Typesetting
     private var lineFragmentManager = LineFragmentManager()
 
-//    var byteCount = ByteCount(0)
-//    var totalByteCount = ByteCount(0)
-//    var startByte: ByteCount {
-//        let querier = OffsetFromRedBlackTreeNodeQuerier(querying: node!.tree)
-//        let query = ByteCountFromLineNodeQuery(targetNode: node!)
-//        return querier.offset(for: query)!
-//    }
-//    var byteRange: ByteRange {
-//        ByteRange(location: startByte, length: byteCount - ByteCount(delimiterLength))
-//    }
-//    var totalByteRange: ByteRange {
-//        ByteRange(location: startByte, length: byteCount)
-//    }
-
     init(typesetter: Typesetting, estimatedHeight: CGFloat) {
         self.typesetter = typesetter
         self.estimatedHeight = estimatedHeight
