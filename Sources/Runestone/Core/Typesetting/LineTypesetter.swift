@@ -9,16 +9,6 @@ final class LineTypesetter: LineTypesetting {
 
     private typealias TypesetPredicate = (TypesetLineFragment) -> Bool
 
-//    var bestGuessNumberOfLineFragments: Int {
-//        if startOffset >= stringLength {
-//            return lineFragments.count
-//        } else {
-//            let charactersPerLineFragment = Double(startOffset) / Double(lineFragments.count)
-//            let charactersRemaining = stringLength - startOffset
-//            let remainingNumberOfLineFragments = Int(ceil(Double(charactersRemaining) / charactersPerLineFragment))
-//            return lineFragments.count + remainingNumberOfLineFragments
-//        }
-//    }
 
     private let state: State
     private let viewport: Viewport
