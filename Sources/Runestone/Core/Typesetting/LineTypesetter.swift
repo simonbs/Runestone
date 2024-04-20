@@ -2,30 +2,69 @@ import CoreGraphics
 import CoreText
 import Foundation
 
-final class LineTypesetter: LineTypesetting {
+final class LineTypesetter<LineType: Line> {
     typealias State = LineHeightMultiplierReadable
     & LineBreakModeReadable
     & IsLineWrappingEnabledReadable
+    & TextContainerInsetReadable
 
     private typealias TypesetPredicate = (TypesetLineFragment) -> Bool
 
+    weak var line: LineType?
 
     private let state: State
+    private let stringView: StringView
     private let viewport: Viewport
-    private let attributedString: NSAttributedString
-    private let typesetter: CTTypesetter
     private var nextLocation = 0
     private var nextYOffset: CGFloat = 0
     private var index = 0
     private var isFinishedTypesetting: Bool {
-        nextLocation >= attributedString.length
+        guard let attributedString else {
+            return true
+        }
+        return nextLocation >= attributedString.length
+    }
+    private var maximumLineFragmentWidth: CGFloat {
+        viewport.width - state.textContainerInset.left - state.textContainerInset.right
+    }
+    private var typesetter: CTTypesetter? {
+        if let typesetter = _typesetter {
+            return typesetter
+        } else if let attributedString {
+            let typesetter = CTTypesetterCreateWithAttributedString(attributedString)
+            _typesetter = typesetter
+            return typesetter
+        } else {
+            return nil
+        }
+    }
+    private var _typesetter: CTTypesetter?
+    private var attributedString: NSAttributedString? {
+        if let attributedString = _attributedString {
+            return attributedString
+        } else if let line {
+            let range = NSRange(location: line.location, length: line.totalLength)
+            if let attributedString = stringView.attributedSubstring(in: range) {
+                _attributedString = attributedString
+                return attributedString
+            } else {
+                return nil
+            }
+        } else {
+            return nil
+        }
+    }
+    private var _attributedString: NSAttributedString?
+
+    init(state: State, stringView: StringView, viewport: Viewport) {
+        self.state = state
+        self.stringView = stringView
+        self.viewport = viewport
     }
 
-    init(state: State, viewport: Viewport, attributedString: NSAttributedString) {
-        self.state = state
-        self.viewport = viewport
-        self.attributedString = attributedString
-        self.typesetter = CTTypesetterCreateWithAttributedString(attributedString)
+    func invalidate() {
+        _attributedString = nil
+        _typesetter = nil
     }
 
     func typesetText(toYOffset yOffset: CGFloat) -> [TypesetLineFragment] {
@@ -72,13 +111,16 @@ private extension LineTypesetter {
     }
 
     private func typesetLineFragments(while predicate: TypesetPredicate) -> [TypesetLineFragment] {
+        guard let attributedString, let typesetter else {
+            return []
+        }
         guard !isFinishedTypesetting else {
             return []
         }
         var lineFragments: [TypesetLineFragment] = []
         var predicateResult = true
         while (nextLocation < attributedString.length && predicateResult) {
-            let lineFragment = nextLineFragment(from: typesetter)
+            let lineFragment = nextLineFragment(in: attributedString, using: typesetter)
             lineFragments.append(lineFragment)
             nextYOffset += lineFragment.scaledSize.height
             nextLocation += lineFragment.range.length
@@ -88,13 +130,16 @@ private extension LineTypesetter {
         return lineFragments
     }
 
-    private func nextLineFragment(from typesetter: CTTypesetter) -> TypesetLineFragment {
+    private func nextLineFragment(
+        in attributedString: NSAttributedString,
+        using typesetter: CTTypesetter
+    ) -> TypesetLineFragment {
         let length = if state.isLineWrappingEnabled {
             typesetter.suggestLineBreak(
                 after: nextLocation,
                 in: attributedString,
                 using: state.lineBreakMode,
-                maximumLineFragmentWidth: viewport.width
+                maximumLineFragmentWidth: maximumLineFragmentWidth
             )
         } else {
             attributedString.length
@@ -114,6 +159,9 @@ private extension LineTypesetter {
     }
 
     private func lengthOfWhitespace(after location: Int) -> Int {
+        guard let attributedString else {
+            return 0
+        }
         guard location < attributedString.length - 1 else {
             return 0
         }

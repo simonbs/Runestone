@@ -1,10 +1,17 @@
 import Foundation
 
 struct ManagedLineFactory: LineFactory {
-    let typesetter: Typesetting
+    typealias State = EstimatedLineHeightReadable & LineTypesetter.State
 
-    func makeLine(estimatingHeightTo estimatedHeight: CGFloat) -> ManagedLine {
-        ManagedLine(typesetter: typesetter, estimatedHeight: estimatedHeight)
+    let state: State
+    let stringView: StringView
+    let viewport: Viewport
+
+    func makeLine() -> ManagedLine {
+        let typesetter = LineTypesetter<ManagedLine>(state: state, stringView: stringView, viewport: viewport)
+        let managedLine = ManagedLine(typesetter: typesetter, estimatedHeight: state.estimatedLineHeight)
+        typesetter.line = managedLine
+        return managedLine
     }
 }
 

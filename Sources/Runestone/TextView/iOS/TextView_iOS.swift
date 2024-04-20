@@ -368,11 +368,9 @@ open class TextView: UIScrollView {
         state: stateStore,
         stringView: stringView,
         lineFactory: ManagedLineFactory(
-            typesetter: Typesetter(
-                state: stateStore,
-                stringView: stringView,
-                viewport: viewport
-            )
+            state: stateStore,
+            stringView: stringView,
+            viewport: viewport
         )
     )
 

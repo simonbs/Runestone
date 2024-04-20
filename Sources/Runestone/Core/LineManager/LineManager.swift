@@ -20,7 +20,7 @@ final class LineManager<LineFactoryType: LineFactory>: LineManaging where LineFa
         self.state = state
         self.stringView = stringView
         self.lineFactory = lineFactory
-        let rootLine = lineFactory.makeLine(estimatingHeightTo: state.estimatedLineHeight)
+        let rootLine = lineFactory.makeLine()
         self.tree = RedBlackTree(
             minimumValue: 0,
             rootValue: 0,
@@ -156,7 +156,7 @@ final class LineManager<LineFactoryType: LineFactory>: LineManaging where LineFa
 
     func rebuild() {
         // Reset the tree so we only have a single line.
-        let rootLine = lineFactory.makeLine(estimatingHeightTo: state.estimatedLineHeight)
+        let rootLine = lineFactory.makeLine()
         tree.reset(rootValue: 0, rootData: rootLine)
         rootLine.node = tree.root
         let nsString = stringView.string as NSString
@@ -174,7 +174,7 @@ final class LineManager<LineFactoryType: LineFactory>: LineManaging where LineFa
             lineNode.data.totalHeight = totalLineHeight
             lastDelimiterEnd = newLineRange.location + newLineRange.length
             lineNodes.append(lineNode)
-            let line = lineFactory.makeLine(estimatingHeightTo: state.estimatedLineHeight)
+            let line = lineFactory.makeLine()
             lineNode = RedBlackTree<Int, LineType>.Node(tree: tree, value: 0, data: line)
             line.node = lineNode
             workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: nsString, startingAt: lastDelimiterEnd)
@@ -253,7 +253,7 @@ private extension LineManager {
 
     @discardableResult
     private func insertLine(ofLength length: Int, after otherLine: LineNode) -> LineNode {
-        let line = lineFactory.makeLine(estimatingHeightTo: state.estimatedLineHeight)
+        let line = lineFactory.makeLine()
         let node = tree.insertNode(value: length, data: line, after: otherLine)
         line.node = node
 //        let range = NSRange(location: insertedLine.location, length: length)

@@ -42,10 +42,10 @@ final class ManagedLine: Line {
     }
 
     private let estimatedHeight: CGFloat
-    private let typesetter: Typesetting
+    private let typesetter: LineTypesetter<ManagedLine>
     private var lineFragmentManager = LineFragmentManager()
 
-    init(typesetter: Typesetting, estimatedHeight: CGFloat) {
+    init(typesetter: LineTypesetter<ManagedLine>, estimatedHeight: CGFloat) {
         self.typesetter = typesetter
         self.estimatedHeight = estimatedHeight
     }
@@ -61,16 +61,16 @@ final class ManagedLine: Line {
     func invalidateTypesetText() {
         width = 0
         lineFragmentManager.reset()
-        typesetter.invalidateTypesetText(in: self)
+        typesetter.invalidate()
     }
 
     func typesetText(toLocation location: Int) {
-        let lineFragments = typesetter.typesetText(in: self, toLocation: location)
+        let lineFragments = typesetter.typesetText(toLocation: location)
         handleTypesetLineFragments(lineFragments)
     }
 
     func typesetText(toYOffset yOffset: CGFloat) {
-        let lineFragments = typesetter.typesetText(in: self, toYOffset: yOffset)
+        let lineFragments = typesetter.typesetText(toYOffset: yOffset)
         handleTypesetLineFragments(lineFragments)
     }
 
