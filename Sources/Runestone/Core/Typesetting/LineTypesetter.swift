@@ -191,10 +191,10 @@ private extension LineTypesetter {
         guard let attributedString else {
             return 0
         }
-        guard location < attributedString.length - 1 else {
+        guard location < attributedString.length else {
             return 0
         }
-        var nextCharacter = location + 1
+        var nextCharacter = location
         var length = 0
         while attributedString.isWhitespaceCharacter(at: nextCharacter) {
             nextCharacter += 1
