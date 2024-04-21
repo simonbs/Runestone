@@ -172,6 +172,5 @@ private extension ContentSizeService {
         let oldContentOffset = scrollView.contentOffset
         scrollView.contentSize = CGSize(width: contentWidth, height: contentHeight)
         scrollView.contentOffset = oldContentOffset
-        print("📜 \(scrollView.contentSize)")
     }
 }
