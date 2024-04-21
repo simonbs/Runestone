@@ -17,7 +17,7 @@ final class LineTypesetter<LineType: Line> {
     private let viewport: Viewport
     private var nextLocation = 0
     private var nextYOffset: CGFloat = 0
-    private var index = 0
+    private var nextLineFragmentIndex = 0
     private var isFinishedTypesetting: Bool {
         guard let attributedString else {
             return true
@@ -124,7 +124,7 @@ private extension LineTypesetter {
             lineFragments.append(lineFragment)
             nextYOffset += lineFragment.scaledSize.height
             nextLocation += lineFragment.range.length
-            index += 1
+            nextLineFragmentIndex += 1
             predicateResult = predicate(lineFragment)
         }
         return lineFragments
@@ -149,7 +149,7 @@ private extension LineTypesetter {
         let line = CTTypesetterCreateLine(typesetter, cfVisibleRange)
         let lineFragment = TypesetLineFragment(
             line: line,
-            index: index,
+            index: nextLineFragmentIndex,
             visibleRange: visibleRange,
             yPosition: nextYOffset,
             heightMultiplier: state.lineHeightMultiplier
