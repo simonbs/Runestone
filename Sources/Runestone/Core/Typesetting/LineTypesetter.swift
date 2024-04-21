@@ -1,8 +1,14 @@
+import _RunestoneObservation
 import CoreGraphics
 import CoreText
 import Foundation
 
-final class LineTypesetter<LineType: Line> {
+@RunestoneObserver
+final class LineTypesetter {
+    protocol Delegate: AnyObject {
+        func lineTypesetterDidInvalidate(_ lineTypesetter: LineTypesetter)
+    }
+
     typealias State = LineHeightMultiplierReadable
     & LineBreakModeReadable
     & IsLineWrappingEnabledReadable
@@ -10,7 +16,8 @@ final class LineTypesetter<LineType: Line> {
 
     private typealias TypesetPredicate = (TypesetLineFragment) -> Bool
 
-    weak var line: LineType?
+    weak var delegate: Delegate?
+    weak var line: (any Line)?
 
     private let state: State
     private let stringView: StringView
@@ -60,6 +67,23 @@ final class LineTypesetter<LineType: Line> {
         self.state = state
         self.stringView = stringView
         self.viewport = viewport
+        observe(state.lineHeightMultiplier) { [unowned self] _, _ in
+            self.invalidateAndNotifyDelegate()
+        }
+        observe(state.lineBreakMode) { [unowned self] _, _ in
+            self.invalidateAndNotifyDelegate()
+        }
+        observe(state.isLineWrappingEnabled) { [unowned self] _, _ in
+            self.invalidateAndNotifyDelegate()
+        }
+        observe(state.textContainerInset) { [unowned self] _, _ in
+            self.invalidateAndNotifyDelegate()
+        }
+        observe(viewport.size) { [unowned self] oldSize, newSize in
+            if oldSize.width != oldSize.width {
+                self.invalidateAndNotifyDelegate()
+            }
+        }
     }
 
     func invalidate() {
@@ -87,6 +111,11 @@ final class LineTypesetter<LineType: Line> {
 }
 
 private extension LineTypesetter {
+    private func invalidateAndNotifyDelegate() {
+        invalidate()
+        delegate?.lineTypesetterDidInvalidate(self)
+    }
+
     private func typesetLineFragments(
         while predicate: TypesetPredicate,
         additionalLineFragmentCount: Int

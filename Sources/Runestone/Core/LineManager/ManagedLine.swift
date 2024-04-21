@@ -42,10 +42,10 @@ final class ManagedLine: Line {
     }
 
     private let estimatedHeight: CGFloat
-    private let typesetter: LineTypesetter<ManagedLine>
+    private let typesetter: LineTypesetter
     private var lineFragmentManager = LineFragmentManager()
 
-    init(typesetter: LineTypesetter<ManagedLine>, estimatedHeight: CGFloat) {
+    init(typesetter: LineTypesetter, estimatedHeight: CGFloat) {
         self.typesetter = typesetter
         self.estimatedHeight = estimatedHeight
     }
@@ -109,3 +109,9 @@ extension ManagedLine: Hashable {
 }
 
 extension ManagedLine: YOffsetRedBlackTreeNodeByOffsetQuerable {}
+
+extension ManagedLine: LineTypesetter.Delegate {
+    func lineTypesetterDidInvalidate(_ lineTypesetter: LineTypesetter) {
+        invalidateTypesetText()
+    }
+}
