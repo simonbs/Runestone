@@ -50,12 +50,13 @@ final class ManagedLine: Line {
         self.estimatedHeight = estimatedHeight
     }
 
-    func location(closestTo localPoint: CGPoint) -> Int {
-        guard let closestLineFragment = lineFragmentManager.lineFragment(atYOffset: localPoint.y) else {
+    func location(closestTo lineLocalPoint: CGPoint) -> Int {
+        guard let closestLineFragment = lineFragmentManager.lineFragment(atYOffset: lineLocalPoint.y) else {
             return location
         }
-        let localLocation = min(CTLineGetStringIndexForPosition(closestLineFragment.line, localPoint), length)
-        return location + localLocation
+        let lineFragmentLocalPoint = CGPoint(x: lineLocalPoint.x, y: lineLocalPoint.y - closestLineFragment.yPosition)
+        let localLocation = CTLineGetStringIndexForPosition(closestLineFragment.line, lineFragmentLocalPoint)
+        return location + min(localLocation, length)
     }
 
     func invalidateTypesetText() {
