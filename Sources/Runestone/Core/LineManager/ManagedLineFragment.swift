@@ -13,7 +13,7 @@ struct ManagedLineFragment: LineFragment {
     var height: CGFloat {
         scaledSize.height
     }
-    var totalHeight: CGFloat = 0
+    var nodeTotalHeight: CGFloat = 0
     let line: CTLine
 
     init() {
@@ -70,3 +70,5 @@ struct ManagedLineFragment: LineFragment {
 }
 
 extension ManagedLineFragment: YOffsetRedBlackTreeNodeByOffsetQuerable {}
+
+extension ManagedLineFragment: NodeTotalHeightRedBlackTreeChildrenUpdatable {}

@@ -1,6 +1,6 @@
 import Foundation
 
-struct TotalCountRedBlackTreeChildrenUpdater<
+struct NodeTotalCountRedBlackTreeChildrenUpdater<
     _NodeValue: RedBlackTreeNodeValue, _NodeData>
 : RedBlackTreeChildrenUpdating {
     typealias NodeValue = _NodeValue

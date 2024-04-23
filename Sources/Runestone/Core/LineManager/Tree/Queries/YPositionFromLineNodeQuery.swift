@@ -14,6 +14,6 @@ struct YPositionFromLineNodeQuery: OffsetFromRedBlackTreeNodeQuery {
     }
 
     func totalOffset(for node: Node) -> CGFloat {
-        node.data.totalHeight
+        node.data.nodeTotalHeight
     }
 }

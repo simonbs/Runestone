@@ -3,7 +3,7 @@ import Foundation
 
 protocol YOffsetRedBlackTreeNodeByOffsetQuerable {
     var height: CGFloat { get }
-    var totalHeight: CGFloat { get }
+    var nodeTotalHeight: CGFloat { get }
 }
 
 struct YOffsetRedBlackTreeNodeByOffsetQuery<
@@ -26,6 +26,6 @@ struct YOffsetRedBlackTreeNodeByOffsetQuery<
     }
 
     func totalOffset(for node: Node) -> CGFloat {
-        node.data.totalHeight
+        node.data.nodeTotalHeight
     }
 }

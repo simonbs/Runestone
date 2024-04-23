@@ -35,8 +35,8 @@ package final class RedBlackTree<NodeValue: RedBlackTreeNodeValue, NodeData> {
         self.childrenUpdater = AnyRedBlackTreeChildrenUpdater(
             ParentTraversingRedBlackTreeChildrenUpdater(
                 CompositeRedBlackTreeChildrenUpdater([
-                    AnyRedBlackTreeChildrenUpdater(TotalValueRedBlackTreeChildrenUpdater()),
-                    AnyRedBlackTreeChildrenUpdater(TotalCountRedBlackTreeChildrenUpdater()),
+                    AnyRedBlackTreeChildrenUpdater(NodeTotalValueRedBlackTreeChildrenUpdater()),
+                    AnyRedBlackTreeChildrenUpdater(NodeTotalCountRedBlackTreeChildrenUpdater()),
                     AnyRedBlackTreeChildrenUpdater(childrenUpdater)
                 ])
             )

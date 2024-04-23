@@ -36,7 +36,7 @@ final class ManagedLine: Line {
         let lineFragment = lineFragmentManager.lineFragment(atIndex: lineFragmentIndex)
         return lineFragment.yPosition + lineFragment.scaledSize.height
     }
-    var totalHeight: CGFloat = 0
+    var nodeTotalHeight: CGFloat = 0
     var numberOfLineFragments: Int {
         lineFragmentManager.numberOfLineFragments
     }
@@ -110,6 +110,8 @@ extension ManagedLine: Hashable {
 }
 
 extension ManagedLine: YOffsetRedBlackTreeNodeByOffsetQuerable {}
+
+extension ManagedLine: NodeTotalHeightRedBlackTreeChildrenUpdatable {}
 
 extension ManagedLine: LineTypesetter.Delegate {
     func lineTypesetterDidInvalidate(_ lineTypesetter: LineTypesetter) {

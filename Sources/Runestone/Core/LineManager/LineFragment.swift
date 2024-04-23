@@ -30,8 +30,6 @@ protocol LineFragment: Equatable {
     ///
     /// This is relative to the beginning of the line.
     var yPosition: CGFloat { get }
-    /// Accummulated height of line fragments up until this line fragment.
-    var totalHeight: CGFloat { get set }
     func insertionPointRange(forLineLocalRange lineLocalRange: NSRange) -> NSRange?
 }
 

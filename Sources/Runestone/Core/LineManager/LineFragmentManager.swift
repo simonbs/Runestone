@@ -2,14 +2,16 @@ import _RunestoneRedBlackTree
 import CoreGraphics
 
 final class LineFragmentManager {
+    private typealias LineFragmentNode = RedBlackTreeNode<Int, ManagedLineFragment>
+
     var numberOfLineFragments: Int {
         tree.nodeTotalCount
     }
 
-    private var tree = RedBlackTree(minimumValue: 0, rootValue: 0, rootData: ManagedLineFragment())
+    private var tree: RedBlackTree = .forLineFragments
 
     func reset() {
-        tree = RedBlackTree(minimumValue: 0, rootValue: 0, rootData: ManagedLineFragment())
+        tree = .forLineFragments
     }
 
     func addTypesetLineFragments(_ typesetLineFragments: [TypesetLineFragment]) {
@@ -21,17 +23,14 @@ final class LineFragmentManager {
                 let node = tree.node(atIndex: typesetLineFragment.index)
                 node.value = length
                 node.data = lineFragment
-                node.updateTotalHeight()
                 tree.updateAfterChangingChildren(of: node)
                 previousNode = node
             } else if let thisPreviousNode = previousNode {
                 let newNode = tree.insertNode(value: length, data: lineFragment, after: thisPreviousNode)
-                newNode.updateTotalHeight()
                 previousNode = newNode
             } else {
                 let thisPreviousNode = tree.node(atIndex: typesetLineFragment.index - 1)
                 let newNode = tree.insertNode(value: length, data: lineFragment, after: thisPreviousNode)
-                newNode.updateTotalHeight()
                 previousNode = newNode
             }
         }
@@ -70,8 +69,24 @@ final class LineFragmentManager {
     }
 }
 
-private extension RedBlackTreeNode where NodeData == ManagedLineFragment {
-    func updateTotalHeight() {
-        data.totalHeight = previous.data.totalHeight + data.scaledSize.height
+private extension LineFragmentManager {
+    private func lineFragmentNode(containingCharacterAt location: Int) -> LineFragmentNode? {
+        guard location >= 0 && location <= Int(tree.nodeTotalValue) else {
+            return nil
+        }
+        let query = ValueRedBlackTreeNodeByOffsetQuery(querying: tree, for: location)
+        let querier = RedBlackTreeNodeByOffsetQuerier(querying: tree)
+        return querier.node(for: query)
+    }
+}
+
+private extension RedBlackTree where NodeValue == Int, NodeData == ManagedLineFragment {
+    static var forLineFragments: RedBlackTree<Int, ManagedLineFragment> {
+        RedBlackTree(
+            minimumValue: 0,
+            rootValue: 0,
+            rootData: ManagedLineFragment(),
+            childrenUpdater: NodeTotalHeightRedBlackTreeChildrenUpdater()
+        )
     }
 }

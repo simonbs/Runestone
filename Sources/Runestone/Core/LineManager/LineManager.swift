@@ -26,7 +26,7 @@ final class LineManager<LineFactoryType: LineFactory>: LineManaging where LineFa
             rootValue: 0,
             rootData: rootLine,
             childrenUpdater: CompositeRedBlackTreeChildrenUpdater([
-                AnyRedBlackTreeChildrenUpdater(TotalLineHeightRedBlackTreeChildrenUpdater()),
+                AnyRedBlackTreeChildrenUpdater(NodeTotalHeightRedBlackTreeChildrenUpdater()),
 //                AnyRedBlackTreeChildrenUpdater(TotalByteCountRedBlackTreeChildrenUpdater())
             ])
         )
@@ -171,7 +171,6 @@ final class LineManager<LineFactoryType: LineFactory>: LineManaging where LineFa
             lineNode.value = totalLength
             lineNode.data.totalLength = totalLength
             lineNode.data.delimiterLength = newLineRange.length
-            lineNode.data.totalHeight = totalLineHeight
             lastDelimiterEnd = newLineRange.location + newLineRange.length
             lineNodes.append(lineNode)
             let line = lineFactory.makeLine()
@@ -183,7 +182,6 @@ final class LineManager<LineFactoryType: LineFactory>: LineManaging where LineFa
         let totalLength = stringView.length - lastDelimiterEnd
         lineNode.value = totalLength
         lineNode.data.totalLength = totalLength
-        lineNode.data.totalHeight = totalLineHeight
         lineNodes.append(lineNode)
         tree.rebuild(from: lineNodes)
     }

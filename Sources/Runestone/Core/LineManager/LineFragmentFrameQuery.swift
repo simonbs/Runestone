@@ -9,14 +9,20 @@ struct LineFragmentFrameQuery<LineFragmentType: LineFragment>: RedBlackTreeTrave
     let range: ClosedRange<CGFloat>
 
     func shouldTraverseLeftChildren(of node: Node) -> Bool {
-        node.data.totalHeight >= range.lowerBound
+        node.data.maxYPosition >= range.lowerBound
     }
 
     func shouldTraverseRightChildren(of node: Node) -> Bool {
-        node.data.totalHeight <= range.upperBound
+        node.data.maxYPosition <= range.upperBound
     }
 
     func isMatch(_ node: Node) -> Bool {
-        range.overlaps(node.data.totalHeight - node.data.scaledSize.height ... node.data.totalHeight)
+        range.overlaps(node.data.yPosition ... node.data.maxYPosition)
+    }
+}
+
+private extension LineFragment {
+    var maxYPosition: CGFloat {
+        yPosition + scaledSize.height
     }
 }
