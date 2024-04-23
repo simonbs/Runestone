@@ -17,17 +17,17 @@ package struct RedBlackTreeNodeByOffsetQuerier<NodeValue: RedBlackTreeNodeValue,
         guard query.targetOffset != query.totalOffset(for: tree.root) else {
             return tree.root.rightMost
         }
-        var remainingLocation = query.targetOffset
+        var remainingOffset = query.targetOffset
         var node = tree.root!
         while true {
-            if let leftNode = node.left, remainingLocation < query.totalOffset(for: leftNode) {
+            if let leftNode = node.left, remainingOffset < query.totalOffset(for: leftNode) {
                 node = leftNode
             } else {
                 if let leftNode = node.left {
-                    remainingLocation -= query.totalOffset(for: leftNode)
+                    remainingOffset -= query.totalOffset(for: leftNode)
                 }
-                remainingLocation -= query.offset(for: node)
-                if remainingLocation < query.minimumOffset {
+                remainingOffset -= query.offset(for: node)
+                if remainingOffset < query.minimumOffset {
                     return node
                 } else if let rightNode = node.right {
                     node = rightNode
