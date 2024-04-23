@@ -1,11 +1,11 @@
 import _RunestoneRedBlackTree
 import Foundation
 
-typealias LineNode = RedBlackTreeNode<Int, ManagedLine>
-
 final class LineManager<LineFactoryType: LineFactory>: LineManaging where LineFactoryType.LineType == ManagedLine {
     typealias State = EstimatedLineHeightReadable
     typealias LineType = LineFactoryType.LineType
+
+    fileprivate typealias LineNode = RedBlackTreeNode<Int, ManagedLine>
 
     var lineCount: Int {
         tree.nodeTotalCount
@@ -175,7 +175,7 @@ final class LineManager<LineFactoryType: LineFactory>: LineManaging where LineFa
             lastDelimiterEnd = newLineRange.location + newLineRange.length
             lineNodes.append(lineNode)
             let line = lineFactory.makeLine()
-            lineNode = RedBlackTree<Int, LineType>.Node(tree: tree, value: 0, data: line)
+            lineNode = LineNode(tree: tree, value: 0, data: line)
             line.node = lineNode
             workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: nsString, startingAt: lastDelimiterEnd)
             totalLineHeight += state.estimatedLineHeight
@@ -274,7 +274,7 @@ private extension LineManager {
     }
 }
 
-private extension LineNode {
+private extension LineManager.LineNode {
     var location: Int {
         offset
     }
