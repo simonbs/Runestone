@@ -390,6 +390,11 @@ open class TextView: UIScrollView {
         viewport: viewport,
         lineManager: lineManager
     )
+    private lazy var characterBoundsProvider = CharacterBoundsProvider(
+        state: stateStore,
+        stringView: stringView,
+        lineManager: lineManager
+    )
 
     private(set) lazy var textInputClient = UITextInputClient(
         tokenizer: TextInputStringTokenizer(
@@ -433,11 +438,7 @@ open class TextView: UIScrollView {
                     state: stateStore,
                     lineManaging: lineManager,
                     stringView: stringView,
-                    characterBoundsProvider: CharacterBoundsProvider(
-                        state: stateStore,
-                        stringView: stringView,
-                        lineManager: lineManager
-                    )
+                    characterBoundsProvider: characterBoundsProvider
                 ),
                 state: stateStore,
                 stringView: stringView,
@@ -457,7 +458,19 @@ open class TextView: UIScrollView {
                 textInput: self
             )
         ),
-        selectionHandler: UITextInputClientSelectionHandler(),
+        selectionHandler: UITextInputClientSelectionHandler(
+            textSelectionRectProvider: TextSelectionRectProvider(
+                state: stateStore, 
+                characterBoundsProvider: characterBoundsProvider,
+                lineManager: lineManager,
+                contentSizeService: contentSizeService
+            ), 
+            firstRectProvider: FirstRectProvider(
+                state: stateStore,
+                lineManager: lineManager,
+                characterBoundsProvider: characterBoundsProvider
+            )
+        ),
         markHandler: UITextInputClientMarkHandler()
     )
     private lazy var viewportRenderer = VisibleLinesViewportRenderer(

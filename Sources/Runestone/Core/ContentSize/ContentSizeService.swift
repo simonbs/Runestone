@@ -13,6 +13,10 @@ final class ContentSizeService<LineManagerType: LineManaging> {
     & EstimatedLineHeightReadable
     & InvisibleCharacterConfigurationReadable
 
+    var contentSize: CGSize {
+        CGSize(width: contentWidth, height: contentHeight)
+    }
+
     private let state: State
     private weak var scrollView: MultiPlatformScrollView?
     private let viewport: Viewport

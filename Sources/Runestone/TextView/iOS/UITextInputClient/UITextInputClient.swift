@@ -16,7 +16,7 @@ final class UITextInputClient<LineManagerType: LineManaging> {
     private let textEditingHandler: UITextInputClientTextEditingHandler
     private let insertionPointHandler: UITextInputClientInsertionPointHandler
     private let navigationHandler: UITextInputClientNavigationHandler<LineManagerType>
-    private let selectionHandler: UITextInputClientSelectionHandler
+    private let selectionHandler: UITextInputClientSelectionHandler<LineManagerType>
     private let markHandler: UITextInputClientMarkHandler
 
     init(
@@ -24,7 +24,7 @@ final class UITextInputClient<LineManagerType: LineManaging> {
         textEditingHandler: UITextInputClientTextEditingHandler,
         insertionPointHandler: UITextInputClientInsertionPointHandler,
         navigationHandler: UITextInputClientNavigationHandler<LineManagerType>,
-        selectionHandler: UITextInputClientSelectionHandler,
+        selectionHandler: UITextInputClientSelectionHandler<LineManagerType>,
         markHandler: UITextInputClientMarkHandler
     ) {
         self.tokenizer = tokenizer
