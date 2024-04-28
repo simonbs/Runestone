@@ -3,23 +3,23 @@ import Combine
 import UIKit
 
 final class StandardFloatingCaretHider {
-    private let caretParentViewProvider: StandardCaretParentViewProvider
-    private let floatingCaretViewProvider: StandardFloatingCaretViewProvider
     private var subviewsObserver: NSKeyValueObservation?
     private var floatingCaretViewHiddenObserver: NSKeyValueObservation?
     private var caretParentView: UIView? {
-        caretParentViewProvider.parentView
+        if #available(iOS 17, *) {
+            view
+        } else {
+            view?.runestone_textSelectionView
+        }
     }
     private var floatingCaretView: UIView? {
-        floatingCaretViewProvider.floatingCaretView
+        view?.runestone_floatingCaretView
     }
 
-    init(
-        caretParentViewProvider: StandardCaretParentViewProvider,
-        floatingCaretViewProvider: StandardFloatingCaretViewProvider
-    ) {
-        self.caretParentViewProvider = caretParentViewProvider
-        self.floatingCaretViewProvider = floatingCaretViewProvider
+    private weak var view: UIView?
+
+    init(view: UIView) {
+        self.view = view
     }
 
     func setupFloatingCaretViewObserver() {

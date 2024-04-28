@@ -3,18 +3,15 @@ import Combine
 import UIKit
 
 struct StandardCaretColorUpdater {
-    private let textSelectionViewProvider: UITextSelectionViewProvider
-    private var textSelectionView: UIView? {
-        textSelectionViewProvider.textSelectionView
-    }
+    private weak var view: UIView?
 
-    init(textSelectionViewProvider: UITextSelectionViewProvider) {
-        self.textSelectionViewProvider = textSelectionViewProvider
+    init(view: UIView) {
+        self.view = view
     }
 
     func updateStandardCaretColor() {
         // Removing the UITextSelectionView and re-adding it forces it to query the insertion point color.
-        guard let textSelectionView else {
+        guard let textSelectionView = view?.runestone_textSelectionView else {
             return
         }
         let parentView = textSelectionView.superview
