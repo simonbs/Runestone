@@ -126,9 +126,6 @@ final class ContentSizeService<LineManagerType: LineManaging> {
         observe(viewport.size) { [unowned self] _, _ in
             updateContentSizeIfNeeded()
         }
-        observe(viewport.size) { [unowned self] _, _ in
-            updateContentSizeIfNeeded()
-        }
     }
 
     func setSize(_ size: CGSize, ofLineWithID lineID: LineID) {
