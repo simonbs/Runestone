@@ -44,8 +44,7 @@ private extension UITextInteractionEditingStateChangeHandler {
 //        standardFloatingCaretHider.setupFloatingCaretViewObserver()
 //        customFloatingCaretLayouter.setupFloatingCaretViewObserver()
         if #available(iOS 17, *) {
-            // Workaround for a bug where the caret does not appear
-            // unil the user taps again on iOS 17 (FB12622609).
+            // Workaround for a bug where the caret does not appear until the user taps again on iOS 17 (FB12622609).
             view.sbs_textSelectionDisplayInteraction?.isActivated = true
         }
     }
