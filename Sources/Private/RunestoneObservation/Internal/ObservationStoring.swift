@@ -3,10 +3,7 @@ protocol ObservationStoring {
     var observations: [StoredObservation] { get }
     func addObservation(_ observation: StoredObservation)
     func removeObservation(_ observation: StoredObservation)
-    func observations(
-        observing keyPath: AnyKeyPath,
-        receiving changeType: PropertyChangeType
-    ) -> [StoredObservation]
+    func observations(observing keyPath: AnyKeyPath) -> [StoredObservation]
 }
 
 extension ObservationStoring where Self: AnyObject {

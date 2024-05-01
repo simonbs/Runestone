@@ -17,10 +17,7 @@ final class LockingObservationStore<DecoratedObservationStore: ObservationStorin
         state.withCriticalRegion { $0.removeObservation(observation) }
     }
 
-    func observations(
-        observing keyPath: AnyKeyPath,
-        receiving changeType: PropertyChangeType
-    ) -> [StoredObservation] {
-        state.withCriticalRegion { $0.observations(observing: keyPath, receiving: changeType) }
+    func observations(observing keyPath: AnyKeyPath) -> [StoredObservation] {
+        state.withCriticalRegion { $0.observations(observing: keyPath) }
     }
 }

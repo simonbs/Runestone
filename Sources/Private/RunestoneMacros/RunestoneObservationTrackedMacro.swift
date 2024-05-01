@@ -30,12 +30,7 @@ extension RunestoneObservationTrackedMacro: AccessorMacro {
         let setSyntax: AccessorDeclSyntax =
            """
            set {
-               _observableRegistrar.withMutation(
-                   of: \\.\(raw: propertyName),
-                   on: self,
-                   changingFrom: \(raw: propertyName),
-                   to: newValue
-               ) {
+               _observableRegistrar.withMutation(of: \\.\(raw: propertyName), on: self) {
                    _\(raw: propertyName) = newValue
                }
            }

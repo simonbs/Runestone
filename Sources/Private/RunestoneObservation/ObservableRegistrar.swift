@@ -16,54 +16,10 @@ public final class ObservableRegistrar {
     public func withMutation<Subject, T>(
         of keyPath: KeyPath<Subject, T>,
         on observable: Subject,
-        changingFrom oldValue: T,
-        to newValue: T,
-        using handler: () -> Void
-    ) {
-        publishChange(
-            ofType: .willSet,
-            changing: keyPath, 
-            on: observable,
-            from: oldValue,
-            to: newValue
-        )
-        handler()
-        publishChange(
-            ofType: .didSet,
-            changing: keyPath,
-            on: observable,
-            from: oldValue,
-            to: newValue
-        )
-    }
-
-    public func withMutation<Subject, T: Equatable>(
-        of keyPath: KeyPath<Subject, T>,
-        on observable: Subject,
-        changingFrom oldValue: T,
-        to newValue: T,
         handler: () -> Void
     ) {
-        let isDifferentValue = oldValue != newValue
-        if isDifferentValue {
-            publishChange(
-                ofType: .willSet,
-                changing: keyPath,
-                on: observable,
-                from: oldValue,
-                to: newValue
-            )
-        }
         handler()
-        if isDifferentValue {
-            publishChange(
-                ofType: .didSet,
-                changing: keyPath,
-                on: observable,
-                from: oldValue,
-                to: newValue
-            )
-        }
+        publishChange(changing: keyPath, on: observable)
     }
 
     public func access<Subject, T>(_ keyPath: KeyPath<Subject, T>, on subject: Subject) {
@@ -81,17 +37,11 @@ private extension ObservableRegistrar {
         }
     }
 
-    private func publishChange<Subject, T>(
-        ofType changeType: PropertyChangeType,
-        changing keyPath: KeyPath<Subject, T>,
-        on subject: Subject,
-        from oldValue: T,
-        to newValue: T
-    ) {
+    private func publishChange<Subject, T>(changing keyPath: KeyPath<Subject, T>, on subject: Subject) {
         do {
-            let observations = observationStore.observations(observing: keyPath, receiving: changeType)
+            let observations = observationStore.observations(observing: keyPath)
             for observation in observations {
-                try observation.changeHandler.invoke(changingFrom: oldValue, to: newValue)
+                try observation.changeHandler.invoke()
             }
         } catch {
             fatalError(error.localizedDescription)

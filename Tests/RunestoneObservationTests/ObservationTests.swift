@@ -6,7 +6,7 @@ final class ObservationTests: XCTestCase {
         let observationStore = ObservationStoreSpy()
         let observerRegistrar = ObserverRegistrar(observationStore: observationStore)
         let observable = MockObservable()
-        let sut = observerRegistrar.registerObserver(tracking: { observable.str }, receiving: .willSet) { _, _ in }
+        let sut = observerRegistrar.registerObserver(tracking: { observable.str }) { _, _ in }
         XCTAssertNotNil(observationStore.addedObservationId)
         sut.cancel()
         XCTAssertNotNil(observationStore.removedObservationId)

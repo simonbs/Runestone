@@ -5,10 +5,9 @@ final class LockingObservationStoreTests: XCTestCase {
     func test_it_decorates_add_observation() throws {
         let observationStore = ObservationStoreSpy()
         let sut = LockingObservationStore(observationStore)
-        let changeHandler = AnyObservationChangeHandler { (_: String, _: String) in }
+        let changeHandler = MockChangeHandler()
         let storedObservation = StoredObservation(
             properties: [], 
-            changeType: .didSet,
             changeHandler: changeHandler,
             observableObservationStore: sut,
             observerObservationStore: sut
@@ -20,10 +19,9 @@ final class LockingObservationStoreTests: XCTestCase {
     func test_it_decorates_remove_observation() throws {
         let observationStore = ObservationStoreSpy()
         let sut = LockingObservationStore(observationStore)
-        let changeHandler = AnyObservationChangeHandler { (_: String, _: String) in }
+        let changeHandler = MockChangeHandler()
         let storedObservation = StoredObservation(
             properties: [],
-            changeType: .didSet,
             changeHandler: changeHandler,
             observableObservationStore: sut,
             observerObservationStore: sut
@@ -36,7 +34,7 @@ final class LockingObservationStoreTests: XCTestCase {
     func test_it_decorates_observations_observing_receiving() throws {
         let observationStore = ObservationStoreSpy()
         let sut = LockingObservationStore(observationStore)
-        _ = sut.observations(observing: \MockObservable.str, receiving: .didSet)
+        _ = sut.observations(observing: \MockObservable.str)
         XCTAssertNotNil(observationStore.didCallObservationsObservingReceiving)
     }
 }

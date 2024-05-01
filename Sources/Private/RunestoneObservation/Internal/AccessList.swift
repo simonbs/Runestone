@@ -10,13 +10,11 @@ struct AccessList: Sendable {
         }
 
         func addObserver(
-            receiving changeType: PropertyChangeType,
-            changeHandler: AnyObservationChangeHandler,
+            changeHandler: ChangeHandler,
             observationStore observerObservationStore: ObservationStoring
         ) -> StoredObservation {
             let observation = StoredObservation(
                 properties: properties,
-                changeType: changeType,
                 changeHandler: changeHandler,
                 observableObservationStore: observableObservationStore,
                 observerObservationStore: observerObservationStore

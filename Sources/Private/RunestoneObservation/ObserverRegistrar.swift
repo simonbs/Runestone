@@ -14,8 +14,7 @@ public final class ObserverRegistrar {
     }
 
     public func registerObserver<T>(
-        tracking tracker: () -> T,
-        receiving changeType: PropertyChangeType,
+        tracking tracker: @escaping () -> T,
         options: ObservationOptions = [],
         handler: @escaping ObservationChangeHandler<T>
     ) -> Observation {
@@ -27,13 +26,13 @@ public final class ObserverRegistrar {
                 handler(value, value)
             }
         }
-        let changeHandler = AnyObservationChangeHandler(handler)
+        let changeHandler = ValueComparingChangeHandler(
+            initialValue: value, 
+            tracker: tracker,
+            handler: handler
+        )
         let storedObservations = accessList.entries.values.map { entry in
-            entry.addObserver(
-                receiving: changeType,
-                changeHandler: changeHandler,
-                observationStore: observationStore
-            )
+            entry.addObserver(changeHandler: changeHandler, observationStore: observationStore)
         }
         return Observation(storedObservations)
     }

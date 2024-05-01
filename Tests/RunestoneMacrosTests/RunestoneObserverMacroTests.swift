@@ -26,14 +26,12 @@ final class RunestoneObserverMacroTests: XCTestCase {
 
                 @discardableResult
                 private func observe<T>(
-                    _ tracker: @autoclosure () -> T,
-                    receiving changeType: _RunestoneObservation.PropertyChangeType = .didSet,
+                    _ tracker: @escaping @autoclosure () -> T,
                     options: _RunestoneObservation.ObservationOptions = [],
                     handler: @escaping _RunestoneObservation.ObservationChangeHandler<T>
                 ) -> _RunestoneObservation.Observation {
                     _observerRegistrar.registerObserver(
                         tracking: tracker,
-                        receiving: changeType,
                         options: options,
                         handler: handler
                     )

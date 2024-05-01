@@ -5,18 +5,16 @@ final class StoredObservationTests: XCTestCase {
     func test_it_has_a_unique_id() {
         let observableObservationStore = ObservationStoreSpy()
         let observerObservationStore = ObservationStoreSpy()
-        let changeHandlerA = AnyObservationChangeHandler { (_: String, _: String) in }
-        let changeHandlerB = AnyObservationChangeHandler { (_: String, _: String) in }
+        let changeHandlerA = MockChangeHandler()
+        let changeHandlerB = MockChangeHandler()
         let a = StoredObservation(
             properties: [],
-            changeType: .didSet, 
             changeHandler: changeHandlerA,
             observableObservationStore: observableObservationStore,
             observerObservationStore: observerObservationStore
         )
         let b = StoredObservation(
             properties: [],
-            changeType: .didSet,
             changeHandler: changeHandlerB,
             observableObservationStore: observableObservationStore,
             observerObservationStore: observerObservationStore
@@ -27,10 +25,9 @@ final class StoredObservationTests: XCTestCase {
     func test_it_removes_itself_from_observation_stores() {
         let observableObservationStore = ObservationStoreSpy()
         let observerObservationStore = ObservationStoreSpy()
-        let changeHandler = AnyObservationChangeHandler { (_: String, _: String) in }
+        let changeHandler = MockChangeHandler()
         let sut = StoredObservation(
             properties: [],
-            changeType: .didSet,
             changeHandler: changeHandler,
             observableObservationStore: observableObservationStore,
             observerObservationStore: observerObservationStore

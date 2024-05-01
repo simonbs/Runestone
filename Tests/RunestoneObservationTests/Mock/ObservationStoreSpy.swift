@@ -16,11 +16,8 @@ final class ObservationStoreSpy: ObservationStoring {
         observations.removeAll { $0.id == observation.id }
     }
 
-    func observations(
-        observing keyPath: AnyKeyPath,
-        receiving changeType: PropertyChangeType
-    ) -> [StoredObservation] {
+    func observations(observing keyPath: AnyKeyPath) -> [StoredObservation] {
         didCallObservationsObservingReceiving = true
-        return observations.filter { $0.properties.contains(keyPath) && $0.changeType == changeType }
+        return observations.filter { $0.properties.contains(keyPath) }
     }
 }

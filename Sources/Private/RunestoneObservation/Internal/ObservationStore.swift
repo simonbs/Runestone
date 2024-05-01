@@ -30,16 +30,13 @@ final class ObservationStore: ObservationStoring {
         }
     }
 
-    func observations(
-        observing keyPath: AnyKeyPath,
-        receiving changeType: PropertyChangeType
-    ) -> [StoredObservation] {
+    func observations(observing keyPath: AnyKeyPath) -> [StoredObservation] {
         guard let ids = lookups[keyPath] else {
             return []
         }
         var observations: [StoredObservation] = []
         for id in ids {
-            if let observation = map[id], observation.changeType == changeType {
+            if let observation = map[id] {
                 observations.append(observation)
             }
         }

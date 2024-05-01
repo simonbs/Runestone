@@ -6,7 +6,7 @@ final class ObserverRegistrarTests: XCTestCase {
         let observationStore = ObservationStoreSpy()
         let sut = ObserverRegistrar(observationStore: observationStore)
         let observable = MockObservable()
-        _ = sut.registerObserver(tracking: { observable.str }, receiving: .willSet) { _, _ in }
+        _ = sut.registerObserver(tracking: { observable.str }) { _, _ in }
         XCTAssertNotNil(observationStore.addedObservationId)
     }
 
@@ -14,7 +14,7 @@ final class ObserverRegistrarTests: XCTestCase {
         let observationStore = ObservationStoreSpy()
         var sut: ObserverRegistrar? = ObserverRegistrar(observationStore: observationStore)
         let observable = MockObservable()
-        _ = sut?.registerObserver(tracking: { observable.str }, receiving: .willSet) { _, _ in }
+        _ = sut?.registerObserver(tracking: { observable.str }) { _, _ in }
         sut = nil
         XCTAssertNotNil(observationStore.removedObservationId)
     }
@@ -24,11 +24,7 @@ final class ObserverRegistrarTests: XCTestCase {
         let observable = MockObservable()
         let sut = ObserverRegistrar(observationStore: observationStore)
         var didReceiveValue = false
-        _ = sut.registerObserver(
-            tracking: { observable.str }, 
-            receiving: .willSet,
-            options: []
-        ) { _, _ in
+        _ = sut.registerObserver(tracking: { observable.str }, options: []) { _, _ in
             didReceiveValue = true
         }
         XCTAssertFalse(didReceiveValue)
@@ -39,11 +35,7 @@ final class ObserverRegistrarTests: XCTestCase {
         let observable = MockObservable()
         let sut = ObserverRegistrar(observationStore: observationStore)
         var didReceiveValue = false
-        _ = sut.registerObserver(
-            tracking: { observable.str },
-            receiving: .willSet,
-            options: .initialValue
-        ) { _, _ in
+        _ = sut.registerObserver(tracking: { observable.str }, options: .initialValue) { _, _ in
             didReceiveValue = true
         }
         XCTAssertTrue(didReceiveValue)

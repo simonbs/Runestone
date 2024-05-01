@@ -66,9 +66,8 @@ final class AccessListTests: XCTestCase {
         var sut = AccessList()
         sut.addAccess(keyPath: \MockObservable.str, observationStore: observableObservationStore)
         let entry = sut.entries.first!.value
-        let changeHandler = AnyObservationChangeHandler { (_: String, _: String) in }
+        let changeHandler = MockChangeHandler()
         _ = entry.addObserver(
-            receiving: .didSet,
             changeHandler: changeHandler,
             observationStore: observerObservationStore
         )
