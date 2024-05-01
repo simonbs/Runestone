@@ -47,26 +47,18 @@ private extension ObserverRegistrar {
     }
 
     private func generateAccessList<T>(_ tracker: () -> T) -> (T, AccessList)? {
-        var accessList: AccessList?
-        let value = withUnsafeMutablePointer(to: &accessList) { ptr in
-            let previous = ThreadLocal.value
-            ThreadLocal.value = UnsafeMutableRawPointer(ptr)
-            defer {
-                if let scoped = ptr.pointee, let previous {
-                    if var prevList = previous.assumingMemoryBound(to: AccessList?.self).pointee {
-                        prevList.merge(scoped)
-                        previous.assumingMemoryBound(to: AccessList?.self).pointee = prevList
-                    } else {
-                        previous.assumingMemoryBound(to: AccessList?.self).pointee = scoped
-                    }
-                }
-                ThreadLocal.value = previous
-            }
-            return tracker()
+        var previousAccessList = ThreadLocal.value
+        ThreadLocal.value = nil
+        let value = tracker()
+        let scopedAccessList = ThreadLocal.value
+        if var tmpPreviousAccessList = previousAccessList, let scopedAccessList {
+            tmpPreviousAccessList.merge(scopedAccessList)
+            previousAccessList = tmpPreviousAccessList
         }
-        guard let accessList else {
+        ThreadLocal.value = previousAccessList
+        guard let scopedAccessList else {
             return nil
         }
-        return (value, accessList)
+        return (value, scopedAccessList)
     }
 }

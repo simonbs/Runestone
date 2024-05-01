@@ -2,16 +2,14 @@
 import XCTest
 
 final class ThreadLocalTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        ThreadLocal.value = nil
+    }
+    
     func test_it_stores_value() {
-        let initialPtr = ThreadLocal.value?.assumingMemoryBound(to: AccessList?.self)
-        XCTAssertNil(initialPtr?.pointee)
-        var accessList: AccessList?
-        withUnsafeMutablePointer(to: &accessList) { ptr in
-            ptr.pointee = AccessList()
-            ThreadLocal.value = UnsafeMutableRawPointer(ptr)
-        }
-        XCTAssertNotNil(accessList)
-        let sutPtr = ThreadLocal.value?.assumingMemoryBound(to: AccessList?.self)
-        XCTAssertNotNil(sutPtr)
+        XCTAssertNil(ThreadLocal.value)
+        ThreadLocal.value = AccessList()
+        XCTAssertNotNil(ThreadLocal.value)
     }
 }

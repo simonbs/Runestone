@@ -2,30 +2,27 @@
 import XCTest
 
 final class ObservableRegistrarTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        ThreadLocal.value = nil
+    }
+
     func test_it_adds_access_to_access_list() {
-        var accessList: AccessList?
-        withUnsafeMutablePointer(to: &accessList) { ptr in
-            ThreadLocal.value = UnsafeMutableRawPointer(ptr)
-        }
         let observableObservationStore = ObservationStoreSpy()
         let observable = MockObservable()
         let sut = ObservableRegistrar(observationStore: observableObservationStore)
         sut.access(\.str, on: observable)
-        XCTAssertNotNil(accessList)
+        XCTAssertNotNil(ThreadLocal.value)
     }
 
     func test_it_cancels_all_observations_on_deinit() {
-        var accessList: AccessList?
-        withUnsafeMutablePointer(to: &accessList) { ptr in
-            ThreadLocal.value = UnsafeMutableRawPointer(ptr)
-        }
         let observableObservationStore = ObservationStoreSpy()
         let observerObservationStore = ObservationStoreSpy()
         let observable = MockObservable()
         var sut: ObservableRegistrar? = ObservableRegistrar(observationStore: observableObservationStore)
         sut?.access(\.str, on: observable)
-        XCTAssertNotNil(accessList)
-        let entry = accessList?.entries.first?.value
+        XCTAssertNotNil(ThreadLocal.value)
+        let entry = ThreadLocal.value?.entries.first?.value
         let changeHandler = AnyObservationChangeHandler { (_: String, _: String) in }
         _ = entry?.addObserver(
             receiving: .willSet,
@@ -40,18 +37,13 @@ final class ObservableRegistrarTests: XCTestCase {
     func test_it_passes_old_value_and_new_value_when_invoking_observer() {
         var receivedOldValue: String?
         var receivedNewValue: String?
-        var accessList: AccessList?
-        withUnsafeMutablePointer(to: &accessList) { ptr in
-            ThreadLocal.value = UnsafeMutableRawPointer(ptr)
-        }
         let observableObservationStore = ObservationStoreSpy()
         let observerObservationStore = ObservationStoreSpy()
         let observable = MockObservable()
         let sut = ObservableRegistrar(observationStore: observableObservationStore)
         sut.access(\.str, on: observable)
-        XCTAssertNotNil(accessList)
-        let entry = accessList?.entries.first?.value
-
+        XCTAssertNotNil(ThreadLocal.value)
+        let entry = ThreadLocal.value?.entries.first?.value
         let didSetChangeHandler = AnyObservationChangeHandler { (oldValue: String, newValue: String) in
             receivedOldValue = oldValue
             receivedNewValue = newValue
@@ -69,17 +61,13 @@ final class ObservableRegistrarTests: XCTestCase {
     func test_it_publishes_change_when_equatable_value_has_changed() {
         var didPublishWillSet = false
         var didPublishDidSet = false
-        var accessList: AccessList?
-        withUnsafeMutablePointer(to: &accessList) { ptr in
-            ThreadLocal.value = UnsafeMutableRawPointer(ptr)
-        }
         let observableObservationStore = ObservationStoreSpy()
         let observerObservationStore = ObservationStoreSpy()
         let observable = MockObservable()
         let sut = ObservableRegistrar(observationStore: observableObservationStore)
         sut.access(\.equatableObj, on: observable)
-        XCTAssertNotNil(accessList)
-        let entry = accessList?.entries.first?.value
+        XCTAssertNotNil(ThreadLocal.value)
+        let entry = ThreadLocal.value?.entries.first?.value
         let willSetChangeHandler = AnyObservationChangeHandler { (_: MyEquatableType, _: MyEquatableType) in
             didPublishWillSet = true
         }
@@ -106,17 +94,13 @@ final class ObservableRegistrarTests: XCTestCase {
     func test_it_skips_publishing_change_when_equatable_value_has_not_changed() {
         var didPublishWillSet = false
         var didPublishDidSet = false
-        var accessList: AccessList?
-        withUnsafeMutablePointer(to: &accessList) { ptr in
-            ThreadLocal.value = UnsafeMutableRawPointer(ptr)
-        }
         let observableObservationStore = ObservationStoreSpy()
         let observerObservationStore = ObservationStoreSpy()
         let observable = MockObservable()
         let sut = ObservableRegistrar(observationStore: observableObservationStore)
         sut.access(\.equatableObj, on: observable)
-        XCTAssertNotNil(accessList)
-        let entry = accessList?.entries.first?.value
+        XCTAssertNotNil(ThreadLocal.value)
+        let entry = ThreadLocal.value?.entries.first?.value
         let willSetChangeHandler = AnyObservationChangeHandler { (_: MyEquatableType, _: MyEquatableType) in
             didPublishWillSet = true
         }
@@ -143,17 +127,13 @@ final class ObservableRegistrarTests: XCTestCase {
     func test_it_always_publishes_change_for_non_equatable_types_even_when_they_have_not_changed() {
         var didPublishWillSet = false
         var didPublishDidSet = false
-        var accessList: AccessList?
-        withUnsafeMutablePointer(to: &accessList) { ptr in
-            ThreadLocal.value = UnsafeMutableRawPointer(ptr)
-        }
         let observableObservationStore = ObservationStoreSpy()
         let observerObservationStore = ObservationStoreSpy()
         let observable = MockObservable()
         let sut = ObservableRegistrar(observationStore: observableObservationStore)
         sut.access(\.nonEquatableObj, on: observable)
-        XCTAssertNotNil(accessList)
-        let entry = accessList?.entries.first?.value
+        XCTAssertNotNil(ThreadLocal.value)
+        let entry = ThreadLocal.value?.entries.first?.value
         let willSetChangeHandler = AnyObservationChangeHandler { (_: MyNonEquatableType, _: MyNonEquatableType) in
             didPublishWillSet = true
         }
