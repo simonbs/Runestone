@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 final class UITextInputClientInsertionPointHandler {
@@ -52,3 +53,4 @@ final class UITextInputClientInsertionPointHandler {
 //        textViewDelegate.textViewDidEndFloatingCursor()
     }
 }
+#endif

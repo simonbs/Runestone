@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 final class UITextInputClientMarkHandler {
@@ -62,3 +63,4 @@ final class UITextInputClientMarkHandler {
 //        textInteractionManager.removeAndAddEditableTextInteraction()
     }
 }
+#endif

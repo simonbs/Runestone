@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 final class UITextInputClientNavigationHandler<LineManagerType: LineManaging> {
@@ -232,3 +233,4 @@ private extension TextNavigationDirection {
         }
     }
 }
+#endif

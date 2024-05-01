@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 struct UITextInputSelectionEventHandler: SelectionEventHandling {
@@ -19,3 +20,4 @@ struct UITextInputSelectionEventHandler: SelectionEventHandling {
         }
     }
 }
+#endif

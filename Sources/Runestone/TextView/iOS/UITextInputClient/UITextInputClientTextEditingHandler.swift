@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 final class UITextInputClientTextEditingHandler {
@@ -51,3 +52,4 @@ final class UITextInputClientTextEditingHandler {
 
     func setBaseWritingDirection(_ writingDirection: NSWritingDirection, for range: UITextRange) {}
 }
+#endif

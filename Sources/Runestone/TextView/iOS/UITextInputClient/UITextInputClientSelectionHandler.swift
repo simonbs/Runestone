@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 
 final class UITextInputClientSelectionHandler<LineManagerType: LineManaging> {
@@ -26,3 +27,4 @@ final class UITextInputClientSelectionHandler<LineManagerType: LineManaging> {
         return firstRectProvider.firstRect(for: range.range)
     }
 }
+#endif

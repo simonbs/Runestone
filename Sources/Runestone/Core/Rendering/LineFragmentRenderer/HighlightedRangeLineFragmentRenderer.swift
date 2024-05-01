@@ -1,8 +1,6 @@
 import _RunestoneMultiPlatform
 import CoreText
-#if os(iOS)
-import UIKit
-#endif
+import Foundation
 
 struct HighlightedRangeLineFragmentRenderer<StringViewType: StringView>: LineFragmentRendering {
     let stringView: StringViewType
