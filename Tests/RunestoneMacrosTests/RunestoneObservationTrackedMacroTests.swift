@@ -10,7 +10,7 @@ private let testMacros: [String: Macro.Type] = [
 #endif
 
 final class RunestoneObservationTrackedMacroTests: XCTestCase {
-    func test_it_generates_will_set_and_did_set() throws {
+    func test_it_generates_set_and_get() throws {
         #if canImport(_RunestoneMacros)
         assertMacroExpansion(
             """
