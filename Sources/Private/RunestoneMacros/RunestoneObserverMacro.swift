@@ -41,6 +41,45 @@ private extension RunestoneObserverMacro {
            """
            @discardableResult
            private func observe<T>(
+               _ tracker: @escaping () -> T,
+               options: _RunestoneObservation.ObservationOptions = [],
+               handler: @escaping _RunestoneObservation.ObservationChangeHandler<T>
+           ) -> _RunestoneObservation.Observation {
+               _observerRegistrar.registerObserver(
+                   tracking: tracker,
+                   options: options,
+                   handler: handler
+               )
+           }
+
+           @discardableResult
+           private func observe<T>(
+               _ tracker: @escaping @autoclosure () -> T,
+               options: _RunestoneObservation.ObservationOptions = [],
+               handler: @escaping _RunestoneObservation.ObservationChangeHandler<T>
+           ) -> _RunestoneObservation.Observation {
+               _observerRegistrar.registerObserver(
+                   tracking: tracker,
+                   options: options,
+                   handler: handler
+               )
+           }
+
+           @discardableResult
+           private func observe<T: Equatable>(
+               _ tracker: @escaping () -> T,
+               options: _RunestoneObservation.ObservationOptions = [],
+               handler: @escaping _RunestoneObservation.ObservationChangeHandler<T>
+           ) -> _RunestoneObservation.Observation {
+               _observerRegistrar.registerObserver(
+                   tracking: tracker,
+                   options: options,
+                   handler: handler
+               )
+           }
+
+           @discardableResult
+           private func observe<T: Equatable>(
                _ tracker: @escaping @autoclosure () -> T,
                options: _RunestoneObservation.ObservationOptions = [],
                handler: @escaping _RunestoneObservation.ObservationChangeHandler<T>

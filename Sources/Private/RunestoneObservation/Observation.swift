@@ -1,5 +1,5 @@
 public final class Observation {
-    private var storedObservations: [StoredObservation]
+    private(set) var storedObservations: [StoredObservation]
 
     init(_ storedObservations: [StoredObservation]) {
         self.storedObservations = storedObservations

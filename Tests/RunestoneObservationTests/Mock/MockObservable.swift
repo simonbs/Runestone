@@ -19,6 +19,7 @@ struct MyNonEquatableType {
 @RunestoneObservable
 final class MockObservable {
     var str = "foo"
-    let equatableObj = MyEquatableType("foo")
-    let nonEquatableObj = MyNonEquatableType("foo")
+    var equatableObj = MyEquatableType("foo")
+    var nonEquatableObj = MyNonEquatableType("foo")
+    let constantProp = MyEquatableType("foo")
 }

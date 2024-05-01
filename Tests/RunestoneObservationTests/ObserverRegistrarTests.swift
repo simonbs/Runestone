@@ -40,4 +40,34 @@ final class ObserverRegistrarTests: XCTestCase {
         }
         XCTAssertTrue(didReceiveValue)
     }
+
+    func test_it_registers_change_handler_that_compares_values_for_equatable_type() {
+        let observationStore = ObservationStoreSpy()
+        let observable = MockObservable()
+        let sut = ObserverRegistrar(observationStore: observationStore)
+        let observation = sut.registerObserver(tracking: { observable.equatableObj }) { _, _ in }
+        XCTAssertEqual(observation.storedObservations.count, 1)
+        let storedObservation = observation.storedObservations[0]
+        let typeStr = String(describing: type(of: storedObservation.changeHandler))
+        XCTAssertEqual(typeStr, "EquatableComparingChangeHandler<MyEquatableType>")
+    }
+
+    func test_it_registers_change_handler_that_always_publishes_for_non_equatable_type() {
+        let observationStore = ObservationStoreSpy()
+        let observable = MockObservable()
+        let sut = ObserverRegistrar(observationStore: observationStore)
+        let observation = sut.registerObserver(tracking: { observable.nonEquatableObj }) { _, _ in }
+        XCTAssertEqual(observation.storedObservations.count, 1)
+        let storedObservation = observation.storedObservations[0]
+        let typeStr = String(describing: type(of: storedObservation.changeHandler))
+        XCTAssertEqual(typeStr, "AlwaysPublishingChangeHandler<MyNonEquatableType>")
+    }
+
+    func test_it_registers_observer_with_no_stored_observations_for_constant_property() {
+        let observationStore = ObservationStoreSpy()
+        let observable = MockObservable()
+        let sut = ObserverRegistrar(observationStore: observationStore)
+        let observation = sut.registerObserver(tracking: { observable.constantProp }) { _, _ in }
+        XCTAssertTrue(observation.storedObservations.isEmpty)
+    }
 }
