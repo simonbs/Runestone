@@ -330,7 +330,17 @@ open class TextView: UIScrollView {
     ///
     /// This property returns the instance of `TextView` that holds the property.
     public var textInputView: UIView {
-        self
+        textContainerView
+    }
+    /// The size of the content view.
+    open override var contentSize: CGSize {
+        get {
+            super.contentSize
+        }
+        set {
+            textContainerView.frame = CGRect(origin: .zero, size: newValue)
+            super.contentSize = newValue
+        }
     }
     /// The custom input accessory view to display when the receiver becomes the first responder.
 //    override public var inputAccessoryView: UIView? {
@@ -351,6 +361,11 @@ open class TextView: UIScrollView {
 //    private let keyboardObserver = KeyboardObserver()
 //    private var isInputAccessoryViewEnabled = false
 //    private var _inputAccessoryView: UIView?
+    private(set) lazy var textContainerView = TextContainerView(
+        textInputClient: textInputClient,
+        lineFragmentsHostView: lineFragmentsHostView
+    )
+    private let lineFragmentsHostView = UIView()
     private let tapGestureRecognizer = QuickTapGestureRecognizer()
 //    private var isPerformingNonEditableTextInteraction = false
     private var shouldBeginEditing: Bool {
@@ -359,7 +374,6 @@ open class TextView: UIScrollView {
     private var shouldEndEditing: Bool {
         editorDelegate?.textViewShouldEndEditing(self) ?? true
     }
-
     private lazy var stringView = ThemedStringView(
         stringView: NSMutableAttributedStringView(),
         state: stateStore
@@ -373,15 +387,12 @@ open class TextView: UIScrollView {
             viewport: viewport
         )
     )
-
-//
 //    private let proxyScrollView: ProxyScrollView
 //    private let textViewDelegate: ErasedTextViewDelegate
     private var _isFirstResponder = false
 //    private let _isFirstResponder: CurrentValueSubject<Bool, Never>
 //    private let textInteractionManager: UITextInteractionManager
 //    private var boundsObserver: AnyCancellable?
-
     private let stateStore = TextViewStateStore()
     private lazy var viewport = ScrollViewViewport(scrollView: self)
     private lazy var contentSizeService = ContentSizeService(
@@ -395,8 +406,7 @@ open class TextView: UIScrollView {
         stringView: stringView,
         lineManager: lineManager
     )
-
-    private(set) lazy var textInputClient = UITextInputClient(
+    private lazy var textInputClient = UITextInputClient(
         tokenizer: TextInputStringTokenizer(
             textInput: self,
             stringTokenizer: StringTokenizer(
@@ -479,7 +489,7 @@ open class TextView: UIScrollView {
         visibleLinesRenderer: SizeTrackingVisibleLinesRenderer(
             visibleLinesRenderer: LineFragmentVisibleLinesRenderer(
                 state: stateStore,
-                hostLayer: layer,
+                hostLayer: lineFragmentsHostView.layer,
                 renderer: TextLineFragmentRenderer()
             ),
             contentSizeService: contentSizeService
@@ -573,6 +583,7 @@ open class TextView: UIScrollView {
         textInteractionEditingStateChangeHandler.textInput = self
         tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
         addGestureRecognizer(tapGestureRecognizer)
+        addSubview(textContainerView)
         // Ensure lazy objects are initialized.
         _ = viewport
         _ = contentSizeService
