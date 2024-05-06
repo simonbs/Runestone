@@ -84,7 +84,10 @@ final class ManagedLine: Line {
     }
 
     func lineFragments(in rect: CGRect) -> [ManagedLineFragment] {
-        lineFragmentManager.lineFragments(withYOffsetIn: rect.minY - yPosition ... rect.maxY - yPosition)
+        let localYPosition = yPosition
+        let localMinY = rect.minY - localYPosition
+        let localMaxY = rect.maxY - localYPosition
+        return lineFragmentManager.lineFragments(withYOffsetIn: localMinY ... localMaxY)
     }
 }
 
