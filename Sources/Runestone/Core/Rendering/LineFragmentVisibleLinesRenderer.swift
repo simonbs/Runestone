@@ -29,6 +29,7 @@ struct LineFragmentVisibleLinesRenderer<LineType: Line>: VisibleLinesRendering {
                 layer.renderer = renderer
                 layer.frame = CGRect(origin: origin, size: lineFragment.scaledSize)
                 hostLayer.insertSublayer(layer, at: 0)
+                layer.displayIfNeeded()
             }
         }
         CATransaction.commit()
