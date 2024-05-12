@@ -52,6 +52,20 @@ open class TextView: UIScrollView {
             textSetter.setText(newValue)
         }
     }
+    /// The current selection range of the text view.
+    public var selectedRange: NSRange {
+        get {
+            if textInputClient.selectedTextRange != nil {
+                return stateStore.selectedRange
+            } else {
+                // UITextView returns the end of the document for the selectedRange by default.
+                return NSRange(location: stringView.length, length: 0)
+            }
+        }
+        set {
+            textInputClient.selectedTextRange = RunestoneUITextRange(newValue)
+        }
+    }
     /// The view's background color.
     open override var backgroundColor: UIColor? {
         didSet {
