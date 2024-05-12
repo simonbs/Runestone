@@ -803,7 +803,7 @@ private extension TextView {
 //    }
 
     @objc private func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
-        guard isSelectable, gestureRecognizer.state == .ended else {
+        guard gestureRecognizer.state == .ended else {
             return
         }
         let point = gestureRecognizer.location(in: self)
@@ -854,7 +854,7 @@ private extension TextView {
 extension TextView: UIGestureRecognizerDelegate {
     override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         if gestureRecognizer === tapGestureRecognizer {
-            return !isEditing && !isDragging && !isDecelerating && shouldBeginEditing
+            return !isEditing && !isDragging && !isDecelerating && isSelectable && shouldBeginEditing
         } else {
             return super.gestureRecognizerShouldBegin(gestureRecognizer)
         }
