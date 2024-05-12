@@ -4,8 +4,20 @@ import UIKit
 #endif
 
 final class LineFragmentLayer<LineType: Line>: CALayer, ReusableValue {
-    var line: LineType?
-    var lineFragment: LineType.LineFragmentType?
+    var line: LineType? {
+        didSet {
+            if line != oldValue {
+                setNeedsDisplay()
+            }
+        }
+    }
+    var lineFragment: LineType.LineFragmentType? {
+        didSet {
+            if lineFragment != oldValue {
+                setNeedsDisplay()
+            }
+        }
+    }
     var renderer: LineFragmentRendering?
     override var frame: CGRect {
         didSet {
