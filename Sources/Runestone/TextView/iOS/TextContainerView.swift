@@ -5,6 +5,18 @@ import UIKit
 final class TextContainerView<UITextInputClientType: UITextInputClient>: UIView, UITextInput {
     var inputDelegate: UITextInputDelegate?
     
+    var beginningOfDocument: UITextPosition {
+        textInputClient.beginningOfDocument
+    }
+    var endOfDocument: UITextPosition {
+        textInputClient.endOfDocument
+    }
+    var hasText: Bool {
+        textInputClient.hasText
+    }
+    var tokenizer: UITextInputTokenizer {
+        textInputClient.tokenizer
+    }
     override var frame: CGRect {
         didSet {
             if frame != oldValue {
@@ -22,22 +34,9 @@ final class TextContainerView<UITextInputClientType: UITextInputClient>: UIView,
         super.init(frame: .zero)
         addSubview(lineFragmentsHostView)
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-    }
-
-    var beginningOfDocument: UITextPosition {
-        textInputClient.beginningOfDocument
-    }
-    var endOfDocument: UITextPosition {
-        textInputClient.endOfDocument
-    }
-    var hasText: Bool {
-        textInputClient.hasText
-    }
-    var tokenizer: UITextInputTokenizer {
-        textInputClient.tokenizer
     }
 
     // MARK: - Caret
