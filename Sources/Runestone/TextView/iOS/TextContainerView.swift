@@ -4,7 +4,6 @@ import UIKit
 
 final class TextContainerView<UITextInputClientType: UITextInputClient>: UIView, UITextInput {
     var inputDelegate: UITextInputDelegate?
-    
     var beginningOfDocument: UITextPosition {
         textInputClient.beginningOfDocument
     }
