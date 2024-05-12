@@ -2,7 +2,7 @@ import CoreText
 import Foundation
 
 struct ManagedLineFragment: LineFragment {
-    let id: LineFragmentID = UUID()
+    let id: LineFragmentID
     let index: Int
     let range: NSRange
     let hiddenLength: Int
@@ -16,10 +16,11 @@ struct ManagedLineFragment: LineFragment {
     var nodeTotalHeight: CGFloat = 0
     let line: CTLine
 
-    init() {
+    init(lineId: LineID) {
         let attributedString = CFAttributedStringCreate(kCFAllocatorDefault, "" as NSString, [:] as CFDictionary)!
         let line = CTLineCreateWithAttributedString(attributedString)
         self.init(
+            lineId: lineId,
             index: 0,
             range: NSRange(location: 0, length: 0),
             hiddenLength: 0,
@@ -31,8 +32,9 @@ struct ManagedLineFragment: LineFragment {
         )
     }
 
-    init(_ typesetLineFragment: TypesetLineFragment) {
+    init(lineId: LineID, typesetLineFragment: TypesetLineFragment) {
         self.init(
+            lineId: lineId,
             index: typesetLineFragment.index,
             range: typesetLineFragment.range,
             hiddenLength: typesetLineFragment.hiddenLength,
@@ -45,6 +47,7 @@ struct ManagedLineFragment: LineFragment {
     }
 
     private init(
+        lineId: LineID,
         index: Int,
         range: NSRange,
         hiddenLength: Int,
@@ -54,6 +57,7 @@ struct ManagedLineFragment: LineFragment {
         yPosition: CGFloat,
         line: CTLine
     ) {
+        self.id = "\(lineId.uuidString)[\(index)]"
         self.index = index
         self.range = range
         self.hiddenLength = hiddenLength

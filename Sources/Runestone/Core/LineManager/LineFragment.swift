@@ -1,7 +1,7 @@
 import CoreText
 import Foundation
 
-typealias LineFragmentID = UUID
+typealias LineFragmentID = String
 
 protocol LineFragment: Equatable {
     /// The ID of the line fragment.

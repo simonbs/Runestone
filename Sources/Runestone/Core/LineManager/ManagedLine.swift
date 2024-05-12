@@ -93,7 +93,7 @@ final class ManagedLine: Line {
 
 private extension ManagedLine {
     private func handleTypesetLineFragments(_ lineFragments: [TypesetLineFragment]) {
-        lineFragmentManager.addTypesetLineFragments(lineFragments)
+        lineFragmentManager.addTypesetLineFragments(lineFragments, belongingToLineWithId: id)
         // Update total line height.
         node!.tree.updateAfterChangingChildren(of: node!)
         if let maxLineFragment = lineFragments.max(by: { $0.scaledSize.width < $1.scaledSize.width }) {

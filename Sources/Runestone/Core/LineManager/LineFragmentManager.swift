@@ -1,5 +1,6 @@
 import _RunestoneRedBlackTree
 import CoreGraphics
+import Foundation
 
 final class LineFragmentManager {
     private typealias LineFragmentNode = RedBlackTreeNode<Int, ManagedLineFragment>
@@ -14,11 +15,14 @@ final class LineFragmentManager {
         tree = .forLineFragments
     }
 
-    func addTypesetLineFragments(_ typesetLineFragments: [TypesetLineFragment]) {
+    func addTypesetLineFragments(
+        _ typesetLineFragments: [TypesetLineFragment],
+        belongingToLineWithId lineId: LineID
+    ) {
         var previousNode: RedBlackTreeNode<Int, ManagedLineFragment>?
         for typesetLineFragment in typesetLineFragments {
             let length = typesetLineFragment.range.length
-            let lineFragment = ManagedLineFragment(typesetLineFragment)
+            let lineFragment = ManagedLineFragment(lineId: lineId, typesetLineFragment: typesetLineFragment)
             if typesetLineFragment.index < tree.nodeTotalCount {
                 let node = tree.node(atIndex: typesetLineFragment.index)
                 node.value = length
@@ -29,6 +33,7 @@ final class LineFragmentManager {
                 let newNode = tree.insertNode(value: length, data: lineFragment, after: thisPreviousNode)
                 previousNode = newNode
             } else {
+                print("👉 \(typesetLineFragment.index - 1)")
                 let thisPreviousNode = tree.node(atIndex: typesetLineFragment.index - 1)
                 let newNode = tree.insertNode(value: length, data: lineFragment, after: thisPreviousNode)
                 previousNode = newNode
@@ -85,7 +90,7 @@ private extension RedBlackTree where NodeValue == Int, NodeData == ManagedLineFr
         RedBlackTree(
             minimumValue: 0,
             rootValue: 0,
-            rootData: ManagedLineFragment(),
+            rootData: ManagedLineFragment(lineId: UUID()),
             childrenUpdater: NodeTotalHeightRedBlackTreeChildrenUpdater()
         )
     }
