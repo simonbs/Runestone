@@ -1,13 +1,13 @@
 import CoreGraphics
 
-struct CompositeLineFragmentRenderer: LineFragmentRendering {
-    private let renderers: [LineFragmentRendering]
+struct CompositeLineFragmentRenderer<LineType: Line>: LineFragmentRendering {
+    private let renderers: [AnyLineFragmentRenderer<LineType>]
 
-    init(renderers: [LineFragmentRendering]) {
+    init(renderers: [AnyLineFragmentRenderer<LineType>]) {
         self.renderers = renderers
     }
 
-    func render<LineType: Line>(
+    func render(
         _ lineFragment: LineType.LineFragmentType,
         in line: LineType,
         to context: CGContext

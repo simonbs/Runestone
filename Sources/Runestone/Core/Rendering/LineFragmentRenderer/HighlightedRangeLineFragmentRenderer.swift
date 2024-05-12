@@ -2,11 +2,14 @@ import _RunestoneMultiPlatform
 import CoreText
 import Foundation
 
-struct HighlightedRangeLineFragmentRenderer<StringViewType: StringView>: LineFragmentRendering {
+struct HighlightedRangeLineFragmentRenderer<
+    StringViewType: StringView,
+    LineType: Line
+>: LineFragmentRendering {
     let stringView: StringViewType
     let highlightedRangeFragments: [HighlightedRangeFragment]
 
-    func render<LineType: Line>(
+    func render(
         _ lineFragment: LineType.LineFragmentType,
         in line: LineType,
         to context: CGContext
@@ -23,7 +26,7 @@ struct HighlightedRangeLineFragmentRenderer<StringViewType: StringView>: LineFra
 }
 
 private extension HighlightedRangeLineFragmentRenderer {
-    private func render<LineType: Line>(
+    private func render(
         _ highlightedRange: HighlightedRangeFragment,
         highlighting lineFragment: LineType.LineFragmentType,
         in line: LineType,
@@ -52,7 +55,7 @@ private extension HighlightedRangeLineFragmentRenderer {
         }
     }
 
-    private func endX<LineType: Line>(
+    private func endX(
         for highlightedRange: HighlightedRangeFragment,
         highlighting lineFragment: LineType.LineFragmentType,
         in line: LineType,
@@ -65,7 +68,7 @@ private extension HighlightedRangeLineFragmentRenderer {
         }
     }
 
-    private func shouldHighlightLineEnding<LineType: Line>(
+    private func shouldHighlightLineEnding(
         for highlightedRangeFragment: HighlightedRangeFragment,
         highlighting lineFragment: LineType.LineFragmentType,
         in line: LineType

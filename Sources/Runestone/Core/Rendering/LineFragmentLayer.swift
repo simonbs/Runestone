@@ -3,7 +3,10 @@ import QuartzCore
 import UIKit
 #endif
 
-final class LineFragmentLayer<LineType: Line>: CALayer, ReusableValue {
+final class LineFragmentLayer<
+    LineType: Line,
+    LineFragmentRendererType: LineFragmentRendering
+>: CALayer, ReusableValue where LineFragmentRendererType.LineType == LineType {
     var line: LineType? {
         didSet {
             if line != oldValue {
@@ -18,7 +21,13 @@ final class LineFragmentLayer<LineType: Line>: CALayer, ReusableValue {
             }
         }
     }
-    var renderer: LineFragmentRendering?
+    var renderer: LineFragmentRendererType? {
+        didSet {
+            if renderer != oldValue {
+                setNeedsDisplay()
+            }
+        }
+    }
     override var frame: CGRect {
         didSet {
             if frame.size != oldValue.size {

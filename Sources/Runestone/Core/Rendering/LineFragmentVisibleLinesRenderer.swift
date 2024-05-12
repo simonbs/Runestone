@@ -1,13 +1,16 @@
 import QuartzCore
 
-struct LineFragmentVisibleLinesRenderer<LineType: Line>: VisibleLinesRendering {
+struct LineFragmentVisibleLinesRenderer<
+    LineType: Line,
+    LineFragmentRendererType: LineFragmentRendering
+>: VisibleLinesRendering where LineFragmentRendererType.LineType == LineType {
     typealias State = TextContainerInsetReadable
 
     let state: State
     let hostLayer: CALayer
-    let renderer: LineFragmentRendering
+    let renderer: LineFragmentRendererType
 
-    private let layerQueue = ReuseQueue<LineFragmentID, LineFragmentLayer<LineType>>()
+    private let layerQueue = ReuseQueue<LineFragmentID, LineFragmentLayer<LineType, LineFragmentRendererType>>()
 
     func renderVisibleLines(_ visibleLines: [VisibleLine<LineType>]) {
         CATransaction.begin()
