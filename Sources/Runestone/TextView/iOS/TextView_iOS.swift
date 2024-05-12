@@ -582,6 +582,7 @@ open class TextView: UIScrollView {
     override public init(frame: CGRect) {
         super.init(frame: frame)
         textInteractionEditingStateChangeHandler.textInput = self
+        tapGestureRecognizer.delegate = self
         tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
         addGestureRecognizer(tapGestureRecognizer)
         addSubview(textContainerView)
