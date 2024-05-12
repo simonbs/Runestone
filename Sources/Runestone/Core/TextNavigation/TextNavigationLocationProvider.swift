@@ -1,12 +1,13 @@
 import Foundation
 
 struct TextNavigationLocationProvider<
+    StringViewType: StringView,
     LineManagerType: LineManaging
 >: TextNavigationLocationProviding {
-    let stringView: StringView
+    let stringView: StringViewType
     let lineManager: LineManagerType
 
-    private var lineNavigationLocationProvider: LineNavigationLocationProvider<LineManagerType> {
+    private var lineNavigationLocationProvider: LineNavigationLocationProvider<StringViewType, LineManagerType> {
         LineNavigationLocationProvider(stringView: stringView, lineManager: lineManager)
     }
 

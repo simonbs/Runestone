@@ -2,11 +2,11 @@
 import Combine
 import UIKit
 
-struct PressesHandler: PressesHandling {
+struct PressesHandler<StringViewType: StringView>: PressesHandling {
     typealias State = MarkedRangeReadable
 
     let state: State
-    let stringView: StringView
+    let stringView: StringViewType
     let textNavigator: TextNavigator
 
     private var textInput: UITextInput? {

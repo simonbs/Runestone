@@ -2,7 +2,7 @@ import _RunestoneStringUtilities
 import _RunestoneTreeSitter
 import Foundation
 
-protocol StringView: AnyObject, TreeSitterStringView {
+protocol StringView: AnyObject, TreeSitterStringView, Equatable {
     var string: String { get set }
     var attributedString: NSAttributedString { get }
     func substring(in range: NSRange) -> String?

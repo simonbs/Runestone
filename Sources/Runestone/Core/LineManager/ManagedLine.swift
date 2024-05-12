@@ -2,7 +2,7 @@ import _RunestoneRedBlackTree
 import CoreText
 import Foundation
 
-final class ManagedLine: Line {
+final class ManagedLine<StringViewType: StringView>: Line {
     typealias LineFragmentType = ManagedLineFragment
 
     let id: LineID = UUID()
@@ -42,10 +42,10 @@ final class ManagedLine: Line {
     }
 
     private let estimatedHeight: CGFloat
-    private let typesetter: LineTypesetter
+    private let typesetter: LineTypesetter<StringViewType, ManagedLine<StringViewType>>
     private var lineFragmentManager = LineFragmentManager()
 
-    init(typesetter: LineTypesetter, estimatedHeight: CGFloat) {
+    init(typesetter: LineTypesetter<StringViewType, ManagedLine<StringViewType>>, estimatedHeight: CGFloat) {
         self.typesetter = typesetter
         self.estimatedHeight = estimatedHeight
     }
@@ -115,9 +115,3 @@ extension ManagedLine: Hashable {
 extension ManagedLine: YOffsetRedBlackTreeNodeByOffsetQuerable {}
 
 extension ManagedLine: NodeTotalHeightRedBlackTreeChildrenUpdatable {}
-
-extension ManagedLine: LineTypesetter.Delegate {
-    func lineTypesetterDidInvalidate(_ lineTypesetter: LineTypesetter) {
-        invalidateTypesetText()
-    }
-}

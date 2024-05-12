@@ -38,6 +38,12 @@ final class TextViewStateStore {
     }
 }
 
+extension TextViewStateStore: Equatable {
+    static func == (lhs: TextViewStateStore, rhs: TextViewStateStore) -> Bool {
+        lhs === rhs
+    }
+}
+
 extension TextViewStateStore: CharacterPairsReadable {}
 extension TextViewStateStore: EstimatedCharacterWidthReadable {}
 extension TextViewStateStore: EstimatedLineHeightReadable {}

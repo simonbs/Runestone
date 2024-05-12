@@ -4,7 +4,7 @@ import Foundation
 @RunestoneObserver
 final class ThemedStringView<
     StringViewType: StringView,
-    State: KernReadable & ThemeReadable
+    State: KernReadable & ThemeReadable & Equatable
 >: StringView {
     var string: String {
         get {
@@ -58,6 +58,13 @@ final class ThemedStringView<
     func character(at location: Int) -> unichar {
         stringView.character(at: location)
     }
+
+    static func ==(
+        lhs: ThemedStringView<StringViewType, State>,
+        rhs: ThemedStringView<StringViewType, State>
+    ) -> Bool {
+        lhs.stringView == rhs.stringView && lhs.state == rhs.state
+    }
 }
 
 private extension ThemedStringView {
@@ -66,4 +73,3 @@ private extension ThemedStringView {
         setAttributes(defaultAttributes, forTextInRange: range)
     }
 }
-

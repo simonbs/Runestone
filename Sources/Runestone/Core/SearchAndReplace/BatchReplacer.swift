@@ -5,7 +5,7 @@ struct BatchReplacer<StringViewType: StringView, LineManagerType: LineManaging> 
     typealias State = SelectedRangeWritable
 
     let state: State
-    let stringView: StringView
+    let stringView: StringViewType
     let lineManager: LineManagerType
     let textSetter: TextSetter<StringViewType, LineManagerType>
 

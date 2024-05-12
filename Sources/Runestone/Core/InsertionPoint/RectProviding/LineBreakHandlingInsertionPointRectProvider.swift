@@ -1,13 +1,14 @@
 import Foundation
 
 struct LineBreakHandlingInsertionPointRectProvider<
+    StringViewType: StringView,
     LineManagerType: LineManaging
 >: InsertionPointRectProviding {
     typealias State = ThemeReadable
 
     let insertionPointRectProvider: InsertionPointRectProviding
     let state: State
-    let stringView: StringView
+    let stringView: StringViewType
     let lineManager: LineManagerType
 
     func insertionPointRect(atLocation location: Int) -> CGRect {

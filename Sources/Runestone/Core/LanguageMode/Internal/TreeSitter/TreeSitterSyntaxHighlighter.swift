@@ -5,17 +5,18 @@ import Combine
 import Foundation
 
 final class TreeSitterSyntaxHighlighter<
-    StringViewType: StringView, LineManagerType: LineManaging
+    StringViewType: StringView,
+    LineManagerType: LineManaging
 >: SyntaxHighlighter {
     let theme: Theme
     let operationQueue: OperationQueue
     var inlinePredictionRange: NSRange?
     
-    private let stringView: StringView
+    private let stringView: StringViewType
     private let languageMode: TreeSitterInternalLanguageMode<StringViewType, LineManagerType>
 
     init(
-        stringView: StringView,
+        stringView: StringViewType,
         languageMode: TreeSitterInternalLanguageMode<StringViewType, LineManagerType>,
         theme: Theme,
         operationQueue: OperationQueue

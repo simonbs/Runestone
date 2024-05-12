@@ -4,11 +4,7 @@ import CoreText
 import Foundation
 
 @RunestoneObserver
-final class LineTypesetter {
-    protocol Delegate: AnyObject {
-        func lineTypesetterDidInvalidate(_ lineTypesetter: LineTypesetter)
-    }
-
+final class LineTypesetter<StringViewType: StringView, LineType: Line> {
     typealias State = LineHeightMultiplierReadable
     & LineBreakModeReadable
     & IsLineWrappingEnabledReadable
@@ -16,11 +12,11 @@ final class LineTypesetter {
 
     private typealias TypesetPredicate = (TypesetLineFragment) -> Bool
 
-    weak var delegate: Delegate?
-    weak var line: (any Line)?
+    weak var line: LineType?
+    var didInvalidate: (() -> Void)?
 
     private let state: State
-    private let stringView: StringView
+    private let stringView: StringViewType
     private let viewport: Viewport
     private var nextLocation = 0
     private var nextYOffset: CGFloat = 0
@@ -63,25 +59,25 @@ final class LineTypesetter {
     }
     private var _attributedString: NSAttributedString?
 
-    init(state: State, stringView: StringView, viewport: Viewport) {
+    init(state: State, stringView: StringViewType, viewport: Viewport) {
         self.state = state
         self.stringView = stringView
         self.viewport = viewport
         observe(state.lineHeightMultiplier) { [unowned self] _, _ in
-            self.invalidateAndNotifyDelegate()
+            self.line?.invalidateTypesetText()
         }
         observe(state.lineBreakMode) { [unowned self] _, _ in
-            self.invalidateAndNotifyDelegate()
+            self.line?.invalidateTypesetText()
         }
         observe(state.isLineWrappingEnabled) { [unowned self] _, _ in
-            self.invalidateAndNotifyDelegate()
+            self.line?.invalidateTypesetText()
         }
         observe(state.textContainerInset) { [unowned self] _, _ in
-            self.invalidateAndNotifyDelegate()
+            self.line?.invalidateTypesetText()
         }
         observe(viewport.size) { [unowned self] oldSize, newSize in
             if oldSize.width != oldSize.width {
-                self.invalidateAndNotifyDelegate()
+                self.line?.invalidateTypesetText()
             }
         }
     }
@@ -114,11 +110,6 @@ final class LineTypesetter {
 }
 
 private extension LineTypesetter {
-    private func invalidateAndNotifyDelegate() {
-        invalidate()
-        delegate?.lineTypesetterDidInvalidate(self)
-    }
-
     private func typesetLineFragments(
         while predicate: TypesetPredicate,
         additionalLineFragmentCount: Int

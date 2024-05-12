@@ -1,10 +1,10 @@
 import Foundation
 
-struct TextEditor: TextEditing {
+struct TextEditor<StringViewType: StringView>: TextEditing {
     typealias State = MarkedRangeReadable & SelectedRangeWritable
 
     let state: State
-    let stringView: StringView
+    let stringView: StringViewType
     let stringTokenizer: StringTokenizing
     let textReplacer: TextReplacing
 

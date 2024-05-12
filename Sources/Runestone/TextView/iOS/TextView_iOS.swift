@@ -401,7 +401,7 @@ open class TextView: UIScrollView {
         stringView: stringView,
         lineManager: lineManager
     )
-    private lazy var textInputClient = UITextInputClient(
+    private lazy var textInputClient = DefaultUITextInputClient(
         tokenizer: TextInputStringTokenizer(
             textInput: self,
             stringTokenizer: StringTokenizer(

@@ -1,16 +1,16 @@
 import Combine
 import Foundation
 
-final class HighlightedRangeFragmentStore<LineManagerType: LineManaging> {
+final class HighlightedRangeFragmentStore<StringViewType: StringView, LineManagerType: LineManaging> {
     let highlightedRanges = CurrentValueSubject<[HighlightedRange], Never>([])
 
-    private let stringView: StringView
+    private let stringView: StringViewType
     private let lineManager: LineManagerType
     private var lineMap: [LineID: [HighlightedRangeFragment]] = [:]
     private var lineFragmentMap: [LineFragmentID: [HighlightedRangeFragment]] = [:]
     private var cancellables: Set<AnyCancellable> = []
 
-    init(stringView: StringView, lineManager: LineManagerType) {
+    init(stringView: StringViewType, lineManager: LineManagerType) {
         self.stringView = stringView
         self.lineManager = lineManager
 //        Publishers.CombineLatest(stringView, highlightedRanges).sink { [weak self] _, _ in

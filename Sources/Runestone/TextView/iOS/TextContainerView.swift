@@ -2,7 +2,7 @@
 #if os(iOS)
 import UIKit
 
-final class TextContainerView<LineManagerType: LineManaging>: UIView, UITextInput {
+final class TextContainerView<UITextInputClientType: UITextInputClient>: UIView, UITextInput {
     var inputDelegate: UITextInputDelegate?
     
     override var frame: CGRect {
@@ -14,9 +14,9 @@ final class TextContainerView<LineManagerType: LineManaging>: UIView, UITextInpu
     }
 
     private let lineFragmentsHostView: UIView
-    private let textInputClient: UITextInputClient<LineManagerType>
+    private let textInputClient: UITextInputClientType
 
-    init(textInputClient: UITextInputClient<LineManagerType>, lineFragmentsHostView: UIView) {
+    init(textInputClient: UITextInputClientType, lineFragmentsHostView: UIView) {
         self.textInputClient = textInputClient
         self.lineFragmentsHostView = lineFragmentsHostView
         super.init(frame: .zero)

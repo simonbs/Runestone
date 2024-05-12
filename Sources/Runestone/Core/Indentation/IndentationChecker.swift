@@ -1,12 +1,12 @@
 import Combine
 
-struct IndentationChecker<LineManagerType: LineManaging> {
-    private let stringView: StringView
+struct IndentationChecker<StringViewType: StringView, LineManagerType: LineManaging> {
+    private let stringView: StringViewType
     private let lineManager: LineManagerType
     private let indentStrategy: CurrentValueSubject<IndentStrategy, Never>
 
     init(
-        stringView: StringView,
+        stringView: StringViewType,
         lineManager: LineManagerType,
         indentStrategy: CurrentValueSubject<IndentStrategy, Never>
     ) {

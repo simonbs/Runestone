@@ -1,5 +1,5 @@
-struct LineNavigationLocationProvider<LineManagerType: LineManaging> {
-    let stringView: StringView
+struct LineNavigationLocationProvider<StringViewType: StringView, LineManagerType: LineManaging> {
+    let stringView: StringViewType
     let lineManager: LineManagerType
 
     func location(

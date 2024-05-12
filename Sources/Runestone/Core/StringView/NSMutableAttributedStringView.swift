@@ -42,4 +42,8 @@ final class NSMutableAttributedStringView: StringView {
     func setAttributes(_ attributes: [NSAttributedString.Key: Any], forTextInRange range: NSRange) {
         internalString.addAttributes(attributes, range: range)
     }
+
+    static func ==(lhs: NSMutableAttributedStringView, rhs: NSMutableAttributedStringView) -> Bool {
+        lhs.internalString == rhs.internalString
+    }
 }

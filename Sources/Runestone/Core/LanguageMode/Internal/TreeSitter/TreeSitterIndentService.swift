@@ -1,15 +1,15 @@
 import _RunestoneTreeSitter
 import Foundation
 
-final class TreeSitterIndentService<LineManagerType: LineManaging> {
+final class TreeSitterIndentService<StringViewType: StringView, LineManagerType: LineManaging> {
     private let indentationScopes: TreeSitterIndentationScopes
-    private let stringView: StringView
+    private let stringView: StringViewType
     private let lineManager: LineManagerType
     private let indentLengthInSpaces: Int
 
     init(
         indentationScopes: TreeSitterIndentationScopes, 
-        stringView: StringView, 
+        stringView: StringViewType,
         lineManager: LineManagerType,
         indentLengthInSpaces: Int
     ) {

@@ -1,10 +1,10 @@
 import Foundation
 
-final class LineEndingDetector<LineManagerType: LineManaging> {
-    private let stringView: StringView
+final class LineEndingDetector<StringViewType: StringView, LineManagerType: LineManaging> {
+    private let stringView: StringViewType
     private let lineManager: LineManagerType
 
-    init(stringView: StringView, lineManager: LineManagerType) {
+    init(stringView: StringViewType, lineManager: LineManagerType) {
         self.stringView = stringView
         self.lineManager = lineManager
     }

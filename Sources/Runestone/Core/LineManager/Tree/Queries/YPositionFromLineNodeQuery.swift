@@ -1,9 +1,9 @@
 import _RunestoneRedBlackTree
 import Foundation
 
-struct YPositionFromLineNodeQuery: OffsetFromRedBlackTreeNodeQuery {
+struct YPositionFromLineNodeQuery<StringViewType: StringView>: OffsetFromRedBlackTreeNodeQuery {
     typealias NodeValue = Int
-    typealias NodeData = ManagedLine
+    typealias NodeData = ManagedLine<StringViewType>
     typealias Offset = CGFloat
 
     let targetNode: Node

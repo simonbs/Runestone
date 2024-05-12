@@ -1,15 +1,15 @@
 #if os(iOS)
 import UIKit
 
-final class UITextInputClientTextEditingHandler {
+final class UITextInputClientTextEditingHandler<StringViewType: StringView> {
     var hasText: Bool {
         stringView.length > 0
     }
 
-    private let stringView: StringView
+    private let stringView: StringViewType
     private let textEditor: TextEditing
 
-    init(stringView: StringView, textEditor: TextEditing) {
+    init(stringView: StringViewType, textEditor: TextEditing) {
         self.stringView = stringView
         self.textEditor = textEditor
     }

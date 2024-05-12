@@ -1,11 +1,11 @@
 import Combine
 import Foundation
 
-final class IndentLevelMeasurer {
-    private let stringView: StringView
+final class IndentLevelMeasurer<StringViewType: StringView> {
+    private let stringView: StringViewType
     private let indentLengthInSpaces: Int
 
-    init(stringView: StringView, indentLengthInSpaces: Int) {
+    init(stringView: StringViewType, indentLengthInSpaces: Int) {
         self.stringView = stringView
         self.indentLengthInSpaces = indentLengthInSpaces
     }

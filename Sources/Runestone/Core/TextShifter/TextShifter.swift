@@ -1,15 +1,15 @@
 import Combine
 import Foundation
 
-final class TextShifter<LineManagerType: LineManaging> {
-    private let stringView: StringView
+final class TextShifter<StringViewType: StringView, LineManagerType: LineManaging> {
+    private let stringView: StringViewType
     private let lineManager: LineManagerType
     private let selectedRange: CurrentValueSubject<NSRange, Never>
     private let indentStrategy: CurrentValueSubject<IndentStrategy, Never>
     private let textReplacer: TextReplacing
 
     init(
-        stringView: StringView,
+        stringView: StringViewType,
         lineManager: LineManagerType,
         indentStrategy: CurrentValueSubject<IndentStrategy, Never>,
         selectedRange: CurrentValueSubject<NSRange, Never>,

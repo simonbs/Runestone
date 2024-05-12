@@ -1,11 +1,11 @@
 import Combine
 import Foundation
 
-final class SearchService<LineManagerType: LineManaging> {
-    private let stringView: StringView
+final class SearchService<StringViewType: StringView, LineManagerType: LineManaging> {
+    private let stringView: StringViewType
     private let textLocationConverter: TextLocationConverter<LineManagerType>
 
-    init(stringView: StringView, textLocationConverter: TextLocationConverter<LineManagerType>) {
+    init(stringView: StringViewType, textLocationConverter: TextLocationConverter<LineManagerType>) {
         self.stringView = stringView
         self.textLocationConverter = textLocationConverter
     }

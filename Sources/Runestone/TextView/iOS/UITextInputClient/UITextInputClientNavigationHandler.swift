@@ -1,7 +1,10 @@
 #if os(iOS)
 import UIKit
 
-final class UITextInputClientNavigationHandler<LineManagerType: LineManaging> {
+final class UITextInputClientNavigationHandler<
+    StringViewType: StringView,
+    LineManagerType: LineManaging
+> {
     typealias State = SelectedRangeReadable & SelectedRangeWritable & TextContainerInsetReadable
 
     var beginningOfDocument: UITextPosition {
@@ -54,7 +57,7 @@ final class UITextInputClientNavigationHandler<LineManagerType: LineManaging> {
     }
     
     private let state: State
-    private let stringView: StringView
+    private let stringView: StringViewType
     private let lineManager: LineManagerType
     private let navigationLocationProvider: TextNavigationLocationProviding
     private let selectionEventHandler: SelectionEventHandling
@@ -62,7 +65,7 @@ final class UITextInputClientNavigationHandler<LineManagerType: LineManaging> {
 
     init(
         state: State,
-        stringView: StringView,
+        stringView: StringViewType,
         lineManager: LineManagerType,
         navigationLocationProvider: TextNavigationLocationProviding,
         selectionEventHandler: SelectionEventHandling

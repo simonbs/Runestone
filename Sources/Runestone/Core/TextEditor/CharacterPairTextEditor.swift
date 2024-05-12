@@ -1,12 +1,12 @@
 import Foundation
 
-struct CharacterPairTextEditor: TextEditing {
+struct CharacterPairTextEditor<StringViewType: StringView>: TextEditing {
     typealias State = CharacterPairsReadable
     & MarkedRangeReadable
     & SelectedRangeWritable
 
     let state: State
-    let stringView: StringView
+    let stringView: StringViewType
     let textEditor: TextEditing
     let textViewDelegate: ErasedTextViewDelegate
 

@@ -1,7 +1,7 @@
 import Combine
 import Foundation
 
-final class LineMover<LineManagerType: LineManaging> {
+final class LineMover<StringViewType: StringView, LineManagerType: LineManaging> {
     private struct MoveLinesOperation {
         let removeRange: NSRange
         let replacementRange: NSRange
@@ -9,7 +9,7 @@ final class LineMover<LineManagerType: LineManaging> {
         let selectedRange: NSRange
     }
 
-    private let stringView: StringView
+    private let stringView: StringViewType
     private let lineManager: LineManagerType
     private let selectedRange: CurrentValueSubject<NSRange, Never>
     private let lineEndings: CurrentValueSubject<LineEnding, Never>
@@ -17,7 +17,7 @@ final class LineMover<LineManagerType: LineManaging> {
     private let undoManager: UndoManager
 
     init(
-        stringView: StringView,
+        stringView: StringViewType,
         lineManager: LineManagerType,
         selectedRange: CurrentValueSubject<NSRange, Never>,
         lineEndings: CurrentValueSubject<LineEnding, Never>,

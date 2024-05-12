@@ -1,22 +1,25 @@
 import _RunestoneRedBlackTree
 import Foundation
 
-final class LineManager<LineFactoryType: LineFactory>: LineManaging where LineFactoryType.LineType == ManagedLine {
+final class LineManager<
+    StringViewType: StringView,
+    LineFactoryType: LineFactory
+>: LineManaging where LineFactoryType.LineType == ManagedLine<StringViewType> {
     typealias State = EstimatedLineHeightReadable
     typealias LineType = LineFactoryType.LineType
 
-    fileprivate typealias LineNode = RedBlackTreeNode<Int, ManagedLine>
+    fileprivate typealias LineNode = RedBlackTreeNode<Int, ManagedLine<StringViewType>>
 
     var lineCount: Int {
         tree.nodeTotalCount
     }
 
     private let state: State
-    private let stringView: StringView
+    private let stringView: StringViewType
     private let lineFactory: LineFactoryType
     private var tree: RedBlackTree<Int, LineType>
 
-    init(state: State, stringView: StringView, lineFactory: LineFactoryType) {
+    init(state: State, stringView: StringViewType, lineFactory: LineFactoryType) {
         self.state = state
         self.stringView = stringView
         self.lineFactory = lineFactory
@@ -272,7 +275,7 @@ private extension LineManager {
     }
 }
 
-private extension LineManager.LineNode {
+private extension RedBlackTreeNode where NodeValue == Int {
     var location: Int {
         offset
     }
