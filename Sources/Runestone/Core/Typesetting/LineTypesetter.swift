@@ -87,6 +87,9 @@ final class LineTypesetter {
     }
 
     func invalidate() {
+        nextLocation = 0
+        nextYOffset = 0
+        nextLineFragmentIndex = 0
         _attributedString = nil
         _typesetter = nil
     }
