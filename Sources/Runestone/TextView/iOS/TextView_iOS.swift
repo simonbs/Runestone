@@ -66,14 +66,6 @@ open class TextView: UIScrollView {
             textInputClient.selectedTextRange = RunestoneUITextRange(newValue)
         }
     }
-    /// The view's background color.
-    open override var backgroundColor: UIColor? {
-        didSet {
-            if backgroundColor != oldValue {
-//                textViewBackgroundColor.value = backgroundColor
-            }
-        }
-    }
     /// Colors and fonts to be used by the editor.
     @RunestoneProxy(\TextView.stateStore.theme)
     public var theme: Theme
