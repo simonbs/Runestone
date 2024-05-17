@@ -3,7 +3,7 @@ import QuartzCore
 struct LineFragmentVisibleLinesRenderer<
     LineType: Line,
     LineFragmentRendererType: LineFragmentRendering
->: VisibleLinesRendering where LineFragmentRendererType.LineType == LineType {
+>: VisibleLinesRendering {
     typealias State = TextContainerInsetReadable
 
     let state: State

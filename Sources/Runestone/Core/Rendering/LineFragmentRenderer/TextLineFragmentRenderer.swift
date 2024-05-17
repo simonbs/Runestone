@@ -6,8 +6,8 @@ import Foundation
 import UIKit
 #endif
 
-struct TextLineFragmentRenderer<LineType: Line>: LineFragmentRendering {
-    func render(
+struct TextLineFragmentRenderer: LineFragmentRendering {
+    func render<LineType: Line>(
         _ lineFragment: LineType.LineFragmentType,
         in line: LineType,
         to context: CGContext

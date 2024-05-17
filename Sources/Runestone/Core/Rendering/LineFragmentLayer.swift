@@ -6,7 +6,7 @@ import UIKit
 final class LineFragmentLayer<
     LineType: Line,
     LineFragmentRendererType: LineFragmentRendering
->: CALayer, ReusableValue where LineFragmentRendererType.LineType == LineType {
+>: CALayer, ReusableValue {
     var line: LineType? {
         didSet {
             if line != oldValue {

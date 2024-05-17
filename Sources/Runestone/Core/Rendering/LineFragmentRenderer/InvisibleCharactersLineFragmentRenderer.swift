@@ -7,22 +7,24 @@ import Foundation
 import UIKit
 #endif
 
-struct InvisibleCharactersLineFragmentRenderer: LineFragmentRendering {
-    let showInvisibleCharacters: CurrentValueSubject<Bool, Never>
-    let invisibleCharacterRenderer: InvisibleCharacterRenderer
-    
+struct InvisibleCharactersLineFragmentRenderer<
+    State: InvisibleCharacterConfigurationReadable & Equatable,
+    InvisibleCharacterRendererType: InvisibleCharacterRendering & Equatable
+>: LineFragmentRendering {
+    let state: State
+    let invisibleCharacterRenderer: InvisibleCharacterRendererType
+
     func render<LineType: Line>(
         _ lineFragment: LineType.LineFragmentType,
         in line: LineType,
         to context: CGContext
     ) {
-        guard showInvisibleCharacters.value else {
+        guard state.showInvisibleCharacters else {
             return
         }
-        let range = NSRange(
-            location: line.location + lineFragment.visibleRange.location,
-            length: lineFragment.visibleRange.length
-        )
+        let location = line.location + lineFragment.visibleRange.location
+        let length = lineFragment.visibleRange.length
+        let range = NSRange(location: location, length: length)
         for location in range.lowerBound ..< range.upperBound {
             invisibleCharacterRenderer.renderInvisibleCharacter(
                 atLocation: location,
