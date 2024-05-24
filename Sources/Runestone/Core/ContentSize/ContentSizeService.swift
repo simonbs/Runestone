@@ -52,20 +52,22 @@ final class ContentSizeService<LineManagerType: LineManaging> {
         }
     }
     private var contentWidth: CGFloat {
+        let insetViewportWidth = viewport.width
+        - viewport.safeAreaInsets.left
+        - viewport.safeAreaInsets.right
         guard !state.isLineWrappingEnabled else {
-            return viewport.width
+            return insetViewportWidth
         }
         let preferredWidth = longestLineWidth
         + max(state.maximumLineBreakSymbolWidth, insertionPointWidth)
         + state.textContainerInset.left + state.textContainerInset.right
-        + viewport.width * state.horizontalOverscrollFactor
+        + insetViewportWidth * state.horizontalOverscrollFactor
         return ceil(max(preferredWidth, viewport.width))
     }
     private var contentHeight: CGFloat {
         let totalTextContainerInset = state.textContainerInset.top + state.textContainerInset.bottom
         let overscrollAmount = viewport.height * state.verticalOverscrollFactor
-        let preferredHeight = totalLineHeight + totalTextContainerInset + overscrollAmount
-        return ceil(max(preferredHeight, viewport.height))
+        return ceil(totalLineHeight + totalTextContainerInset + overscrollAmount)
     }
     private var allowsContentSizeUpdate: Bool {
         guard let view = scrollView else {

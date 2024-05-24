@@ -1,9 +1,11 @@
 import _RunestoneObservation
+import _RunestoneMultiPlatform
 import Foundation
 
 protocol Viewport: CustomDebugStringConvertible {
     var origin: CGPoint { get }
     var size: CGSize { get }
+    var safeAreaInsets: MultiPlatformEdgeInsets { get }
 }
 
 extension Viewport {
