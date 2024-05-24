@@ -491,7 +491,16 @@ open class TextView: UIScrollView {
             visibleLinesRenderer: LineFragmentVisibleLinesRenderer(
                 state: stateStore,
                 hostLayer: lineFragmentsHostView.layer,
-                renderer: TextLineFragmentRenderer()
+                renderer: CompositeLineFragmentRenderer(renderers: [
+                    TextLineFragmentRenderer(),
+                    InvisibleCharactersLineFragmentRenderer(
+                        state: stateStore,
+                        invisibleCharacterRenderer: InvisibleCharacterRenderer(
+                            state: stateStore,
+                            stringView: stringView
+                        )
+                    )
+                ])
             ),
             contentSizeService: contentSizeService
         )

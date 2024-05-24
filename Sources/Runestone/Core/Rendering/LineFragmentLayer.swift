@@ -1,8 +1,10 @@
+import _RunestoneObservation
 import QuartzCore
 #if os(iOS)
 import UIKit
 #endif
 
+@RunestoneObserver
 final class LineFragmentLayer<
     LineType: Line,
     LineFragmentRendererType: LineFragmentRendering
@@ -24,6 +26,7 @@ final class LineFragmentLayer<
     var renderer: LineFragmentRendererType? {
         didSet {
             if renderer != oldValue {
+                observeNeedsDisplay()
                 setNeedsDisplay()
             }
         }
@@ -36,6 +39,8 @@ final class LineFragmentLayer<
         }
     }
 
+    private var needsDisplayObservation: Observation?
+
     static func makeReusableValue() -> LineFragmentLayer {
         let layer = LineFragmentLayer()
         #if os(iOS)
@@ -43,7 +48,6 @@ final class LineFragmentLayer<
         #endif
         return layer
     }
-
     func prepareForReuse() {
         line = nil
         lineFragment = nil
@@ -54,6 +58,21 @@ final class LineFragmentLayer<
         super.draw(in: ctx)
         if let line, let lineFragment {
             renderer?.render(lineFragment, in: line, to: ctx)
+        }
+    }
+}
+
+private extension LineFragmentLayer {
+    private func observeNeedsDisplay() {
+        needsDisplayObservation?.cancel()
+        needsDisplayObservation = nil
+        guard let renderer else {
+            return
+        }
+        needsDisplayObservation = observe(renderer.needsDisplay) { [weak self] oldValue, newValue in
+            if newValue != oldValue && newValue {
+                self?.setNeedsDisplay()
+            }
         }
     }
 }

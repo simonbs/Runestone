@@ -42,9 +42,9 @@ extension TextView {
 
     func applySettings(from settings: UserDefaults) {
 //        showLineNumbers = settings.showLineNumbers
-//        showTabs = settings.showInvisibleCharacters
-//        showSpaces = settings.showInvisibleCharacters
-//        showLineBreaks = settings.showInvisibleCharacters
+        showTabs = settings.showInvisibleCharacters
+        showSpaces = settings.showInvisibleCharacters
+        showLineBreaks = settings.showInvisibleCharacters
 //        isLineWrappingEnabled = settings.wrapLines
 //        isEditable = settings.isEditable
 //        isSelectable = settings.isSelectable

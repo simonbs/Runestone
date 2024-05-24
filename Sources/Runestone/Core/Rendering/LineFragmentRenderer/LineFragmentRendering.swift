@@ -1,11 +1,18 @@
 import CoreGraphics
 
 protocol LineFragmentRendering: Equatable {
+    var needsDisplay: Bool { get }
     func render<LineType: Line>(
         _ lineFragment: LineType.LineFragmentType,
         in line: LineType,
         to context: CGContext
     )
+}
+
+extension LineFragmentRendering {
+    var needsDisplay: Bool {
+        false
+    }
 }
 
 extension LineFragmentRendering {

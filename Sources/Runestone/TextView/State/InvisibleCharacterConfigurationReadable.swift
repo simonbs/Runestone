@@ -1,3 +1,4 @@
+import _RunestoneMultiPlatform
 import CoreGraphics
 
 protocol InvisibleCharacterConfigurationReadable {

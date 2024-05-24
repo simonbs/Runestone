@@ -12,7 +12,7 @@ final class InsertionPointForegroundRenderer<
     private let lineManager: LineManagerType
     private let selectedRange: CurrentValueSubject<NSRange, Never>
     private let insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>
-    private let invisibleCharacterRenderer: InvisibleCharacterRenderer
+    private let invisibleCharacterRenderer: InvisibleCharacterRendering
     private let insertionPointTextColor: CurrentValueSubject<MultiPlatformColor, Never>
     private let insertionPointInvisibleCharacterColor: CurrentValueSubject<MultiPlatformColor, Never>
     private let opacity: CGFloat
@@ -23,7 +23,7 @@ final class InsertionPointForegroundRenderer<
         lineManager: LineManagerType,
         selectedRange: CurrentValueSubject<NSRange, Never>,
         insertionPointShape: CurrentValueSubject<InsertionPointShape, Never>,
-        invisibleCharacterRenderer: InvisibleCharacterRenderer,
+        invisibleCharacterRenderer: InvisibleCharacterRendering,
         insertionPointTextColor: CurrentValueSubject<MultiPlatformColor, Never>,
         insertionPointInvisibleCharacterColor: CurrentValueSubject<MultiPlatformColor, Never>,
         opacity: CGFloat
@@ -109,13 +109,12 @@ private extension InsertionPointForegroundRenderer {
             let offsetX = CTLineGetOffsetForStringIndex(lineFragment.line, location - line.location, nil) * -1
             let offsetY = (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2 * -1
             innerContext.translateBy(x: offsetX, y: offsetY)
-            innerContext.asCurrent {
-                invisibleCharacterRenderer.renderInvisibleCharacter(
-                    atLocation: location, 
-                    alignedTo: lineFragment,
-                    in: line
-                )
-            }
+            invisibleCharacterRenderer.renderInvisibleCharacter(
+                atLocation: location,
+                alignedTo: lineFragment,
+                in: line,
+                to: innerContext
+            )
         }
     }
 

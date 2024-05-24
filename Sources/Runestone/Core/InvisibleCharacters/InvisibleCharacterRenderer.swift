@@ -1,3 +1,4 @@
+import _RunestoneObservation
 #if os(macOS)
 import AppKit
 #endif
@@ -7,7 +8,11 @@ import Foundation
 import UIKit
 #endif
 
-struct InvisibleCharacterRenderer {
+@RunestoneObserver @RunestoneObservable
+final class InvisibleCharacterRenderer<
+    StringViewType: StringView,
+    State: ThemeReadable & InvisibleCharacterConfigurationReadable & Equatable
+>: InvisibleCharacterRendering, Equatable {
     private enum HorizontalPosition {
         case character(Int)
         case endOfLine
@@ -18,13 +23,18 @@ struct InvisibleCharacterRenderer {
         let position: HorizontalPosition
     }
 
-    let stringView: any StringView
-    let invisibleCharacterSettings: InvisibleCharacterSettings
+    private let state: State
+    private let stringView: StringViewType
 
-    func canRenderInvisibleCharacter(
-        atLocation location: Int, 
-        alignedTo lineFragment: some LineFragment,
-        in line: some Line
+    init(state: State, stringView: StringViewType) {
+        self.state = state
+        self.stringView = stringView
+    }
+
+    func canRenderInvisibleCharacter<LineType: Line>(
+        atLocation location: Int,
+        alignedTo lineFragment: LineType.LineFragmentType,
+        in line: LineType
     ) -> Bool {
         let configuration = configurationForRenderingInvisibleCharacter(
             atLocation: location, 
@@ -34,28 +44,37 @@ struct InvisibleCharacterRenderer {
         return configuration != nil
     }
 
-    func renderInvisibleCharacter(
+    func renderInvisibleCharacter<LineType: Line>(
         atLocation location: Int,
-        alignedTo lineFragment: some LineFragment,
-        in line: some Line
+        alignedTo lineFragment: LineType.LineFragmentType,
+        in line: LineType,
+        to context: CGContext
     ) {
-        if let configuration = configurationForRenderingInvisibleCharacter(
+        guard let configuration = configurationForRenderingInvisibleCharacter(
             atLocation: location,
             alignedTo: lineFragment,
             in: line
-        ) {
-            render(configuration.symbol, at: configuration.position, in: lineFragment)
+        ) else {
+            return
         }
+        render(configuration.symbol, at: configuration.position, in: lineFragment, to: context)
+    }
+
+    static func == (
+        lhs: InvisibleCharacterRenderer<StringViewType, State>,
+        rhs: InvisibleCharacterRenderer<StringViewType, State>
+    ) -> Bool {
+        lhs.state == rhs.state && lhs.stringView == rhs.stringView
     }
 }
 
 private extension InvisibleCharacterRenderer {
-    private func configurationForRenderingInvisibleCharacter(
+    private func configurationForRenderingInvisibleCharacter<LineType: Line>(
         atLocation location: Int,
-        alignedTo lineFragment: some LineFragment,
-        in line: some Line
+        alignedTo lineFragment: LineType.LineFragmentType,
+        in line: LineType
     ) -> RenderConfiguration? {
-        guard invisibleCharacterSettings.showInvisibleCharacters.value else {
+        guard state.showInvisibleCharacters else {
             return nil
         }
         let range = NSRange(location: location, length: 1)
@@ -63,16 +82,16 @@ private extension InvisibleCharacterRenderer {
             return nil
         }
         let lineLocalLocation = location - line.location
-        if invisibleCharacterSettings.showSpaces.value && character == Symbol.Character.space {
-            return .init(symbol: invisibleCharacterSettings.spaceSymbol.value, position: .character(lineLocalLocation))
-        } else if invisibleCharacterSettings.showNonBreakingSpaces.value && character == Symbol.Character.nonBreakingSpace {
-            return .init(symbol: invisibleCharacterSettings.nonBreakingSpaceSymbol.value, position: .character(lineLocalLocation))
-        } else if invisibleCharacterSettings.showTabs.value && character == Symbol.Character.tab {
-            return .init(symbol: invisibleCharacterSettings.tabSymbol.value, position: .character(lineLocalLocation))
-        } else if invisibleCharacterSettings.showLineBreaks.value && character.isLineBreak {
-            return .init(symbol: invisibleCharacterSettings.lineBreakSymbol.value, position: .endOfLine)
-        } else if invisibleCharacterSettings.showSoftLineBreaks.value && character == Symbol.Character.lineSeparator {
-            return .init(symbol: invisibleCharacterSettings.softLineBreakSymbol.value, position: .endOfLine)
+        if state.showSpaces && character == Symbol.Character.space {
+            return .init(symbol: state.spaceSymbol, position: .character(lineLocalLocation))
+        } else if state.showNonBreakingSpaces && character == Symbol.Character.nonBreakingSpace {
+            return .init(symbol: state.nonBreakingSpaceSymbol, position: .character(lineLocalLocation))
+        } else if state.showTabs && character == Symbol.Character.tab {
+            return .init(symbol: state.tabSymbol, position: .character(lineLocalLocation))
+        } else if state.showLineBreaks && character.isLineBreak {
+            return .init(symbol: state.lineBreakSymbol, position: .endOfLine)
+        } else if state.showSoftLineBreaks && character == Symbol.Character.lineSeparator {
+            return .init(symbol: state.softLineBreakSymbol, position: .endOfLine)
         } else {
             return nil
         }
@@ -81,20 +100,23 @@ private extension InvisibleCharacterRenderer {
     private func render(
         _ symbol: String,
         at horizontalPosition: HorizontalPosition,
-        in lineFragment: some LineFragment
+        in lineFragment: some LineFragment,
+        to context: CGContext
     ) {
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.alignment = .center
         let attrs: [NSAttributedString.Key: Any] = [
-            .foregroundColor: invisibleCharacterSettings.textColor.value,
-            .font: invisibleCharacterSettings.font.value,
+            .foregroundColor: state.theme.invisibleCharactersColor,
+            .font: state.theme.font,
             .paragraphStyle: paragraphStyle
         ]
         let size = symbol.size(withAttributes: attrs)
         let xPosition = xPositionDrawingSymbol(ofSize: size, at: horizontalPosition, in: lineFragment)
         let yPosition = (lineFragment.scaledSize.height - size.height) / 2
         let rect = CGRect(x: xPosition, y: yPosition, width: size.width, height: size.height)
-        symbol.draw(in: rect, withAttributes: attrs)
+        context.asCurrent {
+            symbol.draw(in: rect, withAttributes: attrs)
+        }
     }
 
     private func xPositionDrawingSymbol(
