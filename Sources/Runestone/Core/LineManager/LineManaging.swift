@@ -1,6 +1,6 @@
 import Foundation
 
-protocol LineManaging {
+protocol LineManaging: Sequence where Element: Line {
     associatedtype LineType: Line
     var lineCount: Int { get }
     func insertText(_ text: NSString, at location: Int) -> LineChangeSet<LineType>
@@ -59,6 +59,20 @@ extension LineManaging {
             return (startLine, endLine)
         } else {
             return nil
+        }
+    }
+}
+
+extension LineManaging {
+    func makeIterator() -> AnyIterator<LineType> {
+        var currentIndex = 0
+        return AnyIterator {
+            guard currentIndex < self.lineCount else {
+                return nil
+            }
+            let line = self[currentIndex]
+            currentIndex += 1
+            return line
         }
     }
 }

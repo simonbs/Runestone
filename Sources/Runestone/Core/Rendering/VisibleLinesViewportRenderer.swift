@@ -23,6 +23,7 @@ final class VisibleLinesViewportRenderer<
             self?.renderViewport()
         }
         observe(viewport.size) { [weak self] _, _ in
+            self?.invalidateAllTypesetText()
             self?.renderViewport()
         }
     }
@@ -100,5 +101,13 @@ final class VisibleLinesViewportRenderer<
         //        if contentOffsetAdjustmentY != 0, let scrollView, (scrollView.isDragging || scrollView.isDecelerating) {
         //            scrollView.contentOffset = CGPoint(x: scrollView.contentOffset.x, y: scrollView.contentOffset.y + contentOffsetAdjustmentY)
         //        }
+    }
+}
+
+private extension VisibleLinesViewportRenderer {
+    private func invalidateAllTypesetText() {
+        for line in lineManager {
+            line.invalidateTypesetText()
+        }
     }
 }
