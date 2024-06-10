@@ -6,7 +6,7 @@ import UIKit
 extension UITextInput where Self: NSObject {
     var sbs_textSelectionDisplayInteraction: UITextSelectionDisplayInteraction? {
         let interactionAssistantKey = "int" + "ssAnoitcare".reversed() + "istant"
-        let selectionViewManagerKey = "les_".reversed() + "ection" + "reganaMweiV".reversed()
+        let selectionViewManagerKey: String = "les_".reversed() + "ection" + "reganaMweiV".reversed()
         guard responds(to: Selector(interactionAssistantKey)) else {
             return nil
         }
