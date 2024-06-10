@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 final class PlainTextSyntaxHighlighter: LineSyntaxHighlighter {
-    var theme: Theme = DefaultTheme()
+    var theme: Theme = DefaultTheme.share
     var kern: CGFloat = 0
     var canHighlight: Bool {
         false
