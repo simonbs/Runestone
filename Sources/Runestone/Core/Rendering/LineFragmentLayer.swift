@@ -48,6 +48,7 @@ final class LineFragmentLayer<
         #endif
         return layer
     }
+
     func prepareForReuse() {
         line = nil
         lineFragment = nil
