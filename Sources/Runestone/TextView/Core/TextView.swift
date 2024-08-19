@@ -641,7 +641,7 @@ open class TextView: UIScrollView {
     /// Create a new text view.
     /// - Parameter frame: The frame rectangle of the text view.
     override public init(frame: CGRect) {
-        textInputView = TextInputView(theme: DefaultTheme())
+        textInputView = TextInputView(theme: DefaultTheme.share)
         super.init(frame: frame)
         backgroundColor = .white
         textInputView.delegate = self
