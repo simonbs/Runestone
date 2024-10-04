@@ -6,8 +6,8 @@
         "repositoryURL": "https://github.com/tree-sitter/tree-sitter",
         "state": {
           "branch": null,
-          "revision": "98be227227af10cc7a269cb3ffb23686c0610b17",
-          "version": "0.20.9"
+          "revision": "693a403acd1c3fe8a833fbfaed59c85842518f67",
+          "version": "0.24.1"
         }
       }
     ]
