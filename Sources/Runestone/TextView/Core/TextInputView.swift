@@ -1320,12 +1320,8 @@ extension TextInputView {
 
     private func prepareTextForInsertion(_ text: String) -> String {
         // Ensure all line endings match our preferred line endings.
-        var preparedText = text
-        let lineEndingsToReplace: [LineEnding] = [.crlf, .cr, .lf].filter { $0 != lineEndings }
-        for lineEnding in lineEndingsToReplace {
-            preparedText = preparedText.replacingOccurrences(of: lineEnding.symbol, with: lineEndings.symbol)
-        }
-        return preparedText
+        let lines = text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+        return lines.joined(separator: lineEndings.symbol)
     }
 }
 
