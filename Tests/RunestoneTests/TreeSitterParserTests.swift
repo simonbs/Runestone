@@ -8,9 +8,9 @@ final class TreeSitterParserTests: XCTestCase {
 
     func testParseString() {
         let string: NSString = "let foo = \"Hello world\""
-        let parser = TreeSitterParser(encoding: TSInputEncodingUTF16)
+        let parser = TreeSitterParser(encoding: TSInputEncodingUTF16LE)
         parser.delegate = delegate
-        parser.language = tree_sitter_javascript()
+        parser.language = OpaquePointer(tree_sitter_javascript())
         let tree = parser.parse(string)
         let expressionString = "(program (lexical_declaration (variable_declarator name: (identifier) value: (string))))"
         XCTAssertEqual(tree?.rootNode.expressionString, expressionString)
@@ -18,9 +18,9 @@ final class TreeSitterParserTests: XCTestCase {
 
     func testReplaceShortTextWithSameShortText() {
         let string: NSString = "let foo = \"Hello world\""
-        let parser = TreeSitterParser(encoding: TSInputEncodingUTF16)
+        let parser = TreeSitterParser(encoding: TSInputEncodingUTF16LE)
         parser.delegate = delegate
-        parser.language = tree_sitter_javascript()
+        parser.language = OpaquePointer(tree_sitter_javascript())
         let oldTree = parser.parse(string)
         // Replace the entire text but with the same text (Select all and paste: CMD + A, CMD + V)
         let inputEdit = TreeSitterInputEdit(
@@ -55,9 +55,9 @@ final class TreeSitterParserTests: XCTestCase {
         }
 
         """
-        let parser = TreeSitterParser(encoding: TSInputEncodingUTF16)
+        let parser = TreeSitterParser(encoding: TSInputEncodingUTF16LE)
         parser.delegate = delegate
-        parser.language = tree_sitter_javascript()
+        parser.language = OpaquePointer(tree_sitter_javascript())
         let oldTree = parser.parse(string)
         // Replace the entire text but with the same text (Select all and paste: CMD + A, CMD + V)
         let inputEdit = TreeSitterInputEdit(

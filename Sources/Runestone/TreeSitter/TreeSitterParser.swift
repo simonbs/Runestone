@@ -8,7 +8,7 @@ protocol TreeSitterParserDelegate: AnyObject {
 final class TreeSitterParser {
     weak var delegate: TreeSitterParserDelegate?
     let encoding: TSInputEncoding
-    var language: UnsafePointer<TSLanguage>? {
+    var language: OpaquePointer? {
         didSet {
             ts_parser_set_language(pointer, language)
         }
@@ -81,8 +81,10 @@ private extension TSInputEncoding {
         switch self {
         case TSInputEncodingUTF8:
             return .utf8
-        case TSInputEncodingUTF16:
-            return String.preferredUTF16Encoding
+        case TSInputEncodingUTF16LE:
+            return .utf16LittleEndian
+        case TSInputEncodingUTF16BE:
+            return .utf16BigEndian
         default:
             return nil
         }
