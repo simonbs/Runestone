@@ -22,7 +22,7 @@ enum LanguageModeFactory {
                 "}",
                 "]"
             ])
-        let language = TreeSitterLanguage(tree_sitter_javascript(), indentationScopes: indentationScopes)
+        let language = TreeSitterLanguage(OpaquePointer(tree_sitter_javascript()), indentationScopes: indentationScopes)
         let languageMode = languageMode(language: language, text: text)
         languageMode.parse(text as NSString)
         return languageMode
@@ -30,7 +30,7 @@ enum LanguageModeFactory {
 
     static func jsonLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
         let indentationScopes = TreeSitterIndentationScopes(indent: ["object", "array"], outdent: ["}", "]"])
-        let language = TreeSitterLanguage(tree_sitter_json(), indentationScopes: indentationScopes)
+        let language = TreeSitterLanguage(OpaquePointer(tree_sitter_json()), indentationScopes: indentationScopes)
         let languageMode = languageMode(language: language, text: text)
         languageMode.parse(text as NSString)
         return languageMode
@@ -38,7 +38,7 @@ enum LanguageModeFactory {
 
     static func htmlLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
         let indentationScopes = TreeSitterIndentationScopes(indent: ["start_tag", "element"], outdent: ["end_tag"])
-        let language = TreeSitterLanguage(tree_sitter_html(), indentationScopes: indentationScopes)
+        let language = TreeSitterLanguage(OpaquePointer(tree_sitter_html()), indentationScopes: indentationScopes)
         let languageMode = languageMode(language: language, text: text)
         languageMode.parse(text as NSString)
         return languageMode
@@ -58,7 +58,7 @@ enum LanguageModeFactory {
                 "try_statement"
             ],
             whitespaceDenotesBlocks: true)
-        let language = TreeSitterLanguage(tree_sitter_python(), indentationScopes: indentationScopes)
+        let language = TreeSitterLanguage(OpaquePointer(tree_sitter_python()), indentationScopes: indentationScopes)
         let languageMode = languageMode(language: language, text: text)
         languageMode.parse(text as NSString)
         return languageMode
@@ -66,7 +66,7 @@ enum LanguageModeFactory {
 
     static func yamlLanguageMode(text: String) -> TreeSitterInternalLanguageMode {
         let indentationScopes = TreeSitterIndentationScopes(indent: ["block_mapping_pair"], whitespaceDenotesBlocks: true)
-        let language = TreeSitterLanguage(tree_sitter_yaml(), indentationScopes: indentationScopes)
+        let language = TreeSitterLanguage(OpaquePointer(tree_sitter_yaml()), indentationScopes: indentationScopes)
         let languageMode = languageMode(language: language, text: text)
         languageMode.parse(text as NSString)
         return languageMode

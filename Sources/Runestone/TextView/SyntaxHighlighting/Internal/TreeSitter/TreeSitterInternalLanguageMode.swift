@@ -23,7 +23,7 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
         self.lineManager = lineManager
         operationQueue.name = "TreeSitterLanguageMode"
         operationQueue.qualityOfService = .default
-        parser = TreeSitterParser(encoding: TSInputEncodingUTF16)
+        parser = TreeSitterParser(encoding: TSInputEncodingUTF16LE)
         rootLanguageLayer = TreeSitterLanguageLayer(
             language: language,
             languageProvider: languageProvider,
