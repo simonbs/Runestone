@@ -18,6 +18,8 @@ public final class DefaultTheme: Runestone.Theme {
     public let selectionColor = UIColor(themeColorNamed: "selection")
 
     public init() {}
+    
+    public static let share = DefaultTheme()
 
     // swiftlint:disable:next cyclomatic_complexity
     public func textColor(for highlightName: String) -> UIColor? {
