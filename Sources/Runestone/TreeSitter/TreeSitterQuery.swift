@@ -21,7 +21,7 @@ final class TreeSitterQuery {
         let errorOffset = UnsafeMutablePointer<UInt32>.allocate(capacity: 1)
         let errorType = UnsafeMutablePointer<TSQueryError>.allocate(capacity: 1)
         let pointer = source.withCString { cstr in
-            ts_query_new(language, cstr, UInt32(source.count), errorOffset, errorType)
+            ts_query_new(language, cstr, UInt32(strlen(cstr)), errorOffset, errorType)
         }
         defer {
             errorOffset.deallocate()
