@@ -27,7 +27,7 @@ public final class StringSyntaxHighlighter {
     ///   - language: The language to use when parsing the text
     ///   - languageProvider: Object that can provide embedded languages on demand. A strong reference will be stored to the language provider..
     public init(
-        theme: Theme = DefaultTheme(),
+        theme: Theme = DefaultTheme.share,
         language: TreeSitterLanguage,
         languageProvider: TreeSitterLanguageProvider? = nil
     ) {
