@@ -49,6 +49,18 @@ final class TextInputStringTokenizer: UITextInputStringTokenizer {
 
 // MARK: - Lines
 private extension TextInputStringTokenizer {
+    // Ensures the line is typeset far enough that its line fragment tree can answer queries
+    // at lineLocalLocation. After an edit the line fragment tree is reset and only repopulated
+    // for lines laid out by the layout manager, so UIKit's selection queries (e.g. during paste)
+    // may otherwise hit an empty tree. See https://github.com/simonbs/Runestone/issues/415
+    private func preparedLineController(for line: DocumentLineNode, toLocation lineLocalLocation: Int) -> LineController {
+        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
+        if lineController.numberOfLineFragments == 0 || !lineController.isFinishedTypesetting {
+            lineController.prepareToDisplayString(toLocation: lineLocalLocation, syntaxHighlightAsynchronously: true)
+        }
+        return lineController
+    }
+
     private func isPosition(_ position: UITextPosition, atLineBoundaryInDirection direction: UITextDirection) -> Bool {
         guard let indexedPosition = position as? IndexedPosition else {
             return false
@@ -59,10 +71,10 @@ private extension TextInputStringTokenizer {
         }
         let lineLocation = line.location
         let lineLocalLocation = location - lineLocation
-        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         guard lineLocalLocation >= 0 && lineLocalLocation <= line.data.totalLength else {
             return false
         }
+        let lineController = preparedLineController(for: line, toLocation: lineLocalLocation)
         guard let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation) else {
             return false
         }
@@ -86,9 +98,12 @@ private extension TextInputStringTokenizer {
         guard let line = lineManager.line(containingCharacterAt: location) else {
             return nil
         }
-        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let lineLocation = line.location
         let lineLocalLocation = location - lineLocation
+        guard lineLocalLocation >= 0 && lineLocalLocation <= line.data.totalLength else {
+            return nil
+        }
+        let lineController = preparedLineController(for: line, toLocation: lineLocalLocation)
         guard let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation) else {
             return nil
         }
