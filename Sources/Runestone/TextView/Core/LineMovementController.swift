@@ -61,6 +61,12 @@ private extension LineMovementController {
             return location
         }
         let lineLocalLocation = max(min(location - line.location, line.data.totalLength), 0)
+        // After an edit the line fragment tree is reset and only repopulated for lines laid out
+        // by the layout manager, so the query below may otherwise hit an empty tree.
+        // See https://github.com/simonbs/Runestone/issues/415
+        if lineController.numberOfLineFragments == 0 || !lineController.isFinishedTypesetting {
+            lineController.prepareToDisplayString(toLocation: lineLocalLocation, syntaxHighlightAsynchronously: true)
+        }
         guard let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation) else {
             return location
         }
@@ -78,7 +84,7 @@ private extension LineMovementController {
             return locationForMovingDownwards(lineOffset: lineOffset, fromLocation: location, inLineFragmentAt: lineFragmentIndex, of: line)
         } else {
             // lineOffset is 0 so we shouldn't change the line
-            let lineController = lineControllerStorage.getOrCreateLineController(for: line)
+            let lineController = preparedLineController(for: line)
             let destinationLineFragmentNode = lineController.lineFragmentNode(atIndex: lineFragmentIndex)
             let lineLocation = line.location
             let preferredLocation = lineLocation + destinationLineFragmentNode.location + location
@@ -132,7 +138,18 @@ private extension LineMovementController {
     }
 
     private func numberOfLineFragments(in line: DocumentLineNode) -> Int {
-        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
+        let lineController = preparedLineController(for: line)
         return lineController.numberOfLineFragments
+    }
+
+    // Ensures the entire line is typeset so its line fragments can be counted and queried.
+    // After an edit the line fragment tree is reset and only repopulated for lines laid out
+    // by the layout manager. See https://github.com/simonbs/Runestone/issues/415
+    private func preparedLineController(for line: DocumentLineNode) -> LineController {
+        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
+        if lineController.numberOfLineFragments == 0 || !lineController.isFinishedTypesetting {
+            lineController.prepareToDisplayString(toLocation: line.data.totalLength, syntaxHighlightAsynchronously: true)
+        }
+        return lineController
     }
 }
