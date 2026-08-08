@@ -8,7 +8,7 @@ protocol TreeSitterParserDelegate: AnyObject {
 final class TreeSitterParser {
     weak var delegate: TreeSitterParserDelegate?
     let encoding: TSInputEncoding
-    var language: UnsafePointer<TSLanguage>? {
+    var language: OpaquePointer? {
         didSet {
             ts_parser_set_language(pointer, language)
         }
