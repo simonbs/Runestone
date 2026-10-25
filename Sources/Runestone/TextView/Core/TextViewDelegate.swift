@@ -2,6 +2,13 @@ import Foundation
 
 /// The methods for receiving editing-related messages for the text view.
 public protocol TextViewDelegate: AnyObject {
+    /// Writing Tools is beginning a session. Subsequent text changes may be provisional
+    /// until the user accepts or rejects them. The text view is already marked active.
+    func textViewWritingToolsWillBegin(_ textView: TextView)
+    /// Writing Tools finished or was stopped. The text view is no longer marked active.
+    /// Persist the current text here when deferring saves during a session.
+    func textViewWritingToolsDidEnd(_ textView: TextView)
+
     /// Asks the delegate whether to begin editing in the text view.
     /// - Parameter textView: The text view for which editing is about to begin.
     /// - Returns: `true` if editing should be initiated; otherwise, `false` to disallow editing.
@@ -104,6 +111,10 @@ public protocol TextViewDelegate: AnyObject {
 }
 
 public extension TextViewDelegate {
+    func textViewWritingToolsWillBegin(_ textView: TextView) {}
+
+    func textViewWritingToolsDidEnd(_ textView: TextView) {}
+
     func textViewShouldBeginEditing(_ textView: TextView) -> Bool {
         true
     }

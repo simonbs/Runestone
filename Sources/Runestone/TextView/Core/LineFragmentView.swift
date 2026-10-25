@@ -1,6 +1,7 @@
 import UIKit
 
 final class LineFragmentView: UIView, ReusableView {
+    var documentLineLocation = 0
     var renderer: LineFragmentRenderer? {
         didSet {
             if renderer !== oldValue {
