@@ -7,18 +7,22 @@ final class SpellCheckingTests: XCTestCase {
         app.navigationBars.buttons["Spelling"].tap()
         let textView = try XCTUnwrap(app.textView)
         XCTAssertTrue(textView.waitForExistence(timeout: 5))
-        let originalText = "mispelled word.\n\nSelect the underlined word to correct it."
+        let originalText = "mispelled word.\n\nTap the underlined word to correct it."
         XCTAssertEqual(textView.value as? String, originalText)
 
-        // Double-tap the first word at its rendered location below the navigation bar.
+        // A single tap offers corrections without double-tapping or showing editing commands.
         let firstWord = app.coordinate(withNormalizedOffset: .zero).withOffset(
             CGVector(dx: textView.frame.minX + 30, dy: app.navigationBars.firstMatch.frame.maxY + 15)
         )
         firstWord.tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
-        firstWord.doubleTap()
         let suggestion = app.descendants(matching: .any).matching(identifier: "misspelled").firstMatch
         XCTAssertTrue(suggestion.waitForExistence(timeout: 5))
+        for name in ["Copy", "Ignore Spelling", "Learn Spelling", "Unlearn Spelling"] {
+            XCTAssertFalse(app.descendants(matching: .any).matching(identifier: name).firstMatch.exists)
+        }
+        assertSpellingMenuDismissesAndReopens(in: app, textView: textView, firstWord: firstWord, suggestion: suggestion)
+        XCTAssertEqual(textView.value as? String, originalText)
         attachScreenshot(of: app, named: "Spelling suggestions")
         suggestion.tap()
 
@@ -31,6 +35,8 @@ final class SpellCheckingTests: XCTestCase {
 
         app.navigationBars.buttons["Spelling On"].tap()
         XCTAssertTrue(app.navigationBars.buttons["Spelling Off"].exists)
+        firstWord.tap()
+        XCTAssertFalse(suggestion.exists)
         firstWord.doubleTap()
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "Copy").firstMatch.waitForExistence(timeout: 5))
         XCTAssertFalse(suggestion.exists)
@@ -91,6 +97,22 @@ final class SpellCheckingTests: XCTestCase {
         selectFirstWord(in: textView, app: app)
         XCTAssertTrue(spellingAction(named: "Ignore Spelling", in: app).exists)
         attachScreenshot(of: app, named: "Unlearning restores spelling checks")
+    }
+
+    private func assertSpellingMenuDismissesAndReopens(
+        in app: XCUIApplication, textView: XCUIElement, firstWord: XCUICoordinate, suggestion: XCUIElement
+    ) {
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        let textTop = app.navigationBars.firstMatch.frame.maxY
+        let correctlySpelledWord = origin.withOffset(CGVector(dx: textView.frame.minX + 110, dy: textTop + 15))
+        let blankLine = origin.withOffset(CGVector(dx: textView.frame.minX + 200, dy: textTop + 160))
+        for outside in [correctlySpelledWord, blankLine] {
+            outside.tap()
+            let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: suggestion)
+            XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 5), .completed)
+            firstWord.tap()
+            XCTAssertTrue(suggestion.waitForExistence(timeout: 5))
+        }
     }
 
     private func selectFirstWord(in textView: XCUIElement, app: XCUIApplication) {

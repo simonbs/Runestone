@@ -38,7 +38,7 @@ final class MainViewController: UIViewController {
         textView.showLineNumbers = false
         textView.spellCheckingLanguage = "en_US"
         textView.spellCheckingType = .yes
-        let text = "mispelled word.\n\nSelect the underlined word to correct it."
+        let text = "mispelled word.\n\nTap the underlined word to correct it."
         textView.setState(TextViewState(text: text))
         textView.selectedRange = NSRange(location: (text as NSString).length, length: 0)
         navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Undo", style: .plain, target: self, action: #selector(undoSpellingCorrection))
@@ -51,6 +51,9 @@ final class MainViewController: UIViewController {
         textView.showLineNumbers = false
         textView.spellCheckingLanguage = "en_US"
         textView.spellCheckingType = .yes
+        textView.showIgnoreSpellingAction = true
+        textView.showLearnSpellingAction = true
+        textView.showUnlearnSpellingAction = true
         TextView.unlearnSpellingWord(dictionaryWord)
         reloadSpellingDocument()
         navigationItem.leftBarButtonItems = [

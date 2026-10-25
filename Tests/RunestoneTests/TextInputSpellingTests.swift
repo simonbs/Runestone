@@ -250,14 +250,26 @@ extension TextInputSpellingTests {
         let learn = try XCTUnwrap(input.spellingWordActions(in: range).first { $0.kind == .learn })
         let staleIgnore = try XCTUnwrap(otherInput.spellingWordActions(in: range).first { $0.kind == .ignore })
 
+        view.showLearnSpellingAction = false
         input.performSpellingWordAction(learn)
+        XCTAssertFalse(TextView.hasLearnedSpellingWord(word))
+        view.showLearnSpellingAction = true
+        input.performSpellingWordAction(learn)
+        XCTAssertFalse(TextView.hasLearnedSpellingWord(word), "Reenabling must not revive an old menu")
+        input.performSpellingWordAction(try XCTUnwrap(input.spellingWordActions(in: range).first { $0.kind == .learn }))
 
         XCTAssertTrue(TextView.hasLearnedSpellingWord(word))
         XCTAssertTrue(input.spellingSuggestions(in: range).isEmpty)
         otherInput.performSpellingWordAction(staleIgnore)
         XCTAssertTrue(otherView.ignoredSpellingWords.isEmpty, "Learning elsewhere must invalidate an open menu")
         let unlearn = try XCTUnwrap(otherInput.spellingWordActions(in: range).first { $0.kind == .unlearn })
+        otherView.showUnlearnSpellingAction = false
         otherInput.performSpellingWordAction(unlearn)
+        XCTAssertTrue(TextView.hasLearnedSpellingWord(word))
+        otherView.showUnlearnSpellingAction = true
+        otherInput.performSpellingWordAction(unlearn)
+        XCTAssertTrue(TextView.hasLearnedSpellingWord(word), "Reenabling must not revive an old menu")
+        otherInput.performSpellingWordAction(try XCTUnwrap(otherInput.spellingWordActions(in: range).first { $0.kind == .unlearn }))
         XCTAssertFalse(TextView.hasLearnedSpellingWord(word))
         XCTAssertTrue(input.spellingWordActions(in: range).contains { $0.kind == .learn })
         XCTAssertEqual(view.text, "👋 A \(word) word.")
@@ -291,6 +303,10 @@ extension TextInputSpellingTests {
             { view, _ in view.text = "👋 A mispelled sentence." },
             { view, _ in view.spellCheckingLanguage = "unsupported-language" },
             { view, _ in view.spellCheckingType = .no },
+            { view, _ in
+                view.showIgnoreSpellingAction = false
+                view.showIgnoreSpellingAction = true
+            },
             { _, input in input.isEditing = false },
             { view, _ in view.isEditable = false },
             { _, input in input.setWritingToolsActive(true) },
@@ -347,6 +363,9 @@ extension TextInputSpellingTests {
     private func makeEditor(word: String = "mispelled") throws -> (TextView, TextInputView) {
         try XCTSkipUnless(UITextChecker.availableLanguages.contains("en_US"), "English dictionary is unavailable")
         let view = TextView()
+        view.showIgnoreSpellingAction = true
+        view.showLearnSpellingAction = true
+        view.showUnlearnSpellingAction = true
         view.autocorrectionType = .no
         view.spellCheckingType = .yes
         view.spellCheckingLanguage = "en_US"

@@ -122,6 +122,15 @@ final class TextInputView: UIView, UITextInput {
     var preferredSpellCheckingType: UITextSpellCheckingType = .default {
         didSet { invalidateSpellChecking() }
     }
+    var showIgnoreSpellingAction = false {
+        didSet { invalidateSpellChecking() }
+    }
+    var showLearnSpellingAction = false {
+        didSet { invalidateSpellChecking() }
+    }
+    var showUnlearnSpellingAction = false {
+        didSet { invalidateSpellChecking() }
+    }
     var spellCheckingLanguage: String? {
         didSet { invalidateSpellChecking() }
     }
@@ -1961,6 +1970,7 @@ extension TextInputView {
     }
 
     func invalidateSpellChecking() {
+        editMenuController.dismissSpellingMenu()
         spellingRevision &+= 1
         lastSpellingRequest = nil
         spellCheckingService.invalidate()
@@ -2037,6 +2047,36 @@ extension TextInputView {
         editMenuController.updateLegacySpellingMenu()
     }
 
+    func dismissSpellingMenu() {
+        editMenuController.dismissSpellingMenu()
+    }
+
+    func presentSpellingMenu(at point: CGPoint) {
+        guard isEditing, isEditableForSystemTextReplacement, isSpellCheckingEnabled, markedRange == nil,
+              let selection = selectedRange, selection.length == 0,
+              let position = closestPosition(to: point) else {
+            return
+        }
+        // Probe both directions at character boundaries, then test actual rendered word geometry.
+        for storageDirection in [UITextStorageDirection.backward, .forward] {
+            let direction = UITextDirection(rawValue: storageDirection.rawValue)
+            guard let word = tokenizer.rangeEnclosingPosition(position, with: .word, inDirection: direction) as? IndexedRange,
+                  selection.location >= word.range.location, selection.location <= NSMaxRange(word.range),
+                  let target = spellingTarget(in: word.range),
+                  spellCheckingService.isMisspelled(for: word.range, in: string, language: target.language),
+                  let rect = layoutManager.spellingRects(for: word.range).first(where: { $0.contains(point) }) else {
+                continue
+            }
+            guard !spellingSuggestions(in: word.range).isEmpty || !spellingWordActions(in: word.range).isEmpty,
+                  isCurrentSpellingSuggestion(target) else {
+                return
+            }
+            selectedRange = word.range
+            editMenuController.presentSpellingMenu(from: self, forTextIn: word.range, targetRect: rect)
+            return
+        }
+    }
+
     var ignoredSpellingWords: [String] {
         spellCheckingService.ignoredWords
     }
@@ -2091,12 +2131,19 @@ extension TextInputView {
             return []
         }
         if SpellCheckingService.hasLearnedWord(target.original) {
-            return [SpellingWordAction(kind: .unlearn, target: target)]
+            return showUnlearnSpellingAction ? [SpellingWordAction(kind: .unlearn, target: target)] : []
         }
         guard spellCheckingService.isMisspelled(for: target.range, in: string, language: target.language) else {
             return []
         }
-        return [.ignore, .learn].map { SpellingWordAction(kind: $0, target: target) }
+        var actions: [SpellingWordAction] = []
+        if showIgnoreSpellingAction {
+            actions.append(SpellingWordAction(kind: .ignore, target: target))
+        }
+        if showLearnSpellingAction {
+            actions.append(SpellingWordAction(kind: .learn, target: target))
+        }
+        return actions
     }
 
     func performSpellingWordAction(_ action: SpellingWordAction) {

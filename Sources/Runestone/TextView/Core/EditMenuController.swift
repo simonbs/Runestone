@@ -61,6 +61,9 @@ final class EditMenuController: NSObject {
         NSSelectorFromString("replaceWithSecondSpellingSuggestion"),
         NSSelectorFromString("replaceWithThirdSpellingSuggestion")
     ]
+    private static let spellingMenuIdentifier = "Runestone.Spelling"
+    private var spellingMenuRange: NSRange?
+    private var spellingMenuTargetRect: CGRect = .null
     private var legacySpellingWordActions: [SpellingWordAction] = []
     private var legacySpellingSuggestions: [SpellingSuggestion] = []
 
@@ -91,6 +94,30 @@ final class EditMenuController: NSObject {
         } else {
             updateLegacySpellingMenu()
             UIMenuController.shared.showMenu(from: view, rect: menuRect)
+        }
+    }
+
+    func presentSpellingMenu(from view: UIView, forTextIn range: NSRange, targetRect: CGRect) {
+        if #available(iOS 16, *) {
+            spellingMenuRange = range
+            spellingMenuTargetRect = targetRect
+            let point = CGPoint(x: targetRect.midX, y: targetRect.maxY)
+            let configuration = UIEditMenuConfiguration(identifier: Self.spellingMenuIdentifier as NSString, sourcePoint: point)
+            configuration.preferredArrowDirection = .up
+            editMenuInteraction?.presentEditMenu(with: configuration)
+        } else {
+            presentEditMenu(from: view, forTextIn: range)
+        }
+    }
+
+    func dismissSpellingMenu() {
+        guard spellingMenuRange != nil else {
+            return
+        }
+        spellingMenuRange = nil
+        spellingMenuTargetRect = .null
+        if #available(iOS 16, *) {
+            editMenuInteraction?.dismissMenu()
         }
     }
 
@@ -143,7 +170,7 @@ final class EditMenuController: NSObject {
         delegate?.editMenuController(self, perform: action)
     }
 
-    private func menu(for range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu {
+    private func menu(for range: NSRange, suggestedActions: [UIMenuElement], spellingOnly: Bool = false) -> UIMenu {
         let suggestions = delegate?.editMenuController(self, spellingSuggestionsFor: range) ?? []
         var actions: [UIMenuElement] = suggestions.map { suggestion in
             UIAction(title: suggestion.replacement) { [weak self] _ in
@@ -162,9 +189,11 @@ final class EditMenuController: NSObject {
                 self.delegate?.editMenuController(self, perform: action)
             }
         })
-        actions.append(contentsOf: suggestedActions)
-        if let replaceAction = replaceActionIfAvailable(for: range) {
-            actions.append(replaceAction)
+        if !spellingOnly {
+            actions.append(contentsOf: suggestedActions)
+            if let replaceAction = replaceActionIfAvailable(for: range) {
+                actions.append(replaceAction)
+            }
         }
         return UIMenu(children: actions)
     }
@@ -217,10 +246,22 @@ extension EditMenuController: UIEditMenuInteractionDelegate {
         menuFor configuration: UIEditMenuConfiguration,
         suggestedActions: [UIMenuElement]
     ) -> UIMenu? {
+        if configuration.identifier as? String == Self.spellingMenuIdentifier {
+            guard let range = spellingMenuRange, delegate?.selectedRange(for: self) == range else {
+                return nil
+            }
+            let menu = menu(for: range, suggestedActions: [], spellingOnly: true)
+            return menu.children.isEmpty ? nil : menu
+        }
         if let selectedRange = delegate?.selectedRange(for: self) {
             return menu(for: selectedRange, suggestedActions: suggestedActions)
         } else {
             return UIMenu(children: suggestedActions)
         }
     }
+
+    func editMenuInteraction(_ interaction: UIEditMenuInteraction, targetRectFor configuration: UIEditMenuConfiguration) -> CGRect {
+        configuration.identifier as? String == Self.spellingMenuIdentifier ? spellingMenuTargetRect : .null
+    }
+
 }

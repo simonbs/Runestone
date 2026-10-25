@@ -141,6 +141,27 @@ open class TextView: UIScrollView {
         }
     }
 
+    /// Whether spelling menus include Ignore Spelling when applicable. Defaults to false.
+    /// This controls menu visibility only; the corresponding dictionary API remains available.
+    public var showIgnoreSpellingAction: Bool {
+        get { textInputView.showIgnoreSpellingAction }
+        set { textInputView.showIgnoreSpellingAction = newValue }
+    }
+
+    /// Whether spelling menus include Learn Spelling when applicable. Defaults to false.
+    /// This controls menu visibility only; the corresponding dictionary API remains available.
+    public var showLearnSpellingAction: Bool {
+        get { textInputView.showLearnSpellingAction }
+        set { textInputView.showLearnSpellingAction = newValue }
+    }
+
+    /// Whether spelling menus include Unlearn Spelling when applicable. Defaults to false.
+    /// This controls menu visibility only; the corresponding dictionary API remains available.
+    public var showUnlearnSpellingAction: Bool {
+        get { textInputView.showUnlearnSpellingAction }
+        set { textInputView.showUnlearnSpellingAction = newValue }
+    }
+
     /// Words ignored in this view's current document session. This list is not persisted or shared between views.
     /// Assigning ``text`` or calling ``setState(_:addUndoAction:)`` starts a new session and clears this list.
     public var ignoredSpellingWords: [String] {
@@ -318,6 +339,7 @@ open class TextView: UIScrollView {
     override public var contentOffset: CGPoint {
         didSet {
             if contentOffset != oldValue {
+                textInputView.dismissSpellingMenu()
                 textInputView.viewport = CGRect(origin: contentOffset, size: frame.size)
             }
         }
@@ -681,6 +703,7 @@ open class TextView: UIScrollView {
     }
     private var _editMenuInteraction: Any?
     private let tapGestureRecognizer = QuickTapGestureRecognizer()
+    private let spellingTapGestureRecognizer = UITapGestureRecognizer()
     private var _inputAccessoryView: UIView?
     private var isPerformingNonEditableTextInteraction = false
     private var delegateAllowsEditingToBegin: Bool {
@@ -736,6 +759,10 @@ open class TextView: UIScrollView {
         tapGestureRecognizer.delegate = self
         tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
         addGestureRecognizer(tapGestureRecognizer)
+        spellingTapGestureRecognizer.delegate = self
+        spellingTapGestureRecognizer.cancelsTouchesInView = false
+        spellingTapGestureRecognizer.addTarget(self, action: #selector(handleSpellingTap(_:)))
+        addGestureRecognizer(spellingTapGestureRecognizer)
         installNonEditableInteraction()
         keyboardObserver.delegate = self
         highlightNavigationController.delegate = self
@@ -1216,6 +1243,23 @@ private extension TextView {
         }
     }
 
+    @objc private func handleSpellingTap(_ gestureRecognizer: UITapGestureRecognizer) {
+        guard gestureRecognizer.state == .ended else {
+            return
+        }
+        let point = gestureRecognizer.location(in: textInputView)
+        let version = textInputView.textMutationVersion
+        textInputView.dismissSpellingMenu()
+        // Let UITextInteraction finish moving the caret and the initial tap start editing first.
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, self.isEditable, self.isSelectable, self.isEditing,
+                  !self.isDragging, !self.isDecelerating, self.textInputView.textMutationVersion == version else {
+                return
+            }
+            self.textInputView.presentSpellingMenu(at: point)
+        }
+    }
+
     @objc private func handleTextRangeAdjustmentPan(_ gestureRecognizer: UIPanGestureRecognizer) {
         // This function scroll the text view when the selected range is adjusted.
         if gestureRecognizer.state == .began {
@@ -1545,6 +1589,8 @@ extension TextView: UIGestureRecognizerDelegate {
     override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         if gestureRecognizer === tapGestureRecognizer {
             return !isEditing && !isDragging && !isDecelerating && delegateAllowsEditingToBegin
+        } else if gestureRecognizer === spellingTapGestureRecognizer {
+            return isEditable && isSelectable && !isDragging && !isDecelerating
         } else {
             return super.gestureRecognizerShouldBegin(gestureRecognizer)
         }

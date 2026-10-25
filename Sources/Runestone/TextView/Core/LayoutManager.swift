@@ -597,6 +597,39 @@ private extension LayoutManager {
     }
 }
 
+// MARK: - Spelling geometry
+extension LayoutManager {
+    /// Visible word rectangles in text input coordinates, split at wrapping and bidirectional run boundaries.
+    func spellingRects(for range: NSRange) -> [CGRect] {
+        guard range.location >= 0, range.location <= stringView.string.length,
+              range.length > 0, range.length <= stringView.string.length - range.location else {
+            return []
+        }
+        let gutterWidth = showLineNumbers ? safeAreaInsets.left + gutterWidthService.gutterWidth : 0
+        let visibleTextRect = CGRect(x: viewport.minX + gutterWidth, y: viewport.minY,
+                                     width: max(0, viewport.width - gutterWidth), height: viewport.height)
+        return lineFragmentViewReuseQueue.visibleViews.values.flatMap { view -> [CGRect] in
+            guard let renderer = view.renderer else {
+                return []
+            }
+            let fragmentRange = renderer.lineFragment.visibleRange
+            let documentRange = NSRange(location: view.documentLineLocation + fragmentRange.location, length: fragmentRange.length)
+            let intersection = NSIntersectionRange(documentRange, range)
+            guard intersection.length > 0 else {
+                return []
+            }
+            let localRange = NSRange(location: intersection.location - view.documentLineLocation, length: intersection.length)
+            return renderer.spellingUnderlineSegments(in: localRange).compactMap { segment in
+                // Fragment frames already include the document line origin, gutter, and text-container insets.
+                let rect = CGRect(x: view.frame.minX + segment.lowerBound, y: view.frame.minY,
+                                  width: segment.upperBound - segment.lowerBound, height: view.frame.height)
+                    .intersection(visibleTextRect)
+                return rect.isNull || rect.isEmpty ? nil : rect
+            }
+        }.sorted { $0.minY == $1.minY ? $0.minX < $1.minX : $0.minY < $1.minY }
+    }
+}
+
 // MARK: - Spelling
 private extension LayoutManager {
     private func visibleCharacterRanges(in controller: LineFragmentController) -> [NSRange] {
