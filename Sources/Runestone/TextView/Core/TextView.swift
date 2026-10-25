@@ -240,6 +240,12 @@ open class TextView: UIScrollView {
         set { textInputView.writingToolsExcludedRangesProvider = newValue }
     }
 
+    /// Whether UIKit has presented the Writing Tools panel, including its initial chooser.
+    /// This is independent of `isWritingToolsActive`: the chooser can appear without starting a session.
+    /// To hide accessory UI throughout Writing Tools, check whether either property is `true`.
+    /// Always `false` on systems that don't support the Writing Tools panel callbacks.
+    public var isWritingToolsPresented: Bool { textInputView.isWritingToolsPresented }
+
     /// Whether Writing Tools is evaluating text or presenting changes for review.
     /// During this time changes can be provisional. Defer persistence until the delegate's
     /// `textViewWritingToolsDidEnd(_:)` callback if only accepted content should be saved.
@@ -1471,6 +1477,14 @@ extension TextView: TextInputViewDelegate {
         isEditing = false
         installNonEditableInteraction()
         editorDelegate?.textViewDidEndEditing(self)
+    }
+
+    func textInputViewWritingToolsWillPresent(_ view: TextInputView) {
+        editorDelegate?.textViewWritingToolsWillPresent(self)
+    }
+
+    func textInputViewWritingToolsDidDismiss(_ view: TextInputView) {
+        editorDelegate?.textViewWritingToolsDidDismiss(self)
     }
 
     func textInputViewWritingToolsWillBegin(_ view: TextInputView) {

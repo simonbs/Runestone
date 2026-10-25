@@ -3,6 +3,8 @@ import Combine
 import UIKit
 
 protocol TextInputViewDelegate: AnyObject {
+    func textInputViewWritingToolsWillPresent(_ view: TextInputView)
+    func textInputViewWritingToolsDidDismiss(_ view: TextInputView)
     func textInputViewWritingToolsWillBegin(_ view: TextInputView)
     func textInputViewWritingToolsDidEnd(_ view: TextInputView)
     func textInputViewWillBeginEditing(_ view: TextInputView)
@@ -27,6 +29,8 @@ extension TextInputViewDelegate {
     func textInputView(_ view: TextInputView, shouldCheckSpellingIn range: NSRange) -> Bool {
         true
     }
+    func textInputViewWritingToolsWillPresent(_ view: TextInputView) {}
+    func textInputViewWritingToolsDidDismiss(_ view: TextInputView) {}
     func textInputViewWritingToolsWillBegin(_ view: TextInputView) {}
     func textInputViewWritingToolsDidEnd(_ view: TextInputView) {}
 }
@@ -181,6 +185,25 @@ final class TextInputView: UIView, UITextInput {
     var isEditableForSystemTextReplacement = true
     var writingToolsController: WritingToolsControlling?
     private(set) var isWritingToolsActive = false
+    private(set) var isWritingToolsPresented = false
+
+    // Explicit Objective-C exposure also preserves the selectors when building with an older SDK.
+    @objc func willPresentWritingTools() {
+        guard !isWritingToolsPresented else {
+            return
+        }
+        isWritingToolsPresented = true
+        delegate?.textInputViewWritingToolsWillPresent(self)
+    }
+
+    @objc func didDismissWritingTools() {
+        guard isWritingToolsPresented else {
+            return
+        }
+        isWritingToolsPresented = false
+        delegate?.textInputViewWritingToolsDidDismiss(self)
+    }
+
     private(set) var isApplyingSystemTextReplacement = false
     private(set) var textMutationVersion: UInt = 0
     private(set) var writingToolsContextVersion: UInt = 0
@@ -1051,7 +1074,10 @@ final class TextInputView: UIView, UITextInput {
     }
 
     override func didMoveToWindow() {
-        if window == nil { stopWritingTools() }
+        if window == nil {
+            stopWritingTools()
+            didDismissWritingTools()
+        }
         super.didMoveToWindow()
         if hasPendingFullLayout && window != nil {
             hasPendingFullLayout = false
