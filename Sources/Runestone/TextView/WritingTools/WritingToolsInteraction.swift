@@ -169,7 +169,7 @@ final class WritingToolsInteraction: NSObject, WritingToolsControlling, UIWritin
             // UIKit owns the underline's color, animation, and interaction.
             let height = min(CGFloat(2), rect.height)
             return UIBezierPath(rect: CGRect(x: rect.minX, y: rect.maxY - height,
-                                            width: rect.width, height: height))
+                                             width: rect.width, height: height))
         })
     }
 

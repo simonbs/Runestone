@@ -203,10 +203,12 @@ final class WritingToolsRenderingTests: XCTestCase {
 
     private func alphaCoverage(of image: UIImage) throws -> Double {
         let image = try XCTUnwrap(image.cgImage)
-        let context = try XCTUnwrap(CGContext(data: nil, width: image.width, height: image.height,
-                                            bitsPerComponent: 8, bytesPerRow: image.width * 4,
-                                            space: CGColorSpaceCreateDeviceRGB(),
-                                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        let context = try XCTUnwrap(CGContext(
+            data: nil, width: image.width, height: image.height,
+            bitsPerComponent: 8, bytesPerRow: image.width * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ))
         context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
         let data = try XCTUnwrap(context.data).assumingMemoryBound(to: UInt8.self)
         let pixels = image.width * image.height

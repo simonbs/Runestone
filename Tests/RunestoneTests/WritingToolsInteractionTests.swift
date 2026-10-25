@@ -169,7 +169,9 @@ final class WritingToolsInteractionTests: XCTestCase {
 
         XCTAssertNil(replace(NSRange(location: 0, length: 4), in: unrelatedContext, with: "Lose", using: interaction))
         let completion = expectation(description: "Selection request completes")
-        interaction.writingToolsCoordinator(interaction.coordinator, select: [NSValue(range: NSRange(location: 0, length: 0))], in: unrelatedContext) {
+        interaction.writingToolsCoordinator(interaction.coordinator,
+                                            select: [NSValue(range: NSRange(location: 0, length: 0))],
+                                            in: unrelatedContext) {
             completion.fulfill()
         }
         wait(for: [completion], timeout: 1)
@@ -202,7 +204,11 @@ final class WritingToolsInteractionTests: XCTestCase {
         XCTAssertEqual(recorder.activeStates, [true, false, true, false])
     }
 
-    private func assertCancellationDuringApprovalRejectsSuggestion(_ cancellation: @escaping (TextView) -> Void) throws {
+}
+
+@available(iOS 18.2, visionOS 2.4, *)
+private extension WritingToolsInteractionTests {
+    func assertCancellationDuringApprovalRejectsSuggestion(_ cancellation: @escaping (TextView) -> Void) throws {
         let view = TextView()
         view.text = "Original text"
         let selection = NSRange(location: 0, length: 13)
@@ -223,7 +229,7 @@ final class WritingToolsInteractionTests: XCTestCase {
         XCTAssertFalse(view.undoManager?.canUndo == true)
     }
 
-    private func assertSessionEndDocumentReplacementCancelsCommand(_ command: (TextView) -> Void) throws {
+    func assertSessionEndDocumentReplacementCancelsCommand(_ command: (TextView) -> Void) throws {
         let view = TextView()
         view.text = "First\nSecond\nThird"
         let interaction = try makeInteraction(in: view)
@@ -233,9 +239,9 @@ final class WritingToolsInteractionTests: XCTestCase {
         view.selectedRange = NSRange(location: 10, length: 6)
         let recorder = WritingToolsLifecycleRecorder()
         let newSelection = NSRange(location: 1, length: 0)
-        recorder.onEnd = {
-            $0.text = "New"
-            $0.selectedRange = newSelection
+        recorder.onEnd = { textView in
+            textView.text = "New"
+            textView.selectedRange = newSelection
         }
         view.editorDelegate = recorder
 
@@ -248,29 +254,29 @@ final class WritingToolsInteractionTests: XCTestCase {
         XCTAssertEqual(recorder.activeStates, [false])
     }
 
-    private func makeInteraction(in textView: TextView) throws -> WritingToolsInteraction {
+    func makeInteraction(in textView: TextView) throws -> WritingToolsInteraction {
         let input = try XCTUnwrap(textView.subviews.compactMap { $0 as? TextInputView }.first)
         let interaction = WritingToolsInteraction(textInputView: input)
         input.writingToolsController = interaction
         return interaction
     }
 
-    private func requestContext(from interaction: WritingToolsInteraction,
-                                scope: UIWritingToolsCoordinator.ContextScope = .fullDocument) throws -> UIWritingToolsCoordinator.Context {
+    func requestContext(from interaction: WritingToolsInteraction,
+                        scope: UIWritingToolsCoordinator.ContextScope = .fullDocument) throws -> UIWritingToolsCoordinator.Context {
         let completion = expectation(description: "Context request completes")
         var contexts: [UIWritingToolsCoordinator.Context] = []
-        interaction.writingToolsCoordinator(interaction.coordinator, requestsContextsFor: scope) {
-            contexts = $0
+        interaction.writingToolsCoordinator(interaction.coordinator, requestsContextsFor: scope) { requestedContexts in
+            contexts = requestedContexts
             completion.fulfill()
         }
         wait(for: [completion], timeout: 1)
         return try XCTUnwrap(contexts.first)
     }
 
-    private func replace(_ range: NSRange,
-                         in context: UIWritingToolsCoordinator.Context,
-                         with text: String,
-                         using interaction: WritingToolsInteraction) -> NSAttributedString? {
+    func replace(_ range: NSRange,
+                 in context: UIWritingToolsCoordinator.Context,
+                 with text: String,
+                 using interaction: WritingToolsInteraction) -> NSAttributedString? {
         let completion = expectation(description: "Replacement request completes")
         var result: NSAttributedString?
         interaction.writingToolsCoordinator(interaction.coordinator,
@@ -278,15 +284,15 @@ final class WritingToolsInteractionTests: XCTestCase {
                                             in: context,
                                             proposedText: NSAttributedString(string: text),
                                             reason: .noninteractive,
-                                            animationParameters: nil) {
-            result = $0
+                                            animationParameters: nil) { replacement in
+            result = replacement
             completion.fulfill()
         }
         wait(for: [completion], timeout: 1)
         return result
     }
 
-    private func transition(_ interaction: WritingToolsInteraction, to state: UIWritingToolsCoordinator.State) {
+    func transition(_ interaction: WritingToolsInteraction, to state: UIWritingToolsCoordinator.State) {
         let completion = expectation(description: "State change completes")
         interaction.writingToolsCoordinator(interaction.coordinator, willChangeTo: state) {
             completion.fulfill()
