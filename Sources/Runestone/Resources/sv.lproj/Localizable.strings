@@ -1,0 +1,5 @@
+"undo.action_name.typing" = "Inmatning";
+"undo.action_name.replace_all" = "Ersätt alla";
+"undo.action_name.move_lines_up" = "Flytta rader uppåt";
+"undo.action_name.move_lines_down" = "Flytta rader nedåt";
+"menu.item_title.replace" = "Ersätt";
