@@ -1364,8 +1364,9 @@ extension TextView: TextInputViewDelegate {
     }
 
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
-        if textInputView.isRestoringPreviouslyDeletedText {
-            // UIKit is inserting text to combine characters, for example to combine two Korean characters into one, and we do not want to interfere with that.
+        if textInputView.isRestoringPreviouslyDeletedText || view.isUpdatingMarkedText {
+            // Let UIKit compose marked text without inserting or skipping character pairs.
+            // This also applies when UIKit restores text while combining Korean characters.
             return editorDelegate?.textView(self, shouldChangeTextIn: range, replacementText: text) ?? true
         } else if let characterPair = characterPairs.first(where: { $0.trailing == text }),
                     skipInsertingTrailingComponent(of: characterPair, in: range) {

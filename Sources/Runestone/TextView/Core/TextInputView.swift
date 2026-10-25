@@ -558,6 +558,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var lineEndings: LineEnding = .lf
     private(set) var isRestoringPreviouslyDeletedText = false
+    private(set) var isUpdatingMarkedText = false
 
     // MARK: - Private
     private var languageMode: InternalLanguageMode = PlainTextInternalLanguageMode() {
@@ -1431,6 +1432,8 @@ extension TextInputView {
             return
         }
         let markedText = markedText ?? ""
+        isUpdatingMarkedText = true
+        defer { isUpdatingMarkedText = false }
         guard shouldChangeText(in: range, replacementText: markedText) else {
             return
         }
