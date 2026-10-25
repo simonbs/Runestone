@@ -1,0 +1,5 @@
+"undo.action_name.typing" = "Typen";
+"undo.action_name.replace_all" = "Vervang alles";
+"undo.action_name.move_lines_up" = "Verplaats regels omhoog";
+"undo.action_name.move_lines_down" = "Verplaats regels omlaag";
+"menu.item_title.replace" = "Vervang";

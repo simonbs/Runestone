@@ -1,0 +1,5 @@
+"undo.action_name.typing" = "Digitazione";
+"undo.action_name.replace_all" = "Sostituisci tutto";
+"undo.action_name.move_lines_up" = "Sposta le righe in alto";
+"undo.action_name.move_lines_down" = "Sposta le righe in basso";
+"menu.item_title.replace" = "Sostituisci";

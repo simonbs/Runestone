@@ -1,0 +1,5 @@
+"undo.action_name.typing" = "Psaní";
+"undo.action_name.replace_all" = "Nahradit vše";
+"undo.action_name.move_lines_up" = "Přesunout řádky nahoru";
+"undo.action_name.move_lines_down" = "Přesunout řádky dolů";
+"menu.item_title.replace" = "Nahradit";
