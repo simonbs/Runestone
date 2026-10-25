@@ -1319,13 +1319,10 @@ extension TextInputView {
     }
 
     private func prepareTextForInsertion(_ text: String) -> String {
-        // Ensure all line endings match our preferred line endings.
-        var preparedText = text
-        let lineEndingsToReplace: [LineEnding] = [.crlf, .cr, .lf].filter { $0 != lineEndings }
-        for lineEnding in lineEndingsToReplace {
-            preparedText = preparedText.replacingOccurrences(of: lineEnding.symbol, with: lineEndings.symbol)
-        }
-        return preparedText
+        // Normalize to LF first so CRLF pairs and newly inserted delimiters are not replaced twice.
+        let normalizedText = text.replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+        return normalizedText.replacingOccurrences(of: "\n", with: lineEndings.symbol)
     }
 }
 
