@@ -12,6 +12,7 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidChange(_ view: TextInputView)
     func textInputViewDidChangeSelection(_ view: TextInputView)
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
+    func textInputView(_ view: TextInputView, shouldCheckSpellingIn range: NSRange) -> Bool
     func textInputViewDidInvalidateContentSize(_ view: TextInputView)
     func textInputView(_ view: TextInputView, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
     func textInputViewDidChangeGutterWidth(_ view: TextInputView)
@@ -23,6 +24,9 @@ protocol TextInputViewDelegate: AnyObject {
 }
 
 extension TextInputViewDelegate {
+    func textInputView(_ view: TextInputView, shouldCheckSpellingIn range: NSRange) -> Bool {
+        true
+    }
     func textInputViewWritingToolsWillBegin(_ view: TextInputView) {}
     func textInputViewWritingToolsDidEnd(_ view: TextInputView) {}
 }
@@ -105,12 +109,31 @@ final class TextInputView: UIView, UITextInput {
                                                                 stringView: stringView,
                                                                 lineManager: lineManager,
                                                                 lineControllerStorage: lineControllerStorage)
-    var autocorrectionType: UITextAutocorrectionType = .default
+    var autocorrectionType: UITextAutocorrectionType = .default {
+        didSet { invalidateSpellChecking() }
+    }
     var autocapitalizationType: UITextAutocapitalizationType = .sentences
     var smartQuotesType: UITextSmartQuotesType = .default
     var smartDashesType: UITextSmartDashesType = .default
     var smartInsertDeleteType: UITextSmartInsertDeleteType = .default
-    var spellCheckingType: UITextSpellCheckingType = .default
+    // Runestone owns spelling decorations and actions. UIKit's built-in correction popup uses a private replacement object.
+    // Keep that popup disabled independently of the public spelling preference and keyboard autocorrection.
+    var spellCheckingType: UITextSpellCheckingType = .no
+    var preferredSpellCheckingType: UITextSpellCheckingType = .default {
+        didSet { invalidateSpellChecking() }
+    }
+    var showIgnoreSpellingAction = false {
+        didSet { invalidateSpellChecking() }
+    }
+    var showLearnSpellingAction = false {
+        didSet { invalidateSpellChecking() }
+    }
+    var showUnlearnSpellingAction = false {
+        didSet { invalidateSpellChecking() }
+    }
+    var spellCheckingLanguage: String? {
+        didSet { invalidateSpellChecking() }
+    }
     var keyboardType: UIKeyboardType = .default
     var keyboardAppearance: UIKeyboardAppearance = .default
     var returnKeyType: UIReturnKeyType = .default
@@ -155,10 +178,10 @@ final class TextInputView: UIView, UITextInput {
         WritingToolsExclusions.allowsReplacement(in: range, with: text, in: string, excluding: writingToolsExcludedRanges())
     }
 
-    var isEditableForWritingTools = true
+    var isEditableForSystemTextReplacement = true
     var writingToolsController: WritingToolsControlling?
     private(set) var isWritingToolsActive = false
-    private(set) var isApplyingWritingToolsReplacement = false
+    private(set) var isApplyingSystemTextReplacement = false
     private(set) var textMutationVersion: UInt = 0
     private(set) var writingToolsContextVersion: UInt = 0
     private var textBeforeWritingTools: NSString?
@@ -183,6 +206,7 @@ final class TextInputView: UIView, UITextInput {
         guard active != isWritingToolsActive else {
             return
         }
+        invalidateSpellChecking()
         if active {
             timedUndoManager.endUndoGrouping()
             textBeforeWritingTools = string.copy() as? NSString
@@ -246,6 +270,7 @@ final class TextInputView: UIView, UITextInput {
         didSet {
             if isEditing != oldValue {
                 layoutManager.isEditing = isEditing
+                setNeedsLayout()
             }
         }
     }
@@ -553,6 +578,7 @@ final class TextInputView: UIView, UITextInput {
             if newValue != stringView.string {
                 stopWritingTools()
                 textMutationVersion &+= 1
+                invalidateSpellChecking()
                 stringView.string = newValue
                 languageMode.parse(newValue)
                 // Rebuilding creates new line IDs. Release controllers and pending highlighting for the old lines.
@@ -705,6 +731,9 @@ final class TextInputView: UIView, UITextInput {
             layoutManager.markedRange
         }
         set {
+            if layoutManager.markedRange != newValue {
+                invalidateSpellChecking()
+            }
             layoutManager.markedRange = newValue
         }
     }
@@ -720,6 +749,10 @@ final class TextInputView: UIView, UITextInput {
     }
     private var hasPendingFullLayout = false
     private let editMenuController = EditMenuController()
+    private let spellCheckingService = SpellCheckingService()
+    private var spellingRevision: UInt = 0
+    private var lastSpellingRequest: SpellingRequest?
+    private var lastLegacySpellingRequest: LegacySpellingRequest?
     private var notifyInputDelegateAboutSelectionChangeInLayoutSubviews = false
     private var notifyDelegateAboutSelectionChangeInLayoutSubviews = false
     private var didCallPositionFromPositionInDirectionWithOffset = false
@@ -779,6 +812,7 @@ final class TextInputView: UIView, UITextInput {
         layoutManager.textInputView = self
         editMenuController.delegate = self
         editMenuController.setupEditMenu(in: self)
+        observeSpellingLanguage()
         setupContentSizeObserver()
         setupGutterWidthObserver()
         setupWritingTools()
@@ -801,6 +835,7 @@ final class TextInputView: UIView, UITextInput {
         }
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if didBecomeFirstResponder {
+            invalidateSpellChecking()
             delegate?.textInputViewDidBeginEditing(self)
         } else {
             // This is called in the case where:
@@ -831,6 +866,8 @@ final class TextInputView: UIView, UITextInput {
         layoutManager.layoutIfNeeded()
         layoutManager.layoutLineSelectionIfNeeded()
         layoutPageGuideIfNeeded()
+        checkVisibleSpellingIfNeeded()
+        updateLegacySpellingMenuIfNeeded()
         writingToolsController?.layoutDidChange()
         // We notify the input delegate about selection changes in layoutSubviews so we have a chance of disabling notifying the input delegate during an editing operation.
         // We will sometimes disable notifying the input delegate when the user enters Korean text.
@@ -874,25 +911,9 @@ final class TextInputView: UIView, UITextInput {
         selectedRange = NSRange(location: 0, length: string.length)
     }
 
-    /// When autocorrection is enabled and the user tap on a misspelled word, UITextInteraction will present
-    /// a UIMenuController with suggestions for the correct spelling of the word. Selecting a suggestion will
-    /// cause UITextInteraction to call the non-existing -replace(_:) function and pass an instance of the private
-    /// UITextReplacement type as parameter. We can't make autocorrection work properly without using private API.
-    @objc func replace(_ obj: NSObject) {
-        if let replacementText = obj.value(forKey: "_repl" + "Ttnemeca".reversed() + "ext") as? String {
-            if let indexedRange = obj.value(forKey: "_r" + "gna".reversed() + "e") as? IndexedRange {
-                replace(indexedRange, withText: replacementText)
-            }
-        }
-    }
-
     override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
         if action == #selector(copy(_:)) {
-            if let selectedTextRange = selectedTextRange {
-                return !selectedTextRange.isEmpty
-            } else {
-                return false
-            }
+            return selectedTextRange.map { !$0.isEmpty } ?? false
         } else if action == #selector(cut(_:)) {
             if let selectedTextRange = selectedTextRange {
                 return isEditing && !selectedTextRange.isEmpty
@@ -903,8 +924,13 @@ final class TextInputView: UIView, UITextInput {
             return isEditing && UIPasteboard.general.hasStrings
         } else if action == #selector(selectAll(_:)) {
             return true
-        } else if action == #selector(replace(_:)) {
-            return true
+        } else if action == NSSelectorFromString("replace:") {
+            // UIKit's legacy replacement object is private. Our spelling actions carry their own public data.
+            return false
+        } else if let index = EditMenuController.spellingActionSelectors.firstIndex(of: action) {
+            return isEditing && editMenuController.hasLegacySpellingSuggestion(at: index)
+        } else if let kind = SpellingWordAction.Kind.allCases.first(where: { $0.selector == action }) {
+            return isEditing && isEditableForSystemTextReplacement && editMenuController.hasLegacySpellingWordAction(kind)
         } else if action == NSSelectorFromString("replaceTextInSelectedHighlightedRange") {
             if let selectedRange = selectedRange, let highlightedRange = highlightedRange(for: selectedRange) {
                 return delegate?.textInputView(self, canReplaceTextIn: highlightedRange) ?? false
@@ -923,6 +949,7 @@ final class TextInputView: UIView, UITextInput {
     func setState(_ state: TextViewState, addUndoAction: Bool = false) {
         stopWritingTools()
         textMutationVersion &+= 1
+        invalidateSpellChecking()
         let oldText = stringView.string
         let newText = state.stringView.string
         stringView = state.stringView
@@ -980,6 +1007,7 @@ final class TextInputView: UIView, UITextInput {
                 self.invalidateLines()
                 self.layoutManager.setNeedsLayout()
                 self.layoutManager.layoutIfNeeded()
+                self.invalidateSpellChecking()
             }
             completion?(finished)
         }
@@ -1395,24 +1423,31 @@ extension TextInputView {
     /// Applies a plain-text Writing Tools replacement through the normal editing pipeline.
     /// The returned string is the actual inserted text, including line-ending normalization.
     func replaceTextForWritingTools(in range: NSRange, with text: String) -> String? {
-        guard isEditableForWritingTools, WritingToolsRange.isValid(range, in: string), markedTextRange == nil else {
+        replaceTextFromSystem(in: range, with: text, isWritingToolsReplacement: true)
+    }
+
+    /// Shares validation, literal insertion, notifications, and undo boundaries between system editing features.
+    private func replaceTextFromSystem(in range: NSRange, with text: String,
+                                       isWritingToolsReplacement: Bool,
+                                       isStillValid: () -> Bool = { true }) -> String? {
+        guard isEditableForSystemTextReplacement, WritingToolsRange.isValid(range, in: string), markedTextRange == nil else {
             return nil
         }
         let originalVersion = textMutationVersion
         let originalContextVersion = writingToolsContextVersion
         let preparedText = prepareTextForInsertion(text)
-        guard allowsWritingToolsReplacement(in: range, with: preparedText),
+        guard !isWritingToolsReplacement || allowsWritingToolsReplacement(in: range, with: preparedText),
               textMutationVersion == originalVersion, writingToolsContextVersion == originalContextVersion else {
             return nil
         }
-        isApplyingWritingToolsReplacement = true
-        defer { isApplyingWritingToolsReplacement = false }
-        guard shouldChangeText(in: range, replacementText: preparedText) else {
+        isApplyingSystemTextReplacement = true
+        defer { isApplyingSystemTextReplacement = false }
+        guard shouldChangeText(in: range, replacementText: preparedText), isStillValid() else {
             return nil
         }
         // A delegate may synchronously change the document while deciding whether to allow an edit.
-        guard allowsWritingToolsReplacement(in: range, with: preparedText),
-              isEditableForWritingTools, markedTextRange == nil,
+        guard !isWritingToolsReplacement || allowsWritingToolsReplacement(in: range, with: preparedText),
+              isEditableForSystemTextReplacement, markedTextRange == nil,
               writingToolsContextVersion == originalContextVersion,
               textMutationVersion == originalVersion, WritingToolsRange.isValid(range, in: string) else {
             return nil
@@ -1420,10 +1455,11 @@ extension TextInputView {
         timedUndoManager.endUndoGrouping()
         inputDelegate?.textWillChange(self)
         inputDelegate?.selectionWillChange(self)
-        let canReplace = allowsWritingToolsReplacement(in: range, with: preparedText)
-            && isEditableForWritingTools && markedTextRange == nil
-            && writingToolsContextVersion == originalContextVersion && textMutationVersion == originalVersion
-        let didReplace = canReplace && replaceText(in: range, with: preparedText, isWritingToolsReplacement: true)
+        let canReplace = (!isWritingToolsReplacement || allowsWritingToolsReplacement(in: range, with: preparedText))
+            && isEditableForSystemTextReplacement && markedTextRange == nil
+            && writingToolsContextVersion == originalContextVersion && textMutationVersion == originalVersion && isStillValid()
+        let didReplace = canReplace && replaceText(in: range, with: preparedText, selectedRangeAfterUndo: selectedRange,
+                                                   isWritingToolsReplacement: isWritingToolsReplacement)
         timedUndoManager.endUndoGrouping()
         inputDelegate?.textDidChange(self)
         inputDelegate?.selectionDidChange(self)
@@ -1483,6 +1519,7 @@ extension TextInputView {
         let previousText = writingToolsController?.hasContext == true ? string.copy() as? NSString : nil
         let previousVersion = textMutationVersion
         textMutationVersion &+= 1
+        invalidateSpellChecking()
         let nsNewString = newString as NSString
         let currentText = text(in: range) ?? ""
         let newRange = NSRange(location: range.location, length: nsNewString.length)
@@ -1925,6 +1962,22 @@ extension TextInputView: IndentControllerDelegate {
 
 // MARK: - EditMenuControllerDelegate
 extension TextInputView: EditMenuControllerDelegate {
+    func editMenuController(_ controller: EditMenuController, spellingSuggestionsFor range: NSRange) -> [SpellingSuggestion] {
+        spellingSuggestions(in: range)
+    }
+
+    func editMenuController(_ controller: EditMenuController, spellingWordActionsFor range: NSRange) -> [SpellingWordAction] {
+        spellingWordActions(in: range)
+    }
+
+    func editMenuController(_ controller: EditMenuController, perform action: SpellingWordAction) {
+        performSpellingWordAction(action)
+    }
+
+    func editMenuController(_ controller: EditMenuController, replace suggestion: SpellingSuggestion) {
+        replaceSpellingSuggestion(suggestion)
+    }
+
     func editMenuController(_ controller: EditMenuController, caretRectAt location: Int) -> CGRect {
         caretRectService.caretRect(at: location, allowMovingCaretToNextLineFragment: false)
     }
@@ -1943,5 +1996,280 @@ extension TextInputView: EditMenuControllerDelegate {
 
     func selectedRange(for controller: EditMenuController) -> NSRange? {
         selectedRange
+    }
+}
+
+// MARK: - Spelling
+private struct SpellingRequest: Equatable {
+    let visibleRanges: [NSRange]
+    let language: String
+    let excludedRanges: [NSRange]
+}
+
+private struct LegacySpellingRequest: Equatable {
+    let selection: NSRange?
+    let revision: UInt
+}
+
+extension TextInputView {
+    private func observeSpellingLanguage() {
+        for name in [UITextInputMode.currentInputModeDidChangeNotification, UIApplication.didBecomeActiveNotification,
+                     SpellCheckingService.learnedWordsDidChangeNotification] {
+            NotificationCenter.default.publisher(for: name)
+                .sink { [weak self] _ in self?.invalidateSpellChecking() }
+                .store(in: &cancellables)
+        }
+    }
+
+    func invalidateSpellChecking() {
+        editMenuController.dismissSpellingMenu()
+        spellingRevision &+= 1
+        lastSpellingRequest = nil
+        spellCheckingService.invalidate()
+        layoutManager.misspelledRanges = []
+        setNeedsLayout()
+    }
+
+    private var isSpellCheckingEnabled: Bool {
+        !isWritingToolsActive && (preferredSpellCheckingType == .yes || (preferredSpellCheckingType == .default && autocorrectionType != .no))
+    }
+
+    private var resolvedSpellingLanguage: String? {
+        let languages = UITextChecker.availableLanguages
+        func match(_ preferred: String, allowsLanguageFallback: Bool) -> String? {
+            let normalized = preferred.replacingOccurrences(of: "-", with: "_")
+            if let exact = languages.first(where: { $0.caseInsensitiveCompare(normalized) == .orderedSame }) {
+                return exact
+            }
+            guard allowsLanguageFallback, let base = normalized.split(separator: "_").first else {
+                return nil
+            }
+            return languages.first { $0.split(separator: "_").first?.lowercased() == base.lowercased() }
+        }
+        if let language = spellCheckingLanguage {
+            return match(language, allowsLanguageFallback: false)
+        }
+        let preferredLanguages = [textInputMode?.primaryLanguage].compactMap { $0 } + Locale.preferredLanguages
+        return preferredLanguages.compactMap { match($0, allowsLanguageFallback: true) }.first ?? languages.first
+    }
+
+    private func checkVisibleSpellingIfNeeded() {
+        guard isSpellCheckingEnabled, let language = resolvedSpellingLanguage,
+              !layoutManager.visibleTextRanges.isEmpty else {
+            if lastSpellingRequest != nil {
+                spellCheckingService.invalidate()
+                layoutManager.misspelledRanges = []
+                lastSpellingRequest = nil
+            }
+            return
+        }
+        var excludedRanges = [markedRange].compactMap { $0 }
+        if isEditing, let selection = selectedRange, selection.length == 0 {
+            excludedRanges.append(selection)
+        }
+        let request = SpellingRequest(visibleRanges: layoutManager.visibleTextRanges, language: language, excludedRanges: excludedRanges)
+        guard lastSpellingRequest != request else {
+            return
+        }
+        lastSpellingRequest = request
+        spellCheckingService.schedule(text: string, visibleRanges: request.visibleRanges, language: language,
+                                      excludedRanges: excludedRanges, shouldCheck: { [weak self] range in
+            guard let self = self else {
+                return false
+            }
+            return self.delegate?.textInputView(self, shouldCheckSpellingIn: range) ?? true
+        }, completion: { [weak self] ranges in
+            self?.layoutManager.misspelledRanges = ranges
+        })
+    }
+
+    private func updateLegacySpellingMenuIfNeeded() {
+        if #available(iOS 16, *) {
+            return
+        }
+        guard isFirstResponder else {
+            lastLegacySpellingRequest = nil
+            return
+        }
+        let request = LegacySpellingRequest(selection: selectedRange, revision: spellingRevision)
+        guard request != lastLegacySpellingRequest else {
+            return
+        }
+        lastLegacySpellingRequest = request
+        editMenuController.updateLegacySpellingMenu()
+    }
+
+    func dismissSpellingMenu() {
+        editMenuController.dismissSpellingMenu()
+    }
+
+    func presentSpellingMenu(at point: CGPoint) {
+        guard isEditing, isEditableForSystemTextReplacement, isSpellCheckingEnabled, markedRange == nil,
+              let selection = selectedRange, selection.length == 0,
+              let position = closestPosition(to: point) else {
+            return
+        }
+        // Probe both directions at character boundaries, then test actual rendered word geometry.
+        for storageDirection in [UITextStorageDirection.backward, .forward] {
+            let direction = UITextDirection(rawValue: storageDirection.rawValue)
+            guard let word = tokenizer.rangeEnclosingPosition(position, with: .word, inDirection: direction) as? IndexedRange,
+                  selection.location >= word.range.location, selection.location <= NSMaxRange(word.range),
+                  let target = spellingTarget(in: word.range),
+                  spellCheckingService.isMisspelled(for: word.range, in: string, language: target.language),
+                  let rect = layoutManager.spellingRects(for: word.range).first(where: { $0.contains(point) }) else {
+                continue
+            }
+            guard !spellingSuggestions(in: word.range).isEmpty || !spellingWordActions(in: word.range).isEmpty,
+                  isCurrentSpellingSuggestion(target) else {
+                return
+            }
+            selectedRange = word.range
+            editMenuController.presentSpellingMenu(from: self, forTextIn: word.range, targetRect: rect)
+            return
+        }
+    }
+
+    var ignoredSpellingWords: [String] {
+        spellCheckingService.ignoredWords
+    }
+
+    func ignoreSpellingWord(_ word: String) {
+        spellCheckingService.ignoreWord(word)
+        invalidateSpellChecking()
+    }
+
+    func resetIgnoredSpellingWords() {
+        spellCheckingService.resetIgnoredWords()
+        invalidateSpellChecking()
+    }
+
+    private func spellingTarget(in requestedRange: NSRange) -> SpellingSuggestion? {
+        guard isEditing, isEditableForSystemTextReplacement, isSpellCheckingEnabled, markedRange == nil,
+              WritingToolsRange.isValid(requestedRange, in: string), let language = resolvedSpellingLanguage else {
+            return nil
+        }
+        var range = requestedRange
+        if range.length == 0 {
+            let position = IndexedPosition(index: range.location)
+            let direction = UITextDirection(rawValue: UITextStorageDirection.backward.rawValue)
+            guard let word = tokenizer.rangeEnclosingPosition(position, with: .word, inDirection: direction) as? IndexedRange else {
+                return nil
+            }
+            range = word.range
+        }
+        guard let original = spellCheckingService.word(for: range, in: string) else {
+            return nil
+        }
+        let target = SpellingSuggestion(range: range, original: original, replacement: "", language: language,
+                                        revision: spellingRevision, selection: selectedRange)
+        guard delegate?.textInputView(self, shouldCheckSpellingIn: range) ?? true, isCurrentSpellingSuggestion(target) else {
+            return nil
+        }
+        return target
+    }
+
+    func spellingSuggestions(in requestedRange: NSRange) -> [SpellingSuggestion] {
+        guard let target = spellingTarget(in: requestedRange) else {
+            return []
+        }
+        return spellCheckingService.suggestions(for: target.range, in: string, language: target.language).prefix(3).map { replacement in
+            SpellingSuggestion(range: target.range, original: target.original, replacement: replacement, language: target.language,
+                               revision: target.revision, selection: target.selection)
+        }
+    }
+
+    func spellingWordActions(in requestedRange: NSRange) -> [SpellingWordAction] {
+        guard let target = spellingTarget(in: requestedRange) else {
+            return []
+        }
+        if SpellCheckingService.hasLearnedWord(target.original) {
+            return showUnlearnSpellingAction ? [SpellingWordAction(kind: .unlearn, target: target)] : []
+        }
+        guard spellCheckingService.isMisspelled(for: target.range, in: string, language: target.language) else {
+            return []
+        }
+        var actions: [SpellingWordAction] = []
+        if showIgnoreSpellingAction {
+            actions.append(SpellingWordAction(kind: .ignore, target: target))
+        }
+        if showLearnSpellingAction {
+            actions.append(SpellingWordAction(kind: .learn, target: target))
+        }
+        return actions
+    }
+
+    func performSpellingWordAction(_ action: SpellingWordAction) {
+        let target = action.target
+        guard isCurrentSpellingSuggestion(target),
+              delegate?.textInputView(self, shouldCheckSpellingIn: target.range) ?? true,
+              isCurrentSpellingSuggestion(target) else {
+            return
+        }
+        // Requery dictionary state even if another caller changed UITextChecker directly while the menu was open.
+        let isLearned = SpellCheckingService.hasLearnedWord(target.original)
+        if action.kind == .unlearn {
+            guard isLearned else {
+                return
+            }
+            SpellCheckingService.unlearnWord(target.original)
+        } else {
+            guard !isLearned, spellCheckingService.isMisspelled(for: target.range, in: string, language: target.language) else {
+                return
+            }
+            switch action.kind {
+            case .ignore:
+                ignoreSpellingWord(target.original)
+            case .learn:
+                SpellCheckingService.learnWord(target.original)
+            case .unlearn:
+                break
+            }
+        }
+    }
+
+    func replaceSpellingSuggestion(_ suggestion: SpellingSuggestion) {
+        guard isCurrentSpellingCorrection(suggestion),
+              delegate?.textInputView(self, shouldCheckSpellingIn: suggestion.range) ?? true,
+              isCurrentSpellingCorrection(suggestion) else {
+            return
+        }
+        _ = replaceTextFromSystem(in: suggestion.range, with: suggestion.replacement, isWritingToolsReplacement: false) {
+            self.isCurrentSpellingCorrection(suggestion)
+        }
+    }
+
+    private func isCurrentSpellingCorrection(_ suggestion: SpellingSuggestion) -> Bool {
+        isCurrentSpellingSuggestion(suggestion)
+            && spellCheckingService.isMisspelled(for: suggestion.range, in: string, language: suggestion.language)
+    }
+
+    private func isCurrentSpellingSuggestion(_ suggestion: SpellingSuggestion) -> Bool {
+        isEditing && isEditableForSystemTextReplacement && isSpellCheckingEnabled && markedRange == nil
+            && suggestion.revision == spellingRevision && suggestion.language == resolvedSpellingLanguage
+            && suggestion.selection == selectedRange && text(in: suggestion.range) == suggestion.original
+    }
+
+    @objc private func ignoreSelectedSpellingWord() {
+        editMenuController.performLegacySpellingWordAction(.ignore)
+    }
+
+    @objc private func learnSelectedSpellingWord() {
+        editMenuController.performLegacySpellingWordAction(.learn)
+    }
+
+    @objc private func unlearnSelectedSpellingWord() {
+        editMenuController.performLegacySpellingWordAction(.unlearn)
+    }
+
+    @objc private func replaceWithFirstSpellingSuggestion() {
+        editMenuController.replaceLegacySpellingSuggestion(at: 0)
+    }
+
+    @objc private func replaceWithSecondSpellingSuggestion() {
+        editMenuController.replaceLegacySpellingSuggestion(at: 1)
+    }
+
+    @objc private func replaceWithThirdSpellingSuggestion() {
+        editMenuController.replaceLegacySpellingSuggestion(at: 2)
     }
 }

@@ -99,6 +99,8 @@ Automatically insert and delete closing the closing component of a character pai
 
 ### Editing
 
+- <doc:SpellChecking>
+
 - ``LineEnding``
 
 ### Navigation

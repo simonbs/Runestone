@@ -12,7 +12,11 @@ import UIKit
 /// The function takes an instance of ``TextViewState`` as input which can be created on a background queue to avoid blocking the main queue while doing the initial parse of a text.
 open class TextView: UIScrollView {
     /// Delegate to receive callbacks for events triggered by the editor.
-    public weak var editorDelegate: TextViewDelegate?
+    public weak var editorDelegate: TextViewDelegate? {
+        didSet {
+            textInputView.invalidateSpellChecking()
+        }
+    }
     /// Whether the text view is in a state where the contents can be edited.
     public private(set) var isEditing = false {
         didSet {
@@ -27,6 +31,7 @@ open class TextView: UIScrollView {
             textInputView.string as String
         }
         set {
+            textInputView.resetIgnoredSpellingWords()
             textInputView.string = newValue as NSString
             contentSize = preferredContentSize
         }
@@ -34,7 +39,7 @@ open class TextView: UIScrollView {
     /// A Boolean value that indicates whether the text view is editable.
     public var isEditable = true {
         didSet {
-            textInputView.isEditableForWritingTools = isEditable
+            textInputView.isEditableForSystemTextReplacement = isEditable
             if !isEditable { stopWritingTools() }
             if isEditable != oldValue && !isEditable && isEditing {
                 resignFirstResponder()
@@ -111,13 +116,89 @@ open class TextView: UIScrollView {
         }
     }
     /// The spell-checking style for the text object.
+    ///
+    /// `.yes` checks visible text independently of autocorrection, `.no` disables checking, and
+    /// `.default` checks when ``autocorrectionType`` is not `.no`. Underlines and corrections use public UIKit APIs.
     public var spellCheckingType: UITextSpellCheckingType {
         get {
-            textInputView.spellCheckingType
+            textInputView.preferredSpellCheckingType
         }
         set {
-            textInputView.spellCheckingType = newValue
+            textInputView.preferredSpellCheckingType = newValue
         }
+    }
+    /// The language used for spelling, such as `en_US`, or `nil` to follow the keyboard and preferred languages.
+    ///
+    /// Use a language from `UITextChecker.availableLanguages`. An unsupported explicit language disables checking.
+    /// Spelling is checked incrementally in visible text. Set ``spellCheckingType`` to `.yes` to enable it
+    /// independently of autocorrection. The delegate can exclude code or other non-prose ranges.
+    public var spellCheckingLanguage: String? {
+        get {
+            textInputView.spellCheckingLanguage
+        }
+        set {
+            textInputView.spellCheckingLanguage = newValue
+        }
+    }
+
+    /// Whether spelling menus include Ignore Spelling when applicable. Defaults to false.
+    /// This controls menu visibility only; the corresponding dictionary API remains available.
+    public var showIgnoreSpellingAction: Bool {
+        get { textInputView.showIgnoreSpellingAction }
+        set { textInputView.showIgnoreSpellingAction = newValue }
+    }
+
+    /// Whether spelling menus include Learn Spelling when applicable. Defaults to false.
+    /// This controls menu visibility only; the corresponding dictionary API remains available.
+    public var showLearnSpellingAction: Bool {
+        get { textInputView.showLearnSpellingAction }
+        set { textInputView.showLearnSpellingAction = newValue }
+    }
+
+    /// Whether spelling menus include Unlearn Spelling when applicable. Defaults to false.
+    /// This controls menu visibility only; the corresponding dictionary API remains available.
+    public var showUnlearnSpellingAction: Bool {
+        get { textInputView.showUnlearnSpellingAction }
+        set { textInputView.showUnlearnSpellingAction = newValue }
+    }
+
+    /// Words ignored in this view's current document session. This list is not persisted or shared between views.
+    /// Assigning ``text`` or calling ``setState(_:addUndoAction:)`` starts a new session and clears this list.
+    public var ignoredSpellingWords: [String] {
+        textInputView.ignoredSpellingWords
+    }
+
+    /// Ignores a whole word in this document session and rechecks visible spelling.
+    /// Ordinary edits, undo, language changes, and disabling checking preserve ignored words.
+    public func ignoreSpellingWord(_ word: String) {
+        textInputView.ignoreSpellingWord(word)
+    }
+
+    /// Starts a fresh spelling session without changing the document or undo history.
+    public func resetIgnoredSpellingWords() {
+        textInputView.resetIgnoredSpellingWords()
+    }
+
+    /// Adds a word to Apple's shared learned dictionary, across documents and languages.
+    /// Call only in response to an explicit user request. Runestone views refresh automatically.
+    public static func learnSpellingWord(_ word: String) {
+        SpellCheckingService.learnWord(word)
+    }
+
+    /// Removes a user-learned word from Apple's shared dictionary and refreshes Runestone views.
+    public static func unlearnSpellingWord(_ word: String) {
+        SpellCheckingService.unlearnWord(word)
+    }
+
+    /// Whether Apple's shared dictionary contains this user-learned word.
+    public static func hasLearnedSpellingWord(_ word: String) -> Bool {
+        SpellCheckingService.hasLearnedWord(word)
+    }
+
+    /// Rechecks visible spelling after the delegate's policy or externally managed learned dictionary changes.
+    /// Runestone also refreshes when the app becomes active or this view becomes first responder.
+    public func invalidateSpellChecking() {
+        textInputView.invalidateSpellChecking()
     }
     /// The keyboard type for the text view.
     public var keyboardType: UIKeyboardType {
@@ -271,6 +352,7 @@ open class TextView: UIScrollView {
     override public var contentOffset: CGPoint {
         didSet {
             if contentOffset != oldValue {
+                textInputView.dismissSpellingMenu()
                 textInputView.viewport = CGRect(origin: contentOffset, size: frame.size)
             }
         }
@@ -634,6 +716,7 @@ open class TextView: UIScrollView {
     }
     private var _editMenuInteraction: Any?
     private let tapGestureRecognizer = QuickTapGestureRecognizer()
+    private let spellingTapGestureRecognizer = UITapGestureRecognizer()
     private var _inputAccessoryView: UIView?
     private var isPerformingNonEditableTextInteraction = false
     private var delegateAllowsEditingToBegin: Bool {
@@ -689,6 +772,10 @@ open class TextView: UIScrollView {
         tapGestureRecognizer.delegate = self
         tapGestureRecognizer.addTarget(self, action: #selector(handleTap(_:)))
         addGestureRecognizer(tapGestureRecognizer)
+        spellingTapGestureRecognizer.delegate = self
+        spellingTapGestureRecognizer.cancelsTouchesInView = false
+        spellingTapGestureRecognizer.addTarget(self, action: #selector(handleSpellingTap(_:)))
+        addGestureRecognizer(spellingTapGestureRecognizer)
         installNonEditableInteraction()
         keyboardObserver.delegate = self
         highlightNavigationController.delegate = self
@@ -758,6 +845,7 @@ open class TextView: UIScrollView {
     /// - Parameter state: The new state to be used by the editor.
     /// - Parameter addUndoAction: Whether the state change can be undone. Defaults to false.
     public func setState(_ state: TextViewState, addUndoAction: Bool = false) {
+        textInputView.resetIgnoredSpellingWords()
         textInputView.setState(state, addUndoAction: addUndoAction)
         contentSize = preferredContentSize
     }
@@ -1168,6 +1256,23 @@ private extension TextView {
         }
     }
 
+    @objc private func handleSpellingTap(_ gestureRecognizer: UITapGestureRecognizer) {
+        guard gestureRecognizer.state == .ended else {
+            return
+        }
+        let point = gestureRecognizer.location(in: textInputView)
+        let version = textInputView.textMutationVersion
+        textInputView.dismissSpellingMenu()
+        // Let UITextInteraction finish moving the caret and the initial tap start editing first.
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, self.isEditable, self.isSelectable, self.isEditing,
+                  !self.isDragging, !self.isDecelerating, self.textInputView.textMutationVersion == version else {
+                return
+            }
+            self.textInputView.presentSpellingMenu(at: point)
+        }
+    }
+
     @objc private func handleTextRangeAdjustmentPan(_ gestureRecognizer: UIPanGestureRecognizer) {
         // This function scroll the text view when the selected range is adjusted.
         if gestureRecognizer.state == .began {
@@ -1383,6 +1488,10 @@ extension TextView: TextInputViewDelegate {
         editorDelegate?.textViewDidChange(self)
     }
 
+    func textInputView(_ view: TextInputView, shouldCheckSpellingIn range: NSRange) -> Bool {
+        editorDelegate?.textView(self, shouldCheckSpellingIn: range) ?? true
+    }
+
     func textInputViewDidChangeSelection(_ view: TextInputView) {
         UIMenuController.shared.hideMenu(from: self)
         highlightNavigationController.selectedRange = view.selectedRange
@@ -1407,7 +1516,7 @@ extension TextView: TextInputViewDelegate {
     }
 
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
-        if textInputView.isRestoringPreviouslyDeletedText || view.isUpdatingMarkedText || view.isApplyingWritingToolsReplacement {
+        if textInputView.isRestoringPreviouslyDeletedText || view.isUpdatingMarkedText || view.isApplyingSystemTextReplacement {
             // Let UIKit compose marked text without inserting or skipping character pairs.
             // This also applies when UIKit restores text while combining Korean characters.
             return editorDelegate?.textView(self, shouldChangeTextIn: range, replacementText: text) ?? true
@@ -1493,6 +1602,8 @@ extension TextView: UIGestureRecognizerDelegate {
     override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         if gestureRecognizer === tapGestureRecognizer {
             return !isEditing && !isDragging && !isDecelerating && delegateAllowsEditingToBegin
+        } else if gestureRecognizer === spellingTapGestureRecognizer {
+            return isEditable && isSelectable && !isDragging && !isDecelerating
         } else {
             return super.gestureRecognizerShouldBegin(gestureRecognizer)
         }

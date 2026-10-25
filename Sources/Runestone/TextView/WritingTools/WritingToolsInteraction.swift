@@ -81,7 +81,7 @@ final class WritingToolsInteraction: NSObject, WritingToolsControlling, UIWritin
     }
 
     func layoutDidChange() {
-        guard !isUpdatingLayout, let contextIdentifier, let view = textInputView, !view.isApplyingWritingToolsReplacement,
+        guard !isUpdatingLayout, let contextIdentifier, let view = textInputView, !view.isApplyingSystemTextReplacement,
               view.textMutationVersion == expectedMutationVersion else {
             return
         }
@@ -132,7 +132,7 @@ final class WritingToolsInteraction: NSObject, WritingToolsControlling, UIWritin
                                  reason: UIWritingToolsCoordinator.TextReplacementReason,
                                  animationParameters: UIWritingToolsCoordinator.AnimationParameters?,
                                  completion: @escaping (NSAttributedString?) -> Void) {
-        guard let view = validView(for: range, in: context), view.isEditableForWritingTools,
+        guard let view = validView(for: range, in: context), view.isEditableForSystemTextReplacement,
               let insertedText = view.replaceTextForWritingTools(in: range, with: replacementText.string),
               contextIdentifier == context.identifier else {
                   completion(nil)

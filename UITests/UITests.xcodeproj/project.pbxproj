@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F15CE1102EF0000000000001 /* SpellCheckingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F15CE1102EF0000000000002 /* SpellCheckingTests.swift */; };
 		7216EAC82829A3C6001B6D39 /* RunestoneJavaScriptLanguage in Frameworks */ = {isa = PBXBuildFile; productRef = 7216EAC72829A3C6001B6D39 /* RunestoneJavaScriptLanguage */; };
 		72190768291818BD0054847B /* ChineseInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72190767291818BD0054847B /* ChineseInputTests.swift */; };
 		7244DB2C290BFDEA007C99B5 /* KoreanInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7244DB2B290BFDEA007C99B5 /* KoreanInputTests.swift */; };
@@ -33,6 +34,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F15CE1102EF0000000000002 /* SpellCheckingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpellCheckingTests.swift; sourceTree = "<group>"; };
 		72190767291818BD0054847B /* ChineseInputTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChineseInputTests.swift; sourceTree = "<group>"; };
 		72414C092983E749001EF494 /* Host.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = Host.entitlements; sourceTree = "<group>"; };
 		72414C0A2983E749001EF494 /* Host.xctestplan */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Host.xctestplan; sourceTree = "<group>"; };
@@ -77,6 +79,7 @@
 			isa = PBXGroup;
 			children = (
 				72190767291818BD0054847B /* ChineseInputTests.swift */,
+				F15CE1102EF0000000000002 /* SpellCheckingTests.swift */,
 				7244DB2B290BFDEA007C99B5 /* KoreanInputTests.swift */,
 				72D2718329126FC60070FA88 /* XCUIApplication+Helpers.swift */,
 			);
@@ -277,6 +280,7 @@
 				7244DB2C290BFDEA007C99B5 /* KoreanInputTests.swift in Sources */,
 				72D2718429126FC60070FA88 /* XCUIApplication+Helpers.swift in Sources */,
 				72190768291818BD0054847B /* ChineseInputTests.swift in Sources */,
+				F15CE1102EF0000000000001 /* SpellCheckingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

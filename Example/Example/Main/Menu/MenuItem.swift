@@ -12,4 +12,5 @@ enum MenuItem {
     case togglePageGuide
     case toggleSelectable
     case toggleWrapLines
+    case toggleSpellChecking
 }

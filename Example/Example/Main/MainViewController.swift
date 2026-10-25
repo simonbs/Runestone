@@ -197,6 +197,9 @@ extension MainViewController: MenuSelectionHandler {
         case .toggleWrapLines:
             UserDefaults.standard.wrapLines.toggle()
             updateTextViewSettings()
+        case .toggleSpellChecking:
+            UserDefaults.standard.checkSpelling.toggle()
+            updateTextViewSettings()
         }
     }
 }

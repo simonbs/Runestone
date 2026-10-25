@@ -3,3 +3,6 @@
 "undo.action_name.move_lines_up" = "Move Lines Up";
 "undo.action_name.move_lines_down" = "Move Lines Down";
 "menu.item_title.replace" = "Replace";
+"menu.item_title.ignore_spelling" = "Ignore Spelling";
+"menu.item_title.learn_spelling" = "Learn Spelling";
+"menu.item_title.unlearn_spelling" = "Unlearn Spelling";

@@ -58,6 +58,25 @@ final class HighlightBackgroundRenderingTests: XCTestCase {
         }
     }
 
+    func testSpellingUnderlinesRemainVisibleOverTokenBackground() throws {
+        let attributed = NSAttributedString(string: "mispelled", attributes: [
+            .font: UIFont.monospacedSystemFont(ofSize: 18, weight: .regular),
+            .foregroundColor: UIColor.clear,
+            .backgroundColor: UIColor.yellow
+        ])
+        let fragment = try XCTUnwrap(makeFragments(attributed, width: 500).first)
+        let renderer = LineFragmentRenderer(lineFragment: fragment, invisibleCharacterConfiguration: .init())
+        renderer.misspelledRanges = [NSRange(location: 0, length: attributed.length)]
+        let bitmap = try draw(renderer)
+        // At 1x the narrow dotted stroke blends with yellow; require a visible
+        // red-dominant pixel rather than an unblended system-red pixel.
+        let hasUnderline = stride(from: 0, to: bitmap.bytes.count, by: 4).contains { offset in
+            let red = Int(bitmap.bytes[offset])
+            return red > 200 && red - Int(bitmap.bytes[offset + 1]) > 64 && red - Int(bitmap.bytes[offset + 2]) > 64
+        }
+        XCTAssertTrue(hasUnderline, "The spelling underline must paint above the opaque token background.")
+    }
+
     private func makeFragments(_ string: NSAttributedString, width: CGFloat) -> [LineFragment] {
         let typesetter = LineTypesetter(lineID: "test")
         typesetter.constrainingWidth = width

@@ -128,6 +128,8 @@
 - ``autocapitalizationType``
 - ``autocorrectionType``
 - ``spellCheckingType``
+- ``spellCheckingLanguage``
+- ``invalidateSpellChecking()``
 - ``smartDashesType``
 - ``smartInsertDeleteType``
 - ``smartQuotesType``
