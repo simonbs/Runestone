@@ -12,7 +12,11 @@ import UIKit
 /// The function takes an instance of ``TextViewState`` as input which can be created on a background queue to avoid blocking the main queue while doing the initial parse of a text.
 open class TextView: UIScrollView {
     /// Delegate to receive callbacks for events triggered by the editor.
-    public weak var editorDelegate: TextViewDelegate?
+    public weak var editorDelegate: TextViewDelegate? {
+        didSet {
+            textInputView.invalidateSpellChecking()
+        }
+    }
     /// Whether the text view is in a state where the contents can be edited.
     public private(set) var isEditing = false {
         didSet {
@@ -108,13 +112,34 @@ open class TextView: UIScrollView {
         }
     }
     /// The spell-checking style for the text object.
+    ///
+    /// `.yes` checks visible text independently of autocorrection, `.no` disables checking, and
+    /// `.default` checks when ``autocorrectionType`` is not `.no`. Underlines and corrections use public UIKit APIs.
     public var spellCheckingType: UITextSpellCheckingType {
         get {
-            textInputView.spellCheckingType
+            textInputView.preferredSpellCheckingType
         }
         set {
-            textInputView.spellCheckingType = newValue
+            textInputView.preferredSpellCheckingType = newValue
         }
+    }
+    /// The language used for spelling, such as `en_US`, or `nil` to follow the keyboard and preferred languages.
+    ///
+    /// Use a language from `UITextChecker.availableLanguages`. An unsupported explicit language disables checking.
+    /// Spelling is checked incrementally in visible text. Set ``spellCheckingType`` to `.yes` to enable it
+    /// independently of autocorrection. The delegate can exclude code or other non-prose ranges.
+    public var spellCheckingLanguage: String? {
+        get {
+            textInputView.spellCheckingLanguage
+        }
+        set {
+            textInputView.spellCheckingLanguage = newValue
+        }
+    }
+
+    /// Rechecks visible spelling after the delegate's spelling policy changes.
+    public func invalidateSpellChecking() {
+        textInputView.invalidateSpellChecking()
     }
     /// The keyboard type for the text view.
     public var keyboardType: UIKeyboardType {
@@ -1338,6 +1363,10 @@ extension TextView: TextInputViewDelegate {
             scrollLocationToVisible(newRange.location)
         }
         editorDelegate?.textViewDidChange(self)
+    }
+
+    func textInputView(_ view: TextInputView, shouldCheckSpellingIn range: NSRange) -> Bool {
+        editorDelegate?.textView(self, shouldCheckSpellingIn: range) ?? true
     }
 
     func textInputViewDidChangeSelection(_ view: TextInputView) {

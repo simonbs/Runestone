@@ -20,10 +20,43 @@ final class MainViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        if ProcessInfo.processInfo.useSpellChecking {
+            configureSpellChecking()
+            return
+        }
         let state = TextViewState(text: "", theme: DefaultTheme(), language: .javaScript)
         if ProcessInfo.processInfo.useCRLFLineEndings {
             contentView.textView.lineEndings = .crlf
         }
         contentView.textView.setState(state)
+    }
+
+    private func configureSpellChecking() {
+        title = "Spelling"
+        let textView = contentView.textView
+        textView.showLineNumbers = false
+        textView.spellCheckingLanguage = "en_US"
+        textView.spellCheckingType = .yes
+        let text = "mispelled word.\n\nSelect the underlined word to correct it."
+        textView.setState(TextViewState(text: text))
+        textView.selectedRange = NSRange(location: (text as NSString).length, length: 0)
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Undo", style: .plain, target: self, action: #selector(undoSpellingCorrection))
+        updateSpellingButton()
+    }
+
+    private func updateSpellingButton() {
+        let title = contentView.textView.spellCheckingType == .yes ? "Spelling On" : "Spelling Off"
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: title, style: .plain, target: self, action: #selector(toggleSpellChecking))
+    }
+
+    @objc private func undoSpellingCorrection() {
+        contentView.textView.undoManager?.undo()
+    }
+
+    @objc private func toggleSpellChecking() {
+        let textView = contentView.textView
+        textView.spellCheckingType = textView.spellCheckingType == .yes ? .no : .yes
+        textView.selectedRange = NSRange(location: (textView.text as NSString).length, length: 0)
+        updateSpellingButton()
     }
 }

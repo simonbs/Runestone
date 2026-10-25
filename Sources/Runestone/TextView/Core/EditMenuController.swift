@@ -1,6 +1,17 @@
 import UIKit
 
+struct SpellingSuggestion {
+    let range: NSRange
+    let original: String
+    let replacement: String
+    let language: String
+    let revision: UInt
+    let selection: NSRange?
+}
+
 protocol EditMenuControllerDelegate: AnyObject {
+    func editMenuController(_ controller: EditMenuController, spellingSuggestionsFor range: NSRange) -> [SpellingSuggestion]
+    func editMenuController(_ controller: EditMenuController, replace suggestion: SpellingSuggestion)
     func editMenuController(_ controller: EditMenuController, highlightedRangeFor range: NSRange) -> HighlightedRange?
     func editMenuController(_ controller: EditMenuController, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool
     func editMenuController(_ controller: EditMenuController, caretRectAt location: Int) -> CGRect
@@ -10,6 +21,12 @@ protocol EditMenuControllerDelegate: AnyObject {
 
 final class EditMenuController: NSObject {
     weak var delegate: EditMenuControllerDelegate?
+    static let spellingActionSelectors = [
+        NSSelectorFromString("replaceWithFirstSpellingSuggestion"),
+        NSSelectorFromString("replaceWithSecondSpellingSuggestion"),
+        NSSelectorFromString("replaceWithThirdSpellingSuggestion")
+    ]
+    private var legacySpellingSuggestions: [SpellingSuggestion] = []
 
     @available(iOS 16, *)
     private var editMenuInteraction: UIEditMenuInteraction? {
@@ -36,15 +53,61 @@ final class EditMenuController: NSObject {
             configuration.preferredArrowDirection = .down
             editMenuInteraction?.presentEditMenu(with: configuration)
         } else {
+            updateLegacySpellingMenu()
             UIMenuController.shared.showMenu(from: view, rect: menuRect)
         }
     }
 
     func editMenu(for textRange: UITextRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
-        guard let textRange = textRange as? IndexedRange, let replaceAction = replaceActionIfAvailable(for: textRange.range) else {
+        guard let textRange = textRange as? IndexedRange else {
             return UIMenu(children: suggestedActions)
         }
-        return UIMenu(children: suggestedActions + [replaceAction])
+        return menu(for: textRange.range, suggestedActions: suggestedActions)
+    }
+
+    func updateLegacySpellingMenu() {
+        if #available(iOS 16, *) {
+            return
+        }
+        // Legacy menus offer corrections for selected words. Do not synchronously check the active word on every keystroke.
+        if let range = delegate?.selectedRange(for: self), range.length > 0 {
+            legacySpellingSuggestions = delegate?.editMenuController(self, spellingSuggestionsFor: range) ?? []
+        } else {
+            legacySpellingSuggestions = []
+        }
+        var items = zip(legacySpellingSuggestions, Self.spellingActionSelectors).map { suggestion, selector in
+            UIMenuItem(title: suggestion.replacement, action: selector)
+        }
+        items.append(UIMenuItem(title: L10n.Menu.ItemTitle.replace, action: NSSelectorFromString("replaceTextInSelectedHighlightedRange")))
+        UIMenuController.shared.menuItems = items
+    }
+
+    func hasLegacySpellingSuggestion(at index: Int) -> Bool {
+        legacySpellingSuggestions.indices.contains(index)
+    }
+
+    func replaceLegacySpellingSuggestion(at index: Int) {
+        guard hasLegacySpellingSuggestion(at: index) else {
+            return
+        }
+        delegate?.editMenuController(self, replace: legacySpellingSuggestions[index])
+    }
+
+    private func menu(for range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu {
+        let suggestions = delegate?.editMenuController(self, spellingSuggestionsFor: range) ?? []
+        var actions: [UIMenuElement] = suggestions.map { suggestion in
+            UIAction(title: suggestion.replacement) { [weak self] _ in
+                guard let self = self else {
+                    return
+                }
+                self.delegate?.editMenuController(self, replace: suggestion)
+            }
+        }
+        actions.append(contentsOf: suggestedActions)
+        if let replaceAction = replaceActionIfAvailable(for: range) {
+            actions.append(replaceAction)
+        }
+        return UIMenu(children: actions)
     }
 }
 
@@ -95,8 +158,8 @@ extension EditMenuController: UIEditMenuInteractionDelegate {
         menuFor configuration: UIEditMenuConfiguration,
         suggestedActions: [UIMenuElement]
     ) -> UIMenu? {
-        if let selectedRange = delegate?.selectedRange(for: self), let replaceAction = replaceActionIfAvailable(for: selectedRange) {
-            return UIMenu(children: [replaceAction] + suggestedActions)
+        if let selectedRange = delegate?.selectedRange(for: self) {
+            return menu(for: selectedRange, suggestedActions: suggestedActions)
         } else {
             return UIMenu(children: suggestedActions)
         }

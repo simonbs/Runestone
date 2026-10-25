@@ -18,6 +18,7 @@ final class LineFragmentRenderer {
     var markedTextBackgroundColor: UIColor = .systemFill
     var markedTextBackgroundCornerRadius: CGFloat = 0
     var highlightedRangeFragments: [HighlightedRangeFragment] = []
+    var misspelledRanges: [NSRange] = []
 
     private var showInvisibleCharacters: Bool {
         invisibleCharacterConfiguration.showTabs
@@ -36,10 +37,108 @@ final class LineFragmentRenderer {
         drawMarkedRange(to: context)
         drawInvisibleCharacters()
         drawText(to: context)
+        drawSpellingUnderlines(to: context)
+    }
+
+    /// A horizontally scrolled viewport can cover disjoint logical ranges in bidirectional text.
+    func visibleCharacterRanges(in horizontalRange: ClosedRange<CGFloat>) -> [NSRange] {
+        let runs = CTLineGetGlyphRuns(lineFragment.line) as? [CTRun] ?? []
+        return runs.compactMap { run in
+            guard let bounds = horizontalBounds(of: run), bounds.overlaps(horizontalRange) else {
+                return nil
+            }
+            let stringRange = CTRunGetStringRange(run)
+            let runRange = NSRange(location: stringRange.location, length: stringRange.length)
+            let isRightToLeft = CTRunGetStatus(run).contains(.rightToLeft)
+            let startIndex = horizontalRange.lowerBound <= bounds.lowerBound
+                ? (isRightToLeft ? runRange.upperBound : runRange.lowerBound)
+                : CTLineGetStringIndexForPosition(lineFragment.line, CGPoint(x: horizontalRange.lowerBound, y: 0))
+            let endIndex = horizontalRange.upperBound >= bounds.upperBound
+                ? (isRightToLeft ? runRange.lowerBound : runRange.upperBound)
+                : CTLineGetStringIndexForPosition(lineFragment.line, CGPoint(x: horizontalRange.upperBound, y: 0))
+            let lowerBound = max(runRange.lowerBound, min(startIndex, endIndex))
+            let upperBound = min(runRange.upperBound, max(startIndex, endIndex) + 1)
+            guard lowerBound < upperBound else {
+                return nil
+            }
+            return NSIntersectionRange(NSRange(location: lowerBound, length: upperBound - lowerBound), lineFragment.visibleRange)
+        }
+    }
+
+    /// Split at directional runs so a logical word never underlines unrelated text in a bidirectional line.
+    func spellingUnderlineSegments(in range: NSRange) -> [ClosedRange<CGFloat>] {
+        let visibleRange = NSIntersectionRange(range, lineFragment.visibleRange)
+        guard visibleRange.length > 0 else {
+            return []
+        }
+        let runs = CTLineGetGlyphRuns(lineFragment.line) as? [CTRun] ?? []
+        return runs.compactMap { run in
+            let stringRange = CTRunGetStringRange(run)
+            let runRange = NSRange(location: stringRange.location, length: stringRange.length)
+            let intersection = NSIntersectionRange(visibleRange, runRange)
+            guard intersection.length > 0, let bounds = horizontalBounds(of: run) else {
+                return nil
+            }
+            let runMinX = bounds.lowerBound
+            let runMaxX = bounds.upperBound
+            let isRightToLeft = CTRunGetStatus(run).contains(.rightToLeft)
+            // At a directional boundary Core Text's primary caret can belong to the adjacent run.
+            // Use this run's edges at its boundaries, and caret offsets only inside the run.
+            let startX = intersection.lowerBound == runRange.lowerBound
+                ? (isRightToLeft ? runMaxX : runMinX)
+                : CTLineGetOffsetForStringIndex(lineFragment.line, intersection.lowerBound, nil)
+            let endX = intersection.upperBound == runRange.upperBound
+                ? (isRightToLeft ? runMinX : runMaxX)
+                : CTLineGetOffsetForStringIndex(lineFragment.line, intersection.upperBound, nil)
+            let minX = max(runMinX, min(startX, endX))
+            let maxX = min(runMaxX, max(startX, endX))
+            return minX < maxX ? minX ... maxX : nil
+        }
     }
 }
 
 private extension LineFragmentRenderer {
+    private func horizontalBounds(of run: CTRun) -> ClosedRange<CGFloat>? {
+        let count = CTRunGetGlyphCount(run)
+        guard count > 0 else {
+            return nil
+        }
+        // Read only the edges, even when an unwrapped line contains thousands of glyphs.
+        var firstPosition: CGPoint = .zero
+        var lastPosition: CGPoint = .zero
+        var firstAdvance: CGSize = .zero
+        var lastAdvance: CGSize = .zero
+        CTRunGetPositions(run, CFRange(location: 0, length: 1), &firstPosition)
+        CTRunGetPositions(run, CFRange(location: count - 1, length: 1), &lastPosition)
+        CTRunGetAdvances(run, CFRange(location: 0, length: 1), &firstAdvance)
+        CTRunGetAdvances(run, CFRange(location: count - 1, length: 1), &lastAdvance)
+        let minX = min(firstPosition.x, lastPosition.x)
+        let maxX = max(firstPosition.x + firstAdvance.width, lastPosition.x + lastAdvance.width)
+        return minX ... maxX
+    }
+
+    private func drawSpellingUnderlines(to context: CGContext) {
+        guard !misspelledRanges.isEmpty else {
+            return
+        }
+        context.saveGState()
+        context.setStrokeColor(UIColor.systemRed.cgColor)
+        context.setLineWidth(1.5)
+        context.setLineCap(.round)
+        context.setLineDash(phase: 0, lengths: [0, 3])
+        let baseline = lineFragment.scaledSize.height - lineFragment.descent
+            - (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
+        let underlineY = min(baseline + max(1.5, lineFragment.descent / 2), lineFragment.scaledSize.height - 1)
+        for range in misspelledRanges {
+            for segment in spellingUnderlineSegments(in: range) {
+                context.move(to: CGPoint(x: segment.lowerBound, y: underlineY))
+                context.addLine(to: CGPoint(x: segment.upperBound, y: underlineY))
+                context.strokePath()
+            }
+        }
+        context.restoreGState()
+    }
+
     private func drawHighlightedRanges(to context: CGContext, inCanvasOfSize canvasSize: CGSize) {
         guard !highlightedRangeFragments.isEmpty else {
             return
