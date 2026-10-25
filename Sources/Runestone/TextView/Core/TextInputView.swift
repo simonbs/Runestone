@@ -114,6 +114,22 @@ final class TextInputView: UIView, UITextInput {
     var keyboardType: UIKeyboardType = .default
     var keyboardAppearance: UIKeyboardAppearance = .default
     var returnKeyType: UIReturnKeyType = .default
+#if compiler(>=6.0) && (!os(visionOS) || compiler(>=6.1))
+    // Runestone only accepts plain text, even when Writing Tools generates replacements.
+    @available(iOS 18.0, visionOS 2.4, *)
+    var allowedWritingToolsResultOptions: UIWritingToolsResultOptions {
+        get {
+            if let rawValue = writingToolsResultOptionsRawValue {
+                return UIWritingToolsResultOptions(rawValue: rawValue)
+            }
+            return .plainText
+        }
+        set {
+            writingToolsResultOptionsRawValue = newValue.rawValue
+        }
+    }
+    private var writingToolsResultOptionsRawValue: UInt?
+#endif
 #if compiler(>=6.0.3) && (!os(visionOS) || compiler(>=6.1))
     @available(iOS 18.0, visionOS 2.4, *)
     var writingToolsBehavior: UIWritingToolsBehavior {
