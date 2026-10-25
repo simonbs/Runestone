@@ -1,0 +1,5 @@
+"undo.action_name.typing" = "Pisanie";
+"undo.action_name.replace_all" = "Zamień wszystko";
+"undo.action_name.move_lines_up" = "Przenieś wiersze w górę";
+"undo.action_name.move_lines_down" = "Przenieś wiersze w dół";
+"menu.item_title.replace" = "Zamień";

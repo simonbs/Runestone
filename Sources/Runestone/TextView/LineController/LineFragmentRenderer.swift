@@ -192,17 +192,6 @@ private extension LineFragmentRenderer {
         }
     }
 
-    private func drawText(to context: CGContext) {
-        context.saveGState()
-        context.textMatrix = .identity
-        context.translateBy(x: 0, y: lineFragment.scaledSize.height)
-        context.scaleBy(x: 1, y: -1)
-        let yPosition = lineFragment.descent + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
-        context.textPosition = CGPoint(x: 0, y: yPosition)
-        CTLineDraw(lineFragment.line, context)
-        context.restoreGState()
-    }
-
     private func drawInvisibleCharacters(in string: String) {
         var indexInLineFragment = 0
         for substring in string {
@@ -256,4 +245,18 @@ private extension LineFragmentRenderer {
     private func isLineBreak(_ string: String.Element) -> Bool {
         string == Symbol.Character.lineFeed || string == Symbol.Character.carriageReturn || string == Symbol.Character.carriageReturnLineFeed
     }
+}
+
+extension LineFragmentRenderer {
+    func drawText(to context: CGContext) {
+        context.saveGState()
+        context.textMatrix = .identity
+        context.translateBy(x: 0, y: lineFragment.scaledSize.height)
+        context.scaleBy(x: 1, y: -1)
+        let yPosition = lineFragment.descent + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
+        context.textPosition = CGPoint(x: 0, y: yPosition)
+        CTLineDraw(lineFragment.line, context)
+        context.restoreGState()
+    }
+
 }

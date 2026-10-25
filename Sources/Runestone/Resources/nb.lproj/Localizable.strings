@@ -1,0 +1,5 @@
+"undo.action_name.typing" = "Skriving";
+"undo.action_name.replace_all" = "Erstatt alle";
+"undo.action_name.move_lines_up" = "Flytt linjer opp";
+"undo.action_name.move_lines_down" = "Flytt linjer ned";
+"menu.item_title.replace" = "Erstatt";

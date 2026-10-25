@@ -38,6 +38,8 @@ open class TextView: UIScrollView {
     /// A Boolean value that indicates whether the text view is editable.
     public var isEditable = true {
         didSet {
+            textInputView.isEditableForSystemTextReplacement = isEditable
+            if !isEditable { stopWritingTools() }
             if isEditable != oldValue && !isEditable && isEditing {
                 resignFirstResponder()
                 textInputViewDidEndEditing(textInputView)
@@ -48,6 +50,7 @@ open class TextView: UIScrollView {
     public var isSelectable = true {
         didSet {
             if isSelectable != oldValue {
+                if !isSelectable { stopWritingTools() }
                 textInputView.isUserInteractionEnabled = isSelectable
                 if !isSelectable && isEditing {
                     resignFirstResponder()
@@ -168,6 +171,25 @@ open class TextView: UIScrollView {
             textInputView.returnKeyType = newValue
         }
     }
+    /// Whether Writing Tools is evaluating text or presenting changes for review.
+    /// During this time changes can be provisional. Defer persistence until the delegate's
+    /// `textViewWritingToolsDidEnd(_:)` callback if only accepted content should be saved.
+    public var isWritingToolsActive: Bool { textInputView.isWritingToolsActive }
+
+    /// Stops Writing Tools and keeps the text currently displayed in the editor.
+    /// This does not reject or undo the current revision.
+    public func stopWritingTools() { textInputView.stopWritingTools() }
+
+#if compiler(>=6.0.3) && (!os(visionOS) || compiler(>=6.1))
+    /// The preferred Writing Tools experience. Defaults to `.complete`.
+    /// Inline support requires iOS 18.2 or later and a device that supports Apple Intelligence.
+    @available(iOS 18.0, visionOS 2.4, *)
+    public var writingToolsBehavior: UIWritingToolsBehavior {
+        get { textInputView.writingToolsBehavior }
+        set { textInputView.writingToolsBehavior = newValue }
+    }
+#endif
+
     /// Returns the undo manager used by the text view.
     override public var undoManager: UndoManager? {
         textInputView.undoManager
@@ -1358,8 +1380,16 @@ extension TextView: TextInputViewDelegate {
         editorDelegate?.textViewDidEndEditing(self)
     }
 
+    func textInputViewWritingToolsWillBegin(_ view: TextInputView) {
+        editorDelegate?.textViewWritingToolsWillBegin(self)
+    }
+
+    func textInputViewWritingToolsDidEnd(_ view: TextInputView) {
+        editorDelegate?.textViewWritingToolsDidEnd(self)
+    }
+
     func textInputViewDidChange(_ view: TextInputView) {
-        if isAutomaticScrollEnabled, let newRange = textInputView.selectedRange, newRange.length == 0 {
+        if isAutomaticScrollEnabled, !isWritingToolsActive, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scrollLocationToVisible(newRange.location)
         }
         editorDelegate?.textViewDidChange(self)
@@ -1372,7 +1402,7 @@ extension TextView: TextInputViewDelegate {
     func textInputViewDidChangeSelection(_ view: TextInputView) {
         UIMenuController.shared.hideMenu(from: self)
         highlightNavigationController.selectedRange = view.selectedRange
-        if isAutomaticScrollEnabled, let newRange = textInputView.selectedRange, newRange.length == 0 {
+        if isAutomaticScrollEnabled, !isWritingToolsActive, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scrollLocationToVisible(newRange.location)
         }
         editorDelegate?.textViewDidChangeSelection(self)
@@ -1393,7 +1423,7 @@ extension TextView: TextInputViewDelegate {
     }
 
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
-        if textInputView.isRestoringPreviouslyDeletedText || view.isUpdatingMarkedText {
+        if textInputView.isRestoringPreviouslyDeletedText || view.isUpdatingMarkedText || view.isApplyingSystemTextReplacement {
             // Let UIKit compose marked text without inserting or skipping character pairs.
             // This also applies when UIKit restores text while combining Korean characters.
             return editorDelegate?.textView(self, shouldChangeTextIn: range, replacementText: text) ?? true
@@ -1501,7 +1531,7 @@ extension TextView: KeyboardObserverDelegate {
     func keyboardObserver(_ keyboardObserver: KeyboardObserver,
                           keyboardWillShowWithHeight keyboardHeight: CGFloat,
                           animation: KeyboardObserver.Animation?) {
-        if isAutomaticScrollEnabled, let newRange = textInputView.selectedRange, newRange.length == 0 {
+        if isAutomaticScrollEnabled, !isWritingToolsActive, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scrollRangeToVisible(newRange)
         }
     }

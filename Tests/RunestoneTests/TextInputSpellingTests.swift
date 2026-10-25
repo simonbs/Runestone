@@ -39,6 +39,68 @@ final class TextInputSpellingTests: XCTestCase {
         XCTAssertEqual(input.string, "👋 A mispelled sentence.")
     }
 
+    func testWritingToolsSuppressesSpellingAndRejectsAnAlreadyPresentedCorrection() throws {
+        let (view, input) = try makeEditor()
+        let originalText = view.text
+        let range = input.string.range(of: "mispelled")
+        input.selectedRange = range
+        let suggestion = try correction(in: input, range: range)
+
+        input.setWritingToolsActive(true)
+
+        XCTAssertTrue(input.spellingSuggestions(in: range).isEmpty)
+        input.replaceSpellingSuggestion(suggestion)
+        XCTAssertEqual(view.text, originalText)
+        XCTAssertEqual(view.selectedRange, range)
+        XCTAssertFalse(view.undoManager?.canUndo ?? true)
+
+        let revisedText = "👋 A mispelled sentence."
+        XCTAssertEqual(input.replaceTextForWritingTools(in: NSRange(location: 0, length: input.string.length),
+                                                        with: revisedText), revisedText)
+        input.selectedRange = range
+        XCTAssertTrue(input.spellingSuggestions(in: range).isEmpty)
+        input.replaceSpellingSuggestion(suggestion)
+        XCTAssertEqual(view.text, revisedText)
+
+        input.setWritingToolsActive(false)
+        input.replaceSpellingSuggestion(suggestion)
+        XCTAssertEqual(view.text, revisedText, "Ending a session must not revive an old menu action")
+        XCTAssertFalse(input.spellingSuggestions(in: range).isEmpty)
+    }
+
+    func testSpellingCorrectionAfterWritingToolsHasItsOwnUndoStep() throws {
+        let (view, input) = try makeEditor()
+        let originalText = view.text
+        let originalSelection = input.string.range(of: "mispelled")
+        input.selectedRange = originalSelection
+        input.setWritingToolsActive(true)
+        let provisionalText = "A preliminary mispelled revision."
+        XCTAssertEqual(input.replaceTextForWritingTools(in: NSRange(location: 0, length: input.string.length),
+                                                        with: provisionalText), provisionalText)
+        let revisedText = "👋 Here is the final mispelled sentence."
+        XCTAssertEqual(input.replaceTextForWritingTools(in: NSRange(location: 0, length: input.string.length),
+                                                        with: revisedText), revisedText)
+        input.setWritingToolsActive(false)
+        let range = input.string.range(of: "mispelled")
+        input.selectedRange = range
+        let suggestion = try correction(in: input, range: range)
+
+        input.replaceSpellingSuggestion(suggestion)
+
+        XCTAssertEqual(view.text, "👋 Here is the final misspelled sentence.")
+        let undoManager = try XCTUnwrap(view.undoManager)
+        undoManager.undo()
+        XCTAssertEqual(view.text, revisedText, "Undoing spelling must preserve the final Writing Tools revision")
+        XCTAssertEqual(view.selectedRange, range)
+        undoManager.undo()
+        XCTAssertEqual(view.text, originalText, "The Writing Tools session remains a separate undo step")
+        XCTAssertEqual(view.selectedRange, originalSelection)
+        undoManager.redo()
+        XCTAssertEqual(view.text, revisedText)
+        undoManager.redo()
+        XCTAssertEqual(view.text, "👋 Here is the final misspelled sentence.")
+    }
+
     func testSpellingPolicyAndEditVetoAreRespected() throws {
         let (view, input) = try makeEditor()
         let delegate = SpellingDelegate()
@@ -76,6 +138,8 @@ final class TextInputSpellingTests: XCTestCase {
         let range = input.string.range(of: "mispelled")
         input.selectedRange = range
         XCTAssertFalse(input.spellingSuggestions(in: range).isEmpty)
+        XCTAssertTrue(input.spellingSuggestions(in: NSRange(location: NSNotFound, length: 0)).isEmpty)
+        XCTAssertTrue(input.spellingSuggestions(in: NSRange(location: 1, length: 0)).isEmpty, "Do not split the opening emoji")
         view.spellCheckingType = .no
         XCTAssertTrue(input.spellingSuggestions(in: range).isEmpty)
         view.spellCheckingType = .default

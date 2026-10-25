@@ -1,0 +1,5 @@
+"undo.action_name.typing" = "Indtastning";
+"undo.action_name.replace_all" = "Erstat alle";
+"undo.action_name.move_lines_up" = "Flyt linjer op";
+"undo.action_name.move_lines_down" = "Flyt linjer ned";
+"menu.item_title.replace" = "Erstat";
