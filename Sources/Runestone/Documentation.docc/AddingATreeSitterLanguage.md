@@ -44,7 +44,7 @@ TreeSitterLanguages contain three Swift packages for each language. These are de
 |TreeSitter{Language}Queries|The queries to be used with the language, for example for highlighting text.|
 |TreeSitter{Language}Runestone|Contains the Runestone bindings for the language. This is the only package you need to add to your project when using TreeSitterLanguages with Runestone as it depends on TreeSitter{Language} and TreeSitter{Language}Queries.|
 
-You should also make sure to add the TreeSitterLanguagesCommon package to your project as it contains the basics needed for any language.
+Use the TreeSitterLanguages version that supports Runestone’s Tree-sitter 0.27 migration. Its language declarations keep `TSLanguage` opaque instead of exposing Tree-sitter’s private parser layout.
 
 For more details on TreeSitterLanguages, refer to the [README](https://github.com/simonbs/TreeSitterLanguages/blob/main/README.md) in the repository.
 
@@ -70,6 +70,10 @@ const TSLanguage *tree_sitter_{language}(void);
 }
 #endif
 ```
+
+Keep `src/tree_sitter/parser.h` private to the generated C parser. Expose only the forward declaration and language function shown above to Swift, so the function returns an `OpaquePointer`. Runestone’s `TreeSitterLanguage` initializer and `languagePointer` property now use `OpaquePointer` instead of `UnsafePointer<TSLanguage>`.
+
+Runestone includes Tree-sitter 0.27.1 and supports grammar ABI versions 13–15. Existing compatible parsers do not need regeneration. If you use the C API directly, depend on the `TreeSitter` product from the Runestone package instead of adding another runtime dependency.
 
 The [TreeSitterLanguages](https://github.com/simonbs/TreeSitterLanguages) package may serve as inspiration for how you can copy the files to your project.
 
