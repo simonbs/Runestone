@@ -31,6 +31,7 @@ open class TextView: UIScrollView {
             textInputView.string as String
         }
         set {
+            textInputView.resetIgnoredSpellingWords()
             textInputView.string = newValue as NSString
             contentSize = preferredContentSize
         }
@@ -140,7 +141,41 @@ open class TextView: UIScrollView {
         }
     }
 
-    /// Rechecks visible spelling after the delegate's spelling policy changes.
+    /// Words ignored in this view's current document session. This list is not persisted or shared between views.
+    /// Assigning ``text`` or calling ``setState(_:addUndoAction:)`` starts a new session and clears this list.
+    public var ignoredSpellingWords: [String] {
+        textInputView.ignoredSpellingWords
+    }
+
+    /// Ignores a whole word in this document session and rechecks visible spelling.
+    /// Ordinary edits, undo, language changes, and disabling checking preserve ignored words.
+    public func ignoreSpellingWord(_ word: String) {
+        textInputView.ignoreSpellingWord(word)
+    }
+
+    /// Starts a fresh spelling session without changing the document or undo history.
+    public func resetIgnoredSpellingWords() {
+        textInputView.resetIgnoredSpellingWords()
+    }
+
+    /// Adds a word to Apple's shared learned dictionary, across documents and languages.
+    /// Call only in response to an explicit user request. Runestone views refresh automatically.
+    public static func learnSpellingWord(_ word: String) {
+        SpellCheckingService.learnWord(word)
+    }
+
+    /// Removes a user-learned word from Apple's shared dictionary and refreshes Runestone views.
+    public static func unlearnSpellingWord(_ word: String) {
+        SpellCheckingService.unlearnWord(word)
+    }
+
+    /// Whether Apple's shared dictionary contains this user-learned word.
+    public static func hasLearnedSpellingWord(_ word: String) -> Bool {
+        SpellCheckingService.hasLearnedWord(word)
+    }
+
+    /// Rechecks visible spelling after the delegate's policy or externally managed learned dictionary changes.
+    /// Runestone also refreshes when the app becomes active or this view becomes first responder.
     public func invalidateSpellChecking() {
         textInputView.invalidateSpellChecking()
     }
@@ -770,6 +805,7 @@ open class TextView: UIScrollView {
     /// - Parameter state: The new state to be used by the editor.
     /// - Parameter addUndoAction: Whether the state change can be undone. Defaults to false.
     public func setState(_ state: TextViewState, addUndoAction: Bool = false) {
+        textInputView.resetIgnoredSpellingWords()
         textInputView.setState(state, addUndoAction: addUndoAction)
         contentSize = preferredContentSize
     }

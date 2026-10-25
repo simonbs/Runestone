@@ -1,7 +1,9 @@
 import UIKit
 
 /// The checker is injectable so scheduling and UTF-16 range handling can be tested independently of the system dictionary.
-protocol SpellChecking {
+protocol SpellChecking: AnyObject {
+    var ignoredWords: [String]? { get set }
+    func ignoreWord(_ wordToIgnore: String)
     func rangeOfMisspelledWord(in string: String, range: NSRange, startingAt offset: Int, wrap: Bool, language: String) -> NSRange
     func guesses(forWordRange range: NSRange, in string: String, language: String) -> [String]?
 }
@@ -10,6 +12,7 @@ extension UITextChecker: SpellChecking {}
 
 /// Owns a bounded snapshot of the viewport, never the mutable document. Use only on the main thread, like UITextChecker.
 final class SpellCheckingService {
+    static let learnedWordsDidChangeNotification = Notification.Name("RunestoneSpellCheckingLearnedWordsDidChange")
     private(set) var misspelledRanges: [NSRange] = []
     private(set) var generation: UInt = 0
 
@@ -23,6 +26,41 @@ final class SpellCheckingService {
     init(checker: SpellChecking = UITextChecker(), debounceInterval: TimeInterval = 0.25) {
         self.checker = checker
         self.debounceInterval = debounceInterval
+    }
+
+    var ignoredWords: [String] {
+        checker.ignoredWords ?? []
+    }
+
+    func ignoreWord(_ word: String) {
+        checker.ignoreWord(word)
+        invalidate()
+    }
+
+    /// Ends the current document's ignore session without changing learned dictionary entries.
+    func resetIgnoredWords() {
+        checker.ignoredWords = []
+        invalidate()
+    }
+
+    static func learnWord(_ word: String) {
+        guard !UITextChecker.hasLearnedWord(word) else {
+            return
+        }
+        UITextChecker.learnWord(word)
+        NotificationCenter.default.post(name: learnedWordsDidChangeNotification, object: nil)
+    }
+
+    static func unlearnWord(_ word: String) {
+        guard UITextChecker.hasLearnedWord(word) else {
+            return
+        }
+        UITextChecker.unlearnWord(word)
+        NotificationCenter.default.post(name: learnedWordsDidChangeNotification, object: nil)
+    }
+
+    static func hasLearnedWord(_ word: String) -> Bool {
+        UITextChecker.hasLearnedWord(word)
     }
 
     func invalidate() {
@@ -54,26 +92,47 @@ final class SpellCheckingService {
         }
     }
 
-    /// Checks the selected word synchronously so correction menus do not depend on debounced viewport results.
-    func suggestions(for range: NSRange, in text: NSString, language: String) -> [String] {
+    /// Returns a complete word independently of its spelling, including a previously learned word.
+    func word(for range: NSRange, in text: NSString) -> String? {
         guard range.length > 0, range.length <= Self.maximumWordLength,
-              Self.isValid(range, in: text), !language.isEmpty else {
-            return []
+              Self.isValid(range, in: text), text.rangeOfComposedCharacterSequences(for: range) == range else {
+            return nil
         }
-        // Do not offer corrections for a fragment of a word or a split Unicode sequence.
+        // Do not offer dictionary actions for a fragment of a word or a split Unicode sequence.
         if range.location > 0, Self.isWordUnit(text.character(at: range.location - 1)),
            Self.isWordUnit(text.character(at: range.location)) {
-            return []
+            return nil
         }
         if NSMaxRange(range) < text.length, Self.isWordUnit(text.character(at: NSMaxRange(range) - 1)),
            Self.isWordUnit(text.character(at: NSMaxRange(range))) {
+            return nil
+        }
+        let word = text.substring(with: range)
+        var isSingleWord = false
+        let wordRange = NSRange(location: 0, length: range.length)
+        (word as NSString).enumerateSubstrings(in: wordRange, options: [.byWords, .substringNotRequired]) { _, range, _, stop in
+            isSingleWord = range == wordRange
+            stop.pointee = true
+        }
+        return isSingleWord ? word : nil
+    }
+
+    /// Checks synchronously so dictionary actions do not depend on viewport results or available guesses.
+    func isMisspelled(for range: NSRange, in text: NSString, language: String) -> Bool {
+        guard let word = word(for: range, in: text), !language.isEmpty else {
+            return false
+        }
+        let wordRange = NSRange(location: 0, length: range.length)
+        return checker.rangeOfMisspelledWord(in: word, range: wordRange, startingAt: 0, wrap: false, language: language) == wordRange
+    }
+
+    /// Checks the selected word synchronously so correction menus do not depend on debounced viewport results.
+    func suggestions(for range: NSRange, in text: NSString, language: String) -> [String] {
+        guard isMisspelled(for: range, in: text, language: language) else {
             return []
         }
         let word = text.substring(with: range)
         let wordRange = NSRange(location: 0, length: range.length)
-        guard checker.rangeOfMisspelledWord(in: word, range: wordRange, startingAt: 0, wrap: false, language: language) == wordRange else {
-            return []
-        }
         return checker.guesses(forWordRange: wordRange, in: word, language: language) ?? []
     }
 

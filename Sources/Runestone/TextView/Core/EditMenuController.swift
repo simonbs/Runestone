@@ -9,8 +9,43 @@ struct SpellingSuggestion {
     let selection: NSRange?
 }
 
+struct SpellingWordAction {
+    enum Kind: CaseIterable {
+        case ignore
+        case learn
+        case unlearn
+
+        var title: String {
+            switch self {
+            case .ignore:
+                return L10n.Menu.ItemTitle.ignoreSpelling
+            case .learn:
+                return L10n.Menu.ItemTitle.learnSpelling
+            case .unlearn:
+                return L10n.Menu.ItemTitle.unlearnSpelling
+            }
+        }
+
+        var selector: Selector {
+            switch self {
+            case .ignore:
+                return NSSelectorFromString("ignoreSelectedSpellingWord")
+            case .learn:
+                return NSSelectorFromString("learnSelectedSpellingWord")
+            case .unlearn:
+                return NSSelectorFromString("unlearnSelectedSpellingWord")
+            }
+        }
+    }
+
+    let kind: Kind
+    let target: SpellingSuggestion
+}
+
 protocol EditMenuControllerDelegate: AnyObject {
     func editMenuController(_ controller: EditMenuController, spellingSuggestionsFor range: NSRange) -> [SpellingSuggestion]
+    func editMenuController(_ controller: EditMenuController, spellingWordActionsFor range: NSRange) -> [SpellingWordAction]
+    func editMenuController(_ controller: EditMenuController, perform action: SpellingWordAction)
     func editMenuController(_ controller: EditMenuController, replace suggestion: SpellingSuggestion)
     func editMenuController(_ controller: EditMenuController, highlightedRangeFor range: NSRange) -> HighlightedRange?
     func editMenuController(_ controller: EditMenuController, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool
@@ -26,6 +61,7 @@ final class EditMenuController: NSObject {
         NSSelectorFromString("replaceWithSecondSpellingSuggestion"),
         NSSelectorFromString("replaceWithThirdSpellingSuggestion")
     ]
+    private var legacySpellingWordActions: [SpellingWordAction] = []
     private var legacySpellingSuggestions: [SpellingSuggestion] = []
 
     @available(iOS 16, *)
@@ -72,12 +108,15 @@ final class EditMenuController: NSObject {
         // Legacy menus offer corrections for selected words. Do not synchronously check the active word on every keystroke.
         if let range = delegate?.selectedRange(for: self), range.length > 0 {
             legacySpellingSuggestions = delegate?.editMenuController(self, spellingSuggestionsFor: range) ?? []
+            legacySpellingWordActions = delegate?.editMenuController(self, spellingWordActionsFor: range) ?? []
         } else {
             legacySpellingSuggestions = []
+            legacySpellingWordActions = []
         }
         var items = zip(legacySpellingSuggestions, Self.spellingActionSelectors).map { suggestion, selector in
             UIMenuItem(title: suggestion.replacement, action: selector)
         }
+        items.append(contentsOf: legacySpellingWordActions.map { UIMenuItem(title: $0.kind.title, action: $0.kind.selector) })
         items.append(UIMenuItem(title: L10n.Menu.ItemTitle.replace, action: NSSelectorFromString("replaceTextInSelectedHighlightedRange")))
         UIMenuController.shared.menuItems = items
     }
@@ -93,6 +132,17 @@ final class EditMenuController: NSObject {
         delegate?.editMenuController(self, replace: legacySpellingSuggestions[index])
     }
 
+    func hasLegacySpellingWordAction(_ kind: SpellingWordAction.Kind) -> Bool {
+        legacySpellingWordActions.contains { $0.kind == kind }
+    }
+
+    func performLegacySpellingWordAction(_ kind: SpellingWordAction.Kind) {
+        guard let action = legacySpellingWordActions.first(where: { $0.kind == kind }) else {
+            return
+        }
+        delegate?.editMenuController(self, perform: action)
+    }
+
     private func menu(for range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu {
         let suggestions = delegate?.editMenuController(self, spellingSuggestionsFor: range) ?? []
         var actions: [UIMenuElement] = suggestions.map { suggestion in
@@ -103,6 +153,15 @@ final class EditMenuController: NSObject {
                 self.delegate?.editMenuController(self, replace: suggestion)
             }
         }
+        let wordActions = delegate?.editMenuController(self, spellingWordActionsFor: range) ?? []
+        actions.append(contentsOf: wordActions.map { action in
+            UIAction(title: action.kind.title) { [weak self] _ in
+                guard let self = self else {
+                    return
+                }
+                self.delegate?.editMenuController(self, perform: action)
+            }
+        })
         actions.append(contentsOf: suggestedActions)
         if let replaceAction = replaceActionIfAvailable(for: range) {
             actions.append(replaceAction)

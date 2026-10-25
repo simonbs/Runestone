@@ -12,6 +12,12 @@ import Foundation
 internal enum L10n {
   internal enum Menu {
     internal enum ItemTitle {
+      /// Ignore Spelling
+      internal static let ignoreSpelling = L10n.tr("Localizable", "menu.item_title.ignore_spelling", fallback: "Ignore Spelling")
+      /// Learn Spelling
+      internal static let learnSpelling = L10n.tr("Localizable", "menu.item_title.learn_spelling", fallback: "Learn Spelling")
+      /// Unlearn Spelling
+      internal static let unlearnSpelling = L10n.tr("Localizable", "menu.item_title.unlearn_spelling", fallback: "Unlearn Spelling")
       /// Replace
       internal static let replace = L10n.tr("Localizable", "menu.item_title.replace", fallback: "Replace")
     }

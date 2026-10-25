@@ -128,6 +128,78 @@ final class SpellCheckingServiceTests: XCTestCase {
         XCTAssertTrue(service.suggestions(for: NSRange(location: 1, length: 7), in: "xmispell", language: "en_US").isEmpty)
     }
 
+    func testDictionaryActionsRequireOneWholeUnicodeWordButNotAvailableGuesses() {
+        let checker = StubSpellChecker()
+        checker.suggestions = nil
+        let service = SpellCheckingService(checker: checker)
+        let range = NSRange(location: 0, length: 7)
+        XCTAssertTrue(service.isMisspelled(for: range, in: "mispell", language: "en_US"))
+        XCTAssertTrue(service.suggestions(for: range, in: "mispell", language: "en_US").isEmpty)
+        XCTAssertEqual(service.word(for: range, in: "correct"), "correct")
+        let text = "👨‍👩‍👧‍👦 cafe\u{301} don't" as NSString
+        XCTAssertEqual(service.word(for: text.range(of: "cafe\u{301}"), in: text), "cafe\u{301}")
+        XCTAssertEqual(service.word(for: text.range(of: "don't"), in: text), "don't")
+        XCTAssertNil(service.word(for: text.range(of: "cafe"), in: text))
+        XCTAssertNil(service.word(for: NSRange(location: 0, length: 1), in: text))
+        XCTAssertNil(service.word(for: NSRange(location: 0, length: 11), in: "two words!!"))
+        XCTAssertNil(service.word(for: NSRange(location: 0, length: 257), in: String(repeating: "a", count: 257) as NSString))
+    }
+
+    func testIgnoringCancelsPendingResultsAndSurvivesOrdinaryInvalidation() {
+        let checker = StubSpellChecker()
+        let service = SpellCheckingService(checker: checker, debounceInterval: 0.01)
+        let obsolete = expectation(description: "Completion before ignoring")
+        obsolete.isInverted = true
+        service.schedule(text: "mispell", visibleRange: NSRange(location: 0, length: 7), language: "en_US") { _ in
+            obsolete.fulfill()
+        }
+        service.ignoreWord("mispell")
+        service.invalidate()
+        wait(for: [obsolete], timeout: 0.05)
+        XCTAssertTrue(checker.checkedStrings.isEmpty)
+        XCTAssertFalse(service.isMisspelled(for: NSRange(location: 0, length: 7), in: "mispell", language: "en_US"))
+        service.resetIgnoredWords()
+        XCTAssertTrue(service.isMisspelled(for: NSRange(location: 0, length: 7), in: "mispell", language: "en_US"))
+    }
+
+    func testSystemIgnoredWordsAreIsolatedAndResetForNextDocument() throws {
+        try requireEnglishDictionary()
+        let service = SpellCheckingService()
+        let otherDocument = SpellCheckingService()
+        let text = "mispelled" as NSString
+        let range = NSRange(location: 0, length: text.length)
+        XCTAssertTrue(service.isMisspelled(for: range, in: text, language: "en_US"))
+        service.ignoreWord(text as String)
+        XCTAssertTrue(service.ignoredWords.contains(text as String))
+        XCTAssertFalse(service.isMisspelled(for: range, in: text, language: "en_US"))
+        XCTAssertTrue(otherDocument.isMisspelled(for: range, in: text, language: "en_US"))
+        service.resetIgnoredWords()
+        XCTAssertTrue(service.isMisspelled(for: range, in: text, language: "en_US"))
+    }
+
+    func testSystemLearningIsSharedAndUnlearningRestoresChecking() throws {
+        try requireEnglishDictionary()
+        // Use an alphabetic unique word and always clean it up, without changing an existing user entry.
+        let suffix = UUID().uuidString.prefix(6).unicodeScalars.map { scalar -> String in
+            scalar.value >= 48 && scalar.value <= 57 ? String(UnicodeScalar(scalar.value + 49)!) : String(scalar).lowercased()
+        }.joined()
+        let word = "zqxvrnstn" + suffix
+        let range = NSRange(location: 0, length: (word as NSString).length)
+        let first = SpellCheckingService()
+        let second = SpellCheckingService()
+        XCTAssertFalse(SpellCheckingService.hasLearnedWord(word))
+        XCTAssertTrue(first.isMisspelled(for: range, in: word as NSString, language: "en_US"))
+        defer { SpellCheckingService.unlearnWord(word) }
+        SpellCheckingService.learnWord(word)
+        XCTAssertTrue(SpellCheckingService.hasLearnedWord(word))
+        XCTAssertFalse(first.isMisspelled(for: range, in: word as NSString, language: "en_US"))
+        XCTAssertFalse(second.isMisspelled(for: range, in: word as NSString, language: "en_US"))
+        XCTAssertEqual(second.word(for: range, in: word as NSString), word)
+        SpellCheckingService.unlearnWord(word)
+        XCTAssertFalse(SpellCheckingService.hasLearnedWord(word))
+        XCTAssertTrue(second.isMisspelled(for: range, in: word as NSString, language: "en_US"))
+    }
+
     func testFilterCanInvalidateWithoutPublishingStaleRanges() {
         let service = SpellCheckingService(checker: StubSpellChecker(), debounceInterval: 0)
         let obsolete = expectation(description: "Invalidated completion")
@@ -141,9 +213,7 @@ final class SpellCheckingServiceTests: XCTestCase {
     }
 
     func testSystemCheckerFindsMisspellingAndOffersCorrection() throws {
-        guard UITextChecker.availableLanguages.contains("en_US") else {
-            throw XCTSkip("The simulator does not have the English spelling dictionary installed.")
-        }
+        try requireEnglishDictionary()
         let service = SpellCheckingService(debounceInterval: 0)
         let text = "This is a mispelled word." as NSString
         let misspelling = text.range(of: "mispelled")
@@ -155,11 +225,23 @@ final class SpellCheckingServiceTests: XCTestCase {
         wait(for: [completed], timeout: 5)
         XCTAssertTrue(service.suggestions(for: misspelling, in: text, language: "en_US").contains("misspelled"))
     }
+
+    private func requireEnglishDictionary() throws {
+        guard UITextChecker.availableLanguages.contains("en_US") else {
+            throw XCTSkip("The simulator does not have the English spelling dictionary installed.")
+        }
+    }
 }
 
 private final class StubSpellChecker: SpellChecking {
     var checkedStrings: [String] = []
     var snapshotLengths: [Int] = []
+    var ignoredWords: [String]?
+    var suggestions: [String]? = ["misspell"]
+
+    func ignoreWord(_ wordToIgnore: String) {
+        ignoredWords = (ignoredWords ?? []) + [wordToIgnore]
+    }
 
     func rangeOfMisspelledWord(in string: String, range: NSRange, startingAt offset: Int, wrap: Bool, language: String) -> NSRange {
         checkedStrings.append(string)
@@ -168,11 +250,12 @@ private final class StubSpellChecker: SpellChecking {
         }
         let text = string as NSString
         let searchRange = NSRange(location: offset, length: text.length - offset)
-        return ["mispell", "marked", "active", "ignored"].map { text.range(of: $0, range: searchRange) }
+        return ["mispell", "marked", "active", "ignored"].filter { !(ignoredWords ?? []).contains($0) }
+            .map { text.range(of: $0, range: searchRange) }
             .filter { $0.location != NSNotFound }.min { $0.location < $1.location } ?? NSRange(location: NSNotFound, length: 0)
     }
 
     func guesses(forWordRange range: NSRange, in string: String, language: String) -> [String]? {
-        ["misspell"]
+        suggestions
     }
 }
