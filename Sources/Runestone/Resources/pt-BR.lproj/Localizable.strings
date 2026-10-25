@@ -1,5 +1,5 @@
 "undo.action_name.typing" = "Digitação";
-"undo.action_name.replace_all" = "Substituir Tudo";
-"undo.action_name.move_lines_up" = "Mover Linhas para Cima";
-"undo.action_name.move_lines_down" = "Mover Linhas para Baixo";
+"undo.action_name.replace_all" = "Substituir tudo";
+"undo.action_name.move_lines_up" = "Mover linhas para cima";
+"undo.action_name.move_lines_down" = "Mover linhas para baixo";
 "menu.item_title.replace" = "Substituir";
