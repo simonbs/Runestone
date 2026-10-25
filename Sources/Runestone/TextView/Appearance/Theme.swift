@@ -35,6 +35,15 @@ public protocol Theme: AnyObject {
     /// Corner radius of the background of marked text. Text will be marked when writing certain languages, for example Chinese and Japanese.
     /// A value of zero or less means that the background will not have rounded corners. Defaults to 0.
     var markedTextBackgroundCornerRadius: CGFloat { get }
+    /// Complete style for text matching a highlight name.
+    ///
+    /// Return a style to replace the foreground color, font, background color, and shadow
+    /// inherited from enclosing captures. A missing color or font uses the theme's defaults;
+    /// a missing background or shadow removes that attribute. The font includes all its traits.
+    ///
+    /// Return `nil` to use the existing individual styling callbacks for this capture.
+    /// The default implementation returns `nil`.
+    func highlightStyle(for highlightName: String) -> HighlightStyle?
     /// Color of text matching the capture sequence.
     ///
     /// See <doc:CreatingATheme> for more information on higlight names.
@@ -65,6 +74,10 @@ public protocol Theme: AnyObject {
 }
 
 public extension Theme {
+    func highlightStyle(for highlightName: String) -> HighlightStyle? {
+        nil
+    }
+
     var gutterHairlineWidth: CGFloat {
         hairlineLength
     }

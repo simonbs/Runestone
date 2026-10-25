@@ -75,3 +75,36 @@ The list below contains highlight names that are commonly used across a suite of
 - `type.builtin`
 - `variable`
 - `variable.builtin`
+
+
+## Complete Highlight Styles
+
+Implement ``Theme/highlightStyle(for:)`` when a capture should specify its complete
+appearance instead of adding individual attributes to enclosing captures:
+
+```swift
+func highlightStyle(for highlightName: String) -> HighlightStyle? {
+    switch highlightName {
+    case "comment":
+        return HighlightStyle(textColor: .secondaryLabel,
+                              font: .italicSystemFont(ofSize: font.pointSize))
+    case "comment.special":
+        return HighlightStyle(backgroundColor: .systemYellow)
+    default:
+        return nil
+    }
+}
+```
+
+Here `comment.special` uses the theme's default foreground and font, clears any
+inherited shadow, and adds a yellow background. A supplied font preserves its exact
+weight and traits. `HighlightStyle()` restores the default text appearance, including
+clearing a token background and shadow.
+
+Returning `nil` preserves the existing individual callbacks for that capture, including
+resolving its font from `font(for:)` or the theme's default font. It does not inherit a
+complete outer capture's custom font. Existing themes need no changes because the
+protocol supplies this default implementation.
+The highlight names, query configuration, and capture ordering remain unchanged.
+Backgrounds are painted behind search highlights, marked text, and glyphs. A
+`StringSyntaxHighlighter` result carries them as `.backgroundColor` attributes.
