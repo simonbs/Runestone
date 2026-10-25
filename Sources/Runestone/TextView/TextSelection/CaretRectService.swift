@@ -31,6 +31,8 @@ final class CaretRectService {
         let line = lineManager.line(containingCharacterAt: safeLocation)!
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let lineLocalLocation = safeLocation - line.location
+        // The caret may be outside the portion of a wrapped line prepared by viewport layout.
+        lineController.prepareToDisplayString(toLocation: lineLocalLocation, syntaxHighlightAsynchronously: true)
         if allowMovingCaretToNextLineFragment && shouldMoveCaretToNextLineFragment(forLocation: lineLocalLocation, in: line) {
             let rect = caretRect(at: location + 1, allowMovingCaretToNextLineFragment: false)
             return CGRect(x: leadingLineSpacing, y: rect.minY, width: rect.width, height: rect.height)
