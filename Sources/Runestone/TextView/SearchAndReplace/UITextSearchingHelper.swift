@@ -141,7 +141,7 @@ extension UITextSearchingHelper: UITextSearching {
         let range = foundTextRange.range
         let decoration = pendingDecorationKeys.contains(range)
             ? pendingDecorations[range]
-            : _textView.highlightedRanges.first(where: { $0.range == range })
+            : _textView.highlightedRanges.first { $0.range == range }
         guard let highlightedRange = decoration else {
             return false
         }
