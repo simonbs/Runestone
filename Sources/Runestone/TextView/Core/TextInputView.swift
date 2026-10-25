@@ -1448,10 +1448,16 @@ extension TextInputView {
     }
 
     func unmarkText() {
+        let hadMarkedText = markedRange != nil
         inputDelegate?.selectionWillChange(self)
         markedRange = nil
         inputDelegate?.selectionDidChange(self)
         delegate?.textInputViewDidUpdateMarkedRange(self)
+        if hadMarkedText {
+            // Committing marked text changes its editing state even when its characters
+            // stay the same. Match UITextView's final change notification.
+            delegate?.textInputViewDidChange(self)
+        }
     }
 }
 
