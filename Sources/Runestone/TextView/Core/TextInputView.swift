@@ -3,6 +3,8 @@ import Combine
 import UIKit
 
 protocol TextInputViewDelegate: AnyObject {
+    func textInputViewWritingToolsWillBegin(_ view: TextInputView)
+    func textInputViewWritingToolsDidEnd(_ view: TextInputView)
     func textInputViewWillBeginEditing(_ view: TextInputView)
     func textInputViewDidBeginEditing(_ view: TextInputView)
     func textInputViewDidEndEditing(_ view: TextInputView)
@@ -18,6 +20,11 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidUpdateMarkedRange(_ view: TextInputView)
     func textInputView(_ view: TextInputView, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool
     func textInputView(_ view: TextInputView, replaceTextIn highlightedRange: HighlightedRange)
+}
+
+extension TextInputViewDelegate {
+    func textInputViewWritingToolsWillBegin(_ view: TextInputView) {}
+    func textInputViewWritingToolsDidEnd(_ view: TextInputView) {}
 }
 
 // swiftlint:disable:next type_body_length
@@ -107,6 +114,70 @@ final class TextInputView: UIView, UITextInput {
     var keyboardType: UIKeyboardType = .default
     var keyboardAppearance: UIKeyboardAppearance = .default
     var returnKeyType: UIReturnKeyType = .default
+#if compiler(>=6.0.3) && (!os(visionOS) || compiler(>=6.1))
+    @available(iOS 18.0, visionOS 2.4, *)
+    var writingToolsBehavior: UIWritingToolsBehavior {
+        get { UIWritingToolsBehavior(rawValue: preferredWritingToolsBehavior) ?? .complete }
+        set {
+            stopWritingTools()
+            preferredWritingToolsBehavior = newValue.rawValue
+            if #available(iOS 18.2, visionOS 2.4, *) {
+                (writingToolsController as? WritingToolsInteraction)?.coordinator.preferredBehavior = newValue
+            }
+        }
+    }
+#endif
+    private var preferredWritingToolsBehavior = 1
+    var isEditableForWritingTools = true
+    var writingToolsController: WritingToolsControlling?
+    private(set) var isWritingToolsActive = false
+    private(set) var isApplyingWritingToolsReplacement = false
+    private(set) var textMutationVersion: UInt = 0
+    private(set) var writingToolsContextVersion: UInt = 0
+    private var textBeforeWritingTools: NSString?
+    private var selectionBeforeWritingTools: NSRange?
+
+    func stopWritingTools() {
+        invalidateWritingToolsContext()
+        writingToolsController?.stop()
+    }
+
+    func invalidateWritingToolsContext() {
+        writingToolsContextVersion &+= 1
+    }
+
+    private func stopWritingToolsBeforeEditing() -> Bool {
+        let originalVersion = textMutationVersion
+        stopWritingTools()
+        return textMutationVersion == originalVersion
+    }
+
+    func setWritingToolsActive(_ active: Bool) {
+        guard active != isWritingToolsActive else {
+            return
+        }
+        if active {
+            timedUndoManager.endUndoGrouping()
+            textBeforeWritingTools = string.copy() as? NSString
+            selectionBeforeWritingTools = selectedRange
+            isWritingToolsActive = true
+            delegate?.textInputViewWritingToolsWillBegin(self)
+        } else {
+            // Suggestions are provisional. Only the final revision belongs in the undo history.
+            // Returning to the original text leaves the pre-session undo history untouched.
+            if let originalText = textBeforeWritingTools, originalText != string {
+                addUndoOperation(replacing: NSRange(location: 0, length: string.length),
+                                 withText: originalText as String,
+                                 selectedRangeAfterUndo: selectionBeforeWritingTools)
+                timedUndoManager.endUndoGrouping()
+            }
+            textBeforeWritingTools = nil
+            selectionBeforeWritingTools = nil
+            isWritingToolsActive = false
+            delegate?.textInputViewWritingToolsDidEnd(self)
+        }
+    }
+
     @objc var insertionPointColor: UIColor = .label {
         didSet {
             if insertionPointColor != oldValue {
@@ -437,6 +508,8 @@ final class TextInputView: UIView, UITextInput {
         }
         set {
             if newValue != stringView.string {
+                stopWritingTools()
+                textMutationVersion &+= 1
                 stringView.string = newValue
                 languageMode.parse(newValue)
                 // Rebuilding creates new line IDs. Release controllers and pending highlighting for the old lines.
@@ -613,6 +686,7 @@ final class TextInputView: UIView, UITextInput {
     private var cancellables: [AnyCancellable] = []
 
     // MARK: - Lifecycle
+    // swiftlint:disable:next function_body_length
     init(theme: Theme) {
         self.theme = theme
         lineManager = LineManager(stringView: stringView)
@@ -664,6 +738,18 @@ final class TextInputView: UIView, UITextInput {
         editMenuController.setupEditMenu(in: self)
         setupContentSizeObserver()
         setupGutterWidthObserver()
+        setupWritingTools()
+    }
+
+    private func setupWritingTools() {
+        timedUndoManager.willUndoOrRedo = { [weak self] in self?.stopWritingTools() }
+#if compiler(>=6.0.3) && (!os(visionOS) || compiler(>=6.1))
+        if #available(iOS 18.2, visionOS 2.4, *) {
+            let interaction = WritingToolsInteraction(textInputView: self)
+            writingToolsController = interaction
+            addInteraction(interaction.coordinator)
+        }
+#endif
     }
 
     override func becomeFirstResponder() -> Bool {
@@ -702,6 +788,7 @@ final class TextInputView: UIView, UITextInput {
         layoutManager.layoutIfNeeded()
         layoutManager.layoutLineSelectionIfNeeded()
         layoutPageGuideIfNeeded()
+        writingToolsController?.layoutDidChange()
         // We notify the input delegate about selection changes in layoutSubviews so we have a chance of disabling notifying the input delegate during an editing operation.
         // We will sometimes disable notifying the input delegate when the user enters Korean text.
         // This workaround is inspired by a dialog with Alexander Blach (@lextar), developer of Textastic.
@@ -791,6 +878,8 @@ final class TextInputView: UIView, UITextInput {
     }
 
     func setState(_ state: TextViewState, addUndoAction: Bool = false) {
+        stopWritingTools()
+        textMutationVersion &+= 1
         let oldText = stringView.string
         let newText = state.stringView.string
         stringView = state.stringView
@@ -891,6 +980,7 @@ final class TextInputView: UIView, UITextInput {
     }
 
     override func didMoveToWindow() {
+        if window == nil { stopWritingTools() }
         super.didMoveToWindow()
         if hasPendingFullLayout && window != nil {
             hasPendingFullLayout = false
@@ -1103,6 +1193,9 @@ extension TextInputView {
 // MARK: - Editing
 extension TextInputView {
     func insertText(_ text: String) {
+        guard stopWritingToolsBeforeEditing() else {
+            return
+        }
         // A typed tab follows the indentation strategy. Replacement and pasted text retain literal tabs.
         let preparedText = text == "\t" ? indentStrategy.string(indentLevel: 1) : prepareTextForInsertion(text)
         isRestoringPreviouslyDeletedText = hasDeletedTextWithPendingLayoutSubviews
@@ -1133,6 +1226,9 @@ extension TextInputView {
     }
 
     func deleteBackward() {
+        guard stopWritingToolsBeforeEditing() else {
+            return
+        }
         didCallDeleteBackward = true
         guard let selectedRange = markedRange ?? selectedRange, selectedRange.length > 0 else {
             return
@@ -1180,6 +1276,9 @@ extension TextInputView {
     }
 
     func replace(_ range: UITextRange, withText text: String) {
+        guard stopWritingToolsBeforeEditing() else {
+            return
+        }
         let preparedText = prepareTextForInsertion(text)
         if let indexedRange = range as? IndexedRange, shouldChangeText(in: indexedRange.range.nonNegativeLength, replacementText: preparedText) {
             replaceText(in: indexedRange.range.nonNegativeLength, with: preparedText)
@@ -1188,6 +1287,9 @@ extension TextInputView {
     }
 
     func replaceText(in batchReplaceSet: BatchReplaceSet) {
+        guard stopWritingToolsBeforeEditing() else {
+            return
+        }
         guard !batchReplaceSet.replacements.isEmpty else {
             return
         }
@@ -1222,6 +1324,9 @@ extension TextInputView {
     }
 
     private func setStringWithUndoAction(_ newString: NSString) {
+        guard stopWritingToolsBeforeEditing() else {
+            return
+        }
         guard newString != string else {
             return
         }
@@ -1253,6 +1358,54 @@ extension TextInputView {
         }
     }
 
+    /// Applies a plain-text Writing Tools replacement through the normal editing pipeline.
+    /// The returned string is the actual inserted text, including line-ending normalization.
+    func replaceTextForWritingTools(in range: NSRange, with text: String) -> String? {
+        guard isEditableForWritingTools, WritingToolsRange.isValid(range, in: string), markedTextRange == nil else {
+            return nil
+        }
+        let originalVersion = textMutationVersion
+        let originalContextVersion = writingToolsContextVersion
+        let preparedText = prepareTextForInsertion(text)
+        isApplyingWritingToolsReplacement = true
+        defer { isApplyingWritingToolsReplacement = false }
+        guard shouldChangeText(in: range, replacementText: preparedText) else {
+            return nil
+        }
+        // A delegate may synchronously change the document while deciding whether to allow an edit.
+        guard isEditableForWritingTools, markedTextRange == nil,
+              writingToolsContextVersion == originalContextVersion,
+              textMutationVersion == originalVersion, WritingToolsRange.isValid(range, in: string) else {
+            return nil
+        }
+        timedUndoManager.endUndoGrouping()
+        inputDelegate?.textWillChange(self)
+        inputDelegate?.selectionWillChange(self)
+        let canReplace = isEditableForWritingTools && markedTextRange == nil
+            && writingToolsContextVersion == originalContextVersion && textMutationVersion == originalVersion
+        let didReplace = canReplace && replaceText(in: range, with: preparedText, isWritingToolsReplacement: true)
+        timedUndoManager.endUndoGrouping()
+        inputDelegate?.textDidChange(self)
+        inputDelegate?.selectionDidChange(self)
+        if didReplace {
+            delegate?.textInputViewDidChangeSelection(self)
+        }
+        return didReplace ? preparedText : nil
+    }
+
+    func writingToolsTextRects(in range: NSRange) -> [CGRect] {
+        layoutIfNeeded()
+        return layoutManager.writingToolsTextRects(in: range)
+    }
+
+    func setWritingToolsHiddenRanges(_ ranges: [NSRange]) {
+        layoutManager.writingToolsHiddenRanges = ranges
+    }
+
+    func drawWritingToolsText(in context: CGContext) {
+        layoutManager.drawWritingToolsText(in: context)
+    }
+
     private func rangeForDeletingText(in range: NSRange) -> NSRange {
         var resultingRange = range
         if range.length == 1, let indentRange = indentController.indentRangeInFrontOfLocation(range.upperBound) {
@@ -1277,14 +1430,30 @@ extension TextInputView {
         return resultingRange
     }
 
+    @discardableResult
     private func replaceText(in range: NSRange,
                              with newString: String,
                              selectedRangeAfterUndo: NSRange? = nil,
-                             undoActionName: String = L10n.Undo.ActionName.typing) {
+                             undoActionName: String = L10n.Undo.ActionName.typing,
+                             isWritingToolsReplacement: Bool = false) -> Bool {
+        if !isWritingToolsReplacement {
+            let originalVersion = textMutationVersion
+            stopWritingTools()
+            // Ending the session notifies the host, which may synchronously load a different document.
+            guard textMutationVersion == originalVersion else {
+                return false
+            }
+        }
+        guard WritingToolsRange.isValid(range, in: string) else {
+            return false
+        }
+        textMutationVersion &+= 1
         let nsNewString = newString as NSString
         let currentText = text(in: range) ?? ""
         let newRange = NSRange(location: range.location, length: nsNewString.length)
-        addUndoOperation(replacing: newRange, withText: currentText, selectedRangeAfterUndo: selectedRangeAfterUndo, actionName: undoActionName)
+        if !isWritingToolsActive || !isWritingToolsReplacement {
+            addUndoOperation(replacing: newRange, withText: currentText, selectedRangeAfterUndo: selectedRangeAfterUndo, actionName: undoActionName)
+        }
         _selectedRange = NSRange(location: newRange.upperBound, length: 0)
         let textEditHelper = TextEditHelper(stringView: stringView, lineManager: lineManager, lineEndings: lineEndings)
         let textEditResult = textEditHelper.replaceText(in: range, with: newString)
@@ -1298,6 +1467,7 @@ extension TextInputView {
         if updatedTextEditResult.didAddOrRemoveLines {
             delegate?.textInputViewDidInvalidateContentSize(self)
         }
+        return true
     }
 
     private func applyLineChangesToLayoutManager(_ lineChangeSet: LineChangeSet) {
@@ -1331,8 +1501,9 @@ extension TextInputView {
         timedUndoManager.setActionName(actionName)
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
             textInputView.inputDelegate?.selectionWillChange(textInputView)
-            textInputView.replaceText(in: range, with: text)
-            textInputView.selectedRange = oldSelectedRange
+            if textInputView.replaceText(in: range, with: text) {
+                textInputView.selectedRange = oldSelectedRange
+            }
             textInputView.inputDelegate?.selectionDidChange(textInputView)
         }
     }
@@ -1383,6 +1554,9 @@ extension TextInputView {
 // MARK: - Indent and Outdent
 extension TextInputView {
     func shiftLeft() {
+        guard stopWritingToolsBeforeEditing() else {
+            return
+        }
         if let selectedRange = selectedRange {
             inputDelegate?.textWillChange(self)
             indentController.shiftLeft(in: selectedRange)
@@ -1391,6 +1565,9 @@ extension TextInputView {
     }
 
     func shiftRight() {
+        guard stopWritingToolsBeforeEditing() else {
+            return
+        }
         if let selectedRange = selectedRange {
             inputDelegate?.textWillChange(self)
             indentController.shiftRight(in: selectedRange)
@@ -1410,6 +1587,9 @@ extension TextInputView {
     }
 
     private func moveSelectedLine(byOffset lineOffset: Int, undoActionName: String) {
+        guard stopWritingToolsBeforeEditing() else {
+            return
+        }
         guard let oldSelectedRange = selectedRange else {
             return
         }
@@ -1419,17 +1599,28 @@ extension TextInputView {
         }
         timedUndoManager.endUndoGrouping()
         timedUndoManager.beginUndoGrouping()
-        replaceText(in: operation.removeRange, with: "", undoActionName: undoActionName)
-        replaceText(in: operation.replacementRange, with: operation.replacementString, undoActionName: undoActionName)
+        defer { timedUndoManager.endUndoGrouping() }
+        let versionBeforeRemoval = textMutationVersion
+        guard replaceText(in: operation.removeRange, with: "", undoActionName: undoActionName),
+              textMutationVersion == versionBeforeRemoval &+ 1 else {
+            return
+        }
+        let versionBeforeInsertion = textMutationVersion
+        guard replaceText(in: operation.replacementRange, with: operation.replacementString, undoActionName: undoActionName),
+              textMutationVersion == versionBeforeInsertion &+ 1 else {
+            return
+        }
         notifyInputDelegateAboutSelectionChangeInLayoutSubviews = true
         selectedRange = operation.selectedRange
-        timedUndoManager.endUndoGrouping()
     }
 }
 
 // MARK: - Marking
 extension TextInputView {
     func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
+        guard stopWritingToolsBeforeEditing() else {
+            return
+        }
         guard let range = markedRange ?? self.selectedRange else {
             return
         }

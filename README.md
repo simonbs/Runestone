@@ -93,3 +93,15 @@ Consumers needing the C API can depend on the `TreeSitter` product from Runeston
 - [swift-tree-sitter](https://github.com/viktorstrate/swift-tree-sitter) and [SwiftTreeSitter](https://github.com/ChimeHQ/SwiftTreeSitter) which have served as inspiration for the Tree-sitter bindings.
 - Detection of indent strategy inspired by [auto-detect-indentation](https://github.com/jtokoph/auto-detect-indentation).
 - And last (but not least!), thanks a ton to [Alexander Blach](https://twitter.com/Lextar) (developer of [Textastic](https://www.textasticapp.com)), [Till Konitzer](https://twitter.com/knutknatter) (developer of [Essayist](https://www.essayist.app)), [Greg Pierce](https://twitter.com/agiletortoise) (developer of [Drafts](https://getdrafts.com)) and [Max Brunsfeld](https://twitter.com/maxbrunsfeld) (developer of [Tree-sitter](https://tree-sitter.github.io/tree-sitter/)) for pointing me in the right direction when I got stuck.
+
+### Writing Tools
+
+When built with Xcode 16.2 or later, Runestone integrates with Apple's Writing Tools coordinator on iOS 18.2 and later. On supported Apple Intelligence devices this enables inline proofreading and rewriting, with line-by-line text previews, animations, and proofreading decorations. Runestone requests plain-text results and preserves the document's line endings. Earlier systems and builds retain the system-provided `UITextInput` experience; availability of Writing Tools is controlled by iOS.
+
+`TextView.writingToolsBehavior` defaults to `.complete`. Set it to `.limited` for panel-based results or `.none` to disable Writing Tools. This configuration is available with Xcode 16.2 or later on iOS 18.0 and later.
+
+Inline Writing Tools can replace text before the person accepts it. Observe `TextView.isWritingToolsActive` and the optional `textViewWritingToolsWillBegin(_:)` / `textViewWritingToolsDidEnd(_:)` delegate methods to defer autosaving or other persistent side effects until review finishes. Ordinary change callbacks still arrive for each revision, including restoration when a change is rejected. A completed session is a single undo operation; returning to the original text adds no undo entry.
+
+`stopWritingTools()` ends the session synchronously from Runestone's perspective and keeps the currently displayed revision; it does not undo it. Programmatic document replacement, ordinary edits, undo, and removal from the window stop the session and invalidate outstanding context requests. When loading an external document, suppress persistence callbacks around stopping the session and assigning the new document so the previous editor contents cannot overwrite the incoming document.
+
+Animation images contain only visible text and are bounded by the viewport. As the editor scrolls or reflows, Runestone refreshes the coordinator's geometry. Verifying the complete Apple Intelligence workflow, including generated results and animation timing, requires a supported physical device with Writing Tools enabled.

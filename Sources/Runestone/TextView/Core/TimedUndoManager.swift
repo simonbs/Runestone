@@ -1,6 +1,7 @@
 import Foundation
 
 final class TimedUndoManager: UndoManager {
+    var willUndoOrRedo: (() -> Void)?
     private let endGroupingInterval: TimeInterval = 1
     private var endGroupingTimer: Timer?
     private var hasOpenGroup: Bool {
@@ -34,8 +35,15 @@ final class TimedUndoManager: UndoManager {
     }
 
     override func undo() {
+        willUndoOrRedo?()
         endUndoGrouping()
         super.undo()
+    }
+
+    override func redo() {
+        willUndoOrRedo?()
+        endUndoGrouping()
+        super.redo()
     }
 }
 

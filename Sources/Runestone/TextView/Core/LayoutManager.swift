@@ -1,4 +1,5 @@
 // swiftlint:disable file_length
+import CoreText
 import UIKit
 
 protocol LayoutManagerDelegate: AnyObject {
@@ -104,6 +105,10 @@ final class LayoutManager {
     private var lineNumberLabelReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineNumberView>()
     private var visibleLineIDs: Set<DocumentLineNodeID> = []
     private let linesContainerView = UIView()
+    var writingToolsHiddenRanges: [NSRange] = [] {
+        didSet { updateWritingToolsMask() }
+    }
+
     private let gutterBackgroundView = GutterBackgroundView()
     private let lineNumbersContainerView = UIView()
     private let gutterSelectionBackgroundView = UIView()
@@ -406,7 +411,10 @@ extension LayoutManager {
                 appearedLineFragmentIDs.insert(lineFragment.id)
                 lineFragmentController.highlightedRangeFragments = highlightService.highlightedRangeFragments(for: lineFragment,
                                                                                                               inLineWithID: line.id)
-                layoutLineFragmentView(for: lineFragmentController, lineYPosition: lineYPosition, lineFragmentFrame: &lineFragmentFrame)
+                layoutLineFragmentView(for: lineFragmentController,
+                                       lineLocation: line.location,
+                                       lineYPosition: lineYPosition,
+                                       lineFragmentFrame: &lineFragmentFrame)
                 maxY = lineFragmentFrame.maxY
             }
             // The line fragments have now been created and we can set the marked and highlighted ranges on them.
@@ -442,6 +450,7 @@ extension LayoutManager {
         }
         lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
         lineFragmentViewReuseQueue.enqueueViews(withKeys: disappearedLineFragmentIDs)
+        updateWritingToolsMask()
         // Adjust the content offset on the Y-axis if necessary.
         if contentOffsetAdjustmentY != 0 {
             let contentOffsetAdjustment = CGPoint(x: 0, y: contentOffsetAdjustmentY)
@@ -471,12 +480,16 @@ extension LayoutManager {
         lineNumberView.frame = CGRect(x: xPosition, y: yPosition, width: gutterWidthService.lineNumberWidth, height: fontLineHeight)
     }
 
-    private func layoutLineFragmentView(for lineFragmentController: LineFragmentController, lineYPosition: CGFloat, lineFragmentFrame: inout CGRect) {
+    private func layoutLineFragmentView(for lineFragmentController: LineFragmentController,
+                                        lineLocation: Int,
+                                        lineYPosition: CGFloat,
+                                        lineFragmentFrame: inout CGRect) {
         let lineFragment = lineFragmentController.lineFragment
         let lineFragmentView = lineFragmentViewReuseQueue.dequeueView(forKey: lineFragment.id)
         if lineFragmentView.superview == nil {
             linesContainerView.addSubview(lineFragmentView)
         }
+        lineFragmentView.documentLineLocation = lineLocation
         lineFragmentController.lineFragmentView = lineFragmentView
         let lineFragmentOrigin = CGPoint(x: leadingLineSpacing, y: textContainerInset.top + lineYPosition + lineFragment.yPosition)
         let lineFragmentWidth = contentSizeService.contentWidth - leadingLineSpacing - textContainerInset.right
@@ -564,5 +577,69 @@ private extension LayoutManager {
 private extension LayoutManager {
     @objc private func clearMemory() {
         lineControllerStorage.removeAllLineControllers(exceptLinesWithID: visibleLineIDs)
+    }
+}
+
+// MARK: - Writing Tools rendering
+extension LayoutManager {
+    /// One rectangle per visible typeset line, in the text input view's coordinates.
+    func writingToolsTextRects(in range: NSRange) -> [CGRect] {
+        lineFragmentViewReuseQueue.visibleViews.values.compactMap { view in
+            guard let fragment = view.renderer?.lineFragment else {
+                return nil
+            }
+            let documentRange = NSRange(location: view.documentLineLocation + fragment.visibleRange.location,
+                                        length: fragment.visibleRange.length)
+            let intersection = NSIntersectionRange(documentRange, range)
+            guard intersection.length > 0 else {
+                return nil
+            }
+            let start = intersection.location - view.documentLineLocation
+            let end = NSMaxRange(intersection) - view.documentLineLocation
+            let firstX = CTLineGetOffsetForStringIndex(fragment.line, start, nil)
+            let lastX = CTLineGetOffsetForStringIndex(fragment.line, end, nil)
+            let rect = CGRect(x: view.frame.minX + min(firstX, lastX), y: view.frame.minY,
+                              width: abs(lastX - firstX), height: view.frame.height)
+            return rect.width > 0 ? rect : nil
+        }.sorted { $0.minY == $1.minY ? $0.minX < $1.minX : $0.minY < $1.minY }
+    }
+
+    func drawWritingToolsText(in context: CGContext) {
+        for view in lineFragmentViewReuseQueue.visibleViews.values {
+            context.saveGState()
+            context.translateBy(x: view.frame.minX, y: view.frame.minY)
+            view.renderer?.drawText(to: context)
+            context.restoreGState()
+        }
+    }
+
+    private func updateWritingToolsMask() {
+        guard !writingToolsHiddenRanges.isEmpty else {
+            linesContainerView.layer.mask = nil
+            return
+        }
+        let scale = textInputView?.window?.screen.scale ?? UIScreen.main.scale
+        var path = CGPath(rect: linesContainerView.bounds, transform: nil)
+        for range in writingToolsHiddenRanges {
+            for rect in writingToolsTextRects(in: range) {
+                // Match the display resolution and cover fractional edge pixels without
+                // expanding into the neighboring glyphs by an arbitrary point-sized margin.
+                let pixelRect = CGRect(x: floor(rect.minX * scale),
+                                       y: floor(rect.minY * scale),
+                                       width: ceil(rect.maxX * scale) - floor(rect.minX * scale),
+                                       height: ceil(rect.maxY * scale) - floor(rect.minY * scale))
+                let hiddenRect = CGRect(x: pixelRect.minX / scale, y: pixelRect.minY / scale,
+                                        width: pixelRect.width / scale, height: pixelRect.height / scale)
+                if #available(iOS 16.0, *) {
+                    // Subtraction keeps overlapping pixel-aligned line rectangles hidden as well.
+                    path = path.subtracting(CGPath(rect: hiddenRect, transform: nil))
+                }
+            }
+        }
+        let mask = CAShapeLayer()
+        mask.contentsScale = scale
+        mask.frame = linesContainerView.bounds
+        mask.path = path
+        linesContainerView.layer.mask = mask
     }
 }
