@@ -30,6 +30,13 @@ final class UITextSearchingHelper: NSObject {
     }
     private var _findInteraction: Any?
 
+    // UIKit decorates results individually. Coalesce those updates so the highlight
+    // service rebuilds its fragments once per batch instead of once per match.
+    private var pendingDecorationRanges: [NSRange] = []
+    private var pendingDecorations: [NSRange: HighlightedRange] = [:]
+    private var pendingDecorationKeys: Set<NSRange> = []
+    private var isDecorationUpdateScheduled = false
+    private var pendingDecorationText: String?
     private let queue = OperationQueue()
     private var _textView: TextView {
         if let textView = textView {
@@ -91,13 +98,24 @@ extension UITextSearchingHelper: UITextSearching {
         guard let foundTextRange = foundTextRange as? IndexedRange else {
             return
         }
-        _textView.highlightedRanges.removeAll { $0.range == foundTextRange.range }
-        if let highlightedRange = _textView.theme.highlightedRange(forFoundTextRange: foundTextRange.range, ofStyle: style) {
-            _textView.highlightedRanges.append(highlightedRange)
+        let range = foundTextRange.range
+        if pendingDecorationKeys.isEmpty {
+            pendingDecorationText = _textView.text
+        }
+        if pendingDecorationKeys.insert(range).inserted {
+            pendingDecorationRanges.append(range)
+        }
+        pendingDecorations[range] = _textView.theme.highlightedRange(forFoundTextRange: range, ofStyle: style)
+        if !isDecorationUpdateScheduled {
+            isDecorationUpdateScheduled = true
+            DispatchQueue.main.async { [weak self] in
+                self?.applyPendingDecorations()
+            }
         }
     }
 
     func clearAllDecoratedFoundText() {
+        discardPendingDecorations()
         _textView.highlightedRanges = []
     }
 
@@ -120,7 +138,11 @@ extension UITextSearchingHelper: UITextSearching {
             // iOS 16 beta 2 will call this function when presenting the find/replace navigator and pass <uninitialized> to foundTextRange. If we return false in this case, the find/replace UI will not be shown, so we need to return true when we can't convert the UITextRange to an IndexedRange.
             return true
         }
-        guard let highlightedRange = _textView.highlightedRanges.first(where: { $0.range == foundTextRange.range }) else {
+        let range = foundTextRange.range
+        let decoration = pendingDecorationKeys.contains(range)
+            ? pendingDecorations[range]
+            : _textView.highlightedRanges.first { $0.range == range }
+        guard let highlightedRange = decoration else {
             return false
         }
         return _textView.editorDelegate?.textView(_textView, canReplaceTextIn: highlightedRange) ?? false
@@ -134,6 +156,28 @@ extension UITextSearchingHelper: UITextSearching {
 }
 
 private extension UITextSearchingHelper {
+    private func applyPendingDecorations() {
+        isDecorationUpdateScheduled = false
+        guard !pendingDecorationKeys.isEmpty,
+              let textView = textView,
+              let pendingDecorationText = pendingDecorationText,
+              pendingDecorationText.utf16.elementsEqual(textView.text.utf16) else {
+            discardPendingDecorations()
+            return
+        }
+        var ranges = textView.highlightedRanges.filter { !pendingDecorationKeys.contains($0.range) }
+        ranges.append(contentsOf: pendingDecorationRanges.compactMap { pendingDecorations[$0] })
+        discardPendingDecorations()
+        textView.highlightedRanges = ranges
+    }
+
+    private func discardPendingDecorations() {
+        pendingDecorationRanges.removeAll(keepingCapacity: true)
+        pendingDecorations.removeAll(keepingCapacity: true)
+        pendingDecorationKeys.removeAll(keepingCapacity: true)
+        pendingDecorationText = nil
+    }
+
     private func addFindInteraction() {
         if #available(iOS 16, *), findInteraction == nil {
             let findInteraction = UIFindInteraction(sessionDelegate: self)
@@ -143,6 +187,7 @@ private extension UITextSearchingHelper {
     }
 
     private func removeFindInteraction() {
+        discardPendingDecorations()
         if #available(iOS 16, *), let findInteraction = findInteraction {
             self.findInteraction = nil
             _textView.removeInteraction(findInteraction)
