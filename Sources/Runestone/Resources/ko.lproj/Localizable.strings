@@ -1,0 +1,5 @@
+"undo.action_name.typing" = "입력";
+"undo.action_name.replace_all" = "모두 바꾸기";
+"undo.action_name.move_lines_up" = "행 위로 이동";
+"undo.action_name.move_lines_down" = "행 아래로 이동";
+"menu.item_title.replace" = "바꾸기";
