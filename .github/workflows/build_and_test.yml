@@ -33,6 +33,7 @@ jobs:
           filters: |
             src:
               - '.github/workflows/build_and_test.yml'
+              - 'Package.swift'
               - 'Sources/**'
               - '!Sources/Runestone/Documentation.docc/**'
               - 'Tests/**'
@@ -41,7 +42,7 @@ jobs:
         run: |
           set -o pipefail &&\
           xcodebuild build-for-testing\
-            -scheme Runestone\
+            -scheme Runestone-Package\
             -sdk iphonesimulator\
             -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}"\
           | xcbeautify --renderer github-actions
@@ -50,7 +51,7 @@ jobs:
         run: |
           set -o pipefail &&\
           xcodebuild test-without-building\
-            -scheme Runestone\
+            -scheme Runestone-Package\
             -sdk iphonesimulator\
             -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}"\
           | xcbeautify --renderer github-actions
