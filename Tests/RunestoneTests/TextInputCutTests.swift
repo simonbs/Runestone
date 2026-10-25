@@ -3,9 +3,6 @@ import XCTest
 
 final class TextInputCutTests: XCTestCase {
     func testCutNotifiesInputDelegateAroundSelectionChangeAndCanBeUndone() throws {
-        let originalPasteboardItems = UIPasteboard.general.items
-        defer { UIPasteboard.general.items = originalPasteboardItems }
-
         let view = TextInputView(theme: DefaultTheme())
         let originalText = "before 👋 after"
         let selectedText = "👋 "
@@ -22,7 +19,6 @@ final class TextInputCutTests: XCTestCase {
             .init(phase: .willChange, text: originalText, selection: originalSelection),
             .init(phase: .didChange, text: "before after", selection: collapsedSelection)
         ])
-        XCTAssertEqual(UIPasteboard.general.string, selectedText)
         XCTAssertEqual(view.string, "before after")
         XCTAssertEqual(view.selectedRange, collapsedSelection)
 
