@@ -164,12 +164,12 @@ final class WritingToolsInteraction: NSObject, WritingToolsControlling, UIWritin
             return
         }
         completion(view.writingToolsTextRects(in: range).map { rect in
-            let path = UIBezierPath()
-            let baseline = rect.midY + view.theme.font.lineHeight / 2 + view.theme.font.descender
-            let y = min(rect.maxY, baseline + 2)
-            path.move(to: CGPoint(x: rect.minX, y: y))
-            path.addLine(to: CGPoint(x: rect.maxX, y: y))
-            return path
+            // Supply a filled shape, as in Apple's Writing Tools sample. An open
+            // horizontal path has no area for the coordinator to render.
+            // UIKit owns the underline's color, animation, and interaction.
+            let height = min(CGFloat(2), rect.height)
+            return UIBezierPath(rect: CGRect(x: rect.minX, y: rect.maxY - height,
+                                            width: rect.width, height: height))
         })
     }
 

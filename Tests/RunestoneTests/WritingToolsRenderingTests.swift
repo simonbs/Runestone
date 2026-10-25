@@ -60,6 +60,64 @@ final class WritingToolsRenderingTests: XCTestCase {
         XCTAssertLessThan(coverage, 0.75, "The preview must not include an opaque editor background.")
     }
 
+    func testProofreadingShapesRemainVisibleAndAlignedAfterLengthChangingReplacement() throws {
+        let view = try makeTextView(text: "We was planning to have lunch with our friends.")
+        let input = try textInput(in: view)
+        let interaction = makeInteraction(in: input)
+        let context = try requestContext(from: interaction)
+        let typoRange = (view.text as NSString).range(of: "was")
+        var insertedText: NSAttributedString?
+        interaction.writingToolsCoordinator(interaction.coordinator,
+                                            replace: typoRange,
+                                            in: context,
+                                            proposedText: NSAttributedString(string: "were"),
+                                            reason: .interactive,
+                                            animationParameters: nil) { insertedText = $0 }
+        XCTAssertEqual(insertedText?.string, "were")
+
+        let updatedText = view.text as NSString
+        let correctedWord = updatedText.range(of: "were")
+        let wrappedPhrase = updatedText.range(of: "were planning to have lunch")
+        for range in [correctedWord, wrappedPhrase] {
+            var boundingPaths: [UIBezierPath] = []
+            var underlinePaths: [UIBezierPath] = []
+            interaction.writingToolsCoordinator(interaction.coordinator,
+                                                requestsBoundingBezierPathsFor: range,
+                                                in: context) { boundingPaths = $0 }
+            interaction.writingToolsCoordinator(interaction.coordinator,
+                                                requestsUnderlinePathsFor: range,
+                                                in: context) { underlinePaths = $0 }
+            XCTAssertFalse(boundingPaths.isEmpty)
+            XCTAssertEqual(underlinePaths.count, boundingPaths.count)
+            if range == wrappedPhrase {
+                XCTAssertGreaterThan(boundingPaths.count, 1, "The suggestion must exercise multiple wrapped lines.")
+            }
+
+            for (underline, boundingPath) in zip(underlinePaths, boundingPaths) {
+                let textRect = boundingPath.bounds
+                XCTAssertGreaterThan(underline.bounds.height, 0, "A zero-area path cannot produce a filled proofreading mark.")
+                XCTAssertEqual(underline.bounds.minX, textRect.minX, accuracy: 0.5)
+                XCTAssertEqual(underline.bounds.maxX, textRect.maxX, accuracy: 0.5)
+                XCTAssertTrue(textRect.insetBy(dx: -0.5, dy: -0.5).contains(underline.bounds))
+                XCTAssertGreaterThanOrEqual(underline.bounds.midY, textRect.midY)
+
+                // Apple's coordinator sample supplies filled shapes, so a strokable
+                // open line alone is insufficient even when its horizontal bounds match.
+                let format = UIGraphicsImageRendererFormat()
+                format.opaque = false
+                let image = UIGraphicsImageRenderer(size: textRect.size, format: format).image { renderer in
+                    let cg = renderer.cgContext
+                    cg.translateBy(x: -textRect.minX, y: -textRect.minY)
+                    cg.setFillColor(UIColor.black.cgColor)
+                    cg.addPath(underline.cgPath)
+                    cg.fillPath()
+                }
+                XCTAssertGreaterThan(try alphaCoverage(of: image), 0,
+                                     "The native coordinator needs a drawable proofreading shape for each affected line.")
+            }
+        }
+    }
+
     func testAnimationHidesOnlyRequestedGlyphsAndFinishOrStopRestoresThem() throws {
         let view = try makeTextView(text: "Selected glyphs\nUnchanged glyphs")
         let input = try textInput(in: view)
