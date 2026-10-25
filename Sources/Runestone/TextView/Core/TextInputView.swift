@@ -1200,7 +1200,12 @@ extension TextInputView {
 
     func text(in range: UITextRange) -> String? {
         if let indexedRange = range as? IndexedRange {
-            return text(in: indexedRange.range.nonNegativeLength)
+            let range = indexedRange.range.nonNegativeLength
+            // UIKit can request an empty range, including the new paragraph after a trailing newline.
+            if range.length == 0 && range.location >= 0 && range.location <= stringView.string.length {
+                return ""
+            }
+            return text(in: range)
         } else {
             return nil
         }
