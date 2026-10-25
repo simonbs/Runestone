@@ -439,6 +439,8 @@ final class TextInputView: UIView, UITextInput {
             if newValue != stringView.string {
                 stringView.string = newValue
                 languageMode.parse(newValue)
+                // Rebuilding creates new line IDs. Release controllers and pending highlighting for the old lines.
+                lineControllerStorage.removeAllLineControllers()
                 lineManager.rebuild()
                 if let oldSelectedRange = selectedRange {
                     inputDelegate?.selectionWillChange(self)
@@ -556,6 +558,7 @@ final class TextInputView: UIView, UITextInput {
     }
     var lineEndings: LineEnding = .lf
     private(set) var isRestoringPreviouslyDeletedText = false
+    private(set) var isUpdatingMarkedText = false
 
     // MARK: - Private
     private var languageMode: InternalLanguageMode = PlainTextInternalLanguageMode() {
@@ -1098,7 +1101,8 @@ extension TextInputView {
 // MARK: - Editing
 extension TextInputView {
     func insertText(_ text: String) {
-        let preparedText = prepareTextForInsertion(text)
+        // A typed tab follows the indentation strategy. Replacement and pasted text retain literal tabs.
+        let preparedText = text == "\t" ? indentStrategy.string(indentLevel: 1) : prepareTextForInsertion(text)
         isRestoringPreviouslyDeletedText = hasDeletedTextWithPendingLayoutSubviews
         hasDeletedTextWithPendingLayoutSubviews = false
         defer {
@@ -1200,7 +1204,12 @@ extension TextInputView {
 
     func text(in range: UITextRange) -> String? {
         if let indexedRange = range as? IndexedRange {
-            return text(in: indexedRange.range.nonNegativeLength)
+            let range = indexedRange.range.nonNegativeLength
+            // UIKit can request an empty range, including the new paragraph after a trailing newline.
+            if range.length == 0 && range.location >= 0 && range.location <= stringView.string.length {
+                return ""
+            }
+            return text(in: range)
         } else {
             return nil
         }
@@ -1217,17 +1226,25 @@ extension TextInputView {
         guard let oldString = stringView.string.copy() as? NSString else {
             return
         }
-        timedUndoManager.endUndoGrouping()
+        // UndoManager owns the inverse group while undoing or redoing.
+        let shouldManageUndoGroup = !timedUndoManager.isUndoing && !timedUndoManager.isRedoing
+        if shouldManageUndoGroup {
+            timedUndoManager.endUndoGrouping()
+        }
         let oldSelectedRange = selectedRange
         preserveUndoStackWhenSettingString = true
         string = newString
         preserveUndoStackWhenSettingString = false
-        timedUndoManager.beginUndoGrouping()
+        if shouldManageUndoGroup {
+            timedUndoManager.beginUndoGrouping()
+        }
         timedUndoManager.setActionName(L10n.Undo.ActionName.replaceAll)
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
             textInputView.setStringWithUndoAction(oldString)
         }
-        timedUndoManager.endUndoGrouping()
+        if shouldManageUndoGroup {
+            timedUndoManager.endUndoGrouping()
+        }
         delegate?.textInputViewDidChange(self)
         if let oldSelectedRange = oldSelectedRange {
             selectedRange = safeSelectionRange(from: oldSelectedRange)
@@ -1319,13 +1336,10 @@ extension TextInputView {
     }
 
     private func prepareTextForInsertion(_ text: String) -> String {
-        // Ensure all line endings match our preferred line endings.
-        var preparedText = text
-        let lineEndingsToReplace: [LineEnding] = [.crlf, .cr, .lf].filter { $0 != lineEndings }
-        for lineEnding in lineEndingsToReplace {
-            preparedText = preparedText.replacingOccurrences(of: lineEnding.symbol, with: lineEndings.symbol)
-        }
-        return preparedText
+        // Normalize to LF first so CRLF pairs and newly inserted delimiters are not replaced twice.
+        let normalizedText = text.replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+        return normalizedText.replacingOccurrences(of: "\n", with: lineEndings.symbol)
     }
 }
 
@@ -1418,6 +1432,8 @@ extension TextInputView {
             return
         }
         let markedText = markedText ?? ""
+        isUpdatingMarkedText = true
+        defer { isUpdatingMarkedText = false }
         guard shouldChangeText(in: range, replacementText: markedText) else {
             return
         }
@@ -1432,10 +1448,16 @@ extension TextInputView {
     }
 
     func unmarkText() {
+        let hadMarkedText = markedRange != nil
         inputDelegate?.selectionWillChange(self)
         markedRange = nil
         inputDelegate?.selectionDidChange(self)
         delegate?.textInputViewDidUpdateMarkedRange(self)
+        if hadMarkedText {
+            // Committing marked text changes its editing state even when its characters
+            // stay the same. Match UITextView's final change notification.
+            delegate?.textInputViewDidChange(self)
+        }
     }
 }
 

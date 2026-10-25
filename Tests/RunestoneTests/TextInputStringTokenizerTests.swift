@@ -6,6 +6,30 @@ final class TextInputStringTokenizerTests: XCTestCase {}
 
 // MARK: - Movement in Lines
 extension TextInputStringTokenizerTests {
+    func testLineBoundaryQueriesBeforeLayout() {
+        let tokenizer = makeTokenizer(prepareLines: false)
+        let direction = UITextDirection(rawValue: UITextStorageDirection.forward.rawValue)
+        let position = IndexedPosition(index: 10)
+        let boundary = tokenizer.position(from: position, toBoundary: .line, inDirection: direction) as? IndexedPosition
+        XCTAssertEqual(boundary?.index, 39)
+
+        let unpreparedTokenizer = makeTokenizer(prepareLines: false)
+        XCTAssertFalse(unpreparedTokenizer.isPosition(position, atBoundary: .line, inDirection: direction))
+    }
+
+    func testLineBoundaryQueryDuringTextReplacementSelectionNotification() {
+        let textInputView = TextInputView(theme: DefaultTheme())
+        textInputView.scrollViewWidth = 365
+        textInputView.string = "X-X\n"
+        textInputView.selectedRange = NSRange(location: 2, length: 0)
+        let delegate = LineBoundaryInputDelegate()
+        textInputView.inputDelegate = delegate
+
+        textInputView.string = "XX\n"
+
+        XCTAssertEqual(delegate.boundaryIndex, 2)
+    }
+
     // This is equivalent to doing Cmd+Right at the very beginning of the document.
     func testMovingToEndOfFirstLineFragmentFromBeginningOfDocument() {
         let tokenizer = makeTokenizer()
@@ -262,7 +286,7 @@ Donec laoreet, massa sed commodo tincidunt, dui neque ullamcorper sapien, laoree
         // swiftlint:enable line_length
     }
 
-    private func makeTokenizer() -> UITextInputTokenizer {
+    private func makeTokenizer(prepareLines: Bool = true) -> UITextInputTokenizer {
         let textInputView = TextInputView(theme: DefaultTheme())
         let stringLength = textInputView.stringView.string.length
         textInputView.layoutLines(toLocation: stringLength)
@@ -276,7 +300,7 @@ Donec laoreet, massa sed commodo tincidunt, dui neque ullamcorper sapien, laoree
                                                           invisibleCharacterConfiguration: invisibleCharacterConfiguration)
         let lineControllerStorage = LineControllerStorage(stringView: stringView, lineControllerFactory: lineControllerFactory)
         lineControllerStorage.delegate = self
-        for row in 0 ..< lineManager.lineCount {
+        for row in 0 ..< (prepareLines ? lineManager.lineCount : 0) {
             let line = lineManager.line(atRow: row)
             let lineController = lineControllerStorage.getOrCreateLineController(for: line)
             lineController.prepareToDisplayString(toLocation: line.data.totalLength, syntaxHighlightAsynchronously: false)
@@ -305,3 +329,26 @@ extension TextInputStringTokenizerTests: LineControllerDelegate {
     func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController) {}
 }
 // swiftlint:enable force_cast
+
+private final class LineBoundaryInputDelegate: NSObject, UITextInputDelegate {
+    var boundaryIndex: Int?
+
+    func selectionWillChange(_ textInput: UITextInput?) {}
+
+    func selectionDidChange(_ textInput: UITextInput?) {
+        guard let textInput = textInput, let position = textInput.selectedTextRange?.start else {
+            return
+        }
+        let direction = UITextDirection(rawValue: UITextStorageDirection.forward.rawValue)
+        let boundary = textInput.tokenizer.position(from: position, toBoundary: .line, inDirection: direction)
+        boundaryIndex = (boundary as? IndexedPosition)?.index
+    }
+
+    func textWillChange(_ textInput: UITextInput?) {}
+    func textDidChange(_ textInput: UITextInput?) {}
+
+    #if compiler(>=6.1)
+    @available(iOS 18.4, *)
+    func conversationContext(_ context: UIConversationContext?, didChange textInput: UITextInput?) {}
+    #endif
+}
