@@ -1098,7 +1098,8 @@ extension TextInputView {
 // MARK: - Editing
 extension TextInputView {
     func insertText(_ text: String) {
-        let preparedText = prepareTextForInsertion(text)
+        // A typed tab follows the indentation strategy. Replacement and pasted text retain literal tabs.
+        let preparedText = text == "\t" ? indentStrategy.string(indentLevel: 1) : prepareTextForInsertion(text)
         isRestoringPreviouslyDeletedText = hasDeletedTextWithPendingLayoutSubviews
         hasDeletedTextWithPendingLayoutSubviews = false
         defer {
