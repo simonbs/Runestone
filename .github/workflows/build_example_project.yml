@@ -34,6 +34,7 @@ jobs:
             src:
               - '.github/workflows/build_example_project.yml'
               - 'Example/**'
+              - 'Package.swift'
               - 'Sources/**'
       - name: Build
         if: steps.changes.outputs.src == 'true'
