@@ -25,7 +25,7 @@ final class LineController {
             }
         }
     }
-    var theme: Theme = DefaultTheme() {
+    var theme: Theme = DefaultTheme.shared {
         didSet {
             syntaxHighlighter?.theme = theme
             applyThemeToAllLineFragmentControllers()

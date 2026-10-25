@@ -35,21 +35,10 @@ final class LayoutManager {
             }
         }
     }
-    var theme: Theme = DefaultTheme() {
+    var theme: Theme = DefaultTheme.shared {
         didSet {
             if theme !== oldValue {
-                gutterBackgroundView.backgroundColor = theme.gutterBackgroundColor
-                gutterBackgroundView.hairlineColor = theme.gutterHairlineColor
-                gutterBackgroundView.hairlineWidth = theme.gutterHairlineWidth
-                invisibleCharacterConfiguration.font = theme.font
-                invisibleCharacterConfiguration.textColor = theme.invisibleCharactersColor
-                gutterSelectionBackgroundView.backgroundColor = theme.selectedLinesGutterBackgroundColor
-                lineSelectionBackgroundView.backgroundColor = theme.selectedLineBackgroundColor
-                for lineController in lineControllerStorage {
-                    lineController.theme = theme
-                    lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
-                    lineController.invalidateSyntaxHighlighting()
-                }
+                applyTheme()
                 setNeedsLayout()
                 setNeedsLayoutLineSelection()
                 layoutIfNeeded()
@@ -173,6 +162,8 @@ final class LayoutManager {
         self.gutterBackgroundView.isUserInteractionEnabled = false
         self.gutterSelectionBackgroundView.isUserInteractionEnabled = false
         self.lineSelectionBackgroundView.isUserInteractionEnabled = false
+        // Initial theme assignments do not invoke didSet, and callers may reuse the same shared theme.
+        self.applyTheme()
         self.updateShownViews()
         let memoryWarningNotificationName = UIApplication.didReceiveMemoryWarningNotification
         NotificationCenter.default.addObserver(self, selector: #selector(clearMemory), name: memoryWarningNotificationName, object: nil)
@@ -526,6 +517,21 @@ extension LayoutManager {
         gutterContainerView.addSubview(gutterBackgroundView)
         gutterContainerView.addSubview(gutterSelectionBackgroundView)
         gutterContainerView.addSubview(lineNumbersContainerView)
+    }
+
+    private func applyTheme() {
+        gutterBackgroundView.backgroundColor = theme.gutterBackgroundColor
+        gutterBackgroundView.hairlineColor = theme.gutterHairlineColor
+        gutterBackgroundView.hairlineWidth = theme.gutterHairlineWidth
+        invisibleCharacterConfiguration.font = theme.font
+        invisibleCharacterConfiguration.textColor = theme.invisibleCharactersColor
+        gutterSelectionBackgroundView.backgroundColor = theme.selectedLinesGutterBackgroundColor
+        lineSelectionBackgroundView.backgroundColor = theme.selectedLineBackgroundColor
+        for lineController in lineControllerStorage {
+            lineController.theme = theme
+            lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
+            lineController.invalidateSyntaxHighlighting()
+        }
     }
 
     private func updateShownViews() {
