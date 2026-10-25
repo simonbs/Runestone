@@ -63,6 +63,8 @@ private extension TextInputStringTokenizer {
         guard lineLocalLocation >= 0 && lineLocalLocation <= line.data.totalLength else {
             return false
         }
+        // UIKit can ask for line boundaries before layout, including during selection notifications.
+        lineController.prepareToDisplayString(toLocation: lineLocalLocation, syntaxHighlightAsynchronously: true)
         guard let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation) else {
             return false
         }
@@ -89,6 +91,8 @@ private extension TextInputStringTokenizer {
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let lineLocation = line.location
         let lineLocalLocation = location - lineLocation
+        // UIKit can ask for line boundaries before layout, including during selection notifications.
+        lineController.prepareToDisplayString(toLocation: lineLocalLocation, syntaxHighlightAsynchronously: true)
         guard let lineFragmentNode = lineController.lineFragmentNode(containingCharacterAt: lineLocalLocation) else {
             return nil
         }
