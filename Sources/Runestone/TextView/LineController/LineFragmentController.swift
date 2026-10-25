@@ -65,6 +65,18 @@ final class LineFragmentController {
             }
         }
     }
+    /// Misspelled ranges in coordinates local to the document line.
+    var misspelledRanges: [NSRange] {
+        get {
+            renderer.misspelledRanges
+        }
+        set {
+            if newValue != renderer.misspelledRanges {
+                renderer.misspelledRanges = newValue
+                lineFragmentView?.setNeedsDisplay()
+            }
+        }
+    }
 
     private let renderer: LineFragmentRenderer
 
@@ -72,6 +84,10 @@ final class LineFragmentController {
         self.lineFragment = lineFragment
         self.renderer = LineFragmentRenderer(lineFragment: lineFragment, invisibleCharacterConfiguration: invisibleCharacterConfiguration)
         self.renderer.delegate = self
+    }
+
+    func visibleCharacterRanges(in horizontalRange: ClosedRange<CGFloat>) -> [NSRange] {
+        renderer.visibleCharacterRanges(in: horizontalRange)
     }
 }
 

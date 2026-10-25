@@ -48,6 +48,12 @@ public protocol TextViewDelegate: AnyObject {
     ///
     /// The text view calls this method whenever the user types a new character or deletes an existing character.
     func textView(_ textView: TextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
+    /// Asks whether a misspelled word should be underlined and offered corrections.
+    ///
+    /// The range uses UTF-16 offsets in the document. Return `false` to exclude identifiers, URLs,
+    /// code blocks, or other non-prose text. The default is `true`. This method runs on the main thread;
+    /// keep it inexpensive. Call ``TextView/invalidateSpellChecking()`` if the policy changes.
+    func textView(_ textView: TextView, shouldCheckSpellingIn range: NSRange) -> Bool
     /// Asks the delegate whether to insert a character pair in the specified range.
     /// - Parameters:
     ///   - textView: The text view in which to insert the character pair.
@@ -111,6 +117,9 @@ public protocol TextViewDelegate: AnyObject {
 }
 
 public extension TextViewDelegate {
+    func textView(_ textView: TextView, shouldCheckSpellingIn range: NSRange) -> Bool {
+        true
+    }
     func textViewWritingToolsWillBegin(_ textView: TextView) {}
 
     func textViewWritingToolsDidEnd(_ textView: TextView) {}

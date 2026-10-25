@@ -69,6 +69,10 @@ private extension MenuButton {
                 }
             ]),
             UIMenu(options: .displayInline, children: [
+                UIAction(title: "Check Spelling", state: settings.checkSpelling ? .on : .off) { [weak self] _ in
+                    self?.selectionHandler?.handleSelection(of: .toggleSpellChecking)
+                    self?.setupMenu()
+                },
                 UIAction(title: "Allow Editing", state: settings.isEditable ? .on : .off) { [weak self] _ in
                     self?.selectionHandler?.handleSelection(of: .toggleEditable)
                     self?.setupMenu()

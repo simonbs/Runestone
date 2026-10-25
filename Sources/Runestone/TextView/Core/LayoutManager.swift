@@ -98,6 +98,18 @@ final class LayoutManager {
             }
         }
     }
+    /// Spelling decorations in document UTF-16 coordinates, independent of syntax and search highlights.
+    var misspelledRanges: [NSRange] = [] {
+        didSet {
+            if misspelledRanges != oldValue {
+                updateSpellingOnVisibleLines()
+            }
+        }
+    }
+    /// The text covered by the fragments from the most recent viewport layout.
+    private(set) var visibleTextRange: NSRange?
+    /// Individual visible ranges avoid including hidden columns between long unwrapped lines.
+    private(set) var visibleTextRanges: [NSRange] = []
 
     // MARK: - Views
     let gutterContainerView = UIView()
@@ -383,6 +395,8 @@ extension LayoutManager {
     private func layoutLinesInViewport() {
         // Immediately bail out from generating lines in a viewport of zero size.
         guard viewport.size.width > 0 && viewport.size.height > 0 else {
+            visibleTextRange = nil
+            visibleTextRanges = []
             return
         }
         let oldVisibleLineIDs = visibleLineIDs
@@ -391,6 +405,8 @@ extension LayoutManager {
         var nextLine = lineManager.line(containingYOffset: insetViewport.minY)
         var appearedLineIDs: Set<DocumentLineNodeID> = []
         var appearedLineFragmentIDs: Set<LineFragmentID> = []
+        var visibleRange: NSRange?
+        var visibleRanges: [NSRange] = []
         var maxY = insetViewport.minY
         var contentOffsetAdjustmentY: CGFloat = 0
         while let line = nextLine, maxY < insetViewport.maxY, constrainingLineWidth > 0 {
@@ -409,6 +425,12 @@ extension LayoutManager {
                 let lineFragment = lineFragmentController.lineFragment
                 var lineFragmentFrame: CGRect = .zero
                 appearedLineFragmentIDs.insert(lineFragment.id)
+                for localRange in visibleCharacterRanges(in: lineFragmentController) {
+                    let documentRange = NSRange(location: line.location + localRange.location, length: localRange.length)
+                    visibleRange = visibleRange.map { NSUnionRange($0, documentRange) } ?? documentRange
+                    visibleRanges.append(documentRange)
+                }
+                updateSpelling(on: lineFragmentController, lineLocation: line.location)
                 lineFragmentController.highlightedRangeFragments = highlightService.highlightedRangeFragments(for: lineFragment,
                                                                                                               inLineWithID: line.id)
                 layoutLineFragmentView(for: lineFragmentController,
@@ -442,6 +464,8 @@ extension LayoutManager {
         linesContainerView.frame = CGRect(x: 0, y: 0, width: contentSize.width, height: contentSize.height)
         // Update the visible lines and line fragments. Clean up everything that is not in the viewport anymore.
         visibleLineIDs = appearedLineIDs
+        visibleTextRange = visibleRange
+        visibleTextRanges = visibleRanges
         let disappearedLineIDs = oldVisibleLineIDs.subtracting(appearedLineIDs)
         let disappearedLineFragmentIDs = oldVisibleLineFragmentIDs.subtracting(appearedLineFragmentIDs)
         for disappearedLineID in disappearedLineIDs {
@@ -569,6 +593,75 @@ private extension LayoutManager {
                     lineController.setMarkedTextOnLineFragments(nil)
                 }
             }
+        }
+    }
+}
+
+// MARK: - Spelling geometry
+extension LayoutManager {
+    /// Visible word rectangles in text input coordinates, split at wrapping and bidirectional run boundaries.
+    func spellingRects(for range: NSRange) -> [CGRect] {
+        guard range.location >= 0, range.location <= stringView.string.length,
+              range.length > 0, range.length <= stringView.string.length - range.location else {
+            return []
+        }
+        let gutterWidth = showLineNumbers ? safeAreaInsets.left + gutterWidthService.gutterWidth : 0
+        let visibleTextRect = CGRect(x: viewport.minX + gutterWidth, y: viewport.minY,
+                                     width: max(0, viewport.width - gutterWidth), height: viewport.height)
+        return lineFragmentViewReuseQueue.visibleViews.values.flatMap { view -> [CGRect] in
+            guard let renderer = view.renderer else {
+                return []
+            }
+            let fragmentRange = renderer.lineFragment.visibleRange
+            let documentRange = NSRange(location: view.documentLineLocation + fragmentRange.location, length: fragmentRange.length)
+            let intersection = NSIntersectionRange(documentRange, range)
+            guard intersection.length > 0 else {
+                return []
+            }
+            let localRange = NSRange(location: intersection.location - view.documentLineLocation, length: intersection.length)
+            return renderer.spellingUnderlineSegments(in: localRange).compactMap { segment in
+                // Fragment frames already include the document line origin, gutter, and text-container insets.
+                let rect = CGRect(x: view.frame.minX + segment.lowerBound, y: view.frame.minY,
+                                  width: segment.upperBound - segment.lowerBound, height: view.frame.height)
+                    .intersection(visibleTextRect)
+                return rect.isNull || rect.isEmpty ? nil : rect
+            }
+        }.sorted { $0.minY == $1.minY ? $0.minX < $1.minX : $0.minY < $1.minY }
+    }
+}
+
+// MARK: - Spelling
+private extension LayoutManager {
+    private func visibleCharacterRanges(in controller: LineFragmentController) -> [NSRange] {
+        if isLineWrappingEnabled {
+            return [controller.lineFragment.visibleRange]
+        }
+        // Include partially visible glyphs and a small margin; the spelling service expands to word boundaries.
+        let lowerBound = viewport.minX - leadingLineSpacing - 32
+        let upperBound = viewport.maxX - leadingLineSpacing + 32
+        return controller.visibleCharacterRanges(in: lowerBound ... upperBound)
+    }
+
+    private func updateSpellingOnVisibleLines() {
+        for lineID in visibleLineIDs {
+            guard let lineController = lineControllerStorage[lineID] else {
+                continue
+            }
+            for fragmentController in lineController.lineFragmentControllers(in: insetViewport) {
+                updateSpelling(on: fragmentController, lineLocation: lineController.line.location)
+            }
+        }
+    }
+
+    private func updateSpelling(on controller: LineFragmentController, lineLocation: Int) {
+        let fragmentRange = controller.lineFragment.visibleRange
+        let documentRange = NSRange(location: lineLocation + fragmentRange.location, length: fragmentRange.length)
+        controller.misspelledRanges = misspelledRanges.compactMap { range in
+            let intersection = NSIntersectionRange(range, documentRange)
+            guard intersection.length > 0 else {
+                return nil
+            }
+            return NSRange(location: intersection.location - lineLocation, length: intersection.length)
         }
     }
 }
