@@ -26,27 +26,6 @@ final class WritingToolsInteractionTests: XCTestCase {
         try assertSessionEndDocumentReplacementCancelsCommand { $0.moveSelectedLinesDown() }
     }
 
-    func testEndingSessionCanReplaceDocumentWithoutApplyingPendingUserEditToNewFile() throws {
-        let view = TextView()
-        view.text = "Original text"
-        let interaction = try makeInteraction(in: view)
-        transition(interaction, to: .interactiveStreaming)
-        let context = try requestContext(from: interaction)
-        XCTAssertNotNil(replace(NSRange(location: 0, length: 13), in: context, with: "Long rewritten text", using: interaction))
-        view.selectedRange = NSRange(location: 5, length: 9)
-        let recorder = WritingToolsLifecycleRecorder()
-        recorder.onEnd = { $0.text = "New" }
-        view.editorDelegate = recorder
-
-        view.insertText("pending edit")
-
-        XCTAssertFalse(view.isWritingToolsActive)
-        XCTAssertEqual(view.text, "New")
-        XCTAssertEqual(recorder.activeStates, [false])
-        XCTAssertNil(replace(NSRange(location: 0, length: 3), in: context, with: "late suggestion", using: interaction))
-        XCTAssertEqual(view.text, "New")
-    }
-
     func testAcceptedSessionIsOneUndoStepAndPreservesEarlierHistory() throws {
         let view = TextView()
         view.text = "Draft"
@@ -95,7 +74,7 @@ final class WritingToolsInteractionTests: XCTestCase {
         XCTAssertFalse(undoManager.canRedo)
     }
 
-    func testUndoDuringStreamingEndsSessionAndRejectsLateSuggestions() throws {
+    func testUndoDuringStreamingReportsUpdatedContextAndKeepsSession() throws {
         let view = TextView()
         view.text = "Draft text"
         let interaction = try makeInteraction(in: view)
@@ -106,11 +85,12 @@ final class WritingToolsInteractionTests: XCTestCase {
         let undoManager = try XCTUnwrap(view.undoManager)
         undoManager.undo()
 
-        XCTAssertFalse(view.isWritingToolsActive)
+        XCTAssertTrue(view.isWritingToolsActive)
         XCTAssertEqual(view.text, "Draft text")
-        XCTAssertNil(replace(NSRange(location: 0, length: 10), in: context, with: "Late text", using: interaction))
         undoManager.redo()
         XCTAssertEqual(view.text, "Improved text")
+        XCTAssertNotNil(replace(NSRange(location: 0, length: 8), in: context, with: "Better", using: interaction))
+        XCTAssertEqual(view.text, "Better text")
     }
 
     func testSelectedContextAndSuccessiveSuggestionsUseDocumentUTF16Offsets() throws {
@@ -144,7 +124,7 @@ final class WritingToolsInteractionTests: XCTestCase {
         transition(interaction, to: .interactiveStreaming)
         let context = try requestContext(from: interaction)
 
-        view.insertText("new file")
+        view.text = "new file"
 
         XCTAssertFalse(view.isWritingToolsActive)
         XCTAssertNil(replace(NSRange(location: 0, length: 8), in: context, with: "late suggestion", using: interaction))
@@ -254,75 +234,5 @@ private extension WritingToolsInteractionTests {
         XCTAssertEqual(recorder.activeStates, [false])
     }
 
-    func makeInteraction(in textView: TextView) throws -> WritingToolsInteraction {
-        let input = try XCTUnwrap(textView.subviews.compactMap { $0 as? TextInputView }.first)
-        let interaction = WritingToolsInteraction(textInputView: input)
-        input.writingToolsController = interaction
-        return interaction
-    }
-
-    func requestContext(from interaction: WritingToolsInteraction,
-                        scope: UIWritingToolsCoordinator.ContextScope = .fullDocument) throws -> UIWritingToolsCoordinator.Context {
-        let completion = expectation(description: "Context request completes")
-        var contexts: [UIWritingToolsCoordinator.Context] = []
-        interaction.writingToolsCoordinator(interaction.coordinator, requestsContextsFor: scope) { requestedContexts in
-            contexts = requestedContexts
-            completion.fulfill()
-        }
-        wait(for: [completion], timeout: 1)
-        return try XCTUnwrap(contexts.first)
-    }
-
-    func replace(_ range: NSRange,
-                 in context: UIWritingToolsCoordinator.Context,
-                 with text: String,
-                 using interaction: WritingToolsInteraction) -> NSAttributedString? {
-        let completion = expectation(description: "Replacement request completes")
-        var result: NSAttributedString?
-        interaction.writingToolsCoordinator(interaction.coordinator,
-                                            replace: range,
-                                            in: context,
-                                            proposedText: NSAttributedString(string: text),
-                                            reason: .noninteractive,
-                                            animationParameters: nil) { replacement in
-            result = replacement
-            completion.fulfill()
-        }
-        wait(for: [completion], timeout: 1)
-        return result
-    }
-
-    func transition(_ interaction: WritingToolsInteraction, to state: UIWritingToolsCoordinator.State) {
-        let completion = expectation(description: "State change completes")
-        interaction.writingToolsCoordinator(interaction.coordinator, willChangeTo: state) {
-            completion.fulfill()
-        }
-        wait(for: [completion], timeout: 1)
-    }
-}
-
-private final class WritingToolsLifecycleRecorder: TextViewDelegate {
-    var activeStates: [Bool] = []
-    var changedTexts: [String] = []
-    var onEnd: ((TextView) -> Void)?
-    var onApproval: ((TextView) -> Void)?
-
-    func textView(_ textView: TextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
-        onApproval?(textView)
-        return true
-    }
-
-    func textViewDidChange(_ textView: TextView) {
-        changedTexts.append(textView.text)
-    }
-
-    func textViewWritingToolsWillBegin(_ textView: TextView) {
-        activeStates.append(textView.isWritingToolsActive)
-    }
-
-    func textViewWritingToolsDidEnd(_ textView: TextView) {
-        activeStates.append(textView.isWritingToolsActive)
-        onEnd?(textView)
-    }
 }
 #endif

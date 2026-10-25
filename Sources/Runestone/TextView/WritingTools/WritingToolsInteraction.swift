@@ -2,26 +2,11 @@ import UIKit
 
 /// Kept independent of the SDK so existing clients can build with older Xcode releases.
 protocol WritingToolsControlling: AnyObject {
+    var hasContext: Bool { get }
     func stop()
     func layoutDidChange()
-}
-
-enum WritingToolsRange {
-    static func isValid(_ range: NSRange, in string: NSString) -> Bool {
-        guard range.location >= 0, range.length >= 0, range.location <= string.length,
-              range.length <= string.length - range.location else {
-                  return false
-              }
-        // UTF-16 offsets may separate composed characters, but must never split a surrogate pair.
-        for offset in [range.location, range.location + range.length] where offset > 0 && offset < string.length {
-            let previous = string.character(at: offset - 1)
-            let next = string.character(at: offset)
-            if (0xD800...0xDBFF).contains(previous) && (0xDC00...0xDFFF).contains(next) {
-                return false
-            }
-        }
-        return true
-    }
+    func textDidChange(in range: NSRange, replacementText: String, previousText: NSString,
+                       previousVersion: UInt, isUndoOrRedo: Bool)
 }
 
 // Xcode 16.2 includes Swift 6.0.3 and the iOS 18.2 coordinator APIs.
@@ -33,6 +18,8 @@ final class WritingToolsInteraction: NSObject, WritingToolsControlling, UIWritin
     private var contextIdentifier: UUID?
     private var expectedText: NSString?
     private var expectedMutationVersion: UInt?
+    private var expectedExcludedRanges: [NSRange] = []
+    var hasContext: Bool { contextIdentifier != nil }
     private var hiddenText: [HiddenText] = []
     private var isUpdatingLayout = false
     private var isStopping = false
@@ -67,8 +54,35 @@ final class WritingToolsInteraction: NSObject, WritingToolsControlling, UIWritin
         isStopping = false
     }
 
+    func textDidChange(in range: NSRange, replacementText: String, previousText: NSString,
+                       previousVersion: UInt, isUndoOrRedo: Bool) {
+        guard let identifier = contextIdentifier, let view = textInputView else {
+            return
+        }
+        guard expectedMutationVersion == previousVersion, expectedText == previousText,
+              WritingToolsRange.isValid(range, in: previousText) else {
+            stop()
+            return
+        }
+        expectedText = view.string.copy() as? NSString
+        expectedMutationVersion = view.textMutationVersion
+        // Old animation previews must not obscure newly typed characters.
+        hiddenText.removeAll()
+        updateHiddenText()
+        let exclusions = view.writingToolsExcludedRanges()
+        let update = WritingToolsExclusions.updateRanges(replacing: range, withLength: (replacementText as NSString).length,
+                                                         oldLength: previousText.length,
+                                                         oldExcludedRanges: expectedExcludedRanges, newExcludedRanges: exclusions)
+        expectedExcludedRanges = exclusions
+        let replacement = attributedText(in: view, excluding: exclusions).attributedSubstring(from: update.new)
+        coordinator.updateRange(update.old, with: replacement, reason: isUndoOrRedo ? .undoRedo : .typing,
+                                forContextWithIdentifier: identifier)
+        if contextIdentifier == identifier { layoutDidChange() }
+    }
+
     func layoutDidChange() {
-        guard !isUpdatingLayout, let contextIdentifier, let view = textInputView, !view.isApplyingWritingToolsReplacement else {
+        guard !isUpdatingLayout, let contextIdentifier, let view = textInputView, !view.isApplyingWritingToolsReplacement,
+              view.textMutationVersion == expectedMutationVersion else {
             return
         }
         isUpdatingLayout = true
@@ -102,8 +116,8 @@ final class WritingToolsInteraction: NSObject, WritingToolsControlling, UIWritin
         }
         // A single full-document context keeps subsequent UTF-16 replacements unambiguous,
         // including edits that insert paragraphs before another proofreading suggestion.
-        let attributedText = NSAttributedString(string: text as String, attributes: [.font: view.theme.font])
-        let context = UIWritingToolsCoordinator.Context(attributedString: attributedText, range: range)
+        expectedExcludedRanges = view.writingToolsExcludedRanges()
+        let context = UIWritingToolsCoordinator.Context(attributedString: attributedText(in: view, excluding: expectedExcludedRanges), range: range)
         contextIdentifier = context.identifier
         expectedText = text.copy() as? NSString
         expectedMutationVersion = view.textMutationVersion
@@ -124,12 +138,21 @@ final class WritingToolsInteraction: NSObject, WritingToolsControlling, UIWritin
                   completion(nil)
                   return
               }
+        let exclusions = view.writingToolsExcludedRanges()
+        let policyUpdate = WritingToolsExclusions.updateRanges(replacing: range, withLength: (insertedText as NSString).length,
+                                                               oldLength: expectedText?.length ?? 0,
+                                                               oldExcludedRanges: expectedExcludedRanges, newExcludedRanges: exclusions)
         expectedText = view.string.copy() as? NSString
         expectedMutationVersion = view.textMutationVersion
+        expectedExcludedRanges = exclusions
         adjustHiddenRanges(replacing: range, withLength: (insertedText as NSString).length)
         view.layoutIfNeeded()
         layoutDidChange()
-        completion(NSAttributedString(string: insertedText, attributes: [.font: view.theme.font]))
+        let insertedRange = NSRange(location: range.location, length: (insertedText as NSString).length)
+        completion(attributedText(in: view, excluding: expectedExcludedRanges).attributedSubstring(from: insertedRange))
+        // The replacement reply only updates its own span. A generated syntax change can
+        // alter protection elsewhere; retire that context instead of leaving UIKit's policy stale.
+        if policyUpdate.old != range, contextIdentifier == context.identifier { stop() }
     }
 
     func writingToolsCoordinator(_ writingToolsCoordinator: UIWritingToolsCoordinator,
@@ -252,7 +275,19 @@ final class WritingToolsInteraction: NSObject, WritingToolsControlling, UIWritin
         completion(range.range, identifier)
     }
 
-    private func validView(for range: NSRange, in context: UIWritingToolsCoordinator.Context) -> TextInputView? {
+}
+
+@available(iOS 18.2, visionOS 2.4, *)
+private extension WritingToolsInteraction {
+    func attributedText(in view: TextInputView, excluding ranges: [NSRange]) -> NSAttributedString {
+        let text = NSMutableAttributedString(string: view.string as String, attributes: [.font: view.theme.font])
+        for range in ranges {
+            text.addAttribute(.writingToolsExclusionAttributeName, value: true, range: range)
+        }
+        return text
+    }
+
+    func validView(for range: NSRange, in context: UIWritingToolsCoordinator.Context) -> TextInputView? {
         guard contextIdentifier == context.identifier, let view = textInputView,
               view.textMutationVersion == expectedMutationVersion, view.string == expectedText,
               WritingToolsRange.isValid(range, in: view.string) else {
@@ -261,17 +296,18 @@ final class WritingToolsInteraction: NSObject, WritingToolsControlling, UIWritin
         return view
     }
 
-    private func clearContext() {
+    func clearContext() {
         textInputView?.invalidateWritingToolsContext()
         contextIdentifier = nil
         expectedText = nil
         expectedMutationVersion = nil
+        expectedExcludedRanges.removeAll()
         hiddenText.removeAll()
         previousLayout.removeAll()
         textInputView?.setWritingToolsHiddenRanges([])
     }
 
-    private func adjustHiddenRanges(replacing range: NSRange, withLength length: Int) {
+    func adjustHiddenRanges(replacing range: NSRange, withLength length: Int) {
         let delta = length - range.length
         for index in hiddenText.indices {
             let hidden = hiddenText[index].range
@@ -286,7 +322,7 @@ final class WritingToolsInteraction: NSObject, WritingToolsControlling, UIWritin
         updateHiddenText()
     }
 
-    private func updateHiddenText() {
+    func updateHiddenText() {
         var merged: [NSRange] = []
         for range in hiddenText.map(\.range).filter({ $0.length > 0 }).sorted(by: { $0.location < $1.location }) {
             if let previous = merged.last, NSMaxRange(previous) >= range.location {
