@@ -20,18 +20,15 @@ final class MainViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        if ProcessInfo.processInfo.useSpellChecking {
-            configureSpellChecking()
-            return
-        }
         let state = TextViewState(text: "", theme: DefaultTheme(), language: .javaScript)
         if ProcessInfo.processInfo.useCRLFLineEndings {
             contentView.textView.lineEndings = .crlf
         }
         contentView.textView.setState(state)
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Spelling", style: .plain, target: self, action: #selector(configureSpellChecking))
     }
 
-    private func configureSpellChecking() {
+    @objc private func configureSpellChecking() {
         title = "Spelling"
         let textView = contentView.textView
         textView.showLineNumbers = false

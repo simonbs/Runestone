@@ -3,8 +3,8 @@ import XCTest
 final class SpellCheckingTests: XCTestCase {
     func testCorrectingMisspelledWordAndUndoing() throws {
         let app = XCUIApplication().disablingTextPersistance()
-        app.launchArguments.append("--spell-checking")
         app.launch()
+        app.navigationBars.buttons["Spelling"].tap()
         let textView = try XCTUnwrap(app.textView)
         XCTAssertTrue(textView.waitForExistence(timeout: 5))
         let originalText = "mispelled word.\n\nSelect the underlined word to correct it."

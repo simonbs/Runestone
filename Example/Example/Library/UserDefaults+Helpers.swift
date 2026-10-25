@@ -11,6 +11,7 @@ extension UserDefaults {
         static let theme = "RunestoneExample.theme"
         static let isEditable = "RunestoneExample.isEditable"
         static let isSelectable = "RunestoneExample.isSelectable"
+        static let checkSpelling = "RunestoneExample.checkSpelling"
     }
 
     var text: String? {
@@ -92,6 +93,15 @@ extension UserDefaults {
         }
     }
 
+    var checkSpelling: Bool {
+        get {
+            bool(forKey: Key.checkSpelling)
+        }
+        set {
+            set(newValue, forKey: Key.checkSpelling)
+        }
+    }
+
     func registerDefaults() {
         register(defaults: [
             Key.text: CodeSample.default,
@@ -99,7 +109,8 @@ extension UserDefaults {
             Key.wrapLines: false,
             Key.highlightSelectedLine: true,
             Key.isEditable: true,
-            Key.isSelectable: true
+            Key.isSelectable: true,
+            Key.checkSpelling: false
         ])
     }
 }

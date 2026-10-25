@@ -53,6 +53,7 @@ extension TextView {
         isLineWrappingEnabled = settings.wrapLines
         isEditable = settings.isEditable
         isSelectable = settings.isSelectable
+        spellCheckingType = settings.checkSpelling ? .yes : .no
         lineSelectionDisplayType = settings.highlightSelectedLine ? .line : .disabled
         showPageGuide = settings.showPageGuide
     }
