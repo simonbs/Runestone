@@ -12,12 +12,12 @@ enum TreeSitterQueryError: Error {
 final class TreeSitterQuery {
     let pointer: OpaquePointer
 
-    private let language: UnsafePointer<TSLanguage>
+    private let language: OpaquePointer
     private var patternCount: UInt32 {
         ts_query_pattern_count(pointer)
     }
 
-    init(source: String, language: UnsafePointer<TSLanguage>) throws {
+    init(source: String, language: OpaquePointer) throws {
         let errorOffset = UnsafeMutablePointer<UInt32>.allocate(capacity: 1)
         let errorType = UnsafeMutablePointer<TSQueryError>.allocate(capacity: 1)
         let pointer = source.withCString { cstr in

@@ -1,12 +1,12 @@
 import TreeSitter
 
 final class TreeSitterInternalLanguage {
-    let languagePointer: UnsafePointer<TSLanguage>
+    let languagePointer: OpaquePointer
     let highlightsQuery: TreeSitterQuery?
     let injectionsQuery: TreeSitterQuery?
     let indentationScopes: TreeSitterIndentationScopes?
 
-    init(languagePointer: UnsafePointer<TSLanguage>,
+    init(languagePointer: OpaquePointer,
          highlightsQuery: TreeSitterQuery?,
          injectionsQuery: TreeSitterQuery?,
          indentationScopes: TreeSitterIndentationScopes?) {

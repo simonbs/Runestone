@@ -2,6 +2,7 @@ excluded:
   - Sources/Runestone/Library/L10n.swift
   - Sources/Runestone/Documentation.docc/Tutorials
   - Submodules
+  - tree-sitter
   - .build
 disabled_rules:
   - nesting

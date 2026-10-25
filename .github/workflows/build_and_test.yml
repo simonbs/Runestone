@@ -26,13 +26,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Check for changed files
         uses: dorny/paths-filter@v3
         id: changes
         with:
           filters: |
             src:
+              - '.gitmodules'
+              - 'tree-sitter'
               - '.github/workflows/build_and_test.yml'
+              - 'Package.swift'
               - 'Sources/**'
               - '!Sources/Runestone/Documentation.docc/**'
               - 'Tests/**'
@@ -41,7 +46,7 @@ jobs:
         run: |
           set -o pipefail &&\
           xcodebuild build-for-testing\
-            -scheme Runestone\
+            -scheme Runestone-Package\
             -sdk iphonesimulator\
             -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}"\
           | xcbeautify --renderer github-actions
@@ -50,7 +55,7 @@ jobs:
         run: |
           set -o pipefail &&\
           xcodebuild test-without-building\
-            -scheme Runestone\
+            -scheme Runestone-Package\
             -sdk iphonesimulator\
             -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}"\
           | xcbeautify --renderer github-actions
