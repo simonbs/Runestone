@@ -146,6 +146,19 @@ open class TextView: UIScrollView {
             textInputView.returnKeyType = newValue
         }
     }
+    /// Returns UTF-16 ranges that Writing Tools must preserve in the supplied document text.
+    /// The provider is evaluated again as text changes. It must not mutate the editor.
+    /// Invalid, empty, and surrogate-splitting ranges are ignored. Overlapping ranges are merged.
+    /// Exclusions also apply to explicitly selected text; ordinary user edits remain allowed.
+    /// Replacements spanning protected text are rejected unless an unchanged prefix or suffix
+    /// proves that the protected contents are preserved. Prefer excluding specific code or names
+    /// rather than an entire document. Changing this provider ends any current session.
+    /// Native exclusion attributes require iOS 18.2 or visionOS 2.4 and a compatible SDK.
+    public var writingToolsExcludedRangesProvider: ((String) -> [NSRange])? {
+        get { textInputView.writingToolsExcludedRangesProvider }
+        set { textInputView.writingToolsExcludedRangesProvider = newValue }
+    }
+
     /// Whether Writing Tools is evaluating text or presenting changes for review.
     /// During this time changes can be provisional. Defer persistence until the delegate's
     /// `textViewWritingToolsDidEnd(_:)` callback if only accepted content should be saved.
