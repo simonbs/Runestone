@@ -1,0 +1,5 @@
+"undo.action_name.typing" = "键入";
+"undo.action_name.replace_all" = "全部替换";
+"undo.action_name.move_lines_up" = "上移行";
+"undo.action_name.move_lines_down" = "下移行";
+"menu.item_title.replace" = "替换";
