@@ -62,11 +62,29 @@ The Runestone framework is used by an app of the same name. The Runestone app is
 
 Pull requests with bugfixes and new features are much appreciated. I'll be happy to review them and merge them once they're ready, as long as they contain change that fit within the vision of Runestone and provide generally useful functionality.
 
-Clone the repository to get started working on the project. Note that Runestone depends on Tree-sitter through a submodule. This submodule must be cloned as well before Runestone can be built. Pass the `--recursive` option when cloning the repository to clone all submodules.
+Clone the repository to get started working on the project. Note that Runestone depends on Tree-sitter through a submodule. This submodule must be cloned as well before Runestone can be built. Pass the `--recurse-submodules` option when cloning the repository to clone all submodules.
 
 ```bash
-git clone --recursive git@github.com:simonbs/Runestone.git
+git clone --recurse-submodules https://github.com/simonbs/Runestone.git
 ```
+
+For an existing checkout, initialize or update the submodule to the commit recorded by Runestone:
+
+```bash
+git submodule update --init --recursive
+```
+
+SwiftPM initializes submodules automatically when resolving Runestone as a Git dependency. Downloaded GitHub source ZIP/tar archives omit submodule contents; use a Git checkout to build from source.
+
+### Tree-sitter runtime
+
+Runestone pins the upstream [Tree-sitter](https://github.com/tree-sitter/tree-sitter) submodule to **v0.27.1**, commit `10eb5ac119eec9cb4267a8e035066473983f5f3a`. Upstream [removed its Swift package manifest](https://github.com/tree-sitter/tree-sitter/pull/5849), so Runestone defines a local C target at `tree-sitter/lib`. It compiles only `src/lib.c`, which includes the runtime implementation, and exposes only `include/tree_sitter/api.h`. Private parser headers stay private; generated grammars compile against their own matching headers. This runtime supports grammar ABI versions 13–15.
+
+To upgrade, fetch the desired upstream release tag, check it out inside `tree-sitter`, and commit the updated submodule pointer together with any required binding changes. Update the version and commit documented here. Do not use `git submodule update --remote` for normal setup or CI: builds must use the recorded commit. Before merging an upgrade, run the Runestone simulator tests, build the example, run TreeSitterLanguages' compatibility checks, and verify a fresh SwiftPM Git consumer.
+
+Upstream licenses remain in the submodule, including `tree-sitter/LICENSE` and `tree-sitter/lib/src/unicode/LICENSE`. Preserve applicable notices when redistributing source or binaries, including in an application's third-party acknowledgements.
+
+Consumers needing the C API can depend on the `TreeSitter` product from Runestone. Use one Tree-sitter runtime in an application; do not also link an independent copy from another package.
 
 ## ❤️ Acknowledgments
 
