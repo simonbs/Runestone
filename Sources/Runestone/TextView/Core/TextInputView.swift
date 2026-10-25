@@ -439,6 +439,8 @@ final class TextInputView: UIView, UITextInput {
             if newValue != stringView.string {
                 stringView.string = newValue
                 languageMode.parse(newValue)
+                // Rebuilding creates new line IDs. Release controllers and pending highlighting for the old lines.
+                lineControllerStorage.removeAllLineControllers()
                 lineManager.rebuild()
                 if let oldSelectedRange = selectedRange {
                     inputDelegate?.selectionWillChange(self)
