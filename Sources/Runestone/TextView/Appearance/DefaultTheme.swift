@@ -17,9 +17,12 @@ public final class DefaultTheme: Runestone.Theme {
     public let markedTextBackgroundColor = UIColor(themeColorNamed: "marked_text")
     public let selectionColor = UIColor(themeColorNamed: "selection")
 
+    /// Shared immutable theme used when no custom theme is supplied.
+    ///
+    /// Its colors adapt to the appearance of the interface where they are displayed.
+    public static let shared = DefaultTheme()
+
     public init() {}
-    
-    public static let share = DefaultTheme()
 
     // swiftlint:disable:next cyclomatic_complexity
     public func textColor(for highlightName: String) -> UIColor? {
