@@ -2,7 +2,8 @@ import Foundation
 import UIKit
 
 protocol IndentControllerDelegate: AnyObject {
-    func indentController(_ controller: IndentController, shouldInsert text: String, in range: NSRange)
+    @discardableResult
+    func indentController(_ controller: IndentController, shouldInsert text: String, in range: NSRange) -> Bool
     func indentController(_ controller: IndentController, shouldSelect range: NSRange)
     func indentControllerDidUpdateTabWidth(_ controller: IndentController)
 }
@@ -83,8 +84,9 @@ final class IndentController {
             }
         }
         if let replacementString = replacementString {
-            delegate?.indentController(self, shouldInsert: replacementString, in: originalRange)
-            delegate?.indentController(self, shouldSelect: newSelectedRange)
+            if delegate?.indentController(self, shouldInsert: replacementString, in: originalRange) == true {
+                delegate?.indentController(self, shouldSelect: newSelectedRange)
+            }
         }
     }
 
@@ -106,8 +108,9 @@ final class IndentController {
             }
         }
         if let replacementString = replacementString {
-            delegate?.indentController(self, shouldInsert: replacementString, in: originalRange)
-            delegate?.indentController(self, shouldSelect: newSelectedRange)
+            if delegate?.indentController(self, shouldInsert: replacementString, in: originalRange) == true {
+                delegate?.indentController(self, shouldSelect: newSelectedRange)
+            }
         }
     }
 
@@ -122,7 +125,9 @@ final class IndentController {
                 let firstLineText = symbol + indentStrategy.string(indentLevel: strategy.indentLevel)
                 let secondLineText = symbol + indentStrategy.string(indentLevel: strategy.indentLevel - 1)
                 let indentedText = firstLineText + secondLineText
-                delegate?.indentController(self, shouldInsert: indentedText, in: range)
+                guard delegate?.indentController(self, shouldInsert: indentedText, in: range) == true else {
+                    return
+                }
                 let newSelectedRange = NSRange(location: range.location + firstLineText.utf16.count, length: 0)
                 delegate?.indentController(self, shouldSelect: newSelectedRange)
             } else {

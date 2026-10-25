@@ -82,6 +82,8 @@ final class TextInputSpellingTests: XCTestCase {
                                                         with: revisedText), revisedText)
         input.setWritingToolsActive(false)
         let range = input.string.range(of: "mispelled")
+        input.writingToolsExcludedRangesProvider = { _ in [range] }
+        XCTAssertNil(input.replaceTextForWritingTools(in: range, with: "misspelled"))
         input.selectedRange = range
         let suggestion = try correction(in: input, range: range)
 
