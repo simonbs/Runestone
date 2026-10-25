@@ -1217,17 +1217,25 @@ extension TextInputView {
         guard let oldString = stringView.string.copy() as? NSString else {
             return
         }
-        timedUndoManager.endUndoGrouping()
+        // UndoManager owns the inverse group while undoing or redoing.
+        let shouldManageUndoGroup = !timedUndoManager.isUndoing && !timedUndoManager.isRedoing
+        if shouldManageUndoGroup {
+            timedUndoManager.endUndoGrouping()
+        }
         let oldSelectedRange = selectedRange
         preserveUndoStackWhenSettingString = true
         string = newString
         preserveUndoStackWhenSettingString = false
-        timedUndoManager.beginUndoGrouping()
+        if shouldManageUndoGroup {
+            timedUndoManager.beginUndoGrouping()
+        }
         timedUndoManager.setActionName(L10n.Undo.ActionName.replaceAll)
         timedUndoManager.registerUndo(withTarget: self) { textInputView in
             textInputView.setStringWithUndoAction(oldString)
         }
-        timedUndoManager.endUndoGrouping()
+        if shouldManageUndoGroup {
+            timedUndoManager.endUndoGrouping()
+        }
         delegate?.textInputViewDidChange(self)
         if let oldSelectedRange = oldSelectedRange {
             selectedRange = safeSelectionRange(from: oldSelectedRange)
