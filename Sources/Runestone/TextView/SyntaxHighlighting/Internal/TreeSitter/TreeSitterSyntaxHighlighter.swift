@@ -84,42 +84,71 @@ private extension TreeSitterSyntaxHighlighter {
     private func setAttributes(for tokens: [TreeSitterSyntaxHighlightToken], on attributedString: NSMutableAttributedString) {
         attributedString.beginEditing()
         for token in tokens {
-            var attributes: [NSAttributedString.Key: Any] = [:]
-            if let foregroundColor = token.textColor {
-                attributes[.foregroundColor] = foregroundColor
+            if let style = token.completeStyle {
+                apply(style, to: attributedString, in: token.range)
+                continue
             }
-            if let shadow = token.shadow {
-                attributes[.shadow] = shadow
-            }
-            if token.fontTraits.contains(.bold) {
-                attributedString.addAttribute(.isBold, value: true, range: token.range)
-            }
-            if token.fontTraits.contains(.italic) {
-                attributedString.addAttribute(.isItalic, value: true, range: token.range)
-            }
-            var symbolicTraits: UIFontDescriptor.SymbolicTraits = []
-            if let isBold = attributedString.attribute(.isBold, at: token.range.location, effectiveRange: nil) as? Bool, isBold {
-                symbolicTraits.insert(.traitBold)
-            }
-            if let isItalic = attributedString.attribute(.isItalic, at: token.range.location, effectiveRange: nil) as? Bool, isItalic {
-                symbolicTraits.insert(.traitItalic)
-            }
-            let currentFont = attributedString.attribute(.font, at: token.range.location, effectiveRange: nil) as? UIFont
-            let baseFont = token.font ?? theme.font
-            let newFont: UIFont
-            if !symbolicTraits.isEmpty {
-                newFont = baseFont.withSymbolicTraits(symbolicTraits) ?? baseFont
-            } else {
-                newFont = baseFont
-            }
-            if newFont != currentFont {
-                attributes[.font] = newFont
-            }
-            if !attributes.isEmpty {
-                attributedString.addAttributes(attributes, range: token.range)
-            }
+            applyIndividualAttributes(for: token, to: attributedString)
         }
         attributedString.endEditing()
+    }
+
+    private func applyIndividualAttributes(for token: TreeSitterSyntaxHighlightToken, to attributedString: NSMutableAttributedString) {
+        var attributes: [NSAttributedString.Key: Any] = [:]
+        if let foregroundColor = token.textColor {
+            attributes[.foregroundColor] = foregroundColor
+        }
+        if let shadow = token.shadow {
+            attributes[.shadow] = shadow
+        }
+        if token.fontTraits.contains(.bold) {
+            attributedString.addAttribute(.isBold, value: true, range: token.range)
+        }
+        if token.fontTraits.contains(.italic) {
+            attributedString.addAttribute(.isItalic, value: true, range: token.range)
+        }
+        var symbolicTraits: UIFontDescriptor.SymbolicTraits = []
+        if let isBold = attributedString.attribute(.isBold, at: token.range.location, effectiveRange: nil) as? Bool, isBold {
+            symbolicTraits.insert(.traitBold)
+        }
+        if let isItalic = attributedString.attribute(.isItalic, at: token.range.location, effectiveRange: nil) as? Bool, isItalic {
+            symbolicTraits.insert(.traitItalic)
+        }
+        let currentFont = attributedString.attribute(.font, at: token.range.location, effectiveRange: nil) as? UIFont
+        let baseFont = token.font ?? theme.font
+        let newFont: UIFont
+        if !symbolicTraits.isEmpty {
+            newFont = baseFont.withSymbolicTraits(symbolicTraits) ?? baseFont
+        } else {
+            newFont = baseFont
+        }
+        if newFont != currentFont {
+            attributes[.font] = newFont
+        }
+        if !attributes.isEmpty {
+            attributedString.addAttributes(attributes, range: token.range)
+        }
+    }
+
+    private func apply(_ style: HighlightStyle, to attributedString: NSMutableAttributedString, in range: NSRange) {
+        // Complete styles must also reset our bookkeeping for subsequent captures that
+        // use the individual callbacks, otherwise an outer trait can reappear later.
+        let font = style.font ?? theme.font
+        let traits = font.fontDescriptor.symbolicTraits
+        attributedString.addAttributes([
+            .foregroundColor: style.textColor ?? theme.textColor,
+            .font: font,
+            .isBold: traits.contains(.traitBold),
+            .isItalic: traits.contains(.traitItalic)
+        ], range: range)
+        attributedString.removeAttribute(.backgroundColor, range: range)
+        attributedString.removeAttribute(.shadow, range: range)
+        if let backgroundColor = style.backgroundColor {
+            attributedString.addAttribute(.backgroundColor, value: backgroundColor, range: range)
+        }
+        if let shadow = style.shadow {
+            attributedString.addAttribute(.shadow, value: shadow, range: range)
+        }
     }
 
     private func tokens(for captures: [TreeSitterCapture], localTo localRange: ByteRange) -> [TreeSitterSyntaxHighlightToken] {
@@ -146,6 +175,10 @@ private extension TreeSitterSyntaxHighlighter {
 private extension TreeSitterSyntaxHighlighter {
     private func token(from capture: TreeSitterCapture, in byteRange: ByteRange) -> TreeSitterSyntaxHighlightToken {
         let range = NSRange(byteRange)
+        if let style = theme.highlightStyle(for: capture.name) {
+            return TreeSitterSyntaxHighlightToken(
+                range: range, textColor: nil, shadow: nil, font: nil, fontTraits: [], completeStyle: style)
+        }
         let textColor = theme.textColor(for: capture.name)
         let shadow = theme.shadow(for: capture.name)
         let font = theme.font(for: capture.name)

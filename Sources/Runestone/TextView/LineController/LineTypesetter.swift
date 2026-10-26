@@ -79,7 +79,7 @@ final class LineTypesetter {
     func prepareToTypeset(_ attributedString: NSAttributedString) {
         self.attributedString = attributedString
         stringLength = CFAttributedStringGetLength(attributedString)
-        typesetter = CTTypesetterCreateWithAttributedString(attributedString)
+        typesetter = CTTypesetterCreateWithAttributedString(stringForTypesetting(attributedString))
     }
 
     @discardableResult
@@ -112,6 +112,24 @@ final class LineTypesetter {
 }
 
 private extension LineTypesetter {
+    private func stringForTypesetting(_ string: NSAttributedString) -> NSAttributedString {
+        // Keep token backgrounds out of CTLineDraw so they cannot cover search or
+        // marked-text highlights. The renderer paints these backgrounds first.
+        // Preserve the original attributes for clients of StringSyntaxHighlighter.
+        var copy: NSMutableAttributedString?
+        string.enumerateAttribute(.backgroundColor, in: NSRange(location: 0, length: string.length)) { value, range, _ in
+            guard let value else {
+                return
+            }
+            if copy == nil {
+                copy = NSMutableAttributedString(attributedString: string)
+            }
+            copy?.removeAttribute(.backgroundColor, range: range)
+            copy?.addAttribute(.tokenBackgroundColor, value: value, range: range)
+        }
+        return copy ?? string
+    }
+
     private func updateState(from typesetResult: TypesetResult) {
         lineFragments.append(contentsOf: typesetResult.lineFragments)
         for (id, index) in typesetResult.lineFragmentsMap {

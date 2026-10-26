@@ -33,6 +33,7 @@ final class LineFragmentRenderer {
     }
 
     func draw(to context: CGContext, inCanvasOfSize canvasSize: CGSize) {
+        drawTokenBackgrounds(to: context)
         drawHighlightedRanges(to: context, inCanvasOfSize: canvasSize)
         drawMarkedRange(to: context)
         drawInvisibleCharacters()
@@ -98,6 +99,41 @@ final class LineFragmentRenderer {
 }
 
 private extension LineFragmentRenderer {
+    private func drawTokenBackgrounds(to context: CGContext) {
+        // Paint token backgrounds separately from glyphs to keep overlays visible.
+        // Runs are visual segments, so their glyph positions also handle mixed writing
+        // directions and avoid spanning unrelated text across a bidirectional boundary.
+        context.saveGState()
+        defer { context.restoreGState() }
+        for run in CTLineGetGlyphRuns(lineFragment.line) as? [CTRun] ?? [] {
+            let attributes = CTRunGetAttributes(run) as NSDictionary
+            guard let color = attributes[NSAttributedString.Key.tokenBackgroundColor] as? UIColor else {
+                continue
+            }
+            let count = CTRunGetGlyphCount(run)
+            guard count > 0 else {
+                continue
+            }
+            var positions = [CGPoint](repeating: .zero, count: count)
+            var advances = [CGSize](repeating: .zero, count: count)
+            CTRunGetPositions(run, CFRange(location: 0, length: 0), &positions)
+            CTRunGetAdvances(run, CFRange(location: 0, length: 0), &advances)
+            var minX = CGFloat.greatestFiniteMagnitude
+            var maxX = -CGFloat.greatestFiniteMagnitude
+            for index in 0 ..< count {
+                let start = positions[index].x
+                let end = start + advances[index].width
+                minX = min(minX, min(start, end))
+                maxX = max(maxX, max(start, end))
+            }
+            guard maxX > minX else {
+                continue
+            }
+            context.setFillColor(color.cgColor)
+            context.fill(CGRect(x: minX, y: 0, width: maxX - minX, height: lineFragment.scaledSize.height))
+        }
+    }
+
     private func horizontalBounds(of run: CTRun) -> ClosedRange<CGFloat>? {
         let count = CTRunGetGlyphCount(run)
         guard count > 0 else {
