@@ -14,6 +14,7 @@ final class LineController {
     private enum TypesetAmount {
         case inRect(CGRect)
         case toLocation(Int)
+        case toLineFragmentIndex(Int)
     }
 
     weak var delegate: LineControllerDelegate?
@@ -130,6 +131,10 @@ final class LineController {
         prepareToDisplayString(.toLocation(location), syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
     }
 
+    func prepareToDisplayString(toLineFragmentIndex index: Int, syntaxHighlightAsynchronously: Bool) {
+        prepareToDisplayString(.toLineFragmentIndex(index), syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
+    }
+
     func cancelSyntaxHighlighting() {
         syntaxHighlighter?.cancel()
     }
@@ -211,6 +216,9 @@ private extension LineController {
         case .toLocation(let location):
             // When typesetting to a location we'll typeset an additional line fragment to ensure that we can display the text surrounding that location.
             newLineFragments = typesetter.typesetLineFragments(toLocation: location, additionalLineFragmentCount: 1)
+        case .toLineFragmentIndex(let index):
+            let additionalCount = max(0, index + 1 - typesetter.lineFragments.count)
+            newLineFragments = typesetter.typesetLineFragments(toLocation: 0, additionalLineFragmentCount: additionalCount)
         }
         updateLineHeight(for: newLineFragments)
     }
