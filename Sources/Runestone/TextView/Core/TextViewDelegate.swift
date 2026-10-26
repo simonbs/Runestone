@@ -2,6 +2,13 @@ import Foundation
 
 /// The methods for receiving editing-related messages for the text view.
 public protocol TextViewDelegate: AnyObject {
+    /// Writing Tools is about to present its panel, including the initial chooser before a session starts.
+    /// The text view is already marked presented. Use this to hide accessory UI while the panel is visible.
+    func textViewWritingToolsWillPresent(_ textView: TextView)
+    /// Writing Tools dismissed its panel, or the text view was removed from its window.
+    /// The text view is no longer marked presented. An active editing session is tracked independently.
+    func textViewWritingToolsDidDismiss(_ textView: TextView)
+
     /// Writing Tools is beginning a session. Subsequent text changes may be provisional
     /// until the user accepts or rejects them. The text view is already marked active.
     func textViewWritingToolsWillBegin(_ textView: TextView)
@@ -120,6 +127,10 @@ public extension TextViewDelegate {
     func textView(_ textView: TextView, shouldCheckSpellingIn range: NSRange) -> Bool {
         true
     }
+    func textViewWritingToolsWillPresent(_ textView: TextView) {}
+
+    func textViewWritingToolsDidDismiss(_ textView: TextView) {}
+
     func textViewWritingToolsWillBegin(_ textView: TextView) {}
 
     func textViewWritingToolsDidEnd(_ textView: TextView) {}
