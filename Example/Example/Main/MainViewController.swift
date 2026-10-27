@@ -68,10 +68,6 @@ final class MainViewController: UIViewController {
         if ProcessInfo.processInfo.navigationDocumentName != nil {
             contentView.textView.isLineWrappingEnabled = ProcessInfo.processInfo.environment["RUNESTONE_WRAP_LINES"] != "0"
             contentView.textView.showLineNumbers = true
-            navigationItem.leftBarButtonItems = [
-                UIBarButtonItem(title: "Top", style: .plain, target: self, action: #selector(jumpToTop)),
-                UIBarButtonItem(title: "Bottom", style: .plain, target: self, action: #selector(jumpToBottom))
-            ]
         }
     }
 }
@@ -110,11 +106,11 @@ private extension MainViewController {
         contentView.textView.setState(state)
     }
 
-    @objc private func jumpToTop() {
+    private func jumpToTop() {
         jump(to: 0)
     }
 
-    @objc private func jumpToBottom() {
+    private func jumpToBottom() {
         jump(to: navigationDocumentLength)
     }
 
@@ -210,6 +206,10 @@ extension MainViewController: MenuSelectionHandler {
             }
         case .presentGoToLine:
             presentGoToLineAlert()
+        case .jumpToTop:
+            jumpToTop()
+        case .jumpToBottom:
+            jumpToBottom()
         case .presentThemePicker:
             presentThemePicker()
         case .toggleEditable:

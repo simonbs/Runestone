@@ -11,15 +11,15 @@ cp '/path/to/large-file.json' "$container/Documents/large-file.json"
 SIMCTL_CHILD_RUNESTONE_DOCUMENT=large-file.json xcrun simctl launch "$device" dk.simonbs.Example
 ```
 
-Fixture mode initially enables wrapping and line numbers and adds Top and Bottom
-buttons. Set `RUNESTONE_WRAP_LINES=0` to start with wrapping disabled. These
-buttons exercise `scrollRangeToVisible` without showing a keyboard. The
+Fixture mode initially enables wrapping and line numbers and adds Jump to Top and
+Jump to Bottom to the ellipsis menu, with a divider between the actions. Set
+`RUNESTONE_WRAP_LINES=0` to start with wrapping disabled. These actions exercise `scrollRangeToVisible` without showing a keyboard. The
 console reports synchronous navigation/layout duration; this is not a complete
 frame-time measurement. The regular Go to Line menu exercises caret navigation.
 The fixture remains local and should not be added to the repository.
 
-On a fresh launch, jump to Bottom, then immediately scroll toward earlier text
-with slow drags and fast flings. Check that lines remain contiguous, the text
+On a fresh launch, choose Jump to Bottom in the ellipsis menu, then immediately
+scroll toward earlier text with slow drags and fast flings. Check that lines remain contiguous, the text
 under the finger does not jump as wrapped lines are measured, and there are no
 blank frames. Reverse direction and repeat Top/Bottom navigation. Repeat after
 changing orientation or wrapping, and use Go to Line with the keyboard visible.
