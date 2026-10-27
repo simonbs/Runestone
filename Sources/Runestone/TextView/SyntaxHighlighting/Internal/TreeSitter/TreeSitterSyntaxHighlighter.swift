@@ -70,10 +70,10 @@ final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
                             completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
                             return
                         }
-                        withExtendedLifetime(snapshot) {
+                        let result = withExtendedLifetime(snapshot) {
                             self.setAttributes(for: tokens, on: input.attributedString)
                         }
-                        completion(.success(()))
+                        completion(.success(result))
                     } else {
                         completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
                     }
@@ -96,7 +96,25 @@ final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
 }
 
 private extension TreeSitterSyntaxHighlighter {
-    private func setAttributes(for tokens: [TreeSitterSyntaxHighlightToken], on attributedString: NSMutableAttributedString) {
+    private struct FontRun: Equatable {
+        let range: NSRange
+        let font: UIFont?
+    }
+
+    private func fontRuns(in string: NSAttributedString) -> [FontRun] {
+        var runs: [FontRun] = []
+        string.enumerateAttribute(.font, in: NSRange(location: 0, length: string.length)) { value, range, _ in
+            runs.append(FontRun(range: range, font: value as? UIFont))
+        }
+        return runs
+    }
+
+    @discardableResult
+    private func setAttributes(for tokens: [TreeSitterSyntaxHighlightToken], on attributedString: NSMutableAttributedString)
+    -> LineSyntaxHiglighterSetAttributesResult {
+        // Font is the only geometry attribute written by syntax highlighting. Compare
+        // final runs: overlapping captures can change a font and then restore it.
+        let previousFonts = fontRuns(in: attributedString)
         attributedString.beginEditing()
         for token in tokens {
             if let style = token.completeStyle {
@@ -106,6 +124,7 @@ private extension TreeSitterSyntaxHighlighter {
             applyIndividualAttributes(for: token, to: attributedString)
         }
         attributedString.endEditing()
+        return .init(isSizingInvalid: previousFonts != fontRuns(in: attributedString))
     }
 
     private func applyIndividualAttributes(for token: TreeSitterSyntaxHighlightToken, to attributedString: NSMutableAttributedString) {

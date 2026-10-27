@@ -94,6 +94,11 @@ final class LineFragment {
         self.yPosition = yPosition
     }
 
+    func withLine(_ line: CTLine) -> LineFragment {
+        Self(id: id, index: index, visibleRange: visibleRange, hiddenLength: hiddenLength,
+             line: line, descent: descent, baseSize: baseSize, scaledSize: scaledSize, yPosition: yPosition)
+    }
+
     func withHiddenLength(_ hiddenLength: Int) -> LineFragment {
         Self(
             id: id,

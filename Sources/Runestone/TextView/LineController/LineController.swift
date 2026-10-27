@@ -318,14 +318,8 @@ private extension LineController {
                     return
                 }
                 self.pendingHighlightInput = nil
-                if case .success = result {
-                    let oldWidth = self.lineWidth
-                    self.isSyntaxHighlightingInvalid = false
-                    self.isTypesetterInvalid = true
-                    self.redisplayLineFragments()
-                    if abs(self.lineWidth - oldWidth) > CGFloat.ulpOfOne {
-                        self.delegate?.lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(self)
-                    }
+                if case .success(let attributesResult) = result {
+                    self.didApplyHighlightAttributes(attributesResult)
                 }
             }
         } else {
@@ -333,6 +327,25 @@ private extension LineController {
             syntaxHighlighter.syntaxHighlight(input)
             isSyntaxHighlightingInvalid = false
             isTypesetterInvalid = true
+        }
+    }
+
+    private func didApplyHighlightAttributes(_ result: LineSyntaxHiglighterSetAttributesResult) {
+        let oldWidth = lineWidth
+        isSyntaxHighlightingInvalid = false
+        if result.isSizingInvalid || isTypesetterInvalid {
+            isTypesetterInvalid = true
+            redisplayLineFragments()
+        } else if let attributedString = attributedString {
+            let fragments = typesetter.refreshAppearance(attributedString)
+            for fragment in fragments {
+                lineFragmentTree.node(atIndex: fragment.index).data.lineFragment = fragment
+            }
+            reapplyLineFragmentToLineFragmentControllers()
+            setNeedsDisplayOnLineFragmentViews()
+        }
+        if abs(lineWidth - oldWidth) > CGFloat.ulpOfOne {
+            delegate?.lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(self)
         }
     }
 

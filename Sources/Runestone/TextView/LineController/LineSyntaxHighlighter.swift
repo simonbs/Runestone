@@ -24,7 +24,7 @@ final class LineSyntaxHighlighterInput {
 }
 
 protocol LineSyntaxHighlighter: AnyObject {
-    typealias AsyncCallback = (Result<Void, Error>) -> Void
+    typealias AsyncCallback = (Result<LineSyntaxHiglighterSetAttributesResult, Error>) -> Void
     var theme: Theme { get set }
     var canHighlight: Bool { get }
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput)
