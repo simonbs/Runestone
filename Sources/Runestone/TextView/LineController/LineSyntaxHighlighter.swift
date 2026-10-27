@@ -14,6 +14,8 @@ struct LineSyntaxHiglighterSetAttributesResult {
 final class LineSyntaxHighlighterInput {
     let attributedString: NSMutableAttributedString
     let byteRange: ByteRange
+    // Evaluated on the main thread immediately before applying asynchronous styles.
+    var isValid: () -> Bool = { true }
 
     init(attributedString: NSMutableAttributedString, byteRange: ByteRange) {
         self.attributedString = attributedString

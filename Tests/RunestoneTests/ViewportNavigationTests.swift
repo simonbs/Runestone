@@ -258,7 +258,7 @@ final class ViewportNavigationTests: XCTestCase {
     }
 }
 
-private final class NavigationHighlightTheme: Theme {
+final class NavigationHighlightTheme: Theme {
     let font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
     let textColor = UIColor.black
     let gutterBackgroundColor = UIColor.white

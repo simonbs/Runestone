@@ -388,6 +388,9 @@ extension LayoutManager {
         let destinationY = controller.caretRect(atIndex: localLocation).minY
         prepareLines(before: line, covering: max(0, viewport.height * 1.5 - destinationY),
                      syntaxHighlightAsynchronously: false)
+        // Synchronous styling can replace already-visible fragments even when
+        // revealing this destination leaves the scroll offset unchanged.
+        setNeedsLayout()
     }
 
     /// Measure backwards from a known line so that discovering wrapped predecessors

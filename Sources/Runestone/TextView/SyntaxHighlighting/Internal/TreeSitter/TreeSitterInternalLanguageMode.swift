@@ -8,7 +8,13 @@ protocol TreeSitterLanguageModeDelegate: AnyObject {
 final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     weak var delegate: TreeSitterLanguageModeDelegate?
     var canHighlight: Bool {
-        rootLanguageLayer.canHighlight
+        // Initial parsing runs asynchronously. Its completion invalidates visible
+        // lines, so a layout must not wait here for the entire document to parse.
+        guard parseLock.try() else {
+            return false
+        }
+        defer { parseLock.unlock() }
+        return rootLanguageLayer.canHighlight
     }
 
     private let stringView: StringView
@@ -17,6 +23,8 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     private let rootLanguageLayer: TreeSitterLanguageLayer
     private let operationQueue = OperationQueue()
     private let parseLock = NSLock()
+    private var highlightStringView: StringView?
+    private var parseOperation: Operation?
 
     init(language: TreeSitterInternalLanguage, languageProvider: TreeSitterLanguageProvider?, stringView: StringView, lineManager: LineManager) {
         self.stringView = stringView
@@ -38,30 +46,53 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     }
 
     func parse(_ text: NSString) {
+        parseOperation?.cancel()
+        parseOperation = nil
+        let stableText = NSString(string: text as String)
         parseLock.withLock {
-            rootLanguageLayer.parse(text)
+            parseStableText(stableText)
         }
     }
 
+    private func parseStableText(_ text: NSString) {
+        let predicateStringView = StringView(string: text as String)
+        rootLanguageLayer.parse(text, predicateStringView: predicateStringView)
+        highlightStringView = predicateStringView
+    }
+
     func parse(_ text: NSString, completion: @escaping ((Bool) -> Void)) {
-        operationQueue.cancelAllOperations()
+        parseOperation?.cancel()
+        parseOperation = nil
+        // NSString may be backed by the editor's NSMutableString. Copy before
+        // leaving the calling thread, including text used by injection predicates.
+        let stableText = NSString(string: text as String)
         let operation = BlockOperation()
         operation.addExecutionBlock { [weak operation, weak self] in
-            if let self = self, let operation = operation, !operation.isCancelled {
-                self.parse(text)
-                DispatchQueue.main.async {
-                    completion(!operation.isCancelled)
+            guard let self = self, let operation = operation else {
+                DispatchQueue.main.async { completion(false) }
+                return
+            }
+            let finished = self.parseLock.withLock { () -> Bool in
+                guard !operation.isCancelled else {
+                    return false
                 }
-            } else {
-                DispatchQueue.main.async {
-                    completion(false)
-                }
+                self.parseStableText(stableText)
+                return !operation.isCancelled
+            }
+            DispatchQueue.main.async {
+                if self.parseOperation === operation { self.parseOperation = nil }
+                completion(finished && !operation.isCancelled)
             }
         }
+        parseOperation = operation
         operationQueue.addOperation(operation)
     }
 
     func textDidChange(_ change: TextChange) -> LineChangeSet {
+        parseOperation?.cancel()
+        parseOperation = nil
+        parseLock.lock()
+        defer { parseLock.unlock() }
         let bytesRemoved = change.byteRange.length
         let bytesAdded = change.bytesAdded
         let edit = TreeSitterInputEdit(
@@ -71,11 +102,29 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
             startPoint: TreeSitterTextPoint(change.startLinePosition),
             oldEndPoint: TreeSitterTextPoint(change.oldEndLinePosition),
             newEndPoint: TreeSitterTextPoint(change.newEndLinePosition))
-        return rootLanguageLayer.apply(edit)
+        let changes = rootLanguageLayer.apply(edit)
+        highlightStringView = nil
+        return changes
     }
 
     func captures(in range: ByteRange) -> [TreeSitterCapture] {
-        rootLanguageLayer.captures(in: range)
+        parseLock.withLock { rootLanguageLayer.captures(in: range) }
+    }
+
+    /// Called on the editor thread, before any further text mutation. Tree copies
+    /// are per request; predicate text is shared until the next parse or edit.
+    func makeHighlightSnapshot() -> TreeSitterHighlightSnapshot {
+        parseLock.withLock {
+            let stableStringView: StringView
+            if let cachedStringView = highlightStringView {
+                stableStringView = cachedStringView
+            } else {
+                stableStringView = StringView(string: stringView.string as String)
+                highlightStringView = stableStringView
+            }
+            return TreeSitterHighlightSnapshot(
+                layers: rootLanguageLayer.highlightSnapshotLayers(), stringView: stableStringView)
+        }
     }
 
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter {
@@ -90,6 +139,8 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     func strategyForInsertingLineBreak(from startLinePosition: LinePosition,
                                        to endLinePosition: LinePosition,
                                        using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy {
+        parseLock.lock()
+        defer { parseLock.unlock() }
         let startLayerAndNode = rootLanguageLayer.layerAndNode(at: startLinePosition)
         let endLayerAndNode = rootLanguageLayer.layerAndNode(at: endLinePosition)
         if let indentationScopes = startLayerAndNode?.layer.language.indentationScopes ?? endLayerAndNode?.layer.language.indentationScopes {
@@ -111,6 +162,8 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     }
 
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode? {
+        parseLock.lock()
+        defer { parseLock.unlock() }
         if let node = rootLanguageLayer.layerAndNode(at: linePosition)?.node, let type = node.type {
             let startLocation = TextLocation(LinePosition(node.startPoint))
             let endLocation = TextLocation(LinePosition(node.endPoint))
@@ -121,6 +174,8 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     }
 
     func detectIndentStrategy() -> DetectedIndentStrategy {
+        parseLock.lock()
+        defer { parseLock.unlock() }
         if let tree = rootLanguageLayer.tree {
             let detector = TreeSitterIndentStrategyDetector(lineManager: lineManager, tree: tree, stringView: stringView)
             return detector.detect()
