@@ -1008,6 +1008,7 @@ open class TextView: UIScrollView {
         becomeFirstResponder()
         let line = textInputView.lineManager.line(atRow: lineIndex)
         textInputView.layoutLines(toLocation: line.location)
+        handleContentSizeUpdateIfNeeded()
         scrollLocationToVisible(line.location)
         layoutIfNeeded()
         switch selection {
@@ -1240,7 +1241,11 @@ extension TextView {
     /// - Parameters:
     ///   - range: The range of text to scroll into view.
     public func scrollRangeToVisible(_ range: NSRange) {
-        textInputView.layoutLines(toLocation: range.upperBound)
+        textInputView.layoutLines(toLocation: range.lowerBound)
+        if range.length > 0 {
+            textInputView.layoutLines(toLocation: range.upperBound)
+        }
+        handleContentSizeUpdateIfNeeded()
         justScrollRangeToVisible(range)
     }
 }
@@ -1523,8 +1528,7 @@ extension TextView: TextInputViewDelegate {
     }
 
     func textInputView(_ view: TextInputView, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint) {
-        let isScrolling = isDragging || isDecelerating
-        if contentOffsetAdjustment != .zero && isScrolling {
+        if contentOffsetAdjustment != .zero {
             contentOffset = CGPoint(x: contentOffset.x + contentOffsetAdjustment.x, y: contentOffset.y + contentOffsetAdjustment.y)
         }
     }

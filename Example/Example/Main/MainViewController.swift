@@ -10,6 +10,7 @@ final class MainViewController: UIViewController {
     }
 
     private let contentView = MainView()
+    private var navigationDocumentLength = 0
     #if os(iOS)
     private let toolsView: KeyboardToolsView
     #endif
@@ -64,6 +65,14 @@ final class MainViewController: UIViewController {
         setupMenuButton()
         setupTextView()
         updateTextViewSettings()
+        if ProcessInfo.processInfo.navigationDocumentName != nil {
+            contentView.textView.isLineWrappingEnabled = ProcessInfo.processInfo.environment["RUNESTONE_WRAP_LINES"] != "0"
+            contentView.textView.showLineNumbers = true
+            navigationItem.leftBarButtonItems = [
+                UIBarButtonItem(title: "Top", style: .plain, target: self, action: #selector(jumpToTop)),
+                UIBarButtonItem(title: "Bottom", style: .plain, target: self, action: #selector(jumpToBottom))
+            ]
+        }
     }
 }
 
@@ -80,7 +89,15 @@ private extension MainViewController {
 
     private func setupTextView() {
         var text = ""
-        if !ProcessInfo.processInfo.disableTextPersistance, let persistedText = UserDefaults.standard.text {
+        if let name = ProcessInfo.processInfo.navigationDocumentName {
+            let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            do {
+                text = try String(contentsOf: documents.appendingPathComponent(name), encoding: .utf8)
+                navigationDocumentLength = (text as NSString).length
+            } catch {
+                text = "Could not load navigation document: \(error.localizedDescription)"
+            }
+        } else if !ProcessInfo.processInfo.disableTextPersistance, let persistedText = UserDefaults.standard.text {
             text = persistedText
         }
         let themeSetting = UserDefaults.standard.theme
@@ -91,6 +108,22 @@ private extension MainViewController {
         }
         contentView.textView.editorDelegate = self
         contentView.textView.setState(state)
+    }
+
+    @objc private func jumpToTop() {
+        jump(to: 0)
+    }
+
+    @objc private func jumpToBottom() {
+        jump(to: navigationDocumentLength)
+    }
+
+    private func jump(to location: Int) {
+        let start = CACurrentMediaTime()
+        contentView.textView.scrollRangeToVisible(NSRange(location: location, length: 0))
+        contentView.textView.layoutIfNeeded()
+        let milliseconds = (CACurrentMediaTime() - start) * 1_000
+        print("Navigation to \(location): \(milliseconds) ms")
     }
 
     private func updateTextViewSettings() {
@@ -150,6 +183,9 @@ private extension MainViewController {
 
 extension MainViewController: TextViewDelegate {
     func textViewDidChange(_ textView: TextView) {
+        if ProcessInfo.processInfo.navigationDocumentName != nil {
+            navigationDocumentLength = (textView.text as NSString).length
+        }
         if !ProcessInfo.processInfo.disableTextPersistance {
             UserDefaults.standard.text = textView.text
         }
@@ -195,7 +231,7 @@ extension MainViewController: MenuSelectionHandler {
             UserDefaults.standard.isSelectable.toggle()
             updateTextViewSettings()
         case .toggleWrapLines:
-            UserDefaults.standard.wrapLines.toggle()
+            UserDefaults.standard.wrapLines = !contentView.textView.isLineWrappingEnabled
             updateTextViewSettings()
         case .toggleSpellChecking:
             UserDefaults.standard.checkSpelling.toggle()
