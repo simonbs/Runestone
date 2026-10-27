@@ -11,7 +11,7 @@ final class PlainTextSyntaxHighlighter: LineSyntaxHighlighter {
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput) {}
 
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput, completion: @escaping AsyncCallback) {
-        completion(.success(()))
+        completion(.success(.init(isSizingInvalid: false)))
     }
 
     func cancel() {}

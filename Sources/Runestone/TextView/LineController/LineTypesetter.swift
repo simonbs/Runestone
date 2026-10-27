@@ -82,6 +82,25 @@ final class LineTypesetter {
         typesetter = CTTypesetterCreateWithAttributedString(stringForTypesetting(attributedString))
     }
 
+    // The caller has verified that only appearance attributes changed. Rebuild
+    // drawing runs with the full string so CoreText keeps line-local UTF-16 indices.
+    // Retain the measured prefix and its continuation state, including hidden spaces.
+    func refreshAppearance(_ attributedString: NSAttributedString) -> [LineFragment] {
+        prepareToTypeset(attributedString)
+        guard let typesetter else {
+            return []
+        }
+        lineFragments = lineFragments.map { fragment in
+            let range = CFRange(location: fragment.visibleRange.location, length: fragment.visibleRange.length)
+            return fragment.withLine(CTTypesetterCreateLine(typesetter, range))
+        }
+        if isFinishedTypesetting {
+            self.attributedString = nil
+            self.typesetter = nil
+        }
+        return lineFragments
+    }
+
     @discardableResult
     func typesetLineFragments(in rect: CGRect) -> [LineFragment] {
         let lineFragments = typesetLineFragments(until: .yPosition(rect.maxY))

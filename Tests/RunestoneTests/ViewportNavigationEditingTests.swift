@@ -65,6 +65,46 @@ final class ViewportNavigationEditingTests: XCTestCase {
         }
     }
 
+    func testLongLineMarkedCompositionMatchesFreshEditorWithAndWithoutWrapping() throws {
+        let language = TreeSitterLanguage(tree_sitter_javascript(), highlightsQuery: .init(string: "(string) @string"))
+        let theme = DefaultTheme()
+        let text = "let value = \"" + String(repeating: "Grøn 😀 אבגד\ttext ", count: 100) + "\";\n"
+        for wrapping in [true, false] {
+            let view = makeEditingTextView(wrapping: wrapping)
+            view.setState(TextViewState(text: text, theme: theme, language: language))
+            let input = try textInput(in: view)
+            settleLayout(view, input: input)
+            let insertion = (text as NSString).range(of: "text").location
+            view.selectedRange = NSRange(location: insertion, length: 0)
+            // Keep initial layout and composition edits in one main-thread turn:
+            // any queued initial highlighting application cannot interleave them.
+            input.setMarkedText("你好", selectedRange: NSRange(location: 1, length: 0))
+            XCTAssertEqual(view.selectedRange, NSRange(location: insertion + 1, length: 0))
+            XCTAssertEqual((view.markedTextRange as? IndexedRange)?.range, NSRange(location: insertion, length: 2))
+            let firstText = (text as NSString).replacingCharacters(in: NSRange(location: insertion, length: 0), with: "你好")
+            XCTAssertEqual(view.text, firstText)
+            input.setMarkedText("你好😀", selectedRange: NSRange(location: 4, length: 0))
+            let composed = (text as NSString).replacingCharacters(in: NSRange(location: insertion, length: 0), with: "你好😀")
+            XCTAssertEqual(view.text, composed)
+            XCTAssertEqual(view.selectedRange, NSRange(location: insertion + 4, length: 0))
+            XCTAssertEqual((view.markedTextRange as? IndexedRange)?.range, NSRange(location: insertion, length: 4))
+            settleLayout(view, input: input)
+            let yielded = expectation(description: "Yield to queued main-thread callbacks")
+            DispatchQueue.main.async { yielded.fulfill() }
+            wait(for: [yielded], timeout: 5)
+            // The fresh oracle synchronously settles both editors. This barrier alone
+            // does not claim that every background highlighting request has completed.
+            try assertEditedGeometryMatchesFreshEditor(view, input: input, language: language, theme: theme, wrapping: wrapping)
+            XCTAssertEqual(view.text, composed)
+            XCTAssertEqual((view.markedTextRange as? IndexedRange)?.range, NSRange(location: insertion, length: 4))
+            input.unmarkText()
+            XCTAssertNil(view.markedTextRange)
+            XCTAssertEqual(view.text, composed)
+            XCTAssertEqual(view.selectedRange, NSRange(location: insertion + 4, length: 0))
+            try assertEditedGeometryMatchesFreshEditor(view, input: input, language: language, theme: theme, wrapping: wrapping)
+        }
+    }
+
     private func makeEditingTextView(wrapping: Bool) -> TextView {
         let view = TextView(frame: CGRect(x: 0, y: 0, width: 320, height: 240))
         view.contentInsetAdjustmentBehavior = .never
@@ -79,7 +119,7 @@ final class ViewportNavigationEditingTests: XCTestCase {
         let fresh = makeEditingTextView(wrapping: wrapping)
         fresh.setState(TextViewState(text: edited.text, theme: theme, language: language))
         let freshInput = try textInput(in: fresh)
-        fresh.selectedRange = edited.selectedRange
+        copySelectionAndComposition(from: edited, to: fresh, input: freshInput)
         for (view, textInput) in [(edited, input), (fresh, freshInput)] {
             view.contentOffset = .zero
             settleLayout(view, input: textInput)
@@ -111,6 +151,18 @@ final class ViewportNavigationEditingTests: XCTestCase {
             XCTAssertEqual(edited.contentOffset.y, fresh.contentOffset.y, accuracy: 0.5)
             XCTAssertEqual(edited.contentOffset.x, fresh.contentOffset.x, accuracy: 0.5)
             try assertVisibleFragmentRenderingMatches(edited, fresh: fresh)
+        }
+    }
+
+    private func copySelectionAndComposition(from edited: TextView, to fresh: TextView, input: TextInputView) {
+        if let marked = edited.markedTextRange as? IndexedRange {
+            fresh.selectedRange = marked.range
+            let markedText = (edited.text as NSString).substring(with: marked.range)
+            let selected = edited.selectedRange
+            input.setMarkedText(
+                markedText, selectedRange: NSRange(location: selected.location - marked.range.location, length: selected.length))
+        } else {
+            fresh.selectedRange = edited.selectedRange
         }
     }
 
