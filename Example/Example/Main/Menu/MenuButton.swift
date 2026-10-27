@@ -16,11 +16,29 @@ final class MenuButton: UIButton {
 
 private extension MenuButton {
     private func setupMenu() {
-        menu = UIMenu(children: makeFeaturesMenuElements() + makeSettingsMenuElements() + makeThemeMenuElements())
+        menu = UIMenu(children: makeNavigationMenuElements() + makeFeaturesMenuElements() + makeSettingsMenuElements() + makeThemeMenuElements())
     }
 }
 
 private extension MenuButton {
+    private func makeNavigationMenuElements() -> [UIMenuElement] {
+        guard ProcessInfo.processInfo.navigationDocumentName != nil else {
+            return []
+        }
+        return [
+            UIMenu(options: .displayInline, children: [
+                UIAction(title: "Jump to Top") { [weak self] _ in
+                    self?.selectionHandler?.handleSelection(of: .jumpToTop)
+                }
+            ]),
+            UIMenu(options: .displayInline, children: [
+                UIAction(title: "Jump to Bottom") { [weak self] _ in
+                    self?.selectionHandler?.handleSelection(of: .jumpToBottom)
+                }
+            ])
+        ]
+    }
+
     private func makeFeaturesMenuElements() -> [UIMenuElement] {
         var menuElements: [UIMenuElement] = []
         if #available(iOS 16, *) {

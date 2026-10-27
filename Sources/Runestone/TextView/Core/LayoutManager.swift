@@ -151,6 +151,7 @@ final class LayoutManager {
     private let invisibleCharacterConfiguration: InvisibleCharacterConfiguration
     private let lineControllerStorage: LineControllerStorage
     private var needsLayout = false
+    private var needsSynchronousDestinationHighlight = false
     private var needsLayoutLineSelection = false
 
     init(lineManager: LineManager,
@@ -205,7 +206,7 @@ final class LayoutManager {
                 // Only display the line if it's currently visible on the screen. Otherwise it's enough to invalidate it and redisplay it later.
                 if visibleLineIDs.contains(lineID) {
                     let lineYPosition = lineController.line.yPosition
-                    let lineLocalViewport = CGRect(x: 0, y: lineYPosition, width: insetViewport.width, height: insetViewport.maxY - lineYPosition)
+                    let lineLocalViewport = CGRect(x: 0, y: 0, width: insetViewport.width, height: max(0, insetViewport.maxY - lineYPosition))
                     lineController.prepareToDisplayString(in: lineLocalViewport, syntaxHighlightAsynchronously: false)
                 }
             }
@@ -299,9 +300,9 @@ extension LayoutManager {
             needsLayout = false
             CATransaction.begin()
             CATransaction.setDisableActions(true)
+            layoutLinesInViewport()
             layoutGutter()
             layoutLineSelection()
-            layoutLinesInViewport()
             updateLineNumberColors()
             CATransaction.commit()
         }
@@ -371,24 +372,49 @@ extension LayoutManager {
         }
     }
 
+    /// Prepare a destination without measuring the document prefix. Heights outside the
+    /// destination's neighborhood remain estimates in the line tree.
     func layoutLines(toLocation location: Int) {
-        var nextLine: DocumentLineNode? = lineManager.firstLine
-        let isLocationEndOfString = location >= stringView.string.length
-        while let line = nextLine {
-            let lineLocation = line.location
-            let endTypesettingLocation = min(lineLocation + line.data.length, location) - lineLocation
-            let lineController = lineControllerStorage.getOrCreateLineController(for: line)
-            lineController.constrainingWidth = constrainingLineWidth
-            lineController.prepareToDisplayString(toLocation: endTypesettingLocation, syntaxHighlightAsynchronously: true)
-            let lineSize = CGSize(width: lineController.lineWidth, height: lineController.lineHeight)
-            contentSizeService.setSize(of: lineController.line, to: lineSize)
-            let lineEndLocation = lineLocation + line.data.length
-            if ((lineEndLocation < location) || (lineLocation == location && !isLocationEndOfString)) && line.index < lineManager.lineCount - 1 {
-                nextLine = lineManager.line(atRow: line.index + 1)
-            } else {
-                nextLine = nil
-            }
+        guard constrainingLineWidth > 0,
+              let line = lineManager.line(containingCharacterAt: min(max(0, location), stringView.string.length)) else {
+            return
         }
+        needsSynchronousDestinationHighlight = true
+        let controller = lineControllerStorage.getOrCreateLineController(for: line)
+        controller.constrainingWidth = constrainingLineWidth
+        let localLocation = min(line.data.length, max(0, location - line.location))
+        controller.prepareToDisplayString(toLocation: localLocation, syntaxHighlightAsynchronously: false)
+        contentSizeService.setSize(of: line, to: CGSize(width: controller.lineWidth, height: controller.lineHeight))
+        let destinationY = controller.caretRect(atIndex: localLocation).minY
+        prepareLines(before: line, covering: max(0, viewport.height * 1.5 - destinationY),
+                     syntaxHighlightAsynchronously: false)
+    }
+
+    /// Measure backwards from a known line so that discovering wrapped predecessors
+    /// cannot displace it. Stop using measured heights, not the initial estimates.
+    private func prepareLines(before anchor: DocumentLineNode, covering distance: CGFloat,
+                              syntaxHighlightAsynchronously: Bool = true) {
+        var remaining = distance
+        var row = anchor.index - 1
+        while row >= 0 && remaining > 0 {
+            let line = lineManager.line(atRow: row)
+            let controller = lineControllerStorage.getOrCreateLineController(for: line)
+            controller.constrainingWidth = constrainingLineWidth
+            controller.prepareToDisplayString(toLocation: line.data.length, syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
+            contentSizeService.setSize(of: line, to: CGSize(width: controller.lineWidth, height: controller.lineHeight))
+            remaining -= line.data.lineHeight
+            row -= 1
+        }
+    }
+
+    /// Prefer text already on screen when scrolling into an unmeasured region above it.
+    /// A disjoint jump instead starts with the line at the new viewport position.
+    private func viewportAnchor() -> DocumentLineNode? {
+        let overlappingLines = visibleLineIDs.compactMap { lineControllerStorage[$0]?.line }.filter { line in
+            line.yPosition + line.data.lineHeight > insetViewport.minY && line.yPosition < insetViewport.maxY
+        }
+        return overlappingLines.min { $0.yPosition < $1.yPosition }
+            ?? lineManager.line(containingYOffset: max(0, insetViewport.minY))
     }
 
     // swiftlint:disable:next function_body_length
@@ -399,6 +425,18 @@ extension LayoutManager {
             visibleTextRanges = []
             return
         }
+        let highlightDestinationSynchronously = needsSynchronousDestinationHighlight
+        needsSynchronousDestinationHighlight = false
+        var contentOffsetAdjustmentY: CGFloat = 0
+        if constrainingLineWidth > 0, let anchor = viewportAnchor() {
+            let oldAnchorY = anchor.yPosition
+            let distance = max(0, oldAnchorY - insetViewport.minY + viewport.height * 0.5)
+            prepareLines(before: anchor, covering: distance,
+                         syntaxHighlightAsynchronously: !highlightDestinationSynchronously)
+            contentOffsetAdjustmentY = anchor.yPosition - oldAnchorY
+            // Render against the corrected viewport in this same transaction.
+            viewport.origin.y += contentOffsetAdjustmentY
+        }
         let oldVisibleLineIDs = visibleLineIDs
         let oldVisibleLineFragmentIDs = Set(lineFragmentViewReuseQueue.visibleViews.keys)
         // Layout lines until we have filled the viewport.
@@ -408,15 +446,29 @@ extension LayoutManager {
         var visibleRange: NSRange?
         var visibleRanges: [NSRange] = []
         var maxY = insetViewport.minY
-        var contentOffsetAdjustmentY: CGFloat = 0
         while let line = nextLine, maxY < insetViewport.maxY, constrainingLineWidth > 0 {
             appearedLineIDs.insert(line.id)
             // Prepare to line controller to display text.
-            let lineLocalViewport = CGRect(x: 0, y: maxY, width: insetViewport.width, height: insetViewport.maxY - maxY)
+            let lineLocalViewport = CGRect(x: 0, y: 0, width: insetViewport.width,
+                                           height: max(0, insetViewport.maxY - line.yPosition))
             let lineController = lineControllerStorage.getOrCreateLineController(for: line)
-            let oldLineHeight = lineController.lineHeight
             lineController.constrainingWidth = constrainingLineWidth
-            lineController.prepareToDisplayString(in: lineLocalViewport, syntaxHighlightAsynchronously: true)
+            // A newly revealed destination should appear with its final colors on
+            // the first frame. Ordinary scrolling keeps asynchronous highlighting.
+            lineController.prepareToDisplayString(in: lineLocalViewport,
+                                                  syntaxHighlightAsynchronously: !highlightDestinationSynchronously)
+            let lineSize = CGSize(width: lineController.lineWidth, height: lineController.lineHeight)
+            contentSizeService.setSize(of: line, to: lineSize)
+            // A jump into the estimated tail of a partially measured line may finish
+            // it above the viewport. There is no real text at that estimated position:
+            // relocate to its actual tail before displaying any frames.
+            if appearedLineIDs.count == 1 && lineController.isFinishedTypesetting
+                && line.yPosition + lineSize.height <= insetViewport.minY {
+                let correctedTop = max(line.yPosition, line.yPosition + lineSize.height - viewport.height)
+                let adjustment = correctedTop - insetViewport.minY
+                viewport.origin.y += adjustment
+                contentOffsetAdjustmentY += adjustment
+            }
             layoutLineNumberView(for: line)
             // Layout line fragments ("sublines") in the line until we have filled the viewport.
             let lineYPosition = line.yPosition
@@ -448,12 +500,6 @@ extension LayoutManager {
                 lineController.setMarkedTextOnLineFragments(nil)
             }
             let stoppedGeneratingLineFragments = lineFragmentControllers.isEmpty
-            let lineSize = CGSize(width: lineController.lineWidth, height: lineController.lineHeight)
-            contentSizeService.setSize(of: lineController.line, to: lineSize)
-            let isSizingLineAboveTopEdge = line.yPosition < insetViewport.minY + textContainerInset.top
-            if isSizingLineAboveTopEdge && lineController.isFinishedTypesetting {
-                contentOffsetAdjustmentY += lineController.lineHeight - oldLineHeight
-            }
             if !stoppedGeneratingLineFragments && line.index < lineManager.lineCount - 1 {
                 nextLine = lineManager.line(atRow: line.index + 1)
             } else {
