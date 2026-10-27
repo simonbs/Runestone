@@ -115,24 +115,6 @@ final class ViewportNavigationEditingTests: XCTestCase {
     }
 
     private func assertVisibleFragmentRenderingMatches(_ edited: TextView, fresh: TextView) throws {
-        func visibleFragments(in view: TextView) -> [LineFragmentView] {
-            func descendants(of parent: UIView) -> [LineFragmentView] {
-                parent.subviews.flatMap { child in
-                    if let fragment = child as? LineFragmentView {
-                        return [fragment]
-                    }
-                    return descendants(of: child)
-                }
-            }
-            return descendants(of: view).filter { fragment in
-                !fragment.isHidden && fragment.renderer != nil && fragment.convert(fragment.bounds, to: view).intersects(view.bounds)
-            }.sorted { lhs, rhs in
-                if lhs.documentLineLocation != rhs.documentLineLocation {
-                    return lhs.documentLineLocation < rhs.documentLineLocation
-                }
-                return lhs.renderer!.lineFragment.index < rhs.renderer!.lineFragment.index
-            }
-        }
         let actualFragments = visibleFragments(in: edited)
         let expectedFragments = visibleFragments(in: fresh)
         XCTAssertFalse(actualFragments.isEmpty, "The appearance oracle must compare actual visible fragments.")
@@ -166,6 +148,25 @@ final class ViewportNavigationEditingTests: XCTestCase {
             let expectedImage = try imageData(for: expectedRenderer)
             XCTAssertTrue(actualImage == expectedImage,
                           "Edited syntax rendering must match a fresh editor for \(key).")
+        }
+    }
+
+    private func visibleFragments(in view: TextView) -> [LineFragmentView] {
+        func descendants(of parent: UIView) -> [LineFragmentView] {
+            parent.subviews.flatMap { child in
+                if let fragment = child as? LineFragmentView {
+                    return [fragment]
+                }
+                return descendants(of: child)
+            }
+        }
+        return descendants(of: view).filter { fragment in
+            !fragment.isHidden && fragment.renderer != nil && fragment.convert(fragment.bounds, to: view).intersects(view.bounds)
+        }.sorted { lhs, rhs in
+            if lhs.documentLineLocation != rhs.documentLineLocation {
+                return lhs.documentLineLocation < rhs.documentLineLocation
+            }
+            return lhs.renderer!.lineFragment.index < rhs.renderer!.lineFragment.index
         }
     }
 
