@@ -24,6 +24,23 @@ public final class DefaultTheme: Runestone.Theme {
 
     public init() {}
 
+    // Keep asset colors dynamic; resolving them here would freeze the current appearance.
+    private enum TokenColors {
+        static let comment = UIColor(themeColorNamed: "comment")
+        static let constantBuiltin = UIColor(themeColorNamed: "constant_builtin")
+        static let constantCharacter = UIColor(themeColorNamed: "constant_character")
+        static let constructor = UIColor(themeColorNamed: "constructor")
+        static let function = UIColor(themeColorNamed: "function")
+        static let keyword = UIColor(themeColorNamed: "keyword")
+        static let number = UIColor(themeColorNamed: "number")
+        static let property = UIColor(themeColorNamed: "property")
+        static let `string` = UIColor(themeColorNamed: "string")
+        static let `type` = UIColor(themeColorNamed: "type")
+        static let variableBuiltin = UIColor(themeColorNamed: "variable_builtin")
+        static let `operator` = UIColor(themeColorNamed: "operator")
+        static let punctuation = UIColor(themeColorNamed: "punctuation")
+    }
+
     // swiftlint:disable:next cyclomatic_complexity
     public func textColor(for highlightName: String) -> UIColor? {
         guard let highlightName = HighlightName(highlightName) else {
@@ -31,33 +48,33 @@ public final class DefaultTheme: Runestone.Theme {
         }
         switch highlightName {
         case .comment:
-            return UIColor(themeColorNamed: "comment")
+            return TokenColors.comment
         case .constantBuiltin:
-            return UIColor(themeColorNamed: "constant_builtin")
+            return TokenColors.constantBuiltin
         case .constantCharacter:
-            return UIColor(themeColorNamed: "constant_character")
+            return TokenColors.constantCharacter
         case .constructor:
-            return UIColor(themeColorNamed: "constructor")
+            return TokenColors.constructor
         case .function:
-            return UIColor(themeColorNamed: "function")
+            return TokenColors.function
         case .keyword:
-            return UIColor(themeColorNamed: "keyword")
+            return TokenColors.keyword
         case .number:
-            return UIColor(themeColorNamed: "number")
+            return TokenColors.number
         case .property:
-            return UIColor(themeColorNamed: "property")
+            return TokenColors.property
         case .string:
-            return UIColor(themeColorNamed: "string")
+            return TokenColors.string
         case .type:
-            return UIColor(themeColorNamed: "type")
+            return TokenColors.type
         case .variable:
             return nil
         case .variableBuiltin:
-            return UIColor(themeColorNamed: "variable_builtin")
+            return TokenColors.variableBuiltin
         case .operator:
-            return UIColor(themeColorNamed: "operator")
+            return TokenColors.operator
         case .punctuation:
-            return UIColor(themeColorNamed: "punctuation")
+            return TokenColors.punctuation
         }
     }
 
