@@ -15,7 +15,9 @@ enum TreeSitterSyntaxHighlighterError: LocalizedError {
 }
 
 final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
-    var theme: Theme = DefaultTheme.shared
+    var theme: Theme = DefaultTheme.shared {
+        didSet { cancel() }
+    }
     var kern: CGFloat = 0
     var canHighlight: Bool {
         languageMode.canHighlight
@@ -33,12 +35,15 @@ final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
     }
 
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput) {
+        cancel()
         let captures = languageMode.captures(in: input.byteRange)
         let tokens = self.tokens(for: captures, localTo: input.byteRange)
         setAttributes(for: tokens, on: input.attributedString)
     }
 
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput, completion: @escaping AsyncCallback) {
+        cancel()
+        let snapshot = languageMode.makeHighlightSnapshot()
         let operation = BlockOperation()
         operation.addExecutionBlock { [weak operation, weak self] in
             guard let operation = operation, let self = self else {
@@ -53,12 +58,21 @@ final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
                 }
                 return
             }
-            let captures = self.languageMode.captures(in: input.byteRange)
+            let captures = snapshot.captures(in: input.byteRange) { operation.isCancelled }
             if !operation.isCancelled {
                 DispatchQueue.main.async {
-                    if !operation.isCancelled {
+                    defer {
+                        if self.currentOperation === operation { self.currentOperation = nil }
+                    }
+                    if self.currentOperation === operation && !operation.isCancelled && input.isValid() {
                         let tokens = self.tokens(for: captures, localTo: input.byteRange)
-                        self.setAttributes(for: tokens, on: input.attributedString)
+                        guard self.currentOperation === operation && !operation.isCancelled && input.isValid() else {
+                            completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
+                            return
+                        }
+                        withExtendedLifetime(snapshot) {
+                            self.setAttributes(for: tokens, on: input.attributedString)
+                        }
                         completion(.success(()))
                     } else {
                         completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
@@ -66,6 +80,7 @@ final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
                 }
             } else {
                 DispatchQueue.main.async {
+                    if self.currentOperation === operation { self.currentOperation = nil }
                     completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
                 }
             }

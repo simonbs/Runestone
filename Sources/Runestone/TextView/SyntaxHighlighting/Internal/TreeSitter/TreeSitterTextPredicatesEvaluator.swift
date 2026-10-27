@@ -4,6 +4,7 @@ final class TreeSitterTextPredicatesEvaluator {
     private let match: TreeSitterQueryMatch
     private let stringView: StringView
 #if DEBUG
+    private static let unsupportedPredicateLock = NSLock()
     static var previousUnsupportedPredicateNames: [String] = []
 #endif
 
@@ -32,6 +33,8 @@ final class TreeSitterTextPredicatesEvaluator {
                 }
             case .unsupported(let parameters):
                 #if DEBUG
+                Self.unsupportedPredicateLock.lock()
+                defer { Self.unsupportedPredicateLock.unlock() }
                 if !Self.previousUnsupportedPredicateNames.contains(parameters.name) {
                     Self.previousUnsupportedPredicateNames.append(parameters.name)
                     print("Unsupported predicate '\(parameters.name)'."

@@ -14,6 +14,10 @@ final class TreeSitterTree {
         ts_tree_delete(pointer)
     }
 
+    func copy() -> TreeSitterTree {
+        TreeSitterTree(ts_tree_copy(pointer))
+    }
+
     func apply(_ inputEdit: TreeSitterInputEdit) {
         withUnsafePointer(to: TSInputEdit(inputEdit)) { inputEditPointer in
             ts_tree_edit(pointer, inputEditPointer)
