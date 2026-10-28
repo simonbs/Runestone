@@ -10,7 +10,7 @@ extension LayoutManager {
     func cancelFoldingAnimation() {
         foldingAnimator?.stopAnimation(true)
         foldingAnimator = nil
-        for view in animatedFoldingViews { view.transform = .identity }
+        for view in animatedFoldingViews { view.alpha = 1 }
         animatedFoldingViews = []
         foldingSnapshot?.removeFromSuperview()
         foldingSnapshot = nil
@@ -25,8 +25,6 @@ extension LayoutManager {
             changes()
             return
         }
-        let previousFrames = lineFragmentViewReuseQueue.visibleViews.mapValues(\.frame)
-        let previousNumberFrames = lineNumberLabelReuseQueue.visibleViews.mapValues(\.frame)
         let lastHeaderRow = (foldingRanges[row]?.hiddenStartRow ?? row + 1) - 1
         let lastHeader = lineManager.line(atRow: lastHeaderRow)
         let belowHeader = lastHeader.yPosition + lastHeader.data.lineHeight + textContainerInset.top
@@ -49,16 +47,15 @@ extension LayoutManager {
         }
         var animatedViews: [UIView] = []
         UIView.performWithoutAnimation {
-            animatedViews = prepareFoldingAnimation(previousFrames: previousFrames,
-                                                    previousNumberFrames: previousNumberFrames, belowHeader: belowHeader)
+            animatedViews = prepareFoldingAnimation(belowHeader: belowHeader)
         }
         animatedFoldingViews = animatedViews
         let animator = UIViewPropertyAnimator(duration: 0.18, curve: .easeInOut) {
-            for view in animatedViews { view.transform = .identity }
+            for view in animatedViews { view.alpha = 1 }
             snapshot?.alpha = 0
-            snapshot?.transform = CGAffineTransform(translationX: 0, y: -16)
         }
         animator.addCompletion { [weak self] _ in
+            for view in animatedViews { view.alpha = 1 }
             snapshot?.removeFromSuperview()
             self?.foldingSnapshot = nil
             self?.animatedFoldingViews = []
@@ -68,21 +65,16 @@ extension LayoutManager {
         animator.startAnimation()
     }
 
-    private func prepareFoldingAnimation(previousFrames: [LineFragmentID: CGRect],
-                                         previousNumberFrames: [DocumentLineNodeID: CGRect], belowHeader: CGFloat) -> [UIView] {
+    private func prepareFoldingAnimation(belowHeader: CGFloat) -> [UIView] {
         var views: [UIView] = []
-        for (id, view) in lineFragmentViewReuseQueue.visibleViews {
+        for view in lineFragmentViewReuseQueue.visibleViews.values {
             guard view.frame.maxY > belowHeader else { continue }
-            let previousY = previousFrames[id]?.minY ?? view.frame.minY + 24
-            let delta = min(max(previousY - view.frame.minY, -viewport.height), viewport.height)
-            view.transform = CGAffineTransform(translationX: 0, y: delta)
+            view.alpha = 0
             views.append(view)
         }
-        for (id, view) in lineNumberLabelReuseQueue.visibleViews {
+        for view in lineNumberLabelReuseQueue.visibleViews.values {
             guard view.frame.maxY > belowHeader else { continue }
-            let previousY = previousNumberFrames[id]?.minY ?? view.frame.minY + 24
-            let delta = min(max(previousY - view.frame.minY, -viewport.height), viewport.height)
-            view.transform = CGAffineTransform(translationX: 0, y: delta)
+            view.alpha = 0
             views.append(view)
         }
         return views
