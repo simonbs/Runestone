@@ -19,6 +19,7 @@ extension LayoutManager {
     /// Commit geometry once. Only viewport views and a viewport-sized outgoing
     /// image participate in the animation; hidden text is never laid out for it.
     func animateFoldingChange(atRow row: Int, animated: Bool, changes: () -> Void) {
+        let previousChevronRotation = foldingButtonReuseQueue.visibleViews[row]?.displayedChevronRotation
         cancelFoldingAnimation()
         guard animated, !UIAccessibility.isReduceMotionEnabled, textInputView?.window != nil else {
             changes()
@@ -36,6 +37,9 @@ extension LayoutManager {
             ? linesContainerView.resizableSnapshotView(from: snapshotRect, afterScreenUpdates: false, withCapInsets: .zero)
             : nil
         changes()
+        if let previousChevronRotation = previousChevronRotation {
+            foldingButtonReuseQueue.visibleViews[row]?.animateChevron(from: previousChevronRotation)
+        }
         if let snapshot = snapshot {
             snapshot.frame = snapshotRect
             snapshot.isUserInteractionEnabled = false
