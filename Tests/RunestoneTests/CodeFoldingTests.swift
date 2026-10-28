@@ -63,6 +63,48 @@ final class CodeFoldingTests: XCTestCase {
         XCTAssertFalse(undo.canUndo)
     }
 
+    func testBottomCollapseKeepsOffsetValidUntilAnimationFinishesThenSettles() async throws {
+        let text = String(repeating: "const prefix = 0;\n", count: 50)
+            + "function bottom() {\n" + String(repeating: "  work();\n", count: 8) + "}\nconst after = 1;"
+        let (view, input) = try makeTextView(text: text)
+        view.contentInset = UIEdgeInsets(top: 12, left: 0, bottom: 24, right: 0)
+        view.verticalOverscrollFactor = 0.25
+        settle(view, input: input)
+        let originalHeight = view.contentSize.height
+        let bottomOffset = originalHeight - view.bounds.height + view.adjustedContentInset.bottom
+        view.contentOffset.y = bottomOffset
+        settle(view, input: input)
+
+        input.toggleFold(atRow: 50)
+
+        XCTAssertTrue(input.lineManager.isLineHidden(51))
+        XCTAssertEqual(view.contentOffset.y, bottomOffset, accuracy: 0.5)
+        XCTAssertGreaterThanOrEqual(view.contentSize.height, originalHeight)
+        try await Task.sleep(nanoseconds: 600_000_000)
+        XCTAssertLessThan(view.contentSize.height, originalHeight)
+        XCTAssertEqual(view.contentSize.height, input.contentSize.height + view.bounds.height * 0.25, accuracy: 0.5)
+        let finalMaximum = max(-view.adjustedContentInset.top,
+                               view.contentSize.height - view.bounds.height + view.adjustedContentInset.bottom)
+        XCTAssertEqual(view.contentOffset.y, finalMaximum, accuracy: 0.5)
+        XCTAssertEqual(view.text, text)
+    }
+
+    func testReplacingDocumentDuringBottomCollapseReleasesTemporaryScrollHeight() throws {
+        let text = String(repeating: "const prefix = 0;\n", count: 50)
+            + "function bottom() {\n" + String(repeating: "  work();\n", count: 8) + "}"
+        let (view, input) = try makeTextView(text: text)
+        view.contentOffset.y = view.contentSize.height - view.bounds.height
+        settle(view, input: input)
+        input.toggleFold(atRow: 50)
+
+        view.setState(TextViewState(text: "short"))
+        settle(view, input: input)
+
+        XCTAssertEqual(view.contentSize.height, input.contentSize.height, accuracy: 0.5)
+        XCTAssertEqual(view.contentOffset.y, 0, accuracy: 0.5)
+        XCTAssertEqual(view.text, "short")
+    }
+
     func testReopeningParentRetainsCollapsedChild() throws {
         let (view, input) = try makeTextView()
         input.toggleFold(atRow: 2, animated: false)

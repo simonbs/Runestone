@@ -10,10 +10,10 @@ extension LayoutManager {
     func cancelFoldingAnimation() {
         foldingAnimator?.stopAnimation(true)
         foldingAnimator = nil
-        finishFoldingAnimation()
+        finishFoldingAnimation(animated: false)
     }
 
-    private func finishFoldingAnimation() {
+    private func finishFoldingAnimation(animated: Bool) {
         for view in animatedFoldingViews {
             view.alpha = 1
             view.transform = .identity
@@ -22,16 +22,21 @@ extension LayoutManager {
         for snapshot in foldingSnapshots { snapshot.removeFromSuperview() }
         foldingSnapshots = []
         foldingAnimator = nil
+        let completion = foldingCompletion
+        foldingCompletion = nil
+        completion?(animated)
     }
 
     /// Commit geometry once, fading the fold body separately from the sliding tail.
     /// Snapshots and live views are bounded by the viewport, including large folds.
-    func animateFoldingChange(atRow row: Int, animated: Bool, changes: () -> Void) {
+    func animateFoldingChange(atRow row: Int, animated: Bool, changes: () -> Void,
+                              completion: @escaping (Bool) -> Void) {
         let previousChevronRotation = foldingButtonReuseQueue.visibleViews[row]?.displayedChevronRotation
         cancelFoldingAnimation()
         guard animated, !UIAccessibility.isReduceMotionEnabled, textInputView?.window != nil,
               let range = foldingRanges[row] else {
             changes()
+            completion(false)
             return
         }
         let previousViewportY = viewport.minY
@@ -45,6 +50,7 @@ extension LayoutManager {
         let tailSnapshot = makeFoldingSnapshot(from: previousTailTop, to: viewport.maxY)
         changes()
         guard abs(viewport.minY - previousViewportY) < 0.5 else {
+            completion(false)
             return
         }
         let tailTop = followingLine.map { $0.yPosition + textContainerInset.top }
@@ -69,8 +75,9 @@ extension LayoutManager {
             tailSnapshot?.transform = CGAffineTransform(translationX: 0, y: -tailOffset)
         }, delayFactor: isCollapsing ? 0.2 : 0)
         animator.addCompletion { [weak self] _ in
-            self?.finishFoldingAnimation()
+            self?.finishFoldingAnimation(animated: true)
         }
+        foldingCompletion = completion
         foldingAnimator = animator
         animator.startAnimation()
     }
@@ -279,6 +286,7 @@ final class LayoutManager {
     private var needsLayout = false
     private var needsSynchronousDestinationHighlight = false
     private var needsLayoutLineSelection = false
+    private var foldingCompletion: ((Bool) -> Void)?
     private var foldingAnimator: UIViewPropertyAnimator?
     private var foldingSnapshots: [UIView] = []
     private var animatedFoldingViews: [UIView] = []

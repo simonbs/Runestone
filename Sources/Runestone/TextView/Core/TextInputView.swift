@@ -15,6 +15,8 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidChangeSelection(_ view: TextInputView)
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
     func textInputView(_ view: TextInputView, shouldCheckSpellingIn range: NSRange) -> Bool
+    func textInputViewWillBeginFoldingTransition(_ view: TextInputView)
+    func textInputViewDidFinishFoldingTransition(_ view: TextInputView, animated: Bool)
     func textInputViewDidInvalidateContentSize(_ view: TextInputView)
     func textInputView(_ view: TextInputView, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
     func textInputViewDidChangeGutterWidth(_ view: TextInputView)
@@ -63,24 +65,27 @@ extension TextInputView {
         }
         guard textMutationVersion == mutationVersion, lineManager === originalLineManager,
               isCodeFoldingEnabled, foldingController.rangesByRow[row] == range else { return }
-        layoutManager.animateFoldingChange(atRow: row, animated: animated) {
+        layoutManager.cancelFoldingAnimation()
+        delegate?.textInputViewWillBeginFoldingTransition(self)
+        layoutManager.animateFoldingChange(atRow: row, animated: animated, changes: {
             _ = self.foldingController.toggle(at: row)
             self.applyFoldingProjection()
             self.layoutManager.layoutIfNeeded()
             self.setNeedsLayout()
             self.layoutIfNeeded()
-            if let scrollView = self.superview as? UIScrollView {
-                let minimumY = -scrollView.adjustedContentInset.top
-                let maximumY = max(minimumY, self.contentSize.height - scrollView.bounds.height + scrollView.adjustedContentInset.bottom)
-                scrollView.contentOffset.y = min(max(scrollView.contentOffset.y, minimumY), maximumY)
+        }, completion: { [weak self] animated in
+            guard let self = self else {
+                return
             }
-        }
+            self.delegate?.textInputViewDidFinishFoldingTransition(self, animated: animated)
+        })
         UIAccessibility.post(notification: .layoutChanged, argument: nil)
     }
 
     private func resetCodeFolding() {
         foldingRevision &+= 1
         layoutManager.cancelFoldingAnimation()
+        delegate?.textInputViewDidFinishFoldingTransition(self, animated: false)
         foldingController.reset()
         lineManager.setCollapsedLineRanges([])
         layoutManager.foldingRanges = [:]

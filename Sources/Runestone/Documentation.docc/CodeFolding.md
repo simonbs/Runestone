@@ -25,6 +25,8 @@ enclosing folds. Arrow movement skips collapsed lines. Disclosures do not hide
 marked text during composition or change folds during an active Writing Tools session.
 
 Folded rows fade in place while following rows slide to their new positions.
+Near the bottom of a document, the scrollable height is retained until the fold
+finishes, then the viewport settles into the remaining content.
 Transitions respect Reduce Motion. Scrolling, edits,
 or another fold action finish the previous transition at its committed layout.
 Hidden lines keep their measured or estimated heights and are skipped during
