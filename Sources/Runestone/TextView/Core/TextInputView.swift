@@ -69,6 +69,10 @@ extension TextInputView {
         delegate?.textInputViewWillBeginFoldingTransition(self)
         layoutManager.animateFoldingChange(atRow: row, animated: animated, changes: {
             _ = self.foldingController.toggle(at: row)
+            if animated, self.window != nil {
+                let feedback = isCollapsing ? self.collapseFeedback : self.expandFeedback
+                feedback.impactOccurred(intensity: 0.5)
+            }
             self.applyFoldingProjection()
             self.layoutManager.layoutIfNeeded()
             self.setNeedsLayout()
@@ -436,6 +440,8 @@ final class TextInputView: UIView, UITextInput {
         }
     }
     let foldingController = CodeFoldingController()
+    private lazy var collapseFeedback = UIImpactFeedbackGenerator(style: .rigid)
+    private lazy var expandFeedback = UIImpactFeedbackGenerator(style: .soft)
     private var foldingRevision: UInt = 0
     private var isApplyingFoldingEdit = false
     var lineSelectionDisplayType: LineSelectionDisplayType {

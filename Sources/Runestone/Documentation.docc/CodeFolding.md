@@ -20,6 +20,8 @@ The language used by the text view must provide a folding query. Languages from 
 
 Tap a chevron in the gutter to collapse or expand the lines below it. The line containing the chevron stays visible, including any wrapped text on that line. The folding controls are available even when line numbers are hidden.
 
+On supported devices, collapsing a section produces a light tap and expanding it produces a softer haptic.
+
 Collapsing text does not change the document or add an undo operation. Copying and saving still include the hidden text, and line numbers continue to refer to the complete document. If you collapse a section that contains another collapsed section, the inner section stays collapsed when you expand its parent.
 
 If collapsing a section would hide the selection, the selection moves to the line containing the chevron. Search and navigation to a hidden location expand the sections containing that location. Moving the cursor with the arrow keys skips collapsed text.
