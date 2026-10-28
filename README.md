@@ -16,9 +16,11 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 
 ## ✨ Features
 
-- Syntax highlighting.
+- Syntax highlighting with token backgrounds, font weights and traits, and text shadows.
 - Line numbers.
-- Code folding.
+- Opt-in code and Markdown section folding using gutter controls and language folding queries.
+- Spell checking with misspelling underlines, tap corrections, configurable languages, and optional Ignore, Learn, and Unlearn Spelling actions.
+- Native inline Writing Tools for proofreading and rewriting, with protected text ranges and session and panel lifecycle callbacks (Xcode 16.2+, iOS 18.2+, and a supported Apple Intelligence device).
 - Highlight the selected line.
 - Show invisible characters (tabs, spaces and line breaks).
 - Insertion of character pairs, e.g. inserting the trailing quotation mark when inserting the leading.
@@ -32,6 +34,7 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 - Automatically detects if a file is using spaces or tabs for indentation.
 - Specify line endings (CR, LF, CRLF) to use when inserting a line break.
 - Automatically detect line endings in a text.
+- Localized editor actions, including Simplified and Traditional Chinese, Brazilian Portuguese, Danish, Swedish, Norwegian Bokmål, Korean, Czech, Italian, Dutch, and Polish.
 
 ## 🚀 Getting Started
 
@@ -67,6 +70,8 @@ When opening a document this way, the example shows **Jump to Top** and **Jump t
 ## 🏎 Performance
 
 Runestone was built to be fast. Its good performance is by far mostly thanks to Tree-sitter's incremental parsing and [AvalonEdit's approach for managing lines in a document](https://github.com/icsharpcode/AvalonEdit/blob/master/ICSharpCode.AvalonEdit/Document/DocumentLineTree.cs).
+
+Large-document scrolling, cursor navigation, and editing avoid repeated layout and highlighting work. Appearance-only syntax updates preserve measured line wraps, and obsolete highlighting queries are canceled.
 
 When judging the performance of Runestone, it is key to build your app in the release configuration. The optimizations applied by the compiler when using the release configuration becomes very apparent when opening large documents.
 
