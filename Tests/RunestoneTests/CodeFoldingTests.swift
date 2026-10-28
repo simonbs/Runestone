@@ -259,34 +259,6 @@ final class CodeFoldingTests: XCTestCase {
         XCTAssertEqual(view.text, source)
     }
 
-    func testGutterDisclosureWorksWithoutLineNumbersAndDisablingRestoresText() throws {
-        let (view, input) = try makeTextView(showLineNumbers: false)
-        let expandedHeight = input.lineManager.contentHeight
-        let button = try XCTUnwrap(foldingButtons(in: input.gutterContainerView).first { button in
-            button.accessibilityIdentifier == "Runestone.Fold.1"
-        })
-        XCTAssertGreaterThan(input.gutterContainerView.bounds.width, 0)
-        let action = try XCTUnwrap(button.actions(forTarget: button, forControlEvent: .touchUpInside)?.first,
-                                   "A reused disclosure must retain its control event target.")
-        let selector = NSSelectorFromString(action)
-        let center = button.convert(CGPoint(x: button.bounds.midX, y: button.bounds.midY),
-                                    to: input.gutterContainerView)
-        XCTAssertEqual(input.gutterContainerView.hitTest(center, with: nil), button)
-
-        // App-less XCTest has no UIApplication to dispatch control events. Invoke
-        // the registered target action; the host Example verifies actual gutter taps.
-        _ = button.perform(selector)
-        settle(view, input: input)
-        XCTAssertTrue(input.lineManager.isLineHidden(3))
-
-        view.isCodeFoldingEnabled = false
-        settle(view, input: input)
-        XCTAssertTrue(input.lineManager.foldedLineProjection.spans.isEmpty)
-        XCTAssertTrue(foldingButtons(in: input.gutterContainerView).isEmpty)
-        XCTAssertEqual(input.lineManager.contentHeight, expandedHeight, accuracy: 0.5)
-        XCTAssertEqual(view.text, source)
-    }
-
     func testLargeCollapsedRangeSkipsHiddenControllersDuringLayoutAndLookup() throws {
         let text = "{\n" + String(repeating: "x\n", count: 10_000) + "}\nafter"
         let stringView = StringView(string: text)

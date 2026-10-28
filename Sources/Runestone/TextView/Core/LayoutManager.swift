@@ -723,10 +723,16 @@ extension LayoutManager {
         button.configure(row: row, endRow: range.endRow,
                          isCollapsed: collapsedFoldRows.contains(row), color: theme.lineNumberColor)
         button.toggle = { [weak self] in self?.onToggleFold?(row) }
-        let height = max(22, theme.font.totalLineHeight * lineHeightMultiplier)
-        button.frame = CGRect(x: safeAreaInsets.left + gutterWidthService.gutterWidth - gutterWidthService.foldingWidth,
+        let lineController = lineControllerStorage.getOrCreateLineController(for: line)
+        let firstFragmentHeight = lineController.numberOfLineFragments > 0
+            ? lineController.lineFragmentNode(atIndex: 0).data.lineFragment?.scaledSize.height
+            : nil
+        button.chevronSize = CGSize(width: gutterWidthService.foldingWidth,
+                                    height: firstFragmentHeight ?? theme.font.totalLineHeight * lineHeightMultiplier)
+        let totalGutterWidth = safeAreaInsets.left + gutterWidthService.gutterWidth
+        button.frame = CGRect(x: 0,
                               y: textContainerInset.top + line.yPosition,
-                              width: gutterWidthService.foldingWidth, height: height)
+                              width: totalGutterWidth, height: lineController.lineHeight)
     }
 
     private func layoutLineFragmentView(for lineFragmentController: LineFragmentController,

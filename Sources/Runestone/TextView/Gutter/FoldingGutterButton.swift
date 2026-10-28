@@ -2,6 +2,9 @@ import UIKit
 
 final class FoldingGutterButton: UIButton, ReusableView {
     var toggle: (() -> Void)?
+    var chevronSize: CGSize = .zero {
+        didSet { if chevronSize != oldValue { setNeedsLayout() } }
+    }
     private var hasConfiguredActions = false
     private let chevronView = UIImageView(image: UIImage(
         systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 10, weight: .semibold)))
@@ -35,8 +38,8 @@ final class FoldingGutterButton: UIButton, ReusableView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        chevronView.bounds = CGRect(origin: .zero, size: bounds.size)
-        chevronView.center = CGPoint(x: bounds.midX, y: bounds.midY)
+        chevronView.bounds = CGRect(origin: .zero, size: chevronSize)
+        chevronView.center = CGPoint(x: bounds.maxX - chevronSize.width / 2, y: chevronSize.height / 2)
     }
 
     func configure(row: Int, endRow: Int, isCollapsed: Bool, color: UIColor) {
@@ -71,7 +74,7 @@ final class FoldingGutterButton: UIButton, ReusableView {
     @objc private func activate() { toggle?() }
 }
 
-/// Only disclosure controls consume touches; the remainder of the gutter stays available to scrolling.
+/// Foldable rows consume gutter taps; other rows remain available to scrolling.
 final class GutterContainerView: UIView {
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         let hit = super.hitTest(point, with: event)

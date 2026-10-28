@@ -18,7 +18,7 @@ textView.isCodeFoldingEnabled = true
 
 The language used by the text view must provide a folding query. Languages from the [TreeSitterLanguages](https://github.com/simonbs/TreeSitterLanguages) package include this query when one is available.
 
-Tap a chevron in the gutter to collapse or expand the lines below it. The line containing the chevron stays visible, including any wrapped text on that line. The folding controls are available even when line numbers are hidden.
+Tap anywhere in the gutter beside a line with a chevron to collapse or expand the lines below it, including on its line number. The tap target covers the full height of that line, including wrapped text. The line containing the chevron stays visible. The folding controls are available even when line numbers are hidden.
 
 On supported devices, collapsing a section produces a light tap and expanding it produces a softer haptic.
 
