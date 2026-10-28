@@ -52,9 +52,11 @@ private extension WordWrappingLineBreakSuggester {
     }
 
     private func prefersInsertingLineBreakAfterCharacter(at location: Int) -> Bool {
-        let range = NSRange(location: location, length: 1)
-        let attributedSubstring = attributedString.attributedSubstring(from: range)
-        let string = attributedSubstring.string.trimmingCharacters(in: .whitespaces)
-        return string.isEmpty || CharacterSet(charactersIn: string).isSubset(of: .punctuationCharacters)
+        let string = CFAttributedStringGetString(attributedString)
+        guard let scalar = UnicodeScalar(CFStringGetCharacterAtIndex(string, location)) else {
+            // A UTF-16 surrogate half is neither whitespace nor punctuation.
+            return false
+        }
+        return CharacterSet.whitespaces.contains(scalar) || CharacterSet.punctuationCharacters.contains(scalar)
     }
 }

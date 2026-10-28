@@ -54,7 +54,8 @@ final class LineController {
             _lineHeight = lineHeight
             return lineHeight
         } else {
-            let knownLineFragmentHeight = typesetter.lineFragments.reduce(0) { $0 + $1.scaledSize.height }
+            // Fragment positions already accumulate all preceding scaled heights.
+            let knownLineFragmentHeight = typesetter.lineFragments.last.map { $0.yPosition + $0.scaledSize.height } ?? 0
             let remainingNumberOfLineFragments = typesetter.bestGuessNumberOfLineFragments - typesetter.lineFragments.count
             let lineFragmentHeight = estimatedLineFragmentHeight * lineFragmentHeightMultiplier
             let remainingLineFragmentHeight = CGFloat(remainingNumberOfLineFragments) * lineFragmentHeight
