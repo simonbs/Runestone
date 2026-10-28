@@ -257,6 +257,8 @@ final class LayoutManager {
         self.highlightService = highlightService
         self.linesContainerView.isUserInteractionEnabled = false
         self.lineNumbersContainerView.isUserInteractionEnabled = false
+        // Line numbers decorate the text; separate VoiceOver stops obscure the editor's controls.
+        self.lineNumbersContainerView.accessibilityElementsHidden = true
         self.gutterContainerView.isUserInteractionEnabled = true
         self.gutterBackgroundView.isUserInteractionEnabled = false
         self.gutterSelectionBackgroundView.isUserInteractionEnabled = false

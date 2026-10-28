@@ -1395,13 +1395,24 @@ private extension TextView {
         if editableTextInteraction.view == nil {
             isInputAccessoryViewEnabled = true
             textInputView.removeInteraction(nonEditableTextInteraction)
+            addEditableInteractionWithoutAnimation()
+        }
+    }
+
+    private func addEditableInteractionWithoutAnimation() {
+        // Lay out the caret at its final size before it appears, including when focus
+        // changes inside a keyboard or container animation.
+        UIView.performWithoutAnimation {
             textInputView.addInteraction(editableTextInteraction)
             #if compiler(>=5.9)
             if #available(iOS 17, *) {
                 // Workaround a bug where the caret does not appear until the user taps again on iOS 17 (FB12622609).
-                textInputView.sbs_textSelectionDisplayInteraction?.isActivated = true
+                let interaction = textInputView.sbs_textSelectionDisplayInteraction
+                interaction?.isActivated = true
+                interaction?.layoutManagedSubviews()
             }
             #endif
+            textInputView.layoutIfNeeded()
         }
     }
 
@@ -1573,10 +1584,9 @@ extension TextView: TextInputViewDelegate {
         DispatchQueue.main.async {
             if !view.viewHierarchyContainsCaret && self.editableTextInteraction.view != nil {
                 view.removeInteraction(self.editableTextInteraction)
-                view.addInteraction(self.editableTextInteraction)
+                self.addEditableInteractionWithoutAnimation()
                 #if compiler(>=5.9)
                 if #available(iOS 17, *) {
-                    self.textInputView.sbs_textSelectionDisplayInteraction?.isActivated = true
                     self.textInputView.sbs_textSelectionDisplayInteraction?.sbs_enableCursorBlinks()
                 }
                 #endif
