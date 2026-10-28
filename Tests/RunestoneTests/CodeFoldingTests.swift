@@ -63,6 +63,25 @@ final class CodeFoldingTests: XCTestCase {
         XCTAssertFalse(undo.canUndo)
     }
 
+    func testExpansionLaysOutHighlightedRowsBeforeStartingTransition() throws {
+        let text = "function f() {\n  const value = \"large text\";\n}\nconst after = 1;"
+        let (view, input) = try makeTextView(text: text)
+        let language = TreeSitterLanguage(tree_sitter_javascript(),
+                                          highlightsQuery: .init(string: "(string) @string"),
+                                          foldsQuery: .init(string: "(statement_block) @fold"))
+        view.setState(TextViewState(text: text, language: language))
+        input.refreshCodeFolding(synchronously: true)
+        input.toggleFold(atRow: 0, animated: false)
+        settle(view, input: input)
+        view.theme = NavigationHighlightTheme()
+        settle(view, input: input)
+
+        input.toggleFold(atRow: 0)
+
+        XCTAssertGreaterThan(input.lineManager.line(atRow: 1).data.lineHeight, 30,
+                             "Revealed text must have its final font size before the fade starts.")
+    }
+
     func testBottomCollapseKeepsOffsetValidUntilAnimationFinishesThenSettles() async throws {
         let text = String(repeating: "const prefix = 0;\n", count: 50)
             + "function bottom() {\n" + String(repeating: "  work();\n", count: 8) + "}\nconst after = 1;"

@@ -8,8 +8,8 @@ protocol LayoutManagerDelegate: AnyObject {
 
 extension LayoutManager {
     func cancelFoldingAnimation() {
-        foldingAnimator?.stopAnimation(true)
-        foldingAnimator = nil
+        for animator in foldingAnimators { animator.stopAnimation(true) }
+        foldingAnimators = []
         finishFoldingAnimation(animated: false)
     }
 
@@ -21,7 +21,7 @@ extension LayoutManager {
         animatedFoldingViews = []
         for snapshot in foldingSnapshots { snapshot.removeFromSuperview() }
         foldingSnapshots = []
-        foldingAnimator = nil
+        foldingAnimators = []
         let completion = foldingCompletion
         foldingCompletion = nil
         completion?(animated)
@@ -48,6 +48,7 @@ extension LayoutManager {
             ?? lineManager.contentHeight + textContainerInset.top
         let bodySnapshot = isCollapsing ? makeFoldingSnapshot(from: bodyTop, to: previousTailTop) : nil
         let tailSnapshot = makeFoldingSnapshot(from: previousTailTop, to: viewport.maxY)
+        needsSynchronousDestinationHighlight = true
         changes()
         guard abs(viewport.minY - previousViewportY) < 0.5 else {
             completion(false)
@@ -65,21 +66,31 @@ extension LayoutManager {
                                                               tailOffset: tailOffset, isCollapsing: isCollapsing)
         let animatedViews = fadingViews + slidingViews
         animatedFoldingViews = animatedViews
-        let animator = UIViewPropertyAnimator(duration: 0.24, curve: .easeInOut)
-        animator.addAnimations({
+        foldingCompletion = completion
+        startFoldingAnimations(isCollapsing: isCollapsing, fadeChanges: {
             bodySnapshot?.alpha = 0
             for view in fadingViews { view.alpha = 1 }
-        }, delayFactor: isCollapsing ? 0 : 0.35)
-        animator.addAnimations({
+        }, slideChanges: {
             for view in slidingViews { view.transform = .identity }
             tailSnapshot?.transform = CGAffineTransform(translationX: 0, y: -tailOffset)
-        }, delayFactor: isCollapsing ? 0.2 : 0)
-        animator.addCompletion { [weak self] _ in
-            self?.finishFoldingAnimation(animated: true)
+        })
+    }
+
+    private func startFoldingAnimations(isCollapsing: Bool, fadeChanges: @escaping () -> Void,
+                                        slideChanges: @escaping () -> Void) {
+        let fade = UIViewPropertyAnimator(duration: 0.24, curve: .easeInOut, animations: fadeChanges)
+        let slide = UIViewPropertyAnimator(duration: isCollapsing ? 0.192 : 0.24,
+                                           curve: .easeInOut, animations: slideChanges)
+        var remainingAnimations = 2
+        for animator in [fade, slide] {
+            animator.addCompletion { [weak self] _ in
+                remainingAnimations -= 1
+                if remainingAnimations == 0 { self?.finishFoldingAnimation(animated: true) }
+            }
         }
-        foldingCompletion = completion
-        foldingAnimator = animator
-        animator.startAnimation()
+        foldingAnimators = [fade, slide]
+        fade.startAnimation(afterDelay: isCollapsing ? 0 : 0.084)
+        slide.startAnimation(afterDelay: isCollapsing ? 0.048 : 0)
     }
 
     private func installFoldingSnapshots() {
@@ -287,7 +298,7 @@ final class LayoutManager {
     private var needsSynchronousDestinationHighlight = false
     private var needsLayoutLineSelection = false
     private var foldingCompletion: ((Bool) -> Void)?
-    private var foldingAnimator: UIViewPropertyAnimator?
+    private var foldingAnimators: [UIViewPropertyAnimator] = []
     private var foldingSnapshots: [UIView] = []
     private var animatedFoldingViews: [UIView] = []
 
