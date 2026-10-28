@@ -24,7 +24,7 @@ final class LineManager {
     }
     var contentHeight: CGFloat {
         let rightMost = documentLineTree.root.rightMost
-        return rightMost.yPosition + rightMost.data.lineHeight
+        return documentLineTree.yPosition(of: rightMost) + rightMost.data.lineHeight - foldedLineProjection.hiddenHeight
     }
     var estimatedLineHeight: CGFloat = 12
     var firstLine: DocumentLineNode {
@@ -39,6 +39,7 @@ final class LineManager {
     private(set) weak var initialLongestLine: DocumentLineNode?
 
     private let documentLineTree: DocumentLineTree
+    let foldedLineProjection = FoldedLineProjection()
 
     init(stringView: StringView) {
         self.stringView = stringView
@@ -46,13 +47,16 @@ final class LineManager {
         documentLineTree = DocumentLineTree(minimumValue: 0, rootValue: 0, rootData: rootData)
         documentLineTree.childrenUpdater = DocumentLineChildrenUpdater()
         rootData.node = documentLineTree.root
+        rootData.lineManager = self
     }
 
     func rebuild() {
+        foldedLineProjection.setRanges([], in: self)
         // Reset the tree so we only have a single line.
         let rootData = DocumentLineNodeData(lineHeight: estimatedLineHeight)
         documentLineTree.reset(rootValue: 0, rootData: rootData)
         rootData.node = documentLineTree.root
+        rootData.lineManager = self
         initialLongestLine = nil
         // Iterate over lines in the string.
         var line = documentLineTree.node(atIndex: 0)
@@ -80,6 +84,7 @@ final class LineManager {
             let data = DocumentLineNodeData(lineHeight: estimatedLineHeight)
             line = DocumentLineNode(tree: documentLineTree, value: 0, data: data)
             data.node = line
+            data.lineManager = self
             workingNewLineRange = NewLineFinder.rangeOfNextNewLine(in: stringView.string, startingAt: lastDelimiterEnd)
             totalLineHeight += estimatedLineHeight
         }
@@ -218,10 +223,14 @@ final class LineManager {
     }
 
     func line(containingYOffset yOffset: CGFloat) -> DocumentLineNode? {
-        documentLineTree.node(containingLocation: yOffset,
-                              minimumValue: 0,
-                              valueKeyPath: \.data.lineHeight,
-                              totalValueKeyPath: \.data.totalLineHeight)
+        if !foldedLineProjection.spans.isEmpty, yOffset == contentHeight {
+            return lastVisibleLine
+        }
+        let logicalY = foldedLineProjection.logicalY(for: yOffset)
+        return documentLineTree.node(containingLocation: logicalY,
+                                     minimumValue: 0,
+                                     valueKeyPath: \.data.lineHeight,
+                                     totalValueKeyPath: \.data.totalLineHeight)
     }
 
     func line(containingByteAt byteIndex: ByteCount) -> DocumentLineNode? {
@@ -242,6 +251,9 @@ final class LineManager {
         } else {
             line.data.lineHeight = newHeight
             documentLineTree.updateAfterChangingChildren(of: line)
+            if !foldedLineProjection.spans.isEmpty, isLineHidden(line.index) {
+                setCollapsedLineRanges(foldedLineProjection.spans.map(\.rows))
+            }
             return true
         }
     }
@@ -338,6 +350,7 @@ private extension LineManager {
         insertedLine.data.byteCount = byteCount
         insertedLine.data.nodeTotalByteCount = byteCount
         insertedLine.data.node = insertedLine
+        insertedLine.data.lineManager = self
         // Call updateAfterChangingChildren(of:) to update the values of nodeTotalByteCount.
         documentLineTree.updateAfterChangingChildren(of: insertedLine)
         return insertedLine
@@ -368,7 +381,7 @@ extension DocumentLineTree {
 
 extension DocumentLineNode {
     var yPosition: CGFloat {
-        tree.yPosition(of: self)
+        data.lineManager?.foldedLineProjection.displayedY(of: self) ?? tree.yPosition(of: self)
     }
 
     var range: ClosedRange<Int> {

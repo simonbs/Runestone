@@ -24,12 +24,16 @@ final class GutterWidthService {
         }
     }
     var gutterLeadingPadding: CGFloat = 0
+    var isCodeFoldingEnabled = false {
+        didSet { if isCodeFoldingEnabled != oldValue { sendGutterWidthUpdatedIfNeeded() } }
+    }
+    var foldingWidth: CGFloat { isCodeFoldingEnabled ? 24 : 0 }
     var gutterTrailingPadding: CGFloat = 0
     var gutterWidth: CGFloat {
         if showLineNumbers {
-            return lineNumberWidth + gutterLeadingPadding + gutterTrailingPadding
+            return lineNumberWidth + gutterLeadingPadding + gutterTrailingPadding + foldingWidth
         } else {
-            return 0
+            return foldingWidth
         }
     }
     var gutterMinimumCharacterCount: Int? {

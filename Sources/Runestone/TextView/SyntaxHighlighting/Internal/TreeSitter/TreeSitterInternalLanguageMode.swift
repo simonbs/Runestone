@@ -25,6 +25,7 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     private let parseLock = NSLock()
     private var highlightStringView: StringView?
     private var parseOperation: Operation?
+    private var foldingOperation: Operation?
 
     init(language: TreeSitterInternalLanguage, languageProvider: TreeSitterLanguageProvider?, stringView: StringView, lineManager: LineManager) {
         self.stringView = stringView
@@ -46,6 +47,7 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     }
 
     func parse(_ text: NSString) {
+        foldingOperation?.cancel()
         parseOperation?.cancel()
         parseOperation = nil
         let stableText = NSString(string: text as String)
@@ -61,6 +63,7 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     }
 
     func parse(_ text: NSString, completion: @escaping ((Bool) -> Void)) {
+        foldingOperation?.cancel()
         parseOperation?.cancel()
         parseOperation = nil
         // NSString may be backed by the editor's NSMutableString. Copy before
@@ -89,6 +92,7 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     }
 
     func textDidChange(_ change: TextChange) -> LineChangeSet {
+        foldingOperation?.cancel()
         parseOperation?.cancel()
         parseOperation = nil
         parseLock.lock()
@@ -109,6 +113,55 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
 
     func captures(in range: ByteRange) -> [TreeSitterCapture] {
         parseLock.withLock { rootLanguageLayer.captures(in: range) }
+    }
+
+    func foldingRanges() -> [TreeSitterFoldingRange] {
+        makeFoldingSnapshot()?.ranges() ?? []
+    }
+
+    func foldingRanges(completion: @escaping ([TreeSitterFoldingRange]) -> Void) {
+        foldingOperation?.cancel()
+        guard let snapshot = makeFoldingSnapshot(waitForParse: false) else {
+            // Initial parsing invalidates fold ranges when it completes. Never
+            // make a feature toggle wait for that whole-document parse.
+            foldingOperation = nil
+            DispatchQueue.main.async { completion([]) }
+            return
+        }
+        let operation = BlockOperation()
+        var ranges: [TreeSitterFoldingRange] = []
+        operation.addExecutionBlock { [weak operation] in
+            guard let operation = operation, !operation.isCancelled else {
+                return
+            }
+            ranges = snapshot.ranges { operation.isCancelled }
+        }
+        // Completion also runs when canceled before the execution block starts.
+        operation.completionBlock = { [weak self, weak operation] in
+            DispatchQueue.main.async {
+                guard let self = self, let operation = operation,
+                      self.foldingOperation === operation, !operation.isCancelled else {
+                    completion([])
+                    return
+                }
+                self.foldingOperation = nil
+                completion(ranges)
+            }
+        }
+        foldingOperation = operation
+        operationQueue.addOperation(operation)
+    }
+
+    private func makeFoldingSnapshot(waitForParse: Bool = true) -> TreeSitterFoldingSnapshot? {
+        if waitForParse {
+            parseLock.lock()
+        } else if !parseLock.try() {
+            return nil
+        }
+        defer { parseLock.unlock() }
+        let stableStringView = highlightStringView ?? StringView(string: stringView.string as String)
+        highlightStringView = stableStringView
+        return TreeSitterFoldingSnapshot(layers: rootLanguageLayer.foldingSnapshotLayers(), stringView: stableStringView)
     }
 
     /// Called on the editor thread, before any further text mutation. Tree copies

@@ -60,6 +60,8 @@
 
 ### Gutter
 
+- ``isCodeFoldingEnabled``
+- <doc:CodeFolding>
 - ``gutterLeadingPadding``
 - ``gutterTrailingPadding``
 - ``gutterWidth``

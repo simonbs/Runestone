@@ -47,6 +47,7 @@ extension TextView {
 
     func applySettings(from settings: UserDefaults) {
         showLineNumbers = settings.showLineNumbers
+        isCodeFoldingEnabled = settings.codeFoldingEnabled
         showTabs = settings.showInvisibleCharacters
         showSpaces = settings.showInvisibleCharacters
         showLineBreaks = settings.showInvisibleCharacters

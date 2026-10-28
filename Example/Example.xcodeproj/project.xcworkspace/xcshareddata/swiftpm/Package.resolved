@@ -1,0 +1,16 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "TreeSitterLanguages",
+        "repositoryURL": "https://github.com/simonbs/TreeSitterLanguages.git",
+        "state": {
+          "branch": "codex/code-folding-queries",
+          "revision": "135a19d5e0fcede68aa8e3437f521ff10482e9dd",
+          "version": null
+        }
+      }
+    ]
+  },
+  "version": 1
+}

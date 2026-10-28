@@ -9,11 +9,7 @@ final class CaretRectService {
     private let lineControllerStorage: LineControllerStorage
     private let gutterWidthService: GutterWidthService
     private var leadingLineSpacing: CGFloat {
-        if showLineNumbers {
-            return gutterWidthService.gutterWidth + textContainerInset.left
-        } else {
-            return textContainerInset.left
-        }
+        gutterWidthService.gutterWidth + textContainerInset.left
     }
 
     init(stringView: StringView,
@@ -28,9 +24,9 @@ final class CaretRectService {
 
     func caretRect(at location: Int, allowMovingCaretToNextLineFragment: Bool) -> CGRect {
         let safeLocation = min(max(location, 0), stringView.string.length)
-        let line = lineManager.line(containingCharacterAt: safeLocation)!
+        let line = lineManager.visibleLine(containingCharacterAt: safeLocation)!
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
-        let lineLocalLocation = safeLocation - line.location
+        let lineLocalLocation = min(line.data.length, max(0, safeLocation - line.location))
         // The caret may be outside the portion of a wrapped line prepared by viewport layout.
         lineController.prepareToDisplayString(toLocation: lineLocalLocation, syntaxHighlightAsynchronously: true)
         if allowMovingCaretToNextLineFragment && shouldMoveCaretToNextLineFragment(forLocation: lineLocalLocation, in: line) {
