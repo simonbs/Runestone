@@ -70,8 +70,6 @@ When opening a document this way, the example shows **Jump to Top** and **Jump t
 
 Runestone was built to be fast. Its good performance is by far mostly thanks to Tree-sitter's incremental parsing and [AvalonEdit's approach for managing lines in a document](https://github.com/icsharpcode/AvalonEdit/blob/master/ICSharpCode.AvalonEdit/Document/DocumentLineTree.cs).
 
-Large-document scrolling, cursor navigation, and editing avoid repeated layout and highlighting work. Appearance-only syntax updates preserve measured line wraps, and obsolete highlighting queries are canceled.
-
 When judging the performance of Runestone, it is key to build your app in the release configuration. The optimizations applied by the compiler when using the release configuration becomes very apparent when opening large documents.
 
 ## 🖥 Catalyst
