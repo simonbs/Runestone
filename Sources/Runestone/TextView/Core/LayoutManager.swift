@@ -63,7 +63,7 @@ extension LayoutManager {
         animator.addAnimations({
             bodySnapshot?.alpha = 0
             for view in fadingViews { view.alpha = 1 }
-        }, delayFactor: isCollapsing ? 0 : 0.2)
+        }, delayFactor: isCollapsing ? 0 : 0.35)
         animator.addAnimations({
             for view in slidingViews { view.transform = .identity }
             tailSnapshot?.transform = CGAffineTransform(translationX: 0, y: -tailOffset)
