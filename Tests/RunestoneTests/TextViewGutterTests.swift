@@ -4,6 +4,22 @@ import XCTest
 
 @MainActor
 final class TextViewGutterTests: XCTestCase {
+    func testLineNumbersAreExcludedFromAccessibilityWithoutHidingTextOrOverlayControls() throws {
+        let textView = try makeTextView()
+        let textInputView = try XCTUnwrap(textView.subviews.first { $0 is TextInputView } as? TextInputView)
+        let overlayButton = UIButton(type: .system)
+        overlayButton.setTitle("Editor action", for: .normal)
+        textView.addSubview(overlayButton)
+
+        let labels = descendants(of: textInputView.gutterContainerView).compactMap { $0 as? UILabel }
+        XCTAssertFalse(labels.isEmpty, "The test must exercise rendered line numbers.")
+        for label in labels {
+            XCTAssertTrue(isExcludedFromAccessibility(label), "Decorative line numbers must not become separate VoiceOver stops.")
+        }
+        XCTAssertFalse(isExcludedFromAccessibility(textInputView), "The editable text must remain available to assistive technology.")
+        XCTAssertFalse(isExcludedFromAccessibility(overlayButton), "Hiding line numbers must not hide editor controls.")
+    }
+
     func testLayoutKeepsGutterBelowOverlayAndAboveText() throws {
         let textView = try makeTextView()
         let textInputView = try XCTUnwrap(textView.subviews.first { $0 is TextInputView } as? TextInputView)
@@ -58,5 +74,18 @@ final class TextViewGutterTests: XCTestCase {
         textView.setNeedsLayout()
         textView.layoutIfNeeded()
         return textView
+    }
+
+    private func descendants(of view: UIView) -> [UIView] {
+        view.subviews.flatMap { [$0] + descendants(of: $0) }
+    }
+
+    private func isExcludedFromAccessibility(_ view: UIView) -> Bool {
+        var ancestor: UIView? = view
+        while let current = ancestor {
+            if current.accessibilityElementsHidden { return true }
+            ancestor = current.superview
+        }
+        return false
     }
 }
