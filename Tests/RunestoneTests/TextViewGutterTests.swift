@@ -83,7 +83,9 @@ final class TextViewGutterTests: XCTestCase {
     private func isExcludedFromAccessibility(_ view: UIView) -> Bool {
         var ancestor: UIView? = view
         while let current = ancestor {
-            if current.accessibilityElementsHidden { return true }
+            if current.accessibilityElementsHidden {
+                return true
+            }
             ancestor = current.superview
         }
         return false
