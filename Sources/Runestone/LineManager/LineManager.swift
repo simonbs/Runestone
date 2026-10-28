@@ -67,14 +67,12 @@ final class LineManager {
         var longestLineLength: Int = 0
         while let newLineRange = workingNewLineRange {
             let totalLength = newLineRange.location + newLineRange.length - lastDelimiterEnd
-            let substringRange = NSRange(location: lastDelimiterEnd, length: totalLength)
-            let substring = stringView.string.substring(with: substringRange)
             line.value = totalLength
             line.data.totalLength = totalLength
             line.data.delimiterLength = newLineRange.length
             line.data.lineHeight = estimatedLineHeight
             line.data.totalLineHeight = totalLineHeight
-            line.data.byteCount = substring.byteCount
+            line.data.byteCount = ByteCount(utf16Length: totalLength)
             lastDelimiterEnd = newLineRange.location + newLineRange.length
             lines.append(line)
             if totalLength > longestLineLength {
@@ -89,11 +87,9 @@ final class LineManager {
             totalLineHeight += estimatedLineHeight
         }
         let totalLength = stringView.string.length - lastDelimiterEnd
-        let substringRange = NSRange(location: lastDelimiterEnd, length: totalLength)
-        let substring = stringView.string.substring(with: substringRange)
         line.value = totalLength
         line.data.totalLength = totalLength
-        line.data.byteCount = substring.byteCount
+        line.data.byteCount = ByteCount(utf16Length: totalLength)
         lines.append(line)
         if totalLength > longestLineLength {
             longestLineLength = totalLength
@@ -302,9 +298,9 @@ private extension LineManager {
     private func setLength(of line: DocumentLineNode, to newTotalLength: Int, newLine: inout DocumentLineNode) -> LineChangeSet {
         let changeSet = LineChangeSet()
         changeSet.markLineEdited(line)
-        let range = NSRange(location: line.location, length: newTotalLength)
-        let substring = stringView.substring(in: range)
-        let newByteCount = substring?.byteCount ?? 0
+        // Line lengths already count UTF-16 code units. Avoid copying the whole
+        // line on every edit merely to count the same units again.
+        let newByteCount = ByteCount(utf16Length: newTotalLength)
         if newTotalLength != line.value || newTotalLength != line.data.totalLength || newByteCount != line.data.byteCount {
             line.value = newTotalLength
             line.data.totalLength = newTotalLength
@@ -343,9 +339,7 @@ private extension LineManager {
     private func insertLine(ofLength length: Int, after otherLine: DocumentLineNode) -> DocumentLineNode {
         let data = DocumentLineNodeData(lineHeight: estimatedLineHeight)
         let insertedLine = documentLineTree.insertNode(value: length, data: data, after: otherLine)
-        let range = NSRange(location: insertedLine.location, length: length)
-        let substring = stringView.substring(in: range)
-        let byteCount = substring?.byteCount ?? 0
+        let byteCount = ByteCount(utf16Length: length)
         insertedLine.data.totalLength = length
         insertedLine.data.byteCount = byteCount
         insertedLine.data.nodeTotalByteCount = byteCount

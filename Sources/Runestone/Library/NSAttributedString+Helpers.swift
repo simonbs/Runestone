@@ -5,9 +5,10 @@ extension NSAttributedString {
         guard location < length else {
             return false
         }
-        let range = NSRange(location: location, length: 1)
-        let characterSet: CharacterSet = .whitespaces
-        let attributingSubstring = attributedSubstring(from: range)
-        return characterSet.containsAllCharacters(of: attributingSubstring.string)
+        let string = CFAttributedStringGetString(self)
+        guard let scalar = UnicodeScalar(CFStringGetCharacterAtIndex(string, location)) else {
+            return false
+        }
+        return CharacterSet.whitespaces.contains(scalar)
     }
 }
