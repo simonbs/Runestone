@@ -10,74 +10,122 @@ extension LayoutManager {
     func cancelFoldingAnimation() {
         foldingAnimator?.stopAnimation(true)
         foldingAnimator = nil
-        for view in animatedFoldingViews { view.alpha = 1 }
-        animatedFoldingViews = []
-        foldingSnapshot?.removeFromSuperview()
-        foldingSnapshot = nil
+        finishFoldingAnimation()
     }
 
-    /// Commit geometry once. Only viewport views and a viewport-sized outgoing
-    /// image participate in the animation; hidden text is never laid out for it.
+    private func finishFoldingAnimation() {
+        for view in animatedFoldingViews {
+            view.alpha = 1
+            view.transform = .identity
+        }
+        animatedFoldingViews = []
+        for snapshot in foldingSnapshots { snapshot.removeFromSuperview() }
+        foldingSnapshots = []
+        foldingAnimator = nil
+    }
+
+    /// Commit geometry once, fading the fold body separately from the sliding tail.
+    /// Snapshots and live views are bounded by the viewport, including large folds.
     func animateFoldingChange(atRow row: Int, animated: Bool, changes: () -> Void) {
         let previousChevronRotation = foldingButtonReuseQueue.visibleViews[row]?.displayedChevronRotation
         cancelFoldingAnimation()
-        guard animated, !UIAccessibility.isReduceMotionEnabled, textInputView?.window != nil else {
+        guard animated, !UIAccessibility.isReduceMotionEnabled, textInputView?.window != nil,
+              let range = foldingRanges[row] else {
             changes()
             return
         }
-        let lastHeaderRow = (foldingRanges[row]?.hiddenStartRow ?? row + 1) - 1
-        let lastHeader = lineManager.line(atRow: lastHeaderRow)
-        let belowHeader = lastHeader.yPosition + lastHeader.data.lineHeight + textContainerInset.top
-        let top = max(viewport.minY, belowHeader)
-        let snapshotRect = CGRect(x: viewport.minX, y: top,
-                                  width: viewport.width, height: max(0, viewport.maxY - top))
-        let snapshot = snapshotRect.height > 0
-            ? linesContainerView.resizableSnapshotView(from: snapshotRect, afterScreenUpdates: false, withCapInsets: .zero)
-            : nil
+        let previousViewportY = viewport.minY
+        let isCollapsing = !collapsedFoldRows.contains(row)
+        let lastHeader = lineManager.line(atRow: range.hiddenStartRow - 1)
+        let bodyTop = lastHeader.yPosition + lastHeader.data.lineHeight + textContainerInset.top
+        let followingLine = range.endRow + 1 < lineManager.lineCount ? lineManager.line(atRow: range.endRow + 1) : nil
+        let previousTailTop = followingLine.map { $0.yPosition + textContainerInset.top }
+            ?? lineManager.contentHeight + textContainerInset.top
+        let bodySnapshot = isCollapsing ? makeFoldingSnapshot(from: bodyTop, to: previousTailTop) : nil
+        let tailSnapshot = makeFoldingSnapshot(from: previousTailTop, to: viewport.maxY)
         changes()
+        guard abs(viewport.minY - previousViewportY) < 0.5 else {
+            return
+        }
+        let tailTop = followingLine.map { $0.yPosition + textContainerInset.top }
+            ?? lineManager.contentHeight + textContainerInset.top
+        let tailOffset = previousTailTop - tailTop
         if let previousChevronRotation = previousChevronRotation {
             foldingButtonReuseQueue.visibleViews[row]?.animateChevron(from: previousChevronRotation)
         }
-        if let snapshot = snapshot {
-            snapshot.frame = snapshotRect
-            snapshot.isUserInteractionEnabled = false
-            snapshot.isAccessibilityElement = false
-            textInputView?.addSubview(snapshot)
-            foldingSnapshot = snapshot
-        }
-        var animatedViews: [UIView] = []
-        UIView.performWithoutAnimation {
-            animatedViews = prepareFoldingAnimation(belowHeader: belowHeader)
-        }
+        foldingSnapshots = [tailSnapshot, bodySnapshot].compactMap { $0 }
+        installFoldingSnapshots()
+        let (fadingViews, slidingViews) = prepareFoldingViews(bodyTop: bodyTop, tailTop: tailTop,
+                                                              tailOffset: tailOffset, isCollapsing: isCollapsing)
+        let animatedViews = fadingViews + slidingViews
         animatedFoldingViews = animatedViews
-        let animator = UIViewPropertyAnimator(duration: 0.18, curve: .easeInOut) {
-            for view in animatedViews { view.alpha = 1 }
-            snapshot?.alpha = 0
-        }
+        let animator = UIViewPropertyAnimator(duration: 0.24, curve: .easeInOut)
+        animator.addAnimations({
+            bodySnapshot?.alpha = 0
+            for view in fadingViews { view.alpha = 1 }
+        }, delayFactor: isCollapsing ? 0 : 0.2)
+        animator.addAnimations({
+            for view in slidingViews { view.transform = .identity }
+            tailSnapshot?.transform = CGAffineTransform(translationX: 0, y: -tailOffset)
+        }, delayFactor: isCollapsing ? 0.2 : 0)
         animator.addCompletion { [weak self] _ in
-            for view in animatedViews { view.alpha = 1 }
-            snapshot?.removeFromSuperview()
-            self?.foldingSnapshot = nil
-            self?.animatedFoldingViews = []
-            self?.foldingAnimator = nil
+            self?.finishFoldingAnimation()
         }
         foldingAnimator = animator
         animator.startAnimation()
     }
 
-    private func prepareFoldingAnimation(belowHeader: CGFloat) -> [UIView] {
-        var views: [UIView] = []
-        for view in lineFragmentViewReuseQueue.visibleViews.values {
-            guard view.frame.maxY > belowHeader else { continue }
-            view.alpha = 0
-            views.append(view)
+    private func installFoldingSnapshots() {
+        if let host = gutterParentView, let textInputView = textInputView {
+            for snapshot in foldingSnapshots {
+                snapshot.frame = host.convert(snapshot.frame, from: textInputView)
+                host.addSubview(snapshot)
+            }
         }
-        for view in lineNumberLabelReuseQueue.visibleViews.values {
-            guard view.frame.maxY > belowHeader else { continue }
-            view.alpha = 0
-            views.append(view)
+    }
+
+    private func prepareFoldingViews(bodyTop: CGFloat, tailTop: CGFloat, tailOffset: CGFloat,
+                                     isCollapsing: Bool) -> ([UIView], [UIView]) {
+        var fadingViews: [UIView] = []
+        var slidingViews: [UIView] = []
+        UIView.performWithoutAnimation {
+            let views = Array(lineFragmentViewReuseQueue.visibleViews.values) as [UIView]
+                + Array(lineNumberLabelReuseQueue.visibleViews.values)
+                + Array(foldingButtonReuseQueue.visibleViews.values)
+            for view in views where view.frame.minY >= bodyTop - 0.5 {
+                if view.frame.minY >= tailTop - 0.5 {
+                    view.transform = CGAffineTransform(translationX: 0, y: tailOffset)
+                    slidingViews.append(view)
+                } else if !isCollapsing {
+                    view.alpha = 0
+                    fadingViews.append(view)
+                }
+            }
         }
-        return views
+        return (fadingViews, slidingViews)
+    }
+
+    private func makeFoldingSnapshot(from top: CGFloat, to bottom: CGFloat) -> UIView? {
+        guard let textInputView = textInputView else {
+            return nil
+        }
+        let rect = CGRect(x: viewport.minX, y: max(viewport.minY, top),
+                          width: viewport.width, height: max(0, min(viewport.maxY, bottom) - max(viewport.minY, top)))
+        guard rect.height > 0 else {
+            return nil
+        }
+        let snapshot = UIView(frame: rect)
+        snapshot.isUserInteractionEnabled = false
+        snapshot.accessibilityElementsHidden = true
+        snapshot.clipsToBounds = true
+        for source in [linesContainerView, gutterContainerView] {
+            let sourceRect = source.convert(rect, from: textInputView).intersection(source.bounds)
+            guard !sourceRect.isNull, !sourceRect.isEmpty,
+                  let image = source.resizableSnapshotView(from: sourceRect, afterScreenUpdates: false, withCapInsets: .zero) else { continue }
+            image.frame = source.convert(sourceRect, to: textInputView).offsetBy(dx: -rect.minX, dy: -rect.minY)
+            snapshot.addSubview(image)
+        }
+        return snapshot
     }
 }
 
@@ -232,7 +280,7 @@ final class LayoutManager {
     private var needsSynchronousDestinationHighlight = false
     private var needsLayoutLineSelection = false
     private var foldingAnimator: UIViewPropertyAnimator?
-    private var foldingSnapshot: UIView?
+    private var foldingSnapshots: [UIView] = []
     private var animatedFoldingViews: [UIView] = []
 
     init(lineManager: LineManager,

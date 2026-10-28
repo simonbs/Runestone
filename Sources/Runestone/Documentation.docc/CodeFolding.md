@@ -24,7 +24,8 @@ Navigation to a hidden destination, including search and go-to-line, expands its
 enclosing folds. Arrow movement skips collapsed lines. Disclosures do not hide
 marked text during composition or change folds during an active Writing Tools session.
 
-Transitions fade the visible text at fixed positions and respect Reduce Motion. Scrolling, edits,
+Folded rows fade in place while following rows slide to their new positions.
+Transitions respect Reduce Motion. Scrolling, edits,
 or another fold action finish the previous transition at its committed layout.
 Hidden lines keep their measured or estimated heights and are skipped during
 layout; expanding a large block prepares the viewport rather than the whole block.
