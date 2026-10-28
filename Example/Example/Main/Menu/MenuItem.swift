@@ -10,6 +10,9 @@ enum MenuItem {
     case toggleEditable
     case toggleInvisibleCharacters
     case toggleHighlightSelectedLine
+    case toggleCodeFolding
+    case showJavaScriptFoldingExample
+    case showMarkdownFoldingExample
     case toggleLineNumbers
     case togglePageGuide
     case toggleSelectable

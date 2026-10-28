@@ -56,7 +56,17 @@ private extension MenuButton {
         menuElements += [
             UIAction(title: "Go to Line") { [weak self] _ in
                 self?.selectionHandler?.handleSelection(of: .presentGoToLine)
-            }
+            },
+            UIMenu(title: "Folding Examples", children: [
+                UIAction(title: "JavaScript Folding Example") { [weak self] _ in
+                    self?.selectionHandler?.handleSelection(of: .showJavaScriptFoldingExample)
+                    self?.setupMenu()
+                },
+                UIAction(title: "Markdown Folding Example") { [weak self] _ in
+                    self?.selectionHandler?.handleSelection(of: .showMarkdownFoldingExample)
+                    self?.setupMenu()
+                }
+            ])
         ]
         return menuElements
     }
@@ -67,6 +77,10 @@ private extension MenuButton {
             UIMenu(options: .displayInline, children: [
                 UIAction(title: "Show Line Numbers", state: settings.showLineNumbers ? .on : .off) { [weak self] _ in
                     self?.selectionHandler?.handleSelection(of: .toggleLineNumbers)
+                    self?.setupMenu()
+                },
+                UIAction(title: "Code Folding", state: settings.codeFoldingEnabled ? .on : .off) { [weak self] _ in
+                    self?.selectionHandler?.handleSelection(of: .toggleCodeFolding)
                     self?.setupMenu()
                 },
                 UIAction(title: "Show Page Guide", state: settings.showPageGuide ? .on : .off) { [weak self] _ in

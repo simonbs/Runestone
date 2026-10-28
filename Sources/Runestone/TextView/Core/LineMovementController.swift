@@ -35,7 +35,7 @@ final class LineMovementController {
 
 private extension LineMovementController {
     private func locationForMoving(fromLocation location: Int, by offset: Int) -> Int {
-        let naiveNewLocation = location + offset
+        let naiveNewLocation = lineManager.visibleLocation(location + offset, movingForward: offset > 0)
         guard naiveNewLocation >= 0 && naiveNewLocation <= stringView.string.length else {
             return location
         }
@@ -47,9 +47,9 @@ private extension LineMovementController {
             return naiveNewLocation
         }
         if offset < 0 {
-            return location - range.length
+            return lineManager.visibleLocation(location - range.length, movingForward: false)
         } else {
-            return location + range.length
+            return lineManager.visibleLocation(location + range.length, movingForward: true)
         }
     }
 
@@ -106,7 +106,9 @@ private extension LineMovementController {
             // We've reached the beginning of the document so we move to the first character.
             return 0
         }
-        let previousLine = lineManager.line(atRow: lineIndex - 1)
+        guard let previousLine = lineManager.previousVisibleLine(before: line) else {
+            return 0
+        }
         let previousLineController = lineControllerStorage.getOrCreateLineController(for: previousLine)
         // Moving up enters the previous logical line at its final wrapped fragment.
         previousLineController.prepareToDisplayString(toLocation: previousLine.data.totalLength, syntaxHighlightAsynchronously: true)
@@ -131,11 +133,13 @@ private extension LineMovementController {
             return locationForMoving(lineOffset: 0, fromLocation: location, inLineFragmentAt: lineFragmentIndex + takeLineCount, of: line)
         }
         let lineIndex = line.index
-        guard lineIndex < lineManager.lineCount - 1 else {
+        guard lineIndex < lineManager.lastVisibleLine.index else {
             // We've reached the end of the document so we move to the last character.
-            return line.location + line.data.totalLength
+            return line.location + line.data.length
         }
-        let nextLine = lineManager.line(atRow: lineIndex + 1)
+        guard let nextLine = lineManager.nextVisibleLine(after: line) else {
+            return line.location + line.data.length
+        }
         return locationForMovingDownwards(lineOffset: remainingLineOffset - 1, fromLocation: location, inLineFragmentAt: 0, of: nextLine)
     }
 

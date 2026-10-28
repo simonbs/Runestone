@@ -6,6 +6,147 @@ protocol LayoutManagerDelegate: AnyObject {
     func layoutManager(_ layoutManager: LayoutManager, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
 }
 
+extension LayoutManager {
+    func cancelFoldingAnimation() {
+        for animator in foldingAnimators { animator.stopAnimation(true) }
+        foldingAnimators = []
+        finishFoldingAnimation(animated: false)
+    }
+
+    private func finishFoldingAnimation(animated: Bool) {
+        for view in animatedFoldingViews {
+            view.alpha = 1
+            view.transform = .identity
+        }
+        animatedFoldingViews = []
+        for snapshot in foldingSnapshots { snapshot.removeFromSuperview() }
+        foldingSnapshots = []
+        foldingAnimators = []
+        let completion = foldingCompletion
+        foldingCompletion = nil
+        completion?(animated)
+    }
+
+    /// Commit geometry once, fading the fold body separately from the sliding tail.
+    /// Snapshots and live views are bounded by the viewport, including large folds.
+    func animateFoldingChange(atRow row: Int, animated: Bool, changes: () -> Void,
+                              completion: @escaping (Bool) -> Void) {
+        let previousChevronRotation = foldingButtonReuseQueue.visibleViews[row]?.displayedChevronRotation
+        cancelFoldingAnimation()
+        guard animated, !UIAccessibility.isReduceMotionEnabled, textInputView?.window != nil,
+              let range = foldingRanges[row] else {
+            changes()
+            completion(false)
+            return
+        }
+        let previousViewportY = viewport.minY
+        let isCollapsing = !collapsedFoldRows.contains(row)
+        let lastHeader = lineManager.line(atRow: range.hiddenStartRow - 1)
+        let bodyTop = lastHeader.yPosition + lastHeader.data.lineHeight + textContainerInset.top
+        let followingLine = range.endRow + 1 < lineManager.lineCount ? lineManager.line(atRow: range.endRow + 1) : nil
+        let previousTailTop = followingLine.map { $0.yPosition + textContainerInset.top }
+            ?? lineManager.contentHeight + textContainerInset.top
+        let bodySnapshot = isCollapsing ? makeFoldingSnapshot(from: bodyTop, to: previousTailTop) : nil
+        let tailSnapshot = makeFoldingSnapshot(from: previousTailTop, to: viewport.maxY)
+        needsSynchronousDestinationHighlight = true
+        changes()
+        guard abs(viewport.minY - previousViewportY) < 0.5 else {
+            completion(false)
+            return
+        }
+        let tailTop = followingLine.map { $0.yPosition + textContainerInset.top }
+            ?? lineManager.contentHeight + textContainerInset.top
+        let tailOffset = previousTailTop - tailTop
+        if let previousChevronRotation = previousChevronRotation {
+            foldingButtonReuseQueue.visibleViews[row]?.animateChevron(from: previousChevronRotation)
+        }
+        foldingSnapshots = [tailSnapshot, bodySnapshot].compactMap { $0 }
+        installFoldingSnapshots()
+        let (fadingViews, slidingViews) = prepareFoldingViews(bodyTop: bodyTop, tailTop: tailTop,
+                                                              tailOffset: tailOffset, isCollapsing: isCollapsing)
+        let animatedViews = fadingViews + slidingViews
+        animatedFoldingViews = animatedViews
+        foldingCompletion = completion
+        startFoldingAnimations(isCollapsing: isCollapsing, fadeChanges: {
+            bodySnapshot?.alpha = 0
+            for view in fadingViews { view.alpha = 1 }
+        }, slideChanges: {
+            for view in slidingViews { view.transform = .identity }
+            tailSnapshot?.transform = CGAffineTransform(translationX: 0, y: -tailOffset)
+        })
+    }
+
+    private func startFoldingAnimations(isCollapsing: Bool, fadeChanges: @escaping () -> Void,
+                                        slideChanges: @escaping () -> Void) {
+        let fade = UIViewPropertyAnimator(duration: 0.24, curve: .easeInOut, animations: fadeChanges)
+        let slide = UIViewPropertyAnimator(duration: isCollapsing ? 0.192 : 0.24,
+                                           curve: .easeInOut, animations: slideChanges)
+        var remainingAnimations = 2
+        for animator in [fade, slide] {
+            animator.addCompletion { [weak self] _ in
+                remainingAnimations -= 1
+                if remainingAnimations == 0 { self?.finishFoldingAnimation(animated: true) }
+            }
+        }
+        foldingAnimators = [fade, slide]
+        fade.startAnimation(afterDelay: isCollapsing ? 0 : 0.084)
+        slide.startAnimation(afterDelay: isCollapsing ? 0.048 : 0)
+    }
+
+    private func installFoldingSnapshots() {
+        if let host = gutterParentView, let textInputView = textInputView {
+            for snapshot in foldingSnapshots {
+                snapshot.frame = host.convert(snapshot.frame, from: textInputView)
+                host.addSubview(snapshot)
+            }
+        }
+    }
+
+    private func prepareFoldingViews(bodyTop: CGFloat, tailTop: CGFloat, tailOffset: CGFloat,
+                                     isCollapsing: Bool) -> ([UIView], [UIView]) {
+        var fadingViews: [UIView] = []
+        var slidingViews: [UIView] = []
+        UIView.performWithoutAnimation {
+            let views = Array(lineFragmentViewReuseQueue.visibleViews.values) as [UIView]
+                + Array(lineNumberLabelReuseQueue.visibleViews.values)
+                + Array(foldingButtonReuseQueue.visibleViews.values)
+            for view in views where view.frame.minY >= bodyTop - 0.5 {
+                if view.frame.minY >= tailTop - 0.5 {
+                    view.transform = CGAffineTransform(translationX: 0, y: tailOffset)
+                    slidingViews.append(view)
+                } else if !isCollapsing {
+                    view.alpha = 0
+                    fadingViews.append(view)
+                }
+            }
+        }
+        return (fadingViews, slidingViews)
+    }
+
+    private func makeFoldingSnapshot(from top: CGFloat, to bottom: CGFloat) -> UIView? {
+        guard let textInputView = textInputView else {
+            return nil
+        }
+        let rect = CGRect(x: viewport.minX, y: max(viewport.minY, top),
+                          width: viewport.width, height: max(0, min(viewport.maxY, bottom) - max(viewport.minY, top)))
+        guard rect.height > 0 else {
+            return nil
+        }
+        let snapshot = UIView(frame: rect)
+        snapshot.isUserInteractionEnabled = false
+        snapshot.accessibilityElementsHidden = true
+        snapshot.clipsToBounds = true
+        for source in [linesContainerView, gutterContainerView] {
+            let sourceRect = source.convert(rect, from: textInputView).intersection(source.bounds)
+            guard !sourceRect.isNull, !sourceRect.isEmpty,
+                  let image = source.resizableSnapshotView(from: sourceRect, afterScreenUpdates: false, withCapInsets: .zero) else { continue }
+            image.frame = source.convert(sourceRect, to: textInputView).offsetBy(dx: -rect.minX, dy: -rect.minY)
+            snapshot.addSubview(image)
+        }
+        return snapshot
+    }
+}
+
 final class LayoutManager {
     weak var delegate: LayoutManagerDelegate?
     weak var gutterParentView: UIView? {
@@ -61,6 +202,12 @@ final class LayoutManager {
             }
         }
     }
+    var isCodeFoldingEnabled = false {
+        didSet { updateShownViews(); setNeedsLayout() }
+    }
+    var foldingRanges: [Int: TreeSitterFoldingRange] = [:]
+    var collapsedFoldRows: Set<Int> = []
+    var onToggleFold: ((Int) -> Void)?
     var lineSelectionDisplayType: LineSelectionDisplayType = .disabled {
         didSet {
             if lineSelectionDisplayType != oldValue {
@@ -112,7 +259,8 @@ final class LayoutManager {
     private(set) var visibleTextRanges: [NSRange] = []
 
     // MARK: - Views
-    let gutterContainerView = UIView()
+    let gutterContainerView = GutterContainerView()
+    private let foldingButtonReuseQueue = ViewReuseQueue<Int, FoldingGutterButton>()
     private var lineFragmentViewReuseQueue = ViewReuseQueue<LineFragmentID, LineFragmentView>()
     private var lineNumberLabelReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineNumberView>()
     private var visibleLineIDs: Set<DocumentLineNodeID> = []
@@ -128,11 +276,7 @@ final class LayoutManager {
 
     // MARK: - Sizing
     private var leadingLineSpacing: CGFloat {
-        if showLineNumbers {
-            return gutterWidthService.gutterWidth + textContainerInset.left
-        } else {
-            return textContainerInset.left
-        }
+        gutterWidthService.gutterWidth + textContainerInset.left
     }
     private var insetViewport: CGRect {
         let x = viewport.minX - textContainerInset.left
@@ -153,6 +297,10 @@ final class LayoutManager {
     private var needsLayout = false
     private var needsSynchronousDestinationHighlight = false
     private var needsLayoutLineSelection = false
+    private var foldingCompletion: ((Bool) -> Void)?
+    private var foldingAnimators: [UIViewPropertyAnimator] = []
+    private var foldingSnapshots: [UIView] = []
+    private var animatedFoldingViews: [UIView] = []
 
     init(lineManager: LineManager,
          languageMode: InternalLanguageMode,
@@ -178,7 +326,7 @@ final class LayoutManager {
         self.lineNumbersContainerView.isUserInteractionEnabled = false
         // Line numbers decorate the text; separate VoiceOver stops obscure the editor's controls.
         self.lineNumbersContainerView.accessibilityElementsHidden = true
-        self.gutterContainerView.isUserInteractionEnabled = false
+        self.gutterContainerView.isUserInteractionEnabled = true
         self.gutterBackgroundView.isUserInteractionEnabled = false
         self.gutterSelectionBackgroundView.isUserInteractionEnabled = false
         self.lineSelectionBackgroundView.isUserInteractionEnabled = false
@@ -248,11 +396,12 @@ final class LayoutManager {
 // MARK: - UITextInput
 extension LayoutManager {
     func firstRect(for range: NSRange) -> CGRect {
-        guard let line = lineManager.line(containingCharacterAt: range.location) else {
+        guard let line = lineManager.visibleLine(containingCharacterAt: range.location) else {
             fatalError("Cannot find first rect.")
         }
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
-        let localRange = NSRange(location: range.location - line.location, length: min(range.length, line.value))
+        let localStart = min(line.data.length, max(0, range.location - line.location))
+        let localRange = NSRange(location: localStart, length: min(range.length, line.data.length - localStart))
         let lineContentsRect = lineController.firstRect(for: localRange)
         let visibleWidth = viewport.width - gutterWidthService.gutterWidth
         let xPosition = lineContentsRect.minX + textContainerInset.left + gutterWidthService.gutterWidth
@@ -275,11 +424,11 @@ extension LayoutManager {
                 return 0
             }
         } else {
-            let lastLine = lineManager.lastLine
+            let lastLine = lineManager.lastVisibleLine
             if adjustedPoint.y >= lastLine.yPosition, let lineController = lineControllerStorage[lastLine.id] {
                 return closestIndex(to: adjustedPoint, in: lineController)
             } else {
-                return stringView.string.length
+                return lastLine.location + lastLine.data.length
             }
         }
     }
@@ -299,6 +448,7 @@ extension LayoutManager {
 
     func layoutIfNeeded() {
         if needsLayout {
+            cancelFoldingAnimation()
             needsLayout = false
             CATransaction.begin()
             CATransaction.setDisableActions(true)
@@ -400,15 +550,14 @@ extension LayoutManager {
     private func prepareLines(before anchor: DocumentLineNode, covering distance: CGFloat,
                               syntaxHighlightAsynchronously: Bool = true) {
         var remaining = distance
-        var row = anchor.index - 1
-        while row >= 0 && remaining > 0 {
-            let line = lineManager.line(atRow: row)
+        var previousLine = lineManager.previousVisibleLine(before: anchor)
+        while let line = previousLine, remaining > 0 {
             let controller = lineControllerStorage.getOrCreateLineController(for: line)
             controller.constrainingWidth = constrainingLineWidth
             controller.prepareToDisplayString(toLocation: line.data.length, syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
             contentSizeService.setSize(of: line, to: CGSize(width: controller.lineWidth, height: controller.lineHeight))
             remaining -= line.data.lineHeight
-            row -= 1
+            previousLine = lineManager.previousVisibleLine(before: line)
         }
     }
 
@@ -416,7 +565,8 @@ extension LayoutManager {
     /// A disjoint jump instead starts with the line at the new viewport position.
     private func viewportAnchor() -> DocumentLineNode? {
         let overlappingLines = visibleLineIDs.compactMap { lineControllerStorage[$0]?.line }.filter { line in
-            line.yPosition + line.data.lineHeight > insetViewport.minY && line.yPosition < insetViewport.maxY
+            !lineManager.isLineHidden(line.index)
+                && line.yPosition + line.data.lineHeight > insetViewport.minY && line.yPosition < insetViewport.maxY
         }
         return overlappingLines.min { $0.yPosition < $1.yPosition }
             ?? lineManager.line(containingYOffset: max(0, insetViewport.minY))
@@ -474,7 +624,7 @@ extension LayoutManager {
                 viewport.origin.y += adjustment
                 contentOffsetAdjustmentY += adjustment
             }
-            layoutLineNumberView(for: line)
+            layoutGutterItems(for: line)
             // Layout line fragments ("sublines") in the line until we have filled the viewport.
             let lineYPosition = line.yPosition
             let lineFragmentControllers = lineController.lineFragmentControllers(in: insetViewport)
@@ -506,7 +656,7 @@ extension LayoutManager {
             }
             let stoppedGeneratingLineFragments = lineFragmentControllers.isEmpty
             if !stoppedGeneratingLineFragments && line.index < lineManager.lineCount - 1 {
-                nextLine = lineManager.line(atRow: line.index + 1)
+                nextLine = lineManager.nextVisibleLine(after: line)
             } else {
                 nextLine = nil
             }
@@ -525,6 +675,9 @@ extension LayoutManager {
         }
         lineNumberLabelReuseQueue.enqueueViews(withKeys: disappearedLineIDs)
         lineFragmentViewReuseQueue.enqueueViews(withKeys: disappearedLineFragmentIDs)
+        let visibleFoldRows = Set(appearedLineIDs.compactMap { lineControllerStorage[$0]?.line.index })
+            .filter { isCodeFoldingEnabled && foldingRanges[$0] != nil }
+        foldingButtonReuseQueue.enqueueViews(withKeys: Set(foldingButtonReuseQueue.visibleViews.keys).subtracting(visibleFoldRows))
         updateWritingToolsMask()
         // Adjust the content offset on the Y-axis if necessary.
         if contentOffsetAdjustmentY != 0 {
@@ -553,6 +706,27 @@ extension LayoutManager {
         lineNumberView.font = theme.lineNumberFont
         lineNumberView.textColor = theme.lineNumberColor
         lineNumberView.frame = CGRect(x: xPosition, y: yPosition, width: gutterWidthService.lineNumberWidth, height: fontLineHeight)
+    }
+
+    private func layoutGutterItems(for line: DocumentLineNode) {
+        if showLineNumbers { layoutLineNumberView(for: line) }
+        layoutFoldingButton(for: line)
+    }
+
+    private func layoutFoldingButton(for line: DocumentLineNode) {
+        guard isCodeFoldingEnabled, let range = foldingRanges[line.index] else {
+            return
+        }
+        let button = foldingButtonReuseQueue.dequeueView(forKey: line.index)
+        if button.superview == nil { gutterContainerView.addSubview(button) }
+        let row = line.index
+        button.configure(row: row, endRow: range.endRow,
+                         isCollapsed: collapsedFoldRows.contains(row), color: theme.lineNumberColor)
+        button.toggle = { [weak self] in self?.onToggleFold?(row) }
+        let height = max(22, theme.font.totalLineHeight * lineHeightMultiplier)
+        button.frame = CGRect(x: safeAreaInsets.left + gutterWidthService.gutterWidth - gutterWidthService.foldingWidth,
+                              y: textContainerInset.top + line.yPosition,
+                              width: gutterWidthService.foldingWidth, height: height)
     }
 
     private func layoutLineFragmentView(for lineFragmentController: LineFragmentController,
@@ -624,7 +798,7 @@ extension LayoutManager {
 
     private func updateShownViews() {
         let selectedLength = selectedRange?.length ?? 0
-        gutterBackgroundView.isHidden = !showLineNumbers
+        gutterBackgroundView.isHidden = !showLineNumbers && !isCodeFoldingEnabled
         lineNumbersContainerView.isHidden = !showLineNumbers
         gutterSelectionBackgroundView.isHidden = !lineSelectionDisplayType.shouldShowLineSelection || !showLineNumbers || !isEditing
         lineSelectionBackgroundView.isHidden = !lineSelectionDisplayType.shouldShowLineSelection || !isEditing || selectedLength > 0

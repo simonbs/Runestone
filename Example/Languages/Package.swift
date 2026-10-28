@@ -1,6 +1,4 @@
 // swift-tools-version: 5.5
-// The swift-tools-version declares the minimum version of Swift required to build this package.
-
 import PackageDescription
 
 let package = Package(
@@ -10,20 +8,18 @@ let package = Package(
         .library(name: "RunestoneJavaScriptLanguage", targets: ["RunestoneJavaScriptLanguage"])
     ],
     dependencies: [
-        .package(path: "../Runestone")
+        .package(name: "Runestone", path: "../.."),
+        .package(url: "https://github.com/simonbs/TreeSitterLanguages.git", revision: "12e38d632d845ba6e94eff02de53418963a98506")
     ],
     targets: [
         .target(
             name: "RunestoneJavaScriptLanguage",
             dependencies: [
-                "TreeSitterJavaScript",
-                "Runestone"
+                .product(name: "TreeSitterJavaScriptRunestone", package: "TreeSitterLanguages"),
+                .product(name: "TreeSitterMarkdownRunestone", package: "TreeSitterLanguages"),
+                .product(name: "TreeSitterMarkdownInlineRunestone", package: "TreeSitterLanguages")
             ],
-            resources: [
-                .copy("highlights.scm"),
-                .copy("injections.scm")
-            ]
-        ),
-        .target(name: "TreeSitterJavaScript", cSettings: [.headerSearchPath("src")])
+            exclude: ["IndentationScopes.swift", "highlights.scm", "injections.scm"]
+        )
     ]
 )

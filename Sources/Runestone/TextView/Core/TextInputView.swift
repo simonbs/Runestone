@@ -15,6 +15,8 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidChangeSelection(_ view: TextInputView)
     func textInputView(_ view: TextInputView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool
     func textInputView(_ view: TextInputView, shouldCheckSpellingIn range: NSRange) -> Bool
+    func textInputViewWillBeginFoldingTransition(_ view: TextInputView)
+    func textInputViewDidFinishFoldingTransition(_ view: TextInputView, animated: Bool)
     func textInputViewDidInvalidateContentSize(_ view: TextInputView)
     func textInputView(_ view: TextInputView, didProposeContentOffsetAdjustment contentOffsetAdjustment: CGPoint)
     func textInputViewDidChangeGutterWidth(_ view: TextInputView)
@@ -23,6 +25,113 @@ protocol TextInputViewDelegate: AnyObject {
     func textInputViewDidUpdateMarkedRange(_ view: TextInputView)
     func textInputView(_ view: TextInputView, canReplaceTextIn highlightedRange: HighlightedRange) -> Bool
     func textInputView(_ view: TextInputView, replaceTextIn highlightedRange: HighlightedRange)
+}
+
+// MARK: - Code Folding
+extension TextInputView {
+    func refreshCodeFolding(synchronously: Bool = false) {
+        guard isCodeFoldingEnabled else {
+            return
+        }
+        foldingRevision &+= 1
+        let revision = foldingRevision
+        let mode = languageMode
+        let apply: ([TreeSitterFoldingRange]) -> Void = { [weak self, weak mode] ranges in
+            guard let self = self, let mode = mode, self.isCodeFoldingEnabled,
+                  self.foldingRevision == revision, self.languageMode === mode else { return }
+            self.foldingController.update(ranges, lineCount: self.lineManager.lineCount)
+            self.applyFoldingProjection()
+        }
+        if synchronously { apply(mode.foldingRanges()) } else { mode.foldingRanges(completion: apply) }
+    }
+
+    func toggleFold(atRow row: Int, animated: Bool = true) {
+        guard isCodeFoldingEnabled, !isWritingToolsActive,
+              let range = foldingController.rangesByRow[row], !lineManager.isLineHidden(row) else { return }
+        let firstHidden = lineManager.line(atRow: range.hiddenStartRow)
+        let lastHidden = lineManager.line(atRow: range.endRow)
+        let hiddenRange = NSRange(location: firstHidden.location,
+                                  length: lastHidden.location + lastHidden.data.totalLength - firstHidden.location)
+        if let markedRange = markedRange, NSIntersectionRange(markedRange, hiddenRange).length > 0 {
+            return
+        }
+        let mutationVersion = textMutationVersion
+        let originalLineManager = lineManager
+        let isCollapsing = !foldingController.collapsedRanges.contains(range)
+        if isCollapsing, let selection = selectedRange,
+           hiddenRange.contains(selection.lowerBound) || hiddenRange.contains(selection.upperBound) {
+            let anchor = lineManager.line(atRow: row)
+            selectedRange = NSRange(location: anchor.location + anchor.data.length, length: 0)
+        }
+        guard textMutationVersion == mutationVersion, lineManager === originalLineManager,
+              isCodeFoldingEnabled, foldingController.rangesByRow[row] == range else { return }
+        layoutManager.cancelFoldingAnimation()
+        delegate?.textInputViewWillBeginFoldingTransition(self)
+        layoutManager.animateFoldingChange(atRow: row, animated: animated, changes: {
+            _ = self.foldingController.toggle(at: row)
+            if animated, self.window != nil {
+                let feedback = isCollapsing ? self.collapseFeedback : self.expandFeedback
+                feedback.impactOccurred(intensity: 0.5)
+            }
+            self.applyFoldingProjection()
+            self.layoutManager.layoutIfNeeded()
+            self.setNeedsLayout()
+            self.layoutIfNeeded()
+        }, completion: { [weak self] animated in
+            guard let self = self else {
+                return
+            }
+            self.delegate?.textInputViewDidFinishFoldingTransition(self, animated: animated)
+        })
+        UIAccessibility.post(notification: .layoutChanged, argument: nil)
+    }
+
+    private func resetCodeFolding() {
+        foldingRevision &+= 1
+        layoutManager.cancelFoldingAnimation()
+        delegate?.textInputViewDidFinishFoldingTransition(self, animated: false)
+        foldingController.reset()
+        lineManager.setCollapsedLineRanges([])
+        layoutManager.foldingRanges = [:]
+        layoutManager.collapsedFoldRows = []
+    }
+
+    private func applyFoldingProjection() {
+        lineManager.setCollapsedLineRanges(isCodeFoldingEnabled ? foldingController.hiddenLineRanges : [])
+        layoutManager.foldingRanges = isCodeFoldingEnabled ? foldingController.rangesByRow : [:]
+        layoutManager.collapsedFoldRows = Set(foldingController.collapsedRanges.map(\.startRow))
+        contentSizeService.invalidateContentSize()
+        layoutManager.setNeedsLayout()
+        layoutManager.setNeedsLayoutLineSelection()
+        setNeedsLayout()
+    }
+
+    private func finishFoldingEdit(_ change: TextChange) {
+        guard isCodeFoldingEnabled else {
+            isApplyingFoldingEdit = false
+            return
+        }
+        foldingController.apply(change)
+        applyFoldingProjection()
+        isApplyingFoldingEdit = false
+        refreshCodeFolding()
+    }
+
+    private func revealFoldedRange(_ range: NSRange) {
+        guard isCodeFoldingEnabled, !foldingController.collapsedRanges.isEmpty else {
+            return
+        }
+        var changed = false
+        for location in [range.lowerBound, range.upperBound] {
+            if let line = lineManager.line(containingCharacterAt: location) {
+                if foldingController.reveal(row: line.index) { changed = true }
+            }
+        }
+        if changed {
+            layoutManager.cancelFoldingAnimation()
+            applyFoldingProjection()
+        }
+    }
 }
 
 extension TextInputViewDelegate {
@@ -318,6 +427,23 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
+    var isCodeFoldingEnabled = false {
+        didSet {
+            guard isCodeFoldingEnabled != oldValue else {
+                return
+            }
+            resetCodeFolding()
+            layoutManager.isCodeFoldingEnabled = isCodeFoldingEnabled
+            gutterWidthService.isCodeFoldingEnabled = isCodeFoldingEnabled
+            applyFoldingProjection()
+            if isCodeFoldingEnabled { refreshCodeFolding() }
+        }
+    }
+    let foldingController = CodeFoldingController()
+    private lazy var collapseFeedback = UIImpactFeedbackGenerator(style: .rigid)
+    private lazy var expandFeedback = UIImpactFeedbackGenerator(style: .soft)
+    private var foldingRevision: UInt = 0
+    private var isApplyingFoldingEdit = false
     var lineSelectionDisplayType: LineSelectionDisplayType {
         get {
             layoutManager.lineSelectionDisplayType
@@ -600,6 +726,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != stringView.string {
                 stopWritingTools()
+                resetCodeFolding()
                 textMutationVersion &+= 1
                 invalidateSpellChecking()
                 stringView.string = newValue
@@ -607,6 +734,7 @@ final class TextInputView: UIView, UITextInput {
                 // Rebuilding creates new line IDs. Release controllers and pending highlighting for the old lines.
                 lineControllerStorage.removeAllLineControllers()
                 lineManager.rebuild()
+                refreshCodeFolding()
                 if let oldSelectedRange = selectedRange {
                     inputDelegate?.selectionWillChange(self)
                     selectedRange = safeSelectionRange(from: oldSelectedRange)
@@ -629,6 +757,7 @@ final class TextInputView: UIView, UITextInput {
         }
         set {
             if newValue != layoutManager.viewport {
+                layoutManager.cancelFoldingAnimation()
                 layoutManager.viewport = newValue
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
@@ -663,6 +792,7 @@ final class TextInputView: UIView, UITextInput {
     private var _selectedRange: NSRange? {
         didSet {
             if _selectedRange != oldValue {
+                if !isApplyingFoldingEdit, let range = _selectedRange { revealFoldedRange(range) }
                 layoutManager.selectedRange = _selectedRange
                 layoutManager.setNeedsLayoutLineSelection()
                 setNeedsLayout()
@@ -839,6 +969,7 @@ final class TextInputView: UIView, UITextInput {
         setupContentSizeObserver()
         setupGutterWidthObserver()
         setupWritingTools()
+        layoutManager.onToggleFold = { [weak self] row in self?.toggleFold(atRow: row) }
     }
 
     private func setupWritingTools() {
@@ -971,6 +1102,7 @@ final class TextInputView: UIView, UITextInput {
 
     func setState(_ state: TextViewState, addUndoAction: Bool = false) {
         stopWritingTools()
+        resetCodeFolding()
         textMutationVersion &+= 1
         invalidateSpellChecking()
         let oldText = stringView.string
@@ -983,6 +1115,8 @@ final class TextInputView: UIView, UITextInput {
         lineManager.estimatedLineHeight = estimatedLineHeight
         layoutManager.languageMode = state.languageMode
         layoutManager.lineManager = state.lineManager
+        applyFoldingProjection()
+        refreshCodeFolding()
         contentSizeService.invalidateContentSize()
         gutterWidthService.invalidateLineNumberWidth()
         if addUndoAction {
@@ -1019,6 +1153,8 @@ final class TextInputView: UIView, UITextInput {
     }
 
     func setLanguageMode(_ languageMode: LanguageMode, completion: ((Bool) -> Void)? = nil) {
+        resetCodeFolding()
+        applyFoldingProjection()
         let internalLanguageMode = InternalLanguageModeFactory.internalLanguageMode(
             from: languageMode,
             stringView: stringView,
@@ -1027,6 +1163,7 @@ final class TextInputView: UIView, UITextInput {
         layoutManager.languageMode = internalLanguageMode
         internalLanguageMode.parse(string) { [weak self] finished in
             if let self = self, finished {
+                self.refreshCodeFolding()
                 self.invalidateLines()
                 self.layoutManager.setNeedsLayout()
                 self.layoutManager.layoutIfNeeded()
@@ -1066,6 +1203,7 @@ final class TextInputView: UIView, UITextInput {
     }
 
     func layoutLines(toLocation location: Int) {
+        revealFoldedRange(NSRange(location: location, length: 0))
         layoutManager.layoutLines(toLocation: location)
     }
 
@@ -1541,6 +1679,9 @@ extension TextInputView {
         guard WritingToolsRange.isValid(range, in: string) else {
             return false
         }
+        layoutManager.cancelFoldingAnimation()
+        revealFoldedRange(range)
+        lineManager.setCollapsedLineRanges([])
         if !isWritingToolsReplacement { checkpointWritingToolsUndo() }
         let previousText = writingToolsController?.hasContext == true ? string.copy() as? NSString : nil
         let previousVersion = textMutationVersion
@@ -1552,12 +1693,15 @@ extension TextInputView {
         if !isWritingToolsActive || !isWritingToolsReplacement {
             addUndoOperation(replacing: newRange, withText: currentText, selectedRangeAfterUndo: selectedRangeAfterUndo, actionName: undoActionName)
         }
+        isApplyingFoldingEdit = true
+        defer { isApplyingFoldingEdit = false }
         _selectedRange = NSRange(location: newRange.upperBound, length: 0)
         let textEditHelper = TextEditHelper(stringView: stringView, lineManager: lineManager, lineEndings: lineEndings)
         let textEditResult = textEditHelper.replaceText(in: range, with: newString)
         let textChange = textEditResult.textChange
         let lineChangeSet = textEditResult.lineChangeSet
         let languageModeLineChangeSet = languageMode.textDidChange(textChange)
+        finishFoldingEdit(textChange)
         lineChangeSet.union(with: languageModeLineChangeSet)
         applyLineChangesToLayoutManager(lineChangeSet)
         let updatedTextEditResult = TextEditResult(textChange: textChange, lineChangeSet: lineChangeSet)

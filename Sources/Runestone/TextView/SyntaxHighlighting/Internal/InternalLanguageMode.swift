@@ -11,10 +11,20 @@ protocol InternalLanguageMode: AnyObject {
     func textDidChange(_ change: TextChange) -> LineChangeSet
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter
     func syntaxNode(at linePosition: LinePosition) -> SyntaxNode?
+    func foldingRanges() -> [TreeSitterFoldingRange]
+    func foldingRanges(completion: @escaping ([TreeSitterFoldingRange]) -> Void)
     func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int
     func strategyForInsertingLineBreak(
         from startLinePosition: LinePosition,
         to endLinePosition: LinePosition,
         using indentStrategy: IndentStrategy) -> InsertLineBreakIndentStrategy
     func detectIndentStrategy() -> DetectedIndentStrategy
+}
+
+extension InternalLanguageMode {
+    func foldingRanges() -> [TreeSitterFoldingRange] { [] }
+
+    func foldingRanges(completion: @escaping ([TreeSitterFoldingRange]) -> Void) {
+        completion(foldingRanges())
+    }
 }

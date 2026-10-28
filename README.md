@@ -18,6 +18,7 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 
 - Syntax highlighting.
 - Line numbers.
+- Code folding.
 - Highlight the selected line.
 - Show invisible characters (tabs, spaces and line breaks).
 - Insertion of character pairs, e.g. inserting the trailing quotation mark when inserting the leading.
@@ -39,6 +40,29 @@ Please refer to the [Getting Started](https://docs.runestone.app/documentation/r
 ## 📖 Documentation
 
 The documentation of all public types is available at [docs.runestone.app](https://docs.runestone.app). The documentation is generated from the Swift code using Apple's [DocC documentation compiler](https://developer.apple.com/documentation/docc).
+
+## 📱 Example App
+
+Open `Example/Example.xcodeproj` in Xcode and run the Example scheme to try Runestone. The **Folding Examples** submenu in the ellipsis menu contains JavaScript and Markdown documents with code folding enabled. You can turn folding on or off using the **Code Folding** setting in the same menu.
+
+To add folding to your own text view, set `textView.isCodeFoldingEnabled` to `true` and use a language with a folding query. Refer to the [Code Folding](Sources/Runestone/Documentation.docc/CodeFolding.md) article for more information.
+
+<details>
+<summary>Try a local document in Simulator</summary>
+
+To inspect a local UTF-8 document without saving it to preferences, install the
+Example and copy the file into its Documents directory:
+
+```sh
+device='<simulator UDID>'
+container=$(xcrun simctl get_app_container "$device" dk.simonbs.Example data)
+cp '/path/to/large-file.json' "$container/Documents/large-file.json"
+SIMCTL_CHILD_RUNESTONE_DOCUMENT=large-file.json xcrun simctl launch "$device" dk.simonbs.Example
+```
+
+When opening a document this way, the example shows **Jump to Top** and **Jump to Bottom** commands and enables line wrapping and line numbers. Set `RUNESTONE_WRAP_LINES=0` to turn off line wrapping. Use a `.md` or `.markdown` extension for Markdown documents.
+
+</details>
 
 ## 🏎 Performance
 
@@ -107,11 +131,3 @@ Inline Writing Tools can replace text before the person accepts it. Observe `Tex
 Set `writingToolsExcludedRangesProvider` to return UTF-16 ranges for code, URLs, or other text that must be preserved. Runestone reevaluates the provider against the current text, applies Apple's `.writingToolsExclusionAttributeName` attribute to native contexts, and validates replacements before committing them. Explicit selections still honor exclusions; ordinary user edits remain allowed. Invalid or surrogate-splitting ranges are ignored. A replacement crossing protected content is rejected unless unchanged prefix/suffix text proves that content is preserved, so prefer localized exclusions over excluding whole documents. Changing the provider ends the session; changes to its text-dependent ranges are reported alongside ordinary edits, including syntax changes that alter exclusions outside the insertion itself. The provider must be pure and should cache expensive parsing.
 
 Animation images contain only visible text and are bounded by the viewport. As the editor scrolls or reflows, Runestone refreshes the coordinator's geometry. Verifying the complete Apple Intelligence workflow, including generated results and animation timing, requires a supported physical device with Writing Tools enabled.
-
-#### Native grammar presentation
-
-iOS 27 adds a public grammar checker: [`UITextChecker.requestGrammarChecking(of:range:waitForAllResults:completionHandler:)`](https://developer.apple.com/documentation/uikit/uitextchecker/requestgrammarchecking(of:range:waitforallresults:completionhandler:)) returns `NSTextCheckingResult` values with grammar or correction types. `ignoreGrammarRange(_:inSentence:)` records ignored issues. These APIs require the iOS 27 SDK and iOS 27 at runtime; they do not require implementing a custom grammar engine. The separate `UITextInputTraits.grammarCheckingType` controls the system's grammar-checking preference while typing.
-
-The iOS 27 [`UIWritingToolsCoordinator`](https://developer.apple.com/documentation/uikit/uiwritingtoolscoordinator) grammar APIs present findings supplied by a custom text engine. `writingToolsCoordinator(_:requestsGrammarResultsFor:completion:)` supplies identified, currently indicated issues; `showGrammarPresentation(for:in:)` presents the system UI when a person interacts with an issue. Its context must match a returned coordinator context, and its range must match a grammar detail. `startTextAnimation(_:for:in:writingDirection:)` and `cancelTextAnimations(identifiers:)` manage the reveal animation. The decorated-preview delegate supplies snapshots with and without a grammar underline; `writingToolsCoordinator(_:setGrammarCheckingEnabled:)` handles the person's request to disable checking. Replacement reasons also distinguish accepted, rejected, and temporary grammar suggestions.
-
-Runestone does not currently implement this separate continuous-grammar presentation workflow. It would need to track and indicate native checker findings, route interactions to those issues, and manage temporary previews and ignored findings. The public input trait alone does not establish that UIKit provides this complete workflow for Runestone's custom `UITextInput`. Adding dormant delegate methods would not provide a working feature, and this integration deliberately avoids a separate custom proofreading interface. The existing native Writing Tools proofreading workflow remains available on iOS 18.2 and later.

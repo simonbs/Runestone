@@ -26,6 +26,7 @@ final class DocumentLineNodeData {
     }
 
     weak var node: DocumentLineNode?
+    weak var lineManager: LineManager?
 
     init(lineHeight: CGFloat) {
         self.lineHeight = lineHeight

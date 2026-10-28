@@ -13,6 +13,10 @@ public final class TreeSitterLanguage {
     public let highlightsQuery: TreeSitterLanguage.Query?
     /// Query used for detecting injected languages.
     public let injectionsQuery: TreeSitterLanguage.Query?
+    /// Query used for code folding.
+    ///
+    /// Refer to <doc:CodeFolding> for more information on writing a folding query.
+    public let foldsQuery: TreeSitterLanguage.Query?
     /// Rules used for indenting text.
     public let indentationScopes: TreeSitterIndentationScopes?
 
@@ -34,14 +38,17 @@ public final class TreeSitterLanguage {
     ///   - highlightsQuery: Query used for syntax highlighting.
     ///   - injectionsQuery: Query used for detecting injected languages.
     ///   - indentationScopes: Rules used for indenting text.
+    ///   - foldsQuery: Optional query used for code folding.
     public init(_ language: OpaquePointer,
                 highlightsQuery: TreeSitterLanguage.Query? = nil,
                 injectionsQuery: TreeSitterLanguage.Query? = nil,
-                indentationScopes: TreeSitterIndentationScopes? = nil) {
+                indentationScopes: TreeSitterIndentationScopes? = nil,
+                foldsQuery: TreeSitterLanguage.Query? = nil) {
         self.languagePointer = language
         self.highlightsQuery = highlightsQuery
         self.injectionsQuery = injectionsQuery
         self.indentationScopes = indentationScopes
+        self.foldsQuery = foldsQuery
     }
 
     /// Prepares the language to be used by Runestone. This can be called on a background queue to have the language prepared before it is needed.
@@ -56,7 +63,7 @@ public final class TreeSitterLanguage {
 }
 
 extension TreeSitterLanguage {
-    /// A set of patterns to be matched against the syntax tree. Queries are used for syntax highlighting and detecting injected languages.
+    /// A set of patterns to be matched against the syntax tree. Queries are used for syntax highlighting, detecting injected languages, and code folding.
     ///
     /// Please refer to Tree-sitter's documentation for more information on queries:
     /// https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries
@@ -87,10 +94,12 @@ private extension TreeSitterInternalLanguage {
     convenience init(_ language: TreeSitterLanguage) {
         let highlightsQuery = Self.makeInternalQuery(from: language.highlightsQuery, with: language.languagePointer)
         let injectionsQuery = Self.makeInternalQuery(from: language.injectionsQuery, with: language.languagePointer)
+        let foldsQuery = Self.makeInternalQuery(from: language.foldsQuery, with: language.languagePointer)
         self.init(languagePointer: language.languagePointer,
                   highlightsQuery: highlightsQuery,
                   injectionsQuery: injectionsQuery,
-                  indentationScopes: language.indentationScopes)
+                  indentationScopes: language.indentationScopes,
+                  foldsQuery: foldsQuery)
     }
 
     private static func makeInternalQuery(from query: TreeSitterLanguage.Query?, with language: OpaquePointer) -> TreeSitterQuery? {

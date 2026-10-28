@@ -31,9 +31,11 @@ open class TextView: UIScrollView {
             textInputView.string as String
         }
         set {
+            let wasFolding = foldingMinimumContentHeight != nil
             textInputView.resetIgnoredSpellingWords()
             textInputView.string = newValue as NSString
             contentSize = preferredContentSize
+            if wasFolding { settleFoldingContentOffset(animated: false) }
         }
     }
     /// A Boolean value that indicates whether the text view is editable.
@@ -358,6 +360,9 @@ open class TextView: UIScrollView {
     override public var contentOffset: CGPoint {
         didSet {
             if contentOffset != oldValue {
+                if foldingScrollAnimator != nil, !isAdjustingFoldingContentOffset {
+                    finishFoldingScrollAdjustment()
+                }
                 textInputView.dismissSpellingMenu()
                 textInputView.viewport = CGRect(origin: contentOffset, size: frame.size)
             }
@@ -383,6 +388,15 @@ open class TextView: UIScrollView {
             textInputView.characterPairTrailingComponentDeletionMode = newValue
         }
     }
+    /// Enable to show code folding controls in the gutter.
+    ///
+    /// The default value is false. The language must provide a folding query.
+    /// Refer to <doc:CodeFolding> for more information on enabling code folding.
+    public var isCodeFoldingEnabled: Bool {
+        get { textInputView.isCodeFoldingEnabled }
+        set { textInputView.isCodeFoldingEnabled = newValue }
+    }
+
     /// Enable to show line numbers in the gutter.
     public var showLineNumbers: Bool {
         get {
@@ -743,6 +757,10 @@ open class TextView: UIScrollView {
         }
     }
     private var hasPendingContentSizeUpdate = false
+    // Preserve valid scroll geometry until folding and any final offset adjustment finish.
+    private var foldingMinimumContentHeight: CGFloat?
+    private var foldingScrollAnimator: UIViewPropertyAnimator?
+    private var isAdjustingFoldingContentOffset = false
     private var isInputAccessoryViewEnabled = false
     private let keyboardObserver = KeyboardObserver()
     private let highlightNavigationController = HighlightNavigationController()
@@ -754,6 +772,10 @@ open class TextView: UIScrollView {
     private var textRangeAdjustmentGestureRecognizers: Set<UIGestureRecognizer> = []
     private var previousSelectedRangeDuringGestureHandling: NSRange?
     private var preferredContentSize: CGSize {
+        let size = documentContentSize
+        return CGSize(width: size.width, height: max(size.height, foldingMinimumContentHeight ?? 0))
+    }
+    private var documentContentSize: CGSize {
         let horizontalOverscrollLength = max(frame.width * horizontalOverscrollFactor, 0)
         let verticalOverscrollLength = max(frame.height * verticalOverscrollFactor, 0)
         let baseContentSize = textInputView.contentSize
@@ -851,9 +873,11 @@ open class TextView: UIScrollView {
     /// - Parameter state: The new state to be used by the editor.
     /// - Parameter addUndoAction: Whether the state change can be undone. Defaults to false.
     public func setState(_ state: TextViewState, addUndoAction: Bool = false) {
+        let wasFolding = foldingMinimumContentHeight != nil
         textInputView.resetIgnoredSpellingWords()
         textInputView.setState(state, addUndoAction: addUndoAction)
         contentSize = preferredContentSize
+        if wasFolding { settleFoldingContentOffset(animated: false) }
     }
 
     /// Returns the row and column at the specified location in the text.
@@ -1347,6 +1371,40 @@ private extension TextView {
         }
     }
 
+    private func finishFoldingScrollAdjustment() {
+        foldingScrollAnimator?.stopAnimation(true)
+        foldingScrollAnimator = nil
+        foldingMinimumContentHeight = nil
+        contentSize = preferredContentSize
+        setNeedsLayout()
+    }
+
+    private func settleFoldingContentOffset(animated: Bool) {
+        let minimumY = -adjustedContentInset.top
+        let maximumY = max(minimumY, documentContentSize.height - bounds.height + adjustedContentInset.bottom)
+        let target = CGPoint(x: contentOffset.x, y: min(max(contentOffset.y, minimumY), maximumY))
+        guard animated, foldingMinimumContentHeight != nil, target != contentOffset, !isDragging, !isDecelerating else {
+            finishFoldingScrollAdjustment()
+            contentOffset = target
+            return
+        }
+        let animator = UIViewPropertyAnimator(duration: 0.16, curve: .easeInOut) { [weak self] in
+            guard let self = self else {
+                return
+            }
+            self.isAdjustingFoldingContentOffset = true
+            self.contentOffset = target
+            self.isAdjustingFoldingContentOffset = false
+        }
+        animator.addCompletion { [weak self] _ in
+            // The animator has completed; clear it before releasing the height.
+            self?.foldingScrollAnimator = nil
+            self?.finishFoldingScrollAdjustment()
+        }
+        foldingScrollAnimator = animator
+        animator.startAnimation()
+    }
+
     private func handleContentSizeUpdateIfNeeded() {
         if hasPendingContentSizeUpdate {
             // We don't want to update the content size when the scroll view is "bouncing" near the gutter,
@@ -1512,6 +1570,7 @@ extension TextView: TextInputViewDelegate {
     }
 
     func textInputViewDidChange(_ view: TextInputView) {
+        if foldingScrollAnimator != nil { finishFoldingScrollAdjustment() }
         if isAutomaticScrollEnabled, !isWritingToolsActive, let newRange = textInputView.selectedRange, newRange.length == 0 {
             scrollLocationToVisible(newRange.location)
         }
@@ -1529,6 +1588,17 @@ extension TextView: TextInputViewDelegate {
             scrollLocationToVisible(newRange.location)
         }
         editorDelegate?.textViewDidChangeSelection(self)
+    }
+
+    func textInputViewWillBeginFoldingTransition(_ view: TextInputView) {
+        finishFoldingScrollAdjustment()
+        foldingMinimumContentHeight = contentSize.height
+    }
+
+    func textInputViewDidFinishFoldingTransition(_ view: TextInputView, animated: Bool) {
+        if foldingMinimumContentHeight != nil || foldingScrollAnimator != nil {
+            settleFoldingContentOffset(animated: animated)
+        }
     }
 
     func textInputViewDidInvalidateContentSize(_ view: TextInputView) {

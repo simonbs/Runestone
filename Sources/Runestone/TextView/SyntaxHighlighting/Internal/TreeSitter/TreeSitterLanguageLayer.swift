@@ -125,6 +125,14 @@ extension TreeSitterLanguageLayer {
 
 // MARK: - Syntax Highlighting
 extension TreeSitterLanguageLayer {
+    func foldingSnapshotLayers() -> [TreeSitterFoldingSnapshot.Layer] {
+        var layers: [TreeSitterFoldingSnapshot.Layer] = []
+        if let tree = tree, let query = language.foldsQuery {
+            layers.append(.init(tree: tree.copy(), query: query))
+        }
+        return layers + childLanguageLayerStore.allLayers.flatMap { $0.foldingSnapshotLayers() }
+    }
+
     func highlightSnapshotLayers() -> [TreeSitterHighlightSnapshot.Layer] {
         guard let tree = tree, let query = language.highlightsQuery else {
             return []

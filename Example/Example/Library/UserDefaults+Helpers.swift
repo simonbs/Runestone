@@ -3,6 +3,8 @@ import Foundation
 extension UserDefaults {
     private enum Key {
         static let text = "RunestoneExample.text"
+        static let sampleLanguage = "RunestoneExample.sampleLanguage"
+        static let codeFoldingEnabled = "RunestoneExample.codeFoldingEnabled"
         static let showLineNumbers = "RunestoneExample.showLineNumbers"
         static let showInvisibleCharacters = "RunestoneExample.showInvisibleCharacters"
         static let wrapLines = "RunestoneExample.wrapLines"
@@ -20,6 +22,22 @@ extension UserDefaults {
         }
         set {
             set(newValue, forKey: Key.text)
+        }
+    }
+    var sampleLanguage: CodeSample.Language {
+        get {
+            string(forKey: Key.sampleLanguage).flatMap(CodeSample.Language.init(rawValue:)) ?? .javaScript
+        }
+        set {
+            set(newValue.rawValue, forKey: Key.sampleLanguage)
+        }
+    }
+    var codeFoldingEnabled: Bool {
+        get {
+            bool(forKey: Key.codeFoldingEnabled)
+        }
+        set {
+            set(newValue, forKey: Key.codeFoldingEnabled)
         }
     }
     var showLineNumbers: Bool {
@@ -105,6 +123,8 @@ extension UserDefaults {
     func registerDefaults() {
         register(defaults: [
             Key.text: CodeSample.default,
+            Key.sampleLanguage: CodeSample.Language.javaScript.rawValue,
+            Key.codeFoldingEnabled: false,
             Key.showLineNumbers: true,
             Key.wrapLines: false,
             Key.highlightSelectedLine: true,

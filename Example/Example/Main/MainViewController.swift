@@ -85,11 +85,15 @@ private extension MainViewController {
 
     private func setupTextView() {
         var text = ""
+        var language = UserDefaults.standard.sampleLanguage
         if let name = ProcessInfo.processInfo.navigationDocumentName {
             let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             do {
                 text = try String(contentsOf: documents.appendingPathComponent(name), encoding: .utf8)
                 navigationDocumentLength = (text as NSString).length
+                if ["md", "markdown"].contains(documents.appendingPathComponent(name).pathExtension.lowercased()) {
+                    language = .markdown
+                }
             } catch {
                 text = "Could not load navigation document: \(error.localizedDescription)"
             }
@@ -98,12 +102,31 @@ private extension MainViewController {
         }
         let themeSetting = UserDefaults.standard.theme
         let theme = themeSetting.makeTheme()
-        let state = TextViewState(text: text, theme: theme, language: .javaScript)
+        let state = TextViewState(text: text, theme: theme, language: language.treeSitterLanguage,
+                                  languageProvider: ExampleLanguageProvider())
         if ProcessInfo.processInfo.useCRLFLineEndings {
             contentView.textView.lineEndings = .crlf
         }
         contentView.textView.editorDelegate = self
         contentView.textView.setState(state)
+    }
+
+    private func showFoldingExample(_ language: CodeSample.Language) {
+        let settings = UserDefaults.standard
+        settings.sampleLanguage = language
+        settings.codeFoldingEnabled = true
+        settings.showLineNumbers = true
+        let text = language == .markdown ? CodeSample.markdownFolding : CodeSample.javaScriptFolding
+        if !ProcessInfo.processInfo.disableTextPersistance {
+            settings.text = text
+        }
+        navigationDocumentLength = (text as NSString).length
+        let state = TextViewState(text: text, theme: settings.theme.makeTheme(),
+                                  language: language.treeSitterLanguage,
+                                  languageProvider: ExampleLanguageProvider())
+        contentView.textView.setState(state)
+        updateTextViewSettings()
+        contentView.textView.scrollRangeToVisible(NSRange(location: 0, length: 0))
     }
 
     private func jumpToTop() {
@@ -220,6 +243,13 @@ extension MainViewController: MenuSelectionHandler {
             updateTextViewSettings()
         case .toggleHighlightSelectedLine:
             UserDefaults.standard.highlightSelectedLine.toggle()
+            updateTextViewSettings()
+        case .showJavaScriptFoldingExample:
+            showFoldingExample(.javaScript)
+        case .showMarkdownFoldingExample:
+            showFoldingExample(.markdown)
+        case .toggleCodeFolding:
+            UserDefaults.standard.codeFoldingEnabled.toggle()
             updateTextViewSettings()
         case .toggleLineNumbers:
             UserDefaults.standard.showLineNumbers.toggle()
