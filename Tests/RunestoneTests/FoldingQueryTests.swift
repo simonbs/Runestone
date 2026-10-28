@@ -95,25 +95,37 @@ final class FoldingQueryTests: XCTestCase {
         wait(for: [canceled, replacement], timeout: 5)
     }
 
-    func testMixedMarkdownHeadingLevelsPreserveSetextHeaderAndContainerBoundaries() {
+    func testMixedMarkdownSectionsHideEveryLineAfterHeadingStartAndRespectContainers() {
         typealias Heading = TreeSitterFoldingSnapshot.Heading
         let headings = [
-            Heading(startRow: 0, headerEndRow: 0, level: 1, container: 0, containerEndRow: 15),
-            Heading(startRow: 3, headerEndRow: 4, level: 2, container: 0, containerEndRow: 15),
-            Heading(startRow: 7, headerEndRow: 7, level: 3, container: 0, containerEndRow: 15),
+            Heading(startRow: 0, level: 1, container: 0, containerEndRow: 15),
+            Heading(startRow: 3, level: 2, container: 0, containerEndRow: 15),
+            Heading(startRow: 7, level: 3, container: 0, containerEndRow: 15),
             // A quote's H1 must not terminate the surrounding document's H1/H2.
-            Heading(startRow: 9, headerEndRow: 9, level: 1, container: 1, containerEndRow: 10),
-            Heading(startRow: 12, headerEndRow: 13, level: 1, container: 0, containerEndRow: 15),
+            Heading(startRow: 9, level: 1, container: 1, containerEndRow: 10),
+            Heading(startRow: 12, level: 1, container: 0, containerEndRow: 15),
             // A final heading with no body is not foldable.
-            Heading(startRow: 15, headerEndRow: 15, level: 2, container: 0, containerEndRow: 15)
+            Heading(startRow: 15, level: 2, container: 0, containerEndRow: 15)
         ]
         XCTAssertEqual(TreeSitterFoldingSnapshot.sectionRanges(headings), [
             .init(startRow: 0, endRow: 11),
-            .init(startRow: 3, hiddenStartRow: 5, endRow: 11),
+            .init(startRow: 3, endRow: 11),
             .init(startRow: 7, endRow: 11),
             .init(startRow: 9, endRow: 10),
-            .init(startRow: 12, hiddenStartRow: 14, endRow: 15)
+            .init(startRow: 12, endRow: 15)
         ])
+    }
+
+    func testSetextHeadingWithoutSectionBodyCanFoldItsUnderlineAndTitleContinuation() {
+        typealias Heading = TreeSitterFoldingSnapshot.Heading
+        // A two-line Setext heading must still fold, even without section text.
+        XCTAssertEqual(TreeSitterFoldingSnapshot.sectionRanges([
+            Heading(startRow: 0, level: 1, container: 0, containerEndRow: 1)
+        ]), [.init(startRow: 0, endRow: 1)])
+        // Multiline heading text follows the same first-logical-line rule.
+        XCTAssertEqual(TreeSitterFoldingSnapshot.sectionRanges([
+            Heading(startRow: 0, level: 2, container: 0, containerEndRow: 2)
+        ]), [.init(startRow: 0, endRow: 2)])
     }
 
     @MainActor

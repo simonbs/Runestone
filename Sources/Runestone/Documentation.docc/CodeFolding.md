@@ -13,8 +13,8 @@ textView.isCodeFoldingEnabled = true
 
 Folding controls occupy their own gutter column and work with line numbers shown
 or hidden. Tap a disclosure to collapse or expand the following lines. Wrapped
-headers remain visible in full. Markdown underline-style headings retain their
-underline as well as the heading text.
+headers remain visible in full. Markdown sections keep their first logical line
+and hide subsequent lines, including Setext underlines and multiline title continuations.
 
 Collapsing affects presentation only. Source offsets, logical line numbers,
 copying, saving, and the text undo history continue to describe the complete

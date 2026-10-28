@@ -24,7 +24,6 @@ final class TreeSitterFoldingSnapshot {
 
     struct Heading {
         let startRow: Int
-        let headerEndRow: Int
         let level: Int
         let container: Int
         let containerEndRow: Int
@@ -97,7 +96,7 @@ final class TreeSitterFoldingSnapshot {
                         let containerID = containerIDs[container] ?? containerIDs.count
                         containerIDs[container] = containerID
                         headings.append(Heading(startRow: Int(capture.node.startPoint.row),
-                                                headerEndRow: lastRow(of: capture.node), level: level,
+                                                level: level,
                                                 container: containerID, containerEndRow: lastRow(of: container)))
                     }
                     continue
@@ -179,8 +178,8 @@ final class TreeSitterFoldingSnapshot {
             var stack: [Heading] = []
             func append(_ heading: Heading, endingAt endRow: Int) {
                 let lastRow = min(endRow, heading.containerEndRow)
-                if lastRow > heading.headerEndRow {
-                    result.append(.init(startRow: heading.startRow, hiddenStartRow: heading.headerEndRow + 1, endRow: lastRow))
+                if lastRow > heading.startRow {
+                    result.append(.init(startRow: heading.startRow, endRow: lastRow))
                 }
             }
             for heading in ordered {
