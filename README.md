@@ -16,11 +16,11 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 
 ## ✨ Features
 
-- Syntax highlighting with token backgrounds, font weights and traits, and text shadows.
+- Syntax highlighting.
 - Line numbers.
-- Opt-in code and Markdown section folding using gutter controls and language folding queries.
-- Spell checking with misspelling underlines, tap corrections, configurable languages, and optional Ignore, Learn, and Unlearn Spelling actions.
-- Native inline Writing Tools for proofreading and rewriting, with protected text ranges and session and panel lifecycle callbacks (Xcode 16.2+, iOS 18.2+, and a supported Apple Intelligence device).
+- Code folding.
+- Spell checking.
+- Support for Apple's Writing Tools.
 - Highlight the selected line.
 - Show invisible characters (tabs, spaces and line breaks).
 - Insertion of character pairs, e.g. inserting the trailing quotation mark when inserting the leading.
