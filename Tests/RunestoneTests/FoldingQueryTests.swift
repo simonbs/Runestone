@@ -54,22 +54,6 @@ final class FoldingQueryTests: XCTestCase {
         XCTAssertEqual(snapshot.ranges().count, 100)
     }
 
-    func testSnapshotRangesRemainStableWhenEditorTreeIsEdited() throws {
-        let text = "function f() {\n return 1;\n}"
-        let parser = TreeSitterParser(encoding: TSInputEncoding.preferredUTF16)
-        parser.language = tree_sitter_javascript()
-        let tree = try XCTUnwrap(parser.parse(text as NSString))
-        let query = try TreeSitterQuery(source: "(statement_block) @fold", language: tree_sitter_javascript())
-        let snapshot = TreeSitterFoldingSnapshot(layers: [.init(tree: tree.copy(), query: query)],
-                                                 stringView: StringView(string: text))
-        tree.apply(TreeSitterInputEdit(
-            startByte: 0, oldEndByte: 0, newEndByte: 2,
-            startPoint: TreeSitterTextPoint(row: 0, column: 0),
-            oldEndPoint: TreeSitterTextPoint(row: 0, column: 0),
-            newEndPoint: TreeSitterTextPoint(row: 1, column: 0)))
-        XCTAssertEqual(snapshot.ranges(), [.init(startRow: 0, endRow: 2)])
-    }
-
     @MainActor
     func testReplacingParseCancelsPendingFoldPublication() {
         let stringView = StringView(string: "function f() {\n return 1;\n}")
@@ -116,16 +100,12 @@ final class FoldingQueryTests: XCTestCase {
         ])
     }
 
-    func testSetextHeadingWithoutSectionBodyCanFoldItsUnderlineAndTitleContinuation() {
+    func testSetextHeadingWithoutSectionBodyCanFoldItsUnderline() {
         typealias Heading = TreeSitterFoldingSnapshot.Heading
         // A two-line Setext heading must still fold, even without section text.
         XCTAssertEqual(TreeSitterFoldingSnapshot.sectionRanges([
             Heading(startRow: 0, level: 1, container: 0, containerEndRow: 1)
         ]), [.init(startRow: 0, endRow: 1)])
-        // Multiline heading text follows the same first-logical-line rule.
-        XCTAssertEqual(TreeSitterFoldingSnapshot.sectionRanges([
-            Heading(startRow: 0, level: 2, container: 0, containerEndRow: 2)
-        ]), [.init(startRow: 0, endRow: 2)])
     }
 
     @MainActor

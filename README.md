@@ -18,7 +18,7 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 
 - Syntax highlighting.
 - Line numbers.
-- Collapse code blocks and Markdown sections from the gutter.
+- Code folding.
 - Highlight the selected line.
 - Show invisible characters (tabs, spaces and line breaks).
 - Insertion of character pairs, e.g. inserting the trailing quotation mark when inserting the leading.
@@ -41,12 +41,11 @@ Please refer to the [Getting Started](https://docs.runestone.app/documentation/r
 
 The documentation of all public types is available at [docs.runestone.app](https://docs.runestone.app). The documentation is generated from the Swift code using Apple's [DocC documentation compiler](https://developer.apple.com/documentation/docc).
 
-## Example app
+## 📱 Example App
 
-Open `Example/Example.xcodeproj` and run the Example scheme. The ellipsis menu's
-**Folding Examples** submenu loads JavaScript or Markdown and enables gutter
-folding. Apps opt in with `textView.isCodeFoldingEnabled = true`; see the
-[folding API documentation](Sources/Runestone/Documentation.docc/CodeFolding.md).
+Open `Example/Example.xcodeproj` in Xcode and run the Example scheme to try Runestone. The **Folding Examples** submenu in the ellipsis menu contains JavaScript and Markdown documents with code folding enabled. You can turn folding on or off using the **Code Folding** setting in the same menu.
+
+To add folding to your own text view, set `textView.isCodeFoldingEnabled` to `true` and use a language with a folding query. Refer to the [Code Folding](Sources/Runestone/Documentation.docc/CodeFolding.md) article for more information.
 
 <details>
 <summary>Try a local document in Simulator</summary>
@@ -61,10 +60,7 @@ cp '/path/to/large-file.json' "$container/Documents/large-file.json"
 SIMCTL_CHILD_RUNESTONE_DOCUMENT=large-file.json xcrun simctl launch "$device" dk.simonbs.Example
 ```
 
-Fixture mode adds **Jump to Top** and **Jump to Bottom** and enables wrapping and
-line numbers. Set `RUNESTONE_WRAP_LINES=0` to disable wrapping. Markdown fixtures
-use `.md` or `.markdown`. Keep large fixtures local, and use Release builds for
-performance checks; console navigation timings exclude document loading/parsing.
+When opening a document this way, the example shows **Jump to Top** and **Jump to Bottom** commands and enables line wrapping and line numbers. Set `RUNESTONE_WRAP_LINES=0` to turn off line wrapping. Use a `.md` or `.markdown` extension for Markdown documents.
 
 </details>
 

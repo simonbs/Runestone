@@ -388,8 +388,10 @@ open class TextView: UIScrollView {
             textInputView.characterPairTrailingComponentDeletionMode = newValue
         }
     }
-    /// Enables code and Markdown folding controls in the gutter. Disabled by default.
-    /// The active language must supply a folding query.
+    /// Enable to show code folding controls in the gutter.
+    ///
+    /// The default value is false. The language must provide a folding query.
+    /// Refer to <doc:CodeFolding> for more information on enabling code folding.
     public var isCodeFoldingEnabled: Bool {
         get { textInputView.isCodeFoldingEnabled }
         set { textInputView.isCodeFoldingEnabled = newValue }

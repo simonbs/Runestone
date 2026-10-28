@@ -13,9 +13,9 @@ public final class TreeSitterLanguage {
     public let highlightsQuery: TreeSitterLanguage.Query?
     /// Query used for detecting injected languages.
     public let injectionsQuery: TreeSitterLanguage.Query?
-    /// Query whose `@fold` captures identify foldable regions. Repeated captures
-    /// in one match form a single region. Supports `#trim!` and `#offset!`.
-    /// Markdown heading captures named `@fold.heading` form sections by level.
+    /// Query used for code folding.
+    ///
+    /// Refer to <doc:CodeFolding> for more information on writing a folding query.
     public let foldsQuery: TreeSitterLanguage.Query?
     /// Rules used for indenting text.
     public let indentationScopes: TreeSitterIndentationScopes?
@@ -63,7 +63,7 @@ public final class TreeSitterLanguage {
 }
 
 extension TreeSitterLanguage {
-    /// A set of patterns to be matched against the syntax tree. Queries are used for syntax highlighting and detecting injected languages.
+    /// A set of patterns to be matched against the syntax tree. Queries are used for syntax highlighting, detecting injected languages, and code folding.
     ///
     /// Please refer to Tree-sitter's documentation for more information on queries:
     /// https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries
