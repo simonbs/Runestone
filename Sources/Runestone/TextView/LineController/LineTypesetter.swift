@@ -15,6 +15,12 @@ private final class TypesetResult {
 }
 
 final class LineTypesetter {
+    private struct Configuration: Equatable {
+        let width: CGFloat
+        let mode: LineBreakMode
+        let heightMultiplier: CGFloat
+    }
+
     private enum TypesetEndCondition {
         case yPosition(_ targetYPosition: CGFloat)
         case characterIndex(_ targetCharacterIndex: Int)
@@ -59,12 +65,17 @@ final class LineTypesetter {
     private var startOffset = 0
     private var nextYPosition: CGFloat = 0
     private var lineFragmentIndex = 0
+    private var preparedConfiguration: Configuration?
+    private var currentConfiguration: Configuration {
+        Configuration(width: constrainingWidth, mode: lineBreakMode, heightMultiplier: lineFragmentHeightMultiplier)
+    }
 
     init(lineID: String) {
         self.lineID = lineID
     }
 
     func reset() {
+        preparedConfiguration = nil
         lineFragments = []
         maximumLineWidth = 0
         stringLength = 0
@@ -77,9 +88,39 @@ final class LineTypesetter {
     }
 
     func prepareToTypeset(_ attributedString: NSAttributedString) {
+        if lineFragments.isEmpty { preparedConfiguration = currentConfiguration }
         self.attributedString = attributedString
         stringLength = CFAttributedStringGetLength(attributedString)
         typesetter = CTTypesetterCreateWithAttributedString(stringForTypesetting(attributedString))
+    }
+
+    /// The controller grants one-shot reuse only for a clean text invalidation.
+    /// Keep the previous input local to this call; ordinary preparation owns no
+    /// extra snapshot and performs no prefix validation.
+    func reprepareToTypeset(_ string: NSAttributedString, previous: NSAttributedString, prefixLimit: Int) -> [LineFragment] {
+        var count = 0
+        if preparedConfiguration == currentConfiguration, lineBreakMode == .byWordWrapping,
+           constrainingWidth.isFinite, constrainingWidth > 0,
+           lineFragmentHeightMultiplier.isFinite, lineFragmentHeightMultiplier > 0 {
+            count = LinePrefixReuse.count(from: previous, to: string, fragments: lineFragments, limit: prefixLimit)
+        }
+        let prefix = Array(lineFragments.prefix(count))
+        reset()
+        prepareToTypeset(string)
+        guard let typesetter else {
+            return []
+        }
+        for fragment in prefix {
+            let range = CFRange(location: fragment.visibleRange.location, length: fragment.visibleRange.length)
+            let rebuilt = fragment.withLine(CTTypesetterCreateLine(typesetter, range))
+            lineFragments.append(rebuilt)
+            lineFragmentsMap[rebuilt.id] = rebuilt.index
+            maximumLineWidth = max(maximumLineWidth, rebuilt.scaledSize.width)
+        }
+        startOffset = lineFragments.last?.range.upperBound ?? 0
+        nextYPosition = lineFragments.last.map { $0.yPosition + $0.scaledSize.height } ?? 0
+        lineFragmentIndex = lineFragments.count
+        return lineFragments
     }
 
     // The caller has verified that only appearance attributes changed. Rebuild
