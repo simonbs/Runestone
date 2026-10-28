@@ -349,10 +349,10 @@ final class LayoutManager {
         layoutIfNeeded()
     }
 
-    func redisplayLines(withIDs lineIDs: Set<DocumentLineNodeID>) {
+    func redisplayLines(withIDs lineIDs: Set<DocumentLineNodeID>, allowingPrefixReuse: Bool = false) {
         for lineID in lineIDs {
             if let lineController = lineControllerStorage[lineID] {
-                lineController.invalidateEverything()
+                lineController.invalidateEverything(allowingPrefixReuse: allowingPrefixReuse)
                 // Only display the line if it's currently visible on the screen. Otherwise it's enough to invalidate it and redisplay it later.
                 if visibleLineIDs.contains(lineID) {
                     let lineYPosition = lineController.line.yPosition

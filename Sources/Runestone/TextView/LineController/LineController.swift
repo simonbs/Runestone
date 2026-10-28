@@ -22,6 +22,7 @@ final class LineController {
     var lineFragmentHeightMultiplier: CGFloat = 1 {
         didSet {
             if lineFragmentHeightMultiplier != oldValue {
+                invalidatePrefixReuse()
                 typesetter.lineFragmentHeightMultiplier = lineFragmentHeightMultiplier
             }
         }
@@ -34,12 +35,17 @@ final class LineController {
         }
     }
     var estimatedLineFragmentHeight: CGFloat = 15
-    var tabWidth: CGFloat = 10
+    var tabWidth: CGFloat = 10 {
+        didSet {
+            if tabWidth != oldValue { invalidatePrefixReuse() }
+        }
+    }
     var constrainingWidth: CGFloat {
         get {
             typesetter.constrainingWidth
         }
         set {
+            if typesetter.constrainingWidth != newValue { invalidatePrefixReuse() }
             typesetter.constrainingWidth = newValue
         }
     }
@@ -67,6 +73,7 @@ final class LineController {
     var kern: CGFloat = 0 {
         didSet {
             if kern != oldValue {
+                invalidatePrefixReuse()
                 isDefaultAttributesInvalid = true
             }
         }
@@ -76,6 +83,7 @@ final class LineController {
             typesetter.lineBreakMode
         }
         set {
+            if typesetter.lineBreakMode != newValue { invalidatePrefixReuse() }
             typesetter.lineBreakMode = newValue
         }
     }
@@ -99,6 +107,8 @@ final class LineController {
     private var isDefaultAttributesInvalid = true
     private var isSyntaxHighlightingInvalid = true
     private var isTypesetterInvalid = true
+    private var allowsPrefixReuse = false
+    private var isPrefixReuseInvalidated = false
     private var _lineHeight: CGFloat?
     private var lineFragmentTree: LineFragmentTree
     private var syntaxHighlighter: LineSyntaxHighlighter? {
@@ -147,7 +157,13 @@ final class LineController {
         cachedSyntaxHighlighter?.cancel()
     }
 
-    func invalidateEverything() {
+    func invalidateEverything(allowingPrefixReuse: Bool = false) {
+        // Capture clean/pending state before cancellation clears the request.
+        // Repeated invalidations deliberately drop the one-shot permission.
+        allowsPrefixReuse = allowingPrefixReuse && !typesetter.lineFragments.isEmpty
+            && !isStringInvalid && !isDefaultAttributesInvalid && !isSyntaxHighlightingInvalid && !isTypesetterInvalid
+            && pendingHighlightInput == nil && !isPrefixReuseInvalidated
+        if !allowsPrefixReuse { isPrefixReuseInvalidated = true }
         cancelSyntaxHighlighting()
         isLineFragmentCacheInvalid = true
         isStringInvalid = true
@@ -158,11 +174,13 @@ final class LineController {
     }
 
     func invalidateSyntaxHighlighter() {
+        invalidatePrefixReuse()
         cancelSyntaxHighlighting()
         cachedSyntaxHighlighter = nil
     }
 
     func invalidateSyntaxHighlighting() {
+        invalidatePrefixReuse()
         cancelSyntaxHighlighting()
         isTypesetterInvalid = true
         isDefaultAttributesInvalid = true
@@ -205,12 +223,23 @@ final class LineController {
 }
 
 private extension LineController {
+    private func invalidatePrefixReuse() {
+        allowsPrefixReuse = false
+        // A later text edit cannot re-arm reuse after nontext invalidation,
+        // including configuration changes that happen to return to old values.
+        isPrefixReuseInvalidated = true
+    }
+
     private func prepareToDisplayString(_ typesetAmount: TypesetAmount, syntaxHighlightAsynchronously: Bool) {
-        prepareString(syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
+        prepareString(for: typesetAmount, syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
         typesetLineFragments(typesetAmount)
     }
 
-    private func prepareString(syntaxHighlightAsynchronously: Bool) {
+    private func prepareString(for amount: TypesetAmount, syntaxHighlightAsynchronously: Bool) {
+        // updateString replaces this object; defaults/highlighting mutate only the
+        // new object. Never retain an additional snapshot after this preparation.
+        let previous = allowsPrefixReuse && isStringInvalid && !syntaxHighlightAsynchronously ? attributedString : nil
+        allowsPrefixReuse = false
         if isStringInvalid || isDefaultAttributesInvalid
             || pendingHighlightInput.map({ $0.byteRange != line.data.totalByteRange }) == true {
             cancelSyntaxHighlighting()
@@ -219,7 +248,20 @@ private extension LineController {
         updateStringIfNecessary()
         updateDefaultAttributesIfNecessary()
         updateSyntaxHighlightingIfNecessary(async: syntaxHighlightAsynchronously)
-        updateTypesetterIfNecessary()
+        updateTypesetterIfNecessary(previous: previous, prefixLimit: previous == nil ? 0 : prefixLimit(for: amount))
+    }
+
+    private func prefixLimit(for amount: TypesetAmount) -> Int {
+        // Leave the target-crossing fragment to the existing suffix loop, which
+        // also preserves its additional-fragment behavior for location requests.
+        switch amount {
+        case .inRect(let rect):
+            return typesetter.lineFragments.prefix { $0.yPosition + $0.scaledSize.height < rect.maxY }.count
+        case .toLocation(let location):
+            return typesetter.lineFragments.prefix { $0.range.upperBound < location }.count
+        case .toLineFragmentIndex(let index):
+            return min(max(0, index), typesetter.lineFragments.count)
+        }
     }
 
     private func typesetLineFragments(_ typesetAmount: TypesetAmount) {
@@ -276,14 +318,19 @@ private extension LineController {
         }
     }
 
-    private func updateTypesetterIfNecessary() {
+    private func updateTypesetterIfNecessary(previous: NSAttributedString? = nil, prefixLimit: Int = 0) {
         if isTypesetterInvalid {
             lineFragmentTree.reset(rootValue: 0, rootData: LineFragmentNodeData(lineFragment: nil))
-            typesetter.reset()
-            if let attributedString = attributedString {
-                typesetter.prepareToTypeset(attributedString)
+            if let previous, let attributedString, pendingHighlightInput == nil, !isPrefixReuseInvalidated {
+                let prefix = typesetter.reprepareToTypeset(attributedString, previous: previous, prefixLimit: prefixLimit)
+                // Install the prefix even if the suffix request produces nothing.
+                updateLineHeight(for: prefix)
+            } else {
+                typesetter.reset()
+                if let attributedString { typesetter.prepareToTypeset(attributedString) }
             }
             isTypesetterInvalid = false
+            isPrefixReuseInvalidated = false
         }
     }
 
