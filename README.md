@@ -18,6 +18,7 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 
 - Syntax highlighting.
 - Line numbers.
+- Collapse code blocks and Markdown sections from the gutter.
 - Highlight the selected line.
 - Show invisible characters (tabs, spaces and line breaks).
 - Insertion of character pairs, e.g. inserting the trailing quotation mark when inserting the leading.
@@ -47,6 +48,9 @@ Open `Example/Example.xcodeproj` and run the Example scheme. The ellipsis menu's
 folding. Apps opt in with `textView.isCodeFoldingEnabled = true`; see the
 [folding API documentation](Sources/Runestone/Documentation.docc/CodeFolding.md).
 
+<details>
+<summary>Try a local document in Simulator</summary>
+
 To inspect a local UTF-8 document without saving it to preferences, install the
 Example and copy the file into its Documents directory:
 
@@ -61,6 +65,8 @@ Fixture mode adds **Jump to Top** and **Jump to Bottom** and enables wrapping an
 line numbers. Set `RUNESTONE_WRAP_LINES=0` to disable wrapping. Markdown fixtures
 use `.md` or `.markdown`. Keep large fixtures local, and use Release builds for
 performance checks; console navigation timings exclude document loading/parsing.
+
+</details>
 
 ## 🏎 Performance
 
