@@ -34,7 +34,6 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 - Automatically detects if a file is using spaces or tabs for indentation.
 - Specify line endings (CR, LF, CRLF) to use when inserting a line break.
 - Automatically detect line endings in a text.
-- Localized editor actions, including Simplified and Traditional Chinese, Brazilian Portuguese, Danish, Swedish, Norwegian Bokmål, Korean, Czech, Italian, Dutch, and Polish.
 
 ## 🚀 Getting Started
 
