@@ -5,8 +5,8 @@
         "package": "TreeSitterLanguages",
         "repositoryURL": "https://github.com/simonbs/TreeSitterLanguages.git",
         "state": {
-          "branch": "codex/code-folding-queries",
-          "revision": "135a19d5e0fcede68aa8e3437f521ff10482e9dd",
+          "branch": null,
+          "revision": "12e38d632d845ba6e94eff02de53418963a98506",
           "version": null
         }
       }
