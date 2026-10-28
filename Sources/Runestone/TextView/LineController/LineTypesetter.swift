@@ -61,6 +61,7 @@ final class LineTypesetter {
     private var stringLength = 0
     private var attributedString: NSAttributedString?
     private var typesetter: CTTypesetter?
+    private var unbrokenRun: UnbrokenLineBreakContext.Run?
     private var lineFragmentsMap: [LineFragmentID: Int] = [:]
     private var startOffset = 0
     private var nextYPosition: CGFloat = 0
@@ -81,6 +82,7 @@ final class LineTypesetter {
         stringLength = 0
         attributedString = nil
         typesetter = nil
+        unbrokenRun = nil
         lineFragmentsMap = [:]
         startOffset = 0
         nextYPosition = 0
@@ -89,9 +91,17 @@ final class LineTypesetter {
 
     func prepareToTypeset(_ attributedString: NSAttributedString) {
         if lineFragments.isEmpty { preparedConfiguration = currentConfiguration }
-        self.attributedString = attributedString
-        stringLength = CFAttributedStringGetLength(attributedString)
-        typesetter = CTTypesetterCreateWithAttributedString(stringForTypesetting(attributedString))
+        let context: UnbrokenLineBreakContext?
+        if case .byWordWrapping = lineBreakMode {
+            context = UnbrokenLineBreakContext.make(for: attributedString)
+        } else {
+            context = nil
+        }
+        let preparedString = context?.text ?? attributedString
+        self.attributedString = preparedString
+        unbrokenRun = context?.run
+        stringLength = CFAttributedStringGetLength(preparedString)
+        typesetter = CTTypesetterCreateWithAttributedString(stringForTypesetting(preparedString))
     }
 
     /// The controller grants one-shot reuse only for a clean text invalidation.
@@ -138,6 +148,7 @@ final class LineTypesetter {
         if isFinishedTypesetting {
             self.attributedString = nil
             self.typesetter = nil
+            unbrokenRun = nil
         }
         return lineFragments
     }
@@ -148,6 +159,7 @@ final class LineTypesetter {
         if isFinishedTypesetting {
             attributedString = nil
             typesetter = nil
+            unbrokenRun = nil
         }
         return lineFragments
     }
@@ -158,6 +170,7 @@ final class LineTypesetter {
         if isFinishedTypesetting {
             attributedString = nil
             typesetter = nil
+            unbrokenRun = nil
         }
         return lineFragments
     }
@@ -319,6 +332,18 @@ private extension LineTypesetter {
     private func suggestNextLineBreak(using typesetter: CTTypesetter) -> Int {
         guard let attributedString else {
             return stringLength
+        }
+        if case .byWordWrapping = lineBreakMode,
+           let run = unbrokenRun, startOffset < run.range.upperBound,
+           run.allowsInitialOffset || startOffset > run.range.lowerBound,
+           constrainingWidth.isFinite, constrainingWidth >= 32,
+           lineFragmentHeightMultiplier.isFinite, lineFragmentHeightMultiplier > 0 {
+            let length = CTTypesetterSuggestClusterBreak(typesetter, startOffset, Double(constrainingWidth))
+            if length > 0 && length < run.range.upperBound - startOffset {
+                return length
+            }
+            if length <= 0 { unbrokenRun = nil }
+            // Keep quoted-run entry/exit native, outside the word wrapper's lookback.
         }
         let lineBreakSuggester = LineBreakSuggester(
             lineBreakMode: lineBreakMode,
