@@ -208,23 +208,71 @@ private extension LineTypesetter {
     }
 
     private func makeNextLineFragment(using typesetter: CTTypesetter) -> LineFragment? {
-        // suggestNextLineBreak(using:) uses CTTypesetterSuggestLineBreak but it may return lines that are longer than our constraining width.
-        // In that case we keep removeing characters from the line until we're below the constraining width.
-        var length = suggestNextLineBreak(using: typesetter)
-        var lineFragment: LineFragment?
-        while lineFragment == nil || lineFragment!.scaledSize.width > constrainingWidth {
-            let visibleRange = CFRangeMake(startOffset, length)
-            lineFragment = makeLineFragment(for: visibleRange, in: typesetter, lineFragmentIndex: lineFragmentIndex, yPosition: nextYPosition)
-            length -= 1
+        guard let attributedString, startOffset < stringLength,
+              let string = CFAttributedStringGetString(attributedString) else { return nil }
+        let suggestedLength = suggestNextLineBreak(using: typesetter)
+        let proposedEnd = startOffset + min(max(0, suggestedLength), stringLength - startOffset)
+        var end = composedBoundary(atOrBefore: proposedEnd, in: string)
+        if end <= startOffset {
+            let first = composedRange(at: startOffset, in: string)
+            end = first.location + first.length
         }
-        guard let lineFragment else {
-            return nil
+        var minimumEnd: Int?
+        while true {
+            let visibleRange = CFRange(location: startOffset, length: end - startOffset)
+            let fragment = makeLineFragment(for: visibleRange, in: typesetter,
+                                            lineFragmentIndex: lineFragmentIndex, yPosition: nextYPosition)
+            if fragment.scaledSize.width <= constrainingWidth {
+                let hiddenLength = lengthOfWhitespace(startingAt: end, in: string)
+                return hiddenLength > 0 ? fragment.withHiddenLength(hiddenLength) : fragment
+            }
+            if minimumEnd == nil {
+                let first = composedRange(at: startOffset, in: string)
+                minimumEnd = first.location + first.length
+            }
+            // A single oversized grapheme must overflow rather than disappear or
+            // make no progress. Zero-length CoreText ranges mean the whole suffix.
+            guard let minimumEnd, end > minimumEnd else {
+                let hiddenLength = lengthOfWhitespace(startingAt: end, in: string)
+                return hiddenLength > 0 ? fragment.withHiddenLength(hiddenLength) : fragment
+            }
+            let last = composedRange(at: end - 1, in: string)
+            end = max(minimumEnd, last.location)
         }
-        let whitespaceLength = lengthOfWhitespace(after: startOffset + length)
-        guard whitespaceLength > 0 else {
-            return lineFragment
+    }
+
+    /// Fast ASCII boundaries avoid asking Unicode segmentation about ordinary
+    /// code on every fragment. Adjacent non-ASCII units use composed sequences.
+    private func composedBoundary(atOrBefore location: Int, in string: CFString) -> Int {
+        guard location > 0, location < stringLength else {
+            return location
         }
-        return lineFragment.withHiddenLength(whitespaceLength)
+        let previous = CFStringGetCharacterAtIndex(string, location - 1)
+        let current = CFStringGetCharacterAtIndex(string, location)
+        if previous < 128 && current < 128 {
+            return previous == 13 && current == 10 ? location - 1 : location
+        }
+        return composedRange(at: location, in: string).location
+    }
+
+    private func composedRange(at location: Int, in string: CFString) -> CFRange {
+        let unit = CFStringGetCharacterAtIndex(string, location)
+        if unit == 10, location > 0, CFStringGetCharacterAtIndex(string, location - 1) == 13 {
+            return CFRange(location: location - 1, length: 2)
+        }
+        if location + 1 < stringLength {
+            let next = CFStringGetCharacterAtIndex(string, location + 1)
+            if unit == 13 && next == 10 {
+                return CFRange(location: location, length: 2)
+            }
+            if unit < 128 && next < 128,
+               location == 0 || CFStringGetCharacterAtIndex(string, location - 1) < 128 {
+                return CFRange(location: location, length: 1)
+            }
+        } else if unit < 128, location == 0 || CFStringGetCharacterAtIndex(string, location - 1) < 128 {
+            return CFRange(location: location, length: 1)
+        }
+        return CFStringGetRangeOfComposedCharactersAtIndex(string, location)
     }
 
     private func suggestNextLineBreak(using typesetter: CTTypesetter) -> Int {
@@ -240,17 +288,20 @@ private extension LineTypesetter {
         return lineBreakSuggester.suggestLineBreak(startingAt: startOffset)
     }
 
-    private func lengthOfWhitespace(after location: Int) -> Int {
-        guard let attributedString, location < attributedString.length - 1 else {
+    private func lengthOfWhitespace(startingAt location: Int, in string: CFString) -> Int {
+        guard let attributedString, location < stringLength else {
             return 0
         }
-        var nextCharacter = location + 1
-        var length = 0
-        while attributedString.isWhitespaceCharacter(at: nextCharacter) {
-            nextCharacter += 1
-            length += 1
+        var next = location
+        while attributedString.isWhitespaceCharacter(at: next) {
+            next += 1
         }
-        return length
+        guard next > location else {
+            return 0
+        }
+        // A space followed by a combining mark belongs to one visible grapheme;
+        // hiding only the space would leave the next fragment inside that cluster.
+        return max(0, composedBoundary(atOrBefore: next, in: string) - location)
     }
 
     private func makeLineFragment(

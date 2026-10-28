@@ -8,6 +8,10 @@ struct WordWrappingLineBreakSuggester {
 
     func suggestLineBreak(startingAt startOffset: Int) -> Int {
         let length = CTTypesetterSuggestLineBreak(typesetter, startOffset, Double(constrainingWidth))
+        guard length > 0 else {
+            // LineTypesetter will force one complete grapheme when none fits.
+            return 0
+        }
         guard startOffset + length < attributedString.length else {
             // We've reached the end of the line.
             return length
