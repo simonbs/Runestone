@@ -42,6 +42,11 @@ final class LineFragment {
     ///
     /// This is relative to the beginning of the line.
     let yPosition: CGFloat
+    /// Vertical text placement in the fragment's top-down and Core Text coordinates.
+    var verticalGeometry: LineFragmentVerticalGeometry {
+        LineFragmentVerticalGeometry(baseHeight: baseSize.height, scaledHeight: scaledSize.height, descent: descent)
+    }
+
     /// Entire range of the line fragment.
     ///
     /// The range also contains the ``hiddenLength`` of the line fragment. That is, the visible content of the line fragment is placed in the range `range.location` to `range.length - hiddenLength`.
@@ -135,5 +140,24 @@ final class LineFragment {
 extension LineFragment: CustomDebugStringConvertible {
     var debugDescription: String {
         "[LineFragment id=\(id) descent=\(descent) baseSize=\(baseSize) scaledSize=\(scaledSize) yPosition=\(yPosition)]"
+    }
+}
+
+/// Vertical placement shared by caret and text drawing in a line fragment.
+struct LineFragmentVerticalGeometry {
+    let baseHeight: CGFloat
+    let scaledHeight: CGFloat
+    let descent: CGFloat
+
+    var textTop: CGFloat {
+        (scaledHeight - baseHeight) / 2
+    }
+
+    var topDownBaseline: CGFloat {
+        scaledHeight - descent - textTop
+    }
+
+    var coreTextBaseline: CGFloat {
+        descent + textTop
     }
 }
