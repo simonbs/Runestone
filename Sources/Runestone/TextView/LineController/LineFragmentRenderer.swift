@@ -64,27 +64,12 @@ private extension LineFragmentRenderer {
             guard let color = attributes[NSAttributedString.Key.tokenBackgroundColor] as? UIColor else {
                 continue
             }
-            let count = CTRunGetGlyphCount(run)
-            guard count > 0 else {
-                continue
-            }
-            var positions = [CGPoint](repeating: .zero, count: count)
-            var advances = [CGSize](repeating: .zero, count: count)
-            CTRunGetPositions(run, CFRange(location: 0, length: 0), &positions)
-            CTRunGetAdvances(run, CFRange(location: 0, length: 0), &advances)
-            var minX = CGFloat.greatestFiniteMagnitude
-            var maxX = -CGFloat.greatestFiniteMagnitude
-            for index in 0 ..< count {
-                let start = positions[index].x
-                let end = start + advances[index].width
-                minX = min(minX, min(start, end))
-                maxX = max(maxX, max(start, end))
-            }
-            guard maxX > minX else {
+            guard let bounds = CoreTextRunGeometry.horizontalBounds(of: run) else {
                 continue
             }
             context.setFillColor(color.cgColor)
-            context.fill(CGRect(x: minX, y: 0, width: maxX - minX, height: lineFragment.scaledSize.height))
+            context.fill(CGRect(x: bounds.lowerBound, y: 0, width: bounds.upperBound - bounds.lowerBound,
+                                height: lineFragment.scaledSize.height))
         }
     }
 

@@ -81,3 +81,31 @@ private extension CoreTextLineGeometry {
         return minX ... maxX
     }
 }
+
+/// Horizontal glyph extents for painting one Core Text run, independent of its style.
+enum CoreTextRunGeometry {
+    static func horizontalBounds(of run: CTRun) -> ClosedRange<CGFloat>? {
+        let count = CTRunGetGlyphCount(run)
+        guard count > 0 else {
+            return nil
+        }
+        var positions = [CGPoint](repeating: .zero, count: count)
+        var advances = [CGSize](repeating: .zero, count: count)
+        CTRunGetPositions(run, CFRange(location: 0, length: 0), &positions)
+        CTRunGetAdvances(run, CFRange(location: 0, length: 0), &advances)
+        return horizontalBounds(positions: positions, advances: advances)
+    }
+
+    static func horizontalBounds(positions: [CGPoint], advances: [CGSize]) -> ClosedRange<CGFloat>? {
+        precondition(positions.count == advances.count)
+        var minX = CGFloat.greatestFiniteMagnitude
+        var maxX = -CGFloat.greatestFiniteMagnitude
+        for (position, advance) in zip(positions, advances) {
+            let start = position.x
+            let end = start + advance.width
+            minX = min(minX, min(start, end))
+            maxX = max(maxX, max(start, end))
+        }
+        return maxX > minX ? minX ... maxX : nil
+    }
+}
