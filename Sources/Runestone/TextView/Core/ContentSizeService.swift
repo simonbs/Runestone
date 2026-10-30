@@ -1,9 +1,9 @@
 import Combine
-import UIKit
+import Foundation
 
 final class ContentSizeService {
-    var safeAreaInset: UIEdgeInsets = .zero
-    var textContainerInset: UIEdgeInsets = .zero
+    var safeAreaInset: TextInsets = .zero
+    var textContainerInset: TextInsets = .zero
     var scrollViewWidth: CGFloat = 0 {
         didSet {
             if scrollViewWidth != oldValue && isLineWrappingEnabled {
@@ -29,23 +29,19 @@ final class ContentSizeService {
         }
     }
     var contentWidth: CGFloat {
-        let minimumWidth = scrollViewWidth - safeAreaInset.left - safeAreaInset.right
+        let mode: ContentSizeGeometry.WidthMode
         if isLineWrappingEnabled {
-            return minimumWidth
+            mode = .wrapped
         } else {
-            let textContentWidth = longestLineWidth ?? scrollViewWidth
-            let preferredWidth = ceil(
-                textContentWidth
-                + gutterWidthService.gutterWidth
-                + textContainerInset.left
-                + textContainerInset.right
-                + invisibleCharacterConfiguration.maximumLineBreakSymbolWidth
-            )
-            return max(preferredWidth, minimumWidth)
+            mode = .unwrapped(longestLineWidth: longestLineWidth,
+                              gutterWidth: gutterWidthService.gutterWidth,
+                              lineBreakSymbolWidth: invisibleCharacterConfiguration.maximumLineBreakSymbolWidth)
         }
+        return ContentSizeGeometry.width(scrollViewWidth: scrollViewWidth, safeAreaInset: safeAreaInset,
+                                         textContainerInset: textContainerInset, mode: mode)
     }
     var contentHeight: CGFloat {
-        ceil(totalLinesHeight + textContainerInset.top + textContainerInset.bottom)
+        ContentSizeGeometry.height(totalLinesHeight: totalLinesHeight, textContainerInset: textContainerInset)
     }
     var contentSize: CGSize {
         CGSize(width: contentWidth, height: contentHeight)
