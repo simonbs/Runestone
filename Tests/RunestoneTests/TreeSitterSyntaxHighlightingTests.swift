@@ -149,7 +149,7 @@ final class TreeSitterSyntaxHighlightingTests: XCTestCase {
                                                   stringView: stringView, lineManager: lineManager)
         mode.parse(stringView.string)
         let queue = OperationQueue()
-        let highlighter = TreeSitterSyntaxHighlighter(stringView: stringView, languageMode: mode, operationQueue: queue)
+        let highlighter = TreeSitterSyntaxHighlighter(languageMode: mode, operationQueue: queue)
         return AsyncContext(highlighter: highlighter, mode: mode, queue: queue, stringView: stringView)
     }
 

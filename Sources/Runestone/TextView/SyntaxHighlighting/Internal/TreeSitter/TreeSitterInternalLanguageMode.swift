@@ -181,7 +181,7 @@ final class TreeSitterInternalLanguageMode: InternalLanguageMode {
     }
 
     func createLineSyntaxHighlighter() -> LineSyntaxHighlighter {
-        TreeSitterSyntaxHighlighter(stringView: stringView, languageMode: self, operationQueue: operationQueue)
+        TreeSitterSyntaxHighlighter(languageMode: self, operationQueue: operationQueue)
     }
 
     func currentIndentLevel(of line: DocumentLineNode, using indentStrategy: IndentStrategy) -> Int {

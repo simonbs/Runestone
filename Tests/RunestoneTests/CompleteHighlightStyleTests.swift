@@ -118,7 +118,7 @@ final class CompleteHighlightStyleTests: XCTestCase {
         mode.parse(text as NSString)
         let queue = OperationQueue()
         queue.isSuspended = true
-        let highlighter = TreeSitterSyntaxHighlighter(stringView: stringView, languageMode: mode, operationQueue: queue)
+        let highlighter = TreeSitterSyntaxHighlighter(languageMode: mode, operationQueue: queue)
         let previousTheme = CompleteCaptureTheme()
         previousTheme.styles = ["string": HighlightStyle(textColor: .red, backgroundColor: .yellow)]
         highlighter.theme = previousTheme
