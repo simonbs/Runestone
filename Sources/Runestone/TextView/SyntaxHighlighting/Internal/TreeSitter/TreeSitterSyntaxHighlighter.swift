@@ -36,8 +36,9 @@ final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
 
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput) {
         cancel()
-        let captures = languageMode.captures(in: input.byteRange)
-        let tokens = self.tokens(for: captures, localTo: input.byteRange)
+        let captures = languageMode.captures(in: input.byteRange).map(TreeSitterSyntaxCapture.init)
+        let highlights = TreeSitterSyntaxHighlightMapper.highlights(for: captures, localTo: input.byteRange)
+        let tokens = highlights.map(token(from:)).filter { !$0.isEmpty }
         setAttributes(for: tokens, on: input.attributedString)
     }
 
@@ -59,13 +60,15 @@ final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
                 return
             }
             let captures = snapshot.captures(in: input.byteRange) { operation.isCancelled }
+                .map(TreeSitterSyntaxCapture.init)
             if !operation.isCancelled {
                 DispatchQueue.main.async {
                     defer {
                         if self.currentOperation === operation { self.currentOperation = nil }
                     }
                     if self.currentOperation === operation && !operation.isCancelled && input.isValid() {
-                        let tokens = self.tokens(for: captures, localTo: input.byteRange)
+                        let highlights = TreeSitterSyntaxHighlightMapper.highlights(for: captures, localTo: input.byteRange)
+                        let tokens = highlights.map(self.token(from:)).filter { !$0.isEmpty }
                         guard self.currentOperation === operation && !operation.isCancelled && input.isValid() else {
                             completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
                             return
@@ -185,39 +188,17 @@ private extension TreeSitterSyntaxHighlighter {
         }
     }
 
-    private func tokens(for captures: [TreeSitterCapture], localTo localRange: ByteRange) -> [TreeSitterSyntaxHighlightToken] {
-        var tokens: [TreeSitterSyntaxHighlightToken] = []
-        for capture in captures where capture.byteRange.overlaps(localRange) {
-            // We highlight each line separately but a capture may extend beyond a line,
-            // e.g. an unterminated string, so we need to cap the start and end location
-            // to ensure it's within the line.
-            let cappedStartByte = max(capture.byteRange.lowerBound, localRange.lowerBound)
-            let cappedEndByte = min(capture.byteRange.upperBound, localRange.upperBound)
-            let length = cappedEndByte - cappedStartByte
-            let cappedRange = ByteRange(location: cappedStartByte - localRange.lowerBound, length: length)
-            if !cappedRange.isEmpty {
-                let token = token(from: capture, in: cappedRange)
-                if !token.isEmpty {
-                    tokens.append(token)
-                }
-            }
-        }
-        return tokens
-    }
-}
-
-private extension TreeSitterSyntaxHighlighter {
-    private func token(from capture: TreeSitterCapture, in byteRange: ByteRange) -> TreeSitterSyntaxHighlightToken {
-        let range = NSRange(byteRange)
-        if let style = theme.highlightStyle(for: capture.name) {
+    private func token(from highlight: SyntaxHighlight) -> TreeSitterSyntaxHighlightToken {
+        if let style = theme.highlightStyle(for: highlight.name) {
             return TreeSitterSyntaxHighlightToken(
-                range: range, textColor: nil, shadow: nil, font: nil, fontTraits: [], completeStyle: style)
+                range: highlight.range, textColor: nil, shadow: nil, font: nil, fontTraits: [], completeStyle: style)
         }
-        let textColor = theme.textColor(for: capture.name)
-        let shadow = theme.shadow(for: capture.name)
-        let font = theme.font(for: capture.name)
-        let fontTraits = theme.fontTraits(for: capture.name)
-        return TreeSitterSyntaxHighlightToken(range: range, textColor: textColor, shadow: shadow, font: font, fontTraits: fontTraits)
+        let textColor = theme.textColor(for: highlight.name)
+        let shadow = theme.shadow(for: highlight.name)
+        let font = theme.font(for: highlight.name)
+        let fontTraits = theme.fontTraits(for: highlight.name)
+        return TreeSitterSyntaxHighlightToken(
+            range: highlight.range, textColor: textColor, shadow: shadow, font: font, fontTraits: fontTraits)
     }
 }
 
