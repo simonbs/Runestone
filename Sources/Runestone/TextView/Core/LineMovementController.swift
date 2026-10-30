@@ -15,9 +15,11 @@ final class LineMovementController {
         let newLocation: Int?
         switch direction {
         case .left:
-            newLocation = locationForMoving(fromLocation: location, by: offset * -1)
+            newLocation = HorizontalTextMovement.location(from: location, offset: offset * -1,
+                                                          stringView: stringView, lineManager: lineManager)
         case .right:
-            newLocation = locationForMoving(fromLocation: location, by: offset)
+            newLocation = HorizontalTextMovement.location(from: location, offset: offset,
+                                                          stringView: stringView, lineManager: lineManager)
         case .up:
             newLocation = locationForMoving(lineOffset: offset * -1, fromLineContainingCharacterAt: location)
         case .down:
@@ -34,25 +36,6 @@ final class LineMovementController {
 }
 
 private extension LineMovementController {
-    private func locationForMoving(fromLocation location: Int, by offset: Int) -> Int {
-        let naiveNewLocation = lineManager.visibleLocation(location + offset, movingForward: offset > 0)
-        guard naiveNewLocation >= 0 && naiveNewLocation <= stringView.string.length else {
-            return location
-        }
-        guard naiveNewLocation > 0 && naiveNewLocation < stringView.string.length else {
-            return naiveNewLocation
-        }
-        let range = stringView.string.customRangeOfComposedCharacterSequence(at: naiveNewLocation)
-        guard naiveNewLocation > range.location && naiveNewLocation < range.location + range.length else {
-            return naiveNewLocation
-        }
-        if offset < 0 {
-            return lineManager.visibleLocation(location - range.length, movingForward: false)
-        } else {
-            return lineManager.visibleLocation(location + range.length, movingForward: true)
-        }
-    }
-
     private func locationForMoving(lineOffset: Int, fromLineContainingCharacterAt location: Int) -> Int {
         guard lineOffset != 0 else {
             return location
