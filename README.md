@@ -35,6 +35,12 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 - Specify line endings (CR, LF, CRLF) to use when inserting a line break.
 - Automatically detect line endings in a text.
 
+## Package platforms
+
+The `Runestone` editor product uses UIKit and supports iOS. The `RunestoneEngine`
+product contains platform-neutral Core Text geometry and supports iOS and macOS 26
+or later. To run its isolated macOS tests, use `Scripts/test-engine-macos.sh`.
+
 ## 🚀 Getting Started
 
 Please refer to the [Getting Started](https://docs.runestone.app/documentation/runestone/gettingstarted) article in the documentation and the [Meet Runestone](https://docs.runestone.app/tutorials/meet-runestone) series of tutorials.

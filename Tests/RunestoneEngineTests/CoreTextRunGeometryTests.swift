@@ -1,5 +1,5 @@
 import CoreText
-@testable import Runestone
+@testable import RunestoneEngine
 import XCTest
 
 final class CoreTextRunGeometryTests: XCTestCase {

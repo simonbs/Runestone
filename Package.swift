@@ -7,19 +7,23 @@ let package = Package(
     name: "Runestone",
     defaultLocalization: "en",
     platforms: [
-        .iOS(.v14)
+        .iOS(.v14),
+        .macOS("26.0")
     ],
     products: [
         .library(name: "Runestone", targets: ["Runestone"]),
+        .library(name: "RunestoneEngine", targets: ["RunestoneEngine"]),
         .library(name: "TreeSitter", targets: ["TreeSitter"])
     ],
     targets: [
         .target(name: "Runestone", dependencies: [
-            "TreeSitter"
+            "TreeSitter",
+            "RunestoneEngine"
         ], resources: [
             .copy("PrivacyInfo.xcprivacy"),
             .process("TextView/Appearance/Theme.xcassets")
         ]),
+        .target(name: "RunestoneEngine"),
         .target(
             name: "TreeSitter",
             path: "tree-sitter/lib",
@@ -31,6 +35,7 @@ let package = Package(
             .headerSearchPath("private"),
             .unsafeFlags(["-w"])
         ]),
+        .testTarget(name: "RunestoneEngineTests", dependencies: ["RunestoneEngine"]),
         .testTarget(name: "RunestoneTests", dependencies: [
             "Runestone",
             "TestTreeSitterLanguages"
