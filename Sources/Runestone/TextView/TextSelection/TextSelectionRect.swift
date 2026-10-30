@@ -23,6 +23,23 @@ final class TextSelectionRect: UITextSelectionRect {
     private let _containsEnd: Bool
     private let _isVertical: Bool
 
+    convenience init(_ rectangle: SelectionRectangle) {
+        let writingDirection: NSWritingDirection
+        switch rectangle.writingDirection {
+        case .natural:
+            writingDirection = .natural
+        case .leftToRight:
+            writingDirection = .leftToRight
+        case .rightToLeft:
+            writingDirection = .rightToLeft
+        }
+        self.init(rect: rectangle.rect,
+                  writingDirection: writingDirection,
+                  containsStart: rectangle.containsStart,
+                  containsEnd: rectangle.containsEnd,
+                  isVertical: rectangle.isVertical)
+    }
+
     init(rect: CGRect, writingDirection: NSWritingDirection, containsStart: Bool, containsEnd: Bool, isVertical: Bool = false) {
         _rect = rect
         _writingDirection = writingDirection

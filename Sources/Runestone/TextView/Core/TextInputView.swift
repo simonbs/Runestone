@@ -611,8 +611,10 @@ final class TextInputView: UIView, UITextInput {
         }
         set {
             if newValue != layoutManager.textContainerInset {
-                caretRectService.textContainerInset = newValue
-                selectionRectService.textContainerInset = newValue
+                let textInsets = TextInsets(top: newValue.top, left: newValue.left,
+                                            bottom: newValue.bottom, right: newValue.right)
+                caretRectService.textContainerInset = textInsets
+                selectionRectService.textContainerInset = textInsets
                 contentSizeService.textContainerInset = newValue
                 layoutManager.textContainerInset = newValue
                 layoutManager.setNeedsLayout()
@@ -1783,7 +1785,7 @@ extension TextInputView {
 extension TextInputView {
     func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
         if let indexedRange = range as? IndexedRange {
-            return selectionRectService.selectionRects(in: indexedRange.range.nonNegativeLength)
+            return selectionRectService.selectionRects(in: indexedRange.range.nonNegativeLength).map(TextSelectionRect.init)
         } else {
             return []
         }
