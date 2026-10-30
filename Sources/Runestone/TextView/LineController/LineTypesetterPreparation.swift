@@ -1,4 +1,5 @@
 import Foundation
+import RunestoneEngine
 
 /// An optional fast-path span whose boundaries are expressed in UTF-16 units.
 struct LineTypesetterRun {
@@ -35,23 +36,5 @@ struct DefaultLineTypesetterPreparation: LineTypesetterPreparation {
     func stringForTypesetting(_ input: NSAttributedString) -> NSAttributedString {
         guard let backgroundColorKey else { return input }
         return TokenBackgroundMapping.stringForTypesetting(input, backgroundColorKey: backgroundColorKey)
-    }
-}
-
-/// Moves platform background attributes out of Core Text's glyph drawing pass so
-/// adapters can paint token backgrounds before search and marked-text overlays.
-enum TokenBackgroundMapping {
-    static func stringForTypesetting(_ input: NSAttributedString,
-                                     backgroundColorKey: NSAttributedString.Key) -> NSAttributedString {
-        var copy: NSMutableAttributedString?
-        input.enumerateAttribute(backgroundColorKey, in: NSRange(location: 0, length: input.length)) { value, range, _ in
-            guard let value else { return }
-            if copy == nil {
-                copy = NSMutableAttributedString(attributedString: input)
-            }
-            copy?.removeAttribute(backgroundColorKey, range: range)
-            copy?.addAttribute(.tokenBackgroundColor, value: value, range: range)
-        }
-        return copy ?? input
     }
 }

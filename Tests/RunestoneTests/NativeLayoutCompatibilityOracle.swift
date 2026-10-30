@@ -1,4 +1,5 @@
 import CoreText
+import RunestoneEngine
 import Foundation
 @testable import Runestone
 import UIKit
@@ -14,7 +15,7 @@ private func nativeDrawingText(_ text: NSAttributedString) -> NSAttributedString
         }
         if copy == nil { copy = NSMutableAttributedString(attributedString: text) }
         copy?.removeAttribute(.backgroundColor, range: range)
-        copy?.addAttribute(.tokenBackgroundColor, value: value, range: range)
+        copy?.addAttribute(TokenBackgroundMapping.attributeKey, value: value, range: range)
     }
     return copy ?? text
 }
