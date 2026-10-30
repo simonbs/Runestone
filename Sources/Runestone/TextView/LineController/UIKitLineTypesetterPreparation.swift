@@ -16,20 +16,7 @@ struct UIKitLineTypesetterPreparation: LineTypesetterPreparation {
     }
 
     func stringForTypesetting(_ input: NSAttributedString) -> NSAttributedString {
-        // Paint token backgrounds before search and marked-text highlights.
-        // Preserve the original attributes for StringSyntaxHighlighter clients.
-        var copy: NSMutableAttributedString?
-        input.enumerateAttribute(.backgroundColor, in: NSRange(location: 0, length: input.length)) { value, range, _ in
-            guard let value else {
-                return
-            }
-            if copy == nil {
-                copy = NSMutableAttributedString(attributedString: input)
-            }
-            copy?.removeAttribute(.backgroundColor, range: range)
-            copy?.addAttribute(.tokenBackgroundColor, value: value, range: range)
-        }
-        return copy ?? input
+        TokenBackgroundMapping.stringForTypesetting(input, backgroundColorKey: .backgroundColor)
     }
 }
 
