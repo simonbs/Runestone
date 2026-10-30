@@ -86,8 +86,7 @@ private extension LineFragmentRenderer {
         context.setLineWidth(1.5)
         context.setLineCap(.round)
         context.setLineDash(phase: 0, lengths: [0, 3])
-        let baseline = lineFragment.scaledSize.height - lineFragment.descent
-            - (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
+        let baseline = lineFragment.verticalGeometry.topDownBaseline
         let underlineY = min(baseline + max(1.5, lineFragment.descent / 2), lineFragment.scaledSize.height - 1)
         for range in misspelledRanges {
             for segment in spellingUnderlineSegments(in: range) {
@@ -213,7 +212,7 @@ extension LineFragmentRenderer {
         context.textMatrix = .identity
         context.translateBy(x: 0, y: lineFragment.scaledSize.height)
         context.scaleBy(x: 1, y: -1)
-        let yPosition = lineFragment.descent + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
+        let yPosition = lineFragment.verticalGeometry.coreTextBaseline
         context.textPosition = CGPoint(x: 0, y: yPosition)
         CTLineDraw(lineFragment.line, context)
         context.restoreGState()

@@ -514,7 +514,7 @@ extension LineController {
         for lineFragment in typesetter.lineFragments {
             if let caretLocation = lineFragment.caretLocation(forLineLocalLocation: lineLocalLocation) {
                 let xPosition = CTLineGetOffsetForStringIndex(lineFragment.line, caretLocation, nil)
-                let yPosition = lineFragment.yPosition + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
+                let yPosition = lineFragment.yPosition + lineFragment.verticalGeometry.textTop
                 return CGRect(x: xPosition, y: yPosition, width: Caret.width, height: lineFragment.baseSize.height)
             }
         }
@@ -528,7 +528,7 @@ extension LineController {
                 let finalIndex = min(lineFragment.visibleRange.upperBound, caretRange.upperBound)
                 let xStart = CTLineGetOffsetForStringIndex(lineFragment.line, caretRange.location, nil)
                 let xEnd = CTLineGetOffsetForStringIndex(lineFragment.line, finalIndex, nil)
-                let yPosition = lineFragment.yPosition + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
+                let yPosition = lineFragment.yPosition + lineFragment.verticalGeometry.textTop
                 return CGRect(x: xStart, y: yPosition, width: xEnd - xStart, height: lineFragment.baseSize.height)
             }
         }
