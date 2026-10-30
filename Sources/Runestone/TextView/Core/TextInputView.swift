@@ -615,7 +615,7 @@ final class TextInputView: UIView, UITextInput {
                                             bottom: newValue.bottom, right: newValue.right)
                 caretRectService.textContainerInset = textInsets
                 selectionRectService.textContainerInset = textInsets
-                contentSizeService.textContainerInset = newValue
+                contentSizeService.textContainerInset = textInsets
                 layoutManager.textContainerInset = newValue
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
