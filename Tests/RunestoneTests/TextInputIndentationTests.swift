@@ -27,4 +27,21 @@ final class TextInputIndentationTests: XCTestCase {
         textInputView.insertText("one\ttwo")
         XCTAssertEqual(textInputView.string as String, "\tone\ttwo")
     }
+
+    func testMultilineShiftRoundTripAppliesPlannedTextAndSelection() {
+        let textInputView = TextInputView(theme: DefaultTheme())
+        textInputView.indentStrategy = .space(length: 4)
+        textInputView.insertText("one\ntwo")
+        textInputView.selectedRange = NSRange(location: 0, length: 7)
+
+        textInputView.shiftRight()
+
+        XCTAssertEqual(textInputView.string as String, "    one\n    two")
+        XCTAssertEqual(textInputView.selectedRange, NSRange(location: 4, length: 11))
+
+        textInputView.shiftLeft()
+
+        XCTAssertEqual(textInputView.string as String, "one\ntwo")
+        XCTAssertEqual(textInputView.selectedRange, NSRange(location: 0, length: 7))
+    }
 }

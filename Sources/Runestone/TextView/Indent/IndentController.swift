@@ -51,66 +51,18 @@ final class IndentController {
     }
 
     func shiftLeft(in selectedRange: NSRange) {
-        let lines = lineManager.lines(in: selectedRange)
-        let originalRange = range(surrounding: lines)
-        var newSelectedRange = selectedRange
-        var replacementString: String?
         let indentString = indentStrategy.string(indentLevel: 1)
-        let utf8IndentLength = indentString.count
-        let utf16IndentLength = indentString.utf16.count
-        for (lineIndex, line) in lines.enumerated() {
-            let lineRange = NSRange(location: line.location, length: line.data.totalLength)
-            let lineString = stringView.substring(in: lineRange) ?? ""
-            guard lineString.hasPrefix(indentString) else {
-                replacementString = (replacementString ?? "") + lineString
-                continue
-            }
-            let startIndex = lineString.index(lineString.startIndex, offsetBy: utf8IndentLength)
-            let endIndex = lineString.endIndex
-            replacementString = (replacementString ?? "") + lineString[startIndex ..< endIndex]
-            if lineIndex == 0 {
-                // We don't want the selection to move to the previous line when we can't shift left anymore.
-                // Therefore we keep it to the minimum location, which is the location the line starts on.
-                // If we try to exceed that, we need to adjust the length of the selected range.
-                let preferredLocation = newSelectedRange.location - utf16IndentLength
-                let newLocation = max(preferredLocation, originalRange.location)
-                newSelectedRange.location = newLocation
-                if newLocation > preferredLocation {
-                    let preferredLength = newSelectedRange.length - (newLocation - preferredLocation)
-                    newSelectedRange.length = max(preferredLength, 0)
-                }
-            } else {
-                newSelectedRange.length -= utf16IndentLength
-            }
-        }
-        if let replacementString = replacementString {
-            if delegate?.indentController(self, shouldInsert: replacementString, in: originalRange) == true {
-                delegate?.indentController(self, shouldSelect: newSelectedRange)
-            }
+        if let edit = IndentationEditPlanner.shiftLeft(lines: indentationLines(in: selectedRange),
+                                                       selectedRange: selectedRange, indentString: indentString) {
+            apply(edit)
         }
     }
 
     func shiftRight(in selectedRange: NSRange) {
-        let lines = lineManager.lines(in: selectedRange)
-        let originalRange = range(surrounding: lines)
-        var newSelectedRange = selectedRange
-        var replacementString: String?
         let indentString = indentStrategy.string(indentLevel: 1)
-        let indentLength = indentString.utf16.count
-        for (lineIndex, line) in lines.enumerated() {
-            let lineRange = NSRange(location: line.location, length: line.data.totalLength)
-            let lineString = stringView.substring(in: lineRange) ?? ""
-            replacementString = (replacementString ?? "") + indentString + lineString
-            if lineIndex == 0 {
-                newSelectedRange.location += indentLength
-            } else {
-                newSelectedRange.length += indentLength
-            }
-        }
-        if let replacementString = replacementString {
-            if delegate?.indentController(self, shouldInsert: replacementString, in: originalRange) == true {
-                delegate?.indentController(self, shouldSelect: newSelectedRange)
-            }
+        if let edit = IndentationEditPlanner.shiftRight(lines: indentationLines(in: selectedRange),
+                                                        selectedRange: selectedRange, indentString: indentString) {
+            apply(edit)
         }
     }
 
@@ -119,20 +71,14 @@ final class IndentController {
         if let startLinePosition = lineManager.linePosition(at: range.lowerBound),
             let endLinePosition = lineManager.linePosition(at: range.upperBound) {
             let strategy = languageMode.strategyForInsertingLineBreak(from: startLinePosition, to: endLinePosition, using: indentStrategy)
+            let indentString = indentStrategy.string(indentLevel: strategy.indentLevel)
             if strategy.insertExtraLineBreak {
-                // Inserting a line break enters a new indentation level.
-                // We insert an additional line break and place the cursor in the new block.
-                let firstLineText = symbol + indentStrategy.string(indentLevel: strategy.indentLevel)
-                let secondLineText = symbol + indentStrategy.string(indentLevel: strategy.indentLevel - 1)
-                let indentedText = firstLineText + secondLineText
-                guard delegate?.indentController(self, shouldInsert: indentedText, in: range) == true else {
-                    return
-                }
-                let newSelectedRange = NSRange(location: range.location + firstLineText.utf16.count, length: 0)
-                delegate?.indentController(self, shouldSelect: newSelectedRange)
+                let previousIndentString = indentStrategy.string(indentLevel: strategy.indentLevel - 1)
+                apply(IndentationEditPlanner.insertLineBreak(in: range, symbol: symbol,
+                                                             indentString: indentString,
+                                                             previousIndentString: previousIndentString))
             } else {
-                let indentedText = symbol + indentStrategy.string(indentLevel: strategy.indentLevel)
-                delegate?.indentController(self, shouldInsert: indentedText, in: range)
+                apply(IndentationEditPlanner.insertLineBreak(in: range, symbol: symbol, indentString: indentString))
             }
         } else {
             delegate?.indentController(self, shouldInsert: symbol, in: range)
@@ -152,28 +98,28 @@ final class IndentController {
         case .space(let length):
             tabLength = length
         }
-        let localLocation = location - line.location
-        guard localLocation >= tabLength else {
-            return nil
-        }
         let indentLevel = languageMode.currentIndentLevel(of: line, using: indentStrategy)
         let indentString = indentStrategy.string(indentLevel: indentLevel)
-        guard localLocation <= indentString.utf16.count else {
-            return nil
-        }
-        guard localLocation % tabLength == 0 else {
-            return nil
-        }
-        return NSRange(location: location - tabLength, length: tabLength)
+        return IndentationEditPlanner.indentRange(inFrontOf: location, lineLocation: line.location,
+                                                  currentIndentLength: indentString.utf16.count,
+                                                  tabLength: tabLength)
     }
 }
 
-extension IndentController {
-    private func range(surrounding lines: [DocumentLineNode]) -> NSRange {
-        let firstLine = lines[0]
-        let lastLine = lines[lines.count - 1]
-        let location = firstLine.location
-        let length = (lastLine.location - location) + lastLine.data.totalLength
-        return NSRange(location: location, length: length)
+private extension IndentController {
+    func indentationLines(in selectedRange: NSRange) -> [IndentationLine] {
+        lineManager.lines(in: selectedRange).map { line in
+            let range = NSRange(location: line.location, length: line.data.totalLength)
+            return IndentationLine(range: range, text: stringView.substring(in: range) ?? "")
+        }
+    }
+
+    func apply(_ edit: IndentationEdit) {
+        guard delegate?.indentController(self, shouldInsert: edit.replacementText, in: edit.replacementRange) == true else {
+            return
+        }
+        if let selectedRange = edit.selectedRange {
+            delegate?.indentController(self, shouldSelect: selectedRange)
+        }
     }
 }
