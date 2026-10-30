@@ -8,10 +8,7 @@ struct UnbrokenLineBreakContext {
     let text: NSAttributedString
     // Terminal-excluded paragraph length retained for existing admission diagnostics.
     let bodyLength: Int
-    struct Run {
-        let range: Range<Int>
-        let allowsInitialOffset: Bool
-    }
+    typealias Run = LineTypesetterRun
 
     let run: Run
     var runRange: Range<Int> { run.range }

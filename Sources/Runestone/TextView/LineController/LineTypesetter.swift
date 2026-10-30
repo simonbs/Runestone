@@ -58,10 +58,11 @@ final class LineTypesetter {
     }
 
     private let lineID: String
+    private let preparation: LineTypesetterPreparation
     private var stringLength = 0
     private var attributedString: NSAttributedString?
     private var typesetter: CTTypesetter?
-    private var unbrokenRun: UnbrokenLineBreakContext.Run?
+    private var unbrokenRun: LineTypesetterRun?
     private var lineFragmentsMap: [LineFragmentID: Int] = [:]
     private var startOffset = 0
     private var nextYPosition: CGFloat = 0
@@ -71,8 +72,9 @@ final class LineTypesetter {
         Configuration(width: constrainingWidth, mode: lineBreakMode, heightMultiplier: lineFragmentHeightMultiplier)
     }
 
-    init(lineID: String) {
+    init(lineID: String, preparation: LineTypesetterPreparation) {
         self.lineID = lineID
+        self.preparation = preparation
     }
 
     func reset() {
@@ -91,9 +93,9 @@ final class LineTypesetter {
 
     func prepareToTypeset(_ attributedString: NSAttributedString) {
         if lineFragments.isEmpty { preparedConfiguration = currentConfiguration }
-        let context: UnbrokenLineBreakContext?
+        let context: PreparedLineTypesetterInput?
         if case .byWordWrapping = lineBreakMode {
-            context = UnbrokenLineBreakContext.make(for: attributedString)
+            context = preparation.prepare(attributedString)
         } else {
             context = nil
         }
@@ -101,7 +103,7 @@ final class LineTypesetter {
         self.attributedString = preparedString
         unbrokenRun = context?.run
         stringLength = CFAttributedStringGetLength(preparedString)
-        typesetter = CTTypesetterCreateWithAttributedString(stringForTypesetting(preparedString))
+        typesetter = CTTypesetterCreateWithAttributedString(preparation.stringForTypesetting(preparedString))
     }
 
     /// The controller grants one-shot reuse only for a clean text invalidation.
@@ -112,7 +114,7 @@ final class LineTypesetter {
         if preparedConfiguration == currentConfiguration, lineBreakMode == .byWordWrapping,
            constrainingWidth.isFinite, constrainingWidth > 0,
            lineFragmentHeightMultiplier.isFinite, lineFragmentHeightMultiplier > 0 {
-            count = LinePrefixReuse.count(from: previous, to: string, fragments: lineFragments, limit: prefixLimit)
+            count = preparation.reusablePrefixCount(from: previous, to: string, fragments: lineFragments, limit: prefixLimit)
         }
         let prefix = Array(lineFragments.prefix(count))
         reset()
@@ -185,24 +187,6 @@ final class LineTypesetter {
 }
 
 private extension LineTypesetter {
-    private func stringForTypesetting(_ string: NSAttributedString) -> NSAttributedString {
-        // Keep token backgrounds out of CTLineDraw so they cannot cover search or
-        // marked-text highlights. The renderer paints these backgrounds first.
-        // Preserve the original attributes for clients of StringSyntaxHighlighter.
-        var copy: NSMutableAttributedString?
-        string.enumerateAttribute(.backgroundColor, in: NSRange(location: 0, length: string.length)) { value, range, _ in
-            guard let value else {
-                return
-            }
-            if copy == nil {
-                copy = NSMutableAttributedString(attributedString: string)
-            }
-            copy?.removeAttribute(.backgroundColor, range: range)
-            copy?.addAttribute(.tokenBackgroundColor, value: value, range: range)
-        }
-        return copy ?? string
-    }
-
     private func updateState(from typesetResult: TypesetResult) {
         lineFragments.append(contentsOf: typesetResult.lineFragments)
         for (id, index) in typesetResult.lineFragmentsMap {
