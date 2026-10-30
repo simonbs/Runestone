@@ -1,110 +1,49 @@
 import UIKit
 
-enum TreeSitterSyntaxHighlighterError: LocalizedError {
-    case cancelled
-    case operationDeallocated
-
-    var errorDescription: String? {
-        switch self {
-        case .cancelled:
-            return "Operation was cancelled"
-        case .operationDeallocated:
-            return "The operation was deallocated"
-        }
-    }
-}
-
 final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
     var theme: Theme = DefaultTheme.shared {
         didSet { cancel() }
     }
     var kern: CGFloat = 0
     var canHighlight: Bool {
-        languageMode.canHighlight
+        highlightProvider.canHighlight
     }
 
-    private let stringView: StringView
-    private let languageMode: TreeSitterInternalLanguageMode
-    private let operationQueue: OperationQueue
-    private var currentOperation: Operation?
-    private var currentRequest: TreeSitterHighlightRequest?
+    private let highlightProvider: TreeSitterSyntaxHighlightProvider
 
-    init(stringView: StringView, languageMode: TreeSitterInternalLanguageMode, operationQueue: OperationQueue) {
-        self.stringView = stringView
-        self.languageMode = languageMode
-        self.operationQueue = operationQueue
-    }
-
-    deinit {
-        cancel()
+    init(languageMode: TreeSitterInternalLanguageMode, operationQueue: OperationQueue) {
+        highlightProvider = TreeSitterSyntaxHighlightProvider(languageMode: languageMode, operationQueue: operationQueue)
     }
 
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput) {
         cancel()
-        let captures = languageMode.captures(in: input.byteRange).map(TreeSitterSyntaxCapture.init)
-        let highlights = TreeSitterSyntaxHighlightMapper.highlights(for: captures, localTo: input.byteRange)
+        let highlights = highlightProvider.highlights(in: input.byteRange)
         let tokens = highlights.map(token(from:)).filter { !$0.isEmpty }
         setAttributes(for: tokens, on: input.attributedString)
     }
 
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput, completion: @escaping AsyncCallback) {
-        cancel()
-        let request = TreeSitterHighlightRequest(snapshot: languageMode.makeHighlightSnapshot())
-        let operation = BlockOperation()
-        operation.addExecutionBlock { [weak operation, weak request] in
-            guard let operation = operation, let request = request, !operation.isCancelled,
-                  let snapshot = request.takeSnapshot() else {
+        highlightProvider.highlights(in: input.byteRange) { [weak self] result, request in
+            guard let self else {
+                completion(.failure(TreeSitterSyntaxHighlightProviderError.operationDeallocated))
                 return
             }
-            let captures = snapshot.captures(in: input.byteRange) { operation.isCancelled }
-            if !operation.isCancelled {
-                request.complete(snapshot: snapshot, captures: captures)
+            guard case .success(let highlights) = result,
+                  self.highlightProvider.isActive(request), input.isValid() else {
+                completion(.failure(TreeSitterSyntaxHighlightProviderError.cancelled))
+                return
             }
-        }
-        // Operation completion also runs when canceled before its execution
-        // block starts, so every request still delivers one completion callback.
-        operation.completionBlock = { [weak operation, weak request, weak self] in
-            if operation?.isCancelled != false { request?.cancel() }
-            DispatchQueue.main.async { [weak operation, weak request, weak self] in
-                guard let self = self, let operation = operation else {
-                    completion(.failure(TreeSitterSyntaxHighlighterError.operationDeallocated))
-                    return
-                }
-                defer {
-                    if self.currentOperation === operation { self.currentOperation = nil }
-                    if self.currentRequest === request { self.currentRequest = nil }
-                    request?.cancel()
-                }
-                guard let request = request, self.currentRequest === request,
-                      self.currentOperation === operation, !operation.isCancelled, input.isValid(),
-                      let completed = request.takeCompleted() else {
-                    completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
-                    return
-                }
-                withExtendedLifetime(completed.snapshot) {
-                    let captures = completed.captures.map(TreeSitterSyntaxCapture.init)
-                    let highlights = TreeSitterSyntaxHighlightMapper.highlights(for: captures, localTo: input.byteRange)
-                    let tokens = highlights.map(self.token(from:)).filter { !$0.isEmpty }
-                    guard self.currentRequest === request, self.currentOperation === operation,
-                          !operation.isCancelled, input.isValid() else {
-                        completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
-                        return
-                    }
-                    let result = self.setAttributes(for: tokens, on: input.attributedString)
-                    completion(.success(result))
-                }
+            let tokens = highlights.map(self.token(from:)).filter { !$0.isEmpty }
+            guard self.highlightProvider.isActive(request), input.isValid() else {
+                completion(.failure(TreeSitterSyntaxHighlightProviderError.cancelled))
+                return
             }
+            completion(.success(self.setAttributes(for: tokens, on: input.attributedString)))
         }
-        currentOperation = operation
-        currentRequest = request
-        operationQueue.addOperation(operation)
     }
 
     func cancel() {
-        currentOperation?.cancel()
-        currentOperation = nil
-        currentRequest?.cancel()
-        currentRequest = nil
+        highlightProvider.cancel()
     }
 }
 
