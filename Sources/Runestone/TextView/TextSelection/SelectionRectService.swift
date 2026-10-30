@@ -1,8 +1,8 @@
-import UIKit
+import Foundation
 
 final class SelectionRectService {
     var lineManager: LineManager
-    var textContainerInset: UIEdgeInsets = .zero
+    var textContainerInset: TextInsets = .zero
     var lineHeightMultiplier: CGFloat = 1
 
     private let contentSizeService: ContentSizeService
@@ -19,7 +19,7 @@ final class SelectionRectService {
         self.caretRectService = caretRectService
     }
 
-    func selectionRects(in range: NSRange) -> [TextSelectionRect] {
+    func selectionRects(in range: NSRange) -> [SelectionRectangle] {
         guard range.length > 0 else {
             return []
         }
@@ -38,7 +38,8 @@ final class SelectionRectService {
             let scaledHeight = startCaretRect.height * lineHeightMultiplier
             let offsetY = startCaretRect.minY - (scaledHeight - startCaretRect.height) / 2
             let rect = CGRect(x: startCaretRect.minX, y: offsetY, width: width, height: scaledHeight)
-            let selectionRect = TextSelectionRect(rect: rect, writingDirection: .natural, containsStart: true, containsEnd: true)
+            let selectionRect = SelectionRectangle(rect: rect, writingDirection: .natural,
+                                                   containsStart: true, containsEnd: true)
             return [selectionRect]
         } else {
             // Selecting text across line fragments and possibly across lines.
@@ -52,9 +53,12 @@ final class SelectionRectService {
             let endRect = CGRect(x: leadingLineSpacing, y: endOffsetY, width: endWidth, height: endScaledHeight)
             let middleHeight = endRect.minY - startRect.maxY
             let middleRect = CGRect(x: leadingLineSpacing, y: startRect.maxY, width: fullWidth, height: middleHeight)
-            let startSelectionRect = TextSelectionRect(rect: startRect, writingDirection: .natural, containsStart: true, containsEnd: false)
-            let middleSelectionRect = TextSelectionRect(rect: middleRect, writingDirection: .natural, containsStart: false, containsEnd: false)
-            let endSelectionRect = TextSelectionRect(rect: endRect, writingDirection: .natural, containsStart: false, containsEnd: true)
+            let startSelectionRect = SelectionRectangle(rect: startRect, writingDirection: .natural,
+                                                        containsStart: true, containsEnd: false)
+            let middleSelectionRect = SelectionRectangle(rect: middleRect, writingDirection: .natural,
+                                                         containsStart: false, containsEnd: false)
+            let endSelectionRect = SelectionRectangle(rect: endRect, writingDirection: .natural,
+                                                      containsStart: false, containsEnd: true)
             return [startSelectionRect, middleSelectionRect, endSelectionRect]
         }
     }
