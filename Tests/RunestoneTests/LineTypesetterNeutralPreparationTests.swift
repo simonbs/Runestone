@@ -3,30 +3,6 @@ import CoreText
 import XCTest
 
 final class LineTypesetterNeutralPreparationTests: XCTestCase {
-    func testBackgroundMappingPreservesInputAndAttributeRanges() {
-        let background = NSAttributedString.Key("testBackground")
-        let input = NSMutableAttributedString(string: "a😀bc")
-        input.addAttribute(background, value: "first", range: NSRange(location: 1, length: 2))
-        input.addAttribute(background, value: "second", range: NSRange(location: 4, length: 1))
-        let result = DefaultLineTypesetterPreparation(backgroundColorKey: background).stringForTypesetting(input)
-
-        XCTAssertEqual(result.string, input.string)
-        XCTAssertNil(result.attribute(background, at: 1, effectiveRange: nil))
-        XCTAssertEqual(result.attribute(.tokenBackgroundColor, at: 1, effectiveRange: nil) as? String, "first")
-        XCTAssertNil(result.attribute(.tokenBackgroundColor, at: 3, effectiveRange: nil))
-        XCTAssertEqual(result.attribute(.tokenBackgroundColor, at: 4, effectiveRange: nil) as? String, "second")
-        XCTAssertEqual(input.attribute(background, at: 1, effectiveRange: nil) as? String, "first")
-        XCTAssertNil(input.attribute(.tokenBackgroundColor, at: 1, effectiveRange: nil))
-    }
-
-    func testBackgroundMappingReturnsUnchangedInputWhenNoBackgroundExists() {
-        let input = NSAttributedString(string: "plain")
-        let preparation = DefaultLineTypesetterPreparation(backgroundColorKey: NSAttributedString.Key("testBackground"))
-        XCTAssertTrue(preparation.stringForTypesetting(input) === input)
-        let empty = NSAttributedString(string: "")
-        XCTAssertTrue(preparation.stringForTypesetting(empty) === empty)
-    }
-
     func testFallbackWrapsUnicodeWithoutSplittingOrLosingText() {
         let text = "alpha cafe\u{301} 😀 beta\r\n" as NSString
         let input = NSAttributedString(string: text as String, attributes: [

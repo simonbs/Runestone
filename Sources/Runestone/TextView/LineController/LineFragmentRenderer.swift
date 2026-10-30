@@ -62,7 +62,7 @@ private extension LineFragmentRenderer {
         defer { context.restoreGState() }
         for run in CTLineGetGlyphRuns(lineFragment.line) as? [CTRun] ?? [] {
             let attributes = CTRunGetAttributes(run) as NSDictionary
-            guard let color = attributes[NSAttributedString.Key.tokenBackgroundColor] as? UIColor else {
+            guard let color = attributes[TokenBackgroundMapping.attributeKey] as? UIColor else {
                 continue
             }
             guard let bounds = CoreTextRunGeometry.horizontalBounds(of: run) else {
