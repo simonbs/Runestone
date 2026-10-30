@@ -1,13 +1,22 @@
 import CoreText
 import Foundation
 
-/// Platform-neutral character and decoration geometry for one Core Text line fragment.
-struct CoreTextLineGeometry {
+/// Character and decoration geometry for one Core Text line fragment.
+///
+/// Character ranges use UTF-16 indices in the original attributed string.
+/// Horizontal coordinates are relative to the Core Text line origin.
+public struct CoreTextLineGeometry {
     let line: CTLine
     let visibleRange: NSRange
 
-    /// A horizontally scrolled viewport can cover disjoint logical ranges in bidirectional text.
-    func visibleCharacterRanges(in horizontalRange: ClosedRange<CGFloat>) -> [NSRange] {
+    /// Creates geometry for the visible UTF-16 range of a Core Text line.
+    public init(line: CTLine, visibleRange: NSRange) {
+        self.line = line
+        self.visibleRange = visibleRange
+    }
+
+    /// Returns visible character ranges, which may be disjoint in bidirectional text.
+    public func visibleCharacterRanges(in horizontalRange: ClosedRange<CGFloat>) -> [NSRange] {
         glyphRuns.compactMap { run in
             guard let bounds = horizontalBounds(of: run), bounds.overlaps(horizontalRange) else {
                 return nil
@@ -31,7 +40,7 @@ struct CoreTextLineGeometry {
     }
 
     /// Splits at directional runs so a logical word never decorates unrelated bidirectional text.
-    func horizontalSegments(for range: NSRange) -> [ClosedRange<CGFloat>] {
+    public func horizontalSegments(for range: NSRange) -> [ClosedRange<CGFloat>] {
         let clippedRange = NSIntersectionRange(range, visibleRange)
         guard clippedRange.length > 0 else {
             return []
@@ -82,9 +91,10 @@ private extension CoreTextLineGeometry {
     }
 }
 
-/// Horizontal glyph extents for painting one Core Text run, independent of its style.
-enum CoreTextRunGeometry {
-    static func horizontalBounds(of run: CTRun) -> ClosedRange<CGFloat>? {
+/// Horizontal glyph extents relative to the Core Text line origin, independent of style.
+public enum CoreTextRunGeometry {
+    /// Returns the horizontal glyph extent of a run, or nil when it has no width.
+    public static func horizontalBounds(of run: CTRun) -> ClosedRange<CGFloat>? {
         let count = CTRunGetGlyphCount(run)
         guard count > 0 else {
             return nil

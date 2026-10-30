@@ -1,4 +1,5 @@
 import CoreText
+import RunestoneEngine
 import UIKit
 
 protocol LineFragmentRendererDelegate: AnyObject {
