@@ -82,7 +82,7 @@ private extension HighlightService {
         for line in affectedLines.values {
             let lineRange = NSRange(location: line.location, length: line.data.totalLength)
             highlightedRangeFragmentsPerLine[line.id] = highlightedRanges.compactMap { highlightedRange in
-                guard shouldRender(highlightedRange), highlightedRange.range.overlaps(lineRange) else {
+                guard shouldRender(highlightedRange) else {
                     return nil
                 }
                 return makeHighlightedRangeFragment(for: highlightedRange, in: lineRange)
@@ -102,10 +102,9 @@ private extension HighlightService {
             let lines = lineManager.lines(in: highlightedRange.range)
             for line in lines {
                 let lineRange = NSRange(location: line.location, length: line.data.totalLength)
-                guard highlightedRange.range.overlaps(lineRange) else {
+                guard let highlightedRangeFragment = makeHighlightedRangeFragment(for: highlightedRange, in: lineRange) else {
                     continue
                 }
-                let highlightedRangeFragment = makeHighlightedRangeFragment(for: highlightedRange, in: lineRange)
                 if let existingHighlightedRangeFragments = result[line.id] {
                     result[line.id] = existingHighlightedRangeFragments + [highlightedRangeFragment]
                 } else {
@@ -117,11 +116,12 @@ private extension HighlightService {
     }
 
     private func makeHighlightedRangeFragment(for highlightedRange: HighlightedRange,
-                                              in lineRange: NSRange) -> HighlightedRangeFragment {
-        let cappedRange = highlightedRange.range.capped(to: lineRange)
-        return HighlightedRangeFragment(range: cappedRange.local(to: lineRange),
-                                        containsStart: cappedRange.lowerBound == highlightedRange.range.lowerBound,
-                                        containsEnd: cappedRange.upperBound == highlightedRange.range.upperBound,
+                                              in lineRange: NSRange) -> HighlightedRangeFragment? {
+        let source = HighlightRangeSlice(range: highlightedRange.range, containsStart: true, containsEnd: true)
+        guard let slice = source.clipped(to: lineRange, localize: true) else { return nil }
+        return HighlightedRangeFragment(range: slice.range,
+                                        containsStart: slice.containsStart,
+                                        containsEnd: slice.containsEnd,
                                         color: highlightedRange.color,
                                         foregroundColor: highlightedRange.foregroundColor,
                                         cornerRadius: highlightedRange.cornerRadius)
@@ -138,15 +138,15 @@ private extension HighlightService {
             return []
         }
         return lineHighlightedRangeFragments.compactMap { lineHighlightedRangeFragment in
-            guard lineHighlightedRangeFragment.range.overlaps(lineFragment.range) else {
+            let source = HighlightRangeSlice(range: lineHighlightedRangeFragment.range,
+                                             containsStart: lineHighlightedRangeFragment.containsStart,
+                                             containsEnd: lineHighlightedRangeFragment.containsEnd)
+            guard let slice = source.clipped(to: lineFragment.range) else {
                 return nil
             }
-            let cappedRange = lineHighlightedRangeFragment.range.capped(to: lineFragment.range)
-            let containsStart = lineHighlightedRangeFragment.containsStart && cappedRange.lowerBound == lineHighlightedRangeFragment.range.lowerBound
-            let containsEnd = lineHighlightedRangeFragment.containsEnd && cappedRange.upperBound == lineHighlightedRangeFragment.range.upperBound
-            return HighlightedRangeFragment(range: cappedRange,
-                                            containsStart: containsStart,
-                                            containsEnd: containsEnd,
+            return HighlightedRangeFragment(range: slice.range,
+                                            containsStart: slice.containsStart,
+                                            containsEnd: slice.containsEnd,
                                             color: lineHighlightedRangeFragment.color,
                                             foregroundColor: lineHighlightedRangeFragment.foregroundColor,
                                             cornerRadius: lineHighlightedRangeFragment.cornerRadius)
