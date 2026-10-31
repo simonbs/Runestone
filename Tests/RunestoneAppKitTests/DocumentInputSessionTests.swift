@@ -131,6 +131,49 @@ final class DocumentInputSessionTests: XCTestCase {
         XCTAssertEqual(view.content.string, "x")
     }
 
+    func testSessionStateMatchesContentDuringSynchronousLayoutNotifications() {
+        for refreshing in [false, true] {
+            let original = NSAttributedString(string: String(repeating: "line\n", count: 100), attributes: attributes)
+            let view = ReadOnlyDocumentView(content: original)
+            let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 180, height: 80))
+            scroll.documentView = view
+            scroll.tile()
+            view.layoutSubtreeIfNeeded()
+            let session = DocumentInputSession(view: view)
+            XCTAssertTrue(session.setSelection(NSRange(location: original.length, length: 0)))
+            XCTAssertTrue(session.setMarkedText("old", selectedRange: NSRange(location: 3, length: 0),
+                                                replacementRange: unspecified, attributes: attributes))
+            var events: [String] = []
+            session.contentDidChange = { _ in events.append("change") }
+            var observed = false
+            view.postsFrameChangedNotifications = true
+            let observer = NotificationCenter.default.addObserver(forName: NSView.frameDidChangeNotification,
+                                                                   object: view, queue: nil) { _ in
+                guard !observed else { return }
+                observed = true
+                events.append("layout")
+                XCTAssertEqual(view.content.string, "short")
+                XCTAssertEqual(view.manager.stringView.string as String, "short")
+                XCTAssertFalse(session.isStale)
+                XCTAssertEqual(session.selectedRange, refreshing ? NSRange(location: 0, length: 0) : NSRange(location: 2, length: 1))
+                XCTAssertEqual(session.markedRange, refreshing ? nil : NSRange(location: 0, length: 5))
+                XCTAssertFalse(session.insertText("nested", replacementRange: self.unspecified, attributes: self.attributes))
+            }
+            let accepted: Bool
+            if refreshing {
+                accepted = session.refresh(content: NSAttributedString(string: "short", attributes: attributes))
+            } else {
+                accepted = session.setMarkedText("short", selectedRange: NSRange(location: 2, length: 1),
+                                                 replacementRange: NSRange(location: 0, length: view.content.length),
+                                                 attributes: attributes)
+            }
+            NotificationCenter.default.removeObserver(observer)
+            XCTAssertTrue(accepted)
+            XCTAssertTrue(observed)
+            XCTAssertEqual(events, refreshing ? ["layout"] : ["layout", "change"])
+        }
+    }
+
     func testExternalReplacementDuringLayoutLeavesSessionStale() {
         for refreshing in [false, true] {
             let original = NSAttributedString(string: String(repeating: "line\n", count: 100), attributes: attributes)
@@ -148,6 +191,9 @@ final class DocumentInputSessionTests: XCTestCase {
                                                                    object: view, queue: nil) { _ in
                 guard !replaced else { return }
                 replaced = true
+                XCTAssertFalse(session.isStale)
+                XCTAssertEqual(view.content.string, "short")
+                XCTAssertEqual(session.selectedRange, refreshing ? NSRange(location: 0, length: 0) : NSRange(location: 5, length: 0))
                 view.setContent(NSAttributedString(string: "foreign"))
             }
             let accepted: Bool
