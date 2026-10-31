@@ -192,6 +192,35 @@ final class ReadOnlyDocumentViewTests: XCTestCase {
         XCTAssertEqual(view.selectedLineHighlightRects(in: layout).count, 1)
     }
 
+    func testTypographyAndOverscrollArePresentationOnly() throws {
+        let text = NSAttributedString(
+            string: (0..<40).map { "\($0) " + String(repeating: "wide text ", count: 12) }.joined(separator: "\n"),
+            attributes: [.font: font]
+        )
+        let (scroll, view) = makeView(text, width: 140, height: 80)
+        let revision = view.contentRevision
+        let original = view.content
+        let initial = try XCTUnwrap(view.visibleLayout?.lines.first?.placements.first)
+
+        view.displayConfiguration = RunestoneEditorDisplayConfiguration(
+            isLineWrappingEnabled: false,
+            lineHeightMultiplier: 1.5,
+            kern: 2,
+            verticalOverscrollFactor: 0.5,
+            horizontalOverscrollFactor: 0.5
+        )
+        view.updateViewport()
+        let presented = try XCTUnwrap(view.visibleLayout?.lines.first?.placements.first)
+
+        XCTAssertEqual(presented.frame.height, initial.frame.height * 1.5, accuracy: 0.5)
+        XCTAssertGreaterThan(presented.frame.width, initial.frame.width)
+        XCTAssertGreaterThan(view.frame.width, scroll.contentView.bounds.width)
+        XCTAssertGreaterThan(view.frame.height, view.manager.contentHeight)
+        XCTAssertEqual(view.contentRevision, revision)
+        XCTAssertTrue(view.content.isEqual(to: original))
+        XCTAssertNil(view.content.attribute(.kern, at: 0, effectiveRange: nil))
+    }
+
     private func makeView(_ text: NSAttributedString, width: CGFloat, height: CGFloat) -> (NSScrollView, ReadOnlyDocumentView) {
         let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: width, height: height))
         scroll.hasVerticalScroller = false

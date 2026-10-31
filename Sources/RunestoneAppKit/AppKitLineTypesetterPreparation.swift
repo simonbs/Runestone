@@ -7,7 +7,7 @@ import RunestoneEngine
 struct AppKitLineTypesetterPreparation: LineTypesetterPreparation {
     private static let minimumLength = 4_096
     private static let allowedAttributeKeys: Set<NSAttributedString.Key> = [
-        .font, .foregroundColor, .backgroundColor
+        .font, .foregroundColor, .backgroundColor, .kern
     ]
 
     func prepare(_ input: NSAttributedString) -> PreparedLineTypesetterInput? {
@@ -49,7 +49,8 @@ struct AppKitLineTypesetterPreparation: LineTypesetterPreparation {
             guard Set(attributes.keys).isSubset(of: Self.allowedAttributeKeys),
                   attributes[.font] is NSFont,
                   attributes[.foregroundColor] == nil || attributes[.foregroundColor] is NSColor,
-                  attributes[.backgroundColor] == nil || attributes[.backgroundColor] is NSColor else {
+                  attributes[.backgroundColor] == nil || attributes[.backgroundColor] is NSColor,
+                  attributes[.kern] == nil || attributes[.kern] is NSNumber else {
                 supported = false
                 stop.pointee = true
                 return
