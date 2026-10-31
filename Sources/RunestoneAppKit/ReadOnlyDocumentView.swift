@@ -1,5 +1,6 @@
 #if canImport(AppKit)
 import AppKit
+import CoreText
 import RunestoneEngine
 
 /// A read-only, wrapping Core Text view of an attributed document snapshot.
@@ -79,6 +80,16 @@ public class ReadOnlyDocumentView: NSView {
     private weak var updatingClip: NSClipView?
     private var updatingBounds: CGRect?
     private(set) var visibleLayout: ViewportLayoutCoordinator.Result?
+    private var displaySelection = NSRange(location: NSNotFound, length: 0)
+    public var displayConfiguration = RunestoneEditorDisplayConfiguration() {
+        didSet {
+            guard !isRetired else { return }
+            resetLayout(width: 0)
+            noteInputCoordinatesChanged()
+            needsDisplay = true
+            updateViewport()
+        }
+    }
 
     public override var isFlipped: Bool { true }
 
@@ -209,6 +220,12 @@ public class ReadOnlyDocumentView: NSView {
         invalidateInputSelectionTracking()
         accessibilitySelectionDirty = true
         flushAccessibilityNotificationsIfNeeded()
+    }
+
+    func updateDisplaySelection(_ range: NSRange) {
+        guard !isRetired, displaySelection != range else { return }
+        displaySelection = range
+        needsDisplay = true
     }
 
     /// A suppressed input context keeps its dirty flags until it is active
@@ -792,8 +809,88 @@ public class ReadOnlyDocumentView: NSView {
         guard !isRetired else { return }
         super.draw(dirtyRect)
         guard let result = visibleLayout, let context = NSGraphicsContext.current?.cgContext else { return }
+        drawBackgroundPresentation(result, in: context)
         for line in result.lines {
             line.controller.draw(line.placements, in: context)
+            drawInvisibleCharacters(in: line)
+        }
+    }
+
+    private func drawBackgroundPresentation(_ result: ViewportLayoutCoordinator.Result, in context: CGContext) {
+        let gutter = horizontalTextInset
+        if gutter > 0 {
+            context.setFillColor(displayConfiguration.gutterBackgroundColor.cgColor)
+            context.fill(CGRect(x: 0, y: result.viewport.minY, width: gutter, height: result.viewport.height))
+        }
+        for layout in result.lines where isSelected(layout.line) && displayConfiguration.showsSelectedLines {
+            context.setFillColor(displayConfiguration.selectedLineBackgroundColor.cgColor)
+            context.fill(CGRect(x: gutter, y: layout.line.yPosition,
+                                width: max(0, bounds.width - gutter), height: layout.line.data.lineHeight))
+        }
+        if displayConfiguration.showsLineNumbers {
+            for layout in result.lines {
+                let selected = isSelected(layout.line) && displayConfiguration.showsSelectedLines
+                let attributes: [NSAttributedString.Key: Any] = [
+                    .font: displayConfiguration.lineNumberFont,
+                    .foregroundColor: selected ? displayConfiguration.selectedLineNumberColor : displayConfiguration.lineNumberColor
+                ]
+                let value = String(layout.line.index + 1) as NSString
+                let size = value.size(withAttributes: attributes)
+                value.draw(at: CGPoint(x: max(4, gutter - size.width - 7),
+                                       y: layout.line.yPosition + max(0, (layout.line.data.lineHeight - size.height) / 2)),
+                           withAttributes: attributes)
+            }
+        }
+        if let column = displayConfiguration.pageGuideColumn, column > 0 {
+            let x = gutter + CGFloat(column) * safeCharacterWidth
+            if x < bounds.width {
+                context.setFillColor(displayConfiguration.pageGuideColor.cgColor)
+                context.fill(CGRect(x: x, y: result.viewport.minY, width: 1, height: result.viewport.height))
+            }
+        }
+    }
+
+    private func isSelected(_ line: DocumentLineNode) -> Bool {
+        guard displaySelection.location != NSNotFound else { return false }
+        if displaySelection.length == 0 {
+            return displaySelection.location >= line.location && displaySelection.location <= line.location + line.data.length
+        }
+        return NSIntersectionRange(displaySelection,
+            NSRange(location: line.location, length: line.data.totalLength)).length > 0
+    }
+
+    private func drawInvisibleCharacters(in layout: ViewportLayoutCoordinator.LineLayout) {
+        let configuration = displayConfiguration
+        guard configuration.showsTabs || configuration.showsSpaces || configuration.showsNonBreakingSpaces ||
+                configuration.showsLineBreaks || configuration.showsSoftLineBreaks else { return }
+        let source = snapshot.string as NSString
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: configuration.lineNumberFont,
+            .foregroundColor: configuration.invisibleCharacterColor
+        ]
+        for placement in layout.placements {
+            let range = placement.documentRange
+            guard range.location >= 0, range.length >= 0, NSMaxRange(range) <= source.length else { continue }
+            var offset = 0
+            for character in source.substring(with: range) {
+                let symbol: String?
+                switch character {
+                case "\t" where configuration.showsTabs: symbol = configuration.tabSymbol
+                case " " where configuration.showsSpaces: symbol = configuration.spaceSymbol
+                case "\u{00A0}" where configuration.showsNonBreakingSpaces: symbol = configuration.nonBreakingSpaceSymbol
+                case "\u{2028}" where configuration.showsSoftLineBreaks: symbol = configuration.softLineBreakSymbol
+                case "\n", "\r" where configuration.showsLineBreaks: symbol = configuration.lineBreakSymbol
+                default: symbol = nil
+                }
+                if let symbol {
+                    let index = placement.fragment.visibleRange.location + offset
+                    let x = placement.frame.minX + CTLineGetOffsetForStringIndex(placement.fragment.line, index, nil)
+                    let size = (symbol as NSString).size(withAttributes: attributes)
+                    (symbol as NSString).draw(at: CGPoint(x: x, y: placement.frame.minY + max(0, (placement.frame.height - size.height) / 2)),
+                                              withAttributes: attributes)
+                }
+                offset += String(character).utf16.count
+            }
         }
     }
 
@@ -843,7 +940,7 @@ public class ReadOnlyDocumentView: NSView {
         manager.rebuild()
         coordinator = ViewportLayoutCoordinator(manager: manager, cachedControllerForLine: { [weak self] line in
             self?.controllers[line.id]
-        }) { [weak self] line in
+        }, horizontalInset: { [weak self] in self?.horizontalTextInset ?? 0 }) { [weak self] line in
             self?.controller(for: line)
         }
         visibleLayout = nil
@@ -859,11 +956,29 @@ public class ReadOnlyDocumentView: NSView {
         guard range.location >= 0, range.length >= 0, range.location <= snapshot.length,
               range.length <= snapshot.length - range.location else { return nil }
         let controller = LogicalLineLayoutController(manager: manager, line: line)
-        guard controller.prepare(snapshot.attributedSubstring(from: range), width: layoutWidth,
+        guard controller.prepare(snapshot.attributedSubstring(from: range), width: effectiveTextWidth,
                                  fallbackHeight: fallbackHeight) else { return nil }
         controllers[line.id] = controller
         controllerOrder.append(line.id)
         return controller
+    }
+
+    private var safeCharacterWidth: CGFloat {
+        let width = displayConfiguration.characterWidth
+        return width.isFinite && width > 0 ? width : 8
+    }
+
+    private var horizontalTextInset: CGFloat {
+        guard displayConfiguration.showsLineNumbers else { return 0 }
+        let digits = max(displayConfiguration.minimumGutterCharacterCount, String(max(1, manager.lineCount)).count)
+        let sample = String(repeating: "8", count: max(1, digits)) as NSString
+        return ceil(sample.size(withAttributes: [.font: displayConfiguration.lineNumberFont]).width) + 14
+    }
+
+    private var effectiveTextWidth: CGFloat {
+        let available = max(1, layoutWidth - horizontalTextInset)
+        guard let column = displayConfiguration.maximumContentWidthColumn, column > 0 else { return available }
+        return min(available, CGFloat(column) * safeCharacterWidth)
     }
 
     private func trimControllers(keeping visible: Set<DocumentLineNodeID>) {

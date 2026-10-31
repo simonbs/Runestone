@@ -82,7 +82,7 @@ final class LogicalLineLayoutController {
     /// Typesets incrementally and returns known fragments in document coordinates.
     /// Rectangle requests return only fragments intersecting the line-local rect.
     /// Placements are snapshots; request them again after document geometry changes.
-    func layout(_ request: LogicalLineLayoutRequest) -> [Placement] {
+    func layout(_ request: LogicalLineLayoutRequest, horizontalInset: CGFloat = 0) -> [Placement] {
         guard prepared, isAttached else { return [] }
         typesetter.typeset(request)
         manager.setHeight(of: line, to: typesetter.estimatedLineHeight(fragmentHeight: fallbackHeight))
@@ -109,7 +109,7 @@ final class LogicalLineLayoutController {
             Placement(fragment: fragment,
                       documentRange: NSRange(location: lineStart + fragment.visibleRange.location,
                                              length: fragment.visibleRange.length),
-                      frame: CGRect(x: 0, y: lineY + fragment.yPosition,
+                      frame: CGRect(x: horizontalInset, y: lineY + fragment.yPosition,
                                     width: fragment.scaledSize.width, height: fragment.scaledSize.height),
                       ownerID: ownerID, generation: generation)
         }
@@ -123,7 +123,7 @@ final class LogicalLineLayoutController {
         let lineY = line.yPosition
         for placement in placements where placement.ownerID == ownerID && placement.generation == generation {
             context.saveGState()
-            context.translateBy(x: 0, y: lineY + placement.fragment.yPosition)
+            context.translateBy(x: placement.frame.minX, y: lineY + placement.fragment.yPosition)
             LineFragmentRenderer.draw(placement.fragment, in: context)
             context.restoreGState()
         }
