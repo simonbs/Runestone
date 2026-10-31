@@ -41,7 +41,9 @@ let package = Package(
         ]),
         .testTarget(name: "RunestoneEngineTests", dependencies: ["RunestoneEngine"]),
         .testTarget(name: "RunestoneSyntaxTests", dependencies: ["RunestoneSyntax", "TestTreeSitterLanguages"]),
-        .testTarget(name: "RunestoneAppKitTests", dependencies: ["RunestoneAppKit", "RunestoneEngine"]),
+        .testTarget(name: "RunestoneAppKitTests", dependencies: [
+            "RunestoneAppKit", "RunestoneEngine", "RunestoneSyntax", "TestTreeSitterLanguages"
+        ]),
         .testTarget(name: "RunestoneTests", dependencies: [
             "Runestone",
             "TestTreeSitterLanguages"
