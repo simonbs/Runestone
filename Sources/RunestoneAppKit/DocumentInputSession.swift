@@ -112,6 +112,7 @@ final class DocumentInputSession {
         // The owner captures this token atomically with the initial view snapshot.
         // The provider must be a side-effect-free read of the current revision.
         self.installedDocumentRevision = initialDocumentRevision
+        view.updateDisplaySelection(storedSelection)
     }
 
     /// Silently replaces the document and clears selection and composition.
@@ -131,6 +132,7 @@ final class DocumentInputSession {
             storedSelection = NSRange(location: 0, length: 0)
             storedMarkedRange = nil
         }) != nil else { return false }
+        view.updateDisplaySelection(storedSelection)
         return contentMatches
     }
 
@@ -168,7 +170,10 @@ final class DocumentInputSession {
             composition = nil
             hasDocumentConflict = false
         }) != nil else { return false }
-        if oldSelection != storedSelection { view.scheduleAccessibilitySelectionChanged() }
+        if oldSelection != storedSelection {
+            view.updateDisplaySelection(storedSelection)
+            view.scheduleAccessibilitySelectionChanged()
+        }
         view.noteInputCoordinatesChanged()
         guard contentMatches, documentRevision() == revision else {
             hasDocumentConflict = true
@@ -183,6 +188,7 @@ final class DocumentInputSession {
         guard isCurrent, isValid(range, in: view.manager.stringView.string) else { return false }
         if storedSelection != range {
             storedSelection = range
+            view.updateDisplaySelection(storedSelection)
             view.scheduleAccessibilitySelectionChanged()
             view.noteInputCoordinatesChanged()
         }
@@ -315,7 +321,10 @@ final class DocumentInputSession {
             storedMarkedRange = nil
             composition = nil
         }) != nil, contentMatches else { return false }
-        if oldSelection != storedSelection { view.scheduleAccessibilitySelectionChanged() }
+        if oldSelection != storedSelection {
+            view.updateDisplaySelection(storedSelection)
+            view.scheduleAccessibilitySelectionChanged()
+        }
         view.noteInputCoordinatesChanged()
         return true
     }
@@ -437,7 +446,10 @@ final class DocumentInputSession {
             storedMarkedRange = marked
             if case .provisional = kind { composition = nextComposition }
         }
-        if oldSelection != storedSelection { view.scheduleAccessibilitySelectionChanged() }
+        if oldSelection != storedSelection {
+            view.updateDisplaySelection(storedSelection)
+            view.scheduleAccessibilitySelectionChanged()
+        }
         // An IME can start or finish an empty provisional composition without
         // changing the selected range. It must still invalidate keyboard anchors.
         if case .provisional = kind { view.invalidateInputSelectionTracking() }

@@ -21,6 +21,7 @@ final class ViewportLayoutCoordinator {
     private let manager: LineManager
     private let controllerForLine: (DocumentLineNode) -> LogicalLineLayoutController?
     private let cachedControllerForLine: ((DocumentLineNode) -> LogicalLineLayoutController?)?
+    private let horizontalInset: () -> CGFloat
     private var previousLines: [DocumentLineNode] = []
     /// Limit cheap cache checks independently of the preparation/layout budget.
     private static let maximumCachedPredecessorLookups = 16
@@ -30,9 +31,11 @@ final class ViewportLayoutCoordinator {
     /// The optional cache lookup must be side-effect free and never prepare a line.
     init(manager: LineManager,
          cachedControllerForLine: ((DocumentLineNode) -> LogicalLineLayoutController?)? = nil,
+         horizontalInset: @escaping () -> CGFloat = { 0 },
          controllerForLine: @escaping (DocumentLineNode) -> LogicalLineLayoutController?) {
         self.manager = manager
         self.cachedControllerForLine = cachedControllerForLine
+        self.horizontalInset = horizontalInset
         self.controllerForLine = controllerForLine
     }
 
@@ -56,7 +59,7 @@ final class ViewportLayoutCoordinator {
         func layout(_ request: LogicalLineLayoutRequest, controller: LogicalLineLayoutController,
                     line: DocumentLineNode) -> [LogicalLineLayoutController.Placement]? {
             guard budget?.consume(line) ?? true else { return nil }
-            let placements = controller.layout(request)
+            let placements = controller.layout(request, horizontalInset: horizontalInset())
             return (budget?.check() ?? true) ? placements : nil
         }
         if budget != nil && previousLines.count > 80 {

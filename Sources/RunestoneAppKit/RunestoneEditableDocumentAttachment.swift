@@ -121,6 +121,13 @@ public final class RunestoneEditableDocumentAttachment {
         return SelectionSnapshot(range: snapshot.range, text: snapshot.text)
     }
 
+    /// Applies presentation-only options without changing canonical document state.
+    public func applyDisplayConfiguration(_ configuration: RunestoneEditorDisplayConfiguration) {
+        precondition(Thread.isMainThread)
+        guard !detaching, !detached else { return }
+        view.displayConfiguration = configuration
+    }
+
     /// Ask the containing window to make this view first responder. Returns
     /// false when detached, unavailable, or not installed in a window. A true
     /// result is window acceptance, not proof that the window is key or an

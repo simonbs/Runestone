@@ -124,6 +124,39 @@ final class ReadOnlyDocumentViewTests: XCTestCase {
         XCTAssertEqual(scroll.contentView.bounds.minY, requestedY + anchor.yPosition - oldY, accuracy: 1)
     }
 
+    func testDisplayConfigurationInsetsTextAndConstrainsWrappingWithoutMutatingContent() throws {
+        let text = NSAttributedString(string: String(repeating: "word ", count: 30), attributes: [.font: font])
+        let (scroll, view) = makeView(text, width: 320, height: 100)
+        let revision = view.contentRevision
+        let content = view.content
+        view.displayConfiguration = RunestoneEditorDisplayConfiguration(
+            showsLineNumbers: true,
+            minimumGutterCharacterCount: 4,
+            maximumContentWidthColumn: 12,
+            characterWidth: 8
+        )
+        view.updateViewport()
+        let layout = try XCTUnwrap(view.visibleLayout)
+        let placements = layout.lines.flatMap(\.placements)
+        XCTAssertGreaterThan(try XCTUnwrap(placements.first).frame.minX, 0)
+        XCTAssertTrue(placements.allSatisfy { $0.frame.width <= 96.5 })
+        XCTAssertEqual(view.contentRevision, revision)
+        XCTAssertTrue(view.content.isEqual(to: content))
+        XCTAssertEqual(view.frame.width, scroll.contentView.bounds.width, accuracy: 0.001)
+    }
+
+    func testDisplaySelectionAndPresentationOptionsDoNotChangeInputSnapshot() {
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: "one\ttwo\nthree", attributes: [.font: font]))
+        let revision = view.contentRevision
+        view.updateDisplaySelection(NSRange(location: 4, length: 3))
+        view.displayConfiguration = RunestoneEditorDisplayConfiguration(
+            showsSelectedLines: true, showsTabs: true, showsLineBreaks: true, pageGuideColumn: 8,
+            characterWidth: 8
+        )
+        XCTAssertEqual(view.content.string, "one\ttwo\nthree")
+        XCTAssertEqual(view.contentRevision, revision)
+    }
+
     private func makeView(_ text: NSAttributedString, width: CGFloat, height: CGFloat) -> (NSScrollView, ReadOnlyDocumentView) {
         let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: width, height: height))
         scroll.hasVerticalScroller = false
