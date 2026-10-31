@@ -52,6 +52,8 @@ public class ReadOnlyDocumentView: NSView {
     private var controllerOrder: [DocumentLineNodeID] = []
     private var coordinator: ViewportLayoutCoordinator!
     private var layoutWidth: CGFloat = 0
+    private var measuredUnwrappedContentWidth: CGFloat = 0
+    private var unwrappedWidthMeasurementGeneration = UUID()
     private var boundsObserver: NSObjectProtocol?
     private var windowObservers: [NSObjectProtocol] = []
     let inputInvalidation: InputInvalidationDelivery
@@ -85,6 +87,7 @@ public class ReadOnlyDocumentView: NSView {
         didSet {
             guard !isRetired else { return }
             resetLayout(width: 0)
+            scheduleUnwrappedWidthMeasurementIfNeeded()
             noteInputCoordinatesChanged()
             needsDisplay = true
             updateViewport()
@@ -558,6 +561,7 @@ public class ReadOnlyDocumentView: NSView {
             }
         }
         noteInputCoordinatesChanged()
+        scheduleUnwrappedWidthMeasurementIfNeeded()
     }
 
     /// The owner also calls this when an ancestor moves inside a stationary window.
@@ -730,7 +734,7 @@ public class ReadOnlyDocumentView: NSView {
                     return range.location <= anchor.location && anchor.location < range.location + range.length
                 } ?? placements.last
                 let documentY = fragment?.frame.minY ?? line.yPosition
-                let size = NSSize(width: width, height: max(clip.bounds.height, manager.contentHeight))
+                let size = NSSize(width: documentFrameWidth, height: max(clip.bounds.height, manager.contentHeight))
                 if frame.size != size { setFrameSize(size) }
                 guard !isRetired, contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
                 var proposed = clip.bounds
@@ -751,7 +755,7 @@ public class ReadOnlyDocumentView: NSView {
             let requested = clip.bounds
             guard boundedViewportBudget?.check() ?? true else { visibleLayout = nil; return }
             guard let result = coordinator.layout(in: requested, budget: boundedViewportBudget) else { visibleLayout = nil; return }
-            let size = NSSize(width: width, height: max(clip.bounds.height, manager.contentHeight))
+            let size = NSSize(width: documentFrameWidth, height: max(clip.bounds.height, manager.contentHeight))
             if frame.size != size { setFrameSize(size) }
             guard !isRetired, contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
             var proposed = clip.bounds
@@ -983,6 +987,8 @@ public class ReadOnlyDocumentView: NSView {
 
     private func resetLayout(width: CGFloat) {
         layoutWidth = width
+        measuredUnwrappedContentWidth = 0
+        unwrappedWidthMeasurementGeneration = UUID()
         controllers.removeAll()
         controllerOrder.removeAll()
         manager = LineManager(stringView: StringView(string: snapshot.string))
@@ -994,6 +1000,7 @@ public class ReadOnlyDocumentView: NSView {
             self?.controller(for: line)
         }
         visibleLayout = nil
+        scheduleUnwrappedWidthMeasurementIfNeeded()
     }
 
     private func controller(for line: DocumentLineNode) -> LogicalLineLayoutController? {
@@ -1007,7 +1014,12 @@ public class ReadOnlyDocumentView: NSView {
               range.length <= snapshot.length - range.location else { return nil }
         let controller = LogicalLineLayoutController(manager: manager, line: line)
         guard controller.prepare(snapshot.attributedSubstring(from: range), width: effectiveTextWidth,
-                                 fallbackHeight: fallbackHeight) else { return nil }
+                                 fallbackHeight: fallbackHeight,
+                                 wrapsLines: displayConfiguration.isLineWrappingEnabled) else { return nil }
+        if !displayConfiguration.isLineWrappingEnabled {
+            measuredUnwrappedContentWidth = max(measuredUnwrappedContentWidth,
+                                                horizontalTextInset + controller.measuredTextWidth)
+        }
         controllers[line.id] = controller
         controllerOrder.append(line.id)
         return controller
@@ -1027,8 +1039,61 @@ public class ReadOnlyDocumentView: NSView {
 
     private var effectiveTextWidth: CGFloat {
         let available = max(1, layoutWidth - horizontalTextInset)
+        guard displayConfiguration.isLineWrappingEnabled else { return available }
         guard let column = displayConfiguration.maximumContentWidthColumn, column > 0 else { return available }
         return min(available, CGFloat(column) * safeCharacterWidth)
+    }
+
+    private var documentFrameWidth: CGFloat {
+        guard !displayConfiguration.isLineWrappingEnabled else { return layoutWidth }
+        return max(layoutWidth, measuredUnwrappedContentWidth)
+    }
+
+    /// Measures unwrapped logical lines in bounded main-thread batches. The
+    /// horizontal extent grows monotonically for one content/configuration
+    /// generation, while edits or wrapping changes cancel stale work.
+    private func scheduleUnwrappedWidthMeasurementIfNeeded() {
+        guard !isRetired, !displayConfiguration.isLineWrappingEnabled else { return }
+        let generation = unwrappedWidthMeasurementGeneration
+        measureUnwrappedWidths(startingAt: 0, maximum: measuredUnwrappedContentWidth, generation: generation)
+    }
+
+    private func measureUnwrappedWidths(startingAt row: Int, maximum: CGFloat, generation: UUID) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.isRetired,
+                  !self.displayConfiguration.isLineWrappingEnabled,
+                  self.unwrappedWidthMeasurementGeneration == generation else { return }
+            let deadline = ProcessInfo.processInfo.systemUptime + 0.008
+            var row = row
+            var maximum = maximum
+            while row < self.manager.lineCount && ProcessInfo.processInfo.systemUptime < deadline {
+                let line = self.manager.line(atRow: row)
+                let range = NSRange(location: line.location, length: line.data.totalLength)
+                guard range.location >= 0, range.length >= 0,
+                      range.location <= self.snapshot.length,
+                      range.length <= self.snapshot.length - range.location else { return }
+                let attributed = self.snapshot.attributedSubstring(from: range)
+                let coreTextLine = CTLineCreateWithAttributedString(attributed)
+                let width = CGFloat(CTLineGetTypographicBounds(coreTextLine, nil, nil, nil))
+                if width.isFinite { maximum = max(maximum, self.horizontalTextInset + ceil(width)) }
+                row += 1
+            }
+            guard self.unwrappedWidthMeasurementGeneration == generation else { return }
+            if maximum > self.measuredUnwrappedContentWidth {
+                self.measuredUnwrappedContentWidth = maximum
+                self.updateDocumentFrameSize()
+            }
+            if row < self.manager.lineCount {
+                self.measureUnwrappedWidths(startingAt: row, maximum: maximum, generation: generation)
+            }
+        }
+    }
+
+    private func updateDocumentFrameSize() {
+        guard let clip = enclosingScrollView?.contentView else { return }
+        let size = NSSize(width: documentFrameWidth, height: max(clip.bounds.height, manager.contentHeight))
+        if frame.size != size { setFrameSize(size) }
+        enclosingScrollView?.reflectScrolledClipView(clip)
     }
 
     private func trimControllers(keeping visible: Set<DocumentLineNodeID>) {

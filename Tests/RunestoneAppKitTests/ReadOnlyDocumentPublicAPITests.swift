@@ -144,5 +144,59 @@ final class ReadOnlyDocumentPublicAPITests: XCTestCase {
         XCTAssertGreaterThan(view.frame.height, scroll.contentView.bounds.height)
         XCTAssertEqual(scroll.contentView.bounds.minY, 0, accuracy: 0.01)
     }
+
+    func testUnwrappedConfigurationPublishesMeasuredHorizontalExtent() {
+        let text = String(repeating: "wide segment ", count: 80)
+        let attributed = NSAttributedString(string: text, attributes: [.font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)])
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 180, height: 80))
+        scroll.hasHorizontalScroller = true
+        let view = ReadOnlyDocumentView(content: attributed)
+        scroll.documentView = view
+        scroll.tile()
+        view.layoutSubtreeIfNeeded()
+        let wrappedHeight = view.frame.height
+
+        var configuration = view.displayConfiguration
+        configuration.isLineWrappingEnabled = false
+        view.displayConfiguration = configuration
+        waitUntil { view.frame.width > scroll.contentView.bounds.width }
+
+        XCTAssertGreaterThan(view.frame.width, 1_000)
+        XCTAssertLessThan(view.frame.height, wrappedHeight)
+        scroll.contentView.scroll(to: NSPoint(x: view.frame.width, y: 0))
+        scroll.reflectScrolledClipView(scroll.contentView)
+        XCTAssertGreaterThan(scroll.contentView.bounds.minX, 0)
+
+        configuration.isLineWrappingEnabled = true
+        view.displayConfiguration = configuration
+        waitUntil { abs(view.frame.width - scroll.contentView.bounds.width) < 0.01 }
+        XCTAssertEqual(scroll.contentView.bounds.minX, 0, accuracy: 0.01)
+    }
+
+    func testCancelledUnwrappedMeasurementCannotResizeReplacementContent() {
+        let long = NSAttributedString(string: String(repeating: "long ", count: 2_000),
+                                      attributes: [.font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)])
+        let short = NSAttributedString(string: "short", attributes: [.font: NSFont.systemFont(ofSize: 14)])
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 180, height: 80))
+        let view = ReadOnlyDocumentView(content: long)
+        scroll.documentView = view
+        var configuration = view.displayConfiguration
+        configuration.isLineWrappingEnabled = false
+        view.displayConfiguration = configuration
+        view.setContent(short)
+        configuration.isLineWrappingEnabled = true
+        view.displayConfiguration = configuration
+        waitUntil { abs(view.frame.width - scroll.contentView.bounds.width) < 0.01 }
+        XCTAssertEqual(view.content.string, "short")
+        XCTAssertEqual(view.frame.width, scroll.contentView.bounds.width, accuracy: 0.01)
+    }
+
+    private func waitUntil(timeout: TimeInterval = 1, _ condition: () -> Bool) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition(), Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+        }
+        XCTAssertTrue(condition())
+    }
 }
 #endif
