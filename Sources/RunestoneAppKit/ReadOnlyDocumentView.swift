@@ -265,6 +265,26 @@ public class ReadOnlyDocumentView: NSView {
         needsDisplay = true
     }
 
+    var presentedSelectionRange: NSRange? {
+        guard displaySelection.location != NSNotFound else { return nil }
+        return displaySelection
+    }
+
+    /// Selects and reveals one validated canonical UTF-16 range without
+    /// requiring an active input context. Hosts use this for navigation that
+    /// must remain available while the editor is read-only.
+    @discardableResult
+    func selectAndRevealDocumentRange(_ range: NSRange) -> Bool {
+        precondition(Thread.isMainThread)
+        let length = manager.stringView.string.length
+        guard !isRetired, range.location >= 0, range.length >= 0,
+              range.location <= length, range.length <= length - range.location else { return false }
+        updateDisplaySelection(range)
+        scheduleAccessibilitySelectionChanged()
+        scrollTextFinderRangeToVisible(range)
+        return true
+    }
+
     /// A suppressed input context keeps its dirty flags until it is active
     /// again; a queued turn alone does not imply that accessibility can read it.
     func flushAccessibilityNotificationsIfNeeded() {

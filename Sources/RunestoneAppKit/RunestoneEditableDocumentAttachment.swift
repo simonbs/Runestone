@@ -197,6 +197,15 @@ public final class RunestoneEditableDocumentAttachment {
         return SelectionSnapshot(range: snapshot.range, text: snapshot.text)
     }
 
+    /// The currently presented UTF-16 selection, including while the editor is
+    /// read-only. Unlike `selectionSnapshot`, this does not imply active input
+    /// or provide provisional text and is intended for presentation/navigation.
+    public var presentedSelectionRange: NSRange? {
+        precondition(Thread.isMainThread)
+        guard !detaching, !detached else { return nil }
+        return view.presentedSelectionRange
+    }
+
     public var textFinderSnapshot: TextFinderSnapshot? {
         precondition(Thread.isMainThread)
         guard isEditable, let snapshot = attachment?.connection.textFinderSnapshot() else { return nil }
@@ -229,6 +238,22 @@ public final class RunestoneEditableDocumentAttachment {
         precondition(Thread.isMainThread)
         guard isEditable else { return }
         view.scrollTextFinderRangeToVisible(range)
+    }
+
+    /// Selects and reveals one canonical UTF-16 document range. Editable
+    /// attachments publish the selection through the document input gate;
+    /// read-only attachments retain a presentation-only selection so native
+    /// navigation such as Go to Line remains useful without enabling edits.
+    @discardableResult
+    public func selectAndRevealDocumentRange(_ range: NSRange) -> Bool {
+        precondition(Thread.isMainThread)
+        guard !detaching, !detached else { return false }
+        if isEditable {
+            guard attachment?.connection.setSelectionForTextFinder(range) == true else { return false }
+            view.scrollTextFinderRangeToVisible(range)
+            return true
+        }
+        return view.selectAndRevealDocumentRange(range)
     }
 
     /// Returns conservative view-local geometry only for a fully visible
