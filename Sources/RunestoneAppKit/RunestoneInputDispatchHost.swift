@@ -130,6 +130,13 @@ public protocol RunestoneInputDispatchHost: RunestoneInputDocumentHost {
     /// document operation owns the gate, without changing document state.
     func beginInputDispatch(expectedRevision: UUID, source: ReadOnlyDocumentView) -> RunestoneInputDispatchStart
 
+    /// Advisory menu validation for a document-owned history command. The
+    /// host must perform only side-effect-free reads and must not call out or
+    /// enter an event loop. The actual operation must still acquire its gate
+    /// and check the expected revision. The default is false.
+    func canPerformInputHistory(_ operation: RunestoneInputHistoryOperation, expectedRevision: UUID,
+                                source: ReadOnlyDocumentView) -> Bool
+
     /// Perform a document-owned undo or redo after the enclosing input dispatch
     /// has closed its outer reservation. Atomically acquire the same document
     /// gate used by input, reconstruction and competing document operations,
@@ -151,6 +158,9 @@ public protocol RunestoneInputDispatchHost: RunestoneInputDocumentHost {
 }
 
 public extension RunestoneInputDispatchHost {
+    func canPerformInputHistory(_ operation: RunestoneInputHistoryOperation, expectedRevision: UUID,
+                                source: ReadOnlyDocumentView) -> Bool { false }
+
     func performInputHistory(_ operation: RunestoneInputHistoryOperation, expectedRevision: UUID,
                              source: ReadOnlyDocumentView) -> RunestoneInputHistoryResult {
         .unavailable

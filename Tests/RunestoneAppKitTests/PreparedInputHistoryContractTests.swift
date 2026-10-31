@@ -59,12 +59,23 @@ final class PreparedInputHistoryContractTests: XCTestCase {
         let host = HistoryDefaultHost()
         let source = ReadOnlyDocumentView(content: NSAttributedString(string: "abc"))
         let expected = host.inputRevision
+        XCTAssertFalse(host.canPerformInputHistory(.undo, expectedRevision: expected, source: source))
         XCTAssertEqual(host.performInputHistory(.undo, expectedRevision: expected, source: source), .unavailable)
         XCTAssertEqual(host.performInputHistory(.redo, expectedRevision: expected, source: source), .unavailable)
         XCTAssertEqual(host.inputRevision, expected)
         XCTAssertEqual(host.gateAttempts, 0)
         XCTAssertEqual(source.content.string, "abc")
     }
+    func testHistoryMenuCapabilityIsAdvisoryAndDisabledWhilePendingOrStale() throws {
+        let fixture = try DeferredHistoryFixture()
+        XCTAssertTrue(fixture.connection.canPerformHistory(.undo))
+        XCTAssertTrue(fixture.connection.performCoordinatedInput { fixture.connection.requestHistory(.undo) })
+        XCTAssertFalse(fixture.connection.canPerformHistory(.undo))
+        fixture.queue.runAll()
+        XCTAssertFalse(fixture.connection.canPerformHistory(.undo)) // View revision is stale until reconstruction.
+        fixture.retire()
+    }
+
     func testResponderHistoryCommandsRunAfterDispatchGateCloses() throws {
         for (selector, operation) in [("undo:", RunestoneInputHistoryOperation.undo),
                                       ("redo:", RunestoneInputHistoryOperation.redo)] {
@@ -335,6 +346,10 @@ private final class DeferredHistoryHost: RunestoneInputDispatchHost {
         guard expectedRevision == inputRevision else { return .stale }
         parentOpen = true
         return .reserved(DeferredHistoryParent(self))
+    }
+    func canPerformInputHistory(_ operation: RunestoneInputHistoryOperation, expectedRevision: UUID,
+                                source: ReadOnlyDocumentView) -> Bool {
+        !parentOpen && !historyGateOpen && !reconstructionGateOpen && expectedRevision == inputRevision
     }
     func performInputHistory(_ operation: RunestoneInputHistoryOperation, expectedRevision: UUID,
                              source: ReadOnlyDocumentView) -> RunestoneInputHistoryResult {

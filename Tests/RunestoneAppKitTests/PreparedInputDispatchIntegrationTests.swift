@@ -30,7 +30,7 @@ final class PreparedInputDispatchIntegrationTests: XCTestCase {
             client.insertText("日本", replacementRange: self.unspecified)
             XCTAssertEqual(host.text, "aX日本")
             XCTAssertNotEqual(host.inputRevision, afterReplacement)
-            view.routeCommand(NSSelectorFromString("moveLeft:"), on: connection) { _ in forwarded = true; return true }
+            view.routeCommand(NSSelectorFromString("moveBackward:"), on: connection) { _ in forwarded = true; return true }
             XCTAssertEqual(fixture.attachment.adapter.selectedRangeForInput(), NSRange(location: 3, length: 0))
             XCTAssertTrue(host.parentOpen)
         })
@@ -168,7 +168,7 @@ final class PreparedInputDispatchIntegrationTests: XCTestCase {
             XCTAssertTrue(connection.performKeyBindingFallback {
                 fallbackCalls += 1
                 XCTAssertTrue(host.parentOpen)
-                view.routeCommand(NSSelectorFromString("moveRight:"), on: connection) { _ in
+                view.routeCommand(NSSelectorFromString("moveForward:"), on: connection) { _ in
                     XCTFail("A recognized command must not be forwarded")
                     return true
                 }

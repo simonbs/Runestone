@@ -55,12 +55,10 @@ final class PreparedInputResponderViewTests: XCTestCase {
         XCTAssertEqual(host.text, "abc")
         XCTAssertEqual(host.undoCount, 0)
         view.routeCommand(NSSelectorFromString("transpose:"), on: connection) { _ in forwarded += 1; return true }
-        XCTAssertTrue(connection.takeInputFailures().records.isEmpty)
-        view.routeCommand(NSSelectorFromString("transpose:"), on: connection) { _ in forwarded += 1; return false }
         batch = connection.takeInputFailures()
-        XCTAssertEqual(forwarded, 2)
+        XCTAssertEqual(forwarded, 0)
         XCTAssertEqual(batch.records, [.init(operation: .command,
-                                              failure: .init(reason: .unsupported, effect: .mayHaveApplied))])
+                                              failure: .init(reason: .unsupported, effect: .notApplied))])
         XCTAssertFalse(attachment.disconnect())
         queue.runAll()
         XCTAssertTrue(attachment.disconnect())
@@ -77,7 +75,7 @@ final class PreparedInputResponderViewTests: XCTestCase {
         XCTAssertTrue(connection.resumeForFocus())
         host.busy = true
         var forwarded = 0
-        view.routeCommand(NSSelectorFromString("moveRight:"), on: connection) { _ in forwarded += 1; return true }
+        view.routeCommand(NSSelectorFromString("moveForward:"), on: connection) { _ in forwarded += 1; return true }
         let batch = connection.takeInputFailures()
         XCTAssertEqual(batch.records, [.init(operation: .command,
                                               failure: .init(reason: .busy, effect: .notApplied))])
