@@ -9,6 +9,7 @@ import RunestoneEngine
 /// accessibility navigation, and interactive editing are not provided by this view.
 public final class ReadOnlyDocumentView: NSView {
     private var snapshot: NSMutableAttributedString
+    private(set) var contentRevision = UUID()
     private let fallbackHeight: CGFloat
     private let cacheLimit = 128
     private(set) var manager: LineManager
@@ -36,7 +37,15 @@ public final class ReadOnlyDocumentView: NSView {
     /// attribute values themselves are not deep-copied. Rebuilding layout takes
     /// time proportional to the size of the document.
     public func setContent(_ content: NSAttributedString) {
+        _ = setContentReturningRevision(content)
+    }
+
+    /// Returns the revision assigned before any layout notifications can run.
+    @discardableResult
+    func setContentReturningRevision(_ content: NSAttributedString) -> UUID {
         snapshot = NSMutableAttributedString(attributedString: content)
+        let revision = UUID()
+        contentRevision = revision
         resetLayout(width: 0)
         needsDisplay = true
         if let scroll = enclosingScrollView {
@@ -44,6 +53,7 @@ public final class ReadOnlyDocumentView: NSView {
             scroll.reflectScrolledClipView(scroll.contentView)
         }
         updateViewport()
+        return revision
     }
 
     /// Replaces a UTF-16 range with attributed content without resetting the document.
@@ -56,15 +66,22 @@ public final class ReadOnlyDocumentView: NSView {
     /// operation does not provide input, selection, undo, or change notifications.
     @discardableResult
     public func replaceContent(in range: NSRange, with content: NSAttributedString) -> Bool {
+        replaceContentReturningRevision(in: range, with: content) != nil
+    }
+
+    /// Returns the revision assigned before any layout notifications can run.
+    func replaceContentReturningRevision(in range: NSRange, with content: NSAttributedString) -> UUID? {
         let text = manager.stringView.string
         guard range.location >= 0, range.length >= 0, range.location <= text.length,
               range.length <= text.length - range.location,
               isScalarBoundary(range.location, in: text),
-              isScalarBoundary(range.location + range.length, in: text) else { return false }
-        if range.length == 0 && content.length == 0 { return true }
+              isScalarBoundary(range.location + range.length, in: text) else { return nil }
+        if range.length == 0 && content.length == 0 { return contentRevision }
         let replacement = NSAttributedString(attributedString: content)
-        guard let edit = LineEditTransaction.replace(in: manager, range: range, with: replacement.string) else { return false }
+        guard let edit = LineEditTransaction.replace(in: manager, range: range, with: replacement.string) else { return nil }
         snapshot.replaceCharacters(in: range, with: replacement)
+        let revision = UUID()
+        contentRevision = revision
         let affected = edit.lineChanges.editedLines.union(edit.lineChanges.removedLines)
         let ids = Set(affected.map(\.id))
         for id in ids { controllers.removeValue(forKey: id)?.invalidate() }
@@ -72,7 +89,12 @@ public final class ReadOnlyDocumentView: NSView {
         visibleLayout = nil
         needsDisplay = true
         updateViewport()
-        return true
+        return revision
+    }
+
+    /// The caller must validate this UTF-16 range against the current document.
+    func attributedContent(in range: NSRange) -> NSAttributedString {
+        snapshot.attributedSubstring(from: range)
     }
 
     private func isScalarBoundary(_ offset: Int, in text: NSString) -> Bool {
@@ -123,6 +145,7 @@ public final class ReadOnlyDocumentView: NSView {
               clip.bounds.height.isFinite, clip.bounds.height > 0 else { return }
         updatingViewport = true
         defer { updatingViewport = false }
+        let viewportRevision = contentRevision
         let width = clip.bounds.width
         if width != layoutWidth {
             // Rebuild currently scales with document line count; preserving an anchor
@@ -140,10 +163,12 @@ public final class ReadOnlyDocumentView: NSView {
                 let documentY = fragment?.frame.minY ?? line.yPosition
                 let size = NSSize(width: width, height: max(clip.bounds.height, manager.contentHeight))
                 if frame.size != size { setFrameSize(size) }
+                guard contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
                 var proposed = clip.bounds
                 proposed.origin.y = documentY - anchor.screenY
                 clip.scroll(to: clip.constrainBoundsRect(proposed).origin)
                 enclosingScrollView?.reflectScrolledClipView(clip)
+                guard contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
             }
         }
         // Frame changes and scroll clamping can alter the clip's actual bounds.
@@ -153,12 +178,14 @@ public final class ReadOnlyDocumentView: NSView {
             guard let result = coordinator.layout(in: requested) else { visibleLayout = nil; return }
             let size = NSSize(width: width, height: max(clip.bounds.height, manager.contentHeight))
             if frame.size != size { setFrameSize(size) }
+            guard contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
             var proposed = clip.bounds
             proposed.origin.y = result.viewport.minY
             let constrained = clip.constrainBoundsRect(proposed)
             if clip.bounds.origin != constrained.origin {
                 clip.scroll(to: constrained.origin)
                 enclosingScrollView?.reflectScrolledClipView(clip)
+                guard contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
             }
             if result.isComplete && abs(clip.bounds.minY - result.viewport.minY) < 0.01 {
                 visibleLayout = result
