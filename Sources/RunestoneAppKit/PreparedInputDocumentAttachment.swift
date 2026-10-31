@@ -53,6 +53,7 @@ final class PreparedInputDocumentAttachment {
     static func attach(host: RunestoneInputDocumentHost, lifetime: RunestoneInputDocumentLifetime,
                        bridge: RunestoneInputDocumentBridge,
                        logicalNewlinePlanner: @escaping RunestoneLogicalNewlinePlanner = { _ in nil },
+                       tabPlanner: RunestoneTabPlanner? = nil,
                        makeDriver: PreparedInputContextConnection.DriverFactory? = nil,
                        schedule: @escaping (@escaping () -> Void) -> Void = { DispatchQueue.main.async(execute: $0) },
                        makeView: (NSAttributedString) -> ReadOnlyDocumentView = { ReadOnlyDocumentView(content: $0) },
@@ -158,7 +159,7 @@ final class PreparedInputDocumentAttachment {
                     withExtendedLifetime(host) {}
                 }))
             }, requestReset: { [weak relay] in relay?.connection?.requestReset() },
-            logicalNewlinePlanner: logicalNewlinePlanner, schedule: schedule) else { return nil }
+            logicalNewlinePlanner: logicalNewlinePlanner, tabPlanner: tabPlanner, schedule: schedule) else { return nil }
         guard let connection = PreparedInputContextConnection(adapter: adapter, view: view,
                                                                initiallyFocusSuspended: initiallyFocusSuspended,
                                                                makeDriver: makeDriver, schedule: schedule) else { return nil }
@@ -186,10 +187,11 @@ final class PreparedInputDocumentAttachment {
     static func attachResponder(host: RunestoneInputDocumentHost, lifetime: RunestoneInputDocumentLifetime,
                                 bridge: RunestoneInputDocumentBridge,
                                 logicalNewlinePlanner: @escaping RunestoneLogicalNewlinePlanner = { _ in nil },
+                                tabPlanner: RunestoneTabPlanner? = nil,
                                 makeDriver: PreparedInputContextConnection.DriverFactory? = nil,
                                 schedule: @escaping (@escaping () -> Void) -> Void = { DispatchQueue.main.async(execute: $0) }) -> PreparedInputDocumentAttachment? {
         guard let attachment = attach(host: host, lifetime: lifetime, bridge: bridge,
-                                      logicalNewlinePlanner: logicalNewlinePlanner,
+                                      logicalNewlinePlanner: logicalNewlinePlanner, tabPlanner: tabPlanner,
                                       makeDriver: makeDriver, schedule: schedule,
                                       makeView: { PreparedInputResponderView(snapshot: $0) },
                                       initiallyFocusSuspended: true),

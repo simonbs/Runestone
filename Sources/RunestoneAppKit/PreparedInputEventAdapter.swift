@@ -95,6 +95,7 @@ final class PreparedInputEventAdapter {
         let documentRevision: () -> UUID?
         let typingAttributes: () -> [NSAttributedString.Key: Any]
         let logicalNewlinePlanner: RunestoneLogicalNewlinePlanner
+        let tabPlanner: RunestoneTabPlanner?
         let requestReset: () -> Void
         let rectProvider: (NSRange, ReadOnlyDocumentView) -> InputScreenRangeGeometry.RangeGeometry?
         let indexProvider: (NSPoint, ReadOnlyDocumentView) -> Int?
@@ -108,6 +109,7 @@ final class PreparedInputEventAdapter {
              documentRevision: @escaping () -> UUID?, typingAttributes: @escaping () -> [NSAttributedString.Key: Any],
              requestReset: @escaping () -> Void,
              logicalNewlinePlanner: @escaping RunestoneLogicalNewlinePlanner,
+             tabPlanner: RunestoneTabPlanner?,
              rectProvider: @escaping (NSRange, ReadOnlyDocumentView) -> InputScreenRangeGeometry.RangeGeometry?,
              indexProvider: @escaping (NSPoint, ReadOnlyDocumentView) -> Int?,
              schedule: @escaping (@escaping () -> Void) -> Void) {
@@ -118,6 +120,7 @@ final class PreparedInputEventAdapter {
             self.documentRevision = documentRevision
             self.typingAttributes = typingAttributes
             self.logicalNewlinePlanner = logicalNewlinePlanner
+            self.tabPlanner = tabPlanner
             self.requestReset = requestReset
             self.rectProvider = rectProvider
             self.indexProvider = indexProvider
@@ -132,6 +135,7 @@ final class PreparedInputEventAdapter {
     private var documentRevision: () -> UUID? { payload!.documentRevision }
     private var typingAttributes: () -> [NSAttributedString.Key: Any] { payload!.typingAttributes }
     private var logicalNewlinePlanner: RunestoneLogicalNewlinePlanner { payload!.logicalNewlinePlanner }
+    private var tabPlanner: RunestoneTabPlanner? { payload!.tabPlanner }
     private var requestReset: () -> Void { payload!.requestReset }
     private var rectProvider: (NSRange, ReadOnlyDocumentView) -> InputScreenRangeGeometry.RangeGeometry? { payload!.rectProvider }
     private var indexProvider: (NSPoint, ReadOnlyDocumentView) -> Int? { payload!.indexProvider }
@@ -172,6 +176,7 @@ final class PreparedInputEventAdapter {
           beginReconstruction: @escaping () -> ReconstructionStart,
           requestReset: @escaping () -> Void,
           logicalNewlinePlanner: @escaping RunestoneLogicalNewlinePlanner = { _ in nil },
+          tabPlanner: RunestoneTabPlanner? = nil,
           rectProvider: @escaping (NSRange, ReadOnlyDocumentView) -> InputScreenRangeGeometry.RangeGeometry? = { InputScreenRangeGeometry.firstRect(for: $0, in: $1) },
           indexProvider: @escaping (NSPoint, ReadOnlyDocumentView) -> Int? = { InputScreenRangeGeometry.characterIndex(for: $0, in: $1) },
           schedule: @escaping (@escaping () -> Void) -> Void = { DispatchQueue.main.async(execute: $0) }) {
@@ -186,7 +191,7 @@ final class PreparedInputEventAdapter {
         self.payload = Payload(view: view, permit: permit, beginEvent: beginEvent,
                                beginReconstruction: beginReconstruction, documentRevision: documentRevision,
                                typingAttributes: typingAttributes, requestReset: requestReset,
-                               logicalNewlinePlanner: logicalNewlinePlanner,
+                               logicalNewlinePlanner: logicalNewlinePlanner, tabPlanner: tabPlanner,
                                rectProvider: rectProvider, indexProvider: indexProvider, schedule: schedule)
         self.session = DocumentInputSession(view: view, mutationPermit: permit,
                                             prepareChange: { [weak self] candidate in
@@ -333,6 +338,46 @@ final class PreparedInputEventAdapter {
                   !self.nestedMutationRejected, isAvailable() else { return false }
             return session.insertText(text, replacementRange: replacementRange)
         }
+    }
+
+    func insertTabReporting(backward: Bool, isAvailable: () -> Bool = { true }) -> InputAttempt {
+        perform { session in
+            let selection = session.selectedRange
+            guard isAvailable(), !session.hasProvisionalComposition else { return false }
+            let edit: RunestoneTabEdit
+            if let planner = self.tabPlanner {
+                let context = RunestoneTabContext(
+                    text: self.view.manager.stringView.string as String,
+                    selection: selection,
+                    direction: backward ? .backward : .forward
+                )
+                guard let planned = planner(context) else { return true }
+                edit = planned
+            } else {
+                guard !backward else { return false }
+                edit = RunestoneTabEdit(
+                    replacementRange: selection, replacementText: "\t",
+                    selectedRange: NSRange(location: selection.location + 1, length: 0)
+                )
+            }
+            guard self.validTabEdit(edit, in: self.view.manager.stringView.string as String),
+                  let attributed = self.attributedInput(edit.replacementText), !self.nestedMutationRejected,
+                  isAvailable(), session.selectedRange == selection,
+                  session.insertText(attributed, replacementRange: edit.replacementRange),
+                  session.setSelection(edit.selectedRange) else { return false }
+            return true
+        }
+    }
+
+    private func validTabEdit(_ edit: RunestoneTabEdit, in text: String) -> Bool {
+        let length = (text as NSString).length
+        guard edit.replacementRange.location != NSNotFound, edit.replacementRange.location >= 0,
+              edit.replacementRange.length >= 0, edit.replacementRange.location <= length,
+              edit.replacementRange.length <= length - edit.replacementRange.location else { return false }
+        let resultLength = length - edit.replacementRange.length + (edit.replacementText as NSString).length
+        return edit.selectedRange.location != NSNotFound && edit.selectedRange.location >= 0 &&
+            edit.selectedRange.length >= 0 && edit.selectedRange.location <= resultLength &&
+            edit.selectedRange.length <= resultLength - edit.selectedRange.location
     }
 
     /// Only an explicit logical newline command may use the shared policy.
