@@ -227,6 +227,64 @@ final class PreparedInputNewlineContractTests: XCTestCase {
         XCTAssertEqual(fixture.owner.publications, 0)
         XCTAssertFalse(fixture.owner.undo.canUndo)
     }
+
+    func testTabPlannerAppliesForwardAndBackwardEditsAtomicallyWithUndo() throws {
+        var contexts: [RunestoneTabContext.Direction] = []
+        let fixture = try NewlineFixture("  one\n  two", tabPlanner: { context in
+            contexts.append(context.direction)
+            switch context.direction {
+            case .forward:
+                return RunestoneTabEdit(
+                    replacementRange: context.selection, replacementText: "  ",
+                    selectedRange: NSRange(location: context.selection.location + 2, length: 0)
+                )
+            case .backward:
+                return RunestoneTabEdit(
+                    replacementRange: NSRange(location: 0, length: 2), replacementText: "",
+                    selectedRange: NSRange(location: 0, length: 0)
+                )
+            }
+        })
+        XCTAssertEqual(fixture.adapter.setSelection(NSRange(location: 2, length: 0)), .processed)
+        XCTAssertEqual(fixture.command("insertTab:"), .processed)
+        XCTAssertEqual(fixture.owner.text, "    one\n  two")
+        XCTAssertEqual(fixture.adapter.selectedRangeForInput(), NSRange(location: 4, length: 0))
+        XCTAssertEqual(fixture.command("insertBacktab:"), .processed)
+        XCTAssertEqual(fixture.owner.text, "  one\n  two")
+        XCTAssertEqual(contexts, [.forward, .backward])
+        XCTAssertEqual(fixture.owner.publications, 2)
+        fixture.owner.undo.undo()
+        XCTAssertEqual(fixture.owner.text, "    one\n  two")
+        XCTAssertEqual(fixture.adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertTrue(fixture.adapter.disconnectAfterQuiescing())
+    }
+
+    func testTabPlannerNilIsHandledWithoutMutationAndLiteralPayloadsBypassPlanner() throws {
+        var calls = 0
+        let fixture = try NewlineFixture("A\tB", tabPlanner: { _ in calls += 1; return nil })
+        XCTAssertEqual(fixture.adapter.setSelection(NSRange(location: 0, length: 0)), .processed)
+        XCTAssertEqual(fixture.command("insertBacktab:"), .processed)
+        XCTAssertEqual(fixture.owner.text, "A\tB")
+        XCTAssertEqual(fixture.owner.publications, 0)
+        XCTAssertEqual(calls, 1)
+        XCTAssertEqual(fixture.adapter.insertText("\t", replacementRange: NSRange(location: NSNotFound, length: 0)), .processed)
+        XCTAssertEqual(fixture.owner.text, "\tA\tB")
+        XCTAssertEqual(calls, 1)
+        XCTAssertTrue(fixture.adapter.disconnectAfterQuiescing())
+    }
+
+    func testInvalidTabPlanIsRejectedWithoutFallbackOrReplay() throws {
+        let fixture = try NewlineFixture("abc", tabPlanner: { _ in
+            RunestoneTabEdit(replacementRange: NSRange(location: 99, length: 0), replacementText: "bad",
+                             selectedRange: NSRange(location: 102, length: 0))
+        })
+        XCTAssertEqual(fixture.adapter.setSelection(NSRange(location: 1, length: 0)), .processed)
+        XCTAssertNotEqual(fixture.command("insertTab:"), .processed)
+        XCTAssertEqual(fixture.owner.text, "abc")
+        XCTAssertEqual(fixture.owner.publications, 0)
+        XCTAssertFalse(fixture.owner.undo.canUndo)
+        XCTAssertTrue(fixture.adapter.disconnectAfterQuiescing())
+    }
 }
 
 private final class NewlineFixture {
@@ -234,7 +292,8 @@ private final class NewlineFixture {
     let view: ReadOnlyDocumentView
     let adapter: PreparedInputEventAdapter
 
-    init(_ text: String, logicalNewlinePlanner: @escaping RunestoneLogicalNewlinePlanner = { _ in nil }) throws {
+    init(_ text: String, logicalNewlinePlanner: @escaping RunestoneLogicalNewlinePlanner = { _ in nil },
+         tabPlanner: RunestoneTabPlanner? = nil) throws {
         let owner = NewlineOwner(text)
         let view = ReadOnlyDocumentView(content: NSAttributedString(string: text))
         self.owner = owner
@@ -242,7 +301,7 @@ private final class NewlineFixture {
         adapter = try XCTUnwrap(PreparedInputEventAdapter(view: view, snapshot: view.content,
             initialRevision: owner.revision, documentRevision: { owner.revision }, typingAttributes: { [:] },
             beginEvent: { owner.begin($0) }, beginReconstruction: { owner.reconstruct() }, requestReset: {},
-            logicalNewlinePlanner: logicalNewlinePlanner))
+            logicalNewlinePlanner: logicalNewlinePlanner, tabPlanner: tabPlanner))
     }
 
     func command(_ name: String) -> PreparedInputEventAdapter.Outcome? {

@@ -109,7 +109,7 @@ enum PreparedInputCommandInterpreter {
     }
 
     private static let supportedCommands: Set<String> = [
-        "insertTab:", "insertNewline:", "insertLineBreak:", "deleteBackward:", "deleteForward:",
+        "insertTab:", "insertBacktab:", "insertNewline:", "insertLineBreak:", "deleteBackward:", "deleteForward:",
         "deleteWordBackward:", "deleteWordForward:", "selectAll:",
         "moveLeft:", "moveRight:", "moveBackward:", "moveForward:",
         "moveLeftAndModifySelection:", "moveRightAndModifySelection:",
@@ -154,7 +154,8 @@ enum PreparedInputCommandInterpreter {
         }
 
         switch name {
-        case "insertTab:": return finish(adapter.insertTextReporting("\t", replacementRange: selection, isAvailable: isAvailable))
+        case "insertTab:": return finish(adapter.insertTabReporting(backward: false, isAvailable: isAvailable))
+        case "insertBacktab:": return finish(adapter.insertTabReporting(backward: true, isAvailable: isAvailable))
         case "insertNewline:": return finish(adapter.insertLogicalNewlineReporting(isAvailable: isAvailable))
         case "insertLineBreak:": return finish(adapter.insertLogicalLineBreakReporting(isAvailable: isAvailable))
         case "selectAll:": return finish(adapter.setSelectionReporting(NSRange(location: 0, length: text.length), isAvailable: isAvailable))

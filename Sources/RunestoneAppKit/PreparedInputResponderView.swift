@@ -376,6 +376,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override func insertTab(_ sender: Any?) { performStandardCommand("insertTab:") }
+    override func insertBacktab(_ sender: Any?) { performStandardCommand("insertBacktab:") }
     override func insertNewline(_ sender: Any?) { performStandardCommand("insertNewline:") }
     override func insertLineBreak(_ sender: Any?) { performStandardCommand("insertLineBreak:") }
     override func deleteBackward(_ sender: Any?) { performStandardCommand("deleteBackward:") }

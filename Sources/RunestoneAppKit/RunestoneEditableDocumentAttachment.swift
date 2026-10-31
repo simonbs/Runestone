@@ -39,6 +39,40 @@ public struct RunestoneLogicalNewlineEdit {
 
 public typealias RunestoneLogicalNewlinePlanner = (RunestoneLogicalNewlineContext) -> RunestoneLogicalNewlineEdit?
 
+/// The immutable input supplied to a host-owned Tab/Backtab planner.
+///
+/// The planner is invoked only for AppKit's explicit `insertTab:` or
+/// `insertBacktab:` command after document-gate admission. Literal tab payloads
+/// supplied through `insertText` and marked text never use this policy.
+public struct RunestoneTabContext {
+    public enum Direction { case forward, backward }
+
+    public let text: String
+    public let selection: NSRange
+    public let direction: Direction
+
+    public init(text: String, selection: NSRange, direction: Direction) {
+        self.text = text
+        self.selection = selection
+        self.direction = direction
+    }
+}
+
+/// One atomic Tab/Backtab edit expressed in UTF-16 document coordinates.
+public struct RunestoneTabEdit {
+    public let replacementRange: NSRange
+    public let replacementText: String
+    public let selectedRange: NSRange
+
+    public init(replacementRange: NSRange, replacementText: String, selectedRange: NSRange) {
+        self.replacementRange = replacementRange
+        self.replacementText = replacementText
+        self.selectedRange = selectedRange
+    }
+}
+
+public typealias RunestoneTabPlanner = (RunestoneTabContext) -> RunestoneTabEdit?
+
 /// An explicit, document-owned connection to a prepared editable AppKit view.
 ///
 /// Keep this object alive while the view is installed. The host owns its own
@@ -99,11 +133,13 @@ public final class RunestoneEditableDocumentAttachment {
     public static func attach(host: RunestoneInputDispatchHost,
                               lifetime: RunestoneInputDocumentLifetime,
                               bridge: RunestoneInputDocumentBridge,
-                              logicalNewlinePlanner: @escaping RunestoneLogicalNewlinePlanner = { _ in nil })
+                              logicalNewlinePlanner: @escaping RunestoneLogicalNewlinePlanner = { _ in nil },
+                              tabPlanner: RunestoneTabPlanner? = nil)
         -> RunestoneEditableDocumentAttachment? {
         precondition(Thread.isMainThread)
         guard let attachment = PreparedInputDocumentAttachment.attachResponder(
-            host: host, lifetime: lifetime, bridge: bridge, logicalNewlinePlanner: logicalNewlinePlanner
+            host: host, lifetime: lifetime, bridge: bridge, logicalNewlinePlanner: logicalNewlinePlanner,
+            tabPlanner: tabPlanner
         ) else { return nil }
         return RunestoneEditableDocumentAttachment(attachment)
     }
