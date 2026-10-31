@@ -121,6 +121,13 @@ public final class RunestoneEditableDocumentAttachment {
     private var detaching = false
     private var detached = false
 
+    /// Handles file URLs dropped on the editor. Text drops remain framework-
+    /// owned edits; file URLs are delegated because only the host owns document opening.
+    public var fileDropHandler: (([URL]) -> Bool)? {
+        get { (view as? PreparedInputResponderView)?.fileDropHandler }
+        set { (view as? PreparedInputResponderView)?.fileDropHandler = newValue }
+    }
+
     private init(_ attachment: PreparedInputDocumentAttachment) {
         self.attachment = attachment
         self.view = attachment.view
