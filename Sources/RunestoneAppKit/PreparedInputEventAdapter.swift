@@ -403,6 +403,19 @@ final class PreparedInputEventAdapter {
         }
     }
 
+    /// Captures the selected UTF-16 range and matching text under one
+    /// revision-checked query. A zero-length selection is a valid caret
+    /// snapshot; nil means the input state could not be queried safely.
+    func selectionSnapshotForHost() -> (range: NSRange, text: String)? {
+        queryForInput(nil) {
+            let range = session.selectedRange
+            let text = view.snapshotForInputSession().string as NSString
+            guard range.location >= 0, range.length >= 0, range.location <= text.length,
+                  range.length <= text.length - range.location else { return nil }
+            return (range: range, text: text.substring(with: range))
+        }
+    }
+
     func selectedRangeForInput() -> NSRange {
         queryForInput(NSRange(location: NSNotFound, length: 0)) { session.selectedRange }
     }

@@ -102,6 +102,16 @@ are not claims of complete editor behavior. Active accessibility reports an
 editable text role and routes supported setters through the input gate, but
 role-change notifications and real VoiceOver behavior remain unverified.
 
+The public editable attachment also exposes a read-only `selectionSnapshot` for
+app-owned selected-text commands. It captures the UTF-16 selection range and its
+matching plain text under one revision-checked input query; callers do not need
+to couple the separate public content and input-state snapshots. A caret returns
+a valid zero-length range and empty text, while inactive, stale, resetting and
+detached attachments return nil. The app may use a nonempty result to validate
+and prepare Share or Services payloads without exposing the mutable input
+session. This contract does not itself implement responder-chain Services,
+sharing presentation or rich attributed-text transfer.
+
 ## Foreground attachment evidence
 
 Run `./script/build_and_run.sh --verify` on an unlocked Mac to build an isolated
