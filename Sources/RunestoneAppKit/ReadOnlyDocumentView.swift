@@ -20,6 +20,14 @@ public final class ReadOnlyDocumentView: NSView {
         fileprivate init() {}
     }
 
+    private let retirementLock = NSLock()
+    private var retired = false
+    private var retirementFinished = false
+    var isRetired: Bool {
+        retirementLock.lock()
+        defer { retirementLock.unlock() }
+        return retired
+    }
     private var inputMutationPermit: InputMutationPermit?
     private var inputMutationAuthority: InputMutationAuthority?
     private var activeInputTransaction: InputMutationTransaction?
@@ -58,14 +66,73 @@ public final class ReadOnlyDocumentView: NSView {
 
     public override var isFlipped: Bool { true }
 
+    public override var isHidden: Bool {
+        get { isRetired || super.isHidden }
+        set { super.isHidden = isRetired || newValue }
+    }
+
+    public override func isAccessibilityElement() -> Bool {
+        !isRetired && super.isAccessibilityElement()
+    }
+
+    public override func accessibilityChildren() -> [Any]? {
+        isRetired ? [] : super.accessibilityChildren()
+    }
+
+    public override var acceptsFirstResponder: Bool {
+        !isRetired && super.acceptsFirstResponder
+    }
+
+    public override func hitTest(_ point: NSPoint) -> NSView? {
+        isRetired ? nil : super.hitTest(point)
+    }
+
+    /// Permanently quarantines a view whose input owner was unexpectedly lost.
+    /// The no-callout flag can be set on any thread; AppKit cleanup runs on main.
+    func retireInputView() {
+        retirementLock.lock()
+        let alreadyRetired = retired
+        retired = true
+        retirementLock.unlock()
+        guard !alreadyRetired else { return }
+        if Thread.isMainThread { finishRetirement() }
+        else { DispatchQueue.main.async { [weak self] in self?.finishRetirement() } }
+    }
+
+    private func finishRetirement() {
+        guard !retirementFinished else { return }
+        retirementFinished = true
+        visibleLayout = nil
+        pendingViewportUpdate = false
+        viewportRecoveryToken = UUID()
+        inputInvalidation.detach()
+        if let observer = boundsObserver { NotificationCenter.default.removeObserver(observer) }
+        boundsObserver = nil
+        windowObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        windowObservers.removeAll()
+        super.isHidden = true
+        if let window = window, let responder = window.firstResponder as? NSView,
+           responder === self || responder.isDescendant(of: self) {
+            _ = window.makeFirstResponder(nil)
+        }
+        removeFromSuperview()
+    }
+
     /// Creates a view containing a copy of the supplied attributed string.
     /// Attribute values are not deep-copied and should be treated as immutable.
     public convenience init(content: NSAttributedString) {
         self.init(snapshot: content, fallbackHeight: 16)
     }
 
-    /// A copy of the current document snapshot.
-    public var content: NSAttributedString { NSAttributedString(attributedString: snapshot) }
+    /// A copy of the current document snapshot, or an empty snapshot after this
+    /// view has been permanently retired by an internal input owner.
+    public var content: NSAttributedString {
+        guard !isRetired else { return NSAttributedString(string: "") }
+        return NSAttributedString(attributedString: snapshot)
+    }
+
+    /// The input session uses this only while holding its view transaction.
+    func snapshotForInputSession() -> NSAttributedString { NSAttributedString(attributedString: snapshot) }
 
     /// Replaces the snapshot and resets the scroll position to the start.
     /// Subsequent mutations of the attributed string do not affect the view;
@@ -151,7 +218,7 @@ public final class ReadOnlyDocumentView: NSView {
 
     /// A host must disconnect its input context before releasing this permit.
     func claimInputMutation() -> InputMutationPermit? {
-        guard inputMutationPermit == nil, inputMutationDepth == 0 else { return nil }
+        guard !isRetired, inputMutationPermit == nil, inputMutationDepth == 0 else { return nil }
         let permit = InputMutationPermit()
         inputMutationPermit = permit
         return permit
@@ -166,7 +233,7 @@ public final class ReadOnlyDocumentView: NSView {
     }
 
     private func allowsMutation(with permit: InputMutationPermit?, transaction: InputMutationTransaction?) -> Bool {
-        guard permitsMutation(with: permit) else { return false }
+        guard !isRetired, permitsMutation(with: permit) else { return false }
         if inputMutationPermit != nil { return transaction != nil && activeInputTransaction === transaction }
         return true
     }
@@ -179,12 +246,14 @@ public final class ReadOnlyDocumentView: NSView {
     }
 
     func permitsMutation(with permit: InputMutationPermit?) -> Bool {
+        guard !isRetired else { return false }
         if let owner = inputMutationPermit { return owner === permit }
         return permit == nil
     }
 
     /// A permit belongs to exactly one session for its entire lifetime.
     func bindInputSession(to permit: InputMutationPermit?) -> InputMutationAuthority? {
+        guard !isRetired else { return nil }
         guard let permit = permit else { return inputMutationPermit == nil ? InputMutationAuthority() : nil }
         guard inputMutationPermit === permit, !permit.hasSession else { return nil }
         permit.hasSession = true
@@ -261,6 +330,7 @@ public final class ReadOnlyDocumentView: NSView {
         super.viewDidMoveToWindow()
         windowObservers.forEach { NotificationCenter.default.removeObserver($0) }
         windowObservers.removeAll()
+        guard !isRetired else { return }
         if let window = window {
             for name in [NSWindow.didMoveNotification, NSWindow.didResizeNotification, NSWindow.didChangeScreenNotification] {
                 windowObservers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
@@ -273,6 +343,7 @@ public final class ReadOnlyDocumentView: NSView {
 
     /// The owner also calls this when an ancestor moves inside a stationary window.
     func noteInputCoordinatesChanged() {
+        guard !isRetired else { return }
         if !updatingViewport {
             let needsRecovery = viewportRetryExhausted
             resetViewportRecovery()
@@ -290,6 +361,7 @@ public final class ReadOnlyDocumentView: NSView {
         super.viewDidMoveToSuperview()
         if let observer = boundsObserver { NotificationCenter.default.removeObserver(observer) }
         boundsObserver = nil
+        guard !isRetired else { return }
         if let clip = enclosingScrollView?.contentView {
             clip.postsBoundsChangedNotifications = true
             boundsObserver = NotificationCenter.default.addObserver(forName: NSView.boundsDidChangeNotification,
@@ -309,6 +381,7 @@ public final class ReadOnlyDocumentView: NSView {
 
     /// Resolves against the clip bounds, never the dirty drawing rectangle.
     func updateViewport() {
+        guard !isRetired else { return }
         if updatingViewport {
             let clip = enclosingScrollView?.contentView
             if clip !== updatingClip || clip?.bounds != updatingBounds || contentRevision != updatingContentRevision {
@@ -336,6 +409,7 @@ public final class ReadOnlyDocumentView: NSView {
             updatingClip = nil
             updatingBounds = nil
             inputGeometryRevision = UUID()
+            if isRetired { visibleLayout = nil; pendingViewportUpdate = false }
             if pendingViewportUpdate && viewportRetryCount >= 3 {
                 pendingViewportUpdate = false
                 viewportRetryExhausted = true
@@ -346,7 +420,7 @@ public final class ReadOnlyDocumentView: NSView {
                 needsLayout = true
                 scheduleViewportRecovery()
             }
-            if previousGeometry != inputLayoutSignature() { inputInvalidation.invalidate() }
+            if !isRetired && previousGeometry != inputLayoutSignature() { inputInvalidation.invalidate() }
             if !pendingViewportUpdate || !scheduleViewportUpdate() {
                 if !pendingViewportUpdate {
                     viewportRetryCount = 0
@@ -373,18 +447,18 @@ public final class ReadOnlyDocumentView: NSView {
                 let documentY = fragment?.frame.minY ?? line.yPosition
                 let size = NSSize(width: width, height: max(clip.bounds.height, manager.contentHeight))
                 if frame.size != size { setFrameSize(size) }
-                guard contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
+                guard !isRetired, contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
                 var proposed = clip.bounds
                 proposed.origin.y = documentY - anchor.screenY
                 clip.scroll(to: clip.constrainBoundsRect(proposed).origin)
                 enclosingScrollView?.reflectScrolledClipView(clip)
-                guard contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
+                guard !isRetired, contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
             }
         }
         // Frame changes and scroll clamping can alter the clip's actual bounds.
         // Re-resolve against those bounds before publishing frames for drawing.
         for _ in 0..<3 {
-            guard enclosingScrollView?.contentView === clip, clip.bounds.width == width else {
+            guard !isRetired, enclosingScrollView?.contentView === clip, clip.bounds.width == width else {
                 visibleLayout = nil
                 pendingViewportUpdate = true
                 return
@@ -393,16 +467,16 @@ public final class ReadOnlyDocumentView: NSView {
             guard let result = coordinator.layout(in: requested) else { visibleLayout = nil; return }
             let size = NSSize(width: width, height: max(clip.bounds.height, manager.contentHeight))
             if frame.size != size { setFrameSize(size) }
-            guard contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
+            guard !isRetired, contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
             var proposed = clip.bounds
             proposed.origin.y = result.viewport.minY
             let constrained = clip.constrainBoundsRect(proposed)
             if clip.bounds.origin != constrained.origin {
                 clip.scroll(to: constrained.origin)
                 enclosingScrollView?.reflectScrolledClipView(clip)
-                guard contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
+                guard !isRetired, contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
             }
-            guard enclosingScrollView?.contentView === clip,
+            guard !isRetired, enclosingScrollView?.contentView === clip,
                   clip.bounds.width == requested.width, clip.bounds.height == requested.height else {
                 visibleLayout = nil
                 pendingViewportUpdate = true
@@ -435,7 +509,7 @@ public final class ReadOnlyDocumentView: NSView {
     /// A pathological observer may repeatedly change bounds during layout. Retry
     /// at a bounded rate so a later stable view can recover without a new event.
     private func scheduleViewportRecovery() {
-        guard !viewportRecoveryScheduled else { return }
+        guard !isRetired, !viewportRecoveryScheduled else { return }
         viewportRecoveryScheduled = true
         let delay = viewportRecoveryDelay
         let token = UUID()
@@ -452,7 +526,7 @@ public final class ReadOnlyDocumentView: NSView {
     }
 
     private func scheduleViewportUpdate() -> Bool {
-        guard !viewportUpdateScheduled else { return false }
+        guard !isRetired, !viewportUpdateScheduled else { return false }
         viewportUpdateScheduled = true
         viewportRetryCount += 1
         let invalidation = inputInvalidation
@@ -468,6 +542,7 @@ public final class ReadOnlyDocumentView: NSView {
     }
 
     public override func draw(_ dirtyRect: NSRect) {
+        guard !isRetired else { return }
         super.draw(dirtyRect)
         guard let result = visibleLayout, let context = NSGraphicsContext.current?.cgContext else { return }
         for line in result.lines {

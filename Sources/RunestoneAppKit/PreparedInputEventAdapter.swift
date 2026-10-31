@@ -374,7 +374,7 @@ final class PreparedInputEventAdapter {
         reservation = nil
         lease.close()
         let isCurrent = session.installedRevisionForInput == documentRevision()
-        let accepted = result && !nestedMutationRejected && isCurrent && !session.hasDocumentConflict
+        let accepted = result && !nestedMutationRejected && isCurrent && !session.isStale && !session.hasDocumentConflict
         if accepted { state = .ready; return .processed }
         scheduleReset()
         return .resetRequired
@@ -447,14 +447,19 @@ final class PreparedInputEventAdapter {
     }
 
     deinit {
-        // This adapter has no input context. A real host must quiesce its client
-        // before releasing the adapter, and cannot rely on this fallback alone.
-        // If provisional text remains, the view must be discarded or rebuilt
-        // from the latest canonical snapshot before it can be displayed or reused.
-        if ownsPermit {
-            let view = view
-            let permit = permit
-            DispatchQueue.main.async { view.releaseInputMutationWhenIdle(permit) }
+        let view = view
+        let permit = permit
+        let shouldRetire = ownsPermit
+        // Keep potentially AppKit-owning closures and session alive until the
+        // main queue even if the final adapter reference is dropped off-main.
+        let retained = (session, beginEvent, beginReconstruction, documentRevision,
+                        typingAttributes, requestReset, rectProvider, indexProvider, schedule, reservation,
+                        pendingInputActivityIdleWork)
+        if shouldRetire { view.retireInputView() }
+        DispatchQueue.main.async {
+            withExtendedLifetime(retained) {
+                if shouldRetire { view.releaseInputMutationWhenIdle(permit) }
+            }
         }
     }
 }
