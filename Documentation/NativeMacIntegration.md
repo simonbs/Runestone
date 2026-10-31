@@ -65,12 +65,14 @@ existing history operation for Undo/Redo menu validation; its default is false.
 Visual navigation uses the current Core Text viewport and preserves a preferred
 horizontal coordinate over vertical moves. When an adjacent vertical row is
 outside the viewport, a command can request one bounded scroll and retry against
-new, revision-checked geometry. A source caret that is already offscreen, a
-clipped or unavailable destination remain unavailable. Horizontal and vertical
+new, revision-checked geometry. Source carets that are already offscreen and
+clipped or unavailable destinations remain unavailable. Horizontal and vertical
 movement preserve the selected side of a shared left-to-right soft-wrap boundary.
 Vertical movement uses primary/secondary caret identity when the current viewport
-uniquely resolves a visible bidi transition; horizontal bidi traversal remains
-unavailable until coincident visual edges are fully invertible. Individually
+uniquely resolves a visible bidi transition. Within one currently visible,
+unwrapped placement, horizontal movement uses an ordered caret graph and treats
+coincident bidi identities as separate inverse stops. Cross-row, clipped and
+otherwise unresolved bidi transitions remain unavailable. Individually
 representable hidden whitespace remains traversable. Word, visual-line-edge and
 Affinity-bearing vertical movement can use the same single bounded viewport step
 and revision-checked retry when its source caret remains visible. Transitions
