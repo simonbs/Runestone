@@ -75,7 +75,7 @@ public enum RunestoneInputReconstructionStart {
     case busy
 }
 
-/// The document-owned side of future prepared input integration.
+/// The document-owned side of prepared input integration.
 ///
 /// All methods and reservation/publication callbacks run on the main thread.
 /// The document owns canonical state, its revision, bytes, and undo. It must

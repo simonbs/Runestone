@@ -1,17 +1,14 @@
 # Native Mac integration: dependency and scale evidence
 
 This is the Runestone-side counterpart to RunestoneEditor's
-`Documentation/NativeMacDependencyAndScaleEvidence.md` at app revision
-`0eb07a52cfeb7059ed3fbf385cab691cb928686c`. It records the reviewed capability
-boundary and outstanding evidence; it is not a Phase 1 exit or release claim.
-The app's local framework revision pin for that historical evidence was
-`b73f673e73c9e3380a1cee3899aabc1016e49496`. The recorded audit applies to that
-pin, not subsequent framework changes. The app worktree was later observed at
-`94236e9b1fb8ec22d1a65e285fa91a52be1226c4`, with its revision file pinning
-`d1b5ea3f86fb962a92d274a50d855be4c9a1fc27`; the interaction work is newer than
-that pin. The current framework HEAD and queue owner are recorded separately in
-the integration queue. The committed remote
-dependency lock is a separate input and has not been updated by this work.
+`Documentation/NativeMacDependencyAndScaleEvidence.md`. The current accepted
+integration is app revision `84948b0aa68e9dc3be30e8a09a67e0f47074a532`
+using framework revision `2f5909fb98f144ba90c5592f8d883f1b4f4970dc`.
+It records the reviewed capability boundary and outstanding evidence; it is not
+a signed-distribution or manual-input acceptance claim. Earlier evidence at app
+`0eb07a52cfeb7059ed3fbf385cab691cb928686c` and framework
+`b73f673e73c9e3380a1cee3899aabc1016e49496` remains historical and does not
+describe the enabled production integration.
 
 ## Products and ownership
 
@@ -45,12 +42,15 @@ and explicitly requests first-responder status; construction does not focus it.
 Detach immediately disarms it and may require retry while the context and gate
 quiesce. The host owns its bridge and lifetime and must retain the attachment
 until detach completes. The document view does not become reusable as an
-editable attachment. The observed app has a disabled-by-default editable gate
-and otherwise hosts the read-only view; keep its release gate disabled until
-real focus, keyboard, input-method and accessibility
-interaction have been verified. Focus eligibility is revoked on focus or key-window
-loss, and the host must explicitly request it again. Detach does not transfer the
-window's first responder; the host owns that transition.
+editable attachment. The accepted app enables the editable attachment by
+default. That decision is backed by app-owned foreground automation at the
+accepted revisions, including real focus, key-window transfer, synthetic key
+events, direct input-method and accessibility protocol calls, and real-timer
+drag autoscroll. Physical keyboard, third-party input-method and VoiceOver
+interaction remain manual obligations and must not be inferred from that
+automation. Focus eligibility is revoked on focus or key-window loss, and the
+host must explicitly request it again. Detach does not transfer the window's
+first responder; the host owns that transition.
 
 The prepared command set includes plain-text copy/cut/paste, word movement and
 deletion, visual horizontal/vertical movement, line/document/paragraph edges,
@@ -117,10 +117,13 @@ steps also exposed redundant predecessor layout exhausting the existing work
 budget. The bounded preflight and cached-predecessor changes now pass an
 app-sized deterministic multi-step regression and a non-key-window integration
 test using the production timer and uptime. That timer test injects focus and
-cannot establish key-window behavior. The new foreground tests use the production
-timer and app-sized scroll view, but their results must be recorded from an
-unlocked session before treating the app's failure as resolved. Re-run the
-app-owned acceptance after updating its framework pin.
+cannot establish key-window behavior on its own. The app then integrated
+framework `2f5909fb` and passed its public-attachment real-timer drag case in a
+real key window, including viewport movement, selection extension, mouse-up stop
+and absence of uncertain recovery. The final app-owned spacing acceptance also
+passed the affected real-timer case and all seven foreground cases across focused
+runs. These results resolve the automatic autoscroll blocker; they do not prove
+timing under a human drag or the manual input and accessibility obligations.
 
 A foreground run against the public attachment exercised first-responder
 acquisition, blur and reacquisition, two-window transfer, synthetic key events,
@@ -133,8 +136,8 @@ and screen geometry. Gate contention and detached clients were also checked.
 These are real key windows but synthetic events and direct protocol calls: they
 do not establish physical keyboard, Emoji panel, third-party input method,
 VoiceOver, real system-pasteboard integration or timing under live dragging.
-The host app must integrate the tested framework revision and verify those
-interactions in its own window before changing its disabled release gate.
+The host app integrates the accepted framework revision and verifies these
+automatic interactions in its own window with editing enabled by default.
 
 After focus loss, reconstruction preserves a valid selection only when the
 canonical revision and attributed snapshot still match; discarded marked text
@@ -163,7 +166,7 @@ provisional composition, including an empty marked range. Once the old client
 has been detached, callbacks to that retired client are inert and cannot be
 reported. These reports provide detection, not automatic recovery.
 
-`RunestoneInputDispatchHost` is an opt-in public capability for a future host.
+`RunestoneInputDispatchHost` is the opt-in public capability used by the app host.
 Its parent dispatch reservation excludes competing document operations while
 permitting sequential child reservations at the currently installed revision.
 The private responder holds that parent over both input-driver handling and
@@ -177,18 +180,19 @@ A single pending history request retains metadata only; later input is rejected
 until it has been resolved, and no input event is replayed. Delivery cannot be
 guaranteed after the host or its source view has gone away.
 
-The observed app host implements the parent/child dispatch and history hooks,
-and its editable attachment integration is behind a disabled release gate. The
+The accepted app host implements the parent/child dispatch and history hooks,
+and enables its editable attachment integration by default. The
 framework queues a history command until the enclosing dispatch closes; the host
 must atomically check its captured revision under the document gate and handle
 uncertain history outcomes. A completed synchronous dispatch means no failure
 was detected, not that an IME will issue no later callbacks or that a canonical
 edit occurred.
-Before enabling the app's editing gate, define owner-visible recovery and
-feedback for failed input and discarded composition, integrate and verify the
-app host, and verify actual key focus, input methods, composition on blur,
-accessibility and VoiceOver in an unlocked session. Never replay stale input
-against a newer snapshot. The headless tests do not establish those interactions.
+The app provides owner-visible recovery and feedback for failed input and
+discarded composition, and its automatic foreground acceptance covers key focus,
+direct input-client composition and accessibility entry points. Physical input,
+third-party input methods and VoiceOver remain manual checks. Never replay stale
+input against a newer snapshot. Headless and direct-protocol tests do not
+establish those manual interactions.
 
 ## Line-ending editing contract
 
@@ -206,10 +210,11 @@ The private AppKit adapter resolves `insertNewline:` after the document gate is
 held and the installed revision has been checked. `insertLineBreak:` inserts
 the explicit Unicode line separator. Ordinary input-client text, marked updates,
 commits and paste-like replacements remain literal; an ambiguous single LF is
-not treated as proof of a command. The app's future gate implementation must
+not treated as proof of a command. The app's integrated gate implementation must
 keep its snapshot and revision paired, preserve exact encoding and line endings
 through publication and undo/redo, and route only reliably identified newline
-commands through the contextual policy. The app's editable release gate remains disabled.
+commands through the contextual policy. The accepted implementation is enabled
+by default after app-owned foreground verification.
 
 On iOS, paste, arbitrary insertion, text replacement and Writing Tools preserve
 supplied delimiters. UIKit's [`UIKeyInput.insertText(_:)`](https://developer.apple.com/documentation/uikit/uikeyinput/inserttext(_:))

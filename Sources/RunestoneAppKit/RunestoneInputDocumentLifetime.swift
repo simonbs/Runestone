@@ -1,7 +1,7 @@
 #if canImport(AppKit)
 import AppKit
 
-/// A document-owned lifetime sentinel for future prepared input integration.
+/// A document-owned lifetime sentinel for prepared input integration.
 ///
 /// The document must be the only owner of this object. The framework retains it
 /// only weakly. When the document is destroyed, or the document calls
