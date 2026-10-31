@@ -487,6 +487,84 @@ final class PreparedInputEventAdapterTests: XCTestCase {
         XCTAssertTrue(other.disconnectAfterQuiescing())
     }
 
+    func testLifecycleRevisionCalloutsCannotReenterOrDrainIdleWork() throws {
+        for disconnecting in [false, true] {
+            let owner = FakeEventOwner(text: "abc")
+            let scheduler = EventScheduler()
+            let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+            weak var weakAdapter: PreparedInputEventAdapter?
+            var onRevision: (() -> Void)?
+            let adapter = try XCTUnwrap(PreparedInputEventAdapter(view: view, snapshot: view.content,
+                initialRevision: owner.revision, documentRevision: {
+                    onRevision?()
+                    return owner.revision
+                }, typingAttributes: { [:] }, beginEvent: { owner.begin($0) },
+                beginReconstruction: { owner.beginReconstruction() }, requestReset: {}, schedule: scheduler.enqueue))
+            weakAdapter = adapter
+            var idleRuns = 0
+            adapter.whenInputActivityIdle { idleRuns += 1 }
+            var callbackRan = false
+            onRevision = {
+                onRevision = nil
+                callbackRan = true
+                XCTAssertNil(weakAdapter?.claimInputContext())
+                XCTAssertFalse(weakAdapter?.disconnectAfterQuiescing() ?? true)
+                XCTAssertEqual(weakAdapter?.reconstructWithoutInputContext(), .unavailable)
+                XCTAssertEqual(weakAdapter?.insertText("nested", replacementRange: self.unspecified), .unavailable)
+                XCTAssertEqual(weakAdapter?.selectedRangeForInput().location, NSNotFound)
+                scheduler.runAll()
+                XCTAssertEqual(idleRuns, 0)
+            }
+            if disconnecting {
+                XCTAssertTrue(adapter.disconnectAfterQuiescing())
+            } else {
+                let token = try XCTUnwrap(adapter.claimInputContext())
+                XCTAssertNil(adapter.claimInputContext())
+                XCTAssertTrue(adapter.releaseInputContext(token))
+            }
+            XCTAssertTrue(callbackRan)
+            XCTAssertEqual(idleRuns, 0)
+            scheduler.runAll()
+            XCTAssertEqual(idleRuns, 1)
+            XCTAssertEqual(owner.text, "abc")
+            if !disconnecting { XCTAssertTrue(adapter.disconnectAfterQuiescing()) }
+            let permit = try XCTUnwrap(view.claimInputMutation())
+            XCTAssertTrue(view.releaseInputMutation(permit))
+        }
+    }
+
+    func testQueryRevisionCalloutBlocksLifecycleChangesAndIdleWork() throws {
+        let owner = FakeEventOwner(text: "abc")
+        let scheduler = EventScheduler()
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        weak var weakAdapter: PreparedInputEventAdapter?
+        var onRevision: (() -> Void)?
+        let adapter = try XCTUnwrap(PreparedInputEventAdapter(view: view, snapshot: view.content,
+            initialRevision: owner.revision, documentRevision: {
+                onRevision?()
+                return owner.revision
+            }, typingAttributes: { [:] }, beginEvent: { owner.begin($0) },
+            beginReconstruction: { owner.beginReconstruction() }, requestReset: {}, schedule: scheduler.enqueue))
+        weakAdapter = adapter
+        var idleRuns = 0
+        adapter.whenInputActivityIdle { idleRuns += 1 }
+        var callbackRan = false
+        onRevision = {
+            onRevision = nil
+            callbackRan = true
+            XCTAssertNil(weakAdapter?.claimInputContext())
+            XCTAssertFalse(weakAdapter?.disconnectAfterQuiescing() ?? true)
+            scheduler.runAll()
+            XCTAssertEqual(idleRuns, 0)
+        }
+        XCTAssertEqual(adapter.selectedRangeForInput(), NSRange(location: 0, length: 0))
+        XCTAssertTrue(callbackRan)
+        XCTAssertEqual(idleRuns, 0)
+        scheduler.runAll()
+        XCTAssertEqual(idleRuns, 1)
+        XCTAssertTrue(adapter.disconnectAfterQuiescing())
+    }
+
     func testUnexpectedContextReleaseWaitsForQueryAndCannotReleaseNewerToken() throws {
         let owner = FakeEventOwner(text: "abc")
         let scheduler = EventScheduler()

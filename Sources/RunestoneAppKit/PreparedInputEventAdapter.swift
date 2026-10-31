@@ -71,6 +71,8 @@ final class PreparedInputEventAdapter {
     private var nestedMutationRejected = false
     private var queryDepth = 0
     private var queryNeedsReset = false
+    // Covers revision callouts made while acquiring or releasing lifecycle ownership.
+    private var lifecycleOperationInFlight = false
     private var inputContextToken: InputContextToken?
     private var pendingInputContextRelease: InputContextToken?
     private var inputContextReleaseScheduled = false
@@ -134,9 +136,13 @@ final class PreparedInputEventAdapter {
     /// A context keeps this identity until its client and driver are quiescent.
     func claimInputContext() -> InputContextToken? {
         precondition(Thread.isMainThread)
-        guard !drainingInputActivityIdleWork, state == .ready, queryDepth == 0, inputContextToken == nil,
+        guard !lifecycleOperationInFlight, !drainingInputActivityIdleWork, state == .ready,
+              queryDepth == 0, inputContextToken == nil, !view.isRetired,
               !session.isStale, !session.hasDocumentConflict,
-              session.installedRevisionForInput == documentRevision() else { return nil }
+              let revision = session.installedRevisionForInput else { return nil }
+        lifecycleOperationInFlight = true
+        defer { finishLifecycleOperation() }
+        guard documentRevision() == revision, !view.isRetired else { return nil }
         let token = InputContextToken()
         inputContextToken = token
         return token
@@ -145,7 +151,8 @@ final class PreparedInputEventAdapter {
     @discardableResult
     func releaseInputContext(_ token: InputContextToken) -> Bool {
         precondition(Thread.isMainThread)
-        guard state != .handling, queryDepth == 0, inputContextToken === token else { return false }
+        guard !lifecycleOperationInFlight, state != .handling, queryDepth == 0,
+              inputContextToken === token else { return false }
         inputContextToken = nil
         if pendingInputContextRelease === token { pendingInputContextRelease = nil }
         return true
@@ -163,13 +170,13 @@ final class PreparedInputEventAdapter {
     }
 
     private func schedulePendingInputContextReleaseIfIdle() {
-        guard !drainingInputActivityIdleWork, state != .handling, queryDepth == 0, !inputContextReleaseScheduled,
+        guard !lifecycleOperationInFlight, !drainingInputActivityIdleWork, state != .handling, queryDepth == 0, !inputContextReleaseScheduled,
               let token = pendingInputContextRelease else { return }
         inputContextReleaseScheduled = true
         schedule { [weak self] in
             guard let self = self else { return }
             self.inputContextReleaseScheduled = false
-            if !self.drainingInputActivityIdleWork, self.state != .handling, self.queryDepth == 0,
+            if !self.lifecycleOperationInFlight, !self.drainingInputActivityIdleWork, self.state != .handling, self.queryDepth == 0,
                self.pendingInputContextRelease === token, self.inputContextToken === token {
                 _ = self.releaseInputContext(token)
             }
@@ -177,6 +184,11 @@ final class PreparedInputEventAdapter {
             // If busy, the active operation schedules its own idle recheck.
             self.schedulePendingInputContextReleaseIfIdle()
         }
+    }
+
+    var inputActivityIsBusy: Bool {
+        precondition(Thread.isMainThread)
+        return lifecycleOperationInFlight || drainingInputActivityIdleWork || state == .handling || queryDepth != 0
     }
 
     /// Runs once on a later scheduler turn after adapter mutations and queries
@@ -188,14 +200,14 @@ final class PreparedInputEventAdapter {
     }
 
     private func scheduleInputActivityIdleDrainIfPossible() {
-        guard state != .handling, queryDepth == 0, !inputActivityIdleDrainScheduled,
+        guard !lifecycleOperationInFlight, state != .handling, queryDepth == 0, !inputActivityIdleDrainScheduled,
               !drainingInputActivityIdleWork, !pendingInputActivityIdleWork.isEmpty else { return }
         inputActivityIdleDrainScheduled = true
         schedule { [self] in
             inputActivityIdleDrainScheduled = false
             // An operation may have entered a nested event loop after scheduling.
             // Its exit schedules the next drain; do not poll while it is active.
-            guard state != .handling, queryDepth == 0, !drainingInputActivityIdleWork,
+            guard !lifecycleOperationInFlight, state != .handling, queryDepth == 0, !drainingInputActivityIdleWork,
                   !pendingInputActivityIdleWork.isEmpty else { return }
             drainingInputActivityIdleWork = true
             let work = pendingInputActivityIdleWork.removeFirst()
@@ -206,11 +218,17 @@ final class PreparedInputEventAdapter {
         }
     }
 
+    private func finishLifecycleOperation() {
+        lifecycleOperationInFlight = false
+        schedulePendingInputContextReleaseIfIdle()
+        scheduleInputActivityIdleDrainIfPossible()
+    }
+
     /// Accepted-change observers run inside the same event reservation.
     @discardableResult
     func setContentDidChange(_ callback: ((NSAttributedString) -> Void)?) -> Bool {
         precondition(Thread.isMainThread)
-        guard !drainingInputActivityIdleWork, state == .ready, queryDepth == 0 else { return false }
+        guard !lifecycleOperationInFlight, !drainingInputActivityIdleWork, state == .ready, queryDepth == 0 else { return false }
         session.contentDidChange = callback
         return true
     }
@@ -288,15 +306,10 @@ final class PreparedInputEventAdapter {
 
     private func queryForInput<T>(_ fallback: T, _ body: () -> T) -> T {
         precondition(Thread.isMainThread)
-        guard !drainingInputActivityIdleWork, (state == .ready || state == .handling), let session = session,
+        guard !lifecycleOperationInFlight, !drainingInputActivityIdleWork,
+              (state == .ready || state == .handling), let session = session,
               let revision = session.installedRevisionForInput else { return fallback }
-        guard !session.isStale, !session.hasDocumentConflict, documentRevision() == revision else {
-            if queryDepth > 0 { queryNeedsReset = true }
-            else if state == .ready { scheduleReset() }
-            else { nestedMutationRejected = true }
-            return fallback
-        }
-        let viewRevision = view.contentRevision
+        // Revision providers can reenter or run a nested event loop too.
         queryDepth += 1
         defer {
             queryDepth -= 1
@@ -308,6 +321,11 @@ final class PreparedInputEventAdapter {
             schedulePendingInputContextReleaseIfIdle()
             scheduleInputActivityIdleDrainIfPossible()
         }
+        guard !session.isStale, !session.hasDocumentConflict, documentRevision() == revision else {
+            queryNeedsReset = true
+            return fallback
+        }
+        let viewRevision = view.contentRevision
         let result = body()
         guard !queryNeedsReset, !session.isStale, !session.hasDocumentConflict,
               session.installedRevisionForInput == revision, view.contentRevision == viewRevision,
@@ -344,7 +362,7 @@ final class PreparedInputEventAdapter {
             schedulePendingInputContextReleaseIfIdle()
             scheduleInputActivityIdleDrainIfPossible()
         }
-        guard !drainingInputActivityIdleWork else { return .unavailable }
+        guard !lifecycleOperationInFlight, !drainingInputActivityIdleWork else { return .unavailable }
         if queryDepth > 0 {
             queryNeedsReset = true
             if state == .handling { nestedMutationRejected = true }
@@ -389,7 +407,7 @@ final class PreparedInputEventAdapter {
             schedulePendingInputContextReleaseIfIdle()
             scheduleInputActivityIdleDrainIfPossible()
         }
-        guard !drainingInputActivityIdleWork else { return .unavailable }
+        guard !lifecycleOperationInFlight, !drainingInputActivityIdleWork else { return .unavailable }
         if queryDepth > 0 {
             queryNeedsReset = true
             if state == .handling { nestedMutationRejected = true }
@@ -436,9 +454,12 @@ final class PreparedInputEventAdapter {
     @discardableResult
     func disconnectAfterQuiescing() -> Bool {
         precondition(Thread.isMainThread)
-        guard !drainingInputActivityIdleWork, queryDepth == 0, inputContextToken == nil,
+        guard !lifecycleOperationInFlight, !drainingInputActivityIdleWork, queryDepth == 0, inputContextToken == nil,
               state == .ready || state == .resetPending, !session.hasProvisionalComposition,
-              !session.hasDocumentConflict, session.installedRevisionForInput == documentRevision() else { return false }
+              !session.hasDocumentConflict, let revision = session.installedRevisionForInput else { return false }
+        lifecycleOperationInFlight = true
+        defer { finishLifecycleOperation() }
+        guard documentRevision() == revision else { return false }
         guard view.releaseInputMutation(permit) else { return false }
         state = .disconnected
         ownsPermit = false
