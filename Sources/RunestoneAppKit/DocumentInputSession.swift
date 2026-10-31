@@ -146,12 +146,24 @@ final class DocumentInputSession {
         isApplyingChange = true
         defer { isApplyingChange = false; view.endInputMutation(transaction) }
         let oldSelection = storedSelection
+        // A reset can be caused by ordinary focus loss. The old selection is
+        // meaningful only when the owner still has exactly the same canonical
+        // snapshot and revision; in a provisional composition it belongs to
+        // the original baseline, not the temporary marked text.
+        let baseline = composition?.baseline ?? view.content
+        let candidate = composition?.selection ?? storedSelection
+        let mayPreserve = !hasDocumentConflict && contentMatches && installedDocumentRevision == revision &&
+            (composition == nil || composition?.documentRevision == revision) && baseline.isEqual(to: content) &&
+            PreparedInputCommandInterpreter.isValidSelectionRange(candidate, in: content.string as NSString) &&
+            contentMatches && documentRevision() == revision
+        let restoredSelection = mayPreserve ? candidate : NSRange(location: 0, length: 0)
+        guard documentRevision() == revision else { return false }
         let range = NSRange(location: 0, length: view.manager.stringView.string.length)
         guard view.replaceContentReturningRevision(in: range, with: content, permit: mutationPermit,
                                                     transaction: transaction, didCommit: { viewRevision in
             expectedRevision = viewRevision
             installedDocumentRevision = revision
-            storedSelection = NSRange(location: 0, length: 0)
+            storedSelection = restoredSelection
             storedMarkedRange = nil
             composition = nil
             hasDocumentConflict = false
