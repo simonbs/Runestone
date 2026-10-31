@@ -101,10 +101,9 @@ enum AccessibilityTextGeometry {
         let effectiveViewport = layout.viewport.intersection(visibleRect)
         let result: InputScreenRangeGeometry.RangeGeometry?
         if range.length == 0, let state = view.presentedSelectionState,
-           state.range == range, state.affinity != nil,
-           let rect = InputScreenCaretGeometry.rect(for: InputCaretTarget(location: state.activeLocation,
-                                                                            affinity: state.affinity), in: view) {
-            result = (rect, range)
+           state.range == range, state.affinity != nil {
+            result = InputScreenCaretGeometry.rect(for: InputCaretTarget(
+                location: state.activeLocation, affinity: state.affinity), in: view).map { ($0, range) }
         } else {
             result = InputScreenRangeGeometry.firstRect(for: range, in: view)
         }

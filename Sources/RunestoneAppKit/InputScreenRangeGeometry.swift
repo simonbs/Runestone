@@ -209,16 +209,15 @@ enum InputScreenRangeGeometry {
 
     private static func caretTarget(forDocumentPoint point: NSPoint, in view: ReadOnlyDocumentView,
                                     layout: ViewportLayoutCoordinator.Result) -> InputCaretTarget? {
-        guard let location = characterIndex(forDocumentPoint: point, in: view, layout: layout),
-              let lineLayout = layout.lines.first(where: {
+        guard let lineLayout = layout.lines.first(where: {
                   point.y >= $0.line.yPosition && point.y < $0.line.yPosition + $0.line.data.lineHeight
               }) else { return nil }
-        if lineLayout.line.data.length == 0 { return InputCaretTarget(location: location, affinity: nil) }
+        if lineLayout.line.data.length == 0 { return InputCaretTarget(location: lineLayout.line.location, affinity: nil) }
         guard let placement = lineLayout.placements.first(where: {
             point.y >= $0.frame.minY && point.y < $0.frame.maxY
         }) else { return nil }
         return InputCaretAffinityGeometry.target(forDocumentPoint: point, lineLayout: lineLayout,
-                                                  placement: placement, location: location, in: view)
+                                                  placement: placement, in: view)
     }
 
     private static func viewport(in view: ReadOnlyDocumentView) -> (NSWindow, ViewportLayoutCoordinator.Result)? {

@@ -18,6 +18,11 @@ final class RunestoneEditableDocumentAttachmentPublicTests: XCTestCase {
             range: NSRange(location: 1, length: 2), text: "bc")
         XCTAssertEqual(compatible.activeEndpoint, .upperBound)
         XCTAssertNil(compatible.caretAffinity)
+        let bidi = RunestoneEditableDocumentAttachment.CaretAffinity(
+            wrapSide: nil, bidirectionalSide: .secondary)
+        let bidiSnapshot = RunestoneEditableDocumentAttachment.SelectionSnapshot(
+            range: NSRange(location: 7, length: 0), text: "", caretAffinity: bidi)
+        XCTAssertEqual(bidiSnapshot.caretAffinity?.bidirectionalSide, .secondary)
     }
 
     func testPublicAttachmentCreatesUnfocusedViewAndDetaches() throws {

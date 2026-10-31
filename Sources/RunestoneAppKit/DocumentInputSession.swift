@@ -101,6 +101,10 @@ final class DocumentInputSession {
            affinity.layoutRevision != view.inputLayoutRevision { return nil }
         return storedSelectionState
     }
+    /// Geometry uses the stored identity to distinguish stale affinity from a
+    /// genuinely range-only selection; stale identity must not fall back to a
+    /// primary caret.
+    var selectionStateForGeometry: InputSelectionState? { contentMatches ? storedSelectionState : nil }
     var markedRange: NSRange? { contentMatches ? storedMarkedRange : nil }
     var isStale: Bool { !contentMatches }
     var contentDidChange: ((NSAttributedString) -> Void)?
@@ -255,13 +259,14 @@ final class DocumentInputSession {
         let range = state.range
         guard isCurrent, isValid(range, in: view.manager.stringView.string) else { return false }
         guard (range.length == 0 && state.activeEndpoint == .caret) ||
-                (range.length > 0 && state.activeEndpoint != .caret),
-              state.affinity?.bidirectionalSide == nil else { return false }
+                (range.length > 0 && state.activeEndpoint != .caret) else { return false }
         guard state.affinity != nil || !InputCaretAffinityGeometry.requiresAffinity(
             at: state.activeLocation, in: view) else { return false }
         if let affinity = state.affinity {
             guard affinity.layoutRevision == view.inputLayoutRevision,
-                  state.activeLocation == range.location || state.activeLocation == range.upperBound else { return false }
+                  state.activeLocation == range.location || state.activeLocation == range.upperBound,
+                  InputCaretAffinityGeometry.documentRect(for: InputCaretTarget(
+                    location: state.activeLocation, affinity: affinity), in: view) != nil else { return false }
         }
         if storedSelectionState != state {
             storedSelectionState = state

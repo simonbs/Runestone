@@ -30,6 +30,25 @@ final class InputSelectionGeometryTests: XCTestCase {
         XCTAssertTrue(result.selectionRects.allSatisfy { $0.width > 0 && $0.height > 0 })
     }
 
+    func testCaretSelectionConsumesPrimaryAndSecondaryBidiAffinity() throws {
+        let text = "abc אבגד xyz"
+        let (_, view) = makeView(text, width: 300, height: 80)
+        let placement = try XCTUnwrap(view.visibleLayout?.lines.first?.placements.first)
+        let location = (text as NSString).range(of: "א").location
+        var secondary: CGFloat = 0
+        let primary = CTLineGetOffsetForStringIndex(placement.fragment.line, location, &secondary)
+        let revision = view.inputLayoutRevision
+        func state(_ side: InputCaretAffinity.BidirectionalSide) -> InputSelectionState {
+            InputSelectionState(range: NSRange(location: location, length: 0), activeEndpoint: .caret,
+                                affinity: .init(wrapSide: nil, bidirectionalSide: side,
+                                                layoutRevision: revision))
+        }
+        let a = try XCTUnwrap(InputSelectionGeometry.geometry(selection: state(.primary), marked: nil, in: view))
+        let b = try XCTUnwrap(InputSelectionGeometry.geometry(selection: state(.secondary), marked: nil, in: view))
+        XCTAssertEqual(try XCTUnwrap(a.caretRect).minX, placement.frame.minX + primary, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(b.caretRect).minX, placement.frame.minX + secondary, accuracy: 0.01)
+    }
+
     func testSelectedHiddenWrapWhitespaceShowsClippedMarker() throws {
         let text = String(repeating: "abc        def ", count: 20)
         var found = false

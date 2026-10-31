@@ -77,6 +77,64 @@ final class PreparedInputVisualMovementTests: XCTestCase {
         withExtendedLifetime(window) {}
     }
 
+    func testAffinityAwareHorizontalMovementSafelyRefusesBidiCarets() throws {
+        let text = "abc אבגד xyz"
+        let (window, _, view) = makeView(text, width: 300, height: 80)
+        let placement = try XCTUnwrap(view.visibleLayout?.lines.first?.placements.first)
+        let location = (text as NSString).range(of: "א").location
+        var secondaryX: CGFloat = 0
+        let primaryX = CTLineGetOffsetForStringIndex(placement.fragment.line, location, &secondaryX)
+        func pointerTarget(_ x: CGFloat, side: InputCaretAffinity.BidirectionalSide) throws -> InputCaretTarget {
+            for delta in [CGFloat(-0.25), 0.25] {
+                let point = window.convertPoint(toScreen: view.convert(
+                    NSPoint(x: placement.frame.minX + x + delta, y: placement.frame.midY), to: nil))
+                if let target = InputScreenRangeGeometry.caretTargetForPointer(for: point, in: view),
+                   target.location == location, target.affinity?.bidirectionalSide == side { return target }
+            }
+            return try XCTUnwrap(nil, "Expected a uniquely owned pointer side for bidi caret")
+        }
+        let primary = try pointerTarget(primaryX, side: .primary)
+        let secondary = try pointerTarget(secondaryX, side: .secondary)
+        for target in [primary, secondary] {
+            XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: target, direction: .left, in: view), .unavailable)
+            XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: target, direction: .right, in: view), .unavailable)
+        }
+        withExtendedLifetime(window) {}
+    }
+
+    func testAffinityAwareVerticalMovementTargetsTheRequestedBidiCaretSide() throws {
+        let text = "abcdefghijklmnop\nabc אבגד xyz"
+        let (window, _, view) = makeView(text, width: 300, height: 100)
+        let line = try XCTUnwrap(view.visibleLayout?.lines.last)
+        let placement = try XCTUnwrap(line.placements.first)
+        let location = (text as NSString).range(of: "א").location
+        let local = location - line.line.location
+        var secondaryX: CGFloat = 0
+        let primaryX = CTLineGetOffsetForStringIndex(placement.fragment.line, local, &secondaryX)
+        for (x, expectedSide) in [(primaryX, InputCaretAffinity.BidirectionalSide.primary),
+                                  (secondaryX, .secondary)] {
+            var resolvedTarget: InputCaretTarget?
+            var preferredX: CGFloat?
+            for delta in [CGFloat(-0.25), 0.25] {
+                let point = window.convertPoint(toScreen: view.convert(
+                    NSPoint(x: placement.frame.minX + x + delta, y: placement.frame.midY), to: nil))
+                if let target = InputScreenRangeGeometry.caretTargetForPointer(for: point, in: view),
+                   target.location == location, target.affinity?.bidirectionalSide == expectedSide {
+                    resolvedTarget = target
+                    preferredX = point.x
+                    break
+                }
+            }
+            let expected = try XCTUnwrap(resolvedTarget, "Expected a uniquely owned pointer side for bidi caret")
+            XCTAssertEqual(expected.affinity?.bidirectionalSide, expectedSide)
+            let result = try XCTUnwrap(PreparedInputVisualMovement.vertical(
+                from: InputCaretTarget(location: 0, affinity: nil), direction: .down,
+                preferredScreenX: try XCTUnwrap(preferredX), in: view))
+            XCTAssertEqual(result.target, expected)
+        }
+        withExtendedLifetime(window) {}
+    }
+
     func testPointerHitAcceptsUnambiguousLTRAndClampsDragToHitRow() throws {
         let (window, _, view) = makeView("abcdef\nghijkl", width: 160, height: 80)
         let caret = try XCTUnwrap(InputScreenCaretGeometry.rect(at: 2, in: view))

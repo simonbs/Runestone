@@ -71,16 +71,14 @@ enum PreparedInputVisualMovement {
               let caret = target.affinity == nil
                 ? InputScreenCaretGeometry.rect(at: target.location, in: view)
                 : InputScreenCaretGeometry.rect(for: target, in: view),
-              let source = sourceRow(caret: caret, context: context, view: view),
-              containsRightToLeftRun(source) == false else { return nil }
+              let source = sourceRow(caret: caret, context: context, view: view) else { return nil }
         let rows = visibleRows(in: context.layout)
         guard let index = rows.firstIndex(where: { sameRow($0, source) }) else { return nil }
         let next = direction == .up ? index - 1 : index + 1
-        guard rows.indices.contains(next), containsRightToLeftRun(rows[next]) == false else { return nil }
-        let x = preferredScreenX ?? caret.midX
+        guard rows.indices.contains(next) else { return nil }
+        let x = preferredScreenX ?? (target.affinity?.bidirectionalSide == nil ? caret.midX : caret.minX)
         guard x.isFinite,
-              let location = hit(row: rows[next], screenX: x, context: context, view: view),
-              let resolved = caretTarget(location: location, row: rows[next], view: view),
+              let resolved = hitTarget(row: rows[next], screenX: x, context: context, view: view),
               InputScreenCaretGeometry.rect(for: resolved, in: view) != nil,
               stable(context, view: view) else { return nil }
         return (resolved, x)
@@ -238,7 +236,8 @@ enum PreparedInputVisualMovement {
             (range.upperBound < line.data.length && offset == line.location + range.upperBound)
     }
 
-    private static func caretTarget(location: Int, row: Row, view: ReadOnlyDocumentView) -> InputCaretTarget? {
+    private static func caretTarget(location: Int, row: Row, documentX: CGFloat? = nil,
+                                    view: ReadOnlyDocumentView) -> InputCaretTarget? {
         guard let placement = row.placement else { return InputCaretTarget(location: location, affinity: nil) }
         let line = row.line.line
         let local = location - line.location
@@ -253,9 +252,22 @@ enum PreparedInputVisualMovement {
                   placements[index + 1].fragment.range.location == local {
             side = .upstream
         } else { side = nil }
-        return InputCaretTarget(location: location, affinity: side.map {
-            InputCaretAffinity(wrapSide: $0, bidirectionalSide: nil, layoutRevision: view.inputLayoutRevision)
-        })
+        var secondary: CGFloat = 0
+        let primary = CTLineGetOffsetForStringIndex(placement.fragment.line, local, &secondary)
+        guard primary.isFinite, secondary.isFinite else { return nil }
+        let bidi: InputCaretAffinity.BidirectionalSide?
+        if abs(primary - secondary) > horizontalTolerance {
+            guard let documentX else { return nil }
+            let x = documentX - placement.frame.minX
+            let primaryDistance = abs(x - primary)
+            let secondaryDistance = abs(x - secondary)
+            guard abs(primaryDistance - secondaryDistance) > horizontalTolerance else { return nil }
+            bidi = primaryDistance < secondaryDistance ? .primary : .secondary
+        } else { bidi = nil }
+        guard side == nil || bidi == nil else { return nil }
+        let affinity = side == nil && bidi == nil ? nil : InputCaretAffinity(
+            wrapSide: side, bidirectionalSide: bidi, layoutRevision: view.inputLayoutRevision)
+        return InputCaretTarget(location: location, affinity: affinity)
     }
 
     /// Only move one complete hidden grapheme at a time; never jump across
@@ -509,6 +521,25 @@ enum PreparedInputVisualMovement {
         guard x >= context.layout.viewport.minX, x < context.layout.viewport.maxX else { return nil }
         let target = context.window.convertPoint(toScreen: view.convert(NSPoint(x: x, y: (top + bottom) / 2), to: nil))
         return InputScreenRangeGeometry.characterIndex(for: target, in: view)
+    }
+
+    private static func hitTarget(row: Row, screenX: CGFloat, context: Context,
+                                  view: ReadOnlyDocumentView) -> InputCaretTarget? {
+        let top = max(row.frame.minY, context.layout.viewport.minY)
+        let bottom = min(row.frame.maxY, context.layout.viewport.maxY)
+        guard top.isFinite, bottom.isFinite, top < bottom else { return nil }
+        let sample = context.window.convertPoint(toScreen: view.convert(
+            NSPoint(x: context.layout.viewport.midX, y: (top + bottom) / 2), to: nil))
+        let documentPoint = view.convert(context.window.convertPoint(fromScreen: NSPoint(x: screenX, y: sample.y)), from: nil)
+        guard context.layout.viewport.contains(documentPoint) else { return nil }
+        let documentX: CGFloat
+        if let placement = row.placement, let (left, right) = caretBounds(of: placement) {
+            documentX = min(right, max(left, documentPoint.x))
+        } else { documentX = row.frame.minX }
+        guard documentX >= context.layout.viewport.minX, documentX < context.layout.viewport.maxX else { return nil }
+        let target = context.window.convertPoint(toScreen: view.convert(
+            NSPoint(x: documentX, y: (top + bottom) / 2), to: nil))
+        return InputScreenRangeGeometry.caretTargetForPointer(for: target, in: view)
     }
 
     private static func caretBounds(of placement: LogicalLineLayoutController.Placement) -> (CGFloat, CGFloat)? {
