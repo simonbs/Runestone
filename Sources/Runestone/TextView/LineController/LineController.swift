@@ -1,6 +1,7 @@
 // swiftlint:disable file_length
 import CoreGraphics
 import CoreText
+import RunestoneEngine
 import UIKit
 
 typealias LineFragmentTree = RedBlackTree<LineFragmentNodeID, Int, LineFragmentNodeData>
@@ -11,12 +12,6 @@ protocol LineControllerDelegate: AnyObject {
 }
 
 final class LineController {
-    private enum TypesetAmount {
-        case inRect(CGRect)
-        case toLocation(Int)
-        case toLineFragmentIndex(Int)
-    }
-
     weak var delegate: LineControllerDelegate?
     let line: DocumentLineNode
     var lineFragmentHeightMultiplier: CGFloat = 1 {
@@ -55,17 +50,8 @@ final class LineController {
     var lineHeight: CGFloat {
         if let lineHeight = _lineHeight {
             return lineHeight
-        } else if typesetter.lineFragments.isEmpty {
-            let lineHeight = estimatedLineFragmentHeight * lineFragmentHeightMultiplier
-            _lineHeight = lineHeight
-            return lineHeight
         } else {
-            // Fragment positions already accumulate all preceding scaled heights.
-            let knownLineFragmentHeight = typesetter.lineFragments.last.map { $0.yPosition + $0.scaledSize.height } ?? 0
-            let remainingNumberOfLineFragments = typesetter.bestGuessNumberOfLineFragments - typesetter.lineFragments.count
-            let lineFragmentHeight = estimatedLineFragmentHeight * lineFragmentHeightMultiplier
-            let remainingLineFragmentHeight = CGFloat(remainingNumberOfLineFragments) * lineFragmentHeight
-            let lineHeight = knownLineFragmentHeight + remainingLineFragmentHeight
+            let lineHeight = typesetter.estimatedLineHeight(fragmentHeight: estimatedLineFragmentHeight)
             _lineHeight = lineHeight
             return lineHeight
         }
@@ -230,12 +216,12 @@ private extension LineController {
         isPrefixReuseInvalidated = true
     }
 
-    private func prepareToDisplayString(_ typesetAmount: TypesetAmount, syntaxHighlightAsynchronously: Bool) {
+    private func prepareToDisplayString(_ typesetAmount: LogicalLineLayoutRequest, syntaxHighlightAsynchronously: Bool) {
         prepareString(for: typesetAmount, syntaxHighlightAsynchronously: syntaxHighlightAsynchronously)
         typesetLineFragments(typesetAmount)
     }
 
-    private func prepareString(for amount: TypesetAmount, syntaxHighlightAsynchronously: Bool) {
+    private func prepareString(for amount: LogicalLineLayoutRequest, syntaxHighlightAsynchronously: Bool) {
         // updateString replaces this object; defaults/highlighting mutate only the
         // new object. Never retain an additional snapshot after this preparation.
         let previous = allowsPrefixReuse && isStringInvalid && !syntaxHighlightAsynchronously ? attributedString : nil
@@ -251,32 +237,12 @@ private extension LineController {
         updateTypesetterIfNecessary(previous: previous, prefixLimit: previous == nil ? 0 : prefixLimit(for: amount))
     }
 
-    private func prefixLimit(for amount: TypesetAmount) -> Int {
-        // Leave the target-crossing fragment to the existing suffix loop, which
-        // also preserves its additional-fragment behavior for location requests.
-        switch amount {
-        case .inRect(let rect):
-            return typesetter.lineFragments.prefix { $0.yPosition + $0.scaledSize.height < rect.maxY }.count
-        case .toLocation(let location):
-            return typesetter.lineFragments.prefix { $0.range.upperBound < location }.count
-        case .toLineFragmentIndex(let index):
-            return min(max(0, index), typesetter.lineFragments.count)
-        }
+    private func prefixLimit(for amount: LogicalLineLayoutRequest) -> Int {
+        typesetter.reusablePrefixLimit(for: amount)
     }
 
-    private func typesetLineFragments(_ typesetAmount: TypesetAmount) {
-        let newLineFragments: [LineFragment]
-        switch typesetAmount {
-        case .inRect(let rect):
-            newLineFragments = typesetter.typesetLineFragments(in: rect)
-        case .toLocation(let location):
-            // When typesetting to a location we'll typeset an additional line fragment to ensure that we can display the text surrounding that location.
-            newLineFragments = typesetter.typesetLineFragments(toLocation: location, additionalLineFragmentCount: 1)
-        case .toLineFragmentIndex(let index):
-            let additionalCount = max(0, index + 1 - typesetter.lineFragments.count)
-            newLineFragments = typesetter.typesetLineFragments(toLocation: 0, additionalLineFragmentCount: additionalCount)
-        }
-        updateLineHeight(for: newLineFragments)
+    private func typesetLineFragments(_ typesetAmount: LogicalLineLayoutRequest) {
+        updateLineHeight(for: typesetter.typeset(typesetAmount))
     }
 
     private func clearLineFragmentControllersIfNecessary() {
