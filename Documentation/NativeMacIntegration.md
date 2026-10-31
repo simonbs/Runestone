@@ -72,7 +72,9 @@ Vertical movement uses primary/secondary caret identity when the current viewpor
 uniquely resolves a visible bidi transition; horizontal bidi traversal remains
 unavailable until coincident visual edges are fully invertible. Individually
 representable hidden whitespace remains traversable. Word, visual-line-edge and
-offscreen transitions that cannot carry affinity remain unavailable. Visual word traversal has
+Affinity-bearing vertical movement can use the same single bounded viewport step
+and revision-checked retry when its source caret remains visible. Transitions
+whose source affinity is already offscreen remain unavailable. Visual word traversal has
 128-step and 4,096-visible-UTF-16-unit limits.
 
 Pointer selection can autoscroll from a viewport edge. Each tick obtains a new
@@ -111,7 +113,7 @@ junctions uses the same contract. Range-only AppKit, Text Finder and accessibili
 setters reject currently visible ambiguous offsets rather than inventing a side. A semantic layout revision invalidates an
 old affinity when content width, font, folding or other layout changes can alter
 fragment identity; window movement and scrolling do not. Mixed wrap/bidi cases,
-word and line-edge affinity, and offscreen affinity retries remain deliberately
+word and line-edge affinity, and retries from an already offscreen affinity remain deliberately
 unavailable until every traversal path has matching coverage. These remaining
 gaps are not claims of complete editor behavior. Active accessibility reports an
 editable text role and routes supported setters through the input gate, but
