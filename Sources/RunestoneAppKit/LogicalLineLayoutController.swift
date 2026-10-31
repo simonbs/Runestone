@@ -14,6 +14,8 @@ final class LogicalLineLayoutController {
         fileprivate let generation: UInt
     }
 
+    var isFinishedTypesetting: Bool { prepared && typesetter.isFinishedTypesetting }
+
     private let manager: LineManager
     private let line: DocumentLineNode
     private let typesetter: LineTypesetter
