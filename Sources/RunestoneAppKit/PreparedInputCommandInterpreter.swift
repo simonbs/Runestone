@@ -25,7 +25,7 @@ enum PreparedInputCommandInterpreter {
                                  view: ReadOnlyDocumentView) -> Result {
         precondition(Thread.isMainThread)
         let name = NSStringFromSelector(selector)
-        guard ["insertTab:", "deleteBackward:", "deleteForward:",
+        guard ["insertTab:", "insertNewline:", "insertLineBreak:", "deleteBackward:", "deleteForward:",
                "moveLeft:", "moveRight:"].contains(name) else { return .unsupported }
 
         func failure(_ reason: PreparedInputEventAdapter.InputFailure.Reason,
@@ -59,6 +59,10 @@ enum PreparedInputCommandInterpreter {
         switch name {
         case "insertTab:":
             return .handled(adapter.insertTextReporting("\t", replacementRange: selection))
+        case "insertNewline:":
+            return .handled(adapter.insertLogicalNewlineReporting())
+        case "insertLineBreak:":
+            return .handled(adapter.insertLogicalLineBreakReporting())
         case "deleteBackward:":
             if selection.length > 0 { return .handled(adapter.insertTextReporting("", replacementRange: selection)) }
             guard selection.location > 0 else { return success() }
