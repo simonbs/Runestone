@@ -1,4 +1,4 @@
-@testable import Runestone
+import RunestoneEngine
 import XCTest
 
 final class LineFragmentVerticalGeometryTests: XCTestCase {
