@@ -99,6 +99,19 @@ enum PreparedInputVisualMovement {
         return !rows.indices.contains(next) && stable(context, view: view)
     }
 
+    static func verticalNeedsViewportStep(from target: InputCaretTarget, direction: Direction,
+                                          in view: ReadOnlyDocumentView) -> Bool {
+        guard let context = context(in: view),
+              let caret = target.affinity == nil
+                ? InputScreenCaretGeometry.rect(at: target.location, in: view)
+                : InputScreenCaretGeometry.rect(for: target, in: view),
+              let source = sourceRow(caret: caret, context: context, view: view) else { return false }
+        let rows = visibleRows(in: context.layout)
+        guard let index = rows.firstIndex(where: { sameRow($0, source) }) else { return false }
+        let next = direction == .up ? index - 1 : index + 1
+        return !rows.indices.contains(next) && stable(context, view: view)
+    }
+
     /// Move to the next visual caret edge only when Core Text gives one
     /// unambiguous grapheme boundary for both source and destination. A bidi
     /// boundary with multiple affinities cannot be represented by an NSRange;

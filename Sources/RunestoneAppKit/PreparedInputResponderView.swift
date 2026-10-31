@@ -496,7 +496,12 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 let up = name.hasPrefix("moveUp")
                 let origin = PreparedInputCommandInterpreter.movementOrigin(selection: state.selection,
                     extending: name.contains("AndModifySelection:"), direction: up ? .backward : .forward, view: self)
-                return PreparedInputVisualMovement.verticalNeedsViewportStep(from: origin, direction: up ? .up : .down, in: self)
+                let affinity = presentedSelectionState.flatMap {
+                    $0.range == state.selection && $0.activeLocation == origin ? $0.affinity : nil
+                }
+                return PreparedInputVisualMovement.verticalNeedsViewportStep(
+                    from: InputCaretTarget(location: origin, affinity: affinity),
+                    direction: up ? .up : .down, in: self)
             }
             guard PreparedInputCommandInterpreter.supports(name) else { return false }
             if name == "deleteBackward:" || name == "deleteWordBackward:" {
@@ -724,8 +729,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     private func scrollForVerticalMovement(_ name: String, selection: NSRange,
                                            adapter: PreparedInputEventAdapter,
                                            isAvailable: @escaping () -> Bool) -> PreparedInputViewportStep.Outcome? {
-        guard presentedSelectionState?.affinity == nil,
-              name.hasPrefix("moveUp") || name.hasPrefix("moveDown"),
+        guard name.hasPrefix("moveUp") || name.hasPrefix("moveDown"),
               let window = window, let clip = enclosingScrollView?.contentView,
               let layout = visibleLayout, layout.isComplete, layout.viewport == clip.bounds,
               let documentRevision = adapter.installedRevisionForDispatch else { return nil }
@@ -734,8 +738,15 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         let direction: PreparedInputCommandInterpreter.Direction = up ? .backward : .forward
         let origin = PreparedInputCommandInterpreter.movementOrigin(selection: selection, extending: extending,
                                                                      direction: direction, view: self)
-        guard PreparedInputVisualMovement.verticalNeedsViewportStep(from: origin, direction: up ? .up : .down, in: self),
-              let caret = InputScreenCaretGeometry.rect(at: origin, in: self) else { return nil }
+        let affinity = presentedSelectionState.flatMap {
+            $0.range == selection && $0.activeLocation == origin ? $0.affinity : nil
+        }
+        let originTarget = InputCaretTarget(location: origin, affinity: affinity)
+        guard PreparedInputVisualMovement.verticalNeedsViewportStep(
+                from: originTarget, direction: up ? .up : .down, in: self),
+              let caret = affinity == nil
+                ? InputScreenCaretGeometry.rect(at: origin, in: self)
+                : InputScreenCaretGeometry.rect(for: originTarget, in: self) else { return nil }
         let documentCaret = self.convert(window.convertFromScreen(caret), from: nil)
         let bounds = clip.bounds
         // Keep the source caret inside the viewport so the next row can be
@@ -749,7 +760,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         let priorX = verticalPreference.flatMap { value in
             value.selection == selection && value.selectionRevision == selectionRevision &&
             value.contentRevision == content && value.geometryRevision == geometry ? value.x : nil
-        } ?? caret.midX
+        } ?? (affinity?.bidirectionalSide == nil ? caret.midX : caret.minX)
         let check = {
             guard isAvailable(), !self.isRetired, self.window === window,
                   self.enclosingScrollView?.contentView === clip,

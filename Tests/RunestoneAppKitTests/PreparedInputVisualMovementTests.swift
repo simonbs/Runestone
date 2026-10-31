@@ -135,6 +135,30 @@ final class PreparedInputVisualMovementTests: XCTestCase {
         withExtendedLifetime(window) {}
     }
 
+    func testAffinityBearingBidiCaretCanRequestABoundedViewportStep() throws {
+        let text = "abc אבגד xyz\nnext\nlast"
+        let (window, _, view) = makeView(text, width: 300, height: 17)
+        let placement = try XCTUnwrap(view.visibleLayout?.lines.first?.placements.first)
+        let location = (text as NSString).range(of: "א").location
+        var secondaryX: CGFloat = 0
+        let primaryX = CTLineGetOffsetForStringIndex(placement.fragment.line, location, &secondaryX)
+        for (x, side) in [(primaryX, InputCaretAffinity.BidirectionalSide.primary),
+                          (secondaryX, .secondary)] {
+            let target = try XCTUnwrap([CGFloat(-0.25), 0.25].lazy.compactMap { delta in
+                let point = window.convertPoint(toScreen: view.convert(
+                    NSPoint(x: placement.frame.minX + x + delta, y: placement.frame.midY), to: nil))
+                return InputScreenRangeGeometry.caretTargetForPointer(for: point, in: view)
+            }.first(where: { $0.location == location && $0.affinity?.bidirectionalSide == side }))
+            XCTAssertTrue(PreparedInputVisualMovement.verticalNeedsViewportStep(
+                from: target, direction: .down, in: view))
+            let stale = InputCaretTarget(location: target.location, affinity: .init(
+                wrapSide: nil, bidirectionalSide: side, layoutRevision: UUID()))
+            XCTAssertFalse(PreparedInputVisualMovement.verticalNeedsViewportStep(
+                from: stale, direction: .down, in: view))
+        }
+        withExtendedLifetime(window) {}
+    }
+
     func testPointerHitAcceptsUnambiguousLTRAndClampsDragToHitRow() throws {
         let (window, _, view) = makeView("abcdef\nghijkl", width: 160, height: 80)
         let caret = try XCTUnwrap(InputScreenCaretGeometry.rect(at: 2, in: view))

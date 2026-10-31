@@ -145,6 +145,40 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         fixture.disconnect()
     }
 
+    func testBidiAffinitySurvivesBoundedVerticalViewportRetry() throws {
+        let text = String(repeating: "lead\n", count: 6) + "abc אבגד xyz\n" +
+            String(repeating: "next line\n", count: 20)
+        let fixture = try MovementIntegrationFixture(text)
+        let location = (text as NSString).range(of: "א").location
+        let line = try XCTUnwrap(fixture.view.visibleLayout?.lines.first(where: {
+            $0.line.location <= location && location <= $0.line.location + $0.line.data.length
+        }))
+        let placement = try XCTUnwrap(line.placements.first)
+        let local = location - line.line.location
+        var secondaryX: CGFloat = 0
+        _ = CTLineGetOffsetForStringIndex(placement.fragment.line, local, &secondaryX)
+        let point = try XCTUnwrap([CGFloat(-0.25), 0.25].lazy.compactMap { delta -> NSPoint? in
+            let point = fixture.window.convertPoint(toScreen: fixture.view.convert(
+                NSPoint(x: placement.frame.minX + secondaryX + delta, y: placement.frame.midY), to: nil))
+            guard let target = InputScreenRangeGeometry.caretTargetForPointer(for: point, in: fixture.view),
+                  target.location == location, target.affinity?.bidirectionalSide == .secondary else { return nil }
+            return point
+        }.first)
+        XCTAssertTrue(fixture.connection.performCoordinatedInput {
+            fixture.view.beginPointerSelection(at: point, extending: false,
+                                               connection: fixture.connection, hasFocus: { true })
+        })
+        XCTAssertEqual(fixture.selectionState?.affinity?.bidirectionalSide, .secondary)
+        let before = fixture.scroll.contentView.bounds.minY
+        XCTAssertTrue(fixture.send("moveDown:"))
+        XCTAssertGreaterThan(fixture.scroll.contentView.bounds.minY, before)
+        XCTAssertGreaterThan(fixture.selection.location, location)
+        XCTAssertNil(fixture.selectionState?.affinity?.bidirectionalSide)
+        XCTAssertEqual(fixture.host.parentStarts, fixture.host.parentCloses)
+        XCTAssertEqual(fixture.host.childStarts, fixture.host.childCloses)
+        fixture.disconnect()
+    }
+
     func testVerticalSelectionExtensionRetainsFixedAnchorWhenDirectionReverses() throws {
         let fixture = try MovementIntegrationFixture("abcdef\nx\n\nabcdef")
         try fixture.setSelection(NSRange(location: 5, length: 0))
