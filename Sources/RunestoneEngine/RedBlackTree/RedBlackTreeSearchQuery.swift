@@ -1,6 +1,6 @@
 import Foundation
 
-protocol RedBlackTreeSearchQuery {
+public protocol RedBlackTreeSearchQuery {
     associatedtype NodeID: RedBlackTreeNodeID
     associatedtype NodeValue: RedBlackTreeNodeValue
     associatedtype NodeData
