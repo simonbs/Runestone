@@ -204,6 +204,23 @@ public class ReadOnlyDocumentView: NSView {
         return super.isAccessibilitySelectorAllowed(selector)
     }
 
+    func scrollTextFinderRangeToVisible(_ range: NSRange) {
+        precondition(Thread.isMainThread)
+        let text = manager.stringView.string
+        guard !isRetired, range.location >= 0, range.length >= 0,
+              range.location <= text.length, range.length <= text.length - range.location,
+              let clip = enclosingScrollView?.contentView else { return }
+        let location = min(range.location, max(0, text.length - 1))
+        let line = manager.visibleLine(containingCharacterAt: location) ?? manager.lastVisibleLine
+        var proposed = clip.bounds
+        proposed.origin.y = line.yPosition
+        let constrained = clip.constrainBoundsRect(proposed)
+        guard constrained.origin != clip.bounds.origin else { return }
+        clip.scroll(to: constrained.origin)
+        enclosingScrollView?.reflectScrolledClipView(clip)
+        updateViewport()
+    }
+
     func scheduleAccessibilityValueChanged() {
         guard !isRetired else { return }
         accessibilityValueDirty = true
@@ -827,10 +844,9 @@ public class ReadOnlyDocumentView: NSView {
             context.setFillColor(displayConfiguration.gutterBackgroundColor.cgColor)
             context.fill(CGRect(x: 0, y: result.viewport.minY, width: gutter, height: result.viewport.height))
         }
-        for layout in result.lines where isSelected(layout.line) && displayConfiguration.showsSelectedLines {
+        for rect in selectedLineHighlightRects(in: result) {
             context.setFillColor(displayConfiguration.selectedLineBackgroundColor.cgColor)
-            context.fill(CGRect(x: gutter, y: layout.line.yPosition,
-                                width: max(0, bounds.width - gutter), height: layout.line.data.lineHeight))
+            context.fill(rect)
         }
         if displayConfiguration.showsLineNumbers {
             for layout in result.lines {
@@ -862,6 +878,34 @@ public class ReadOnlyDocumentView: NSView {
         }
         return NSIntersectionRange(displaySelection,
             NSRange(location: line.location, length: line.data.totalLength)).length > 0
+    }
+
+    func selectedLineHighlightRects(in result: ViewportLayoutCoordinator.Result) -> [CGRect] {
+        guard displayConfiguration.showsSelectedLines else { return [] }
+        let gutter = horizontalTextInset
+        switch displayConfiguration.selectedLineHighlightGranularity {
+        case .line:
+            return result.lines.filter { isSelected($0.line) }.map { layout in
+                CGRect(x: gutter, y: layout.line.yPosition,
+                       width: max(0, bounds.width - gutter), height: layout.line.data.lineHeight)
+            }
+        case .lineFragment:
+            return result.lines.filter { isSelected($0.line) }.flatMap { layout in
+                layout.placements.filter(isSelected).map { placement in
+                    CGRect(x: gutter, y: placement.frame.minY,
+                           width: max(0, bounds.width - gutter), height: placement.frame.height)
+                }
+            }
+        }
+    }
+
+    private func isSelected(_ placement: LogicalLineLayoutController.Placement) -> Bool {
+        let range = placement.documentRange
+        guard displaySelection.location != NSNotFound else { return false }
+        if displaySelection.length == 0 {
+            return displaySelection.location >= range.location && displaySelection.location <= NSMaxRange(range)
+        }
+        return NSIntersectionRange(displaySelection, range).length > 0
     }
 
     private func drawInvisibleCharacters(in layout: ViewportLayoutCoordinator.LineLayout) {

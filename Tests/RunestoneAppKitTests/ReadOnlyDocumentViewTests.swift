@@ -177,6 +177,21 @@ final class ReadOnlyDocumentViewTests: XCTestCase {
         XCTAssertGreaterThan(expandedX, initialX)
     }
 
+    func testFragmentLineHighlightOnlyCoversSelectedWrappedFragment() throws {
+        let text = NSAttributedString(string: String(repeating: "word ", count: 30), attributes: [.font: font])
+        let (_, view) = makeView(text, width: 100, height: 200)
+        view.displayConfiguration = RunestoneEditorDisplayConfiguration(
+            showsSelectedLines: true,
+            selectedLineHighlightGranularity: .lineFragment
+        )
+        view.updateDisplaySelection(NSRange(location: 2, length: 0))
+        view.updateViewport()
+        let layout = try XCTUnwrap(view.visibleLayout)
+
+        XCTAssertGreaterThan(try XCTUnwrap(layout.lines.first?.placements.count), 1)
+        XCTAssertEqual(view.selectedLineHighlightRects(in: layout).count, 1)
+    }
+
     private func makeView(_ text: NSAttributedString, width: CGFloat, height: CGFloat) -> (NSScrollView, ReadOnlyDocumentView) {
         let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: width, height: height))
         scroll.hasVerticalScroller = false
