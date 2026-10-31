@@ -55,19 +55,67 @@ final class PreparedInputEventAdapter {
     typealias BeginEvent = (UUID) -> ReservationResult
     private enum State { case ready, handling, resetPending, disconnected }
 
-    private let view: ReadOnlyDocumentView
-    private let permit: ReadOnlyDocumentView.InputMutationPermit
-    private let beginEvent: BeginEvent
-    private let beginReconstruction: () -> ReconstructionStart
-    private let documentRevision: () -> UUID
-    private let typingAttributes: () -> [NSAttributedString.Key: Any]
-    private let requestReset: () -> Void
-    private let rectProvider: (NSRange, ReadOnlyDocumentView) -> InputScreenRangeGeometry.RangeGeometry?
-    private let indexProvider: (NSPoint, ReadOnlyDocumentView) -> Int?
+    // All potentially AppKit-owning references are transferred together on
+    // deinit, before the main queue is allowed to release the payload.
+    private final class Payload {
+        let view: ReadOnlyDocumentView
+        let permit: ReadOnlyDocumentView.InputMutationPermit
+        let beginEvent: BeginEvent
+        let beginReconstruction: () -> ReconstructionStart
+        let documentRevision: () -> UUID?
+        let typingAttributes: () -> [NSAttributedString.Key: Any]
+        let requestReset: () -> Void
+        let rectProvider: (NSRange, ReadOnlyDocumentView) -> InputScreenRangeGeometry.RangeGeometry?
+        let indexProvider: (NSPoint, ReadOnlyDocumentView) -> Int?
+        let schedule: (@escaping () -> Void) -> Void
+        var session: DocumentInputSession?
+        var reservation: Reservation?
+        var idleWork: [() -> Void] = []
+
+        init(view: ReadOnlyDocumentView, permit: ReadOnlyDocumentView.InputMutationPermit,
+             beginEvent: @escaping BeginEvent, beginReconstruction: @escaping () -> ReconstructionStart,
+             documentRevision: @escaping () -> UUID?, typingAttributes: @escaping () -> [NSAttributedString.Key: Any],
+             requestReset: @escaping () -> Void,
+             rectProvider: @escaping (NSRange, ReadOnlyDocumentView) -> InputScreenRangeGeometry.RangeGeometry?,
+             indexProvider: @escaping (NSPoint, ReadOnlyDocumentView) -> Int?,
+             schedule: @escaping (@escaping () -> Void) -> Void) {
+            self.view = view
+            self.permit = permit
+            self.beginEvent = beginEvent
+            self.beginReconstruction = beginReconstruction
+            self.documentRevision = documentRevision
+            self.typingAttributes = typingAttributes
+            self.requestReset = requestReset
+            self.rectProvider = rectProvider
+            self.indexProvider = indexProvider
+            self.schedule = schedule
+        }
+    }
+    private var payload: Payload?
+    private var view: ReadOnlyDocumentView { payload!.view }
+    private var permit: ReadOnlyDocumentView.InputMutationPermit { payload!.permit }
+    private var beginEvent: BeginEvent { payload!.beginEvent }
+    private var beginReconstruction: () -> ReconstructionStart { payload!.beginReconstruction }
+    private var documentRevision: () -> UUID? { payload!.documentRevision }
+    private var typingAttributes: () -> [NSAttributedString.Key: Any] { payload!.typingAttributes }
+    private var requestReset: () -> Void { payload!.requestReset }
+    private var rectProvider: (NSRange, ReadOnlyDocumentView) -> InputScreenRangeGeometry.RangeGeometry? { payload!.rectProvider }
+    private var indexProvider: (NSPoint, ReadOnlyDocumentView) -> Int? { payload!.indexProvider }
     // Scheduler must enqueue asynchronously, without an inline call or nested event loop.
-    private let schedule: (@escaping () -> Void) -> Void
+    private var schedule: (@escaping () -> Void) -> Void { payload!.schedule }
+    private var reservation: Reservation? {
+        get { payload!.reservation }
+        set { payload!.reservation = newValue }
+    }
+    private var pendingInputActivityIdleWork: [() -> Void] {
+        get { payload!.idleWork }
+        set { payload!.idleWork = newValue }
+    }
+    private var session: DocumentInputSession! {
+        get { payload!.session }
+        set { payload!.session = newValue }
+    }
     private var state: State = .ready
-    private var reservation: Reservation?
     private var nestedMutationRejected = false
     private var queryDepth = 0
     private var queryNeedsReset = false
@@ -76,17 +124,15 @@ final class PreparedInputEventAdapter {
     private var inputContextToken: InputContextToken?
     private var pendingInputContextRelease: InputContextToken?
     private var inputContextReleaseScheduled = false
-    private var pendingInputActivityIdleWork: [() -> Void] = []
     private var inputActivityIdleDrainScheduled = false
     private var drainingInputActivityIdleWork = false
     private var resetGeneration = UUID()
-    private var session: DocumentInputSession!
     private var ownsPermit = true
 
     /// The caller has already captured the view content and revision together
     /// under the document gate, with no live input context using this view.
     init?(view: ReadOnlyDocumentView, snapshot: NSAttributedString, initialRevision: UUID,
-          documentRevision: @escaping () -> UUID,
+          documentRevision: @escaping () -> UUID?,
           typingAttributes: @escaping () -> [NSAttributedString.Key: Any],
           beginEvent: @escaping BeginEvent,
           beginReconstruction: @escaping () -> ReconstructionStart,
@@ -102,16 +148,10 @@ final class PreparedInputEventAdapter {
             precondition(view.releaseInputMutation(permit))
             return nil
         }
-        self.view = view
-        self.permit = permit
-        self.beginEvent = beginEvent
-        self.beginReconstruction = beginReconstruction
-        self.documentRevision = documentRevision
-        self.typingAttributes = typingAttributes
-        self.requestReset = requestReset
-        self.rectProvider = rectProvider
-        self.indexProvider = indexProvider
-        self.schedule = schedule
+        self.payload = Payload(view: view, permit: permit, beginEvent: beginEvent,
+                               beginReconstruction: beginReconstruction, documentRevision: documentRevision,
+                               typingAttributes: typingAttributes, requestReset: requestReset,
+                               rectProvider: rectProvider, indexProvider: indexProvider, schedule: schedule)
         self.session = DocumentInputSession(view: view, mutationPermit: permit,
                                             prepareChange: { [weak self] candidate in
                                                 guard let self = self, !self.nestedMutationRejected,
@@ -391,7 +431,12 @@ final class PreparedInputEventAdapter {
         // Keep state closed to new input during release, which may call out.
         reservation = nil
         lease.close()
-        let isCurrent = session.installedRevisionForInput == documentRevision()
+        let isCurrent: Bool
+        if let installed = session.installedRevisionForInput, let current = documentRevision() {
+            isCurrent = installed == current
+        } else {
+            isCurrent = false
+        }
         let accepted = result && !nestedMutationRejected && isCurrent && !session.isStale && !session.hasDocumentConflict
         if accepted { state = .ready; return .processed }
         scheduleReset()
@@ -467,21 +512,40 @@ final class PreparedInputEventAdapter {
         return true
     }
 
-    deinit {
-        let view = view
-        let permit = permit
-        let shouldRetire = ownsPermit
-        // Keep potentially AppKit-owning closures and session alive until the
-        // main queue even if the final adapter reference is dropped off-main.
-        let retained = (session, beginEvent, beginReconstruction, documentRevision,
-                        typingAttributes, requestReset, rectProvider, indexProvider, schedule, reservation,
-                        pendingInputActivityIdleWork)
-        if shouldRetire { view.retireInputView() }
+    /// Retires an abandoned input owner without reading the document or gate.
+    /// The context must already be detached, and adapter activity must be idle.
+    @discardableResult
+    func retireAfterQuiescing() -> Bool {
+        precondition(Thread.isMainThread)
+        if state == .disconnected { return true }
+        guard view.isRetired, !lifecycleOperationInFlight, !drainingInputActivityIdleWork,
+              state != .handling, queryDepth == 0, inputContextToken == nil else { return false }
+        guard view.releaseInputMutation(permit) else { return false }
+        state = .disconnected
+        ownsPermit = false
+        session = nil
+        return true
+    }
+
+    // Returning from this helper destroys its local payload reference before
+    // the gate opens. The owner also no longer retains it in a stored slot.
+    private func transferPayloadToMain(gate: NSLock, shouldRetire: Bool) {
+        guard let captured = payload else { return }
+        payload = nil
+        if shouldRetire { captured.view.quarantineInputViewWithoutCallouts() }
         DispatchQueue.main.async {
-            withExtendedLifetime(retained) {
-                if shouldRetire { view.releaseInputMutationWhenIdle(permit) }
-            }
+            gate.lock()
+            gate.unlock()
+            if shouldRetire { captured.view.releaseInputMutationWhenIdle(captured.permit) }
+            withExtendedLifetime(captured) {}
         }
+    }
+
+    deinit {
+        let gate = NSLock()
+        gate.lock()
+        transferPayloadToMain(gate: gate, shouldRetire: ownsPermit)
+        gate.unlock()
     }
 }
 #endif
