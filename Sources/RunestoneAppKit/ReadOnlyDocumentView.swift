@@ -7,7 +7,7 @@ import RunestoneEngine
 /// Install this view as an `NSScrollView`'s document view. Supply text with
 /// appropriate AppKit font and foreground color attributes. Input, selection,
 /// accessibility navigation, and interactive editing are not provided by this view.
-public final class ReadOnlyDocumentView: NSView {
+public class ReadOnlyDocumentView: NSView {
     final class InputMutationPermit {
         fileprivate var hasSession = false
         fileprivate init() {}

@@ -251,6 +251,276 @@ final class PreparedInputContextConnectionTests: XCTestCase {
         connection = nil
     }
 
+    func testBlurDuringActivationSuppressesClientUntilReadyAndRefocused() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var drivers: [ContextFakeDriver] = []
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let driver = ContextFakeDriver(client: client)
+            drivers.append(driver)
+            return driver
+        }, schedule: queue.enqueue))
+        let first = try XCTUnwrap(drivers.first)
+        let client = try XCTUnwrap(first.client)
+        var focused = true
+        var focusGeneration = 0
+        let observer = ContextReadyObserver()
+        observer.onReady = { connection in
+            let generation = focusGeneration
+            // A real responder must also verify its window's current first responder.
+            if focused && generation == focusGeneration { XCTAssertTrue(connection.resumeForFocus()) }
+        }
+        connection.readyObserver = observer
+        weak let weakConnection = connection
+        first.onActivate = {
+            client.setMarkedText("に", selectedRange: NSRange(location: 1, length: 0), replacementRange: self.unspecified)
+            XCTAssertTrue(client.hasMarkedText())
+            focused = false
+            focusGeneration += 1
+            weakConnection?.suspendForFocusLoss()
+            XCTAssertFalse(client.hasMarkedText())
+            client.insertText("stale", replacementRange: self.unspecified)
+            XCTAssertFalse(weakConnection?.resumeForFocus() ?? true)
+            queue.runAll() // Nested loop cannot discard while activate is on stack.
+            XCTAssertEqual(first.discards, 0)
+            XCTAssertEqual(owner.text, "abc")
+        }
+        XCTAssertFalse(connection.activate())
+        XCTAssertEqual(first.discards, 0)
+        queue.runAll()
+        XCTAssertEqual(first.discards, 1)
+        XCTAssertEqual(first.deactivations, 1)
+        XCTAssertEqual(observer.notifications, 1)
+        XCTAssertEqual(drivers.count, 2)
+        let second = try XCTUnwrap(drivers.last)
+        XCTAssertEqual(second.activations, 0)
+        let secondClient = try XCTUnwrap(second.client)
+        XCTAssertEqual(secondClient.selectedRange().location, NSNotFound)
+        XCTAssertEqual(view.content.string, "abc")
+        focused = true
+        focusGeneration += 1
+        XCTAssertTrue(connection.resumeForFocus())
+        XCTAssertEqual(second.activations, 1)
+        secondClient.insertText("x", replacementRange: unspecified)
+        XCTAssertEqual(owner.text, "xabc")
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+        XCTAssertTrue(connection.isDisconnected)
+        first.onActivate = nil
+    }
+
+    func testDelayedFocusRequestChecksGenerationAfterBlur() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var drivers: [ContextFakeDriver] = []
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let driver = ContextFakeDriver(client: client)
+            drivers.append(driver)
+            return driver
+        }, schedule: queue.enqueue))
+        var focusGeneration = 0
+        var focused = true
+        var staleRequests = 0
+        let observer = ContextReadyObserver()
+        observer.onReady = { connection in
+            guard focusGeneration == 0 else { return }
+            let requestedGeneration = focusGeneration
+            queue.enqueue { [weak connection] in
+                guard focused, focusGeneration == requestedGeneration else { staleRequests += 1; return }
+                _ = connection?.resumeForFocus()
+            }
+            // Focus changes after readiness but before the queued host action.
+            focused = false
+            focusGeneration += 1
+            connection.suspendForFocusLoss()
+        }
+        connection.readyObserver = observer
+        connection.requestReset()
+        queue.runAll()
+        XCTAssertEqual(staleRequests, 1)
+        XCTAssertEqual(observer.notifications, 2)
+        XCTAssertTrue(drivers.allSatisfy { $0.activations == 0 })
+        XCTAssertEqual(drivers.last?.client?.selectedRange().location, NSNotFound)
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+        XCTAssertTrue(connection.isDisconnected)
+    }
+
+    func testReadyObserverCanCloseReentrantlyAndIsNotRetained() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view,
+            makeDriver: { ContextFakeDriver(client: $0) }, schedule: queue.enqueue))
+        var observer: ContextReadyObserver? = ContextReadyObserver()
+        weak let weakObserver = observer
+        observer?.onReady = { connection in XCTAssertFalse(connection.disconnect()) }
+        connection.readyObserver = observer
+        connection.requestReset()
+        queue.runAll()
+        XCTAssertEqual(observer?.notifications, 1)
+        XCTAssertTrue(connection.isDisconnected)
+        observer = nil
+        XCTAssertNil(weakObserver)
+    }
+
+    func testCommandIsForwardedAndBlurDuringHandlerWaitsForCallback() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var first: ContextFakeDriver?
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let driver = ContextFakeDriver(client: client)
+            if first == nil { first = driver }
+            return driver
+        }, schedule: queue.enqueue))
+        let driver = try XCTUnwrap(first)
+        let client = try XCTUnwrap(driver.client)
+        let selector = NSSelectorFromString("moveLeft:")
+        var handler: ContextCommandHandler? = ContextCommandHandler()
+        weak let weakHandler = handler
+        handler?.onCommand = { connection, received in
+            XCTAssertEqual(received, selector)
+            connection.suspendForFocusLoss()
+            client.doCommand(by: selector)
+            queue.runAll()
+            XCTAssertEqual(driver.discards, 0)
+        }
+        connection.commandHandler = handler
+        XCTAssertTrue(connection.activate())
+        client.doCommand(by: selector)
+        XCTAssertEqual(handler?.selectors, [selector])
+        queue.runAll()
+        XCTAssertEqual(driver.discards, 1)
+        client.doCommand(by: selector)
+        XCTAssertEqual(handler?.selectors, [selector])
+        handler = nil
+        XCTAssertNil(weakHandler)
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+        XCTAssertTrue(connection.isDisconnected)
+    }
+
+    func testKeyBindingFallbackRemainsActiveAcrossNestedBlur() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var first: ContextFakeDriver?
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view,
+            initiallyFocusSuspended: true, makeDriver: { client in
+                let driver = ContextFakeDriver(client: client)
+                if first == nil { first = driver }
+                return driver
+            }, schedule: queue.enqueue))
+        let driver = try XCTUnwrap(first)
+        let client = try XCTUnwrap(driver.client)
+        client.insertText("ignored", replacementRange: unspecified)
+        XCTAssertFalse(connection.activate())
+        XCTAssertEqual(owner.text, "abc")
+        XCTAssertTrue(connection.resumeForFocus())
+        let handler = ContextCommandHandler()
+        connection.commandHandler = handler
+        XCTAssertTrue(connection.performKeyBindingFallback {
+            connection.insertTextFromKeyBinding("x", replacementRange: self.unspecified)
+            connection.doCommandFromKeyBinding(NSSelectorFromString("moveLeft:"))
+            XCTAssertEqual(owner.text, "xabc")
+            XCTAssertEqual(handler.selectors.count, 1)
+            connection.suspendForFocusLoss()
+            connection.insertTextFromKeyBinding("ignored", replacementRange: self.unspecified)
+            connection.doCommandFromKeyBinding(NSSelectorFromString("moveRight:"))
+            queue.runAll()
+            XCTAssertEqual(driver.discards, 0)
+            XCTAssertEqual(owner.text, "xabc")
+            XCTAssertEqual(handler.selectors.count, 1)
+        })
+        queue.runAll()
+        XCTAssertEqual(driver.discards, 1)
+        XCTAssertFalse(connection.performKeyBindingFallback { XCTFail("Blurred context must be inert") })
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+        XCTAssertTrue(connection.isDisconnected)
+    }
+
+    func testHandledInputCallbackPreventsDuplicateKeyFallbackButQueryDoesNot() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var first: ContextFakeDriver?
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let driver = ContextFakeDriver(client: client)
+            first = driver
+            return driver
+        }, schedule: queue.enqueue))
+        let driver = try XCTUnwrap(first)
+        let client = try XCTUnwrap(driver.client)
+        let event = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+            timestamp: 0, windowNumber: 0, context: nil, characters: "x", charactersIgnoringModifiers: "x",
+            isARepeat: false, keyCode: 7))
+        XCTAssertTrue(connection.activate())
+        driver.onHandle = {
+            client.insertText("x", replacementRange: self.unspecified)
+            return false
+        }
+        XCTAssertTrue(connection.handle(event))
+        XCTAssertEqual(owner.text, "xabc")
+        driver.onHandle = { _ = client.selectedRange(); return false }
+        XCTAssertFalse(connection.handle(event))
+        driver.onHandle = nil
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+        XCTAssertTrue(connection.isDisconnected)
+    }
+
+    func testResponderActivityRejectsSuspensionAndDefersTeardownThroughNestedLoop() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var first: ContextFakeDriver?
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view,
+            initiallyFocusSuspended: true, makeDriver: { client in
+                let driver = ContextFakeDriver(client: client)
+                if first == nil { first = driver }
+                return driver
+            }, schedule: queue.enqueue))
+        let driver = try XCTUnwrap(first)
+        XCTAssertFalse(connection.performResponderActivity { _, _ in XCTFail("Inactive responder must be inert") })
+        XCTAssertTrue(connection.resumeForFocus())
+        XCTAssertTrue(connection.performResponderActivity { adapter, isCurrent in
+            XCTAssertTrue(isCurrent())
+            XCTAssertEqual(adapter.setSelection(NSRange(location: 1, length: 0)), .processed)
+        })
+        XCTAssertEqual(adapter.selectedRangeForInput(), NSRange(location: 1, length: 0))
+        var changedAfterBlur = false
+        XCTAssertFalse(connection.performResponderActivity { adapter, isCurrent in
+            XCTAssertTrue(isCurrent())
+            XCTAssertFalse(connection.performResponderActivity { _, _ in XCTFail("Nested responder activity must be inert") })
+            connection.suspendForFocusLoss()
+            queue.runAll() // Teardown cannot run while hit testing or drawing is on stack.
+            XCTAssertEqual(driver.discards, 0)
+            if isCurrent() {
+                changedAfterBlur = true
+                _ = adapter.setSelection(NSRange(location: 2, length: 0))
+            }
+        })
+        XCTAssertFalse(changedAfterBlur)
+        XCTAssertFalse(connection.performResponderActivity { _, _ in XCTFail("Blurred responder must be inert") })
+        queue.runAll()
+        XCTAssertEqual(driver.discards, 1)
+        XCTAssertFalse(connection.performResponderActivity { _, _ in XCTFail("Rebuilt context stays suspended") })
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+        XCTAssertTrue(connection.isDisconnected)
+    }
+
     func testRealContextAndResponderBecomeInertAfterDisconnect() throws {
         _ = NSApplication.shared
         let queue = ContextQueue()
@@ -272,6 +542,7 @@ final class PreparedInputContextConnectionTests: XCTestCase {
             return value
         }, schedule: queue.enqueue)
         host.testInputContext = context
+        XCTAssertTrue(try XCTUnwrap(connection).currentInputContext === context)
         XCTAssertTrue(window.makeFirstResponder(host))
         XCTAssertTrue(window.firstResponder === host)
         XCTAssertTrue(try XCTUnwrap(connection).activate())
@@ -279,6 +550,7 @@ final class PreparedInputContextConnectionTests: XCTestCase {
         XCTAssertTrue(client?.hasMarkedText() ?? false)
         XCTAssertTrue(window.makeFirstResponder(nil))
         XCTAssertFalse(try XCTUnwrap(connection).disconnect())
+        XCTAssertNil(try XCTUnwrap(connection).currentInputContext)
         queue.runAll()
         XCTAssertTrue(try XCTUnwrap(connection).isDisconnected)
         XCTAssertEqual(driver?.discards, 1)
@@ -471,20 +743,40 @@ final class PreparedInputContextConnectionTests: XCTestCase {
     }
 }
 
+private final class ContextReadyObserver: PreparedInputContextConnection.ReadyObserver {
+    var notifications = 0
+    var onReady: ((PreparedInputContextConnection) -> Void)?
+    func preparedInputContextConnectionDidBecomeReady(_ connection: PreparedInputContextConnection) {
+        notifications += 1
+        onReady?(connection)
+    }
+}
+
+private final class ContextCommandHandler: PreparedInputContextConnection.CommandHandler {
+    var selectors: [Selector] = []
+    var onCommand: ((PreparedInputContextConnection, Selector) -> Void)?
+    func preparedInputContextConnection(_ connection: PreparedInputContextConnection, doCommand selector: Selector) {
+        selectors.append(selector)
+        onCommand?(connection, selector)
+    }
+}
+
 private final class ContextFakeDriver: PreparedInputContextConnection.Driver {
     weak var client: NSTextInputClient?
     let context = NSObject()
     var onActivate: (() -> Void)?
+    var onHandle: (() -> Bool)?
     var onDiscard: (() -> Void)?
     var onDeactivate: (() -> Void)?
     var onDeinit: (() -> Void)?
     var invalidations = 0
+    var activations = 0
     var discards = 0
     var deactivations = 0
     init(client: NSTextInputClient) { self.client = client }
     var associationTarget: NSObject { context }
-    func activate() { onActivate?() }
-    func handle(_ event: NSEvent) -> Bool { false }
+    func activate() { activations += 1; onActivate?() }
+    func handle(_ event: NSEvent) -> Bool { onHandle?() ?? false }
     func invalidateCoordinates() { invalidations += 1 }
     func discardMarkedText() { discards += 1; onDiscard?() }
     func deactivate() { deactivations += 1; onDeactivate?() }
@@ -503,6 +795,7 @@ private final class PreparedRealDriver: PreparedInputContextConnection.Driver {
     var deactivations = 0
     init(client: NSTextInputClient) { context = NSTextInputContext(client: client) }
     var associationTarget: NSObject { context }
+    var inputContext: NSTextInputContext? { context }
     func activate() { context.activate() }
     func handle(_ event: NSEvent) -> Bool { context.handleEvent(event) }
     func invalidateCoordinates() { context.invalidateCharacterCoordinates() }

@@ -52,7 +52,9 @@ final class PreparedInputDocumentAttachment {
     static func attach(host: RunestoneInputDocumentHost, lifetime: RunestoneInputDocumentLifetime,
                        bridge: RunestoneInputDocumentBridge,
                        makeDriver: PreparedInputContextConnection.DriverFactory? = nil,
-                       schedule: @escaping (@escaping () -> Void) -> Void = { DispatchQueue.main.async(execute: $0) }) -> PreparedInputDocumentAttachment? {
+                       schedule: @escaping (@escaping () -> Void) -> Void = { DispatchQueue.main.async(execute: $0) },
+                       makeView: (NSAttributedString) -> ReadOnlyDocumentView = { ReadOnlyDocumentView(content: $0) },
+                       initiallyFocusSuspended: Bool = false) -> PreparedInputDocumentAttachment? {
         precondition(Thread.isMainThread)
         guard bridge.bind(host: host, lifetime: lifetime) else { return nil }
         guard case let .reserved(initialLease) = host.beginInputReconstruction() else { return nil }
@@ -67,7 +69,12 @@ final class PreparedInputDocumentAttachment {
         let revision = initialLease.revision
         let snapshot = NSAttributedString(attributedString: initialLease.snapshot)
         guard host.inputRevision == revision else { return nil }
-        let view = ReadOnlyDocumentView(content: snapshot)
+        let view = makeView(snapshot)
+        guard view.window == nil, view.superview == nil, !view.isRetired,
+              view.content.isEqual(to: snapshot), host.inputRevision == revision else {
+            view.quarantineInputViewWithoutCallouts()
+            return nil
+        }
         guard let lifetimeRegistration = lifetime.register(view) else {
             view.quarantineInputViewWithoutCallouts()
             return nil
@@ -138,6 +145,7 @@ final class PreparedInputDocumentAttachment {
                 }))
             }, requestReset: { [weak relay] in relay?.connection?.requestReset() }, schedule: schedule) else { return nil }
         guard let connection = PreparedInputContextConnection(adapter: adapter, view: view,
+                                                               initiallyFocusSuspended: initiallyFocusSuspended,
                                                                makeDriver: makeDriver, schedule: schedule) else { return nil }
         relay.connection = connection
         guard lifetime.bind(connection, to: lifetimeRegistration) else {
@@ -156,6 +164,20 @@ final class PreparedInputDocumentAttachment {
         attached = true
         return PreparedInputDocumentAttachment(view: view, adapter: adapter, connection: connection,
                                                 relay: relay, lifetimeRegistration: lifetimeRegistration)
+    }
+
+    /// Internal responder wiring. The public read-only view remains unchanged.
+    static func attachResponder(host: RunestoneInputDocumentHost, lifetime: RunestoneInputDocumentLifetime,
+                                bridge: RunestoneInputDocumentBridge,
+                                makeDriver: PreparedInputContextConnection.DriverFactory? = nil,
+                                schedule: @escaping (@escaping () -> Void) -> Void = { DispatchQueue.main.async(execute: $0) }) -> PreparedInputDocumentAttachment? {
+        guard let attachment = attach(host: host, lifetime: lifetime, bridge: bridge,
+                                      makeDriver: makeDriver, schedule: schedule,
+                                      makeView: { PreparedInputResponderView(snapshot: $0) },
+                                      initiallyFocusSuspended: true),
+              let responder = attachment.view as? PreparedInputResponderView else { return nil }
+        responder.attach(adapter: attachment.adapter, connection: attachment.connection)
+        return attachment
     }
 
     /// Retain this owner and retry after gate availability until this succeeds.
