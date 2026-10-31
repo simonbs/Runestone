@@ -59,6 +59,11 @@ public class ReadOnlyDocumentView: NSView {
     private(set) var inputSelectionRevision = UUID()
     private(set) var updatingViewport = false
     private var pendingViewportUpdate = false
+    private var boundedViewportBudget: PreparedInputViewportWorkBudget?
+    private weak var boundedAbortClip: NSClipView?
+    private var boundedAbortBounds: CGRect?
+    private var boundedAbortContentRevision: UUID?
+    private var boundedAbortGeneration = UUID()
     private var viewportUpdateScheduled = false
     private var viewportRetryCount = 0
     private var viewportRetryExhausted = false
@@ -66,6 +71,7 @@ public class ReadOnlyDocumentView: NSView {
     private var viewportRecoveryToken = UUID()
     private var viewportRecoveryDelay: TimeInterval = 0.05
     private let viewportRecoveryScheduler: (TimeInterval, @escaping () -> Void) -> Void
+    private let viewportRecoveryClock: () -> TimeInterval
     private weak var exhaustedClip: NSClipView?
     private var exhaustedBounds: CGRect?
     private var exhaustedContentRevision: UUID?
@@ -481,11 +487,12 @@ public class ReadOnlyDocumentView: NSView {
          inputInvalidation: InputInvalidationDelivery = InputInvalidationDelivery(),
          viewportRecoveryScheduler: @escaping (TimeInterval, @escaping () -> Void) -> Void = { delay, work in
              DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
-         }) {
+         }, viewportRecoveryClock: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
         precondition(fallbackHeight.isFinite && fallbackHeight > 0)
         self.snapshot = NSMutableAttributedString(attributedString: snapshot)
         self.inputInvalidation = inputInvalidation
         self.viewportRecoveryScheduler = viewportRecoveryScheduler
+        self.viewportRecoveryClock = viewportRecoveryClock
         self.fallbackHeight = fallbackHeight
         self.manager = LineManager(stringView: StringView(string: snapshot.string))
         super.init(frame: .zero)
@@ -552,6 +559,57 @@ public class ReadOnlyDocumentView: NSView {
         updateViewport()
     }
 
+    /// Runs a single input step with one budget shared by synchronous bounds
+    /// notifications and nested layout. An incomplete step may schedule one
+    /// separately budgeted geometry recovery; it never replays the input.
+    func withBoundedViewportWork<T>(_ budget: PreparedInputViewportWorkBudget,
+                                    scheduleRecovery: Bool = true, _ body: () -> T) -> T? {
+        guard !isRetired, !updatingViewport, boundedViewportBudget == nil,
+              !pendingViewportUpdate, !viewportUpdateScheduled, !viewportRetryExhausted,
+              !viewportRecoveryScheduled, let clip = enclosingScrollView?.contentView,
+              clip.bounds.width == layoutWidth, budget.check() else { return nil }
+        let initialBounds = clip.bounds
+        boundedViewportBudget = budget
+        defer {
+            boundedViewportBudget = nil
+            if (budget.exhausted && clip.bounds != initialBounds) || pendingViewportUpdate || visibleLayout == nil {
+                pendingViewportUpdate = false
+                boundedAbortClip = clip
+                boundedAbortBounds = clip.bounds
+                boundedAbortContentRevision = contentRevision
+                boundedAbortGeneration = UUID()
+                visibleLayout = nil
+                if scheduleRecovery { scheduleBoundedViewportRecovery(clip: clip) }
+            }
+        }
+        return body()
+    }
+
+    /// At most one recovery runs for each failed step. A failed recovery leaves
+    /// layout unavailable until an independent viewport or content change.
+    private func scheduleBoundedViewportRecovery(clip: NSClipView) {
+        let generation = boundedAbortGeneration
+        let bounds = clip.bounds
+        let revision = contentRevision
+        viewportRecoveryScheduler(0) { [weak self, weak clip] in
+            guard let self = self, let clip = clip, !self.isRetired,
+                  self.boundedAbortGeneration == generation, self.boundedAbortClip === clip,
+                  self.boundedAbortBounds == bounds, clip.bounds == bounds,
+                  self.contentRevision == revision, self.enclosingScrollView?.contentView === clip,
+                  let budget = PreparedInputViewportWorkBudget(clock: self.viewportRecoveryClock, timeLimit: 0.016) else { return }
+            _ = self.withBoundedViewportWork(budget, scheduleRecovery: false) {
+                self.updateViewport()
+            }
+            if self.boundedAbortGeneration == generation,
+               self.visibleLayout?.isComplete == true, self.visibleLayout?.viewport == clip.bounds {
+                self.boundedAbortClip = nil
+                self.boundedAbortBounds = nil
+                self.boundedAbortContentRevision = nil
+                self.boundedAbortGeneration = UUID()
+            }
+        }
+    }
+
     /// Resolves against the clip bounds, never the dirty drawing rectangle.
     func updateViewport() {
         guard !isRetired else { return }
@@ -563,6 +621,14 @@ public class ReadOnlyDocumentView: NSView {
             return
         }
         guard let clip = enclosingScrollView?.contentView else { return }
+        if boundedViewportBudget == nil, boundedAbortBounds != nil {
+            guard clip !== boundedAbortClip || clip.bounds != boundedAbortBounds ||
+                    contentRevision != boundedAbortContentRevision else { return }
+            boundedAbortClip = nil
+            boundedAbortBounds = nil
+            boundedAbortContentRevision = nil
+            boundedAbortGeneration = UUID()
+        }
         if viewportRetryExhausted {
             guard clip !== exhaustedClip || clip.bounds != exhaustedBounds || contentRevision != exhaustedContentRevision else { return }
             resetViewportRecovery()
@@ -583,28 +649,35 @@ public class ReadOnlyDocumentView: NSView {
             updatingBounds = nil
             inputGeometryRevision = UUID()
             if isRetired { visibleLayout = nil; pendingViewportUpdate = false }
-            if pendingViewportUpdate && viewportRetryCount >= 3 {
-                pendingViewportUpdate = false
-                viewportRetryExhausted = true
-                exhaustedClip = clip
-                exhaustedBounds = clip.bounds
-                exhaustedContentRevision = contentRevision
-                visibleLayout = nil
-                needsLayout = true
-                scheduleViewportRecovery()
-            }
-            if !isRetired && previousGeometry != inputLayoutSignature() { inputInvalidation.invalidate() }
-            if !pendingViewportUpdate || !scheduleViewportUpdate() {
-                if !pendingViewportUpdate {
-                    viewportRetryCount = 0
-                    if !viewportRetryExhausted { viewportRecoveryDelay = 0.05 }
-                }
+            if boundedViewportBudget != nil {
+                if pendingViewportUpdate { visibleLayout = nil }
+                if !isRetired && previousGeometry != inputLayoutSignature() { inputInvalidation.invalidate() }
                 inputInvalidation.resume()
+            } else {
+                if pendingViewportUpdate && viewportRetryCount >= 3 {
+                    pendingViewportUpdate = false
+                    viewportRetryExhausted = true
+                    exhaustedClip = clip
+                    exhaustedBounds = clip.bounds
+                    exhaustedContentRevision = contentRevision
+                    visibleLayout = nil
+                    needsLayout = true
+                    scheduleViewportRecovery()
+                }
+                if !isRetired && previousGeometry != inputLayoutSignature() { inputInvalidation.invalidate() }
+                if !pendingViewportUpdate || !scheduleViewportUpdate() {
+                    if !pendingViewportUpdate {
+                        viewportRetryCount = 0
+                        if !viewportRetryExhausted { viewportRecoveryDelay = 0.05 }
+                    }
+                    inputInvalidation.resume()
+                }
             }
         }
         let viewportRevision = contentRevision
         let width = clip.bounds.width
         if width != layoutWidth {
+            guard boundedViewportBudget == nil else { visibleLayout = nil; return }
             // Rebuild currently scales with document line count; preserving an anchor
             // deep in one wrapped line also typesets that line up to the anchor.
             let anchor = resizeAnchor()
@@ -637,7 +710,8 @@ public class ReadOnlyDocumentView: NSView {
                 return
             }
             let requested = clip.bounds
-            guard let result = coordinator.layout(in: requested) else { visibleLayout = nil; return }
+            guard boundedViewportBudget?.check() ?? true else { visibleLayout = nil; return }
+            guard let result = coordinator.layout(in: requested, budget: boundedViewportBudget) else { visibleLayout = nil; return }
             let size = NSSize(width: width, height: max(clip.bounds.height, manager.contentHeight))
             if frame.size != size { setFrameSize(size) }
             guard !isRetired, contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
@@ -682,7 +756,7 @@ public class ReadOnlyDocumentView: NSView {
     /// A pathological observer may repeatedly change bounds during layout. Retry
     /// at a bounded rate so a later stable view can recover without a new event.
     private func scheduleViewportRecovery() {
-        guard !isRetired, !viewportRecoveryScheduled else { return }
+        guard !isRetired, boundedViewportBudget == nil, !viewportRecoveryScheduled else { return }
         viewportRecoveryScheduled = true
         let delay = viewportRecoveryDelay
         let token = UUID()
@@ -699,7 +773,7 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     private func scheduleViewportUpdate() -> Bool {
-        guard !isRetired, !viewportUpdateScheduled else { return false }
+        guard !isRetired, boundedViewportBudget == nil, !viewportUpdateScheduled else { return false }
         viewportUpdateScheduled = true
         viewportRetryCount += 1
         let invalidation = inputInvalidation
