@@ -170,18 +170,9 @@ public final class RunestoneSyntaxHighlighter: RunestoneSyntaxHighlighting, @unc
             var result = self.highlightsQuery?.captures(in: range, state: state) {
                 operation.isCancelled || !self.isCurrent(requestedGeneration)
             } ?? []
-            for child in state.children where !operation.isCancelled && self.isCurrent(requestedGeneration) {
-                guard let childQuery = child.highlightsQuery else { continue }
-                let childDocumentRange = NSRange(location: child.offset, length: child.state.text.length)
-                let intersection = NSIntersectionRange(range, childDocumentRange)
-                guard intersection.length > 0 else { continue }
-                let local = NSRange(location: intersection.location - child.offset, length: intersection.length)
-                result += childQuery.captures(in: local, state: child.state) {
-                    operation.isCancelled || !self.isCurrent(requestedGeneration)
-                }.map { RunestoneSyntaxCapture(
-                    range: NSRange(location: $0.range.location + child.offset, length: $0.range.length), name: $0.name)
-                }
-            }
+            result += self.injectedCaptures(
+                in: state.children, intersecting: range, parentOffset: 0, query: \.highlightsQuery,
+                cancelled: { operation.isCancelled || !self.isCurrent(requestedGeneration) })
             guard !operation.isCancelled, self.isCurrent(requestedGeneration) else {
                 completion(.failure(.cancelled))
                 return
@@ -206,15 +197,9 @@ public final class RunestoneSyntaxHighlighter: RunestoneSyntaxHighlighting, @unc
             var captures = self.foldsQuery?.captures(in: wholeDocument, state: state) {
                 operation.isCancelled || !self.isCurrent(requestedGeneration)
             } ?? []
-            for child in state.children where !operation.isCancelled && self.isCurrent(requestedGeneration) {
-                guard let childQuery = child.foldsQuery else { continue }
-                let local = NSRange(location: 0, length: child.state.text.length)
-                captures += childQuery.captures(in: local, state: child.state) {
-                    operation.isCancelled || !self.isCurrent(requestedGeneration)
-                }.map { RunestoneSyntaxCapture(
-                    range: NSRange(location: $0.range.location + child.offset, length: $0.range.length), name: $0.name)
-                }
-            }
+            captures += self.injectedCaptures(
+                in: state.children, intersecting: wholeDocument, parentOffset: 0, query: \.foldsQuery,
+                cancelled: { operation.isCancelled || !self.isCurrent(requestedGeneration) })
             guard !operation.isCancelled, self.isCurrent(requestedGeneration) else {
                 completion(.failure(.cancelled))
                 return
@@ -236,6 +221,30 @@ public final class RunestoneSyntaxHighlighter: RunestoneSyntaxHighlighting, @unc
 }
 
 private extension RunestoneSyntaxHighlighter {
+    func injectedCaptures(in children: [ChildState], intersecting documentRange: NSRange,
+                          parentOffset: Int, query: KeyPath<ChildState, Query?>,
+                          cancelled: () -> Bool) -> [RunestoneSyntaxCapture] {
+        var captures: [RunestoneSyntaxCapture] = []
+        for child in children where !cancelled() {
+            let absoluteOffset = parentOffset + child.offset
+            let childDocumentRange = NSRange(location: absoluteOffset, length: child.state.text.length)
+            let intersection = NSIntersectionRange(documentRange, childDocumentRange)
+            guard intersection.length > 0 else { continue }
+            if let childQuery = child[keyPath: query] {
+                let local = NSRange(location: intersection.location - absoluteOffset, length: intersection.length)
+                captures += childQuery.captures(in: local, state: child.state, isCancelled: cancelled).map {
+                    RunestoneSyntaxCapture(
+                        range: NSRange(location: $0.range.location + absoluteOffset, length: $0.range.length),
+                        name: $0.name)
+                }
+            }
+            captures += injectedCaptures(
+                in: child.state.children, intersecting: documentRange, parentOffset: absoluteOffset,
+                query: query, cancelled: cancelled)
+        }
+        return captures
+    }
+
     final class Tree: @unchecked Sendable {
         let pointer: OpaquePointer
         init(_ pointer: OpaquePointer) { self.pointer = pointer }

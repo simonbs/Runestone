@@ -124,6 +124,49 @@ final class RunestoneSyntaxHighlighterTests: XCTestCase {
         wait(for: [captured], timeout: 5)
     }
 
+    func testHighlightsNestedInjectedLanguageUsingAbsoluteDocumentRanges() throws {
+        let nestedHTML = RunestoneSyntaxLanguage(
+            language: tree_sitter_html(), highlightsQuery: "(tag_name) @tag.nested")
+        let javascript = RunestoneSyntaxLanguage(
+            language: tree_sitter_javascript(),
+            injectionsQuery: """
+            ((string) @injection.content
+             (#set! injection.language "html"))
+            """)
+        let rootHTML = RunestoneSyntaxLanguage(
+            language: tree_sitter_html(),
+            injectionsQuery: """
+            ((script_element (raw_text) @injection.content)
+             (#set! injection.language "javascript"))
+            """)
+        let highlighter = try RunestoneSyntaxHighlighter(language: rootHTML) { name in
+            switch name {
+            case "javascript": javascript
+            case "html": nestedHTML
+            default: nil
+            }
+        }
+        let text = #"<script>const markup = "<b>x</b>";</script>"#
+        let updated = expectation(description: "parsed nested injections")
+        highlighter.update(text) { result in
+            if case .failure(let error) = result { XCTFail("Parse failed: \(error)") }
+            updated.fulfill()
+        }
+        wait(for: [updated], timeout: 5)
+        let captured = expectation(description: "nested capture")
+        highlighter.captures(in: NSRange(location: 0, length: (text as NSString).length)) { result in
+            let source = text as NSString
+            let opening = source.range(of: "<b>")
+            let closing = source.range(of: "</b>")
+            XCTAssertEqual(try? result.get().filter { $0.name == "tag.nested" }.map(\.range), [
+                NSRange(location: opening.location + 1, length: 1),
+                NSRange(location: closing.location + 2, length: 1)
+            ])
+            captured.fulfill()
+        }
+        wait(for: [captured], timeout: 5)
+    }
+
     private func makeHighlighter() throws -> RunestoneSyntaxHighlighter {
         try RunestoneSyntaxHighlighter(language: RunestoneSyntaxLanguage(
             language: tree_sitter_json(),
