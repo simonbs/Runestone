@@ -734,7 +734,7 @@ public class ReadOnlyDocumentView: NSView {
                     return range.location <= anchor.location && anchor.location < range.location + range.length
                 } ?? placements.last
                 let documentY = fragment?.frame.minY ?? line.yPosition
-                let size = NSSize(width: documentFrameWidth, height: max(clip.bounds.height, manager.contentHeight))
+                let size = documentFrameSize(for: clip)
                 if frame.size != size { setFrameSize(size) }
                 guard !isRetired, contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
                 var proposed = clip.bounds
@@ -755,7 +755,7 @@ public class ReadOnlyDocumentView: NSView {
             let requested = clip.bounds
             guard boundedViewportBudget?.check() ?? true else { visibleLayout = nil; return }
             guard let result = coordinator.layout(in: requested, budget: boundedViewportBudget) else { visibleLayout = nil; return }
-            let size = NSSize(width: documentFrameWidth, height: max(clip.bounds.height, manager.contentHeight))
+            let size = documentFrameSize(for: clip)
             if frame.size != size { setFrameSize(size) }
             guard !isRetired, contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
             var proposed = clip.bounds
@@ -992,7 +992,7 @@ public class ReadOnlyDocumentView: NSView {
         controllers.removeAll()
         controllerOrder.removeAll()
         manager = LineManager(stringView: StringView(string: snapshot.string))
-        manager.estimatedLineHeight = fallbackHeight
+        manager.estimatedLineHeight = fallbackHeight * safeLineHeightMultiplier
         manager.rebuild()
         coordinator = ViewportLayoutCoordinator(manager: manager, cachedControllerForLine: { [weak self] line in
             self?.controllers[line.id]
@@ -1013,8 +1013,8 @@ public class ReadOnlyDocumentView: NSView {
         guard range.location >= 0, range.length >= 0, range.location <= snapshot.length,
               range.length <= snapshot.length - range.location else { return nil }
         let controller = LogicalLineLayoutController(manager: manager, line: line)
-        guard controller.prepare(snapshot.attributedSubstring(from: range), width: effectiveTextWidth,
-                                 fallbackHeight: fallbackHeight,
+        guard controller.prepare(presentationAttributedSubstring(from: range), width: effectiveTextWidth,
+                                 heightMultiplier: safeLineHeightMultiplier, fallbackHeight: fallbackHeight,
                                  wrapsLines: displayConfiguration.isLineWrappingEnabled) else { return nil }
         if !displayConfiguration.isLineWrappingEnabled {
             measuredUnwrappedContentWidth = max(measuredUnwrappedContentWidth,
@@ -1028,6 +1028,29 @@ public class ReadOnlyDocumentView: NSView {
     private var safeCharacterWidth: CGFloat {
         let width = displayConfiguration.characterWidth
         return width.isFinite && width > 0 ? width : 8
+    }
+
+    private var safeLineHeightMultiplier: CGFloat {
+        let value = displayConfiguration.lineHeightMultiplier
+        return value.isFinite && value > 0 ? value : 1
+    }
+
+    private var safeKern: CGFloat {
+        let value = displayConfiguration.kern
+        return value.isFinite ? value : 0
+    }
+
+    private func safeOverscrollFactor(_ value: CGFloat) -> CGFloat {
+        value.isFinite ? min(1, max(0, value)) : 0
+    }
+
+    private func presentationAttributedSubstring(from range: NSRange) -> NSAttributedString {
+        let attributed = snapshot.attributedSubstring(from: range)
+        let kern = safeKern
+        guard kern != 0, attributed.length > 0 else { return attributed }
+        let presented = NSMutableAttributedString(attributedString: attributed)
+        presented.addAttribute(.kern, value: kern, range: NSRange(location: 0, length: presented.length))
+        return presented
     }
 
     private var horizontalTextInset: CGFloat {
@@ -1044,9 +1067,15 @@ public class ReadOnlyDocumentView: NSView {
         return min(available, CGFloat(column) * safeCharacterWidth)
     }
 
-    private var documentFrameWidth: CGFloat {
-        guard !displayConfiguration.isLineWrappingEnabled else { return layoutWidth }
-        return max(layoutWidth, measuredUnwrappedContentWidth)
+    private func documentFrameSize(for clip: NSClipView) -> NSSize {
+        let baseWidth = displayConfiguration.isLineWrappingEnabled ? layoutWidth : max(layoutWidth, measuredUnwrappedContentWidth)
+        let baseHeight = max(clip.bounds.height, manager.contentHeight)
+        let horizontalScrollable = max(0, baseWidth - clip.bounds.width)
+        let verticalScrollable = max(0, baseHeight - clip.bounds.height)
+        return NSSize(
+            width: baseWidth + horizontalScrollable * safeOverscrollFactor(displayConfiguration.horizontalOverscrollFactor),
+            height: baseHeight + verticalScrollable * safeOverscrollFactor(displayConfiguration.verticalOverscrollFactor)
+        )
     }
 
     /// Measures unwrapped logical lines in bounded main-thread batches. The
@@ -1072,7 +1101,7 @@ public class ReadOnlyDocumentView: NSView {
                 guard range.location >= 0, range.length >= 0,
                       range.location <= self.snapshot.length,
                       range.length <= self.snapshot.length - range.location else { return }
-                let attributed = self.snapshot.attributedSubstring(from: range)
+                let attributed = self.presentationAttributedSubstring(from: range)
                 let coreTextLine = CTLineCreateWithAttributedString(attributed)
                 let width = CGFloat(CTLineGetTypographicBounds(coreTextLine, nil, nil, nil))
                 if width.isFinite { maximum = max(maximum, self.horizontalTextInset + ceil(width)) }
@@ -1091,7 +1120,7 @@ public class ReadOnlyDocumentView: NSView {
 
     private func updateDocumentFrameSize() {
         guard let clip = enclosingScrollView?.contentView else { return }
-        let size = NSSize(width: documentFrameWidth, height: max(clip.bounds.height, manager.contentHeight))
+        let size = documentFrameSize(for: clip)
         if frame.size != size { setFrameSize(size) }
         enclosingScrollView?.reflectScrolledClipView(clip)
     }
