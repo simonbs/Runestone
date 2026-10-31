@@ -162,7 +162,12 @@ final class PreparedInputContextConnection {
         driverDepth += 1
         defer { finishDriverCall() }
         driver.activate()
-        return state == .connected && !focusSuspended && !view.isRetired
+        let isActive = state == .connected && !focusSuspended && !view.isRetired
+        if isActive {
+            view.scheduleAccessibilityValueChanged()
+            view.scheduleAccessibilitySelectionChanged()
+        }
+        return isActive
     }
 
     @discardableResult
@@ -239,6 +244,7 @@ final class PreparedInputContextConnection {
     }
 
     private func finishActivity() {
+        if driverDepth == 0 && callbackDepth == 0 { view.flushAccessibilityNotificationsIfNeeded() }
         if driverDepth == 0 && callbackDepth == 0 && deferredInvalidation && state == .connected {
             deferredInvalidation = false
             view.inputInvalidation.invalidate()
@@ -254,6 +260,12 @@ final class PreparedInputContextConnection {
         let result = action(adapter)
         if adapter.needsInputReset { requestReset() }
         return state == .connected && !focusSuspended && !view.isRetired ? result : fallback
+    }
+
+    /// Accessibility must not inspect a stale or suppressed input client.
+    func accessibilityTextState() -> ReadOnlyDocumentView.AccessibilityTextState? {
+        guard activated else { return nil }
+        return query(nil) { $0.accessibilityTextStateForInput() }
     }
 
     fileprivate func mutate(_ action: (PreparedInputEventAdapter) -> PreparedInputEventAdapter.Outcome) {

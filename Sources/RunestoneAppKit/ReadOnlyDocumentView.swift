@@ -6,7 +6,8 @@ import RunestoneEngine
 ///
 /// Install this view as an `NSScrollView`'s document view. Supply text with
 /// appropriate AppKit font and foreground color attributes. Input, selection,
-/// accessibility navigation, and interactive editing are not provided by this view.
+/// interactive editing are not provided by this view. Accessibility exposes
+/// read-only text and geometry when a current layout is available.
 public class ReadOnlyDocumentView: NSView {
     final class InputMutationPermit {
         fileprivate var hasSession = false
@@ -23,6 +24,13 @@ public class ReadOnlyDocumentView: NSView {
     private let retirementLock = NSLock()
     private var retired = false
     private var retirementFinished = false
+    private var accessibilityValueNotificationPending = false
+    private var accessibilitySelectionNotificationPending = false
+    private var accessibilityValueDirty = false
+    private var accessibilitySelectionDirty = false
+    var accessibilityNotificationPoster: (ReadOnlyDocumentView, NSAccessibility.Notification) -> Void = {
+        NSAccessibility.post(element: $0, notification: $1)
+    }
     var isRetired: Bool {
         retirementLock.lock()
         defer { retirementLock.unlock() }
@@ -71,12 +79,156 @@ public class ReadOnlyDocumentView: NSView {
         set { super.isHidden = isRetired || newValue }
     }
 
+    struct AccessibilityTextState {
+        let text: String
+        let selection: NSRange?
+        let revision: UUID
+    }
+
+    /// Owned input views must provide their own revision-checked snapshot.
+    func accessibilityTextState() -> AccessibilityTextState? {
+        guard !isRetired, inputMutationPermit == nil else { return nil }
+        let revision = contentRevision
+        let text = snapshot.string
+        guard !isRetired, inputMutationPermit == nil, contentRevision == revision else { return nil }
+        return AccessibilityTextState(text: text, selection: nil, revision: revision)
+    }
+
     public override func isAccessibilityElement() -> Bool {
-        !isRetired && super.isAccessibilityElement()
+        !isRetired && !isHiddenOrHasHiddenAncestor && accessibilityTextState() != nil
     }
 
     public override func accessibilityChildren() -> [Any]? {
         isRetired ? [] : super.accessibilityChildren()
+    }
+
+    public override func accessibilityRole() -> NSAccessibility.Role? {
+        isRetired ? nil : .staticText
+    }
+
+    public override func accessibilityValue() -> Any? {
+        accessibilityTextState()?.text
+    }
+
+    public override func accessibilityNumberOfCharacters() -> Int {
+        accessibilityTextState().map { ($0.text as NSString).length } ?? 0
+    }
+
+    public override func accessibilitySelectedTextRange() -> NSRange {
+        accessibilityTextState()?.selection ?? NSRange(location: NSNotFound, length: 0)
+    }
+
+    public override func accessibilitySelectedText() -> String? {
+        guard let state = accessibilityTextState(), let range = state.selection,
+              validAccessibilityRange(range, in: state.text as NSString) else { return nil }
+        return (state.text as NSString).substring(with: range)
+    }
+
+    public override func accessibilityString(for range: NSRange) -> String? {
+        guard let state = accessibilityTextState(), validAccessibilityRange(range, in: state.text as NSString) else { return nil }
+        return (state.text as NSString).substring(with: range)
+    }
+
+    public override func accessibilityRange(for index: Int) -> NSRange {
+        let unavailable = NSRange(location: NSNotFound, length: 0)
+        guard let state = accessibilityTextState() else { return unavailable }
+        let text = state.text as NSString
+        guard index >= 0, index < text.length else { return unavailable }
+        return text.rangeOfComposedCharacterSequence(at: index)
+    }
+
+    public override func accessibilityLine(for index: Int) -> Int {
+        guard let state = accessibilityTextState(), index >= 0, index <= (state.text as NSString).length,
+              contentRevision == state.revision, let line = manager.line(containingCharacterAt: index),
+              !isRetired, contentRevision == state.revision else { return NSNotFound }
+        return line.index
+    }
+
+    public override func accessibilityRange(forLine line: Int) -> NSRange {
+        let unavailable = NSRange(location: NSNotFound, length: 0)
+        guard let state = accessibilityTextState(), line >= 0, line < manager.lineCount,
+              contentRevision == state.revision else { return unavailable }
+        let node = manager.line(atRow: line)
+        guard !isRetired, contentRevision == state.revision else { return unavailable }
+        return NSRange(location: node.location, length: node.data.totalLength)
+    }
+
+    public override func accessibilityVisibleCharacterRange() -> NSRange {
+        let unavailable = NSRange(location: NSNotFound, length: 0)
+        guard let state = accessibilityTextState(), let range = AccessibilityTextGeometry.visibleRange(in: self),
+              !isRetired, contentRevision == state.revision,
+              accessibilityTextState()?.revision == state.revision else { return unavailable }
+        return range
+    }
+
+    public override func accessibilityFrame(for range: NSRange) -> NSRect {
+        guard let state = accessibilityTextState(), validAccessibilityRange(range, in: state.text as NSString),
+              let frame = AccessibilityTextGeometry.frame(for: range, in: self),
+              !isRetired, contentRevision == state.revision,
+              accessibilityTextState()?.revision == state.revision else { return .zero }
+        return frame
+    }
+
+    public override func accessibilityRange(for point: NSPoint) -> NSRange {
+        let unavailable = NSRange(location: NSNotFound, length: 0)
+        guard let state = accessibilityTextState(), let range = AccessibilityTextGeometry.range(at: point, in: self),
+              !isRetired, contentRevision == state.revision,
+              accessibilityTextState()?.revision == state.revision else { return unavailable }
+        return range
+    }
+
+    public override func isAccessibilitySelectorAllowed(_ selector: Selector) -> Bool {
+        if selector == NSSelectorFromString("setAccessibilityValue:") ||
+            selector == NSSelectorFromString("setAccessibilitySelectedTextRange:") ||
+            selector == NSSelectorFromString("setAccessibilitySelectedText:") ||
+            selector == NSSelectorFromString("setAccessibilitySelectedTextRanges:") { return false }
+        return super.isAccessibilitySelectorAllowed(selector)
+    }
+
+    func scheduleAccessibilityValueChanged() {
+        guard !isRetired else { return }
+        accessibilityValueDirty = true
+        flushAccessibilityNotificationsIfNeeded()
+    }
+
+    func scheduleAccessibilitySelectionChanged() {
+        guard !isRetired else { return }
+        accessibilitySelectionDirty = true
+        flushAccessibilityNotificationsIfNeeded()
+    }
+
+    /// A suppressed input context keeps its dirty flags until it is active
+    /// again; a queued turn alone does not imply that accessibility can read it.
+    func flushAccessibilityNotificationsIfNeeded() {
+        guard !isRetired else { return }
+        if accessibilityValueDirty && !accessibilityValueNotificationPending {
+            accessibilityValueNotificationPending = true
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                let available = self.accessibilityTextState() != nil && !self.isRetired
+                self.accessibilityValueNotificationPending = false
+                guard self.accessibilityValueDirty, available else { return }
+                self.accessibilityValueDirty = false
+                self.accessibilityNotificationPoster(self, .valueChanged)
+            }
+        }
+        if accessibilitySelectionDirty && !accessibilitySelectionNotificationPending {
+            accessibilitySelectionNotificationPending = true
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                let available = self.accessibilityTextState()?.selection != nil && !self.isRetired
+                self.accessibilitySelectionNotificationPending = false
+                guard self.accessibilitySelectionDirty, available else { return }
+                self.accessibilitySelectionDirty = false
+                self.accessibilityNotificationPoster(self, .selectedTextChanged)
+            }
+        }
+    }
+
+    private func validAccessibilityRange(_ range: NSRange, in text: NSString) -> Bool {
+        range.location >= 0 && range.length >= 0 && range.location <= text.length &&
+            range.length <= text.length - range.location &&
+            isScalarBoundary(range.location, in: text) && isScalarBoundary(range.location + range.length, in: text)
     }
 
     public override var acceptsFirstResponder: Bool {
@@ -168,6 +320,7 @@ public class ReadOnlyDocumentView: NSView {
         contentRevision = revision
         resetLayout(width: 0)
         didCommit(revision)
+        scheduleAccessibilityValueChanged()
         noteInputCoordinatesChanged()
         needsDisplay = true
         if let scroll = enclosingScrollView {
@@ -221,6 +374,7 @@ public class ReadOnlyDocumentView: NSView {
         controllerOrder.removeAll { ids.contains($0) }
         visibleLayout = nil
         didCommit(revision)
+        scheduleAccessibilityValueChanged()
         noteInputCoordinatesChanged()
         needsDisplay = true
         updateViewport()

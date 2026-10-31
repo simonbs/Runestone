@@ -145,6 +145,7 @@ final class DocumentInputSession {
               let transaction = view.beginInputMutation(with: mutationPermit, authority: authority) else { return false }
         isApplyingChange = true
         defer { isApplyingChange = false; view.endInputMutation(transaction) }
+        let oldSelection = storedSelection
         let range = NSRange(location: 0, length: view.manager.stringView.string.length)
         guard view.replaceContentReturningRevision(in: range, with: content, permit: mutationPermit,
                                                     transaction: transaction, didCommit: { viewRevision in
@@ -155,6 +156,7 @@ final class DocumentInputSession {
             composition = nil
             hasDocumentConflict = false
         }) != nil else { return false }
+        if oldSelection != storedSelection { view.scheduleAccessibilitySelectionChanged() }
         view.noteInputCoordinatesChanged()
         guard contentMatches, documentRevision() == revision else {
             hasDocumentConflict = true
@@ -169,6 +171,7 @@ final class DocumentInputSession {
         guard isCurrent, isValid(range, in: view.manager.stringView.string) else { return false }
         if storedSelection != range {
             storedSelection = range
+            view.scheduleAccessibilitySelectionChanged()
             view.noteInputCoordinatesChanged()
         }
         return true
@@ -291,6 +294,7 @@ final class DocumentInputSession {
 
     private func restore(_ baseline: Composition, selection: NSRange,
                          transaction: ReadOnlyDocumentView.InputMutationTransaction) -> Bool {
+        let oldSelection = storedSelection
         let range = NSRange(location: 0, length: view.manager.stringView.string.length)
         guard view.replaceContentReturningRevision(in: range, with: baseline.baseline, permit: mutationPermit,
                                                     transaction: transaction, didCommit: { revision in
@@ -299,6 +303,7 @@ final class DocumentInputSession {
             storedMarkedRange = nil
             composition = nil
         }) != nil, contentMatches else { return false }
+        if oldSelection != storedSelection { view.scheduleAccessibilitySelectionChanged() }
         view.noteInputCoordinatesChanged()
         return true
     }
@@ -420,6 +425,7 @@ final class DocumentInputSession {
             storedMarkedRange = marked
             if case .provisional = kind { composition = nextComposition }
         }
+        if oldSelection != storedSelection { view.scheduleAccessibilitySelectionChanged() }
         if didChange || oldSelection != storedSelection || oldMarked != storedMarkedRange {
             view.noteInputCoordinatesChanged()
         }

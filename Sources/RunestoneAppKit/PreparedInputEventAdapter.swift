@@ -253,6 +253,7 @@ final class PreparedInputEventAdapter {
             let work = pendingInputActivityIdleWork.removeFirst()
             work()
             drainingInputActivityIdleWork = false
+            view.flushAccessibilityNotificationsIfNeeded()
             schedulePendingInputContextReleaseIfIdle()
             scheduleInputActivityIdleDrainIfPossible()
         }
@@ -302,6 +303,15 @@ final class PreparedInputEventAdapter {
 
     /// Query results are available only while both the view and canonical revision
     /// match. Geometry providers may call out, so all results are checked again.
+    /// Text and selection captured under one revision-checked input query.
+    func accessibilityTextStateForInput() -> ReadOnlyDocumentView.AccessibilityTextState? {
+        queryForInput(nil) {
+            ReadOnlyDocumentView.AccessibilityTextState(text: view.snapshotForInputSession().string,
+                                                        selection: session.selectedRange,
+                                                        revision: view.contentRevision)
+        }
+    }
+
     func selectedRangeForInput() -> NSRange {
         queryForInput(NSRange(location: NSNotFound, length: 0)) { session.selectedRange }
     }
