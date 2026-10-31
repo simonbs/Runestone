@@ -69,6 +69,23 @@ final class RunestoneEditableDocumentAttachmentPublicTests: XCTestCase {
         waitForDetach(attachment)
     }
 
+    func testDocumentRangeNavigationValidatesAndWorksWhileReadOnly() throws {
+        _ = NSApplication.shared
+        let host = PublicAttachmentHost("first\r\nsecond")
+        let attachment = try makeAttachment(host: host)
+
+        XCTAssertTrue(attachment.setReadOnly(true))
+        XCTAssertTrue(attachment.selectAndRevealDocumentRange(NSRange(location: 7, length: 6)))
+        XCTAssertEqual(attachment.presentedSelectionRange, NSRange(location: 7, length: 6))
+        XCTAssertFalse(attachment.selectAndRevealDocumentRange(NSRange(location: 99, length: 0)))
+        XCTAssertEqual(attachment.presentedSelectionRange, NSRange(location: 7, length: 6))
+
+        XCTAssertFalse(attachment.detach())
+        waitForDetach(attachment)
+        XCTAssertFalse(attachment.selectAndRevealDocumentRange(NSRange(location: 0, length: 0)))
+        XCTAssertNil(attachment.presentedSelectionRange)
+    }
+
     func testBridgeRejectsDifferentDocumentHost() throws {
         _ = NSApplication.shared
         let firstHost = PublicAttachmentHost("first")
