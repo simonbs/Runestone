@@ -110,6 +110,47 @@ final class LineManagerEngineTests: XCTestCase {
         }
     }
 
+    func testEditsAtLineBreakBoundariesMatchRebuiltIndex() throws {
+        let cases: [(String, NSRange, String, String)] = [
+            ("a\rb", NSRange(location: 2, length: 0), "\n", "a\r\nb"),
+            ("a\nb", NSRange(location: 1, length: 0), "\r", "a\r\nb"),
+            ("a\rX\nb", NSRange(location: 2, length: 1), "", "a\r\nb"),
+            ("a\r\nb", NSRange(location: 2, length: 0), "X", "a\rX\nb"),
+            ("a\r\nb", NSRange(location: 1, length: 1), "", "a\nb"),
+            ("a\r\nb", NSRange(location: 2, length: 1), "", "a\rb"),
+            ("a\r\nb", NSRange(location: 2, length: 0), "", "a\r\nb"),
+            ("😀\rX\nlast", NSRange(location: 3, length: 1), "", "😀\r\nlast"),
+            ("a\u{2028}b", NSRange(location: 1, length: 0), "x", "ax\u{2028}b"),
+            ("a\u{2029}b", NSRange(location: 1, length: 0), "x", "ax\u{2029}b"),
+            ("a\u{0085}b", NSRange(location: 1, length: 0), "x", "ax\u{0085}b"),
+            ("a\u{000B}b", NSRange(location: 1, length: 0), "x", "ax\u{000B}b"),
+            ("a\u{000C}b", NSRange(location: 1, length: 0), "x", "ax\u{000C}b")
+        ]
+        for (original, range, replacement, expected) in cases {
+            let storage = StringView(string: original)
+            let incremental = LineManager(stringView: storage)
+            incremental.rebuild()
+            XCTAssertNotNil(LineEditTransaction.replace(in: incremental, range: range, with: replacement), original.debugDescription)
+            XCTAssertEqual(storage.string as String, expected)
+
+            let rebuilt = LineManager(stringView: StringView(string: expected))
+            rebuilt.rebuild()
+            XCTAssertEqual(incremental.lineCount, rebuilt.lineCount, original.debugDescription)
+            guard incremental.lineCount == rebuilt.lineCount else { continue }
+            for row in 0..<rebuilt.lineCount {
+                let actualLine = incremental.line(atRow: row)
+                let expectedLine = rebuilt.line(atRow: row)
+                XCTAssertEqual(actualLine.location, expectedLine.location, "row \(row) in \(original.debugDescription)")
+                XCTAssertEqual(actualLine.data.totalLength, expectedLine.data.totalLength, "row \(row) in \(original.debugDescription)")
+                XCTAssertEqual(actualLine.data.delimiterLength, expectedLine.data.delimiterLength, "row \(row) in \(original.debugDescription)")
+            }
+            for location in 0...storage.string.length {
+                XCTAssertEqual(incremental.linePosition(at: location), rebuilt.linePosition(at: location),
+                               "location \(location) in \(original.debugDescription)")
+            }
+        }
+    }
+
     func testFoldedHeightAndHitTestingUseSharedLineGeometry() {
         let manager = LineManager(stringView: StringView(string: "a\nbb\nccc\ndddd"))
         manager.rebuild()
