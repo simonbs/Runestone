@@ -34,6 +34,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         return window.isKeyWindow && window.firstResponder === self
     }
 
+    override func accessibilityTextState() -> AccessibilityTextState? {
+        inputConnection?.accessibilityTextState()
+    }
+
     override var acceptsFirstResponder: Bool { !isRetired && inputConnection != nil }
 
     override var inputContext: NSTextInputContext? {
