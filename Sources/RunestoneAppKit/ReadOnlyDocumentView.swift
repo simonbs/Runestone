@@ -8,6 +8,13 @@ import RunestoneEngine
 /// appropriate AppKit font and foreground color attributes. Input, selection,
 /// accessibility navigation, and interactive editing are not provided by this view.
 public final class ReadOnlyDocumentView: NSView {
+    final class InputMutationPermit {
+        fileprivate var hasSession = false
+        fileprivate init() {}
+    }
+
+    private var inputMutationPermit: InputMutationPermit?
+    private var inputMutationDepth = 0
     private var snapshot: NSMutableAttributedString
     private(set) var contentRevision = UUID()
     private let fallbackHeight: CGFloat
@@ -35,7 +42,8 @@ public final class ReadOnlyDocumentView: NSView {
     /// Replaces the snapshot and resets the scroll position to the start.
     /// Subsequent mutations of the attributed string do not affect the view;
     /// attribute values themselves are not deep-copied. Rebuilding layout takes
-    /// time proportional to the size of the document.
+    /// time proportional to the size of the document. While an internal input
+    /// host owns the view, direct replacements are ignored.
     public func setContent(_ content: NSAttributedString) {
         _ = setContentReturningRevision(content)
     }
@@ -43,7 +51,9 @@ public final class ReadOnlyDocumentView: NSView {
     /// Publishes the fully installed model before any layout notification can run.
     /// The synchronous hook must only publish matching internal session state.
     @discardableResult
-    func setContentReturningRevision(_ content: NSAttributedString, didCommit: (UUID) -> Void = { _ in }) -> UUID {
+    func setContentReturningRevision(_ content: NSAttributedString, permit: InputMutationPermit? = nil,
+                                     didCommit: (UUID) -> Void = { _ in }) -> UUID? {
+        guard permitsMutation(with: permit) else { return nil }
         snapshot = NSMutableAttributedString(attributedString: content)
         let revision = UUID()
         contentRevision = revision
@@ -66,6 +76,7 @@ public final class ReadOnlyDocumentView: NSView {
     /// The scroll position is clamped after layout, but a particular text anchor
     /// is not guaranteed to stay at the same screen position. This programmatic
     /// operation does not provide input, selection, undo, or change notifications.
+    /// Returns `false` while an internal input host owns the view.
     @discardableResult
     public func replaceContent(in range: NSRange, with content: NSAttributedString) -> Bool {
         replaceContentReturningRevision(in: range, with: content) != nil
@@ -74,7 +85,9 @@ public final class ReadOnlyDocumentView: NSView {
     /// Publishes the fully installed model before any layout notification can run.
     /// The synchronous hook must only publish matching internal session state.
     func replaceContentReturningRevision(in range: NSRange, with content: NSAttributedString,
+                                         permit: InputMutationPermit? = nil,
                                          didCommit: (UUID) -> Void = { _ in }) -> UUID? {
+        guard permitsMutation(with: permit) else { return nil }
         let text = manager.stringView.string
         guard range.location >= 0, range.length >= 0, range.location <= text.length,
               range.length <= text.length - range.location,
@@ -98,6 +111,46 @@ public final class ReadOnlyDocumentView: NSView {
         needsDisplay = true
         updateViewport()
         return revision
+    }
+
+    /// A host must disconnect its input context before releasing this permit.
+    func claimInputMutation() -> InputMutationPermit? {
+        guard inputMutationPermit == nil, inputMutationDepth == 0 else { return nil }
+        let permit = InputMutationPermit()
+        inputMutationPermit = permit
+        return permit
+    }
+
+    @discardableResult
+    func releaseInputMutation(_ permit: InputMutationPermit) -> Bool {
+        guard inputMutationPermit === permit, inputMutationDepth == 0 else { return false }
+        inputMutationPermit = nil
+        return true
+    }
+
+    func permitsMutation(with permit: InputMutationPermit?) -> Bool {
+        if let owner = inputMutationPermit { return owner === permit }
+        return permit == nil
+    }
+
+    /// A permit belongs to exactly one session for its entire lifetime.
+    func bindInputSession(to permit: InputMutationPermit?) -> Bool {
+        guard let permit = permit else { return inputMutationPermit == nil }
+        guard inputMutationPermit === permit, !permit.hasSession else { return false }
+        permit.hasSession = true
+        return true
+    }
+
+    /// Keeps ownership stable through synchronous layout and change callbacks.
+    func beginInputMutation(with permit: InputMutationPermit?) -> Bool {
+        guard inputMutationDepth == 0, permitsMutation(with: permit) else { return false }
+        inputMutationDepth += 1
+        return true
+    }
+
+    func endInputMutation() {
+        precondition(inputMutationDepth > 0)
+        inputMutationDepth -= 1
     }
 
     /// The caller must validate this UTF-16 range against the current document.

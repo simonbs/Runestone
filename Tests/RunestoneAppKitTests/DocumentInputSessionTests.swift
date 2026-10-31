@@ -88,6 +88,62 @@ final class DocumentInputSessionTests: XCTestCase {
         XCTAssertEqual((view.content.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)?.pointSize, 24)
     }
 
+    func testExclusiveInputOwnershipRejectsExternalMutationsAndCompetingSessions() throws {
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: "original", attributes: attributes))
+        let permit = try XCTUnwrap(view.claimInputMutation())
+        XCTAssertNil(view.claimInputMutation())
+        let session = DocumentInputSession(view: view, mutationPermit: permit)
+        let competing = DocumentInputSession(view: view)
+        let samePermit = DocumentInputSession(view: view, mutationPermit: permit)
+        XCTAssertTrue(competing.isStale)
+        XCTAssertTrue(samePermit.isStale)
+        XCTAssertFalse(competing.refresh(content: NSAttributedString(string: "foreign")))
+        XCTAssertFalse(samePermit.refresh(content: NSAttributedString(string: "foreign")))
+        XCTAssertTrue(session.setMarkedText("x", selectedRange: NSRange(location: 1, length: 0),
+                                            replacementRange: unspecified, attributes: attributes))
+        let revision = view.contentRevision
+        view.setContent(NSAttributedString(string: "foreign"))
+        XCTAssertFalse(view.replaceContent(in: NSRange(location: 0, length: 1), with: NSAttributedString(string: "bad")))
+        XCTAssertEqual(view.contentRevision, revision)
+        XCTAssertEqual(view.content.string, "xoriginal")
+        XCTAssertFalse(session.isStale)
+        XCTAssertEqual(session.markedRange, NSRange(location: 0, length: 1))
+        XCTAssertEqual(session.selectedRange, NSRange(location: 1, length: 0))
+        XCTAssertTrue(session.refresh(content: NSAttributedString(string: "refreshed", attributes: attributes)))
+        XCTAssertFalse(samePermit.refresh(content: NSAttributedString(string: "foreign")))
+        XCTAssertFalse(session.isStale)
+        XCTAssertEqual(view.content.string, "refreshed")
+        XCTAssertNil(session.markedRange)
+        let otherView = ReadOnlyDocumentView(content: NSAttributedString(string: ""))
+        let wrongPermit = try XCTUnwrap(otherView.claimInputMutation())
+        XCTAssertFalse(view.releaseInputMutation(wrongPermit))
+        XCTAssertTrue(view.releaseInputMutation(permit))
+        XCTAssertTrue(session.isStale)
+        XCTAssertFalse(session.refresh(content: NSAttributedString(string: "stale")))
+        view.setContent(NSAttributedString(string: "outside"))
+        XCTAssertEqual(view.content.string, "outside")
+    }
+
+    func testOwnershipCannotBeReleasedDuringSessionCallbacks() throws {
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: "", attributes: attributes))
+        let permit = try XCTUnwrap(view.claimInputMutation())
+        let session = DocumentInputSession(view: view, mutationPermit: permit)
+        let competing = DocumentInputSession(view: view, mutationPermit: permit)
+        var observed = false
+        session.contentDidChange = { _ in
+            observed = true
+            XCTAssertFalse(competing.refresh(content: NSAttributedString(string: "foreign")))
+            XCTAssertFalse(view.releaseInputMutation(permit))
+            view.setContent(NSAttributedString(string: "foreign"))
+            XCTAssertFalse(session.isStale)
+            XCTAssertEqual(session.selectedRange, NSRange(location: 1, length: 0))
+            XCTAssertEqual(view.content.string, "x")
+        }
+        XCTAssertTrue(session.insertText("x", replacementRange: unspecified, attributes: attributes))
+        XCTAssertTrue(observed)
+        XCTAssertTrue(view.releaseInputMutation(permit))
+    }
+
     func testExternalRefreshInvalidatesSessionUntilSilentRefresh() {
         let view = ReadOnlyDocumentView(content: NSAttributedString(string: "original", attributes: attributes))
         let session = DocumentInputSession(view: view)

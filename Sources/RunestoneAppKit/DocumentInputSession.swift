@@ -15,6 +15,8 @@ import AppKit
 /// As with the underlying view, attribute values must be treated as immutable.
 final class DocumentInputSession {
     private let view: ReadOnlyDocumentView
+    private let mutationPermit: ReadOnlyDocumentView.InputMutationPermit?
+    private let hasMutationAuthority: Bool
     private var expectedRevision: UUID
     private var isApplyingChange = false
 
@@ -26,8 +28,10 @@ final class DocumentInputSession {
     var isStale: Bool { !contentMatches }
     var contentDidChange: ((NSAttributedString) -> Void)?
 
-    init(view: ReadOnlyDocumentView) {
+    init(view: ReadOnlyDocumentView, mutationPermit: ReadOnlyDocumentView.InputMutationPermit? = nil) {
         self.view = view
+        self.mutationPermit = mutationPermit
+        self.hasMutationAuthority = view.bindInputSession(to: mutationPermit)
         self.expectedRevision = view.contentRevision
     }
 
@@ -35,14 +39,17 @@ final class DocumentInputSession {
     /// Call this to adopt a new document or recover after outside mutation.
     @discardableResult
     func refresh(content: NSAttributedString) -> Bool {
-        guard !isApplyingChange else { return false }
+        guard hasMutationAuthority, !isApplyingChange, view.beginInputMutation(with: mutationPermit) else { return false }
         isApplyingChange = true
-        defer { isApplyingChange = false }
-        _ = view.setContentReturningRevision(content) { revision in
+        defer {
+            isApplyingChange = false
+            view.endInputMutation()
+        }
+        guard view.setContentReturningRevision(content, permit: mutationPermit, didCommit: { revision in
             expectedRevision = revision
             storedSelection = NSRange(location: 0, length: 0)
             storedMarkedRange = nil
-        }
+        }) != nil else { return false }
         return contentMatches
     }
 
@@ -112,7 +119,9 @@ final class DocumentInputSession {
         !isApplyingChange && contentMatches
     }
 
-    private var contentMatches: Bool { view.contentRevision == expectedRevision }
+    private var contentMatches: Bool {
+        hasMutationAuthority && view.contentRevision == expectedRevision && view.permitsMutation(with: mutationPermit)
+    }
 
     private func resolvedReplacementRange(_ requested: NSRange) -> NSRange {
         requested.location == NSNotFound ? (storedMarkedRange ?? storedSelection) : requested
@@ -122,12 +131,16 @@ final class DocumentInputSession {
                        selection: NSRange, marked: NSRange?) -> Bool {
         // Set the guard before invoking the view, whose layout can synchronously
         // deliver AppKit notifications, and retain it through the callback.
+        guard view.beginInputMutation(with: mutationPermit) else { return false }
         isApplyingChange = true
-        defer { isApplyingChange = false }
+        defer {
+            isApplyingChange = false
+            view.endInputMutation()
+        }
         let previous = view.attributedContent(in: range)
         let didChange = !previous.isEqual(to: replacement)
         if didChange {
-            guard view.replaceContentReturningRevision(in: range, with: replacement, didCommit: { revision in
+            guard view.replaceContentReturningRevision(in: range, with: replacement, permit: mutationPermit, didCommit: { revision in
                 expectedRevision = revision
                 storedSelection = selection
                 storedMarkedRange = marked

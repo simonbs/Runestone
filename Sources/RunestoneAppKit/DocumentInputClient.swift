@@ -22,13 +22,14 @@ final class DocumentInputClient: NSObject, NSTextInputClient {
     private let markedAttributes: [NSAttributedString.Key]
 
     init(view: ReadOnlyDocumentView,
+         mutationPermit: ReadOnlyDocumentView.InputMutationPermit? = nil,
          typingAttributes: @escaping () -> [NSAttributedString.Key: Any],
          commandHandler: @escaping (Selector) -> Void,
          rectProvider: @escaping (NSRange) -> RangeGeometry?,
          indexProvider: @escaping (NSPoint) -> Int?,
          markedAttributes: [NSAttributedString.Key] = []) {
         self.view = view
-        self.session = DocumentInputSession(view: view)
+        self.session = DocumentInputSession(view: view, mutationPermit: mutationPermit)
         self.typingAttributes = typingAttributes
         self.commandHandler = commandHandler
         self.rectProvider = rectProvider
