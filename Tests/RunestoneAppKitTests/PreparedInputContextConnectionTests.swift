@@ -117,6 +117,64 @@ final class PreparedInputContextConnectionTests: XCTestCase {
         XCTAssertTrue(connection.isDisconnected)
     }
 
+    func testBlockedCallbackCanSignalReadinessBeforeItReturns() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var drivers: [ContextFakeDriver] = []
+        weak var weakConnection: PreparedInputContextConnection?
+        var blocked = 0
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let driver = ContextFakeDriver(client: client)
+            drivers.append(driver)
+            return driver
+        }, schedule: queue.enqueue, blocked: {
+            blocked += 1
+            owner.reconstructionBusy = false
+            weakConnection?.resumeAfterQuiescing()
+        }))
+        weakConnection = connection
+        owner.reconstructionBusy = true
+        connection.requestReset()
+        queue.runAll()
+        XCTAssertEqual(blocked, 1)
+        XCTAssertEqual(drivers.count, 2)
+        XCTAssertEqual(drivers[1].client?.selectedRange(), NSRange(location: 0, length: 0))
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+        XCTAssertTrue(connection.isDisconnected)
+    }
+
+    func testRepeatedBlockedCallbackRetryDoesNotSpinAndPreservesClose() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var drivers: [ContextFakeDriver] = []
+        weak var weakConnection: PreparedInputContextConnection?
+        var blocked = 0
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let driver = ContextFakeDriver(client: client)
+            drivers.append(driver)
+            return driver
+        }, schedule: queue.enqueue, blocked: {
+            blocked += 1
+            _ = weakConnection?.disconnect()
+        }))
+        weakConnection = connection
+        owner.reconstructionBusy = true
+        connection.requestReset()
+        queue.runAll()
+        XCTAssertEqual(blocked, 1)
+        XCTAssertFalse(connection.isDisconnected)
+        XCTAssertEqual(drivers.count, 1)
+        owner.reconstructionBusy = false
+        connection.resumeAfterQuiescing()
+        XCTAssertTrue(connection.isDisconnected)
+        XCTAssertEqual(drivers.count, 1)
+    }
+
     func testResumeDuringAdapterIdleCleanupRetriesAfterGuardUnwinds() throws {
         let queue = ContextQueue()
         let owner = ContextOwner(text: "abc")
