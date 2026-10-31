@@ -337,6 +337,6 @@ literal, including CR, LF and CRLF.
 Selected text is an AppKit `.string` drag source. Text drops insert the literal
 pasteboard payload at the Core Text hit-tested offset through the document gate.
 File URLs use the explicit `.fileURL` pasteboard type and are delegated to the
-host, which owns document opening and sandbox policy. Read-only surfaces can
-still export selected text but reject text mutation; recovery mode must not
+host, which owns document opening and sandbox policy. Read-only surfaces reject
+drop mutation and do not install editable drag behavior; recovery mode must not
 install a file handler that bypasses its document policy.
