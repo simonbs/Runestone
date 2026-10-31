@@ -16,16 +16,50 @@ final class PreparedInputContextConnection {
     typealias DriverFactory = (NSTextInputClient) -> Driver
     private enum State { case connected, resetRequested, quiescing, reconstructing, waiting, disconnected }
 
-    private let adapter: PreparedInputEventAdapter
-    private let view: ReadOnlyDocumentView
-    private let makeDriver: DriverFactory
+    // These are the only strong references to AppKit-owning objects and
+    // closures. The payload is transferred to the main queue during deinit.
+    private final class Payload {
+        let adapter: PreparedInputEventAdapter
+        let view: ReadOnlyDocumentView
+        let makeDriver: DriverFactory
+        let schedule: (@escaping () -> Void) -> Void
+        let blocked: () -> Void
+        var driver: Driver?
+        var proxy: PreparedContextClient?
+        var contextToken: PreparedInputEventAdapter.InputContextToken?
+
+        init(adapter: PreparedInputEventAdapter, view: ReadOnlyDocumentView,
+             makeDriver: @escaping DriverFactory,
+             schedule: @escaping (@escaping () -> Void) -> Void,
+             blocked: @escaping () -> Void, token: PreparedInputEventAdapter.InputContextToken) {
+            self.adapter = adapter
+            self.view = view
+            self.makeDriver = makeDriver
+            self.schedule = schedule
+            self.blocked = blocked
+            self.contextToken = token
+        }
+    }
+    private var payload: Payload?
+    private var adapter: PreparedInputEventAdapter { payload!.adapter }
+    private var view: ReadOnlyDocumentView { payload!.view }
+    private var makeDriver: DriverFactory { payload!.makeDriver }
     // Must enqueue asynchronously without running a nested event loop.
-    private let schedule: (@escaping () -> Void) -> Void
-    private let blocked: () -> Void
+    private var schedule: (@escaping () -> Void) -> Void { payload!.schedule }
+    private var blocked: () -> Void { payload!.blocked }
+    private var driver: Driver? {
+        get { payload!.driver }
+        set { payload!.driver = newValue }
+    }
+    private var proxy: PreparedContextClient? {
+        get { payload!.proxy }
+        set { payload!.proxy = newValue }
+    }
+    private var contextToken: PreparedInputEventAdapter.InputContextToken? {
+        get { payload!.contextToken }
+        set { payload!.contextToken = newValue }
+    }
     private var state: State = .connected
-    private var driver: Driver?
-    private var proxy: PreparedContextClient?
-    private var contextToken: PreparedInputEventAdapter.InputContextToken?
     private var activated = false
     private var driverDepth = 0
     private var callbackDepth = 0
@@ -33,6 +67,7 @@ final class PreparedInputContextConnection {
     private var generation = UUID()
     private var deferredInvalidation = false
     private var wantsDisconnect = false
+    private var wantsAbandon = false
     private var resetDuringReconstruction = false
     private var notifyingBlocked = false
     private var retryRequestedDuringBlocked = false
@@ -45,12 +80,9 @@ final class PreparedInputContextConnection {
           blocked: @escaping () -> Void = {}) {
         precondition(Thread.isMainThread)
         guard adapter.ownsInputView(view), let token = adapter.claimInputContext() else { return nil }
-        self.adapter = adapter
-        self.view = view
-        self.makeDriver = makeDriver ?? { AppKitPreparedDriver(client: $0) }
-        self.schedule = schedule
-        self.blocked = blocked
-        self.contextToken = token
+        self.payload = Payload(adapter: adapter, view: view,
+                               makeDriver: makeDriver ?? { AppKitPreparedDriver(client: $0) },
+                               schedule: schedule, blocked: blocked, token: token)
         guard installDriver() else {
             precondition(adapter.releaseInputContext(token))
             self.contextToken = nil
@@ -210,10 +242,20 @@ final class PreparedInputContextConnection {
         }
         // A newer attempt supersedes any previously queued readiness signal.
         blockedRetryGeneration = UUID()
+        if wantsAbandon {
+            finishAbandonment()
+            return
+        }
         state = .reconstructing
         resetDuringReconstruction = false
         gateReleaseDuringReconstruction = false
-        switch adapter.reconstructWithoutInputContext() {
+        let reconstruction = adapter.reconstructWithoutInputContext()
+        if wantsAbandon {
+            state = .waiting
+            finishAbandonment()
+            return
+        }
+        switch reconstruction {
         case .processed:
             break
         case .resetRequired:
@@ -252,6 +294,7 @@ final class PreparedInputContextConnection {
         state = .connected
         // Driver construction and revision checks may call out and request a
         // close or a newer reset. Do not lose either intent on installation.
+        if wantsAbandon { abandonDocument(); return }
         if wantsDisconnect { _ = disconnect(); return }
         if resetDuringReconstruction { requestReset(); return }
         // Focus ownership belongs to the future view host. It decides whether
@@ -260,6 +303,7 @@ final class PreparedInputContextConnection {
 
     private func notifyBlocked(suppressRetry: Bool) {
         state = .waiting
+        if wantsAbandon { finishAbandonment(); return }
         let receivedGateRelease = gateReleaseDuringReconstruction
         gateReleaseDuringReconstruction = false
         retryRequestedDuringBlocked = false
@@ -279,6 +323,42 @@ final class PreparedInputContextConnection {
             // A newly observed gate release may warrant one more attempt.
             // An advisory blocked callback alone cannot cause polling.
             self.resumeAfterQuiescing(isBlockedRetry: true)
+        }
+    }
+
+    /// A lost or invalidated document permanently retires this view. Quiesce
+    /// the old context but do not ask a missing or busy document to reconstruct.
+    func abandonDocument() {
+        precondition(Thread.isMainThread)
+        view.quarantineInputViewWithoutCallouts()
+        wantsAbandon = true
+        switch state {
+        case .connected:
+            requestReset()
+        case .resetRequested:
+            scheduleDrainIfNeeded()
+        case .waiting:
+            finishAbandonment()
+        case .quiescing, .reconstructing, .disconnected:
+            break
+        }
+    }
+
+    private func finishAbandonment() {
+        guard state == .waiting, wantsAbandon else { return }
+        if adapter.retireAfterQuiescing() {
+            state = .disconnected
+            return
+        }
+        guard adapter.inputActivityIsBusy else { return }
+        let expected = generation
+        adapter.whenInputActivityIdle { [weak self] in
+            guard let self = self, self.state == .waiting, self.generation == expected,
+                  self.wantsAbandon else { return }
+            self.schedule { [weak self] in
+                guard let self = self, self.generation == expected else { return }
+                self.finishAbandonment()
+            }
         }
     }
 
@@ -308,30 +388,35 @@ final class PreparedInputContextConnection {
     }
 
     deinit {
-        let view = view
-        let adapter = adapter
-        let driver = driver
-        let token = contextToken
-        let client = proxy
-        let activated = activated
+        // Stored properties are released after deinit returns. Move all
+        // AppKit-owning references out before unlocking the main-queue block,
+        // so it cannot release the last reference on the wrong thread.
+        let gate = NSLock()
+        gate.lock()
+        transferCleanupToMain(gate: gate)
+        gate.unlock()
+    }
+
+    private func transferCleanupToMain(gate: NSLock) {
+        guard let payload = payload else { return }
+        self.payload = nil
         let shouldRetire = state != .disconnected
-        let retained = (makeDriver, schedule, blocked)
-        // Mark synchronously, even on an off-main final release. AppKit cleanup
-        // and all final releases occur later on main, after adapter activity.
-        if shouldRetire { view.retireInputView() }
+        let wasActivated = activated
+        if shouldRetire { payload.view.quarantineInputViewWithoutCallouts() }
         DispatchQueue.main.async {
-            withExtendedLifetime(retained) {
-                guard shouldRetire else { return }
-                adapter.whenInputActivityIdle {
-                    view.inputInvalidation.detach()
-                    driver?.discardMarkedText()
-                    if activated { driver?.deactivate() }
-                    if let token = token { _ = adapter.releaseInputContext(token) }
-                    withExtendedLifetime(client) {}
-                }
+            gate.lock()
+            gate.unlock()
+            guard shouldRetire else { withExtendedLifetime(payload) {}; return }
+            payload.adapter.whenInputActivityIdle {
+                payload.view.inputInvalidation.detach()
+                payload.driver?.discardMarkedText()
+                if wasActivated { payload.driver?.deactivate() }
+                if let token = payload.contextToken { _ = payload.adapter.releaseInputContext(token) }
+                withExtendedLifetime(payload.proxy) {}
             }
         }
     }
+
 }
 
 private var preparedContextClientKey: UInt8 = 0
