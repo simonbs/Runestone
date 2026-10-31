@@ -63,15 +63,37 @@ commands. The app must implement `canPerformInputHistory` as well as the
 existing history operation for Undo/Redo menu validation; its default is false.
 
 Visual navigation uses the current Core Text viewport and preserves a preferred
-horizontal coordinate over vertical moves. It rejects clipped or unavailable
-geometry and ambiguous bidi caret affinity rather than guessing. Horizontal
-movement across a wrapped fragment and some RTL line boundaries is unavailable
-until affinity is represented. Visual word traversal has explicit 128-step and
-4,096-visible-UTF-16-unit limits. Pointer drags clamp to already laid-out viewport
-edges; offscreen autoscroll is not implemented. These are deterministic gaps,
-not claims of complete editor behavior. Active accessibility reports an editable
-text role and routes supported setters through the input gate, but role-change
-notifications and real VoiceOver behavior remain unverified.
+horizontal coordinate over vertical moves. When an adjacent vertical row is
+outside the viewport, a command can request one bounded scroll and retry against
+new, revision-checked geometry. A source caret that is already offscreen, a
+clipped or unavailable destination, and an ambiguous wrap or bidi caret remain
+unavailable. Horizontal movement can traverse individually representable hidden
+whitespace in a left-to-right wrapped fragment, but a shared wrap boundary and
+some RTL line transitions still require affinity. Visual word traversal has
+128-step and 4,096-visible-UTF-16-unit limits.
+
+Pointer selection can autoscroll from a viewport edge. Each tick obtains a new
+input reservation and checks focus, selection, content and viewport identity.
+A gesture gets at most 120 frames or two seconds, with a single start; mouse-up,
+focus loss, detachment, pointer re-entry, stale state or lack of progress stops
+it. Re-entering and then leaving again requires a new gesture to restart scrolling.
+The wrapping view has no horizontal scrollable extent. A step limits its delta,
+viewport size, nearby and prepared line lengths, total charged UTF-16 units and
+layout calls, with a cooperative deadline. An in-progress Core Text or AppKit
+call cannot be preempted. An interrupted layout receives one separately bounded
+recovery; if that also fails, layout remains unavailable until an independent
+viewport or content change. No input event is retained or replayed.
+
+The current selection contract carries a range, not a visual caret affinity. A
+future revision-safe model must associate the active endpoint with its soft-wrap
+side and its primary or secondary bidi caret side, and preserve or invalidate
+that identity when selection, content or layout changes. Drawing, keyboard and
+pointer navigation, input-method first-rect queries, accessibility geometry and
+public selection state must all consume the same identity. Until that contract is
+implemented, deterministic affinity and offscreen navigation gaps remain; these
+are not claims of complete editor behavior. Active accessibility reports an
+editable text role and routes supported setters through the input gate, but
+role-change notifications and real VoiceOver behavior remain unverified.
 
 ## Input contention and recovery plan
 

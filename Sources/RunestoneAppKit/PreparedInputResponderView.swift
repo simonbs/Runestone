@@ -17,6 +17,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     private var disarmed = false
     private var focusRequested = false
     private var dragSelection: PreparedInputDragSelection?
+    private var pointerAutoscrollClock: PreparedInputAutoscrollClock?
+    // A gesture has a single finite budget even if it re-enters the viewport.
+    private var pointerAutoscrollStarted = false
+    var inputViewportClock: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
     private struct VerticalPreference {
         let x: CGFloat
         let selection: NSRange
@@ -47,7 +51,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         precondition(Thread.isMainThread)
         guard !disarmed else { return }
         disarmed = true
-        dragSelection = nil
+        endPointerSelection()
         verticalPreference = nil
         PreparedInputCommandInterpreter.resetSelectionExtension(in: self)
         focusRequested = false
@@ -67,6 +71,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
 
     func revokeFocusEligibility() {
         precondition(Thread.isMainThread)
+        endPointerSelection()
         focusRequested = false
         focusGeneration = UUID()
         inputConnection?.suspendForFocusLoss()
@@ -128,7 +133,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                                               _ body: (PreparedInputEventAdapter) -> PreparedInputEventAdapter.InputAttempt?) {
         guard !disarmed, let connection = inputConnection,
               connection.accessibilityTextState() != nil else { return }
-        dragSelection = nil
+        endPointerSelection()
         verticalPreference = nil
         PreparedInputCommandInterpreter.resetSelectionExtension(in: self)
         _ = connection.performCoordinatedInput {
@@ -210,7 +215,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     private func suppressFocus() {
-        dragSelection = nil
+        endPointerSelection()
         verticalPreference = nil
         PreparedInputCommandInterpreter.resetSelectionExtension(in: self)
         revokeFocusEligibility()
@@ -238,7 +243,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override func keyDown(with event: NSEvent) {
-        dragSelection = nil
+        endPointerSelection()
         guard !disarmed else { return }
         guard let connection = inputConnection else { super.keyDown(with: event); return }
         _ = connection.performCoordinatedInput { self.routeKeyDown(event, connection: connection) }
@@ -412,7 +417,14 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             guard let state = adapter.inputStateForHost(), !state.hasComposition else { return false }
             let text = self.manager.stringView.string
             guard PreparedInputCommandInterpreter.isValidSelectionRange(state.selection, in: text) else { return false }
-            if isVisualMovement(name) { return visualDestination(name, selection: state.selection) != nil }
+            if isVisualMovement(name) {
+                if visualDestination(name, selection: state.selection) != nil { return true }
+                guard name.hasPrefix("moveUp") || name.hasPrefix("moveDown") else { return false }
+                let up = name.hasPrefix("moveUp")
+                let origin = PreparedInputCommandInterpreter.movementOrigin(selection: state.selection,
+                    extending: name.contains("AndModifySelection:"), direction: up ? .backward : .forward, view: self)
+                return PreparedInputVisualMovement.verticalNeedsViewportStep(from: origin, direction: up ? .up : .down, in: self)
+            }
             guard PreparedInputCommandInterpreter.supports(name) else { return false }
             if name == "deleteBackward:" || name == "deleteWordBackward:" {
                 return state.selection.length > 0 || state.selection.location > 0
@@ -445,7 +457,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             connection.recordInputFailure(operation: .command, failure: .init(reason: .unavailable, effect: .notApplied))
             return
         }
-        dragSelection = nil
+        endPointerSelection()
         verticalPreference = nil
         if operation != .copy { PreparedInputCommandInterpreter.resetSelectionExtension(in: self) }
         let category: PreparedInputContextConnection.InputOperation = operation == .copy ? .command : .insertText
@@ -616,9 +628,57 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         return VisualDestination(target: target, direction: direction, extending: extending, preferredX: preferredX)
     }
 
+    /// Make at most one short, bounded viewport step for a vertical command.
+    /// The original input event is not retained: the same admitted scope
+    /// recomputes geometry only after revision and selection revalidation.
+    private func scrollForVerticalMovement(_ name: String, selection: NSRange,
+                                           adapter: PreparedInputEventAdapter,
+                                           isAvailable: @escaping () -> Bool) -> PreparedInputViewportStep.Outcome? {
+        guard name.hasPrefix("moveUp") || name.hasPrefix("moveDown"),
+              let window = window, let clip = enclosingScrollView?.contentView,
+              let layout = visibleLayout, layout.isComplete, layout.viewport == clip.bounds,
+              let documentRevision = adapter.installedRevisionForDispatch else { return nil }
+        let up = name.hasPrefix("moveUp")
+        let extending = name.contains("AndModifySelection:")
+        let direction: PreparedInputCommandInterpreter.Direction = up ? .backward : .forward
+        let origin = PreparedInputCommandInterpreter.movementOrigin(selection: selection, extending: extending,
+                                                                     direction: direction, view: self)
+        guard PreparedInputVisualMovement.verticalNeedsViewportStep(from: origin, direction: up ? .up : .down, in: self),
+              let caret = InputScreenCaretGeometry.rect(at: origin, in: self) else { return nil }
+        let documentCaret = self.convert(window.convertFromScreen(caret), from: nil)
+        let bounds = clip.bounds
+        // Keep the source caret inside the viewport so the next row can be
+        // resolved from actual geometry rather than from an estimated offset.
+        let room = up ? bounds.maxY - documentCaret.maxY : documentCaret.minY - bounds.minY
+        let amount = min(PreparedInputViewportStep.maximumDelta, bounds.height * 0.25, max(0, room - 1))
+        guard amount.isFinite, amount >= 1 else { return .boundary }
+        let content = contentRevision
+        let selectionRevision = inputSelectionRevision
+        let geometry = inputGeometryRevision
+        let priorX = verticalPreference.flatMap { value in
+            value.selection == selection && value.selectionRevision == selectionRevision &&
+            value.contentRevision == content && value.geometryRevision == geometry ? value.x : nil
+        } ?? caret.midX
+        let check = {
+            guard isAvailable(), !self.isRetired, self.window === window,
+                  self.enclosingScrollView?.contentView === clip,
+                  self.contentRevision == content, self.inputSelectionRevision == selectionRevision,
+                  adapter.installedRevisionForDispatch == documentRevision,
+                  let current = adapter.inputStateForHost(), !current.hasComposition,
+                  current.selection == selection else { return false }
+            return isAvailable() && self.contentRevision == content && self.inputSelectionRevision == selectionRevision
+        }
+        let result = PreparedInputViewportStep.perform(in: self, dx: 0, dy: up ? -amount : amount, clock: inputViewportClock, isCurrent: check)
+        if result == .progressed && check() {
+            verticalPreference = VerticalPreference(x: priorX, selection: selection, selectionRevision: selectionRevision,
+                                                    contentRevision: content, geometryRevision: inputGeometryRevision)
+        }
+        return result
+    }
+
     /// Apply a current Core Text destination through the document reservation.
     private func routeVisualMovement(_ name: String, adapter: PreparedInputEventAdapter,
-                                     connection: PreparedInputContextConnection, isAvailable: () -> Bool) {
+                                     connection: PreparedInputContextConnection, isAvailable: @escaping () -> Bool) {
         guard let state = adapter.inputStateForHost() else {
             verticalPreference = nil
             connection.recordInputFailure(operation: .command, failure: .init(reason: .unavailable, effect: .notApplied))
@@ -629,9 +689,24 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             connection.recordInputFailure(operation: .command, failure: .init(reason: .compositionActive, effect: .notApplied))
             return
         }
-        guard let destination = visualDestination(name, selection: state.selection) else {
+        var destination = visualDestination(name, selection: state.selection)
+        var viewportMayHaveChanged = false
+        if destination == nil, let step = scrollForVerticalMovement(name, selection: state.selection,
+                                                                     adapter: adapter, isAvailable: isAvailable) {
+            switch step {
+            case .progressed:
+                viewportMayHaveChanged = true
+                destination = visualDestination(name, selection: state.selection)
+            case .boundary:
+                break
+            case .unavailable:
+                viewportMayHaveChanged = true
+            }
+        }
+        guard let destination = destination else {
             verticalPreference = nil
-            connection.recordInputFailure(operation: .command, failure: .init(reason: .unavailable, effect: .notApplied))
+            connection.recordInputFailure(operation: .command,
+                failure: .init(reason: .unavailable, effect: viewportMayHaveChanged ? .mayHaveApplied : .notApplied))
             return
         }
         switch PreparedInputCommandInterpreter.moveSelection(target: destination.target, selection: state.selection,
@@ -662,7 +737,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         guard !isRetired, let window = window, event.window === window,
               window.makeFirstResponder(self), ownsKeyFocus,
               connection.resumeForFocus(), ownsKeyFocus else {
-            dragSelection = nil
+            endPointerSelection()
             connection.recordInputFailure(operation: .setSelection,
                 failure: .init(reason: .unavailable, effect: .notApplied))
             return
@@ -676,7 +751,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     /// around geometry callouts and is injectable for headless tests.
     func beginPointerSelection(at screenPoint: NSPoint, extending: Bool, connection: PreparedInputContextConnection,
                                hasFocus: @escaping () -> Bool) {
-        dragSelection = nil
+        endPointerSelection()
+        pointerAutoscrollStarted = false
         verticalPreference = nil
         let canUse = { !self.disarmed && self.inputConnection === connection && hasFocus() }
         func report(_ reason: PreparedInputEventAdapter.InputFailure.Reason,
@@ -696,7 +772,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 report(.unavailable); reported = true; return
             }
             guard isCurrent(), canUse(),
-                  let offset = InputScreenRangeGeometry.characterIndex(for: screenPoint, in: self),
+                  let offset = InputScreenRangeGeometry.characterIndexForPointer(for: screenPoint, in: self),
                   isCurrent(), canUse() else { report(.unavailable); reported = true; return }
             let currentSelection = adapter.selectedRangeForInput()
             let text = self.manager.stringView.string
@@ -735,12 +811,14 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
 
     override func mouseDragged(with event: NSEvent) {
         guard focusRequested, !disarmed, dragSelection != nil, let connection = inputConnection else { return }
-        _ = connection.performCoordinatedInput { self.routeMouseDragged(event, connection: connection) }
+        if !connection.performCoordinatedInput({ self.routeMouseDragged(event, connection: connection) }) {
+            endPointerSelection()
+        }
     }
 
     private func routeMouseDragged(_ event: NSEvent, connection: PreparedInputContextConnection) {
         guard let window = window, event.window === window, ownsKeyFocus, !isRetired else {
-            dragSelection = nil
+            endPointerSelection()
             connection.recordInputFailure(operation: .setSelection,
                 failure: .init(reason: .unavailable, effect: .notApplied))
             return
@@ -750,12 +828,13 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     /// One drag event, scoped and revision checked independently of prior events.
+    @discardableResult
     func continuePointerSelection(at screenPoint: NSPoint, connection: PreparedInputContextConnection,
-                                  hasFocus: @escaping () -> Bool) {
+                                  hasFocus: @escaping () -> Bool) -> Bool {
         guard var drag = dragSelection, !isRetired else {
             connection.recordInputFailure(operation: .setSelection,
                 failure: .init(reason: .unavailable, effect: .notApplied))
-            return
+            return false
         }
         let canUse = { !self.disarmed && self.inputConnection === connection && hasFocus() }
         var reported = false
@@ -767,11 +846,11 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 connection.recordInputFailure(operation: .setSelection,
                     failure: .init(reason: .unavailable, effect: .notApplied))
                 reported = true
-                self.dragSelection = nil
+                self.endPointerSelection()
                 return
             }
             guard isCurrent(), canUse(),
-                  let offset = InputScreenRangeGeometry.characterIndexForDrag(for: screenPoint, in: self),
+                  let offset = InputScreenRangeGeometry.characterIndexForPointerDrag(for: screenPoint, in: self),
                   PreparedInputCommandInterpreter.isValidBoundary(offset, in: self.manager.stringView.string),
                   isCurrent(), canUse(),
                   let selection = drag.selection(to: offset, current: adapter.selectedRangeForInput(),
@@ -780,7 +859,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 connection.recordInputFailure(operation: .setSelection,
                     failure: .init(reason: .unavailable, effect: .notApplied))
                 reported = true
-                self.dragSelection = nil
+                self.endPointerSelection()
                 return
             }
             let attempt = adapter.setSelectionReporting(selection, isAvailable: { isCurrent() && canUse() })
@@ -789,7 +868,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 reported = true
             }
             if attempt.outcome != .processed {
-                self.dragSelection = nil
+                self.endPointerSelection()
                 connection.requestReset()
             } else {
                 applied = true
@@ -799,14 +878,122 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             }
         }
         if !current && !reported {
-            dragSelection = nil
+            endPointerSelection()
             connection.recordInputFailure(operation: .setSelection,
                 failure: .init(reason: applied ? .admittedFailure : .unavailable,
                                effect: applied ? .mayHaveApplied : .notApplied))
         }
+        guard current, applied, !reported, dragSelection != nil else {
+            endPointerSelection()
+            return false
+        }
+        trackPointerAutoscroll(at: screenPoint)
+        return true
     }
 
-    override func mouseUp(with event: NSEvent) { dragSelection = nil }
+    override func mouseUp(with event: NSEvent) { endPointerSelection() }
+
+    private func endPointerSelection() {
+        pointerAutoscrollClock?.stop()
+        dragSelection = nil
+    }
+
+    /// Test injection is done before a gesture and uses the same clock and
+    /// step path as the production timer.
+    func installPointerAutoscrollClock(_ clock: PreparedInputAutoscrollClock) {
+        precondition(Thread.isMainThread && dragSelection == nil)
+        pointerAutoscrollClock?.stop()
+        pointerAutoscrollClock = clock
+    }
+
+    private func trackPointerAutoscroll(at screenPoint: NSPoint) {
+        guard let delta = pointerScrollDelta(at: screenPoint) else {
+            endPointerSelection()
+            return
+        }
+        guard delta.x != 0 || delta.y != 0 else {
+            pointerAutoscrollClock?.stop()
+            return
+        }
+        if pointerAutoscrollStarted {
+            pointerAutoscrollClock?.update(screenPoint)
+            return
+        }
+        pointerAutoscrollStarted = true
+        if pointerAutoscrollClock == nil {
+            pointerAutoscrollClock = PreparedInputAutoscrollClock { [weak self] point in
+                guard let self = self else { return false }
+                return self.performPointerAutoscrollStep(at: point, hasFocus: { [weak self] in
+                    self?.ownsKeyFocus == true
+                })
+            }
+        }
+        _ = pointerAutoscrollClock?.begin(at: screenPoint)
+    }
+
+    private func pointerScrollDelta(at screenPoint: NSPoint) -> NSPoint? {
+        guard screenPoint.x.isFinite, screenPoint.y.isFinite, !isRetired,
+              let window = window, let scroll = enclosingScrollView,
+              scroll.documentView === self else { return nil }
+        let bounds = scroll.contentView.bounds
+        let point = convert(window.convertPoint(fromScreen: screenPoint), from: nil)
+        guard point.x.isFinite, point.y.isFinite, bounds.minX.isFinite, bounds.maxX.isFinite,
+              bounds.minY.isFinite, bounds.maxY.isFinite, bounds.width > 0, bounds.height > 0 else { return nil }
+        func component(_ value: CGFloat, _ lower: CGFloat, _ upper: CGFloat) -> CGFloat {
+            if value < lower { return -min(PreparedInputViewportStep.maximumDelta, max(1, lower - value)) }
+            if value > upper { return min(PreparedInputViewportStep.maximumDelta, max(1, value - upper)) }
+            return 0
+        }
+        return NSPoint(x: component(point.x, bounds.minX, bounds.maxX),
+                       y: component(point.y, bounds.minY, bounds.maxY))
+    }
+
+    /// Called on a later run-loop turn with only a screen point. Every tick
+    /// obtains a fresh dispatch lease and rejects stale selection or content.
+    func performPointerAutoscrollStep(at screenPoint: NSPoint, hasFocus: @escaping () -> Bool) -> Bool {
+        guard let connection = inputConnection, let adapter = inputAdapter,
+              let drag = dragSelection, let delta = pointerScrollDelta(at: screenPoint),
+              delta.x != 0 || delta.y != 0 else { endPointerSelection(); return false }
+        var advanced = false
+        let admitted = connection.performCoordinatedInput {
+            let isCurrent = {
+                guard !self.disarmed, !self.isRetired, self.inputConnection === connection,
+                      self.inputAdapter === adapter, connection.isActiveForInput, hasFocus(),
+                      let currentDrag = self.dragSelection,
+                      currentDrag.contentRevision == drag.contentRevision,
+                      currentDrag.selectionRevision == drag.selectionRevision,
+                      currentDrag.expectedSelection == drag.expectedSelection,
+                      self.contentRevision == drag.contentRevision,
+                      self.inputSelectionRevision == drag.selectionRevision,
+                      let state = adapter.inputStateForHost(), !state.hasComposition,
+                      state.selection == drag.expectedSelection else { return false }
+                return true
+            }
+            guard isCurrent() else { return }
+            let step = PreparedInputViewportStep.perform(in: self, dx: delta.x, dy: delta.y,
+                                                         clock: self.inputViewportClock, isCurrent: isCurrent)
+            switch step {
+            case .boundary: return
+            case .unavailable:
+                connection.recordInputFailure(operation: .setSelection,
+                    failure: .init(reason: .unavailable, effect: .mayHaveApplied))
+                return
+            case .progressed: break
+            }
+            guard isCurrent() else {
+                connection.recordInputFailure(operation: .setSelection,
+                    failure: .init(reason: .unavailable, effect: .mayHaveApplied))
+                return
+            }
+            advanced = self.continuePointerSelection(at: screenPoint, connection: connection, hasFocus: hasFocus)
+            if !advanced {
+                connection.recordInputFailure(operation: .setSelection,
+                    failure: .init(reason: .admittedFailure, effect: .mayHaveApplied))
+            }
+        }
+        guard admitted && advanced else { endPointerSelection(); return false }
+        return true
+    }
 
     override func noteInputCoordinatesChanged() {
         super.noteInputCoordinatesChanged()
