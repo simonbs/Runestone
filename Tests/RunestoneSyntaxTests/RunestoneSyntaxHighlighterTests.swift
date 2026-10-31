@@ -98,6 +98,32 @@ final class RunestoneSyntaxHighlighterTests: XCTestCase {
         wait(for: [folded], timeout: 5)
     }
 
+    func testHighlightsInjectedLanguageUsingAbsoluteDocumentRanges() throws {
+        let javascript = RunestoneSyntaxLanguage(
+            language: tree_sitter_javascript(), highlightsQuery: "(number) @number.injected")
+        let highlighter = try RunestoneSyntaxHighlighter(language: RunestoneSyntaxLanguage(
+            language: tree_sitter_html(),
+            injectionsQuery: """
+            ((script_element (raw_text) @injection.content)
+             (#set! injection.language "javascript"))
+            """), languageProvider: { $0 == "javascript" ? javascript : nil })
+        let text = "<script>const answer = 42;</script>"
+        let updated = expectation(description: "parsed injection")
+        highlighter.update(text) { result in
+            if case .failure(let error) = result { XCTFail("Parse failed: \(error)") }
+            updated.fulfill()
+        }
+        wait(for: [updated], timeout: 5)
+        let captured = expectation(description: "injected capture")
+        highlighter.captures(in: NSRange(location: 0, length: (text as NSString).length)) { result in
+            XCTAssertEqual(try? result.get().filter { $0.name == "number.injected" }, [
+                RunestoneSyntaxCapture(range: (text as NSString).range(of: "42"), name: "number.injected")
+            ])
+            captured.fulfill()
+        }
+        wait(for: [captured], timeout: 5)
+    }
+
     private func makeHighlighter() throws -> RunestoneSyntaxHighlighter {
         try RunestoneSyntaxHighlighter(language: RunestoneSyntaxLanguage(
             language: tree_sitter_json(),

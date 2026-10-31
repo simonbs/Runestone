@@ -764,6 +764,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override func mouseDown(with event: NSEvent) {
+        if handleSyntaxFoldingClick(event) { return }
         guard focusRequested, !disarmed, !isReadOnly,
               let connection = inputConnection else { return }
         _ = connection.performCoordinatedInput { self.routeMouseDown(event, connection: connection) }

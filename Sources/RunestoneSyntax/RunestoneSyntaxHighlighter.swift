@@ -9,14 +9,23 @@ import TreeSitter
 public struct RunestoneSyntaxLanguage: @unchecked Sendable {
     public let language: OpaquePointer
     public let highlightsQuery: String?
+    public let injectionsQuery: String?
     public let foldsQuery: String?
 
-    public init(language: OpaquePointer, highlightsQuery: String? = nil, foldsQuery: String? = nil) {
+    public init(language: OpaquePointer, highlightsQuery: String? = nil,
+                injectionsQuery: String? = nil, foldsQuery: String? = nil) {
         self.language = language
         self.highlightsQuery = highlightsQuery
+        self.injectionsQuery = injectionsQuery
         self.foldsQuery = foldsQuery
     }
 }
+
+/// Resolves a language named by a Tree-sitter injection query.
+///
+/// Hosts should normalize aliases such as `js` and `javascript`. Returning nil
+/// leaves that injected range styled by its containing language.
+public typealias RunestoneSyntaxLanguageProvider = @Sendable (String) -> RunestoneSyntaxLanguage?
 
 /// One semantic capture in absolute UTF-16 document coordinates.
 public struct RunestoneSyntaxCapture: Equatable, Sendable {
@@ -41,6 +50,7 @@ public struct RunestoneSyntaxFold: Equatable, Sendable {
 public enum RunestoneSyntaxError: Error, Equatable {
     case invalidLanguage
     case invalidHighlightsQuery(offset: UInt32)
+    case invalidInjectionsQuery(offset: UInt32)
     case invalidFoldsQuery(offset: UInt32)
     case parseFailed
     case cancelled
@@ -81,9 +91,13 @@ public final class RunestoneSyntaxHighlighter: RunestoneSyntaxHighlighting, @unc
     private let language: RunestoneSyntaxLanguage
     private let highlightsQuery: Query?
     private let foldsQuery: Query?
+    private let injectionsQuery: Query?
+    private let languageProvider: RunestoneSyntaxLanguageProvider?
 
-    public init(language: RunestoneSyntaxLanguage) throws {
+    public init(language: RunestoneSyntaxLanguage,
+                languageProvider: RunestoneSyntaxLanguageProvider? = nil) throws {
         self.language = language
+        self.languageProvider = languageProvider
         let abi = ts_language_abi_version(language.language)
         guard abi >= TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION,
               abi <= TREE_SITTER_LANGUAGE_VERSION else {
@@ -98,6 +112,12 @@ public final class RunestoneSyntaxHighlighter: RunestoneSyntaxHighlighting, @unc
             foldsQuery = try Query(source: source, language: language.language, error: RunestoneSyntaxError.invalidFoldsQuery)
         } else {
             foldsQuery = nil
+        }
+        if let source = language.injectionsQuery {
+            injectionsQuery = try Query(source: source, language: language.language,
+                                        error: RunestoneSyntaxError.invalidInjectionsQuery)
+        } else {
+            injectionsQuery = nil
         }
         queue = OperationQueue()
         queue.name = "RunestoneSyntaxHighlighter"
@@ -147,18 +167,28 @@ public final class RunestoneSyntaxHighlighter: RunestoneSyntaxHighlighting, @unc
                 completion(.failure(.cancelled))
                 return
             }
-            guard let query = self.highlightsQuery else {
-                completion(.success([]))
-                return
-            }
-            let result = query.captures(in: range, state: state) {
+            var result = self.highlightsQuery?.captures(in: range, state: state) {
                 operation.isCancelled || !self.isCurrent(requestedGeneration)
+            } ?? []
+            for child in state.children where !operation.isCancelled && self.isCurrent(requestedGeneration) {
+                guard let childQuery = child.highlightsQuery else { continue }
+                let childDocumentRange = NSRange(location: child.offset, length: child.state.text.length)
+                let intersection = NSIntersectionRange(range, childDocumentRange)
+                guard intersection.length > 0 else { continue }
+                let local = NSRange(location: intersection.location - child.offset, length: intersection.length)
+                result += childQuery.captures(in: local, state: child.state) {
+                    operation.isCancelled || !self.isCurrent(requestedGeneration)
+                }.map { RunestoneSyntaxCapture(
+                    range: NSRange(location: $0.range.location + child.offset, length: $0.range.length), name: $0.name)
+                }
             }
             guard !operation.isCancelled, self.isCurrent(requestedGeneration) else {
                 completion(.failure(.cancelled))
                 return
             }
-            completion(.success(result))
+            completion(.success(result.sorted {
+                $0.range.location == $1.range.location ? $0.range.length > $1.range.length : $0.range.location < $1.range.location
+            }))
         }
         queue.addOperation(operation)
     }
@@ -172,13 +202,18 @@ public final class RunestoneSyntaxHighlighter: RunestoneSyntaxHighlighting, @unc
                 completion(.failure(.cancelled))
                 return
             }
-            guard let query = self.foldsQuery else {
-                completion(.success([]))
-                return
-            }
             let wholeDocument = NSRange(location: 0, length: state.text.length)
-            let captures = query.captures(in: wholeDocument, state: state) {
+            var captures = self.foldsQuery?.captures(in: wholeDocument, state: state) {
                 operation.isCancelled || !self.isCurrent(requestedGeneration)
+            } ?? []
+            for child in state.children where !operation.isCancelled && self.isCurrent(requestedGeneration) {
+                guard let childQuery = child.foldsQuery else { continue }
+                let local = NSRange(location: 0, length: child.state.text.length)
+                captures += childQuery.captures(in: local, state: child.state) {
+                    operation.isCancelled || !self.isCurrent(requestedGeneration)
+                }.map { RunestoneSyntaxCapture(
+                    range: NSRange(location: $0.range.location + child.offset, length: $0.range.length), name: $0.name)
+                }
             }
             guard !operation.isCancelled, self.isCurrent(requestedGeneration) else {
                 completion(.failure(.cancelled))
@@ -210,6 +245,14 @@ private extension RunestoneSyntaxHighlighter {
     struct State: @unchecked Sendable {
         let text: NSString
         let tree: Tree
+        let children: [ChildState]
+    }
+
+    struct ChildState: @unchecked Sendable {
+        let offset: Int
+        let state: State
+        let highlightsQuery: Query?
+        let foldsQuery: Query?
     }
 
     final class UpdateRequest: @unchecked Sendable {
@@ -277,7 +320,65 @@ private extension RunestoneSyntaxHighlighter {
                                             UInt32(bytes.count), TSInputEncodingUTF16LE)
         }
         guard let parsed else { return nil }
-        return State(text: text, tree: Tree(parsed))
+        let base = State(text: text, tree: Tree(parsed), children: [])
+        let children = injectedChildren(in: base, depth: 0)
+        return State(text: text, tree: base.tree, children: children)
+    }
+
+    func injectedChildren(in parent: State, depth: Int) -> [ChildState] {
+        guard depth < 4, let injectionsQuery, let languageProvider else { return [] }
+        return injectionsQuery.injections(in: parent).compactMap { injection in
+            let childText = parent.text.substring(with: injection.range) as NSString
+            guard injection.range.length > 0,
+                  let childLanguage = languageProvider(injection.language),
+                  let runtime = try? childRuntime(childLanguage),
+                  let childState = parseChild(childText, runtime: runtime, depth: depth + 1) else { return nil }
+            return ChildState(offset: injection.range.location, state: childState,
+                              highlightsQuery: runtime.highlights, foldsQuery: runtime.folds)
+        }
+    }
+
+    struct ChildRuntime {
+        let language: RunestoneSyntaxLanguage
+        let highlights: Query?
+        let injections: Query?
+        let folds: Query?
+    }
+
+    func childRuntime(_ language: RunestoneSyntaxLanguage) throws -> ChildRuntime {
+        let highlights = try language.highlightsQuery.map {
+            try Query(source: $0, language: language.language, error: RunestoneSyntaxError.invalidHighlightsQuery)
+        }
+        let injections = try language.injectionsQuery.map {
+            try Query(source: $0, language: language.language, error: RunestoneSyntaxError.invalidInjectionsQuery)
+        }
+        let folds = try language.foldsQuery.map {
+            try Query(source: $0, language: language.language, error: RunestoneSyntaxError.invalidFoldsQuery)
+        }
+        return ChildRuntime(language: language, highlights: highlights, injections: injections, folds: folds)
+    }
+
+    func parseChild(_ text: NSString, runtime: ChildRuntime, depth: Int) -> State? {
+        guard let parser = ts_parser_new() else { return nil }
+        defer { ts_parser_delete(parser) }
+        guard ts_parser_set_language(parser, runtime.language.language),
+              let data = (text as String).data(using: .utf16LittleEndian) else { return nil }
+        let parsed = data.withUnsafeBytes { bytes in
+            ts_parser_parse_string_encoding(parser, nil, bytes.bindMemory(to: Int8.self).baseAddress,
+                                            UInt32(bytes.count), TSInputEncodingUTF16LE)
+        }
+        guard let parsed else { return nil }
+        let base = State(text: text, tree: Tree(parsed), children: [])
+        guard depth < 4, let query = runtime.injections, let languageProvider else { return base }
+        let children = query.injections(in: base).compactMap { injection -> ChildState? in
+            let childText = text.substring(with: injection.range) as NSString
+            guard let language = languageProvider(injection.language),
+                  let nestedRuntime = try? childRuntime(language),
+                  let state = parseChild(childText, runtime: nestedRuntime, depth: depth + 1) else { return nil }
+            return ChildState(offset: injection.range.location, state: state,
+                              highlightsQuery: nestedRuntime.highlights, foldsQuery: nestedRuntime.folds)
+        }
+        return State(text: text, tree: base.tree, children: children)
     }
 
     func incrementalEdit(from old: NSString, to new: NSString) -> TSInputEdit {
@@ -348,6 +449,37 @@ private final class Query: @unchecked Sendable {
 
     deinit { ts_query_delete(pointer) }
 
+    struct Injection {
+        let range: NSRange
+        let language: String
+    }
+
+    func injections(in state: RunestoneSyntaxHighlighter.State) -> [Injection] {
+        let cursor = ts_query_cursor_new()
+        defer { ts_query_cursor_delete(cursor) }
+        ts_query_cursor_exec(cursor, pointer, ts_tree_root_node(state.tree.pointer))
+        var rawMatch = TSQueryMatch(id: 0, pattern_index: 0, capture_count: 0, captures: nil)
+        var result: [Injection] = []
+        while ts_query_cursor_next_match(cursor, &rawMatch) {
+            let captures = UnsafeBufferPointer(start: rawMatch.captures, count: Int(rawMatch.capture_count))
+            guard predicatesPass(pattern: UInt32(rawMatch.pattern_index), captures: captures, text: state.text) else { continue }
+            let properties = setProperties(pattern: UInt32(rawMatch.pattern_index))
+            let capturedLanguage = captures.first { capture in
+                let name = captureName(capture.index)
+                return name == "injection.language" || name == "language"
+            }.flatMap { captureText($0.index, captures: captures, text: state.text) }
+            guard let language = (capturedLanguage ?? properties["injection.language"])?
+                    .trimmingCharacters(in: .whitespacesAndNewlines), !language.isEmpty else { continue }
+            for capture in captures where captureName(capture.index) == "injection.content" {
+                let start = Int(ts_node_start_byte(capture.node)) / 2
+                let end = Int(ts_node_end_byte(capture.node)) / 2
+                guard start >= 0, end > start, end <= state.text.length else { continue }
+                result.append(Injection(range: NSRange(location: start, length: end - start), language: language))
+            }
+        }
+        return result
+    }
+
     func captures(in utf16Range: NSRange, state: RunestoneSyntaxHighlighter.State,
                   isCancelled: () -> Bool) -> [RunestoneSyntaxCapture] {
         guard utf16Range.location >= 0, utf16Range.length >= 0,
@@ -384,6 +516,27 @@ private final class Query: @unchecked Sendable {
     }
 
     private enum Step { case capture(UInt32), string(String) }
+
+    private func setProperties(pattern: UInt32) -> [String: String] {
+        var count: UInt32 = 0
+        guard let raw = ts_query_predicates_for_pattern(pointer, pattern, &count), count > 0 else { return [:] }
+        var result: [String: String] = [:]
+        var index = 0
+        while index < Int(count) {
+            let name = queryString(raw[index].value_id)
+            index += 1
+            var strings: [String] = []
+            while index < Int(count), raw[index].type != TSQueryPredicateStepTypeDone {
+                if raw[index].type == TSQueryPredicateStepTypeString {
+                    strings.append(queryString(raw[index].value_id))
+                }
+                index += 1
+            }
+            index += 1
+            if name == "set!", strings.count >= 2 { result[strings[0]] = strings[1] }
+        }
+        return result
+    }
 
     private func predicatesPass(pattern: UInt32, captures: UnsafeBufferPointer<TSQueryCapture>, text: NSString) -> Bool {
         var count: UInt32 = 0

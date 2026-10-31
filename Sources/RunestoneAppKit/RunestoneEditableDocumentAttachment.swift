@@ -265,6 +265,37 @@ public final class RunestoneEditableDocumentAttachment {
         view.syntaxFolds(completion: completion)
     }
 
+    public var syntaxFoldRows: [Int] {
+        precondition(Thread.isMainThread)
+        guard !detaching, !detached else { return [] }
+        return view.syntaxFoldRows
+    }
+
+    public func isSyntaxFoldCollapsed(atRow row: Int) -> Bool {
+        precondition(Thread.isMainThread)
+        guard !detaching, !detached else { return false }
+        return view.isSyntaxFoldCollapsed(atRow: row)
+    }
+
+    @discardableResult
+    public func toggleSyntaxFold(atRow row: Int) -> Bool {
+        precondition(Thread.isMainThread)
+        guard !detaching, !detached else { return false }
+        return view.toggleSyntaxFold(atRow: row)
+    }
+
+    public func foldAllSyntax() {
+        precondition(Thread.isMainThread)
+        guard !detaching, !detached else { return }
+        view.foldAllSyntax()
+    }
+
+    public func unfoldAllSyntax() {
+        precondition(Thread.isMainThread)
+        guard !detaching, !detached else { return }
+        view.unfoldAllSyntax()
+    }
+
     /// Ask the containing window to make this view first responder. Returns
     /// false when detached, unavailable, or not installed in a window. A true
     /// result is window acceptance, not proof that the window is key or an
