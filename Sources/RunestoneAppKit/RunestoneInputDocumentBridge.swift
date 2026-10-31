@@ -1,7 +1,7 @@
 #if canImport(AppKit)
 import Foundation
 
-/// Document-scoped notifications for future prepared input view integration.
+/// Document-scoped notifications for prepared input view integration.
 /// The document owns this object; it does not own the document or its views.
 /// All calls must occur on the main thread. This boundary does not attach an
 /// input client, make a view editable, or create a first responder.

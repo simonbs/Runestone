@@ -1,7 +1,7 @@
 #if canImport(AppKit)
 import AppKit
 
-/// Internal state for future AppKit text input. The session exclusively owns
+/// Internal state for prepared AppKit text input. The session exclusively owns
 /// content changes to its view; callers must not mutate the view independently.
 /// It does not implement NSTextInputClient, undo, selection drawing, or input
 /// method geometry and must not be exposed as an interactive editor on its own.

@@ -4,7 +4,7 @@ import CoreText
 import RunestoneEngine
 
 /// Queries only the currently resolved viewport, without typesetting or scrolling.
-/// A future input host must invalidate its input context when this viewport changes.
+/// The input host must invalidate its input context when this viewport changes.
 enum InputScreenRangeGeometry {
     typealias RangeGeometry = (rect: NSRect, actualRange: NSRange)
 
