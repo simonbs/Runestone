@@ -277,9 +277,14 @@ baselines. `NativeMacPerformanceBaseline.md` now records an opt-in serial Releas
 lane for small, 10 MB short-line, one-long-wrapped-line, pre-highlighted and
 folded AppKit/Core Text scenarios, with raw latency samples and resident-memory
 observations. It uses the actual collapsed-line projection and does not relabel a
-correctness fixture as performance evidence. The measured long wrapped line takes
-about 80.5 seconds to traverse start/middle/end and remains an explicit performance
-defect/risk; no arbitrary acceptance tolerance has been invented.
+correctness fixture as performance evidence. That matrix exposed an 80.5-second
+long-wrapped-line traversal: profiling found repeated paragraph-wide Core Text/ICU
+word-break work. A conservative AppKit-only printable-ASCII path now uses Core
+Text cluster measurement with a bounded local native word-break window, retaining
+the unchanged path for Unicode, bidi, controls, paragraph styles and unsupported
+attributes. Complete fragment-compatibility tests pass, and the unchanged
+1,096,249-unit fixture now traverses in a 122.674 ms median (about 656× faster)
+without arbitrary acceptance tolerances or a weaker scenario.
 
 Headless engine measurements do not cover app file I/O, editable reconstruction,
 syntax parsing, window-server presentation, interactive focus/IME, scrolling or

@@ -2,15 +2,26 @@ import Foundation
 
 /// An optional fast-path span whose boundaries are expressed in UTF-16 units.
 public struct LineTypesetterRun {
+    /// How an admitted cluster-width break is adjusted before fragment creation.
+    public enum BreakStrategy: Equatable {
+        /// Preserve the cluster break exactly.
+        case character
+        /// Use bounded native word breaking around the cluster-width result.
+        case word
+    }
+
     /// The admitted UTF-16 span.
     public let range: Range<Int>
     /// Whether the fast path may begin at the span’s lower bound.
     public let allowsInitialOffset: Bool
+    /// The bounded adjustment applied to cluster-width results inside this run.
+    public let breakStrategy: BreakStrategy
 
     /// Creates an admitted span and its initial-offset policy.
-    public init(range: Range<Int>, allowsInitialOffset: Bool) {
+    public init(range: Range<Int>, allowsInitialOffset: Bool, breakStrategy: BreakStrategy = .character) {
         self.range = range
         self.allowsInitialOffset = allowsInitialOffset
+        self.breakStrategy = breakStrategy
     }
 }
 

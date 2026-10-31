@@ -41,7 +41,7 @@ final class LogicalLineLayoutController {
         self.manager = manager
         self.line = line
         self.typesetter = LineTypesetter(lineID: line.id.rawValue,
-                                         preparation: DefaultLineTypesetterPreparation(backgroundColorKey: .backgroundColor))
+                                         preparation: AppKitLineTypesetterPreparation())
     }
 
     /// Resets cached fragments and validates that the attributed input is the

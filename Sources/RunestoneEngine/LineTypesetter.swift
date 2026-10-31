@@ -346,7 +346,12 @@ private extension LineTypesetter {
            lineFragmentHeightMultiplier.isFinite, lineFragmentHeightMultiplier > 0 {
             let length = CTTypesetterSuggestClusterBreak(typesetter, startOffset, Double(constrainingWidth))
             if length > 0 && length < run.range.upperBound - startOffset {
-                return length
+                switch run.breakStrategy {
+                case .character:
+                    return length
+                case .word:
+                    return suggestBoundedWordBreak(clusterLength: length, in: run)
+                }
             }
             if length <= 0 { unbrokenRun = nil }
             // Keep quoted-run entry/exit native, outside the word wrapper's lookback.
@@ -358,6 +363,23 @@ private extension LineTypesetter {
             constrainingWidth: constrainingWidth
         )
         return lineBreakSuggester.suggestLineBreak(startingAt: startOffset)
+    }
+
+    /// Core Text's paragraph-wide word suggestion can repeatedly rescan a very
+    /// long logical line. An admitted ASCII/LTR run needs only a bounded window
+    /// beyond the measured cluster break to preserve the same word decision.
+    private func suggestBoundedWordBreak(clusterLength: Int, in run: LineTypesetterRun) -> Int {
+        guard let attributedString else { return clusterLength }
+        let remaining = run.range.upperBound - startOffset
+        let lookahead = 256
+        let length = clusterLength + min(lookahead, remaining - clusterLength)
+        let range = NSRange(location: startOffset, length: length)
+        let localString = attributedString.attributedSubstring(from: range)
+        let localTypesetter = CTTypesetterCreateWithAttributedString(preparation.stringForTypesetting(localString))
+        return WordWrappingLineBreakSuggester(typesetter: localTypesetter,
+                                              attributedString: localString,
+                                              constrainingWidth: constrainingWidth)
+            .suggestLineBreak(startingAt: 0)
     }
 
     private func lengthOfWhitespace(startingAt location: Int, in string: CFString) -> Int {
