@@ -98,6 +98,24 @@ public struct RunestoneHostEdit {
 /// thread. This opt-in API does not assert that interactive input or assistive
 /// technology has been validated for release.
 public final class RunestoneEditableDocumentAttachment {
+    /// The end of a selection whose visual identity is represented by
+    /// `caretAffinity`. A collapsed selection uses `caret`.
+    public enum SelectionEndpoint: Equatable { case caret, lowerBound, upperBound }
+
+    /// Additive presentation identity for a caret that shares its UTF-16
+    /// offset with another visual position. Bidi fields are reserved while
+    /// ambiguous bidi traversal remains unavailable.
+    public struct CaretAffinity: Equatable {
+        public enum WrapSide: Equatable { case upstream, downstream }
+        public enum BidirectionalSide: Equatable { case primary, secondary }
+        public let wrapSide: WrapSide?
+        public let bidirectionalSide: BidirectionalSide?
+
+        public init(wrapSide: WrapSide?, bidirectionalSide: BidirectionalSide?) {
+            self.wrapSide = wrapSide
+            self.bidirectionalSide = bidirectionalSide
+        }
+    }
     /// An input snapshot captured against the currently installed revision.
     /// A nil state means the input context is inactive, stale, or resetting.
     public struct InputState: Equatable {
@@ -106,6 +124,10 @@ public final class RunestoneEditableDocumentAttachment {
         /// composition can still exist; inspect `hasComposition` separately.
         public let markedRange: NSRange?
         public let hasComposition: Bool
+        /// The selection end that keyboard and pointer extension will move.
+        public let activeEndpoint: SelectionEndpoint
+        /// nil when the active end has one unambiguous visual position.
+        public let caretAffinity: CaretAffinity?
     }
 
     /// An immutable selection captured together with its matching text.
@@ -114,6 +136,18 @@ public final class RunestoneEditableDocumentAttachment {
     public struct SelectionSnapshot: Equatable {
         public let range: NSRange
         public let text: String
+        /// The selection end whose presentation identity was captured.
+        public let activeEndpoint: SelectionEndpoint
+        /// nil when the active end has one unambiguous visual position.
+        public let caretAffinity: CaretAffinity?
+
+        public init(range: NSRange, text: String,
+                    activeEndpoint: SelectionEndpoint? = nil, caretAffinity: CaretAffinity? = nil) {
+            self.range = range
+            self.text = text
+            self.activeEndpoint = activeEndpoint ?? (range.length == 0 ? .caret : .upperBound)
+            self.caretAffinity = caretAffinity
+        }
     }
 
     /// A complete immutable text snapshot used by an app-owned native
@@ -206,7 +240,9 @@ public final class RunestoneEditableDocumentAttachment {
         precondition(Thread.isMainThread)
         guard isEditable, let state = attachment?.connection.inputState() else { return nil }
         return InputState(selection: state.selection, markedRange: state.marked,
-                          hasComposition: state.hasComposition)
+                          hasComposition: state.hasComposition,
+                          activeEndpoint: Self.publicEndpoint(state.selectionState),
+                          caretAffinity: Self.publicAffinity(state.selectionState))
     }
 
     /// A revision-checked selection snapshot suitable for validating and
@@ -216,12 +252,37 @@ public final class RunestoneEditableDocumentAttachment {
     public var selectionSnapshot: SelectionSnapshot? {
         precondition(Thread.isMainThread)
         guard isEditable, let snapshot = attachment?.connection.selectionSnapshot() else { return nil }
-        return SelectionSnapshot(range: snapshot.range, text: snapshot.text)
+        return SelectionSnapshot(range: snapshot.state.range, text: snapshot.text,
+                                 activeEndpoint: Self.publicEndpoint(snapshot.state),
+                                 caretAffinity: Self.publicAffinity(snapshot.state))
     }
 
     /// A revision-checked native text-service selection. The text is captured
     /// with its UTF-16 range and is unavailable during composition or reset.
     public var selectedTextSnapshot: SelectionSnapshot? { selectionSnapshot }
+
+    private static func publicEndpoint(_ state: InputSelectionState) -> SelectionEndpoint {
+        switch state.activeEndpoint {
+        case .caret: return .caret
+        case .lowerBound: return .lowerBound
+        case .upperBound: return .upperBound
+        }
+    }
+
+    private static func publicAffinity(_ state: InputSelectionState) -> CaretAffinity? {
+        guard let affinity = state.affinity else { return nil }
+        let wrap: CaretAffinity.WrapSide? = switch affinity.wrapSide {
+        case .upstream: .upstream
+        case .downstream: .downstream
+        case nil: nil
+        }
+        let bidi: CaretAffinity.BidirectionalSide? = switch affinity.bidirectionalSide {
+        case .primary: .primary
+        case .secondary: .secondary
+        case nil: nil
+        }
+        return CaretAffinity(wrapSide: wrap, bidirectionalSide: bidi)
+    }
 
     /// The currently presented UTF-16 selection, including while the editor is
     /// read-only. Unlike `selectionSnapshot`, this does not imply active input

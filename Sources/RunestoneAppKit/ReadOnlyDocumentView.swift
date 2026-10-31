@@ -68,6 +68,9 @@ public class ReadOnlyDocumentView: NSView {
     private var windowObservers: [NSObjectProtocol] = []
     let inputInvalidation: InputInvalidationDelivery
     private(set) var inputGeometryRevision = UUID()
+    /// Changes only when content or layout can change visual caret identity.
+    /// Window movement and scrolling deliberately leave this revision intact.
+    private(set) var inputLayoutRevision = UUID()
     /// Tracks selection/composition changes independently of viewport layout.
     private(set) var inputSelectionRevision = UUID()
     private(set) var updatingViewport = false
@@ -92,7 +95,7 @@ public class ReadOnlyDocumentView: NSView {
     private weak var updatingClip: NSClipView?
     private var updatingBounds: CGRect?
     private(set) var visibleLayout: ViewportLayoutCoordinator.Result?
-    private var displaySelection = NSRange(location: NSNotFound, length: 0)
+    private var displaySelection = InputSelectionState.rangeOnly(NSRange(location: NSNotFound, length: 0))
     public var displayConfiguration = RunestoneEditorDisplayConfiguration() {
         didSet {
             guard !isRetired else { return }
@@ -259,15 +262,21 @@ public class ReadOnlyDocumentView: NSView {
         flushAccessibilityNotificationsIfNeeded()
     }
 
-    func updateDisplaySelection(_ range: NSRange) {
-        guard !isRetired, displaySelection != range else { return }
-        displaySelection = range
+    func updateDisplaySelection(_ range: NSRange) { updateDisplaySelection(.rangeOnly(range)) }
+
+    func updateDisplaySelection(_ selection: InputSelectionState) {
+        guard !isRetired, displaySelection != selection else { return }
+        displaySelection = selection
         needsDisplay = true
     }
 
     var presentedSelectionRange: NSRange? {
-        guard displaySelection.location != NSNotFound else { return nil }
-        return displaySelection
+        guard displaySelection.range.location != NSNotFound else { return nil }
+        return displaySelection.range
+    }
+
+    var presentedSelectionState: InputSelectionState? {
+        displaySelection.range.location == NSNotFound ? nil : displaySelection
     }
 
     /// Selects and reveals one validated canonical UTF-16 range without
@@ -439,8 +448,8 @@ public class ReadOnlyDocumentView: NSView {
     /// The fold header at the current caret/selection start, if any. This remains
     /// available while the host has made the editor read-only.
     public var syntaxFoldRowAtSelection: Int? {
-        guard displaySelection.location != NSNotFound,
-              let line = manager.line(containingCharacterAt: displaySelection.location) else { return nil }
+        guard displaySelection.range.location != NSNotFound,
+              let line = manager.line(containingCharacterAt: displaySelection.range.location) else { return nil }
         return availableSyntaxFolds[line.index] == nil ? nil : line.index
     }
 
@@ -462,10 +471,10 @@ public class ReadOnlyDocumentView: NSView {
             let hiddenEndLine = manager.line(atRow: hiddenRows.upperBound)
             let hiddenEnd = hiddenEndLine.location + hiddenEndLine.data.totalLength
             let hiddenRange = NSRange(location: hiddenStart, length: max(0, hiddenEnd - hiddenStart))
-            guard displaySelection.location == NSNotFound ||
-                    (displaySelection.length == 0
-                        ? !NSLocationInRange(displaySelection.location, hiddenRange)
-                        : NSIntersectionRange(displaySelection, hiddenRange).length == 0) else { return false }
+            guard displaySelection.range.location == NSNotFound ||
+                    (displaySelection.range.length == 0
+                        ? !NSLocationInRange(displaySelection.range.location, hiddenRange)
+                        : NSIntersectionRange(displaySelection.range, hiddenRange).length == 0) else { return false }
             collapsedSyntaxFoldHeaders.insert(row)
         }
         applyCollapsedSyntaxFolds()
@@ -1036,11 +1045,11 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     private func isSelected(_ line: DocumentLineNode) -> Bool {
-        guard displaySelection.location != NSNotFound else { return false }
-        if displaySelection.length == 0 {
-            return displaySelection.location >= line.location && displaySelection.location <= line.location + line.data.length
+        guard displaySelection.range.location != NSNotFound else { return false }
+        if displaySelection.range.length == 0 {
+            return displaySelection.range.location >= line.location && displaySelection.range.location <= line.location + line.data.length
         }
-        return NSIntersectionRange(displaySelection,
+        return NSIntersectionRange(displaySelection.range,
             NSRange(location: line.location, length: line.data.totalLength)).length > 0
     }
 
@@ -1065,11 +1074,11 @@ public class ReadOnlyDocumentView: NSView {
 
     private func isSelected(_ placement: LogicalLineLayoutController.Placement) -> Bool {
         let range = placement.documentRange
-        guard displaySelection.location != NSNotFound else { return false }
-        if displaySelection.length == 0 {
-            return displaySelection.location >= range.location && displaySelection.location <= NSMaxRange(range)
+        guard displaySelection.range.location != NSNotFound else { return false }
+        if displaySelection.range.length == 0 {
+            return displaySelection.range.location >= range.location && displaySelection.range.location <= NSMaxRange(range)
         }
-        return NSIntersectionRange(displaySelection, range).length > 0
+        return NSIntersectionRange(displaySelection.range, range).length > 0
     }
 
     private func drawInvisibleCharacters(in layout: ViewportLayoutCoordinator.LineLayout) {
@@ -1146,6 +1155,7 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     private func resetLayout(width: CGFloat) {
+        inputLayoutRevision = UUID()
         layoutWidth = width
         measuredUnwrappedContentWidth = 0
         unwrappedWidthMeasurementGeneration = UUID()
@@ -1283,6 +1293,7 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     private func invalidatePresentationControllers() {
+        inputLayoutRevision = UUID()
         controllers.values.forEach { $0.invalidate() }
         controllers.removeAll()
         controllerOrder.removeAll()
@@ -1336,6 +1347,7 @@ public class ReadOnlyDocumentView: NSView {
         let ranges = collapsedSyntaxFoldHeaders.compactMap { availableSyntaxFolds[$0] }
         manager.setCollapsedLineRanges(ranges)
         guard updatePresentation else { return }
+        inputLayoutRevision = UUID()
         invalidatePresentationControllers()
         noteInputCoordinatesChanged()
         needsDisplay = true

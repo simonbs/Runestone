@@ -99,8 +99,17 @@ enum AccessibilityTextGeometry {
               let layout = view.visibleLayout, layout.isComplete, layout.viewport == clip.bounds else { return nil }
         let visibleRect = view.visibleRect
         let effectiveViewport = layout.viewport.intersection(visibleRect)
+        let result: InputScreenRangeGeometry.RangeGeometry?
+        if range.length == 0, let state = view.presentedSelectionState,
+           state.range == range, state.affinity != nil,
+           let rect = InputScreenCaretGeometry.rect(for: InputCaretTarget(location: state.activeLocation,
+                                                                            affinity: state.affinity), in: view) {
+            result = (rect, range)
+        } else {
+            result = InputScreenRangeGeometry.firstRect(for: range, in: view)
+        }
         guard validViewport(visibleRect), validViewport(effectiveViewport),
-              let result = InputScreenRangeGeometry.firstRect(for: range, in: view), result.actualRange == range else { return nil }
+              let result, result.actualRange == range else { return nil }
         let documentFrame = view.convert(window.convertFromScreen(result.rect), from: nil)
         guard fullyVisible(documentFrame, in: effectiveViewport), !view.isRetired, !view.isHiddenOrHasHiddenAncestor,
               !view.updatingViewport, view.window === window, window.isVisible,

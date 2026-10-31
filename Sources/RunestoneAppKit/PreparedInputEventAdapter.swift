@@ -492,6 +492,11 @@ final class PreparedInputEventAdapter {
         perform { isAvailable() && $0.setSelection(range) }
     }
 
+    func setSelectionReporting(_ state: InputSelectionState,
+                               isAvailable: () -> Bool = { true }) -> InputAttempt {
+        perform { isAvailable() && $0.setSelection(state) }
+    }
+
     /// Query results are available only while both the view and canonical revision
     /// match. Geometry providers may call out, so all results are checked again.
     /// Text and selection captured under one revision-checked input query.
@@ -503,23 +508,30 @@ final class PreparedInputEventAdapter {
         }
     }
 
-    func inputStateForHost() -> (selection: NSRange, marked: NSRange?, hasComposition: Bool)? {
+    func inputStateForHost() -> (selection: NSRange, selectionState: InputSelectionState,
+                                 marked: NSRange?, hasComposition: Bool)? {
         queryForInput(nil) {
-            (selection: session.selectedRange, marked: session.markedRange,
-             hasComposition: session.hasProvisionalComposition)
+            guard let selectionState = session.selectionState else { return nil }
+            return (selection: selectionState.range, selectionState: selectionState,
+                    marked: session.markedRange, hasComposition: session.hasProvisionalComposition)
         }
+    }
+
+    func selectionStateForHost() -> InputSelectionState? {
+        queryForInput(nil) { session.selectionState }
     }
 
     /// Captures the selected UTF-16 range and matching text under one
     /// revision-checked query. A zero-length selection is a valid caret
     /// snapshot; nil means the input state could not be queried safely.
-    func selectionSnapshotForHost() -> (range: NSRange, text: String)? {
+    func selectionSnapshotForHost() -> (state: InputSelectionState, text: String)? {
         queryForInput(nil) {
-            let range = session.selectedRange
+            guard let state = session.selectionState else { return nil }
+            let range = state.range
             let text = view.snapshotForInputSession().string as NSString
             guard range.location >= 0, range.length >= 0, range.location <= text.length,
                   range.length <= text.length - range.location else { return nil }
-            return (range: range, text: text.substring(with: range))
+            return (state: state, text: text.substring(with: range))
         }
     }
 
@@ -576,7 +588,17 @@ final class PreparedInputEventAdapter {
     func firstRectForInput(range: NSRange, actualRange: NSRangePointer?) -> NSRect {
         actualRange?.pointee = NSRange(location: NSNotFound, length: 0)
         let result: InputScreenRangeGeometry.RangeGeometry? = queryForInput(nil) {
-            guard validInputRange(range), let geometry = rectProvider(range, view),
+            guard validInputRange(range) else { return nil }
+            let geometry: InputScreenRangeGeometry.RangeGeometry?
+            if range.length == 0, let state = session.selectionState,
+               state.range == range, state.affinity != nil,
+               let rect = InputScreenCaretGeometry.rect(for: InputCaretTarget(location: state.activeLocation,
+                                                                                affinity: state.affinity), in: view) {
+                geometry = (rect, range)
+            } else {
+                geometry = rectProvider(range, view)
+            }
+            guard let geometry,
                   validInputRange(geometry.actualRange), geometry.rect.origin.x.isFinite,
                   geometry.rect.origin.y.isFinite, geometry.rect.size.width.isFinite,
                   geometry.rect.size.height.isFinite else { return nil }

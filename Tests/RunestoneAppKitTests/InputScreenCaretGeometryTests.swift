@@ -44,6 +44,29 @@ final class InputScreenCaretGeometryTests: XCTestCase {
         XCTAssertEqual(rect, window.convertToScreen(view.convert(expected, to: nil)))
     }
 
+    func testWrapAffinityRoundTripsBothVisibleRowsAndSurvivesScrollCoordinates() throws {
+        let text = String(repeating: "word ", count: 40)
+        let (window, scroll, view) = makeView(text, width: 80, height: 80)
+        let line = try XCTUnwrap(view.visibleLayout?.lines.first)
+        XCTAssertGreaterThan(line.placements.count, 1)
+        let boundary = line.placements[0].fragment.range.upperBound
+        XCTAssertEqual(boundary, line.placements[1].fragment.range.location)
+        let revision = view.inputLayoutRevision
+        let upstream = InputCaretTarget(location: boundary, affinity: .init(
+            wrapSide: .upstream, bidirectionalSide: nil, layoutRevision: revision))
+        let downstream = InputCaretTarget(location: boundary, affinity: .init(
+            wrapSide: .downstream, bidirectionalSide: nil, layoutRevision: revision))
+        let a = try XCTUnwrap(InputScreenCaretGeometry.rect(for: upstream, in: view))
+        let b = try XCTUnwrap(InputScreenCaretGeometry.rect(for: downstream, in: view))
+        XCTAssertNotEqual(a.minY, b.minY)
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: 1))
+        view.updateViewport()
+        XCTAssertEqual(view.inputLayoutRevision, revision)
+        XCTAssertNotNil(InputScreenCaretGeometry.rect(for: upstream, in: view))
+        XCTAssertNotNil(InputScreenCaretGeometry.rect(for: downstream, in: view))
+        _ = window
+    }
+
     private func makeView(_ text: String, width: CGFloat = 180, height: CGFloat = 80) -> (NSWindow, NSScrollView, ReadOnlyDocumentView) {
         let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: width, height: height),
                               styleMask: [.borderless], backing: .buffered, defer: false)

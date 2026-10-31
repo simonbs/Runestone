@@ -51,7 +51,7 @@ final class DocumentInputSession {
 
     private struct Composition {
         let baseline: NSAttributedString
-        let selection: NSRange
+        let selection: InputSelectionState
         let documentRevision: UUID
         // The host supplies committed typing attributes separately from the
         // marked attributed string, whose runs can contain IME decorations.
@@ -83,7 +83,11 @@ final class DocumentInputSession {
     var hasProvisionalComposition: Bool { composition != nil }
     private var isApplyingChange = false
 
-    private var storedSelection = NSRange(location: 0, length: 0)
+    private var storedSelectionState = InputSelectionState.rangeOnly(NSRange(location: 0, length: 0))
+    private var storedSelection: NSRange {
+        get { storedSelectionState.range }
+        set { storedSelectionState = .rangeOnly(newValue) }
+    }
     private var storedMarkedRange: NSRange?
     private var composition: Composition?
     /// The context must disconnect and adopt the canonical document when true.
@@ -91,6 +95,12 @@ final class DocumentInputSession {
     private(set) var hasDocumentConflict = false
     /// A stale session reports an unavailable selection and no marked range.
     var selectedRange: NSRange { contentMatches ? storedSelection : NSRange(location: NSNotFound, length: 0) }
+    var selectionState: InputSelectionState? {
+        guard contentMatches else { return nil }
+        if let affinity = storedSelectionState.affinity,
+           affinity.layoutRevision != view.inputLayoutRevision { return nil }
+        return storedSelectionState
+    }
     var markedRange: NSRange? { contentMatches ? storedMarkedRange : nil }
     var isStale: Bool { !contentMatches }
     var contentDidChange: ((NSAttributedString) -> Void)?
@@ -112,7 +122,7 @@ final class DocumentInputSession {
         // The owner captures this token atomically with the initial view snapshot.
         // The provider must be a side-effect-free read of the current revision.
         self.installedDocumentRevision = initialDocumentRevision
-        view.updateDisplaySelection(storedSelection)
+        view.updateDisplaySelection(storedSelectionState)
     }
 
     /// Silently replaces the document and clears selection and composition.
@@ -132,7 +142,7 @@ final class DocumentInputSession {
             storedSelection = NSRange(location: 0, length: 0)
             storedMarkedRange = nil
         }) != nil else { return false }
-        view.updateDisplaySelection(storedSelection)
+        view.updateDisplaySelection(storedSelectionState)
         return contentMatches
     }
 
@@ -147,13 +157,13 @@ final class DocumentInputSession {
               let transaction = view.beginInputMutation(with: mutationPermit, authority: authority) else { return false }
         isApplyingChange = true
         defer { isApplyingChange = false; view.endInputMutation(transaction) }
-        let oldSelection = storedSelection
+        let oldSelection = storedSelectionState
         // A reset can be caused by ordinary focus loss. The old selection is
         // meaningful only when the owner still has exactly the same canonical
         // snapshot and revision; in a provisional composition it belongs to
         // the original baseline, not the temporary marked text.
         let baseline = composition?.baseline ?? view.content
-        let candidate = composition?.selection ?? storedSelection
+        let candidate = composition?.selection.range ?? storedSelection
         let mayPreserve = !hasDocumentConflict && contentMatches && installedDocumentRevision == revision &&
             (composition == nil || composition?.documentRevision == revision) && baseline.isEqual(to: content) &&
             PreparedInputCommandInterpreter.isValidSelectionRange(candidate, in: content.string as NSString) &&
@@ -170,8 +180,8 @@ final class DocumentInputSession {
             composition = nil
             hasDocumentConflict = false
         }) != nil else { return false }
-        if oldSelection != storedSelection {
-            view.updateDisplaySelection(storedSelection)
+        if oldSelection != storedSelectionState {
+            view.updateDisplaySelection(storedSelectionState)
             view.scheduleAccessibilitySelectionChanged()
         }
         view.noteInputCoordinatesChanged()
@@ -237,10 +247,25 @@ final class DocumentInputSession {
     /// Sets a document-relative UTF-16 selection, rejecting invalid ranges.
     @discardableResult
     func setSelection(_ range: NSRange) -> Bool {
+        setSelection(.rangeOnly(range))
+    }
+
+    @discardableResult
+    func setSelection(_ state: InputSelectionState) -> Bool {
+        let range = state.range
         guard isCurrent, isValid(range, in: view.manager.stringView.string) else { return false }
-        if storedSelection != range {
-            storedSelection = range
-            view.updateDisplaySelection(storedSelection)
+        guard (range.length == 0 && state.activeEndpoint == .caret) ||
+                (range.length > 0 && state.activeEndpoint != .caret),
+              state.affinity?.bidirectionalSide == nil else { return false }
+        guard state.affinity != nil || !InputCaretAffinityGeometry.requiresAffinity(
+            at: state.activeLocation, in: view) else { return false }
+        if let affinity = state.affinity {
+            guard affinity.layoutRevision == view.inputLayoutRevision,
+                  state.activeLocation == range.location || state.activeLocation == range.upperBound else { return false }
+        }
+        if storedSelectionState != state {
+            storedSelectionState = state
+            view.updateDisplaySelection(storedSelectionState)
             view.scheduleAccessibilitySelectionChanged()
             view.noteInputCoordinatesChanged()
         }
@@ -362,19 +387,19 @@ final class DocumentInputSession {
         return true
     }
 
-    private func restore(_ baseline: Composition, selection: NSRange,
+    private func restore(_ baseline: Composition, selection: InputSelectionState,
                          transaction: ReadOnlyDocumentView.InputMutationTransaction) -> Bool {
-        let oldSelection = storedSelection
+        let oldSelection = storedSelectionState
         let range = NSRange(location: 0, length: view.manager.stringView.string.length)
         guard view.replaceContentReturningRevision(in: range, with: baseline.baseline, permit: mutationPermit,
                                                     transaction: transaction, didCommit: { revision in
             expectedRevision = revision
-            storedSelection = selection
+            storedSelectionState = selection
             storedMarkedRange = nil
             composition = nil
         }) != nil, contentMatches else { return false }
-        if oldSelection != storedSelection {
-            view.updateDisplaySelection(storedSelection)
+        if oldSelection != storedSelectionState {
+            view.updateDisplaySelection(storedSelectionState)
             view.scheduleAccessibilitySelectionChanged()
         }
         view.noteInputCoordinatesChanged()
@@ -404,7 +429,7 @@ final class DocumentInputSession {
                     return false
                 }
                 let baseline = view.content
-                let selection = storedSelection
+                let selection = storedSelectionState
                 let attributes = compositionAttributes()
                 guard contentMatches, documentIsCurrent(), documentRevision() == revision else {
                     hasDocumentConflict = true
@@ -414,7 +439,7 @@ final class DocumentInputSession {
                                           typingAttributes: attributes, candidate: baseline)
             }
         }
-        let oldSelection = storedSelection
+        let oldSelection = storedSelectionState
         let oldMarked = storedMarkedRange
         var nextComposition = composition
         if case .provisional = kind, var next = nextComposition {
@@ -435,7 +460,7 @@ final class DocumentInputSession {
             mutableCandidate.replaceCharacters(in: range, with: replacement)
             let candidate = NSAttributedString(attributedString: mutableCandidate)
             if candidate.string.utf16.elementsEqual(baseline.baseline.string.utf16) {
-                let restored = restore(baseline, selection: selection, transaction: transaction)
+                let restored = restore(baseline, selection: .rangeOnly(selection), transaction: transaction)
                 return restored && documentIsCurrent() && compositionIsCurrent(baseline)
             }
             let accepted = prepareChange(candidate)
@@ -498,15 +523,15 @@ final class DocumentInputSession {
             storedMarkedRange = marked
             if case .provisional = kind { composition = nextComposition }
         }
-        if oldSelection != storedSelection {
-            view.updateDisplaySelection(storedSelection)
+        if oldSelection != storedSelectionState {
+            view.updateDisplaySelection(storedSelectionState)
             view.scheduleAccessibilitySelectionChanged()
         }
         // An IME can start or finish an empty provisional composition without
         // changing the selected range. It must still invalidate keyboard anchors.
         if case .provisional = kind { view.invalidateInputSelectionTracking() }
         if case .compositionCommit = kind { view.invalidateInputSelectionTracking() }
-        if didChange || oldSelection != storedSelection || oldMarked != storedMarkedRange {
+        if didChange || oldSelection != storedSelectionState || oldMarked != storedMarkedRange {
             view.noteInputCoordinatesChanged()
         }
         // A document owner must hold its reservation through finish. If it

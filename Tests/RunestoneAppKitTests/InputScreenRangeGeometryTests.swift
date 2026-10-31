@@ -133,6 +133,29 @@ final class InputScreenRangeGeometryTests: XCTestCase {
         _ = window
     }
 
+    func testPointerTargetsDistinguishBothSidesOfSharedWrapBoundary() throws {
+        let (window, _, view) = makeView(String(repeating: "abcdefgh", count: 8), width: 55)
+        let line = try XCTUnwrap(view.visibleLayout?.lines.first)
+        XCTAssertGreaterThan(line.placements.count, 1)
+        let upstream = line.placements[0]
+        let downstream = line.placements[1]
+        let boundary = upstream.fragment.range.upperBound
+        XCTAssertEqual(boundary, downstream.fragment.range.location)
+        func target(_ placement: LogicalLineLayoutController.Placement) throws -> InputCaretTarget {
+            let x = placement.frame.minX + CTLineGetOffsetForStringIndex(placement.fragment.line, boundary, nil)
+            let point = window.convertPoint(toScreen: view.convert(NSPoint(x: x, y: placement.frame.midY), to: nil))
+            return try XCTUnwrap(InputScreenRangeGeometry.caretTargetForPointer(for: point, in: view))
+        }
+        let a = try target(upstream)
+        let b = try target(downstream)
+        XCTAssertEqual(a.location, boundary)
+        XCTAssertEqual(b.location, boundary)
+        XCTAssertEqual(a.affinity?.wrapSide, .upstream)
+        XCTAssertEqual(b.affinity?.wrapSide, .downstream)
+        XCTAssertNotEqual(try XCTUnwrap(InputScreenCaretGeometry.rect(for: a, in: view)).minY,
+                          try XCTUnwrap(InputScreenCaretGeometry.rect(for: b, in: view)).minY)
+    }
+
     func testEmptyLineAndInvalidRanges() throws {
         let (window, _, view) = makeView("\n😀", width: 180)
         let caret = try XCTUnwrap(InputScreenRangeGeometry.firstRect(for: NSRange(location: 0, length: 0), in: view))

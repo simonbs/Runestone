@@ -5,6 +5,22 @@ import AppKit
 /// A detached view, an offscreen position, or a stale viewport has no result.
 /// This is an internal building block, not an interactive input host.
 enum InputScreenCaretGeometry {
+    static func rect(for target: InputCaretTarget, in view: ReadOnlyDocumentView,
+                     caretWidth: CGFloat = 1) -> NSRect? {
+        let geometryRevision = view.inputGeometryRevision
+        guard !view.updatingViewport, caretWidth.isFinite, caretWidth > 0,
+              let window = view.window, let clip = view.enclosingScrollView?.contentView,
+              let layout = view.visibleLayout, layout.isComplete, layout.viewport == clip.bounds,
+              let documentRect = InputCaretAffinityGeometry.documentRect(for: target, in: view,
+                                                                          caretWidth: caretWidth),
+              documentRect.intersects(layout.viewport) else { return nil }
+        let result = window.convertToScreen(view.convert(documentRect, to: nil))
+        guard !view.updatingViewport, geometryRevision == view.inputGeometryRevision,
+              view.window === window, view.enclosingScrollView?.contentView === clip,
+              layout.viewport == clip.bounds else { return nil }
+        return result
+    }
+
     static func rect(at location: Int, in view: ReadOnlyDocumentView, caretWidth: CGFloat = 1) -> NSRect? {
         let geometryRevision = view.inputGeometryRevision
         guard !view.updatingViewport, caretWidth.isFinite, caretWidth > 0, let window = view.window,

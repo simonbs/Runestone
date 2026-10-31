@@ -4,6 +4,22 @@ import RunestoneAppKit
 import XCTest
 
 final class RunestoneEditableDocumentAttachmentPublicTests: XCTestCase {
+    func testPublicSelectionSnapshotCarriesAdditiveCaretIdentity() {
+        let affinity = RunestoneEditableDocumentAttachment.CaretAffinity(
+            wrapSide: .upstream, bidirectionalSide: nil)
+        let snapshot = RunestoneEditableDocumentAttachment.SelectionSnapshot(
+            range: NSRange(location: 4, length: 0), text: "",
+            activeEndpoint: .caret, caretAffinity: affinity)
+        XCTAssertEqual(snapshot.range, NSRange(location: 4, length: 0))
+        XCTAssertEqual(snapshot.text, "")
+        XCTAssertEqual(snapshot.activeEndpoint, .caret)
+        XCTAssertEqual(snapshot.caretAffinity, affinity)
+        let compatible = RunestoneEditableDocumentAttachment.SelectionSnapshot(
+            range: NSRange(location: 1, length: 2), text: "bc")
+        XCTAssertEqual(compatible.activeEndpoint, .upperBound)
+        XCTAssertNil(compatible.caretAffinity)
+    }
+
     func testPublicAttachmentCreatesUnfocusedViewAndDetaches() throws {
         _ = NSApplication.shared
         let host = PublicAttachmentHost("first\r\nsecond")
