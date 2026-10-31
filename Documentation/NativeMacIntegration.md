@@ -161,16 +161,37 @@ keep its snapshot and revision paired, preserve exact encoding and line endings
 through publication and undo/redo, and route only reliably identified newline
 commands through the contextual policy. The app's editable release gate remains disabled.
 
-On iOS, paste, arbitrary insertion, text replacement and Writing Tools now
-preserve supplied delimiters; callers can use `TextView.insertLogicalNewline()`
-when they know an input was a newline command. This changes the former
-`lineEndings` normalization behavior. UIKit's generic `insertText` does not
-itself establish that a bare LF represents Return, so it remains literal and
-does not run the old automatic-newline indentation path. Until the app has a
-reliably identified command path, ordinary iOS keyboard Return can therefore
-insert LF in a CRLF or CR document and omit automatic newline indentation.
-Resolving and testing that integration, including real software keyboards and
-IMEs, remains required; do not claim full cross-platform keyboard compliance.
+On iOS, paste, arbitrary insertion, text replacement and Writing Tools preserve
+supplied delimiters. UIKit's [`UIKeyInput.insertText(_:)`](https://developer.apple.com/documentation/uikit/uikeyinput/inserttext(_:))
+provides a string but no per-insertion origin, and [custom keyboards can insert
+arbitrary strings](https://developer.apple.com/documentation/uikit/handling-text-interactions-in-custom-keyboards).
+An unmarked single LF can therefore be either Return or literal input. Paste
+actions and marked text identify only those specific paths; input-delegate
+notifications and expected input contexts cannot identify all remaining calls.
+A generic LF remains literal, including when it commits marked text. This
+changes the former `lineEndings` normalization behavior.
+
+A source that actually identifies a Return command can synchronously invoke
+`TextView.insertLogicalNewline()`. It resolves the surrounding or predominant
+ending and uses the language indentation planner for every supported delimiter.
+It rejects active composition and stale selection or document state; callers
+must not retain and replay a command after its state changes. A delegate may
+perform its own edit and reject the default edit, so a false result never
+implies permission to insert a fallback LF. The app's existing Markdown
+continuation is host-owned and scoped to its explicit logical-newline action;
+it is not supplied by the framework's generic `insertText` path. UIKit
+`UIKeyCommand` applies to hardware keyboards, and this framework does not
+intercept Return ahead of the input system because that could interfere with
+composition or the host continuation path.
+
+Ordinary software-keyboard Return and unhandled hardware Return can consequently
+still insert a literal LF in a CRLF or CR document and omit automatic indentation
+and Markdown continuation. No public callback audited here safely distinguishes
+those events from every literal input; solving them requires a genuinely
+identified host/input-source command, not a heuristic based on LF, missing marked
+text or a likely input device. Actual software and hardware keyboard, dictation,
+accessibility and IME sequences remain to be verified interactively. Do not claim
+full cross-platform keyboard compliance.
 
 ## Scale evidence and remaining work
 
