@@ -7,11 +7,21 @@ import ObjectiveC
 final class PreparedInputContextConnection {
     protocol Driver: AnyObject {
         var associationTarget: NSObject { get }
+        /// Must return the underlying context without callouts.
+        var inputContext: NSTextInputContext? { get }
         func activate()
         func handle(_ event: NSEvent) -> Bool
         func invalidateCoordinates()
         func discardMarkedText()
         func deactivate()
+    }
+    protocol ReadyObserver: AnyObject {
+        func preparedInputContextConnectionDidBecomeReady(_ connection: PreparedInputContextConnection)
+    }
+    /// The responder must interpret commands or pass unsupported selectors on
+    /// through its responder chain. The connection does not retain the handler.
+    protocol CommandHandler: AnyObject {
+        func preparedInputContextConnection(_ connection: PreparedInputContextConnection, doCommand selector: Selector)
     }
     typealias DriverFactory = (NSTextInputClient) -> Driver
     private enum State { case connected, resetRequested, quiescing, reconstructing, waiting, disconnected }
@@ -60,9 +70,14 @@ final class PreparedInputContextConnection {
         set { payload!.contextToken = newValue }
     }
     private var state: State = .connected
+    // The host owns focus policy. Never retain it through this notification.
+    weak var readyObserver: ReadyObserver?
+    weak var commandHandler: CommandHandler?
+    private var focusSuspended = false
     private var activated = false
     private var driverDepth = 0
     private var callbackDepth = 0
+    private var inputActionGeneration = UUID()
     private var drainScheduled = false
     private var generation = UUID()
     private var deferredInvalidation = false
@@ -75,11 +90,12 @@ final class PreparedInputContextConnection {
     private var blockedRetryGeneration = UUID()
 
     init?(adapter: PreparedInputEventAdapter, view: ReadOnlyDocumentView,
-          makeDriver: DriverFactory? = nil,
+          initiallyFocusSuspended: Bool = false, makeDriver: DriverFactory? = nil,
           schedule: @escaping (@escaping () -> Void) -> Void = { DispatchQueue.main.async(execute: $0) },
           blocked: @escaping () -> Void = {}) {
         precondition(Thread.isMainThread)
         guard adapter.ownsInputView(view), let token = adapter.claimInputContext() else { return nil }
+        self.focusSuspended = initiallyFocusSuspended
         self.payload = Payload(adapter: adapter, view: view,
                                makeDriver: makeDriver ?? { AppKitPreparedDriver(client: $0) },
                                schedule: schedule, blocked: blocked, token: token)
@@ -104,29 +120,112 @@ final class PreparedInputContextConnection {
         return true
     }
 
+    /// Only a responder that currently owns focus may expose this context.
+    /// A previously retained context has an inert client after reset or blur.
+    var currentInputContext: NSTextInputContext? {
+        precondition(Thread.isMainThread)
+        guard state == .connected, !focusSuspended, !view.isRetired, let currentDriver = driver else { return nil }
+        let expected = generation
+        let context = currentDriver.inputContext
+        guard state == .connected, !focusSuspended, !view.isRetired,
+              generation == expected, driver === currentDriver else { return nil }
+        return context
+    }
+
+    /// Immediately suppress a blurred client's callbacks. The old context is
+    /// discarded only after all active callbacks and driver calls unwind.
+    func suspendForFocusLoss() {
+        precondition(Thread.isMainThread)
+        guard !focusSuspended else { return }
+        focusSuspended = true
+        requestReset()
+    }
+
+    /// The host must verify its current focus generation and window ownership
+    /// before each call, including from a ready notification. Returns false
+    /// while reconstruction is pending; the weak observer is notified when ready.
+    @discardableResult
+    func resumeForFocus() -> Bool {
+        precondition(Thread.isMainThread)
+        guard state == .connected, !view.isRetired, driverDepth == 0, callbackDepth == 0 else { return false }
+        focusSuspended = false
+        return activate()
+    }
+
     @discardableResult
     func activate() -> Bool {
         precondition(Thread.isMainThread)
-        guard state == .connected, driverDepth == 0, callbackDepth == 0, let driver = driver else { return false }
+        guard state == .connected, !focusSuspended, !view.isRetired,
+              driverDepth == 0, callbackDepth == 0, let driver = driver else { return false }
         if activated { return true }
         activated = true
         driverDepth += 1
         defer { finishDriverCall() }
         driver.activate()
-        return state == .connected
+        return state == .connected && !focusSuspended && !view.isRetired
     }
 
     @discardableResult
     func handle(_ event: NSEvent) -> Bool {
         precondition(Thread.isMainThread)
-        guard state == .connected, activated, driverDepth == 0, callbackDepth == 0, let driver = driver else { return false }
+        guard state == .connected, !focusSuspended, !view.isRetired, activated,
+              driverDepth == 0, callbackDepth == 0, let driver = driver else { return false }
+        let previousAction = inputActionGeneration
         driverDepth += 1
         defer { finishDriverCall() }
-        return driver.handle(event)
+        let handled = driver.handle(event)
+        // Queries alone do not consume a key, but an insertion, marked-text
+        // change or command must never be repeated by the key-binding fallback.
+        return handled || inputActionGeneration != previousAction || state != .connected ||
+            focusSuspended || view.isRetired
+    }
+
+    /// Keep the whole system key-binding interpreter call on the activity stack.
+    /// The responder must check focus again before invoking this fallback.
+    @discardableResult
+    func performKeyBindingFallback(_ body: () -> Void) -> Bool {
+        precondition(Thread.isMainThread)
+        guard state == .connected, !focusSuspended, !view.isRetired, activated,
+              driverDepth == 0, callbackDepth == 0 else { return false }
+        driverDepth += 1
+        defer { finishDriverCall() }
+        body()
+        return true
+    }
+
+    /// Protects responder-side selection, hit testing and drawing callouts with
+    /// the same quiescence guard as input callbacks. The responder must also
+    /// verify window focus, particularly after any callout. The supplied check
+    /// becomes false as soon as this connection resets, blurs or is retired.
+    @discardableResult
+    func performResponderActivity(_ body: (PreparedInputEventAdapter, () -> Bool) -> Void) -> Bool {
+        precondition(Thread.isMainThread)
+        guard state == .connected, !focusSuspended, !view.isRetired, activated,
+              driverDepth == 0, callbackDepth == 0, let currentDriver = driver else { return false }
+        let expected = generation
+        callbackDepth += 1
+        defer { callbackDepth -= 1; finishActivity() }
+        let isCurrent = { [self] in
+            state == .connected && !focusSuspended && !view.isRetired && activated &&
+                generation == expected && driver === currentDriver
+        }
+        body(adapter, isCurrent)
+        if adapter.needsInputReset { requestReset() }
+        return isCurrent()
+    }
+
+    /// Used only by the responder's system key-binding callbacks.
+    func insertTextFromKeyBinding(_ value: Any, replacementRange: NSRange) {
+        mutate { $0.insertText(value, replacementRange: replacementRange) }
+    }
+
+    /// Used only by the responder's system key-binding callbacks.
+    func doCommandFromKeyBinding(_ selector: Selector) {
+        command(selector)
     }
 
     private func invalidateCoordinates() {
-        guard state == .connected, activated else { return }
+        guard state == .connected, !focusSuspended, !view.isRetired, activated else { return }
         guard driverDepth == 0, callbackDepth == 0 else { deferredInvalidation = true; return }
         guard let driver = driver else { return }
         driverDepth += 1
@@ -149,20 +248,30 @@ final class PreparedInputContextConnection {
 
     fileprivate func query<T>(_ fallback: T, _ action: (PreparedInputEventAdapter) -> T) -> T {
         precondition(Thread.isMainThread)
-        guard state == .connected else { return fallback }
+        guard state == .connected, !focusSuspended, !view.isRetired else { return fallback }
         callbackDepth += 1
         defer { callbackDepth -= 1; finishActivity() }
         let result = action(adapter)
         if adapter.needsInputReset { requestReset() }
-        return state == .connected ? result : fallback
+        return state == .connected && !focusSuspended && !view.isRetired ? result : fallback
     }
 
     fileprivate func mutate(_ action: (PreparedInputEventAdapter) -> PreparedInputEventAdapter.Outcome) {
         precondition(Thread.isMainThread)
-        guard state == .connected else { return }
+        inputActionGeneration = UUID()
+        guard state == .connected, !focusSuspended, !view.isRetired else { return }
         callbackDepth += 1
         defer { callbackDepth -= 1; finishActivity() }
         if action(adapter) != .processed { requestReset() }
+    }
+
+    fileprivate func command(_ selector: Selector) {
+        precondition(Thread.isMainThread)
+        inputActionGeneration = UUID()
+        guard state == .connected, !focusSuspended, !view.isRetired else { return }
+        callbackDepth += 1
+        defer { callbackDepth -= 1; finishActivity() }
+        commandHandler?.preparedInputContextConnection(self, doCommand: selector)
     }
 
     /// Suppress callbacks immediately, but never discard on the triggering stack.
@@ -297,8 +406,8 @@ final class PreparedInputContextConnection {
         if wantsAbandon { abandonDocument(); return }
         if wantsDisconnect { _ = disconnect(); return }
         if resetDuringReconstruction { requestReset(); return }
-        // Focus ownership belongs to the future view host. It decides whether
-        // to reactivate this fresh context after a reset.
+        // The host must recheck current focus before exposing or activating it.
+        readyObserver?.preparedInputContextConnectionDidBecomeReady(self)
     }
 
     private func notifyBlocked(suppressRetry: Bool) {
@@ -419,6 +528,10 @@ final class PreparedInputContextConnection {
 
 }
 
+extension PreparedInputContextConnection.Driver {
+    var inputContext: NSTextInputContext? { nil }
+}
+
 private var preparedContextClientKey: UInt8 = 0
 
 /// The associated proxy never owns its context, adapter, view, or coordinator.
@@ -431,7 +544,7 @@ private final class PreparedContextClient: NSObject, NSTextInputClient {
         owner?.mutate { $0.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange) }
     }
     func unmarkText() { owner?.mutate { $0.unmarkText() } }
-    func doCommand(by selector: Selector) {} // Commands require a real responder and are not yet supported.
+    func doCommand(by selector: Selector) { owner?.command(selector) }
     func selectedRange() -> NSRange {
         owner?.query(NSRange(location: NSNotFound, length: 0)) { $0.selectedRangeForInput() }
             ?? NSRange(location: NSNotFound, length: 0)
@@ -469,6 +582,7 @@ private final class AppKitPreparedDriver: PreparedInputContextConnection.Driver 
     private let context: NSTextInputContext
     init(client: NSTextInputClient) { context = NSTextInputContext(client: client) }
     var associationTarget: NSObject { context }
+    var inputContext: NSTextInputContext? { context }
     func activate() { context.activate() }
     func handle(_ event: NSEvent) -> Bool { context.handleEvent(event) }
     func invalidateCoordinates() { context.invalidateCharacterCoordinates() }
