@@ -51,6 +51,9 @@ public class ReadOnlyDocumentView: NSView {
     private var syntaxCaptureRevision: UUID?
     private var syntaxCaptureRange: NSRange?
     private var syntaxRequestToken = UUID()
+    private var syntaxFoldRequestToken = UUID()
+    private var availableSyntaxFolds: [Int: ClosedRange<Int>] = [:]
+    private var collapsedSyntaxFoldHeaders: Set<Int> = []
     private(set) var contentRevision = UUID()
     private let fallbackHeight: CGFloat
     private let cacheLimit = 128
@@ -94,6 +97,13 @@ public class ReadOnlyDocumentView: NSView {
         didSet {
             guard !isRetired else { return }
             resetLayout(width: 0)
+            if !displayConfiguration.isCodeFoldingEnabled {
+                availableSyntaxFolds.removeAll()
+                collapsedSyntaxFoldHeaders.removeAll()
+            } else {
+                applyCollapsedSyntaxFolds()
+                requestSyntaxFoldsIfNeeded()
+            }
             scheduleUnwrappedWidthMeasurementIfNeeded()
             noteInputCoordinatesChanged()
             needsDisplay = true
@@ -326,6 +336,8 @@ public class ReadOnlyDocumentView: NSView {
         syntaxConfiguration?.highlighter.cancel()
         syntaxConfiguration = nil
         syntaxCaptures.removeAll()
+        availableSyntaxFolds.removeAll()
+        collapsedSyntaxFoldHeaders.removeAll()
         visibleLayout = nil
         pendingViewportUpdate = false
         viewportRecoveryToken = UUID()
@@ -367,6 +379,8 @@ public class ReadOnlyDocumentView: NSView {
         syntaxConfiguration?.highlighter.cancel()
         syntaxConfiguration = configuration
         clearSyntaxPresentation()
+        availableSyntaxFolds.removeAll()
+        collapsedSyntaxFoldHeaders.removeAll()
         invalidatePresentationControllers()
         scheduleSyntaxUpdate()
         updateViewport()
@@ -396,6 +410,55 @@ public class ReadOnlyDocumentView: NSView {
         }
     }
 
+    /// Rows that currently begin foldable syntax regions. Collapsed headers
+    /// remain visible while their returned row range is hidden.
+    public var syntaxFoldRows: [Int] {
+        availableSyntaxFolds.keys.sorted()
+    }
+
+    public func isSyntaxFoldCollapsed(atRow row: Int) -> Bool {
+        collapsedSyntaxFoldHeaders.contains(row)
+    }
+
+    /// Collapses or expands a parsed region beginning on `row`.
+    /// A collapse is refused while the current selection intersects its body.
+    @discardableResult
+    public func toggleSyntaxFold(atRow row: Int) -> Bool {
+        precondition(Thread.isMainThread)
+        guard displayConfiguration.isCodeFoldingEnabled,
+              let hiddenRows = availableSyntaxFolds[row] else { return false }
+        if collapsedSyntaxFoldHeaders.contains(row) {
+            collapsedSyntaxFoldHeaders.remove(row)
+        } else {
+            let hiddenStart = manager.line(atRow: hiddenRows.lowerBound).location
+            let hiddenEndLine = manager.line(atRow: hiddenRows.upperBound)
+            let hiddenEnd = hiddenEndLine.location + hiddenEndLine.data.totalLength
+            let hiddenRange = NSRange(location: hiddenStart, length: max(0, hiddenEnd - hiddenStart))
+            guard displaySelection.location == NSNotFound ||
+                    (displaySelection.length == 0
+                        ? !NSLocationInRange(displaySelection.location, hiddenRange)
+                        : NSIntersectionRange(displaySelection, hiddenRange).length == 0) else { return false }
+            collapsedSyntaxFoldHeaders.insert(row)
+        }
+        applyCollapsedSyntaxFolds()
+        return true
+    }
+
+    public func unfoldAllSyntax() {
+        precondition(Thread.isMainThread)
+        guard !collapsedSyntaxFoldHeaders.isEmpty else { return }
+        collapsedSyntaxFoldHeaders.removeAll()
+        applyCollapsedSyntaxFolds()
+    }
+
+    public func foldAllSyntax() {
+        precondition(Thread.isMainThread)
+        guard displayConfiguration.isCodeFoldingEnabled else { return }
+        for row in availableSyntaxFolds.keys.sorted() where !collapsedSyntaxFoldHeaders.contains(row) {
+            _ = toggleSyntaxFold(atRow: row)
+        }
+    }
+
     /// The input session uses this only while holding its view transaction.
     func snapshotForInputSession() -> NSAttributedString { NSAttributedString(attributedString: snapshot) }
 
@@ -420,6 +483,8 @@ public class ReadOnlyDocumentView: NSView {
         snapshot = NSMutableAttributedString(attributedString: content)
         let revision = UUID()
         contentRevision = revision
+        availableSyntaxFolds.removeAll()
+        collapsedSyntaxFoldHeaders.removeAll()
         resetLayout(width: 0)
         scheduleSyntaxUpdate()
         didCommit(revision)
@@ -898,6 +963,11 @@ public class ReadOnlyDocumentView: NSView {
         }
     }
 
+    public override func mouseDown(with event: NSEvent) {
+        if handleSyntaxFoldingClick(event) { return }
+        super.mouseDown(with: event)
+    }
+
     private func drawBackgroundPresentation(_ result: ViewportLayoutCoordinator.Result, in context: CGContext) {
         let gutter = horizontalTextInset
         if gutter > 0 {
@@ -917,9 +987,15 @@ public class ReadOnlyDocumentView: NSView {
                 ]
                 let value = String(layout.line.index + 1) as NSString
                 let size = value.size(withAttributes: attributes)
-                value.draw(at: CGPoint(x: max(4, gutter - size.width - 7),
+                value.draw(at: CGPoint(x: max(foldingGutterWidth + 4, gutter - size.width - 7),
                                        y: layout.line.yPosition + max(0, (layout.line.data.lineHeight - size.height) / 2)),
                            withAttributes: attributes)
+            }
+        }
+        if displayConfiguration.isCodeFoldingEnabled {
+            for layout in result.lines where availableSyntaxFolds[layout.line.index] != nil {
+                drawFoldIndicator(row: layout.line.index, y: layout.line.yPosition,
+                                  height: layout.line.data.lineHeight, in: context)
             }
         }
         if let column = displayConfiguration.pageGuideColumn, column > 0 {
@@ -1050,6 +1126,7 @@ public class ReadOnlyDocumentView: NSView {
         manager = LineManager(stringView: StringView(string: snapshot.string))
         manager.estimatedLineHeight = fallbackHeight * safeLineHeightMultiplier
         manager.rebuild()
+        applyCollapsedSyntaxFolds(updatePresentation: false)
         coordinator = ViewportLayoutCoordinator(manager: manager, cachedControllerForLine: { [weak self] line in
             self?.controllers[line.id]
         }, horizontalInset: { [weak self] in self?.horizontalTextInset ?? 0 }) { [weak self] line in
@@ -1134,6 +1211,7 @@ public class ReadOnlyDocumentView: NSView {
                       self.contentRevision == revision else { return }
                 guard case .success = result else { return }
                 self.syntaxParsedRevision = revision
+                self.requestSyntaxFoldsIfNeeded()
                 self.requestVisibleSyntaxIfNeeded()
             }
         }
@@ -1173,6 +1251,7 @@ public class ReadOnlyDocumentView: NSView {
         syntaxCaptureRevision = nil
         syntaxCaptureRange = nil
         syntaxRequestToken = UUID()
+        syntaxFoldRequestToken = UUID()
     }
 
     private func invalidatePresentationControllers() {
@@ -1185,10 +1264,83 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     private var horizontalTextInset: CGFloat {
-        guard displayConfiguration.showsLineNumbers else { return 0 }
+        let folding = foldingGutterWidth
+        guard displayConfiguration.showsLineNumbers else { return folding }
         let digits = max(displayConfiguration.minimumGutterCharacterCount, String(max(1, manager.lineCount)).count)
         let sample = String(repeating: "8", count: max(1, digits)) as NSString
-        return ceil(sample.size(withAttributes: [.font: displayConfiguration.lineNumberFont]).width) + 14
+        return folding + ceil(sample.size(withAttributes: [.font: displayConfiguration.lineNumberFont]).width) + 14
+    }
+
+    private var foldingGutterWidth: CGFloat {
+        displayConfiguration.isCodeFoldingEnabled ? 18 : 0
+    }
+
+    private func requestSyntaxFoldsIfNeeded() {
+        guard displayConfiguration.isCodeFoldingEnabled,
+              let highlighter = syntaxConfiguration?.highlighter,
+              syntaxParsedRevision == contentRevision else { return }
+        let revision = contentRevision
+        let token = UUID()
+        syntaxFoldRequestToken = token
+        highlighter.folds { [weak self, weak highlighter] result in
+            DispatchQueue.main.async {
+                guard let self, let highlighter,
+                      self.syntaxConfiguration?.highlighter === highlighter,
+                      self.contentRevision == revision, self.syntaxParsedRevision == revision,
+                      self.syntaxFoldRequestToken == token, case .success(let folds) = result else { return }
+                var mapped: [Int: ClosedRange<Int>] = [:]
+                for fold in folds where fold.range.length > 0 {
+                    guard let first = self.manager.line(containingCharacterAt: fold.range.location) else { continue }
+                    let end = max(fold.range.location, NSMaxRange(fold.range) - 1)
+                    guard let last = self.manager.line(containingCharacterAt: end), last.index > first.index else { continue }
+                    let hidden = (first.index + 1)...last.index
+                    if let existing = mapped[first.index], existing.upperBound >= hidden.upperBound { continue }
+                    mapped[first.index] = hidden
+                }
+                self.availableSyntaxFolds = mapped
+                self.collapsedSyntaxFoldHeaders.formIntersection(mapped.keys)
+                self.applyCollapsedSyntaxFolds()
+            }
+        }
+    }
+
+    private func applyCollapsedSyntaxFolds(updatePresentation: Bool = true) {
+        let ranges = collapsedSyntaxFoldHeaders.compactMap { availableSyntaxFolds[$0] }
+        manager.setCollapsedLineRanges(ranges)
+        guard updatePresentation else { return }
+        invalidatePresentationControllers()
+        noteInputCoordinatesChanged()
+        needsDisplay = true
+        updateViewport()
+    }
+
+    func handleSyntaxFoldingClick(_ event: NSEvent) -> Bool {
+        guard displayConfiguration.isCodeFoldingEnabled, let window, event.window === window else { return false }
+        let point = convert(event.locationInWindow, from: nil)
+        guard point.x >= 0, point.x < foldingGutterWidth,
+              let line = manager.line(containingYOffset: point.y), availableSyntaxFolds[line.index] != nil else { return false }
+        return toggleSyntaxFold(atRow: line.index)
+    }
+
+    private func drawFoldIndicator(row: Int, y: CGFloat, height: CGFloat, in context: CGContext) {
+        let center = CGPoint(x: foldingGutterWidth / 2, y: y + height / 2)
+        let collapsed = collapsedSyntaxFoldHeaders.contains(row)
+        let path = CGMutablePath()
+        if collapsed {
+            path.move(to: CGPoint(x: center.x - 2, y: center.y - 4))
+            path.addLine(to: CGPoint(x: center.x + 3, y: center.y))
+            path.addLine(to: CGPoint(x: center.x - 2, y: center.y + 4))
+        } else {
+            path.move(to: CGPoint(x: center.x - 4, y: center.y - 2))
+            path.addLine(to: CGPoint(x: center.x, y: center.y + 3))
+            path.addLine(to: CGPoint(x: center.x + 4, y: center.y - 2))
+        }
+        context.setStrokeColor(displayConfiguration.lineNumberColor.cgColor)
+        context.setLineWidth(1.5)
+        context.setLineCap(.round)
+        context.setLineJoin(.round)
+        context.addPath(path)
+        context.strokePath()
     }
 
     private var effectiveTextWidth: CGFloat {

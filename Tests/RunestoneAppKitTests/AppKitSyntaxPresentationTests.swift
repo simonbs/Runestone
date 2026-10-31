@@ -53,6 +53,32 @@ final class AppKitSyntaxPresentationTests: XCTestCase {
         XCTAssertLessThanOrEqual(NSMaxRange(requested), content.length)
     }
 
+    func testParsedFoldCollapsesBodyAndUnfoldRestoresRows() throws {
+        let text = "{\n  \"value\": 1\n}\n"
+        let content = NSAttributedString(string: text, attributes: [
+            .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        ])
+        let highlighter = try RunestoneSyntaxHighlighter(language: RunestoneSyntaxLanguage(
+            language: tree_sitter_json(), foldsQuery: "(object) @fold"))
+        let fixture = makeFixture(content)
+        var configuration = fixture.view.displayConfiguration
+        configuration.isCodeFoldingEnabled = true
+        fixture.view.displayConfiguration = configuration
+        fixture.view.applySyntaxConfiguration(RunestoneAppKitSyntaxConfiguration(
+            highlighter: highlighter, styles: [:]))
+
+        let parsed = expectation(for: NSPredicate { _, _ in fixture.view.syntaxFoldRows == [0] }, evaluatedWith: nil)
+        XCTAssertEqual(XCTWaiter().wait(for: [parsed], timeout: 3), .completed)
+        XCTAssertTrue(fixture.view.toggleSyntaxFold(atRow: 0))
+        XCTAssertTrue(fixture.view.isSyntaxFoldCollapsed(atRow: 0))
+        XCTAssertTrue(fixture.view.manager.isLineHidden(1))
+        XCTAssertTrue(fixture.view.manager.isLineHidden(2))
+        fixture.view.unfoldAllSyntax()
+        XCTAssertFalse(fixture.view.manager.isLineHidden(1))
+        XCTAssertFalse(fixture.view.isSyntaxFoldCollapsed(atRow: 0))
+        XCTAssertEqual(fixture.view.content.string, text)
+    }
+
     private func makeFixture(_ content: NSAttributedString, height: CGFloat = 120)
         -> (scroll: NSScrollView, view: ReadOnlyDocumentView) {
         let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 320, height: height))

@@ -38,6 +38,7 @@ public struct RunestoneEditorDisplayConfiguration {
     public var kern: CGFloat
     public var verticalOverscrollFactor: CGFloat
     public var horizontalOverscrollFactor: CGFloat
+    public var isCodeFoldingEnabled: Bool
 
     public init(
         isLineWrappingEnabled: Bool = true,
@@ -55,7 +56,8 @@ public struct RunestoneEditorDisplayConfiguration {
         invisibleCharacterColor: NSColor = .tertiaryLabelColor, pageGuideColumn: Int? = nil,
         pageGuideColor: NSColor = .separatorColor, maximumContentWidthColumn: Int? = nil,
         characterWidth: CGFloat = 8, lineHeightMultiplier: CGFloat = 1, kern: CGFloat = 0,
-        verticalOverscrollFactor: CGFloat = 0, horizontalOverscrollFactor: CGFloat = 0
+        verticalOverscrollFactor: CGFloat = 0, horizontalOverscrollFactor: CGFloat = 0,
+        isCodeFoldingEnabled: Bool = false
     ) {
         self.isLineWrappingEnabled = isLineWrappingEnabled
         self.showsLineNumbers = showsLineNumbers
@@ -86,6 +88,7 @@ public struct RunestoneEditorDisplayConfiguration {
         self.kern = kern
         self.verticalOverscrollFactor = verticalOverscrollFactor
         self.horizontalOverscrollFactor = horizontalOverscrollFactor
+        self.isCodeFoldingEnabled = isCodeFoldingEnabled
     }
 }
 #endif

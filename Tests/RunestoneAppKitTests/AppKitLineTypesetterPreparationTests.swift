@@ -52,14 +52,17 @@ final class AppKitLineTypesetterPreparationTests: XCTestCase {
         }
 
         for (key, value) in [
-            (NSAttributedString.Key.kern, NSNumber(value: 0.5)),
-            (.ligature, NSNumber(value: 1)),
+            (NSAttributedString.Key.ligature, NSNumber(value: 1)),
             (.paragraphStyle, NSMutableParagraphStyle())
         ] {
             let text = NSMutableAttributedString(string: body, attributes: attributes)
             text.addAttribute(key, value: value, range: NSRange(location: 0, length: text.length))
             XCTAssertNil(AppKitLineTypesetterPreparation().prepare(text))
         }
+        let kerned = NSMutableAttributedString(string: body, attributes: attributes)
+        kerned.addAttribute(.kern, value: NSNumber(value: 0.5), range: NSRange(location: 0, length: kerned.length))
+        XCTAssertNotNil(AppKitLineTypesetterPreparation().prepare(kerned),
+                        "Mac letter spacing must retain the bounded long-line path")
         XCTAssertNil(AppKitLineTypesetterPreparation().prepare(NSAttributedString(string: body)))
     }
 
