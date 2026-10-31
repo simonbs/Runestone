@@ -426,6 +426,10 @@ final class DocumentInputSession {
             if case .provisional = kind { composition = nextComposition }
         }
         if oldSelection != storedSelection { view.scheduleAccessibilitySelectionChanged() }
+        // An IME can start or finish an empty provisional composition without
+        // changing the selected range. It must still invalidate keyboard anchors.
+        if case .provisional = kind { view.invalidateInputSelectionTracking() }
+        if case .compositionCommit = kind { view.invalidateInputSelectionTracking() }
         if didChange || oldSelection != storedSelection || oldMarked != storedMarkedRange {
             view.noteInputCoordinatesChanged()
         }
