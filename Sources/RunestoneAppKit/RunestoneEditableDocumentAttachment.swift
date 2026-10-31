@@ -114,7 +114,32 @@ public final class RunestoneEditableDocumentAttachment {
     public var isEditable: Bool {
         precondition(Thread.isMainThread)
         guard !detaching, !detached, let attachment = attachment else { return false }
+        guard let responder = view as? PreparedInputResponderView,
+              !responder.isReadOnly else { return false }
         return attachment.connection.isConnectedForEditing
+    }
+
+    /// Whether the attached surface is intentionally noneditable while its
+    /// document connection remains alive. This differs from a temporary reset
+    /// or busy gate, which also makes `isEditable` false.
+    public var isReadOnly: Bool {
+        precondition(Thread.isMainThread)
+        guard !detaching, !detached,
+              let responder = view as? PreparedInputResponderView else { return false }
+        return responder.isReadOnly
+    }
+
+    /// Changes the surface between editable and read-only modes without
+    /// replacing its view or canonical document snapshot. Entering read-only
+    /// mode cancels active composition through the normal focus-loss path.
+    /// Returning false means no state changed (for example, AppKit refused to
+    /// relinquish first responder).
+    @discardableResult
+    public func setReadOnly(_ readOnly: Bool) -> Bool {
+        precondition(Thread.isMainThread)
+        guard !detaching, !detached,
+              let responder = view as? PreparedInputResponderView else { return false }
+        return responder.setReadOnly(readOnly)
     }
 
     /// A revision-checked input state, when its input context is active.
