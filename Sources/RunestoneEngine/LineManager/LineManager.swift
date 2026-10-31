@@ -1,47 +1,49 @@
 import CoreGraphics
 import Foundation
 
-struct DocumentLineNodeID: RedBlackTreeNodeID, Hashable {
-    let id = UUID()
-    var rawValue: String {
+public struct DocumentLineNodeID: RedBlackTreeNodeID, Hashable {
+    public let id = UUID()
+
+    public init() {}
+    public var rawValue: String {
         id.uuidString
     }
 }
 
 extension DocumentLineNodeID: CustomDebugStringConvertible {
-    var debugDescription: String {
+    public var debugDescription: String {
         rawValue
     }
 }
 
-typealias DocumentLineTree = RedBlackTree<DocumentLineNodeID, Int, DocumentLineNodeData>
-typealias DocumentLineNode = RedBlackTreeNode<DocumentLineNodeID, Int, DocumentLineNodeData>
+public typealias DocumentLineTree = RedBlackTree<DocumentLineNodeID, Int, DocumentLineNodeData>
+public typealias DocumentLineNode = RedBlackTreeNode<DocumentLineNodeID, Int, DocumentLineNodeData>
 
-final class LineManager {
-    var stringView: StringView
-    var lineCount: Int {
+public final class LineManager {
+    public var stringView: StringView
+    public var lineCount: Int {
         documentLineTree.nodeTotalCount
     }
-    var contentHeight: CGFloat {
+    public var contentHeight: CGFloat {
         let rightMost = documentLineTree.root.rightMost
         return documentLineTree.yPosition(of: rightMost) + rightMost.data.lineHeight - foldedLineProjection.hiddenHeight
     }
-    var estimatedLineHeight: CGFloat = 12
-    var firstLine: DocumentLineNode {
+    public var estimatedLineHeight: CGFloat = 12
+    public var firstLine: DocumentLineNode {
         documentLineTree.root.leftMost
     }
-    var lastLine: DocumentLineNode {
+    public var lastLine: DocumentLineNode {
         documentLineTree.root.rightMost
     }
     // When rebuilding, and only when rebuilding, the tree we keep track of the longest line.
     // This helps the text editor to determine the width of the content. The "initial" in the name implies
     // that the reference does not necessarily point to the longest line as the document is edited.
-    private(set) weak var initialLongestLine: DocumentLineNode?
+    public private(set) weak var initialLongestLine: DocumentLineNode?
 
     private let documentLineTree: DocumentLineTree
     let foldedLineProjection = FoldedLineProjection()
 
-    init(stringView: StringView) {
+    public init(stringView: StringView) {
         self.stringView = stringView
         let rootData = DocumentLineNodeData(lineHeight: estimatedLineHeight)
         documentLineTree = DocumentLineTree(minimumValue: 0, rootValue: 0, rootData: rootData)
@@ -50,7 +52,7 @@ final class LineManager {
         rootData.lineManager = self
     }
 
-    func rebuild() {
+    public func rebuild() {
         foldedLineProjection.setRanges([], in: self)
         // Reset the tree so we only have a single line.
         let rootData = DocumentLineNodeData(lineHeight: estimatedLineHeight)
@@ -98,8 +100,10 @@ final class LineManager {
         documentLineTree.rebuild(from: lines)
     }
 
+    /// Updates the line index after the backing string has already been changed.
+    /// Apply removal before insertion when replacing a range.
     @discardableResult
-    func removeCharacters(in range: NSRange) -> LineChangeSet {
+    public func removeCharacters(in range: NSRange) -> LineChangeSet {
         guard range.length > 0 else {
             return LineChangeSet()
         }
@@ -148,8 +152,9 @@ final class LineManager {
         }
     }
 
+    /// Updates the line index for text already inserted into the backing string.
     @discardableResult
-    func insert(_ string: NSString, at location: Int) -> LineChangeSet {
+    public func insert(_ string: NSString, at location: Int) -> LineChangeSet {
         let changeSet = LineChangeSet()
         guard var line = documentLineTree.node(containingLocation: location) else {
             return LineChangeSet()
@@ -201,7 +206,7 @@ final class LineManager {
         return changeSet
     }
 
-    func linePosition(at location: Int) -> LinePosition? {
+    public func linePosition(at location: Int) -> LinePosition? {
         if let line = line(containingCharacterAt: location) {
             let column = location - line.location
             return LinePosition(row: line.index, column: column)
@@ -210,7 +215,7 @@ final class LineManager {
         }
     }
 
-    func line(containingCharacterAt location: Int) -> DocumentLineNode? {
+    public func line(containingCharacterAt location: Int) -> DocumentLineNode? {
         if location >= 0 && location <= Int(documentLineTree.nodeTotalValue) {
             return documentLineTree.node(containingLocation: location)
         } else {
@@ -218,7 +223,7 @@ final class LineManager {
         }
     }
 
-    func line(containingYOffset yOffset: CGFloat) -> DocumentLineNode? {
+    public func line(containingYOffset yOffset: CGFloat) -> DocumentLineNode? {
         if !foldedLineProjection.spans.isEmpty, yOffset == contentHeight {
             return lastVisibleLine
         }
@@ -229,19 +234,19 @@ final class LineManager {
                                      totalValueKeyPath: \.data.totalLineHeight)
     }
 
-    func line(containingByteAt byteIndex: ByteCount) -> DocumentLineNode? {
+    public func line(containingByteAt byteIndex: ByteCount) -> DocumentLineNode? {
         documentLineTree.node(containingLocation: byteIndex,
                               minimumValue: ByteCount(0),
                               valueKeyPath: \.data.byteCount,
                               totalValueKeyPath: \.data.nodeTotalByteCount)
     }
 
-    func line(atRow row: Int) -> DocumentLineNode {
+    public func line(atRow row: Int) -> DocumentLineNode {
         documentLineTree.node(atIndex: row)
     }
 
     @discardableResult
-    func setHeight(of line: DocumentLineNode, to newHeight: CGFloat) -> Bool {
+    public func setHeight(of line: DocumentLineNode, to newHeight: CGFloat) -> Bool {
         if abs(newHeight - line.data.lineHeight) < CGFloat.ulpOfOne {
             return false
         } else {
@@ -254,7 +259,7 @@ final class LineManager {
         }
     }
 
-    func lines(in range: NSRange) -> [DocumentLineNode] {
+    public func lines(in range: NSRange) -> [DocumentLineNode] {
         guard let firstLine = line(containingCharacterAt: range.location) else {
             return []
         }
@@ -270,7 +275,7 @@ final class LineManager {
         return lines
     }
 
-    func startAndEndLine(in range: NSRange) -> (startLine: DocumentLineNode, endLine: DocumentLineNode)? {
+    public func startAndEndLine(in range: NSRange) -> (startLine: DocumentLineNode, endLine: DocumentLineNode)? {
         if range.length == 0 {
             if let line = line(containingCharacterAt: range.lowerBound) {
                 return (line, line)
@@ -284,7 +289,7 @@ final class LineManager {
         }
     }
 
-    func createLineIterator() -> RedBlackTreeIterator<DocumentLineNodeID, Int, DocumentLineNodeData> {
+    public func createLineIterator() -> RedBlackTreeIterator<DocumentLineNodeID, Int, DocumentLineNodeData> {
         RedBlackTreeIterator(tree: documentLineTree)
     }
 }
@@ -312,12 +317,12 @@ private extension LineManager {
             line.data.delimiterLength = 0
         } else {
             let lastChar = getCharacter(at: Int(line.location) + newTotalLength - 1)
-            if lastChar == Symbol.carriageReturn {
+            if lastChar == "\r" {
                 line.data.delimiterLength = 1
-            } else if lastChar == Symbol.lineFeed {
-                if newTotalLength >= 2 && getCharacter(at: Int(line.location) + newTotalLength - 2) == Symbol.carriageReturn {
+            } else if lastChar == "\n" {
+                if newTotalLength >= 2 && getCharacter(at: Int(line.location) + newTotalLength - 2) == "\r" {
                     line.data.delimiterLength = 2
-                } else if newTotalLength == 1 && line.location > 0 && getCharacter(at: Int(line.location) - 1) == Symbol.carriageReturn {
+                } else if newTotalLength == 1 && line.location > 0 && getCharacter(at: Int(line.location) - 1) == "\r" {
                     // We need to join this line with the previous line.
                     let previousLine = line.previous
                     changeSet.markLineRemoved(line)
@@ -374,11 +379,11 @@ extension DocumentLineTree {
 }
 
 extension DocumentLineNode {
-    var yPosition: CGFloat {
+    public var yPosition: CGFloat {
         data.lineManager?.foldedLineProjection.displayedY(of: self) ?? tree.yPosition(of: self)
     }
 
-    var range: ClosedRange<Int> {
+    public var range: ClosedRange<Int> {
         let _location = location
         return _location ... _location + data.totalLength
     }

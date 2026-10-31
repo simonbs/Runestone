@@ -1,27 +1,27 @@
 import CoreGraphics
 import Foundation
 
-final class DocumentLineNodeData {
-    var delimiterLength = 0 {
+public final class DocumentLineNodeData {
+    public internal(set) var delimiterLength = 0 {
         didSet {
             assert(delimiterLength >= 0 && delimiterLength <= 2)
         }
     }
-    var totalLength = 0
-    var length: Int {
+    public internal(set) var totalLength = 0
+    public var length: Int {
         totalLength - delimiterLength
     }
-    var lineHeight: CGFloat
+    public internal(set) var lineHeight: CGFloat
     var totalLineHeight: CGFloat = 0
     var nodeTotalByteCount = ByteCount(0)
-    var startByte: ByteCount {
+    public var startByte: ByteCount {
         node!.tree.startByte(of: node!)
     }
-    var byteCount = ByteCount(0)
-    var byteRange: ByteRange {
+    public internal(set) var byteCount = ByteCount(0)
+    public var byteRange: ByteRange {
         ByteRange(location: startByte, length: byteCount - ByteCount(delimiterLength))
     }
-    var totalByteRange: ByteRange {
+    public var totalByteRange: ByteRange {
         ByteRange(location: startByte, length: byteCount)
     }
 
@@ -40,7 +40,7 @@ private extension DocumentLineTree {
 }
 
 extension DocumentLineNodeData: CustomDebugStringConvertible {
-    var debugDescription: String {
+    public var debugDescription: String {
         "[DocumentLineNodeData length=\(length) delimiterLength=\(delimiterLength) totalLength=\(totalLength)]"
     }
 }
