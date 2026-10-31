@@ -272,12 +272,17 @@ copying, line indexing, reconstruction, or one very long wrapped line is
 bounded independently of document length.
 
 The existing iOS `Example/LargeFilePerformance.md` scenarios include large,
-wrapped and highlighted inputs; their timed runs disable folding. They are not
-Mac baselines. Representative small, large, long wrapped, highlighted and
-folded Mac scenarios, release-configuration measurements, memory/latency
-baselines and agreed tolerances remain open. Headless measurements may help
-isolate work, but representative interactive focus/IME, scrolling, VoiceOver
-and window behavior require an unlocked session; do not label a deterministic
-fixture or a correctness test as a performance result. Full iOS regression,
-actual IME and VoiceOver, Intel/Rosetta and distribution verification also
-remain open.
+wrapped and highlighted inputs; their timed runs disable folding and are not Mac
+baselines. `NativeMacPerformanceBaseline.md` now records an opt-in serial Release
+lane for small, 10 MB short-line, one-long-wrapped-line, pre-highlighted and
+folded AppKit/Core Text scenarios, with raw latency samples and resident-memory
+observations. It uses the actual collapsed-line projection and does not relabel a
+correctness fixture as performance evidence. The measured long wrapped line takes
+about 80.5 seconds to traverse start/middle/end and remains an explicit performance
+defect/risk; no arbitrary acceptance tolerance has been invented.
+
+Headless engine measurements do not cover app file I/O, editable reconstruction,
+syntax parsing, window-server presentation, interactive focus/IME, scrolling or
+VoiceOver. Those product-level traces, representative hardware comparisons and
+agreed memory/latency tolerances remain open. Full iOS regression, actual IME and
+VoiceOver, Intel/Rosetta and distribution verification also remain open.
