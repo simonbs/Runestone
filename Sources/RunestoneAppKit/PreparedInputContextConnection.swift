@@ -114,6 +114,16 @@ final class PreparedInputContextConnection {
     private var driverDepth = 0
     private var callbackDepth = 0
     private var inputActionGeneration = UUID()
+    private struct PendingHistory {
+        let id: UUID
+        let operation: RunestoneInputHistoryOperation
+        let revision: UUID
+        let generation: UUID
+    }
+    private var pendingHistory: PendingHistory?
+    private var historyDeliveryScheduled = false
+    private var historyIdleWorkPending = false
+    private var historyInFlight = false
     private var drainScheduled = false
     private var generation = UUID()
     private var deferredInvalidation = false
@@ -183,7 +193,7 @@ final class PreparedInputContextConnection {
     @discardableResult
     func resumeForFocus() -> Bool {
         precondition(Thread.isMainThread)
-        guard state == .connected, !view.isRetired, driverDepth == 0, callbackDepth == 0 else { return false }
+        guard state == .connected, !view.isRetired, !historyInFlight, driverDepth == 0, callbackDepth == 0 else { return false }
         focusSuspended = false
         return activate()
     }
@@ -192,7 +202,7 @@ final class PreparedInputContextConnection {
     func activate() -> Bool {
         precondition(Thread.isMainThread)
         guard state == .connected, !focusSuspended, !view.isRetired,
-              driverDepth == 0, callbackDepth == 0, let driver = driver else { return false }
+              !historyInFlight, driverDepth == 0, callbackDepth == 0, let driver = driver else { return false }
         if activated { return true }
         activated = true
         driverDepth += 1
@@ -212,6 +222,11 @@ final class PreparedInputContextConnection {
     func performCoordinatedInput(_ body: () -> Void) -> Bool {
         precondition(Thread.isMainThread)
         guard let coordinator = dispatchCoordinator else { body(); return true }
+        // Do not let a later event overtake a queued or executing history action.
+        if (pendingHistory != nil || historyInFlight) && !coordinator.isActive {
+            coordinator.rejectDispatch(expectedRevision: adapter.installedRevisionForDispatch, reason: .busy)
+            return false
+        }
         let failureGeneration = recordedFailureGeneration
         let currentGeneration = generation
         dispatchDepth += 1
@@ -227,13 +242,79 @@ final class PreparedInputContextConnection {
         })
     }
 
+    /// Queue one document-owned history action from an admitted input scope.
+    /// The host will perform it only after that scope and all callbacks unwind.
+    func requestHistory(_ operation: RunestoneInputHistoryOperation) {
+        precondition(Thread.isMainThread)
+        guard let coordinator = dispatchCoordinator else {
+            recordInputFailure(operation: .command, failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
+        let id = UUID()
+        let expected = adapter.installedRevisionForDispatch
+        guard coordinator.isActive, state == .connected, !focusSuspended, !view.isRetired,
+              let revision = expected, adapter.hasProvisionalCompositionForInput() == false else {
+            coordinator.rejectHistory(id: id, expectedRevision: expected, reason: .unavailable)
+            recordInputFailure(operation: .command, failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
+        guard pendingHistory == nil, !historyInFlight else {
+            coordinator.rejectHistory(id: id, expectedRevision: revision, reason: .busy)
+            recordInputFailure(operation: .command, failure: .init(reason: .busy, effect: .notApplied))
+            return
+        }
+        pendingHistory = PendingHistory(id: id, operation: operation, revision: revision, generation: generation)
+    }
+
+    private func schedulePendingHistoryIfPossible() {
+        guard pendingHistory != nil, !historyDeliveryScheduled, !historyIdleWorkPending, !historyInFlight,
+              dispatchDepth == 0, driverDepth == 0, callbackDepth == 0 else { return }
+        if adapter.inputActivityIsBusy {
+            historyIdleWorkPending = true
+            adapter.whenInputActivityIdle { [weak self] in
+                guard let self = self else { return }
+                self.historyIdleWorkPending = false
+                self.schedule { [weak self] in self?.schedulePendingHistoryIfPossible() }
+            }
+            return
+        }
+        historyDeliveryScheduled = true
+        schedule { [weak self] in
+            guard let self = self else { return }
+            self.historyDeliveryScheduled = false
+            guard self.dispatchDepth == 0, self.driverDepth == 0, self.callbackDepth == 0 else { return }
+            if self.adapter.inputActivityIsBusy { self.schedulePendingHistoryIfPossible(); return }
+            self.deliverPendingHistory()
+        }
+    }
+
+    private func deliverPendingHistory() {
+        guard let pending = pendingHistory, let coordinator = dispatchCoordinator else { return }
+        pendingHistory = nil
+        guard state == .connected, !focusSuspended, !view.isRetired, !wantsDisconnect, !wantsAbandon,
+              generation == pending.generation, let current = adapter.installedRevisionForDispatch else {
+            coordinator.rejectHistory(id: pending.id, expectedRevision: pending.revision, reason: .unavailable)
+            return
+        }
+        guard current == pending.revision else {
+            coordinator.rejectHistory(id: pending.id, expectedRevision: pending.revision, reason: .stale)
+            return
+        }
+        historyInFlight = true
+        coordinator.performHistory(pending.operation, id: pending.id, expectedRevision: pending.revision) {
+            !self.focusSuspended && !self.wantsDisconnect && !self.wantsAbandon && !self.view.isRetired
+        }
+        historyInFlight = false
+        finishActivity()
+    }
+
     /// An unavailable key was never passed to the input driver. A declined
     /// key was passed to AppKit and must never be replayed as an event.
     @discardableResult
     func dispatchKey(_ event: NSEvent) -> KeyDispatchOutcome {
         precondition(Thread.isMainThread)
         guard state == .connected, !focusSuspended, !view.isRetired, activated,
-              driverDepth == 0, callbackDepth == 0, let driver = driver else {
+              !historyInFlight, driverDepth == 0, callbackDepth == 0, let driver = driver else {
             let reason: PreparedInputEventAdapter.InputFailure.Reason =
                 driverDepth != 0 || callbackDepth != 0 ? .reentrant : .unavailable
             recordInputFailure(operation: .undispatchedKey, failure: .init(reason: reason, effect: .notApplied))
@@ -267,7 +348,7 @@ final class PreparedInputContextConnection {
     func performKeyBindingFallback(_ body: () -> Void) -> Bool {
         precondition(Thread.isMainThread)
         guard state == .connected, !focusSuspended, !view.isRetired, activated,
-              driverDepth == 0, callbackDepth == 0 else {
+              !historyInFlight, driverDepth == 0, callbackDepth == 0 else {
             // AppKit may already have seen the event before fallback was
             // requested; do not infer that the whole event had no effects.
             recordInputFailure(operation: .keyBindingFallback,
@@ -288,7 +369,7 @@ final class PreparedInputContextConnection {
     func performResponderActivity(_ body: (PreparedInputEventAdapter, () -> Bool) -> Void) -> Bool {
         precondition(Thread.isMainThread)
         guard state == .connected, !focusSuspended, !view.isRetired, activated,
-              driverDepth == 0, callbackDepth == 0, let currentDriver = driver else { return false }
+              !historyInFlight, driverDepth == 0, callbackDepth == 0, let currentDriver = driver else { return false }
         let expected = generation
         callbackDepth += 1
         defer { callbackDepth -= 1; finishActivity() }
@@ -313,7 +394,7 @@ final class PreparedInputContextConnection {
 
     private func invalidateCoordinates() {
         guard state == .connected, !focusSuspended, !view.isRetired, activated else { return }
-        guard dispatchDepth == 0, driverDepth == 0, callbackDepth == 0 else { deferredInvalidation = true; return }
+        guard !historyInFlight, dispatchDepth == 0, driverDepth == 0, callbackDepth == 0 else { deferredInvalidation = true; return }
         guard let driver = driver else { return }
         driverDepth += 1
         defer { finishDriverCall() }
@@ -326,13 +407,14 @@ final class PreparedInputContextConnection {
     }
 
     private func finishActivity() {
-        if dispatchDepth == 0 && driverDepth == 0 && callbackDepth == 0 { view.flushAccessibilityNotificationsIfNeeded() }
-        if dispatchDepth == 0 && driverDepth == 0 && callbackDepth == 0 && deferredInvalidation && state == .connected {
+        if !historyInFlight && dispatchDepth == 0 && driverDepth == 0 && callbackDepth == 0 { view.flushAccessibilityNotificationsIfNeeded() }
+        if !historyInFlight && dispatchDepth == 0 && driverDepth == 0 && callbackDepth == 0 && deferredInvalidation && state == .connected {
             deferredInvalidation = false
             view.inputInvalidation.invalidate()
         }
         scheduleDrainIfNeeded()
         scheduleInputFailureNotificationIfNeeded()
+        schedulePendingHistoryIfPossible()
     }
 
     /// Stores bounded metadata only; previous callbacks in the same AppKit
@@ -363,7 +445,7 @@ final class PreparedInputContextConnection {
         precondition(Thread.isMainThread)
         guard !inputFailureRecords.isEmpty || inputFailureOverflowCount > 0 else { return }
         guard inputFailureObserver != nil, inputFailureGeneration != lastNotifiedInputFailureGeneration,
-              dispatchDepth == 0, driverDepth == 0, callbackDepth == 0, !inputFailureIdleWorkPending,
+              !historyInFlight, dispatchDepth == 0, driverDepth == 0, callbackDepth == 0, !inputFailureIdleWorkPending,
               !inputFailureDeliveryPending, !notifyingInputFailureObserver else { return }
         inputFailureIdleWorkPending = true
         adapter.whenInputActivityIdle { [weak self] in
@@ -372,7 +454,7 @@ final class PreparedInputContextConnection {
             guard !self.inputFailureRecords.isEmpty || self.inputFailureOverflowCount > 0,
                   self.inputFailureObserver != nil,
                   self.inputFailureGeneration != self.lastNotifiedInputFailureGeneration,
-                  self.dispatchDepth == 0, self.driverDepth == 0, self.callbackDepth == 0 else { return }
+                  !self.historyInFlight, self.dispatchDepth == 0, self.driverDepth == 0, self.callbackDepth == 0 else { return }
             // The adapter is still in its idle guard. A later callback must
             // recheck all activity; a queued turn is not proof of quiescence.
             self.inputFailureDeliveryPending = true
@@ -386,7 +468,7 @@ final class PreparedInputContextConnection {
         guard !inputFailureRecords.isEmpty || inputFailureOverflowCount > 0,
               let observer = inputFailureObserver,
               inputFailureGeneration != lastNotifiedInputFailureGeneration else { return }
-        guard dispatchDepth == 0, driverDepth == 0, callbackDepth == 0 else { return }
+        guard !historyInFlight, dispatchDepth == 0, driverDepth == 0, callbackDepth == 0 else { return }
         if adapter.inputActivityIsBusy {
             scheduleInputFailureNotificationIfNeeded()
             return
@@ -400,12 +482,28 @@ final class PreparedInputContextConnection {
 
     fileprivate func query<T>(_ fallback: T, _ action: (PreparedInputEventAdapter) -> T) -> T {
         precondition(Thread.isMainThread)
-        guard state == .connected, !focusSuspended, !view.isRetired else { return fallback }
+        guard state == .connected, !focusSuspended, !view.isRetired, !historyInFlight else { return fallback }
         callbackDepth += 1
         defer { callbackDepth -= 1; finishActivity() }
         let result = action(adapter)
         if adapter.needsInputReset { requestReset() }
         return state == .connected && !focusSuspended && !view.isRetired ? result : fallback
+    }
+
+    /// Focus eligibility is separate from activation: a newly attached view
+    /// must be eligible before its host explicitly asks the window to focus it.
+    var isConnectedForEditing: Bool {
+        precondition(Thread.isMainThread)
+        return state == .connected && !view.isRetired && !adapter.needsInputReset &&
+            pendingHistory == nil && !historyInFlight
+    }
+
+    /// A single revision-checked query preserves the relationship between the
+    /// selection, marked range and an empty provisional composition.
+    func inputState() -> (selection: NSRange, marked: NSRange?, hasComposition: Bool)? {
+        precondition(Thread.isMainThread)
+        guard activated else { return nil }
+        return query(nil) { $0.inputStateForHost() }
     }
 
     /// Accessibility must not inspect a stale or suppressed input client.
@@ -422,6 +520,12 @@ final class PreparedInputContextConnection {
             return
         }
         inputActionGeneration = UUID()
+        // No later callback in the same driver dispatch may pass a pending
+        // history operation; reject it rather than reorder or replay it.
+        guard pendingHistory == nil, !historyInFlight else {
+            recordInputFailure(operation: operation, failure: .init(reason: .busy, effect: .notApplied))
+            return
+        }
         guard state == .connected, !focusSuspended, !view.isRetired else {
             recordInputFailure(operation: operation, failure: .init(reason: .unavailable, effect: .notApplied))
             return
@@ -440,6 +544,10 @@ final class PreparedInputContextConnection {
             return
         }
         inputActionGeneration = UUID()
+        guard pendingHistory == nil, !historyInFlight else {
+            recordInputFailure(operation: .command, failure: .init(reason: .busy, effect: .notApplied))
+            return
+        }
         guard state == .connected, !focusSuspended, !view.isRetired else {
             recordInputFailure(operation: .command, failure: .init(reason: .unavailable, effect: .notApplied))
             return
@@ -475,7 +583,7 @@ final class PreparedInputContextConnection {
     }
 
     private func drainReset() {
-        guard state == .resetRequested, dispatchDepth == 0, driverDepth == 0, callbackDepth == 0,
+        guard state == .resetRequested, !historyInFlight, dispatchDepth == 0, driverDepth == 0, callbackDepth == 0,
               driver != nil, contextToken != nil else { return }
         state = .quiescing
         view.inputInvalidation.detach()
@@ -668,7 +776,7 @@ final class PreparedInputContextConnection {
         case .connected:
             state = .resetRequested
             generation = UUID()
-            if dispatchDepth == 0 && driverDepth == 0 && callbackDepth == 0 { drainReset() }
+            if !historyInFlight && dispatchDepth == 0 && driverDepth == 0 && callbackDepth == 0 { drainReset() }
             else { scheduleDrainIfNeeded() }
         case .resetRequested:
             scheduleDrainIfNeeded()
@@ -695,10 +803,16 @@ final class PreparedInputContextConnection {
         self.payload = nil
         let shouldRetire = state != .disconnected
         let wasActivated = activated
+        let abandonedHistory = pendingHistory
+        let coordinator = dispatchCoordinator
+        pendingHistory = nil
         if shouldRetire { payload.view.quarantineInputViewWithoutCallouts() }
         DispatchQueue.main.async {
             gate.lock()
             gate.unlock()
+            if let pending = abandonedHistory {
+                coordinator?.rejectHistory(id: pending.id, expectedRevision: pending.revision, reason: .unavailable)
+            }
             guard shouldRetire else { withExtendedLifetime(payload) {}; return }
             payload.adapter.whenInputActivityIdle {
                 payload.view.inputInvalidation.detach()

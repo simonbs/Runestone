@@ -5,7 +5,7 @@ import AppKit
 /// operation leases. No AppKit event or user input is retained here.
 /// All entry points run on the main thread.
 final class PreparedInputDispatchCoordinator {
-    private enum State { case idle, admitting, running, finishing, reporting }
+    private enum State { case idle, admitting, running, finishing, history, reporting }
 
     private weak var host: (any RunestoneInputDispatchHost)?
     private weak var source: ReadOnlyDocumentView?
@@ -88,6 +88,69 @@ final class PreparedInputDispatchCoordinator {
         return entered
     }
 
+    /// Report an input rejected while a prior history request is pending.
+    func rejectDispatch(expectedRevision: UUID?, reason: RunestoneInputDispatchCompletion.RejectionReason) {
+        precondition(Thread.isMainThread)
+        guard let host = host, let source = source else { return }
+        reportNestedOrIdle(host, source, kind: .inputDispatch, id: UUID(), expectedRevision: expectedRevision,
+                           outcome: .rejectedBeforeAdmission(reason))
+    }
+
+    /// Report an individual history request which could not be admitted.
+    func rejectHistory(id: UUID, expectedRevision: UUID?, reason: RunestoneInputDispatchCompletion.RejectionReason) {
+        precondition(Thread.isMainThread)
+        guard let host = host, let source = source else { return }
+        reportNestedOrIdle(host, source, kind: .historyCommand, id: id, expectedRevision: expectedRevision,
+                           outcome: .rejectedBeforeAdmission(reason))
+    }
+
+    /// Execute history only after the outer input scope closed. The host owns
+    /// admission, publication, synchronization and gate release. Never retry.
+    func performHistory(_ operation: RunestoneInputHistoryOperation, id: UUID, expectedRevision: UUID,
+                        isStillValid: () -> Bool) {
+        precondition(Thread.isMainThread)
+        guard let host = host, let source = source else { return }
+        guard state == .idle, !source.isRetired else {
+            rejectHistory(id: id, expectedRevision: expectedRevision, reason: state == .idle ? .unavailable : .busy)
+            return
+        }
+        state = .history
+        let result = host.performInputHistory(operation, expectedRevision: expectedRevision, source: source)
+        let outcome: RunestoneInputDispatchCompletion.Outcome
+        let finalRevision: UUID?
+        switch result {
+        case let .success(revision):
+            finalRevision = revision
+            outcome = !source.isRetired && isStillValid() && host.inputRevision == revision ? .completed : .mayHaveApplied
+        case .busy:
+            finalRevision = nil
+            outcome = .rejectedBeforeAdmission(.busy)
+        case .stale:
+            finalRevision = nil
+            outcome = .rejectedBeforeAdmission(.stale)
+        case .unavailable:
+            finalRevision = nil
+            outcome = .rejectedBeforeAdmission(.unavailable)
+        case let .mayHaveApplied(revision):
+            finalRevision = revision
+            outcome = .mayHaveApplied
+        }
+        report(host, source, kind: .historyCommand, id: id, expectedRevision: expectedRevision,
+               finalRevision: finalRevision, outcome: outcome)
+    }
+
+    private func reportNestedOrIdle(_ host: any RunestoneInputDispatchHost, _ source: ReadOnlyDocumentView,
+                                    kind: RunestoneInputDispatchCompletion.Kind, id: UUID, expectedRevision: UUID?,
+                                    outcome: RunestoneInputDispatchCompletion.Outcome) {
+        if state == .idle {
+            report(host, source, kind: kind, id: id, expectedRevision: expectedRevision,
+                   finalRevision: nil, outcome: outcome)
+        } else {
+            host.inputDispatchDidComplete(.init(kind: kind, id: id, expectedRevision: expectedRevision,
+                                                finalRevision: nil, outcome: outcome), source: source)
+        }
+    }
+
     /// Check the adapter's current installed revision while the parent is held.
     func isCurrent(revision: UUID?) -> Bool {
         guard state == .running, let revision = revision, let host = host else { return false }
@@ -150,10 +213,11 @@ final class PreparedInputDispatchCoordinator {
     }
 
     private func report(_ host: any RunestoneInputDispatchHost, _ source: ReadOnlyDocumentView,
+                        kind: RunestoneInputDispatchCompletion.Kind = .inputDispatch,
                         id: UUID, expectedRevision: UUID?, finalRevision: UUID?,
                         outcome: RunestoneInputDispatchCompletion.Outcome) {
         state = .reporting
-        host.inputDispatchDidComplete(.init(kind: .inputDispatch, id: id, expectedRevision: expectedRevision,
+        host.inputDispatchDidComplete(.init(kind: kind, id: id, expectedRevision: expectedRevision,
             finalRevision: finalRevision, outcome: outcome), source: source)
         state = .idle
         flushCompositionDiscardIfNeeded()

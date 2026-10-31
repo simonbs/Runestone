@@ -385,6 +385,13 @@ final class PreparedInputEventAdapter {
         }
     }
 
+    func inputStateForHost() -> (selection: NSRange, marked: NSRange?, hasComposition: Bool)? {
+        queryForInput(nil) {
+            (selection: session.selectedRange, marked: session.markedRange,
+             hasComposition: session.hasProvisionalComposition)
+        }
+    }
+
     func selectedRangeForInput() -> NSRange {
         queryForInput(NSRange(location: NSNotFound, length: 0)) { session.selectedRange }
     }

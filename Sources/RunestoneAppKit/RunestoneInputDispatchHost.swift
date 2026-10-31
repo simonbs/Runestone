@@ -30,11 +30,33 @@ public protocol RunestoneInputDispatchReservation: AnyObject {
     func close()
 }
 
+/// A document-owned history operation requested by an input command.
+public enum RunestoneInputHistoryOperation: Equatable {
+    case undo
+    case redo
+}
+
+/// The outcome of a document-owned history request. No case authorizes replay.
+public enum RunestoneInputHistoryResult: Equatable {
+    /// The operation completed and this revision was captured under its gate.
+    case success(finalRevision: UUID)
+    /// The gate was occupied; the operation was not entered.
+    case busy
+    /// The expected revision did not match; the operation was not entered.
+    case stale
+    /// The host cannot perform this operation; it was not entered.
+    case unavailable
+    /// The operation was entered but its effects could not be confirmed.
+    /// If available, the revision was captured while the document gate was held.
+    case mayHaveApplied(finalRevision: UUID?)
+}
+
 /// A metadata-only result for an input dispatch or a lifecycle notice.
 ///
 /// `id` is unique to the attempt. `expectedRevision` identifies the installed
 /// snapshot used for admission, when available. For an admitted dispatch,
-/// `finalRevision` is captured while its outer reservation is still held; it
+/// `finalRevision` is captured while its outer reservation is still held; for
+/// a history command it is captured under the history operation's gate. It
 /// may cease to be current once the gate is released. It is nil when a reliable
 /// value cannot be captured, including an attempt rejected before admission.
 /// A result never contains input text, a selection or an AppKit event.
@@ -42,6 +64,10 @@ public struct RunestoneInputDispatchCompletion: Equatable {
     public enum Kind: Equatable {
         /// The result of one synchronous dispatch attempt.
         case inputDispatch
+        /// A document-owned undo or redo requested by an input command.
+        /// The associated expected and final revisions identify the history
+        /// attempt, not a later reconstructed view snapshot.
+        case historyCommand
         /// A separate lifecycle notice that provisional composition was
         /// discarded after a dispatch. No dispatch gate is held; the outcome is
         /// `mayHaveApplied`, and revision identities may be unavailable.
@@ -56,9 +82,9 @@ public struct RunestoneInputDispatchCompletion: Equatable {
         /// The synchronous dispatch completed without a detected failure. This
         /// does not describe callbacks that AppKit may issue later.
         case completed
-        /// The dispatch was rejected before the input driver, fallback or any
-        /// input callback's operation was entered. This does not authorize
-        /// event replay.
+        /// A dispatch was rejected before the driver, fallback or callback's
+        /// operation was entered, or a history command was rejected before the
+        /// document history operation was entered. This never authorizes replay.
         case rejectedBeforeAdmission(RejectionReason)
         /// An admitted dispatch failed or was interrupted; some effects may
         /// already have been published and cannot safely be replayed.
@@ -104,7 +130,30 @@ public protocol RunestoneInputDispatchHost: RunestoneInputDocumentHost {
     /// document operation owns the gate, without changing document state.
     func beginInputDispatch(expectedRevision: UUID, source: ReadOnlyDocumentView) -> RunestoneInputDispatchStart
 
+    /// Perform a document-owned undo or redo after the enclosing input dispatch
+    /// has closed its outer reservation. Atomically acquire the same document
+    /// gate used by input, reconstruction and competing document operations,
+    /// check `expectedRevision`, and return busy or stale without applying the
+    /// operation when admission fails. Return unavailable if history cannot be
+    /// performed. Once admitted, perform the operation at most once and report
+    /// `mayHaveApplied` if its outcome is uncertain; never replay it.
+    ///
+    /// Capture the final revision under the gate. The document owns all undo,
+    /// redo, publication, encoding and reconciliation behavior. Release the gate
+    /// before returning, and report canonical changes and gate availability to
+    /// the document bridge according to its existing notification contract.
+    /// The default implementation is unavailable, preserving existing hosts.
+    func performInputHistory(_ operation: RunestoneInputHistoryOperation, expectedRevision: UUID,
+                             source: ReadOnlyDocumentView) -> RunestoneInputHistoryResult
+
     /// Acknowledge one result synchronously, without calling out or reentering.
     func inputDispatchDidComplete(_ completion: RunestoneInputDispatchCompletion, source: ReadOnlyDocumentView)
+}
+
+public extension RunestoneInputDispatchHost {
+    func performInputHistory(_ operation: RunestoneInputHistoryOperation, expectedRevision: UUID,
+                             source: ReadOnlyDocumentView) -> RunestoneInputHistoryResult {
+        .unavailable
+    }
 }
 #endif

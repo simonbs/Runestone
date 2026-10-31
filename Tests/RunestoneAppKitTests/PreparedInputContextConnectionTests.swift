@@ -56,6 +56,36 @@ final class PreparedInputContextConnectionTests: XCTestCase {
         withExtendedLifetime(oldContext) {}
     }
 
+    func testPublicInputStateKeepsEmptyCompositionDistinctAndRejectsStaleRevision() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var driver: ContextFakeDriver?
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let value = ContextFakeDriver(client: client); driver = value; return value
+        }, schedule: queue.enqueue))
+        XCTAssertNil(connection.inputState())
+        XCTAssertTrue(connection.activate())
+        XCTAssertEqual(connection.inputState()?.selection, NSRange(location: 0, length: 0))
+        XCTAssertEqual(connection.inputState()?.hasComposition, false)
+        let client = try XCTUnwrap(driver?.client)
+        client.setMarkedText("", selectedRange: NSRange(location: 0, length: 0), replacementRange: NSRange(location: 0, length: 1))
+        let state = try XCTUnwrap(connection.inputState())
+        XCTAssertNil(state.marked)
+        XCTAssertTrue(state.hasComposition)
+        XCTAssertEqual(state.selection, NSRange(location: 0, length: 0))
+        XCTAssertEqual(owner.text, "abc")
+        owner.text = "new"
+        owner.revision = UUID()
+        XCTAssertNil(connection.inputState())
+        queue.runAll()
+        XCTAssertEqual(view.content.string, "new")
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+        XCTAssertTrue(connection.isDisconnected)
+    }
+
     func testNestedQueueDuringActivationWaitsForDriverReturn() throws {
         let queue = ContextQueue()
         let owner = ContextOwner(text: "abc")
