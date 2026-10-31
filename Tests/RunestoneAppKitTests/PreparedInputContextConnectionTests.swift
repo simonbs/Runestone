@@ -86,6 +86,41 @@ final class PreparedInputContextConnectionTests: XCTestCase {
         XCTAssertTrue(connection.isDisconnected)
     }
 
+    func testTextFinderSnapshotSelectionAndReplacementUseDocumentDispatch() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "A😀B")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        let connection = try XCTUnwrap(PreparedInputContextConnection(
+            adapter: adapter,
+            view: view,
+            makeDriver: { ContextFakeDriver(client: $0) },
+            schedule: queue.enqueue
+        ))
+        XCTAssertTrue(connection.activate())
+        XCTAssertEqual(connection.textFinderSnapshot()?.text, "A😀B")
+        XCTAssertEqual(connection.textFinderSnapshot()?.selection, NSRange(location: 0, length: 0))
+
+        let emoji = NSRange(location: 1, length: 2)
+        XCTAssertTrue(connection.setSelectionForTextFinder(emoji))
+        XCTAssertEqual(connection.textFinderSnapshot()?.selection, emoji)
+        XCTAssertTrue(connection.replaceForTextFinder(emoji, with: "文"))
+        XCTAssertEqual(owner.text, "A文B")
+        XCTAssertEqual(connection.textFinderSnapshot()?.text, "A文B")
+        XCTAssertEqual(connection.textFinderSnapshot()?.selection, NSRange(location: 2, length: 0))
+        XCTAssertFalse(connection.replaceForTextFinder(NSRange(location: 20, length: 1), with: "bad"))
+        XCTAssertEqual(owner.text, "A文B")
+
+        owner.text = "new"
+        owner.revision = UUID()
+        XCTAssertNil(connection.textFinderSnapshot())
+        queue.runAll()
+        XCTAssertEqual(view.content.string, "new")
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+        XCTAssertTrue(connection.isDisconnected)
+    }
+
     func testNestedQueueDuringActivationWaitsForDriverReturn() throws {
         let queue = ContextQueue()
         let owner = ContextOwner(text: "abc")

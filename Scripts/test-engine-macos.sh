@@ -23,4 +23,4 @@ let package = Package(
     ]
 )
 MANIFEST
-swift test --package-path "$harness_dir" --scratch-path "$harness_dir/build" 2>&1 | xcsift -f toon
+swift test --package-path "$harness_dir" --scratch-path "$harness_dir/build" "$@" 2>&1 | xcsift -f toon
