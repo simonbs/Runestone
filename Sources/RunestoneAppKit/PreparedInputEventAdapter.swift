@@ -369,6 +369,31 @@ final class PreparedInputEventAdapter {
         }
     }
 
+    func applyHostEditReporting(_ edit: RunestoneHostEdit,
+                                isAvailable: () -> Bool = { true }) -> InputAttempt {
+        perform { session in
+            guard isAvailable(), !session.hasProvisionalComposition,
+                  self.validHostEdit(edit, in: self.view.manager.stringView.string as String),
+                  let attributed = self.attributedInput(edit.replacementText),
+                  !self.nestedMutationRejected, isAvailable(),
+                  session.insertText(attributed, replacementRange: edit.replacementRange),
+                  session.setSelection(edit.selectedRange) else { return false }
+            return true
+        }
+    }
+
+    private func validHostEdit(_ edit: RunestoneHostEdit, in text: String) -> Bool {
+        let length = (text as NSString).length
+        guard edit.replacementRange.location != NSNotFound, edit.replacementRange.location >= 0,
+              edit.replacementRange.length >= 0, edit.replacementRange.location <= length,
+              edit.replacementRange.length <= length - edit.replacementRange.location,
+              Range(edit.replacementRange, in: text) != nil else { return false }
+        let resultLength = length - edit.replacementRange.length + (edit.replacementText as NSString).length
+        return edit.selectedRange.location != NSNotFound && edit.selectedRange.location >= 0 &&
+            edit.selectedRange.length >= 0 && edit.selectedRange.location <= resultLength &&
+            edit.selectedRange.length <= resultLength - edit.selectedRange.location
+    }
+
     private func validTabEdit(_ edit: RunestoneTabEdit, in text: String) -> Bool {
         let length = (text as NSString).length
         guard edit.replacementRange.location != NSNotFound, edit.replacementRange.location >= 0,

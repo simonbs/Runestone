@@ -602,6 +602,12 @@ final class PreparedInputContextConnection {
         }
     }
 
+    func applyHostEdit(_ edit: RunestoneHostEdit) -> Bool {
+        performTextFinderMutation(operation: .insertText) {
+            $0.applyHostEditReporting(edit)
+        }
+    }
+
     private func performTextFinderMutation(
         operation: InputOperation,
         _ action: @escaping (PreparedInputEventAdapter) -> PreparedInputEventAdapter.InputAttempt
