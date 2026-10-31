@@ -77,28 +77,107 @@ final class PreparedInputVisualMovementTests: XCTestCase {
         withExtendedLifetime(window) {}
     }
 
-    func testAffinityAwareHorizontalMovementSafelyRefusesBidiCarets() throws {
+    func testAffinityAwareHorizontalMovementTraversesCoincidentBidiStopsAndIsInvertible() throws {
         let text = "abc אבגד xyz"
         let (window, _, view) = makeView(text, width: 300, height: 80)
-        let placement = try XCTUnwrap(view.visibleLayout?.lines.first?.placements.first)
-        let location = (text as NSString).range(of: "א").location
-        var secondaryX: CGFloat = 0
-        let primaryX = CTLineGetOffsetForStringIndex(placement.fragment.line, location, &secondaryX)
-        func pointerTarget(_ x: CGFloat, side: InputCaretAffinity.BidirectionalSide) throws -> InputCaretTarget {
-            for delta in [CGFloat(-0.25), 0.25] {
-                let point = window.convertPoint(toScreen: view.convert(
-                    NSPoint(x: placement.frame.minX + x + delta, y: placement.frame.midY), to: nil))
-                if let target = InputScreenRangeGeometry.caretTargetForPointer(for: point, in: view),
-                   target.location == location, target.affinity?.bidirectionalSide == side { return target }
+        let revision = view.inputLayoutRevision
+        func target(_ location: Int, _ side: InputCaretAffinity.BidirectionalSide? = nil) -> InputCaretTarget {
+            InputCaretTarget(location: location, affinity: side.map {
+                InputCaretAffinity(wrapSide: nil, bidirectionalSide: $0, layoutRevision: revision)
+            })
+        }
+        let expected = [target(3), target(4, .primary), target(8, .primary), target(7),
+                        target(6), target(5), target(4, .secondary), target(8, .secondary), target(9)]
+        var current = expected[0]
+        var visited = [current]
+        for next in expected.dropFirst() {
+            guard case let .moved(actual) = PreparedInputVisualMovement.horizontal(
+                from: current, direction: .right, in: view) else {
+                return XCTFail("Expected rightward stop after \(current)")
             }
-            return try XCTUnwrap(nil, "Expected a uniquely owned pointer side for bidi caret")
+            XCTAssertEqual(actual, next)
+            current = actual
+            visited.append(actual)
         }
-        let primary = try pointerTarget(primaryX, side: .primary)
-        let secondary = try pointerTarget(secondaryX, side: .secondary)
-        for target in [primary, secondary] {
-            XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: target, direction: .left, in: view), .unavailable)
-            XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: target, direction: .right, in: view), .unavailable)
+        XCTAssertEqual(Set(visited.map { "\($0.location):\(String(describing: $0.affinity?.bidirectionalSide))" }).count,
+                       visited.count)
+        let firstJunction = try XCTUnwrap(InputScreenCaretGeometry.rect(for: expected[1], in: view))
+        let firstJunctionOther = try XCTUnwrap(InputScreenCaretGeometry.rect(for: expected[2], in: view))
+        XCTAssertEqual(firstJunction.minX, firstJunctionOther.minX, accuracy: 0.01)
+        let secondJunction = try XCTUnwrap(InputScreenCaretGeometry.rect(for: expected[6], in: view))
+        let secondJunctionOther = try XCTUnwrap(InputScreenCaretGeometry.rect(for: expected[7], in: view))
+        XCTAssertEqual(secondJunction.minX, secondJunctionOther.minX, accuracy: 0.01)
+        for previous in expected.dropLast().reversed() {
+            guard case let .moved(actual) = PreparedInputVisualMovement.horizontal(
+                from: current, direction: .left, in: view) else {
+                return XCTFail("Expected leftward inverse stop after \(current)")
+            }
+            XCTAssertEqual(actual, previous)
+            current = actual
         }
+        XCTAssertEqual(current, expected[0])
+        let stale = InputCaretTarget(location: 4, affinity: .init(
+            wrapSide: nil, bidirectionalSide: .primary, layoutRevision: UUID()))
+        XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: stale, direction: .right, in: view), .unavailable)
+        withExtendedLifetime(window) {}
+    }
+
+    func testBidiCaretGraphPreservesComposedCharacterBoundariesWithoutLoops() throws {
+        let text = "ab👩‍💻 אבגד e\u{301}z"
+        let (window, _, view) = makeView(text, width: 400, height: 80)
+        var current = InputCaretTarget(location: 0, affinity: nil)
+        var visited = [current]
+        for _ in 0..<64 {
+            guard case let .moved(next) = PreparedInputVisualMovement.horizontal(
+                from: current, direction: .right, in: view) else { break }
+            XCTAssertFalse(visited.contains(next), "Caret graph must not loop or duplicate an identity")
+            if next.location > 0 && next.location < (text as NSString).length {
+                XCTAssertEqual((text as NSString).rangeOfComposedCharacterSequence(at: next.location).location,
+                               next.location)
+            }
+            visited.append(next)
+            current = next
+        }
+        XCTAssertLessThan(visited.count, 64)
+        let emoji = (text as NSString).range(of: "👩‍💻")
+        let combining = (text as NSString).range(of: "e\u{301}")
+        XCTAssertTrue(visited.contains(where: { $0.location == emoji.location }))
+        XCTAssertTrue(visited.contains(where: { $0.location == emoji.upperBound }))
+        XCTAssertTrue(visited.contains(where: { $0.location == combining.location }))
+        XCTAssertTrue(visited.contains(where: { $0.location == combining.upperBound }))
+        for expected in visited.dropLast().reversed() {
+            guard case let .moved(previous) = PreparedInputVisualMovement.horizontal(
+                from: current, direction: .left, in: view) else {
+                return XCTFail("Expected exact inverse for \(current)")
+            }
+            XCTAssertEqual(previous, expected)
+            current = previous
+        }
+        XCTAssertEqual(current, visited[0])
+        withExtendedLifetime(window) {}
+    }
+
+    func testPureRightToLeftCaretGraphTraversesVisualBoundsAndInverts() throws {
+        let text = "אבגד"
+        let (window, _, view) = makeView(text, width: 240, height: 80)
+        var current = InputCaretTarget(location: (text as NSString).length, affinity: nil)
+        var visited = [current]
+        while case let .moved(next) = PreparedInputVisualMovement.horizontal(
+            from: current, direction: .right, in: view) {
+            XCTAssertFalse(visited.contains(next))
+            visited.append(next)
+            current = next
+        }
+        XCTAssertEqual(visited.map(\.location), [4, 3, 2, 1, 0])
+        for expected in visited.dropLast().reversed() {
+            guard case let .moved(previous) = PreparedInputVisualMovement.horizontal(
+                from: current, direction: .left, in: view) else {
+                return XCTFail("Expected inverse pure-RTL stop")
+            }
+            XCTAssertEqual(previous, expected)
+            current = previous
+        }
+        XCTAssertEqual(current, visited[0])
         withExtendedLifetime(window) {}
     }
 

@@ -143,8 +143,8 @@ enum PreparedInputVisualMovement {
         return crossLine(from: source, direction: direction, context: context, view: view)
     }
 
-    /// Affinity-aware horizontal traversal. This enables LTR soft-wrap
-    /// boundaries while retaining the existing refusal for bidi alternatives.
+    /// Affinity-aware horizontal traversal. Bidirectional rows use an ordered
+    /// graph whose coincident logical identities are separate reversible stops.
     static func horizontal(from target: InputCaretTarget, direction: HorizontalDirection,
                            in view: ReadOnlyDocumentView) -> TargetHorizontalResult {
         guard let context = context(in: view),
@@ -152,8 +152,19 @@ enum PreparedInputVisualMovement {
                 ? InputScreenCaretGeometry.rect(at: target.location, in: view)
                 : InputScreenCaretGeometry.rect(for: target, in: view),
               let source = sourceRow(caret: caret, context: context, view: view),
-              containsRightToLeftRun(source) == false,
-              validBoundary(target.location, in: view.manager.stringView.string),
+              validBoundary(target.location, in: view.manager.stringView.string) else { return .unavailable }
+        guard let containsRTL = containsRightToLeftRun(source) else { return .unavailable }
+        if containsRTL {
+            guard let stops = visualCaretStops(for: source, in: view),
+                  let index = stops.firstIndex(where: { $0.target == target }) else { return .unavailable }
+            let next = direction == .left ? index - 1 : index + 1
+            guard stops.indices.contains(next),
+                  isVisible(x: stops[next].x, row: source, context: context),
+                  InputScreenCaretGeometry.rect(for: stops[next].target, in: view) != nil,
+                  stable(context, view: view) else { return .unavailable }
+            return .moved(stops[next].target)
+        }
+        guard
               let edges = horizontalEdges(for: source, in: view),
               let sourceGroup = group(at: caretDocumentX(caret, context: context, view: view), in: edges),
               uniqueTarget(in: sourceGroup) == target.location else { return .unavailable }
@@ -322,6 +333,89 @@ enum PreparedInputVisualMovement {
         let x: CGFloat
         let target: Int
         let ambiguous: Bool
+    }
+
+    private struct VisualCaretStop: Equatable {
+        let target: InputCaretTarget
+        let x: CGFloat
+    }
+
+    private struct RawVisualCaretStop {
+        let target: InputCaretTarget
+        let x: CGFloat
+        let ownsRight: Bool
+    }
+
+    /// Returns a strictly ordered row-local graph. Distinct targets at the
+    /// same visual x are accepted only when exactly one owns each adjacent
+    /// interval; every other coincident configuration remains unavailable.
+    private static func visualCaretStops(for row: Row, in view: ReadOnlyDocumentView) -> [VisualCaretStop]? {
+        guard let placement = row.placement, row.line.placements.count == 1 else { return nil }
+        let line = row.line.line
+        let visible = placement.fragment.visibleRange
+        let contentEnd = min(visible.upperBound, line.data.length)
+        let text = view.manager.stringView.string
+        guard visible.location >= 0, visible.location < contentEnd,
+              line.location <= Int.max - contentEnd else { return nil }
+        guard let runs = CTLineGetGlyphRuns(placement.fragment.line) as? [CTRun] else { return nil }
+        var raw: [RawVisualCaretStop] = []
+        var invalid = false
+        CTLineEnumerateCaretOffsets(placement.fragment.line) { offset, index, leading, _ in
+            guard offset.isFinite, index >= visible.location, index < contentEnd,
+                  line.location <= Int.max - index else { return }
+            let absolute = line.location + index
+            guard absolute >= 0, absolute < text.length else { invalid = true; return }
+            let cluster = text.rangeOfComposedCharacterSequence(at: absolute)
+            let location = leading ? cluster.location : cluster.upperBound
+            guard validBoundary(location, in: text),
+                  let target = caretTarget(location: location, row: row,
+                                           documentX: placement.frame.minX + offset, view: view) else {
+                invalid = true
+                return
+            }
+            guard let run = runs.first(where: {
+                let range = CTRunGetStringRange($0)
+                return range.location <= index && index < range.location + range.length
+            }) else { invalid = true; return }
+            let rtl = CTRunGetStatus(run).contains(.rightToLeft)
+            let candidate = RawVisualCaretStop(target: target, x: placement.frame.minX + offset,
+                                               ownsRight: leading != rtl)
+            if !raw.contains(where: {
+                $0.target == candidate.target && abs($0.x - candidate.x) <= horizontalTolerance &&
+                    $0.ownsRight == candidate.ownsRight
+            }) { raw.append(candidate) }
+        }
+        guard !invalid, !raw.isEmpty else { return nil }
+        let sorted = raw.sorted { $0.x < $1.x }
+        var groups: [[RawVisualCaretStop]] = []
+        for stop in sorted {
+            if let x = groups.last?.first?.x, abs(stop.x - x) <= horizontalTolerance {
+                groups[groups.count - 1].append(stop)
+            } else { groups.append([stop]) }
+        }
+        var result: [VisualCaretStop] = []
+        for group in groups {
+            var targets: [(target: InputCaretTarget, ownerships: Set<Bool>)] = []
+            for stop in group {
+                if let index = targets.firstIndex(where: { $0.target == stop.target }) {
+                    targets[index].ownerships.insert(stop.ownsRight)
+                } else { targets.append((stop.target, [stop.ownsRight])) }
+            }
+            let x = group[0].x
+            if targets.count == 1 {
+                result.append(VisualCaretStop(target: targets[0].target, x: x))
+            } else {
+                guard targets.count == 2,
+                      let left = targets.first(where: { $0.ownerships == [false] }),
+                      let right = targets.first(where: { $0.ownerships == [true] }) else { return nil }
+                result.append(VisualCaretStop(target: left.target, x: x))
+                result.append(VisualCaretStop(target: right.target, x: x))
+            }
+        }
+        for index in result.indices where result[(index + 1)...].contains(where: { $0.target == result[index].target }) {
+            return nil
+        }
+        return result
     }
 
     /// Core Text enumerates logical leading/trailing character edges in visual

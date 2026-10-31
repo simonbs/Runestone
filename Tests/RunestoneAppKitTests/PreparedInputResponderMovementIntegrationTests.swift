@@ -58,6 +58,32 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         fixture.disconnect()
     }
 
+    func testKeyboardTraversesCoincidentBidiStopsAndReturnsToExactIdentity() throws {
+        let fixture = try MovementIntegrationFixture("abc אבגד xyz")
+        try fixture.setSelection(NSRange(location: 3, length: 0))
+        let expected: [(Int, InputCaretAffinity.BidirectionalSide?)] = [
+            (4, .primary), (8, .primary), (7, nil), (6, nil), (5, nil),
+            (4, .secondary), (8, .secondary), (9, nil)
+        ]
+        let starts = fixture.host.childStarts
+        for (location, side) in expected {
+            XCTAssertTrue(fixture.send("moveRight:"))
+            XCTAssertEqual(fixture.selection, NSRange(location: location, length: 0))
+            XCTAssertEqual(fixture.selectionState?.affinity?.bidirectionalSide, side)
+        }
+        let reverseExpected: [(Int, InputCaretAffinity.BidirectionalSide?)] = [(3, nil)] + Array(expected.dropLast())
+        for (location, side) in reverseExpected.reversed() {
+            XCTAssertTrue(fixture.send("moveLeft:"))
+            XCTAssertEqual(fixture.selection, NSRange(location: location, length: 0))
+            XCTAssertEqual(fixture.selectionState?.affinity?.bidirectionalSide, side)
+        }
+        XCTAssertEqual(fixture.host.childStarts - starts, expected.count * 2)
+        XCTAssertEqual(fixture.host.parentStarts, fixture.host.parentCloses)
+        XCTAssertEqual(fixture.host.childStarts, fixture.host.childCloses)
+        XCTAssertEqual(fixture.host.preparations, 0)
+        fixture.disconnect()
+    }
+
     func testPointerAndKeyboardPreserveBothSidesOfSoftWrapBoundary() throws {
         let fixture = try MovementIntegrationFixture(String(repeating: "abcdefgh", count: 16))
         fixture.scroll.setFrameSize(NSSize(width: 55, height: 130))
