@@ -7,6 +7,25 @@ final class DocumentInputSessionTests: XCTestCase {
     private var attributes: [NSAttributedString.Key: Any] { [.font: NSFont.systemFont(ofSize: 14)] }
     private var unspecified: NSRange { NSRange(location: NSNotFound, length: 0) }
 
+    func testCanonicalReconstructionKeepsUnchangedLineIndexForLocalizedEdit() throws {
+        let original = NSAttributedString(
+            string: String(repeating: "line\n", count: 2_000), attributes: attributes)
+        let view = ReadOnlyDocumentView(content: original)
+        let unchangedFirstLine = view.manager.firstLine
+        let permit = try XCTUnwrap(view.claimInputMutation())
+        let documentRevision = UUID()
+        let session = DocumentInputSession(
+            view: view, mutationPermit: permit, prepareChange: { _ in nil },
+            initialDocumentRevision: documentRevision, documentRevision: { documentRevision })
+        let canonical = NSMutableAttributedString(attributedString: original)
+        canonical.replaceCharacters(in: NSRange(location: original.length / 2, length: 0), with: "x")
+
+        XCTAssertTrue(session.adoptCanonicalSnapshot(canonical, revision: documentRevision))
+        XCTAssertTrue(view.manager.firstLine === unchangedFirstLine)
+        XCTAssertEqual(view.content, canonical)
+        XCTAssertEqual(view.manager.lineCount, 2_001)
+    }
+
     func testInsertionUsesSelectionAndNotifiesWithUpdatedStateAndCopiedContent() {
         let view = ReadOnlyDocumentView(content: NSAttributedString(string: "😀tail", attributes: attributes))
         let session = DocumentInputSession(view: view)

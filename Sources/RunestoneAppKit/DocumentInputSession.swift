@@ -160,8 +160,8 @@ final class DocumentInputSession {
             contentMatches && documentRevision() == revision
         let restoredSelection = mayPreserve ? candidate : NSRange(location: 0, length: 0)
         guard documentRevision() == revision else { return false }
-        let range = NSRange(location: 0, length: view.manager.stringView.string.length)
-        guard view.replaceContentReturningRevision(in: range, with: content, permit: mutationPermit,
+        let replacement = Self.canonicalReplacement(from: view.content, to: content)
+        guard view.replaceContentReturningRevision(in: replacement.range, with: replacement.content, permit: mutationPermit,
                                                     transaction: transaction, didCommit: { viewRevision in
             expectedRevision = viewRevision
             installedDocumentRevision = revision
@@ -178,6 +178,58 @@ final class DocumentInputSession {
         guard contentMatches, documentRevision() == revision else {
             hasDocumentConflict = true
             return false
+        }
+        return true
+    }
+
+    /// Canonical reconstruction usually follows one accepted external edit.
+    /// Preserve the unchanged line index and layout by publishing only the
+    /// differing attributed range. Fall back to a full replacement whenever
+    /// attributes outside the textual difference do not match exactly.
+    private static func canonicalReplacement(from current: NSAttributedString, to canonical: NSAttributedString)
+        -> (range: NSRange, content: NSAttributedString) {
+        let old = current.string as NSString
+        let new = canonical.string as NSString
+        var prefix = 0
+        let sharedLength = min(old.length, new.length)
+        while prefix < sharedLength, old.character(at: prefix) == new.character(at: prefix) { prefix += 1 }
+        while prefix > 0 && (!isScalarBoundary(prefix, in: old) || !isScalarBoundary(prefix, in: new)) { prefix -= 1 }
+
+        var suffix = 0
+        while suffix < old.length - prefix, suffix < new.length - prefix,
+              old.character(at: old.length - suffix - 1) == new.character(at: new.length - suffix - 1) { suffix += 1 }
+        while suffix > 0 && (!isScalarBoundary(old.length - suffix, in: old) ||
+                             !isScalarBoundary(new.length - suffix, in: new)) { suffix -= 1 }
+
+        if !attributesMatch(current, start: 0, canonical, start: 0, length: prefix) { prefix = 0; suffix = 0 }
+        if suffix > 0 && !attributesMatch(current, start: old.length - suffix,
+                                          canonical, start: new.length - suffix, length: suffix) {
+            suffix = 0
+        }
+        let oldRange = NSRange(location: prefix, length: old.length - prefix - suffix)
+        let newRange = NSRange(location: prefix, length: new.length - prefix - suffix)
+        return (oldRange, canonical.attributedSubstring(from: newRange))
+    }
+
+    private static func isScalarBoundary(_ offset: Int, in text: NSString) -> Bool {
+        guard offset > 0 && offset < text.length else { return true }
+        return !(0xD800...0xDBFF).contains(text.character(at: offset - 1)) ||
+            !(0xDC00...0xDFFF).contains(text.character(at: offset))
+    }
+
+    private static func attributesMatch(_ lhs: NSAttributedString, start lhsStart: Int,
+                                        _ rhs: NSAttributedString, start rhsStart: Int, length: Int) -> Bool {
+        guard length > 0 else { return true }
+        var offset = 0
+        while offset < length {
+            var lhsRange = NSRange()
+            var rhsRange = NSRange()
+            let lhsAttributes = lhs.attributes(at: lhsStart + offset, effectiveRange: &lhsRange)
+            let rhsAttributes = rhs.attributes(at: rhsStart + offset, effectiveRange: &rhsRange)
+            guard NSDictionary(dictionary: lhsAttributes).isEqual(to: rhsAttributes) else { return false }
+            let lhsRemaining = NSMaxRange(lhsRange) - lhsStart - offset
+            let rhsRemaining = NSMaxRange(rhsRange) - rhsStart - offset
+            offset += min(length - offset, lhsRemaining, rhsRemaining)
         }
         return true
     }
