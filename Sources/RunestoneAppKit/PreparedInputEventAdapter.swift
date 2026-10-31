@@ -33,6 +33,8 @@ final class PreparedInputEventAdapter {
         }
     }
 
+    final class InputContextToken { fileprivate init() {} }
+
     enum ReconstructionStart {
         case reserved(ReconstructionReservation)
         case busy
@@ -60,11 +62,21 @@ final class PreparedInputEventAdapter {
     private let documentRevision: () -> UUID
     private let typingAttributes: () -> [NSAttributedString.Key: Any]
     private let requestReset: () -> Void
+    private let rectProvider: (NSRange, ReadOnlyDocumentView) -> InputScreenRangeGeometry.RangeGeometry?
+    private let indexProvider: (NSPoint, ReadOnlyDocumentView) -> Int?
     // Scheduler must enqueue asynchronously, without an inline call or nested event loop.
     private let schedule: (@escaping () -> Void) -> Void
     private var state: State = .ready
     private var reservation: Reservation?
     private var nestedMutationRejected = false
+    private var queryDepth = 0
+    private var queryNeedsReset = false
+    private var inputContextToken: InputContextToken?
+    private var pendingInputContextRelease: InputContextToken?
+    private var inputContextReleaseScheduled = false
+    private var pendingInputActivityIdleWork: [() -> Void] = []
+    private var inputActivityIdleDrainScheduled = false
+    private var drainingInputActivityIdleWork = false
     private var resetGeneration = UUID()
     private var session: DocumentInputSession!
     private var ownsPermit = true
@@ -77,6 +89,8 @@ final class PreparedInputEventAdapter {
           beginEvent: @escaping BeginEvent,
           beginReconstruction: @escaping () -> ReconstructionStart,
           requestReset: @escaping () -> Void,
+          rectProvider: @escaping (NSRange, ReadOnlyDocumentView) -> InputScreenRangeGeometry.RangeGeometry? = { InputScreenRangeGeometry.firstRect(for: $0, in: $1) },
+          indexProvider: @escaping (NSPoint, ReadOnlyDocumentView) -> Int? = { InputScreenRangeGeometry.characterIndex(for: $0, in: $1) },
           schedule: @escaping (@escaping () -> Void) -> Void = { DispatchQueue.main.async(execute: $0) }) {
         precondition(Thread.isMainThread)
         let viewRevision = view.contentRevision
@@ -93,6 +107,8 @@ final class PreparedInputEventAdapter {
         self.documentRevision = documentRevision
         self.typingAttributes = typingAttributes
         self.requestReset = requestReset
+        self.rectProvider = rectProvider
+        self.indexProvider = indexProvider
         self.schedule = schedule
         self.session = DocumentInputSession(view: view, mutationPermit: permit,
                                             prepareChange: { [weak self] candidate in
@@ -105,11 +121,96 @@ final class PreparedInputEventAdapter {
                                             documentRevision: documentRevision)
     }
 
+    var needsInputReset: Bool {
+        precondition(Thread.isMainThread)
+        return state == .resetPending
+    }
+
+    func ownsInputView(_ candidate: ReadOnlyDocumentView) -> Bool {
+        precondition(Thread.isMainThread)
+        return view === candidate
+    }
+
+    /// A context keeps this identity until its client and driver are quiescent.
+    func claimInputContext() -> InputContextToken? {
+        precondition(Thread.isMainThread)
+        guard !drainingInputActivityIdleWork, state == .ready, queryDepth == 0, inputContextToken == nil,
+              !session.isStale, !session.hasDocumentConflict,
+              session.installedRevisionForInput == documentRevision() else { return nil }
+        let token = InputContextToken()
+        inputContextToken = token
+        return token
+    }
+
+    @discardableResult
+    func releaseInputContext(_ token: InputContextToken) -> Bool {
+        precondition(Thread.isMainThread)
+        guard state != .handling, queryDepth == 0, inputContextToken === token else { return false }
+        inputContextToken = nil
+        if pendingInputContextRelease === token { pendingInputContextRelease = nil }
+        return true
+    }
+
+    /// Unexpected context teardown may happen in a nested event loop. Release
+    /// only after the current adapter operation and query stack have unwound.
+    @discardableResult
+    func releaseInputContextWhenIdle(_ token: InputContextToken) -> Bool {
+        precondition(Thread.isMainThread)
+        guard inputContextToken === token else { return false }
+        pendingInputContextRelease = token
+        schedulePendingInputContextReleaseIfIdle()
+        return true
+    }
+
+    private func schedulePendingInputContextReleaseIfIdle() {
+        guard !drainingInputActivityIdleWork, state != .handling, queryDepth == 0, !inputContextReleaseScheduled,
+              let token = pendingInputContextRelease else { return }
+        inputContextReleaseScheduled = true
+        schedule { [weak self] in
+            guard let self = self else { return }
+            self.inputContextReleaseScheduled = false
+            if !self.drainingInputActivityIdleWork, self.state != .handling, self.queryDepth == 0,
+               self.pendingInputContextRelease === token, self.inputContextToken === token {
+                _ = self.releaseInputContext(token)
+            }
+            // A later context may have requested release while this work was queued.
+            // If busy, the active operation schedules its own idle recheck.
+            self.schedulePendingInputContextReleaseIfIdle()
+        }
+    }
+
+    /// Runs once on a later scheduler turn after adapter mutations and queries
+    /// have unwound. A nested event loop may make that later turn busy again.
+    func whenInputActivityIdle(_ work: @escaping () -> Void) {
+        precondition(Thread.isMainThread)
+        pendingInputActivityIdleWork.append(work)
+        scheduleInputActivityIdleDrainIfPossible()
+    }
+
+    private func scheduleInputActivityIdleDrainIfPossible() {
+        guard state != .handling, queryDepth == 0, !inputActivityIdleDrainScheduled,
+              !drainingInputActivityIdleWork, !pendingInputActivityIdleWork.isEmpty else { return }
+        inputActivityIdleDrainScheduled = true
+        schedule { [self] in
+            inputActivityIdleDrainScheduled = false
+            // An operation may have entered a nested event loop after scheduling.
+            // Its exit schedules the next drain; do not poll while it is active.
+            guard state != .handling, queryDepth == 0, !drainingInputActivityIdleWork,
+                  !pendingInputActivityIdleWork.isEmpty else { return }
+            drainingInputActivityIdleWork = true
+            let work = pendingInputActivityIdleWork.removeFirst()
+            work()
+            drainingInputActivityIdleWork = false
+            schedulePendingInputContextReleaseIfIdle()
+            scheduleInputActivityIdleDrainIfPossible()
+        }
+    }
+
     /// Accepted-change observers run inside the same event reservation.
     @discardableResult
     func setContentDidChange(_ callback: ((NSAttributedString) -> Void)?) -> Bool {
         precondition(Thread.isMainThread)
-        guard state == .ready else { return false }
+        guard !drainingInputActivityIdleWork, state == .ready, queryDepth == 0 else { return false }
         session.contentDidChange = callback
         return true
     }
@@ -141,6 +242,94 @@ final class PreparedInputEventAdapter {
     @discardableResult
     func setSelection(_ range: NSRange) -> Outcome { perform { $0.setSelection(range) } }
 
+    /// Query results are available only while both the view and canonical revision
+    /// match. Geometry providers may call out, so all results are checked again.
+    func selectedRangeForInput() -> NSRange {
+        queryForInput(NSRange(location: NSNotFound, length: 0)) { session.selectedRange }
+    }
+
+    func markedRangeForInput() -> NSRange {
+        queryForInput(NSRange(location: NSNotFound, length: 0)) {
+            session.markedRange ?? NSRange(location: NSNotFound, length: 0)
+        }
+    }
+
+    func attributedSubstringForInput(range: NSRange, actualRange: NSRangePointer?) -> NSAttributedString? {
+        actualRange?.pointee = NSRange(location: NSNotFound, length: 0)
+        let content: NSAttributedString? = queryForInput(nil) {
+            guard validInputRange(range) else { return nil }
+            return view.attributedContent(in: range)
+        }
+        if content != nil { actualRange?.pointee = range }
+        return content
+    }
+
+    func firstRectForInput(range: NSRange, actualRange: NSRangePointer?) -> NSRect {
+        actualRange?.pointee = NSRange(location: NSNotFound, length: 0)
+        let result: InputScreenRangeGeometry.RangeGeometry? = queryForInput(nil) {
+            guard validInputRange(range), let geometry = rectProvider(range, view),
+                  validInputRange(geometry.actualRange), geometry.rect.origin.x.isFinite,
+                  geometry.rect.origin.y.isFinite, geometry.rect.size.width.isFinite,
+                  geometry.rect.size.height.isFinite else { return nil }
+            return geometry
+        }
+        guard let result = result else { return .zero }
+        actualRange?.pointee = result.actualRange
+        return result.rect
+    }
+
+    func characterIndexForInput(point: NSPoint) -> Int {
+        queryForInput(NSNotFound) {
+            guard point.x.isFinite, point.y.isFinite, let index = indexProvider(point, view),
+                  validInputRange(NSRange(location: index, length: 0)) else { return NSNotFound }
+            return index
+        }
+    }
+
+    private func queryForInput<T>(_ fallback: T, _ body: () -> T) -> T {
+        precondition(Thread.isMainThread)
+        guard !drainingInputActivityIdleWork, (state == .ready || state == .handling), let session = session,
+              let revision = session.installedRevisionForInput else { return fallback }
+        guard !session.isStale, !session.hasDocumentConflict, documentRevision() == revision else {
+            if queryDepth > 0 { queryNeedsReset = true }
+            else if state == .ready { scheduleReset() }
+            else { nestedMutationRejected = true }
+            return fallback
+        }
+        let viewRevision = view.contentRevision
+        queryDepth += 1
+        defer {
+            queryDepth -= 1
+            if queryDepth == 0 && queryNeedsReset {
+                queryNeedsReset = false
+                if state == .ready { scheduleReset() }
+                else if state == .handling { nestedMutationRejected = true }
+            }
+            schedulePendingInputContextReleaseIfIdle()
+            scheduleInputActivityIdleDrainIfPossible()
+        }
+        let result = body()
+        guard !queryNeedsReset, !session.isStale, !session.hasDocumentConflict,
+              session.installedRevisionForInput == revision, view.contentRevision == viewRevision,
+              documentRevision() == revision else {
+            queryNeedsReset = true
+            return fallback
+        }
+        return result
+    }
+
+    private func validInputRange(_ range: NSRange) -> Bool {
+        let text = view.manager.stringView.string
+        guard range.location >= 0, range.length >= 0, range.location <= text.length,
+              range.length <= text.length - range.location else { return false }
+        func boundary(_ index: Int) -> Bool {
+            index == 0 || index == text.length ||
+                !(0xD800...0xDBFF).contains(text.character(at: index - 1)) ||
+                !(0xDC00...0xDFFF).contains(text.character(at: index))
+        }
+        return boundary(range.location) && boundary(range.location + range.length)
+    }
+
     private func attributedInput(_ value: Any) -> NSAttributedString? {
         if let attributed = value as? NSAttributedString { return NSAttributedString(attributedString: attributed) }
         if let string = value as? String { return NSAttributedString(string: string, attributes: typingAttributes()) }
@@ -151,6 +340,16 @@ final class PreparedInputEventAdapter {
     @discardableResult
     private func perform(_ operation: (DocumentInputSession) -> Bool) -> Outcome {
         precondition(Thread.isMainThread)
+        defer {
+            schedulePendingInputContextReleaseIfIdle()
+            scheduleInputActivityIdleDrainIfPossible()
+        }
+        guard !drainingInputActivityIdleWork else { return .unavailable }
+        if queryDepth > 0 {
+            queryNeedsReset = true
+            if state == .handling { nestedMutationRejected = true }
+            return .resetRequired
+        }
         if state == .handling {
             nestedMutationRejected = true
             return .resetRequired
@@ -186,11 +385,21 @@ final class PreparedInputEventAdapter {
     @discardableResult
     func reconstructWithoutInputContext() -> Outcome {
         precondition(Thread.isMainThread)
+        defer {
+            schedulePendingInputContextReleaseIfIdle()
+            scheduleInputActivityIdleDrainIfPossible()
+        }
+        guard !drainingInputActivityIdleWork else { return .unavailable }
+        if queryDepth > 0 {
+            queryNeedsReset = true
+            if state == .handling { nestedMutationRejected = true }
+            return .resetRequired
+        }
         if state == .handling {
             nestedMutationRejected = true
             return .resetRequired
         }
-        guard state == .ready || state == .resetPending else { return .unavailable }
+        guard inputContextToken == nil, state == .ready || state == .resetPending else { return .unavailable }
         state = .handling
         nestedMutationRejected = false
         guard case let .reserved(lease) = beginReconstruction() else {
@@ -227,7 +436,8 @@ final class PreparedInputEventAdapter {
     @discardableResult
     func disconnectAfterQuiescing() -> Bool {
         precondition(Thread.isMainThread)
-        guard state == .ready || state == .resetPending, !session.hasProvisionalComposition,
+        guard !drainingInputActivityIdleWork, queryDepth == 0, inputContextToken == nil,
+              state == .ready || state == .resetPending, !session.hasProvisionalComposition,
               !session.hasDocumentConflict, session.installedRevisionForInput == documentRevision() else { return false }
         guard view.releaseInputMutation(permit) else { return false }
         state = .disconnected
