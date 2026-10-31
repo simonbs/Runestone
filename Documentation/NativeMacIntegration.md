@@ -77,7 +77,15 @@ input reservation and checks focus, selection, content and viewport identity.
 A gesture gets at most 120 frames or two seconds, with a single start; mouse-up,
 focus loss, detachment, pointer re-entry, stale state or lack of progress stops
 it. Re-entering and then leaving again requires a new gesture to restart scrolling.
-The wrapping view has no horizontal scrollable extent. A step limits its delta,
+The default wrapping mode has no horizontal scrollable extent. The public display
+configuration can disable wrapping; each logical line then uses one measured Core
+Text fragment and the view publishes a native horizontal document extent. A
+cancellable main-thread scan measures the remaining logical lines in eight-
+millisecond batches, grows the extent monotonically for that content generation,
+and discards stale work after edits or configuration changes. Re-enabling wrapping
+collapses the document width and horizontal origin back to the clip viewport.
+Pointer-edge autoscroll remains vertically bounded; unwrapped horizontal dragging
+still requires focused live acceptance. A vertical step limits its delta,
 viewport size, nearby and prepared line lengths, total charged UTF-16 units and
 layout calls, with a cooperative deadline. Its preflight checks a short buffer
 around the current and target viewports; bounded layout can reuse a limited
