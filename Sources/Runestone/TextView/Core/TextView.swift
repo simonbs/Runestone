@@ -934,7 +934,8 @@ open class TextView: UIScrollView {
     /// Call this only when the input source identifies a newline command.
     /// Generic inserted text, including a standalone LF, is preserved literally.
     /// Returns false when there is no valid selection, a composition is active,
-    /// or the edit is rejected.
+    /// or the edit is rejected. A delegate can handle the command itself and
+    /// reject the default edit, so false does not authorize replay or fallback.
     @discardableResult
     public func insertLogicalNewline() -> Bool {
         textInputView.inputDelegate?.selectionWillChange(textInputView)

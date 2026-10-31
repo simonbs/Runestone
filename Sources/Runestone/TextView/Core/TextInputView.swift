@@ -722,6 +722,7 @@ final class TextInputView: UIView, UITextInput {
 
     // MARK: - Contents
     weak var delegate: TextInputViewDelegate?
+    var pasteboardStringProvider: () -> String? = { UIPasteboard.general.string }
     var string: NSString {
         get {
             stringView.string
@@ -792,9 +793,14 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
+    private var selectionGeneration = UUID()
+    private var compositionGeneration = UUID()
+    private var isHandlingLogicalNewline = false
+    private var isInsertingLogicalNewline = false
     private var _selectedRange: NSRange? {
         didSet {
             if _selectedRange != oldValue {
+                selectionGeneration = UUID()
                 if !isApplyingFoldingEdit, let range = _selectedRange { revealFoldedRange(range) }
                 layoutManager.selectedRange = _selectedRange
                 layoutManager.setNeedsLayoutLineSelection()
@@ -888,6 +894,7 @@ final class TextInputView: UIView, UITextInput {
         }
         set {
             if layoutManager.markedRange != newValue {
+                compositionGeneration = UUID()
                 invalidateSpellChecking()
             }
             layoutManager.markedRange = newValue
@@ -1046,10 +1053,29 @@ final class TextInputView: UIView, UITextInput {
     }
 
     override func paste(_ sender: Any?) {
-        if let selectedTextRange = selectedTextRange, let string = UIPasteboard.general.string {
-            inputDelegate?.selectionWillChange(self)
-            replace(selectedTextRange, withText: string)
-            inputDelegate?.selectionDidChange(self)
+        guard let selectedRange = selectedRange else { return }
+        let version = textMutationVersion
+        let contextVersion = writingToolsContextVersion
+        let selectionRevision = selectionGeneration
+        let compositionRevision = compositionGeneration
+        let initialMarkedRange = markedRange
+        let isCurrent = {
+            self.textMutationVersion == version && self.writingToolsContextVersion == contextVersion &&
+                self.selectionGeneration == selectionRevision && self.compositionGeneration == compositionRevision &&
+                self.selectedRange == selectedRange && self.markedRange == initialMarkedRange
+        }
+        guard let string = pasteboardStringProvider(), isCurrent() else { return }
+        let delegate = inputDelegate
+        delegate?.selectionWillChange(self)
+        defer { delegate?.selectionDidChange(self) }
+        guard isCurrent(), shouldChangeText(in: selectedRange, replacementText: string), isCurrent() else { return }
+        var installedSelectionRevision: UUID?
+        let didReplace = replaceText(in: selectedRange, with: string, isStillValid: isCurrent,
+            didInstallSelection: { installedSelectionRevision = self.selectionGeneration })
+        if didReplace, textMutationVersion == version &+ 1,
+           installedSelectionRevision != nil, installedSelectionRevision == selectionGeneration,
+           compositionGeneration == compositionRevision {
+            self.delegate?.textInputViewDidChangeSelection(self)
         }
     }
 
@@ -1457,21 +1483,27 @@ extension TextInputView {
     /// Generic UITextInput insertion is ambiguous and remains literal.
     @discardableResult
     func insertLogicalNewline() -> Bool {
-        guard markedRange == nil, let selectedRange = selectedRange,
-              let symbol = RunestoneLineEndingPolicy.newline(in: string, replacing: selectedRange),
-              shouldChangeText(in: selectedRange, replacementText: symbol) else { return false }
+        guard !isHandlingLogicalNewline, markedRange == nil, let selectedRange = selectedRange,
+              let symbol = RunestoneLineEndingPolicy.newline(in: string, replacing: selectedRange) else { return false }
+        isHandlingLogicalNewline = true
+        defer { isHandlingLogicalNewline = false }
+        let selectionRevision = selectionGeneration
+        let compositionRevision = compositionGeneration
+        guard shouldChangeText(in: selectedRange, replacementText: symbol),
+              self.selectedRange == selectedRange, markedRange == nil,
+              selectionGeneration == selectionRevision, compositionGeneration == compositionRevision else { return false }
         let previousVersion = textMutationVersion
-        if let ending = LineEnding(symbol: symbol) {
-            indentController.insertLineBreak(in: selectedRange, using: ending)
-        } else {
-            // Unicode separators cannot be represented by the legacy iOS
-            // LineEnding enum, but must still be inserted without conversion.
-            _ = replaceText(in: selectedRange, with: symbol)
-        }
-        guard textMutationVersion != previousVersion else { return false }
+        isInsertingLogicalNewline = true
+        defer { isInsertingLogicalNewline = false }
+        guard indentController.insertLineBreak(in: selectedRange, symbol: symbol),
+              textMutationVersion == previousVersion &+ 1, compositionGeneration == compositionRevision else { return false }
+        let completedSelectionRevision = selectionGeneration
         layoutIfNeeded()
+        guard textMutationVersion == previousVersion &+ 1, selectionGeneration == completedSelectionRevision,
+              compositionGeneration == compositionRevision else { return false }
         delegate?.textInputViewDidChangeSelection(self)
-        return true
+        return textMutationVersion == previousVersion &+ 1 && selectionGeneration == completedSelectionRevision &&
+            compositionGeneration == compositionRevision
     }
 
     func deleteBackward() {
@@ -1691,14 +1723,17 @@ extension TextInputView {
                              with newString: String,
                              selectedRangeAfterUndo: NSRange? = nil,
                              undoActionName: String = L10n.Undo.ActionName.typing,
-                             isWritingToolsReplacement: Bool = false) -> Bool {
-        guard WritingToolsRange.isValid(range, in: string) else {
+                             isWritingToolsReplacement: Bool = false,
+                             isStillValid: () -> Bool = { true },
+                             didInstallSelection: (() -> Void)? = nil) -> Bool {
+        guard WritingToolsRange.isValid(range, in: string), isStillValid() else {
             return false
         }
         layoutManager.cancelFoldingAnimation()
         revealFoldedRange(range)
         lineManager.setCollapsedLineRanges([])
         if !isWritingToolsReplacement { checkpointWritingToolsUndo() }
+        guard isStillValid(), WritingToolsRange.isValid(range, in: string) else { return false }
         let previousText = writingToolsController?.hasContext == true ? string.copy() as? NSString : nil
         let previousVersion = textMutationVersion
         textMutationVersion &+= 1
@@ -1712,6 +1747,7 @@ extension TextInputView {
         isApplyingFoldingEdit = true
         defer { isApplyingFoldingEdit = false }
         _selectedRange = NSRange(location: newRange.upperBound, length: 0)
+        didInstallSelection?()
         let textEditHelper = TextEditHelper(stringView: stringView, lineManager: lineManager, lineEndings: lineEndings)
         let textEditResult = textEditHelper.replaceText(in: range, with: newString)
         let textChange = textEditResult.textChange
@@ -2124,15 +2160,38 @@ extension TextInputView: LayoutManagerDelegate {
 // MARK: - IndentControllerDelegate
 extension TextInputView: IndentControllerDelegate {
     func indentController(_ controller: IndentController, shouldInsert text: String, in range: NSRange) -> Bool {
-        replaceText(in: range, with: text)
+        guard isInsertingLogicalNewline else { return replaceText(in: range, with: text) }
+        let version = textMutationVersion
+        let selectionRevision = selectionGeneration
+        let compositionRevision = compositionGeneration
+        var installedSelectionRevision: UUID?
+        let inserted = replaceText(in: range, with: text, isStillValid: {
+            self.textMutationVersion == version && self.selectionGeneration == selectionRevision &&
+                self.compositionGeneration == compositionRevision && self.markedRange == nil
+        }, didInstallSelection: { installedSelectionRevision = self.selectionGeneration })
+        return inserted && installedSelectionRevision != nil && installedSelectionRevision == selectionGeneration &&
+            compositionGeneration == compositionRevision
     }
 
-    func indentController(_ controller: IndentController, shouldSelect range: NSRange) {
+    @discardableResult
+    func indentController(_ controller: IndentController, shouldSelect range: NSRange) -> Bool {
         let version = textMutationVersion
+        let beforeSelection = selectionGeneration
+        let beforeComposition = compositionGeneration
         inputDelegate?.selectionWillChange(self)
-        if textMutationVersion == version { selectedRange = range }
+        let canSelect = textMutationVersion == version && selectionGeneration == beforeSelection &&
+            compositionGeneration == beforeComposition
+        var expectedSelection = selectionGeneration
+        if canSelect, _selectedRange != range {
+            _selectedRange = range
+            expectedSelection = selectionGeneration
+            delegate?.textInputViewDidChangeSelection(self)
+        }
         inputDelegate?.selectionDidChange(self)
-        resetWritingToolsUndoBaseline()
+        let current = canSelect && textMutationVersion == version && selectionGeneration == expectedSelection &&
+            compositionGeneration == beforeComposition
+        if current { resetWritingToolsUndoBaseline() }
+        return current
     }
 
     func indentControllerDidUpdateTabWidth(_ controller: IndentController) {

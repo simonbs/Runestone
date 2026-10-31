@@ -4,7 +4,8 @@ import UIKit
 protocol IndentControllerDelegate: AnyObject {
     @discardableResult
     func indentController(_ controller: IndentController, shouldInsert text: String, in range: NSRange) -> Bool
-    func indentController(_ controller: IndentController, shouldSelect range: NSRange)
+    @discardableResult
+    func indentController(_ controller: IndentController, shouldSelect range: NSRange) -> Bool
     func indentControllerDidUpdateTabWidth(_ controller: IndentController)
 }
 
@@ -66,22 +67,22 @@ final class IndentController {
         }
     }
 
-    func insertLineBreak(in range: NSRange, using lineEnding: LineEnding) {
-        let symbol = lineEnding.symbol
+    @discardableResult
+    func insertLineBreak(in range: NSRange, symbol: String) -> Bool {
         if let startLinePosition = lineManager.linePosition(at: range.lowerBound),
             let endLinePosition = lineManager.linePosition(at: range.upperBound) {
             let strategy = languageMode.strategyForInsertingLineBreak(from: startLinePosition, to: endLinePosition, using: indentStrategy)
             let indentString = indentStrategy.string(indentLevel: strategy.indentLevel)
             if strategy.insertExtraLineBreak {
                 let previousIndentString = indentStrategy.string(indentLevel: strategy.indentLevel - 1)
-                apply(IndentationEditPlanner.insertLineBreak(in: range, symbol: symbol,
-                                                             indentString: indentString,
-                                                             previousIndentString: previousIndentString))
+                return apply(IndentationEditPlanner.insertLineBreak(in: range, symbol: symbol,
+                                                                    indentString: indentString,
+                                                                    previousIndentString: previousIndentString))
             } else {
-                apply(IndentationEditPlanner.insertLineBreak(in: range, symbol: symbol, indentString: indentString))
+                return apply(IndentationEditPlanner.insertLineBreak(in: range, symbol: symbol, indentString: indentString))
             }
         } else {
-            delegate?.indentController(self, shouldInsert: symbol, in: range)
+            return delegate?.indentController(self, shouldInsert: symbol, in: range) == true
         }
     }
 
@@ -114,12 +115,14 @@ private extension IndentController {
         }
     }
 
-    func apply(_ edit: IndentationEdit) {
+    @discardableResult
+    func apply(_ edit: IndentationEdit) -> Bool {
         guard delegate?.indentController(self, shouldInsert: edit.replacementText, in: edit.replacementRange) == true else {
-            return
+            return false
         }
         if let selectedRange = edit.selectedRange {
-            delegate?.indentController(self, shouldSelect: selectedRange)
+            return delegate?.indentController(self, shouldSelect: selectedRange) == true
         }
+        return true
     }
 }
