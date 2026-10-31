@@ -47,13 +47,36 @@ measurement host.
 | Pre-highlighted | 20,001 lines / 960,000 bytes | 36.417 ms | 15.382 ms | 70.95 MiB |
 | Folded | 20,001 logical lines / 18,000 hidden rows | 37.167 ms | 16.751 ms | 72.28 MiB |
 
-The long wrapped line is a measured performance defect/risk, not an accepted
+The first run exposed a long-wrapped-line defect rather than an acceptable
 baseline. Its three traversal samples were 84,069.333 ms, 80,478.675 ms and
-79,930.211 ms. Initial viewport construction remains about 38.5 ms because the
-renderer prepares the beginning only; seeking later positions in the same logical
-line must typeset through the intervening content. Do not weaken the fixture,
-hide this scenario behind a generous threshold or infer ordinary scrolling
-performance from the other four results.
+79,930.211 ms. A five-second process sample attributed 2,993 of 2,996 main-thread
+samples to repeated `CTTypesetterSuggestLineBreak` calls through ICU while seeking
+incrementally through the one logical line.
+
+The repaired AppKit path conservatively admits only long printable-ASCII text
+with supported editor attributes. Core Text still measures every fragment, while
+a cluster-width query bounds a local native word-break window. Unicode, controls,
+bidi text, paragraph styles and unsupported attributes retain the original native
+paragraph path. Compatibility tests compare complete fragment ranges, hidden
+whitespace, dimensions and vertical positions with that original path.
+
+The unchanged five-scenario Release matrix after the repair passes in 1.896
+seconds. The long-line traversal median is 122.674 ms (124.451, 121.955 and
+122.674 ms), about 656× faster than 80,478.675 ms; its load median is 38.563 ms.
+The same document height and 1,096,249-unit final visible range are preserved.
+The other four latency medians remain within ordinary run-to-run variation:
+
+| Scenario | Load median after repair | Traversal median after repair |
+| --- | ---: | ---: |
+| Small | 3.405 ms | 9.238 ms |
+| Large short lines | 36.561 ms | 3.800 ms |
+| One long wrapped line | 38.563 ms | 122.674 ms |
+| Pre-highlighted | 35.303 ms | 14.970 ms |
+| Folded | 36.171 ms | 16.306 ms |
+
+The pre-repair results remain the evidence that caught the regression class; do
+not reduce the fixture, skip deep traversal or replace the mechanism guard with a
+large tolerance.
 
 ## Evidence limits and next work
 
