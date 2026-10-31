@@ -75,6 +75,10 @@ final class DocumentInputSession {
     private let mutationAuthority: ReadOnlyDocumentView.InputMutationAuthority?
     private var expectedRevision: UUID
     private var installedDocumentRevision: UUID?
+    /// The canonical revision paired with the currently installed session state.
+    var installedRevisionForInput: UUID? { installedDocumentRevision }
+    /// Provisional text must be resolved before the owned view is reused.
+    var hasProvisionalComposition: Bool { composition != nil }
     private var isApplyingChange = false
 
     private var storedSelection = NSRange(location: 0, length: 0)
