@@ -74,6 +74,21 @@ public struct RunestoneTabEdit {
 
 public typealias RunestoneTabPlanner = (RunestoneTabContext) -> RunestoneTabEdit?
 
+/// One host-owned editor command applied through the ordinary document input
+/// reservation and undo path. Both ranges use UTF-16 document coordinates.
+/// Invalid, stale, read-only, composing, or detached requests fail atomically.
+public struct RunestoneHostEdit {
+    public let replacementRange: NSRange
+    public let replacementText: String
+    public let selectedRange: NSRange
+
+    public init(replacementRange: NSRange, replacementText: String, selectedRange: NSRange) {
+        self.replacementRange = replacementRange
+        self.replacementText = replacementText
+        self.selectedRange = selectedRange
+    }
+}
+
 /// An explicit, document-owned connection to a prepared editable AppKit view.
 ///
 /// Keep this object alive while the view is installed. The host owns its own
@@ -249,6 +264,16 @@ public final class RunestoneEditableDocumentAttachment {
         precondition(Thread.isMainThread)
         guard isEditable else { return false }
         return attachment?.connection.replaceForTextFinder(range, with: string) == true
+    }
+
+    /// Applies one host-planned editor transformation and publishes its final
+    /// selection as a single coordinated input operation. Literal replacement
+    /// bytes are preserved; the framework never retries a rejected command.
+    @discardableResult
+    public func applyHostEdit(_ edit: RunestoneHostEdit) -> Bool {
+        precondition(Thread.isMainThread)
+        guard isEditable else { return false }
+        return attachment?.connection.applyHostEdit(edit) == true
     }
 
     /// Scrolls the match's logical line into view without changing canonical

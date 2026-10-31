@@ -121,6 +121,30 @@ final class PreparedInputContextConnectionTests: XCTestCase {
         XCTAssertTrue(connection.isDisconnected)
     }
 
+    func testHostEditAppliesReplacementAndSelectionAtomically() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "first\r\n😀second")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        let connection = try XCTUnwrap(PreparedInputContextConnection(
+            adapter: adapter, view: view,
+            makeDriver: { ContextFakeDriver(client: $0) }, schedule: queue.enqueue
+        ))
+        XCTAssertTrue(connection.activate())
+        let edit = RunestoneHostEdit(
+            replacementRange: NSRange(location: 0, length: 5), replacementText: "moved",
+            selectedRange: NSRange(location: 0, length: 5)
+        )
+        XCTAssertTrue(connection.applyHostEdit(edit))
+        XCTAssertEqual(owner.text, "moved\r\n😀second")
+        XCTAssertEqual(connection.textFinderSnapshot()?.selection, NSRange(location: 0, length: 5))
+        XCTAssertFalse(connection.applyHostEdit(RunestoneHostEdit(
+            replacementRange: NSRange(location: 8, length: 1), replacementText: "x",
+            selectedRange: NSRange(location: 0, length: 0)
+        ))) // Splits the emoji's surrogate pair.
+        XCTAssertEqual(owner.text, "moved\r\n😀second")
+    }
+
     func testNestedQueueDuringActivationWaitsForDriverReturn() throws {
         let queue = ContextQueue()
         let owner = ContextOwner(text: "abc")
