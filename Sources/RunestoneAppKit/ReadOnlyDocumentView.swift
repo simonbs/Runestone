@@ -13,7 +13,16 @@ public final class ReadOnlyDocumentView: NSView {
         fileprivate init() {}
     }
 
+    final class InputMutationAuthority {
+        fileprivate init() {}
+    }
+    final class InputMutationTransaction {
+        fileprivate init() {}
+    }
+
     private var inputMutationPermit: InputMutationPermit?
+    private var inputMutationAuthority: InputMutationAuthority?
+    private var activeInputTransaction: InputMutationTransaction?
     private var inputMutationDepth = 0
     private var snapshot: NSMutableAttributedString
     private(set) var contentRevision = UUID()
@@ -69,8 +78,9 @@ public final class ReadOnlyDocumentView: NSView {
     /// The synchronous hook must only publish matching internal session state.
     @discardableResult
     func setContentReturningRevision(_ content: NSAttributedString, permit: InputMutationPermit? = nil,
+                                     transaction: InputMutationTransaction? = nil,
                                      didCommit: (UUID) -> Void = { _ in }) -> UUID? {
-        guard permitsMutation(with: permit) else { return nil }
+        guard allowsMutation(with: permit, transaction: transaction) else { return nil }
         inputInvalidation.suspend()
         defer { inputInvalidation.resume() }
         snapshot = NSMutableAttributedString(attributedString: content)
@@ -106,8 +116,9 @@ public final class ReadOnlyDocumentView: NSView {
     /// The synchronous hook must only publish matching internal session state.
     func replaceContentReturningRevision(in range: NSRange, with content: NSAttributedString,
                                          permit: InputMutationPermit? = nil,
+                                         transaction: InputMutationTransaction? = nil,
                                          didCommit: (UUID) -> Void = { _ in }) -> UUID? {
-        guard permitsMutation(with: permit) else { return nil }
+        guard allowsMutation(with: permit, transaction: transaction) else { return nil }
         inputInvalidation.suspend()
         defer { inputInvalidation.resume() }
         let text = manager.stringView.string
@@ -148,6 +159,13 @@ public final class ReadOnlyDocumentView: NSView {
     func releaseInputMutation(_ permit: InputMutationPermit) -> Bool {
         guard inputMutationPermit === permit, inputMutationDepth == 0 else { return false }
         inputMutationPermit = nil
+        inputMutationAuthority = nil
+        return true
+    }
+
+    private func allowsMutation(with permit: InputMutationPermit?, transaction: InputMutationTransaction?) -> Bool {
+        guard permitsMutation(with: permit) else { return false }
+        if inputMutationPermit != nil { return transaction != nil && activeInputTransaction === transaction }
         return true
     }
 
@@ -157,25 +175,39 @@ public final class ReadOnlyDocumentView: NSView {
     }
 
     /// A permit belongs to exactly one session for its entire lifetime.
-    func bindInputSession(to permit: InputMutationPermit?) -> Bool {
-        guard let permit = permit else { return inputMutationPermit == nil }
-        guard inputMutationPermit === permit, !permit.hasSession else { return false }
+    func bindInputSession(to permit: InputMutationPermit?) -> InputMutationAuthority? {
+        guard let permit = permit else { return inputMutationPermit == nil ? InputMutationAuthority() : nil }
+        guard inputMutationPermit === permit, !permit.hasSession else { return nil }
         permit.hasSession = true
-        return true
+        let authority = InputMutationAuthority()
+        inputMutationAuthority = authority
+        return authority
     }
 
     /// Keeps ownership stable through synchronous layout and change callbacks.
-    func beginInputMutation(with permit: InputMutationPermit?) -> Bool {
-        guard inputMutationDepth == 0, permitsMutation(with: permit) else { return false }
+    func beginInputMutation(with permit: InputMutationPermit?, authority: InputMutationAuthority) -> InputMutationTransaction? {
+        guard inputMutationDepth == 0, permitsMutation(with: permit) else { return nil }
+        if inputMutationPermit != nil && inputMutationAuthority !== authority { return nil }
+        let transaction = InputMutationTransaction()
+        activeInputTransaction = transaction
         inputMutationDepth += 1
         inputInvalidation.suspend()
-        return true
+        return transaction
     }
 
-    func endInputMutation() {
-        precondition(inputMutationDepth > 0)
+    func endInputMutation(_ transaction: InputMutationTransaction) {
+        precondition(inputMutationDepth == 1 && activeInputTransaction === transaction)
+        activeInputTransaction = nil
         inputMutationDepth -= 1
         inputInvalidation.resume()
+    }
+
+    /// Builds an immutable candidate using two full document copies. Callers
+    /// should only request one when a committed-edit owner needs to validate it.
+    func candidateContent(replacing range: NSRange, with replacement: NSAttributedString) -> NSAttributedString {
+        let candidate = NSMutableAttributedString(attributedString: snapshot)
+        candidate.replaceCharacters(in: range, with: replacement)
+        return NSAttributedString(attributedString: candidate)
     }
 
     /// The caller must validate this UTF-16 range against the current document.

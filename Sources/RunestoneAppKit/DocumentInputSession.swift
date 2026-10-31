@@ -14,9 +14,25 @@ import AppKit
 /// external content update makes the session reject operations until refresh.
 /// As with the underlying view, attribute values must be treated as immutable.
 final class DocumentInputSession {
+    /// A prepared change owns a reservation of the canonical document state.
+    /// `publish` must only install already validated canonical state. It must
+    /// not fail, call out, notify observers, or enter an event loop. `finish`
+    /// performs undo registration, synchronization and notifications after the
+    /// view has laid out; it must not mutate this session or its view directly.
+    struct PreparedChange {
+        let publish: () -> Void
+        let finish: () -> Void
+    }
+
+    /// Prepares a complete candidate without changing observable state.
+    /// nil rejects the edit; returned closures must retain any reservation until
+    /// consumed or discarded. The owner must serialize document transactions.
+    typealias PrepareChange = (NSAttributedString) -> PreparedChange?
+
     private let view: ReadOnlyDocumentView
     private let mutationPermit: ReadOnlyDocumentView.InputMutationPermit?
-    private let hasMutationAuthority: Bool
+    private let prepareChange: PrepareChange?
+    private let mutationAuthority: ReadOnlyDocumentView.InputMutationAuthority?
     private var expectedRevision: UUID
     private var isApplyingChange = false
 
@@ -28,24 +44,29 @@ final class DocumentInputSession {
     var isStale: Bool { !contentMatches }
     var contentDidChange: ((NSAttributedString) -> Void)?
 
-    init(view: ReadOnlyDocumentView, mutationPermit: ReadOnlyDocumentView.InputMutationPermit? = nil) {
+    init(view: ReadOnlyDocumentView, mutationPermit: ReadOnlyDocumentView.InputMutationPermit? = nil,
+         prepareChange: PrepareChange? = nil) {
         self.view = view
         self.mutationPermit = mutationPermit
-        self.hasMutationAuthority = view.bindInputSession(to: mutationPermit)
+        self.prepareChange = prepareChange
+        // Atomic publication is only valid with exclusive view ownership.
+        self.mutationAuthority = (prepareChange == nil || mutationPermit != nil) ? view.bindInputSession(to: mutationPermit) : nil
         self.expectedRevision = view.contentRevision
     }
 
     /// Silently replaces the document and clears selection and composition.
     /// Call this to adopt a new document or recover after outside mutation.
+    /// Prepared sessions reject refresh until document-driven synchronization is available.
     @discardableResult
     func refresh(content: NSAttributedString) -> Bool {
-        guard hasMutationAuthority, !isApplyingChange, view.beginInputMutation(with: mutationPermit) else { return false }
+        guard prepareChange == nil, let authority = mutationAuthority, !isApplyingChange,
+              let transaction = view.beginInputMutation(with: mutationPermit, authority: authority) else { return false }
         isApplyingChange = true
         defer {
             isApplyingChange = false
-            view.endInputMutation()
+            view.endInputMutation(transaction)
         }
-        guard view.setContentReturningRevision(content, permit: mutationPermit, didCommit: { revision in
+        guard view.setContentReturningRevision(content, permit: mutationPermit, transaction: transaction, didCommit: { revision in
             expectedRevision = revision
             storedSelection = NSRange(location: 0, length: 0)
             storedMarkedRange = nil
@@ -99,7 +120,9 @@ final class DocumentInputSession {
     @discardableResult
     func setMarkedText(_ content: NSAttributedString, selectedRange relativeSelection: NSRange,
                        replacementRange: NSRange) -> Bool {
-        guard isCurrent else { return false }
+        // Committed-change publication cannot safely persist provisional IME
+        // text until a separate composition overlay has been implemented.
+        guard prepareChange == nil, isCurrent else { return false }
         let range = resolvedReplacementRange(replacementRange)
         let inserted = NSAttributedString(attributedString: content)
         let document = view.manager.stringView.string
@@ -126,7 +149,7 @@ final class DocumentInputSession {
     }
 
     private var contentMatches: Bool {
-        hasMutationAuthority && view.contentRevision == expectedRevision && view.permitsMutation(with: mutationPermit)
+        mutationAuthority != nil && view.contentRevision == expectedRevision && view.permitsMutation(with: mutationPermit)
     }
 
     private func resolvedReplacementRange(_ requested: NSRange) -> NSRange {
@@ -137,21 +160,29 @@ final class DocumentInputSession {
                        selection: NSRange, marked: NSRange?) -> Bool {
         // Set the guard before invoking the view, whose layout can synchronously
         // deliver AppKit notifications, and retain it through the callback.
-        guard view.beginInputMutation(with: mutationPermit) else { return false }
+        guard let authority = mutationAuthority,
+              let transaction = view.beginInputMutation(with: mutationPermit, authority: authority) else { return false }
         isApplyingChange = true
         defer {
             isApplyingChange = false
-            view.endInputMutation()
+            view.endInputMutation(transaction)
         }
         let oldSelection = storedSelection
         let oldMarked = storedMarkedRange
         let previous = view.attributedContent(in: range)
         let didChange = !previous.isEqual(to: replacement)
+        var prepared: PreparedChange?
+        if didChange, let prepareChange = prepareChange {
+            let candidate = view.candidateContent(replacing: range, with: replacement)
+            guard let accepted = prepareChange(candidate), contentMatches else { return false }
+            prepared = accepted
+        }
         if didChange {
-            guard view.replaceContentReturningRevision(in: range, with: replacement, permit: mutationPermit, didCommit: { revision in
+            guard view.replaceContentReturningRevision(in: range, with: replacement, permit: mutationPermit, transaction: transaction, didCommit: { revision in
                 expectedRevision = revision
                 storedSelection = selection
                 storedMarkedRange = marked
+                prepared?.publish()
             }) != nil else { return false }
             // Layout may synchronously notify an outside observer that replaces
             // the document. Never adopt that observer's revision as our own.
@@ -163,6 +194,7 @@ final class DocumentInputSession {
         if didChange || oldSelection != storedSelection || oldMarked != storedMarkedRange {
             view.noteInputCoordinatesChanged()
         }
+        prepared?.finish()
         if didChange, let contentDidChange = contentDidChange { contentDidChange(view.content) }
         return true
     }
