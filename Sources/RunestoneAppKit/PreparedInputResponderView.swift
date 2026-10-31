@@ -7,6 +7,7 @@ import AppKit
 final class PreparedInputResponderView: ReadOnlyDocumentView,
                                         PreparedInputContextConnection.ReadyObserver,
                                         PreparedInputContextConnection.CommandHandler,
+                                        NSDraggingSource,
                                         NSUserInterfaceValidations {
     private weak var inputAdapter: PreparedInputEventAdapter?
     private weak var inputConnection: PreparedInputContextConnection?
@@ -18,6 +19,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     private(set) var isReadOnly = false
     private var focusRequested = false
     private var dragSelection: PreparedInputDragSelection?
+    private var pendingTextDrag: (text: String, range: NSRange)?
     /// Invalidated whenever a pointer gesture ends, even if the next gesture
     /// recreates the same range and revisions while a timer callback is active.
     private var pointerGestureGeneration = UUID()
@@ -804,6 +806,16 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         if handleSyntaxFoldingClick(event) { return }
         guard focusRequested, !disarmed, !isReadOnly,
               let connection = inputConnection else { return }
+        if event.clickCount == 1, !event.modifierFlags.contains(.shift), let window,
+           let snapshot = connection.selectionSnapshot(), snapshot.range.length > 0 {
+            let point = window.convertPoint(toScreen: event.locationInWindow)
+            if let index = InputScreenRangeGeometry.characterIndexForPointer(for: point, in: self),
+               NSLocationInRange(index, snapshot.range) {
+                pendingTextDrag = (snapshot.text, snapshot.range)
+                return
+            }
+        }
+        pendingTextDrag = nil
         _ = connection.performCoordinatedInput { self.routeMouseDown(event, connection: connection) }
     }
 
@@ -913,12 +925,23 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override func mouseDragged(with event: NSEvent) {
+        if let pendingTextDrag {
+            self.pendingTextDrag = nil
+            let item = NSDraggingItem(pasteboardWriter: pendingTextDrag.text as NSString)
+            let local = convert(event.locationInWindow, from: nil)
+            item.setDraggingFrame(NSRect(origin: local, size: NSSize(width: 1, height: 1)), contents: nil)
+            beginDraggingSession(with: [item], event: event, source: self)
+            return
+        }
         guard focusRequested, !disarmed, !isReadOnly, dragSelection != nil,
               let connection = inputConnection else { return }
         if !connection.performCoordinatedInput({ self.routeMouseDragged(event, connection: connection) }) {
             endPointerSelection()
         }
     }
+
+    func draggingSession(_ session: NSDraggingSession,
+                         sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation { .copy }
 
     private func routeMouseDragged(_ event: NSEvent, connection: PreparedInputContextConnection) {
         guard let window = window, event.window === window, ownsKeyFocus, !isRetired else {
@@ -995,7 +1018,14 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         return true
     }
 
-    override func mouseUp(with event: NSEvent) { endPointerSelection() }
+    override func mouseUp(with event: NSEvent) {
+        let shouldCollapseSelection = pendingTextDrag != nil
+        pendingTextDrag = nil
+        if shouldCollapseSelection, let connection = inputConnection {
+            _ = connection.performCoordinatedInput { self.routeMouseDown(event, connection: connection) }
+        }
+        endPointerSelection()
+    }
 
     private func endPointerSelection() {
         let endingGeneration = UUID()
