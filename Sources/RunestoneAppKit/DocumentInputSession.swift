@@ -394,7 +394,10 @@ final class DocumentInputSession {
             }
             // Layout may synchronously notify an outside observer that replaces
             // the document. Never adopt that observer's revision as our own.
-            guard contentMatches else { return false }
+            guard contentMatches else {
+                if let prepared = prepared { prepared.reconcile(.beforeFinish); return true }
+                return false
+            }
         } else {
             storedSelection = selection
             storedMarkedRange = marked
@@ -405,12 +408,12 @@ final class DocumentInputSession {
         // A document owner must hold its reservation through finish. If it
         // nevertheless changes during layout, do not register undo out of order;
         // hand the already-published conflict to the owner's reconciliation path.
-        if prepared != nil && (hasDocumentConflict || !documentIsCurrent()) {
+        if prepared != nil && (!contentMatches || hasDocumentConflict || !documentIsCurrent()) {
             prepared?.reconcile(.beforeFinish)
             return true
         }
         prepared?.finish()
-        if prepared != nil && (hasDocumentConflict || !documentIsCurrent()) {
+        if prepared != nil && (!contentMatches || hasDocumentConflict || !documentIsCurrent()) {
             prepared?.reconcile(.afterFinish)
             return true
         }
@@ -418,8 +421,8 @@ final class DocumentInputSession {
             guard let composition = composition else { return false }
             return documentIsCurrent() && compositionIsCurrent(composition)
         }
-        if didChange || prepared != nil, let contentDidChange = contentDidChange { contentDidChange(view.content) }
-        if prepared != nil && (hasDocumentConflict || !documentIsCurrent()) {
+        if didChange || prepared != nil, let contentDidChange = contentDidChange { contentDidChange(view.snapshotForInputSession()) }
+        if prepared != nil && (!contentMatches || hasDocumentConflict || !documentIsCurrent()) {
             prepared?.reconcile(.afterNotification)
         }
         return true
