@@ -95,6 +95,37 @@ are not claims of complete editor behavior. Active accessibility reports an
 editable text role and routes supported setters through the input gate, but
 role-change notifications and real VoiceOver behavior remain unverified.
 
+## Foreground attachment evidence
+
+Run `./script/build_and_run.sh --verify` on an unlocked Mac to build an isolated
+AppKit test bundle and launch it as a foreground app. The runner requires every
+selected test to execute and pass; a skipped key-window test is a failure. It
+prints the retained temporary build and XCTest log locations. The project-local
+Codex Run action invokes the same workflow.
+
+A foreground run against the public attachment exercised first-responder
+acquisition, blur and reacquisition, two-window transfer, synthetic key events,
+contextual CRLF insertion, responder selection and undo/redo, synthetic mouse
+click and drag with one controlled autoscroll tick, and copy/cut/paste using an
+isolated named pasteboard. Direct `NSTextInputClient` calls exercised Unicode,
+emoji, marked updates and commits, and composition discard on blur. Direct
+`NSAccessibility` calls exercised the editable role, value, selection, range
+and screen geometry. Gate contention and detached clients were also checked.
+These are real key windows but synthetic events and direct protocol calls: they
+do not establish physical keyboard, Emoji panel, third-party input method,
+VoiceOver, real system-pasteboard integration or timing under live dragging.
+The host app must integrate the tested framework revision and verify those
+interactions in its own window before changing its disabled release gate.
+
+After focus loss, reconstruction preserves a valid selection only when the
+canonical revision and attributed snapshot still match; discarded marked text
+restores its pre-composition selection under that same condition. A changed
+snapshot, conflict or invalid Unicode/CRLF boundary resets the selection to the
+start. This comparison and the existing reconstruction can scan the document;
+no latency bound is claimed. AppKit Return currently inserts the contextual
+line ending but has no language-aware automatic indentation or Markdown
+continuation contract; those remain deterministic feature gaps.
+
 ## Input contention and recovery plan
 
 The internal input adapter reports whether each failed callback was rejected
