@@ -55,6 +55,8 @@ public class ReadOnlyDocumentView: NSView {
     private var windowObservers: [NSObjectProtocol] = []
     let inputInvalidation: InputInvalidationDelivery
     private(set) var inputGeometryRevision = UUID()
+    /// Tracks selection/composition changes independently of viewport layout.
+    private(set) var inputSelectionRevision = UUID()
     private(set) var updatingViewport = false
     private var pendingViewportUpdate = false
     private var viewportUpdateScheduled = false
@@ -191,8 +193,14 @@ public class ReadOnlyDocumentView: NSView {
         flushAccessibilityNotificationsIfNeeded()
     }
 
+    func invalidateInputSelectionTracking() {
+        guard !isRetired else { return }
+        inputSelectionRevision = UUID()
+    }
+
     func scheduleAccessibilitySelectionChanged() {
         guard !isRetired else { return }
+        invalidateInputSelectionTracking()
         accessibilitySelectionDirty = true
         flushAccessibilityNotificationsIfNeeded()
     }

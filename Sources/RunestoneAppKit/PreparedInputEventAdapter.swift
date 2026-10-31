@@ -318,9 +318,13 @@ final class PreparedInputEventAdapter {
         insertTextReporting(value, replacementRange: replacementRange).outcome
     }
 
-    func insertTextReporting(_ value: Any, replacementRange: NSRange) -> InputAttempt {
+    func insertTextReporting(_ value: Any, replacementRange: NSRange,
+                             isAvailable: () -> Bool = { true }) -> InputAttempt {
         perform { session in
-            guard let text = self.attributedInput(value), !self.nestedMutationRejected else { return false }
+            // Admission can call out. A clipboard action must not mutate after
+            // losing its connection or focus during that callout.
+            guard isAvailable(), let text = self.attributedInput(value),
+                  !self.nestedMutationRejected, isAvailable() else { return false }
             return session.insertText(text, replacementRange: replacementRange)
         }
     }
@@ -328,19 +332,24 @@ final class PreparedInputEventAdapter {
     /// Only an explicit logical newline command may use the shared policy.
     /// Resolve against the installed snapshot after acquiring the document gate;
     /// arbitrary insertText and marked-text payloads remain literal.
-    func insertLogicalNewlineReporting() -> InputAttempt { insertLogicalBreakReporting(explicit: nil) }
+    func insertLogicalNewlineReporting(isAvailable: () -> Bool = { true }) -> InputAttempt {
+        insertLogicalBreakReporting(explicit: nil, isAvailable: isAvailable)
+    }
 
     /// AppKit's line-break command explicitly requests a Unicode line separator,
     /// which is distinct from a document-style newline or paragraph break.
-    func insertLogicalLineBreakReporting() -> InputAttempt { insertLogicalBreakReporting(explicit: "\u{2028}") }
+    func insertLogicalLineBreakReporting(isAvailable: () -> Bool = { true }) -> InputAttempt {
+        insertLogicalBreakReporting(explicit: "\u{2028}", isAvailable: isAvailable)
+    }
 
-    private func insertLogicalBreakReporting(explicit: String?) -> InputAttempt {
+    private func insertLogicalBreakReporting(explicit: String?, isAvailable: () -> Bool) -> InputAttempt {
         perform { session in
             let selection = session.selectedRange
-            guard !session.hasProvisionalComposition,
+            guard isAvailable(), !session.hasProvisionalComposition,
                   let ending = RunestoneLineEndingPolicy.newline(in: self.view.manager.stringView.string,
                                                                  replacing: selection),
-                  let attributed = self.attributedInput(explicit ?? ending), !self.nestedMutationRejected else { return false }
+                  let attributed = self.attributedInput(explicit ?? ending), !self.nestedMutationRejected,
+                  isAvailable() else { return false }
             return session.insertText(attributed, replacementRange: selection)
         }
     }
@@ -372,7 +381,9 @@ final class PreparedInputEventAdapter {
     @discardableResult
     func setSelection(_ range: NSRange) -> Outcome { setSelectionReporting(range).outcome }
 
-    func setSelectionReporting(_ range: NSRange) -> InputAttempt { perform { $0.setSelection(range) } }
+    func setSelectionReporting(_ range: NSRange, isAvailable: () -> Bool = { true }) -> InputAttempt {
+        perform { isAvailable() && $0.setSelection(range) }
+    }
 
     /// Query results are available only while both the view and canonical revision
     /// match. Geometry providers may call out, so all results are checked again.
