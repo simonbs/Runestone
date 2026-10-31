@@ -879,7 +879,8 @@ public class ReadOnlyDocumentView: NSView {
                 case " " where configuration.showsSpaces: symbol = configuration.spaceSymbol
                 case "\u{00A0}" where configuration.showsNonBreakingSpaces: symbol = configuration.nonBreakingSpaceSymbol
                 case "\u{2028}" where configuration.showsSoftLineBreaks: symbol = configuration.softLineBreakSymbol
-                case "\n", "\r" where configuration.showsLineBreaks: symbol = configuration.lineBreakSymbol
+                case "\n" where configuration.showsLineBreaks: symbol = configuration.lineBreakSymbol
+                case "\r" where configuration.showsLineBreaks: symbol = configuration.lineBreakSymbol
                 default: symbol = nil
                 }
                 if let symbol {
