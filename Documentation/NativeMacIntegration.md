@@ -317,3 +317,26 @@ syntax parsing, window-server presentation, interactive focus/IME, scrolling or
 VoiceOver. Those product-level traces, representative hardware comparisons and
 agreed memory/latency tolerances remain open. Full iOS regression, actual IME and
 VoiceOver, Intel/Rosetta and distribution verification also remain open.
+
+## Native text services and dragging
+
+The prepared AppKit input proxy also implements `NSTextCheckingClient`. AppKit's
+text-checking controller owns spelling, correction, substitution-panel and
+contextual suggestion behavior, while Runestone stores its annotations in a
+presentation-only side table. Suggested replacements and selections return
+through the same revision-checked document reservation and undo path as find
+replacements; a reset, read-only transition, active composition or stale
+revision rejects them rather than mutating the Core Text snapshot directly.
+
+The host exposes Writing Tools in limited, plain-text mode. Contexts are
+immutable document snapshots, and accepted replacements use the same public
+UTF-16 replacement contract. Limited mode deliberately does not claim inline
+TextKit animation or rich-text adoption. Text and Writing Tools payloads remain
+literal, including CR, LF and CRLF.
+
+Selected text is an AppKit `.string` drag source. Text drops insert the literal
+pasteboard payload at the Core Text hit-tested offset through the document gate.
+File URLs use the explicit `.fileURL` pasteboard type and are delegated to the
+host, which owns document opening and sandbox policy. Read-only surfaces can
+still export selected text but reject text mutation; recovery mode must not
+install a file handler that bypasses its document policy.
