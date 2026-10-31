@@ -312,6 +312,12 @@ final class PreparedInputEventAdapter {
         }
     }
 
+    /// A composition can remain provisional even when an empty marked update
+    /// has no visible marked range. nil means the session is unavailable.
+    func hasProvisionalCompositionForInput() -> Bool? {
+        queryForInput(nil as Bool?) { session.hasProvisionalComposition }
+    }
+
     func attributedSubstringForInput(range: NSRange, actualRange: NSRangePointer?) -> NSAttributedString? {
         actualRange?.pointee = NSRange(location: NSNotFound, length: 0)
         let content: NSAttributedString? = queryForInput(nil) {
