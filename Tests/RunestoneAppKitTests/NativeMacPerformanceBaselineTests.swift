@@ -3,13 +3,17 @@ import AppKit
 import Darwin
 @testable import RunestoneAppKit
 import RunestoneEngine
+import RunestoneSyntax
+import TestTreeSitterLanguages
 import XCTest
 
 /// Opt-in Release measurements for the AppKit/Core Text document surface.
 ///
 /// These results are machine-specific baselines, not pass/fail budgets. Fixture
-/// construction and syntax parsing are outside the samples; load includes the
-/// view's attributed-snapshot copy, line indexing and first viewport layout.
+/// Fixture construction is outside the samples. View load includes the
+/// attributed-snapshot copy, line indexing and first viewport layout. Separate
+/// syntax scenarios measure real Tree-sitter parse, bounded capture and fold
+/// queries, incremental reuse and cancellation.
 @MainActor
 final class NativeMacPerformanceBaselineTests: XCTestCase {
     private let viewport = NSSize(width: 700, height: 480)
@@ -21,7 +25,7 @@ final class NativeMacPerformanceBaselineTests: XCTestCase {
 
         let requestedScenario = ProcessInfo.processInfo.environment["RUNESTONE_MAC_PERFORMANCE_SCENARIO"]
         let scenarios = makeScenarios().filter { requestedScenario == nil || $0.name == requestedScenario }
-        XCTAssertFalse(scenarios.isEmpty, "Requested Mac performance scenario does not exist.")
+        if scenarios.isEmpty { throw XCTSkip("Requested scenario belongs to another performance lane.") }
         for scenario in scenarios {
             var trials: [Trial] = []
             for trialIndex in 0..<4 {
@@ -31,6 +35,33 @@ final class NativeMacPerformanceBaselineTests: XCTestCase {
                 if trialIndex > 0 { trials.append(trial) } // discard cold process/framework setup
             }
             report(scenario, trials: trials)
+        }
+    }
+
+    func testRepresentativeSyntaxScenarios() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["RUNESTONE_MAC_PERFORMANCE"] == "1",
+                          "Set RUNESTONE_MAC_PERFORMANCE=1 for opt-in Release measurements.")
+
+        let requestedScenario = ProcessInfo.processInfo.environment["RUNESTONE_MAC_PERFORMANCE_SCENARIO"]
+        let scenarios = makeSyntaxScenarios().filter { requestedScenario == nil || $0.name == requestedScenario }
+        if scenarios.isEmpty { throw XCTSkip("Requested scenario belongs to another performance lane.") }
+        for scenario in scenarios {
+            var trials: [SyntaxTrial] = []
+            for trialIndex in 0..<4 {
+                let trial = try measureSyntax(scenario)
+                XCTAssertGreaterThan(trial.utf16Length, 0)
+                if trialIndex > 0 { trials.append(trial) }
+            }
+            reportSyntax(scenario, trials: trials)
+        }
+
+        if requestedScenario == nil || requestedScenario == "syntax-cancellation-10mb" {
+            var samples: [Double] = []
+            for trialIndex in 0..<4 {
+                let milliseconds = try measureSyntaxCancellation()
+                if trialIndex > 0 { samples.append(milliseconds) }
+            }
+            reportSyntaxCancellation(samples)
         }
     }
 
@@ -116,6 +147,126 @@ final class NativeMacPerformanceBaselineTests: XCTestCase {
         ]
     }
 
+    private func makeSyntaxScenarios() -> [SyntaxScenario] {
+        let shortLine = "const value = 12345; // representative source line\n"
+        return [
+            SyntaxScenario(name: "syntax-small-200-lines", text: String(repeating: shortLine, count: 200)),
+            SyntaxScenario(name: "syntax-large-10mb-short-lines",
+                           text: makeExactASCIIFixture(line: shortLine, byteCount: 10_000_000)),
+            SyntaxScenario(name: "syntax-wrapped-1mib-single-line",
+                           text: "const value = " + String(repeating: "alpha + ", count: 137_000) + "0;",
+                           expectsVisibleCaptures: false),
+            SyntaxScenario(name: "syntax-highlighted-20000-lines",
+                           text: String(repeating: shortLine, count: 20_000)),
+            SyntaxScenario(name: "syntax-folded-20000-functions",
+                           text: (0..<20_000).map { "function f\($0)() { return \($0); }\n" }.joined(),
+                           queryFolds: true),
+            SyntaxScenario(name: "syntax-incremental-20000-lines",
+                           text: String(repeating: shortLine, count: 20_000), measuresIncrementalEdit: true)
+        ]
+    }
+
+    private func measureSyntax(_ scenario: SyntaxScenario) throws -> SyntaxTrial {
+        let highlighter = try makeJavaScriptHighlighter()
+        let residentBefore = residentBytes()
+        let parseStart = ProcessInfo.processInfo.systemUptime
+        try waitForUpdate(highlighter, text: scenario.text)
+        let parseMilliseconds = elapsedMilliseconds(since: parseStart)
+        let residentAfterParse = residentBytes()
+
+        let captureStart = ProcessInfo.processInfo.systemUptime
+        let captureLength = min((scenario.text as NSString).length, 65_536)
+        let captures = try waitForCaptures(highlighter, range: NSRange(location: 0, length: captureLength))
+        let captureMilliseconds = elapsedMilliseconds(since: captureStart)
+
+        let foldStart = ProcessInfo.processInfo.systemUptime
+        let folds = try waitForFolds(highlighter)
+        let foldMilliseconds = elapsedMilliseconds(since: foldStart)
+
+        var incrementalMilliseconds: Double?
+        if scenario.measuresIncrementalEdit {
+            let source = NSMutableString(string: scenario.text)
+            let location = source.length / 2
+            source.replaceCharacters(in: NSRange(location: location, length: 1), with: "9")
+            let editStart = ProcessInfo.processInfo.systemUptime
+            try waitForUpdate(highlighter, text: source as String)
+            incrementalMilliseconds = elapsedMilliseconds(since: editStart)
+        }
+        let residentObservation = max(residentAfterParse, residentBytes())
+        if scenario.queryFolds { XCTAssertGreaterThan(folds.count, 10_000) }
+        if scenario.expectsVisibleCaptures { XCTAssertFalse(captures.isEmpty) }
+        return SyntaxTrial(parseMilliseconds: parseMilliseconds,
+                           captureMilliseconds: captureMilliseconds,
+                           foldMilliseconds: foldMilliseconds,
+                           incrementalMilliseconds: incrementalMilliseconds,
+                           residentDeltaBytes: residentObservation >= residentBefore ? residentObservation - residentBefore : 0,
+                           residentObservationBytes: residentObservation,
+                           utf8Bytes: scenario.text.utf8.count,
+                           utf16Length: (scenario.text as NSString).length,
+                           captureCount: captures.count,
+                           foldCount: folds.count)
+    }
+
+    private func measureSyntaxCancellation() throws -> Double {
+        let highlighter = try makeJavaScriptHighlighter()
+        let large = makeExactASCIIFixture(
+            line: "const value = 12345; // cancellation fixture\n", byteCount: 10_000_000)
+        let first = expectation(description: "superseded parse cancelled")
+        let second = expectation(description: "newest parse published")
+        let start = ProcessInfo.processInfo.systemUptime
+        highlighter.update(large) { result in
+            if case .failure(.cancelled) = result { first.fulfill() }
+        }
+        highlighter.update("const newest = 42;\n") { result in
+            if case .success = result { second.fulfill() }
+        }
+        wait(for: [first, second], timeout: 30)
+        return elapsedMilliseconds(since: start)
+    }
+
+    private func makeJavaScriptHighlighter() throws -> RunestoneSyntaxHighlighter {
+        try RunestoneSyntaxHighlighter(language: RunestoneSyntaxLanguage(
+            language: tree_sitter_javascript(),
+            highlightsQuery: """
+            (number) @number
+            (string) @string
+            (comment) @comment
+            """,
+            foldsQuery: "(statement_block) @fold"))
+    }
+
+    private func waitForUpdate(_ highlighter: RunestoneSyntaxHighlighter, text: String) throws {
+        let finished = expectation(description: "syntax update")
+        let box = LockedResultBox<Void>()
+        highlighter.update(text) { result in box.set(result); finished.fulfill() }
+        wait(for: [finished], timeout: 60)
+        _ = try XCTUnwrap(box.value).get()
+    }
+
+    private func waitForCaptures(_ highlighter: RunestoneSyntaxHighlighter,
+                                 range: NSRange) throws -> [RunestoneSyntaxCapture] {
+        let finished = expectation(description: "syntax captures")
+        let box = LockedResultBox<[RunestoneSyntaxCapture]>()
+        highlighter.captures(in: range) { result in box.set(result); finished.fulfill() }
+        wait(for: [finished], timeout: 60)
+        return try XCTUnwrap(box.value).get()
+    }
+
+    private func waitForFolds(_ highlighter: RunestoneSyntaxHighlighter) throws -> [RunestoneSyntaxFold] {
+        let finished = expectation(description: "syntax folds")
+        let box = LockedResultBox<[RunestoneSyntaxFold]>()
+        highlighter.folds { result in box.set(result); finished.fulfill() }
+        wait(for: [finished], timeout: 60)
+        return try XCTUnwrap(box.value).get()
+    }
+
+    private func makeExactASCIIFixture(line: String, byteCount: Int) -> String {
+        precondition(line.utf8.count == line.count)
+        let repetitions = byteCount / line.count
+        let remainder = byteCount - repetitions * line.count
+        return String(repeating: line, count: repetitions) + String(repeating: " ", count: remainder)
+    }
+
     private func makeExactUTF8Fixture(byteCount: Int) -> String {
         let line = String(repeating: "a", count: 999) + "\n"
         precondition(byteCount.isMultiple(of: line.utf8.count))
@@ -145,6 +296,45 @@ final class NativeMacPerformanceBaselineTests: XCTestCase {
         guard let data = try? JSONSerialization.data(withJSONObject: result, options: [.sortedKeys]),
               let json = String(data: data, encoding: .utf8) else {
             XCTFail("Unable to serialize Mac performance result for \(scenario.name)")
+            return
+        }
+        print("RUNESTONE_MAC_PERFORMANCE_RESULT \(json)")
+    }
+
+    private func reportSyntax(_ scenario: SyntaxScenario, trials: [SyntaxTrial]) {
+        let result: [String: Any] = [
+            "scenario": scenario.name,
+            "utf8Bytes": trials.last?.utf8Bytes ?? 0,
+            "utf16Length": trials.last?.utf16Length ?? 0,
+            "parseSamplesMs": trials.map(\.parseMilliseconds),
+            "parseMedianMs": median(trials.map(\.parseMilliseconds)),
+            "captureSamplesMs": trials.map(\.captureMilliseconds),
+            "captureMedianMs": median(trials.map(\.captureMilliseconds)),
+            "foldSamplesMs": trials.map(\.foldMilliseconds),
+            "foldMedianMs": median(trials.map(\.foldMilliseconds)),
+            "incrementalSamplesMs": trials.compactMap(\.incrementalMilliseconds),
+            "captureCount": trials.last?.captureCount ?? 0,
+            "foldCount": trials.last?.foldCount ?? 0,
+            "residentDeltaSamplesBytes": trials.map(\.residentDeltaBytes),
+            "residentDeltaMedianBytes": median(trials.map(\.residentDeltaBytes)),
+            "residentObservationSamplesBytes": trials.map(\.residentObservationBytes),
+            "residentObservationMedianBytes": median(trials.map(\.residentObservationBytes))
+        ]
+        reportJSON(result, scenario: scenario.name)
+    }
+
+    private func reportSyntaxCancellation(_ samples: [Double]) {
+        reportJSON([
+            "scenario": "syntax-cancellation-10mb",
+            "completionSamplesMs": samples,
+            "completionMedianMs": median(samples)
+        ], scenario: "syntax-cancellation-10mb")
+    }
+
+    private func reportJSON(_ result: [String: Any], scenario: String) {
+        guard let data = try? JSONSerialization.data(withJSONObject: result, options: [.sortedKeys]),
+              let json = String(data: data, encoding: .utf8) else {
+            XCTFail("Unable to serialize Mac performance result for \(scenario)")
             return
         }
         print("RUNESTONE_MAC_PERFORMANCE_RESULT \(json)")
@@ -193,5 +383,37 @@ private struct Trial {
     let logicalLines: Int
     let documentHeight: CGFloat
     let visibleUTF16Length: Int
+}
+
+private struct SyntaxScenario {
+    let name: String
+    let text: String
+    var queryFolds = false
+    var measuresIncrementalEdit = false
+    var expectsVisibleCaptures = true
+}
+
+private struct SyntaxTrial {
+    let parseMilliseconds: Double
+    let captureMilliseconds: Double
+    let foldMilliseconds: Double
+    let incrementalMilliseconds: Double?
+    let residentDeltaBytes: UInt64
+    let residentObservationBytes: UInt64
+    let utf8Bytes: Int
+    let utf16Length: Int
+    let captureCount: Int
+    let foldCount: Int
+}
+
+private final class LockedResultBox<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: Result<Value, RunestoneSyntaxError>?
+
+    var value: Result<Value, RunestoneSyntaxError>? { lock.withLock { storage } }
+
+    func set(_ result: Result<Value, RunestoneSyntaxError>) {
+        lock.withLock { storage = result }
+    }
 }
 #endif
