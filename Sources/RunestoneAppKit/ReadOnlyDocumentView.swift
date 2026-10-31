@@ -40,13 +40,15 @@ public final class ReadOnlyDocumentView: NSView {
         _ = setContentReturningRevision(content)
     }
 
-    /// Returns the revision assigned before any layout notifications can run.
+    /// Publishes the fully installed model before any layout notification can run.
+    /// The synchronous hook must only publish matching internal session state.
     @discardableResult
-    func setContentReturningRevision(_ content: NSAttributedString) -> UUID {
+    func setContentReturningRevision(_ content: NSAttributedString, didCommit: (UUID) -> Void = { _ in }) -> UUID {
         snapshot = NSMutableAttributedString(attributedString: content)
         let revision = UUID()
         contentRevision = revision
         resetLayout(width: 0)
+        didCommit(revision)
         needsDisplay = true
         if let scroll = enclosingScrollView {
             scroll.contentView.scroll(to: .zero)
@@ -69,14 +71,19 @@ public final class ReadOnlyDocumentView: NSView {
         replaceContentReturningRevision(in: range, with: content) != nil
     }
 
-    /// Returns the revision assigned before any layout notifications can run.
-    func replaceContentReturningRevision(in range: NSRange, with content: NSAttributedString) -> UUID? {
+    /// Publishes the fully installed model before any layout notification can run.
+    /// The synchronous hook must only publish matching internal session state.
+    func replaceContentReturningRevision(in range: NSRange, with content: NSAttributedString,
+                                         didCommit: (UUID) -> Void = { _ in }) -> UUID? {
         let text = manager.stringView.string
         guard range.location >= 0, range.length >= 0, range.location <= text.length,
               range.length <= text.length - range.location,
               isScalarBoundary(range.location, in: text),
               isScalarBoundary(range.location + range.length, in: text) else { return nil }
-        if range.length == 0 && content.length == 0 { return contentRevision }
+        if range.length == 0 && content.length == 0 {
+            didCommit(contentRevision)
+            return contentRevision
+        }
         let replacement = NSAttributedString(attributedString: content)
         guard let edit = LineEditTransaction.replace(in: manager, range: range, with: replacement.string) else { return nil }
         snapshot.replaceCharacters(in: range, with: replacement)
@@ -87,6 +94,7 @@ public final class ReadOnlyDocumentView: NSView {
         for id in ids { controllers.removeValue(forKey: id)?.invalidate() }
         controllerOrder.removeAll { ids.contains($0) }
         visibleLayout = nil
+        didCommit(revision)
         needsDisplay = true
         updateViewport()
         return revision

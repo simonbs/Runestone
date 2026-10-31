@@ -38,12 +38,12 @@ final class DocumentInputSession {
         guard !isApplyingChange else { return false }
         isApplyingChange = true
         defer { isApplyingChange = false }
-        let revision = view.setContentReturningRevision(content)
-        expectedRevision = revision
-        guard contentMatches else { return false }
-        storedSelection = NSRange(location: 0, length: 0)
-        storedMarkedRange = nil
-        return true
+        _ = view.setContentReturningRevision(content) { revision in
+            expectedRevision = revision
+            storedSelection = NSRange(location: 0, length: 0)
+            storedMarkedRange = nil
+        }
+        return contentMatches
     }
 
     /// Sets a document-relative UTF-16 selection, rejecting invalid ranges.
@@ -127,14 +127,18 @@ final class DocumentInputSession {
         let previous = view.attributedContent(in: range)
         let didChange = !previous.isEqual(to: replacement)
         if didChange {
-            guard let revision = view.replaceContentReturningRevision(in: range, with: replacement) else { return false }
-            expectedRevision = revision
+            guard view.replaceContentReturningRevision(in: range, with: replacement, didCommit: { revision in
+                expectedRevision = revision
+                storedSelection = selection
+                storedMarkedRange = marked
+            }) != nil else { return false }
             // Layout may synchronously notify an outside observer that replaces
             // the document. Never adopt that observer's revision as our own.
             guard contentMatches else { return false }
+        } else {
+            storedSelection = selection
+            storedMarkedRange = marked
         }
-        storedSelection = selection
-        storedMarkedRange = marked
         if didChange, let contentDidChange = contentDidChange { contentDidChange(view.content) }
         return true
     }
