@@ -4,10 +4,13 @@ This is the Runestone-side counterpart to RunestoneEditor's
 `Documentation/NativeMacDependencyAndScaleEvidence.md` at app revision
 `0eb07a52cfeb7059ed3fbf385cab691cb928686c`. It records the reviewed capability
 boundary and outstanding evidence; it is not a Phase 1 exit or release claim.
-The app's local framework revision pin for that evidence is
-`b73f673e73c9e3380a1cee3899aabc1016e49496`. The app audit applies to that
-pin, not subsequent framework changes. The current framework HEAD and queue
-owner are recorded separately in the integration queue. The committed remote
+The app's local framework revision pin for that historical evidence was
+`b73f673e73c9e3380a1cee3899aabc1016e49496`. The recorded audit applies to that
+pin, not subsequent framework changes. The app worktree was later observed at
+`287300b44c919d0e4c5ee89660a52fd18390674c`, with its revision file pinning
+`c4dafb6869a81c005600e8a1a895aa4cd2cc3a69`; this line-ending work is newer than
+that pin. The current framework HEAD and queue owner are recorded separately in
+the integration queue. The committed remote
 dependency lock is a separate input and has not been updated by this work.
 
 ## Products and ownership
@@ -83,6 +86,38 @@ failed input and discarded composition, integrate and verify the app gate, and
 verify actual key focus, input methods, composition on blur, accessibility and
 VoiceOver in an unlocked session. Never replay stale input against a newer
 snapshot. The headless tests do not establish those interactions.
+
+## Line-ending editing contract
+
+`RunestoneLineEndingPolicy` resolves an explicitly identified logical newline
+against the UTF-16 document snapshot and replacement range. Matching nearest
+unselected delimiters, or the only surrounding delimiter, determine the style;
+conflicting neighbors use a unique document-wide predominant style, and a tie
+or an empty document falls back to LF. CRLF is one delimiter; CR, LF, NEL,
+Unicode line separator and paragraph separator are distinct. The policy rejects
+ranges that split a surrogate pair or CRLF and never rewrites the snapshot.
+Finding a delimiter may scan a long line, and ambiguous context may scan the
+whole document; there is no incremental count or latency claim.
+
+The private AppKit adapter resolves `insertNewline:` after the document gate is
+held and the installed revision has been checked. `insertLineBreak:` inserts
+the explicit Unicode line separator. Ordinary input-client text, marked updates,
+commits and paste-like replacements remain literal; an ambiguous single LF is
+not treated as proof of a command. The app's future gate implementation must
+keep its snapshot and revision paired, preserve exact encoding and line endings
+through publication and undo/redo, and route only reliably identified newline
+commands through the contextual policy. No editable attachment is exposed.
+
+On iOS, paste, arbitrary insertion, text replacement and Writing Tools now
+preserve supplied delimiters; callers can use `TextView.insertLogicalNewline()`
+when they know an input was a newline command. This changes the former
+`lineEndings` normalization behavior. UIKit's generic `insertText` does not
+itself establish that a bare LF represents Return, so it remains literal and
+does not run the old automatic-newline indentation path. Until the app has a
+reliably identified command path, ordinary iOS keyboard Return can therefore
+insert LF in a CRLF or CR document and omit automatic newline indentation.
+Resolving and testing that integration, including real software keyboards and
+IMEs, remains required; do not claim full cross-platform keyboard compliance.
 
 ## Scale evidence and remaining work
 

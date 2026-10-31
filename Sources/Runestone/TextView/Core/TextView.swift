@@ -690,11 +690,13 @@ open class TextView: UIScrollView {
             }
         }
     }
-    /// Line endings to use when inserting a line break.
+    /// The configured line ending used by line-based editing operations that
+    /// need to synthesize a delimiter, such as moving lines. Defaults to LF.
     ///
-    /// The value only affects new line breaks inserted in the text view and changing this value does not change the line endings of the text in the text view. Defaults to Unix (LF).
-    ///
-    /// The TextView will only update the line endings when text is modified through an external event, such as when the user typing on the keyboard, when the user is replacing selected text, and when pasting text into the text view. In all other cases, you should make sure that the text provided to the text view uses the desired line endings. This includes when calling ``TextView/setState(_:addUndoAction:)`` and ``TextView/replaceText(in:)``.
+    /// Changing this value does not modify existing text or normalize inserted,
+    /// pasted, marked, or replacement text. An explicitly identified logical
+    /// newline uses the surrounding document context instead; see
+    /// ``TextView/insertLogicalNewline()``.
     public var lineEndings: LineEnding {
         get {
             textInputView.lineEndings
@@ -922,6 +924,23 @@ open class TextView: UIScrollView {
         textInputView.inputDelegate?.selectionWillChange(textInputView)
         textInputView.insertText(text)
         textInputView.inputDelegate?.selectionDidChange(textInputView)
+    }
+
+    /// Inserts one logical newline at the current selection using the
+    /// surrounding line-ending style, or the predominant document style when
+    /// the surrounding styles differ. An empty document or a tie falls back
+    /// to LF. Preserves existing text and registers the usual undo operation.
+    ///
+    /// Call this only when the input source identifies a newline command.
+    /// Generic inserted text, including a standalone LF, is preserved literally.
+    /// Returns false when there is no valid selection, a composition is active,
+    /// or the edit is rejected.
+    @discardableResult
+    public func insertLogicalNewline() -> Bool {
+        textInputView.inputDelegate?.selectionWillChange(textInputView)
+        let inserted = textInputView.insertLogicalNewline()
+        textInputView.inputDelegate?.selectionDidChange(textInputView)
+        return inserted
     }
 
     /// Replaces the text that is in the specified range.

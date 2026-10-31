@@ -1,5 +1,6 @@
 // swiftlint:disable file_length
 import Combine
+import RunestoneEngine
 import UIKit
 
 protocol TextInputViewDelegate: AnyObject {
@@ -1047,8 +1048,7 @@ final class TextInputView: UIView, UITextInput {
     override func paste(_ sender: Any?) {
         if let selectedTextRange = selectedTextRange, let string = UIPasteboard.general.string {
             inputDelegate?.selectionWillChange(self)
-            let preparedText = prepareTextForInsertion(string)
-            replace(selectedTextRange, withText: preparedText)
+            replace(selectedTextRange, withText: string)
             inputDelegate?.selectionDidChange(self)
         }
     }
@@ -1431,7 +1431,7 @@ extension TextInputView {
 extension TextInputView {
     func insertText(_ text: String) {
         // A typed tab follows the indentation strategy. Replacement and pasted text retain literal tabs.
-        let preparedText = text == "\t" ? indentStrategy.string(indentLevel: 1) : prepareTextForInsertion(text)
+        let preparedText = text == "\t" ? indentStrategy.string(indentLevel: 1) : text
         isRestoringPreviouslyDeletedText = hasDeletedTextWithPendingLayoutSubviews
         hasDeletedTextWithPendingLayoutSubviews = false
         defer {
@@ -1448,15 +1448,30 @@ extension TextInputView {
         // document, then pressing any arrow key (up, right, down or left) followed by the return key.
         // The backtick will remain marked unless we manually clear the marked range.
         markedRange = nil
-        if LineEnding(symbol: text) != nil {
-            indentController.insertLineBreak(in: selectedRange, using: lineEndings)
-            layoutIfNeeded()
-            delegate?.textInputViewDidChangeSelection(self)
+        replaceText(in: selectedRange, with: preparedText)
+        layoutIfNeeded()
+        delegate?.textInputViewDidChangeSelection(self)
+    }
+
+    /// Used only when the input source identifies a logical newline command.
+    /// Generic UITextInput insertion is ambiguous and remains literal.
+    @discardableResult
+    func insertLogicalNewline() -> Bool {
+        guard markedRange == nil, let selectedRange = selectedRange,
+              let symbol = RunestoneLineEndingPolicy.newline(in: string, replacing: selectedRange),
+              shouldChangeText(in: selectedRange, replacementText: symbol) else { return false }
+        let previousVersion = textMutationVersion
+        if let ending = LineEnding(symbol: symbol) {
+            indentController.insertLineBreak(in: selectedRange, using: ending)
         } else {
-            replaceText(in: selectedRange, with: preparedText)
-            layoutIfNeeded()
-            delegate?.textInputViewDidChangeSelection(self)
+            // Unicode separators cannot be represented by the legacy iOS
+            // LineEnding enum, but must still be inserted without conversion.
+            _ = replaceText(in: selectedRange, with: symbol)
         }
+        guard textMutationVersion != previousVersion else { return false }
+        layoutIfNeeded()
+        delegate?.textInputViewDidChangeSelection(self)
+        return true
     }
 
     func deleteBackward() {
@@ -1507,9 +1522,8 @@ extension TextInputView {
     }
 
     func replace(_ range: UITextRange, withText text: String) {
-        let preparedText = prepareTextForInsertion(text)
-        if let indexedRange = range as? IndexedRange, shouldChangeText(in: indexedRange.range.nonNegativeLength, replacementText: preparedText) {
-            replaceText(in: indexedRange.range.nonNegativeLength, with: preparedText)
+        if let indexedRange = range as? IndexedRange, shouldChangeText(in: indexedRange.range.nonNegativeLength, replacementText: text) {
+            replaceText(in: indexedRange.range.nonNegativeLength, with: text)
             delegate?.textInputViewDidChangeSelection(self)
         }
     }
@@ -1587,7 +1601,7 @@ extension TextInputView {
     }
 
     /// Applies a plain-text Writing Tools replacement through the normal editing pipeline.
-    /// The returned string is the actual inserted text, including line-ending normalization.
+    /// The returned string is the actual inserted text, preserving its line endings.
     func replaceTextForWritingTools(in range: NSRange, with text: String) -> String? {
         replaceTextFromSystem(in: range, with: text, isWritingToolsReplacement: true)
     }
@@ -1601,7 +1615,7 @@ extension TextInputView {
         }
         let originalVersion = textMutationVersion
         let originalContextVersion = writingToolsContextVersion
-        let preparedText = prepareTextForInsertion(text)
+        let preparedText = text
         guard !isWritingToolsReplacement || allowsWritingToolsReplacement(in: range, with: preparedText),
               textMutationVersion == originalVersion, writingToolsContextVersion == originalContextVersion else {
             return nil
@@ -1773,12 +1787,6 @@ extension TextInputView {
         }
     }
 
-    private func prepareTextForInsertion(_ text: String) -> String {
-        // Normalize to LF first so CRLF pairs and newly inserted delimiters are not replaced twice.
-        let normalizedText = text.replacingOccurrences(of: "\r\n", with: "\n")
-            .replacingOccurrences(of: "\r", with: "\n")
-        return normalizedText.replacingOccurrences(of: "\n", with: lineEndings.symbol)
-    }
 }
 
 // MARK: - Selection
