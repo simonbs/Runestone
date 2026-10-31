@@ -260,6 +260,13 @@ full cross-platform keyboard compliance.
 
 ## Scale evidence and remaining work
 
+The presentation-settings and native-find work shared one integration checkout.
+Framework commit `d02a8507` therefore contains both the public fragment-level
+current-line highlight option and the small range-scrolling helper used by the
+subsequent native-find document operations in `4953dc65`. These are independent
+public AppKit contracts despite landing in the same checkpoint; their focused
+tests and downstream application wiring remain separately attributable.
+
 The app's deterministic 10,000,000-byte UTF-8/CRLF fixture has 10,000 lines of
 1,000 bytes and SHA-256
 `4780b5fa83919bfdac0380a9528752e19db5ce3d54c7f1eb9d8a5875a25e57ec`.
