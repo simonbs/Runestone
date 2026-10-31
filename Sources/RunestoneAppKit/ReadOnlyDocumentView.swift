@@ -25,7 +25,24 @@ public final class ReadOnlyDocumentView: NSView {
     private var coordinator: ViewportLayoutCoordinator!
     private var layoutWidth: CGFloat = 0
     private var boundsObserver: NSObjectProtocol?
-    private var updatingViewport = false
+    private var windowObservers: [NSObjectProtocol] = []
+    let inputInvalidation: InputInvalidationDelivery
+    private(set) var inputGeometryRevision = UUID()
+    private(set) var updatingViewport = false
+    private var pendingViewportUpdate = false
+    private var viewportUpdateScheduled = false
+    private var viewportRetryCount = 0
+    private var viewportRetryExhausted = false
+    private var viewportRecoveryScheduled = false
+    private var viewportRecoveryToken = UUID()
+    private var viewportRecoveryDelay: TimeInterval = 0.05
+    private let viewportRecoveryScheduler: (TimeInterval, @escaping () -> Void) -> Void
+    private weak var exhaustedClip: NSClipView?
+    private var exhaustedBounds: CGRect?
+    private var exhaustedContentRevision: UUID?
+    private var updatingContentRevision: UUID?
+    private weak var updatingClip: NSClipView?
+    private var updatingBounds: CGRect?
     private(set) var visibleLayout: ViewportLayoutCoordinator.Result?
 
     public override var isFlipped: Bool { true }
@@ -54,11 +71,14 @@ public final class ReadOnlyDocumentView: NSView {
     func setContentReturningRevision(_ content: NSAttributedString, permit: InputMutationPermit? = nil,
                                      didCommit: (UUID) -> Void = { _ in }) -> UUID? {
         guard permitsMutation(with: permit) else { return nil }
+        inputInvalidation.suspend()
+        defer { inputInvalidation.resume() }
         snapshot = NSMutableAttributedString(attributedString: content)
         let revision = UUID()
         contentRevision = revision
         resetLayout(width: 0)
         didCommit(revision)
+        noteInputCoordinatesChanged()
         needsDisplay = true
         if let scroll = enclosingScrollView {
             scroll.contentView.scroll(to: .zero)
@@ -88,6 +108,8 @@ public final class ReadOnlyDocumentView: NSView {
                                          permit: InputMutationPermit? = nil,
                                          didCommit: (UUID) -> Void = { _ in }) -> UUID? {
         guard permitsMutation(with: permit) else { return nil }
+        inputInvalidation.suspend()
+        defer { inputInvalidation.resume() }
         let text = manager.stringView.string
         guard range.location >= 0, range.length >= 0, range.location <= text.length,
               range.length <= text.length - range.location,
@@ -108,6 +130,7 @@ public final class ReadOnlyDocumentView: NSView {
         controllerOrder.removeAll { ids.contains($0) }
         visibleLayout = nil
         didCommit(revision)
+        noteInputCoordinatesChanged()
         needsDisplay = true
         updateViewport()
         return revision
@@ -145,12 +168,14 @@ public final class ReadOnlyDocumentView: NSView {
     func beginInputMutation(with permit: InputMutationPermit?) -> Bool {
         guard inputMutationDepth == 0, permitsMutation(with: permit) else { return false }
         inputMutationDepth += 1
+        inputInvalidation.suspend()
         return true
     }
 
     func endInputMutation() {
         precondition(inputMutationDepth > 0)
         inputMutationDepth -= 1
+        inputInvalidation.resume()
     }
 
     /// The caller must validate this UTF-16 range against the current document.
@@ -165,9 +190,15 @@ public final class ReadOnlyDocumentView: NSView {
         return !(0xD800...0xDBFF).contains(previous) || !(0xDC00...0xDFFF).contains(next)
     }
 
-    init(snapshot: NSAttributedString, fallbackHeight: CGFloat) {
+    init(snapshot: NSAttributedString, fallbackHeight: CGFloat,
+         inputInvalidation: InputInvalidationDelivery = InputInvalidationDelivery(),
+         viewportRecoveryScheduler: @escaping (TimeInterval, @escaping () -> Void) -> Void = { delay, work in
+             DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+         }) {
         precondition(fallbackHeight.isFinite && fallbackHeight > 0)
         self.snapshot = NSMutableAttributedString(attributedString: snapshot)
+        self.inputInvalidation = inputInvalidation
+        self.viewportRecoveryScheduler = viewportRecoveryScheduler
         self.fallbackHeight = fallbackHeight
         self.manager = LineManager(stringView: StringView(string: snapshot.string))
         super.init(frame: .zero)
@@ -178,6 +209,36 @@ public final class ReadOnlyDocumentView: NSView {
 
     deinit {
         if let observer = boundsObserver { NotificationCenter.default.removeObserver(observer) }
+        windowObservers.forEach { NotificationCenter.default.removeObserver($0) }
+    }
+
+    public override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        windowObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        windowObservers.removeAll()
+        if let window = window {
+            for name in [NSWindow.didMoveNotification, NSWindow.didResizeNotification, NSWindow.didChangeScreenNotification] {
+                windowObservers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                    self?.noteInputCoordinatesChanged()
+                })
+            }
+        }
+        noteInputCoordinatesChanged()
+    }
+
+    /// The owner also calls this when an ancestor moves inside a stationary window.
+    func noteInputCoordinatesChanged() {
+        if !updatingViewport {
+            let needsRecovery = viewportRetryExhausted
+            resetViewportRecovery()
+            if needsRecovery {
+                pendingViewportUpdate = true
+                inputInvalidation.suspend()
+                if !scheduleViewportUpdate() { inputInvalidation.resume() }
+            }
+        }
+        inputGeometryRevision = UUID()
+        inputInvalidation.invalidate()
     }
 
     public override func viewDidMoveToSuperview() {
@@ -188,9 +249,11 @@ public final class ReadOnlyDocumentView: NSView {
             clip.postsBoundsChangedNotifications = true
             boundsObserver = NotificationCenter.default.addObserver(forName: NSView.boundsDidChangeNotification,
                                                                      object: clip, queue: .main) { [weak self] _ in
+                self?.noteInputCoordinatesChanged()
                 self?.updateViewport()
             }
         }
+        noteInputCoordinatesChanged()
         updateViewport()
     }
 
@@ -201,11 +264,52 @@ public final class ReadOnlyDocumentView: NSView {
 
     /// Resolves against the clip bounds, never the dirty drawing rectangle.
     func updateViewport() {
-        guard !updatingViewport, let clip = enclosingScrollView?.contentView,
-              clip.bounds.width.isFinite, clip.bounds.width > 0,
+        if updatingViewport {
+            let clip = enclosingScrollView?.contentView
+            if clip !== updatingClip || clip?.bounds != updatingBounds || contentRevision != updatingContentRevision {
+                pendingViewportUpdate = true
+            }
+            return
+        }
+        guard let clip = enclosingScrollView?.contentView else { return }
+        if viewportRetryExhausted {
+            guard clip !== exhaustedClip || clip.bounds != exhaustedBounds || contentRevision != exhaustedContentRevision else { return }
+            resetViewportRecovery()
+        }
+        guard clip.bounds.width.isFinite, clip.bounds.width > 0,
               clip.bounds.height.isFinite, clip.bounds.height > 0 else { return }
+        let previousGeometry = inputLayoutSignature()
+        inputInvalidation.suspend()
         updatingViewport = true
-        defer { updatingViewport = false }
+        updatingContentRevision = contentRevision
+        updatingClip = clip
+        updatingBounds = clip.bounds
+        inputGeometryRevision = UUID()
+        defer {
+            updatingViewport = false
+            updatingContentRevision = nil
+            updatingClip = nil
+            updatingBounds = nil
+            inputGeometryRevision = UUID()
+            if pendingViewportUpdate && viewportRetryCount >= 3 {
+                pendingViewportUpdate = false
+                viewportRetryExhausted = true
+                exhaustedClip = clip
+                exhaustedBounds = clip.bounds
+                exhaustedContentRevision = contentRevision
+                visibleLayout = nil
+                needsLayout = true
+                scheduleViewportRecovery()
+            }
+            if previousGeometry != inputLayoutSignature() { inputInvalidation.invalidate() }
+            if !pendingViewportUpdate || !scheduleViewportUpdate() {
+                if !pendingViewportUpdate {
+                    viewportRetryCount = 0
+                    if !viewportRetryExhausted { viewportRecoveryDelay = 0.05 }
+                }
+                inputInvalidation.resume()
+            }
+        }
         let viewportRevision = contentRevision
         let width = clip.bounds.width
         if width != layoutWidth {
@@ -235,6 +339,11 @@ public final class ReadOnlyDocumentView: NSView {
         // Frame changes and scroll clamping can alter the clip's actual bounds.
         // Re-resolve against those bounds before publishing frames for drawing.
         for _ in 0..<3 {
+            guard enclosingScrollView?.contentView === clip, clip.bounds.width == width else {
+                visibleLayout = nil
+                pendingViewportUpdate = true
+                return
+            }
             let requested = clip.bounds
             guard let result = coordinator.layout(in: requested) else { visibleLayout = nil; return }
             let size = NSSize(width: width, height: max(clip.bounds.height, manager.contentHeight))
@@ -248,8 +357,18 @@ public final class ReadOnlyDocumentView: NSView {
                 enclosingScrollView?.reflectScrolledClipView(clip)
                 guard contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
             }
-            if result.isComplete && abs(clip.bounds.minY - result.viewport.minY) < 0.01 {
-                visibleLayout = result
+            guard enclosingScrollView?.contentView === clip,
+                  clip.bounds.width == requested.width, clip.bounds.height == requested.height else {
+                visibleLayout = nil
+                pendingViewportUpdate = true
+                return
+            }
+            if result.isComplete && clip.bounds.minX == result.viewport.minX &&
+                abs(clip.bounds.minY - result.viewport.minY) < 0.01 {
+                // AppKit may align a constrained scroll origin by a subpixel.
+                // Publish the actual bounds while preserving the old tolerance.
+                visibleLayout = ViewportLayoutCoordinator.Result(viewport: clip.bounds,
+                    contentOffsetAdjustmentY: clip.bounds.minY - requested.minY, lines: result.lines, isComplete: true)
                 trimControllers(keeping: Set(result.lines.map { $0.line.id }))
                 needsDisplay = true
                 return
@@ -260,12 +379,84 @@ public final class ReadOnlyDocumentView: NSView {
         needsLayout = true
     }
 
+    private func resetViewportRecovery() {
+        viewportRetryExhausted = false
+        viewportRetryCount = 0
+        viewportRecoveryDelay = 0.05
+        viewportRecoveryScheduled = false
+        viewportRecoveryToken = UUID()
+    }
+
+    /// A pathological observer may repeatedly change bounds during layout. Retry
+    /// at a bounded rate so a later stable view can recover without a new event.
+    private func scheduleViewportRecovery() {
+        guard !viewportRecoveryScheduled else { return }
+        viewportRecoveryScheduled = true
+        let delay = viewportRecoveryDelay
+        let token = UUID()
+        viewportRecoveryToken = token
+        viewportRecoveryDelay = min(2, delay * 2)
+        viewportRecoveryScheduler(delay) { [weak self] in
+            guard let self = self, self.viewportRecoveryToken == token else { return }
+            self.viewportRecoveryScheduled = false
+            guard self.viewportRetryExhausted else { return }
+            self.viewportRetryExhausted = false
+            self.viewportRetryCount = 0
+            self.updateViewport()
+        }
+    }
+
+    private func scheduleViewportUpdate() -> Bool {
+        guard !viewportUpdateScheduled else { return false }
+        viewportUpdateScheduled = true
+        viewportRetryCount += 1
+        let invalidation = inputInvalidation
+        DispatchQueue.main.async { [weak self, invalidation] in
+            defer { invalidation.resume() }
+            guard let self = self else { return }
+            self.viewportUpdateScheduled = false
+            guard self.pendingViewportUpdate else { return }
+            self.pendingViewportUpdate = false
+            self.updateViewport()
+        }
+        return true
+    }
+
     public override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         guard let result = visibleLayout, let context = NSGraphicsContext.current?.cgContext else { return }
         for line in result.lines {
             line.controller.draw(line.placements, in: context)
         }
+    }
+
+    private struct InputLayoutSignature: Equatable {
+        struct Fragment: Equatable {
+            let range: NSRange
+            let frame: CGRect
+            let textTop: CGFloat
+            let textHeight: CGFloat
+        }
+        struct Line: Equatable {
+            let location: Int
+            let y: CGFloat
+            let height: CGFloat
+            let fragments: [Fragment]
+        }
+        let viewport: CGRect
+        let lines: [Line]
+    }
+
+    private func inputLayoutSignature() -> InputLayoutSignature? {
+        guard let layout = visibleLayout else { return nil }
+        return InputLayoutSignature(viewport: layout.viewport, lines: layout.lines.map { line in
+            InputLayoutSignature.Line(location: line.line.location, y: line.line.yPosition,
+                                      height: line.line.data.lineHeight, fragments: line.placements.map { placement in
+                InputLayoutSignature.Fragment(range: placement.documentRange, frame: placement.frame,
+                                              textTop: placement.fragment.verticalGeometry.textTop,
+                                              textHeight: placement.fragment.baseSize.height)
+            })
+        })
     }
 
     private func resizeAnchor() -> (location: Int, screenY: CGFloat)? {

@@ -6,7 +6,8 @@ import AppKit
 /// This is an internal building block, not an interactive input host.
 enum InputScreenCaretGeometry {
     static func rect(at location: Int, in view: ReadOnlyDocumentView, caretWidth: CGFloat = 1) -> NSRect? {
-        guard caretWidth.isFinite, caretWidth > 0, let window = view.window,
+        let geometryRevision = view.inputGeometryRevision
+        guard !view.updatingViewport, caretWidth.isFinite, caretWidth > 0, let window = view.window,
               let clip = view.enclosingScrollView?.contentView,
               let layout = view.visibleLayout, layout.isComplete,
               layout.viewport == clip.bounds,
@@ -37,7 +38,10 @@ enum InputScreenCaretGeometry {
             documentRect = NSRect(x: 0, y: line.yPosition, width: caretWidth, height: line.data.lineHeight)
         }
         guard documentRect.intersects(layout.viewport) else { return nil }
-        return window.convertToScreen(view.convert(documentRect, to: nil))
+        let result = window.convertToScreen(view.convert(documentRect, to: nil))
+        guard !view.updatingViewport, geometryRevision == view.inputGeometryRevision, view.window === window,
+              view.enclosingScrollView?.contentView === clip, layout.viewport == clip.bounds else { return nil }
+        return result
     }
 }
 #endif

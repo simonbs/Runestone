@@ -9,17 +9,20 @@ enum InputScreenRangeGeometry {
     typealias RangeGeometry = (rect: NSRect, actualRange: NSRange)
 
     static func firstRect(for range: NSRange, in view: ReadOnlyDocumentView) -> RangeGeometry? {
+        let geometryRevision = view.inputGeometryRevision
         let text = view.manager.stringView.string
         guard valid(range, in: text), let (window, layout) = viewport(in: view) else { return nil }
         if range.length == 0 {
-            guard let rect = InputScreenCaretGeometry.rect(at: range.location, in: view) else { return nil }
+            guard let rect = InputScreenCaretGeometry.rect(at: range.location, in: view),
+                  stable(view, window: window, layout: layout, revision: geometryRevision) else { return nil }
             return (rect, range)
         }
         guard let line = view.manager.line(containingCharacterAt: range.location),
               let lineLayout = layout.lines.first(where: { $0.line === line }) else { return nil }
         let lineEnd = line.location + line.data.length
         guard range.location < lineEnd else {
-            guard let rect = InputScreenCaretGeometry.rect(at: range.location, in: view) else { return nil }
+            guard let rect = InputScreenCaretGeometry.rect(at: range.location, in: view),
+                  stable(view, window: window, layout: layout, revision: geometryRevision) else { return nil }
             return (rect, NSRange(location: range.location, length: 0))
         }
         let local = range.location - line.location
@@ -30,7 +33,8 @@ enum InputScreenRangeGeometry {
         // A logical range can occupy disjoint visual areas in bidi text. Return
         // only the first run and never claim hidden wrap whitespace as visible.
         if local >= fragment.visibleRange.upperBound {
-            guard let rect = InputScreenCaretGeometry.rect(at: range.location, in: view) else { return nil }
+            guard let rect = InputScreenCaretGeometry.rect(at: range.location, in: view),
+                  stable(view, window: window, layout: layout, revision: geometryRevision) else { return nil }
             return (rect, NSRange(location: range.location, length: 0))
         }
         guard let runs = CTLineGetGlyphRuns(fragment.line) as? [CTRun],
@@ -59,13 +63,23 @@ enum InputScreenRangeGeometry {
                                   y: placement.frame.minY + fragment.verticalGeometry.textTop,
                                   width: right - left, height: fragment.baseSize.height)
         guard documentRect.intersects(layout.viewport) else { return nil }
-        return (window.convertToScreen(view.convert(documentRect, to: nil)), actual)
+        let result = window.convertToScreen(view.convert(documentRect, to: nil))
+        guard stable(view, window: window, layout: layout, revision: geometryRevision) else { return nil }
+        return (result, actual)
     }
 
     static func characterIndex(for screenPoint: NSPoint, in view: ReadOnlyDocumentView) -> Int? {
+        let geometryRevision = view.inputGeometryRevision
         guard screenPoint.x.isFinite, screenPoint.y.isFinite,
               let (window, layout) = viewport(in: view) else { return nil }
         let point = view.convert(window.convertPoint(fromScreen: screenPoint), from: nil)
+        guard let index = characterIndex(forDocumentPoint: point, in: view, layout: layout),
+              stable(view, window: window, layout: layout, revision: geometryRevision) else { return nil }
+        return index
+    }
+
+    private static func characterIndex(forDocumentPoint point: NSPoint, in view: ReadOnlyDocumentView,
+                                       layout: ViewportLayoutCoordinator.Result) -> Int? {
         guard layout.viewport.contains(point),
               let lineLayout = layout.lines.first(where: {
                   point.y >= $0.line.yPosition && point.y < $0.line.yPosition + $0.line.data.lineHeight
@@ -105,9 +119,15 @@ enum InputScreenRangeGeometry {
     }
 
     private static func viewport(in view: ReadOnlyDocumentView) -> (NSWindow, ViewportLayoutCoordinator.Result)? {
-        guard let window = view.window, let clip = view.enclosingScrollView?.contentView,
+        guard !view.updatingViewport, let window = view.window, let clip = view.enclosingScrollView?.contentView,
               let layout = view.visibleLayout, layout.isComplete, layout.viewport == clip.bounds else { return nil }
         return (window, layout)
+    }
+
+    private static func stable(_ view: ReadOnlyDocumentView, window: NSWindow,
+                               layout: ViewportLayoutCoordinator.Result, revision: UUID) -> Bool {
+        !view.updatingViewport && revision == view.inputGeometryRevision && view.window === window &&
+            view.enclosingScrollView?.contentView.bounds == layout.viewport
     }
 
     private static func valid(_ range: NSRange, in text: NSString) -> Bool {
