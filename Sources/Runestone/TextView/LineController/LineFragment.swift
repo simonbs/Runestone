@@ -1,5 +1,6 @@
 import CoreText
 import Foundation
+import RunestoneEngine
 
 struct LineFragmentID: Identifiable, Hashable {
     let id: String
@@ -140,24 +141,5 @@ final class LineFragment {
 extension LineFragment: CustomDebugStringConvertible {
     var debugDescription: String {
         "[LineFragment id=\(id) descent=\(descent) baseSize=\(baseSize) scaledSize=\(scaledSize) yPosition=\(yPosition)]"
-    }
-}
-
-/// Vertical placement shared by caret and text drawing in a line fragment.
-struct LineFragmentVerticalGeometry {
-    let baseHeight: CGFloat
-    let scaledHeight: CGFloat
-    let descent: CGFloat
-
-    var textTop: CGFloat {
-        (scaledHeight - baseHeight) / 2
-    }
-
-    var topDownBaseline: CGFloat {
-        scaledHeight - descent - textTop
-    }
-
-    var coreTextBaseline: CGFloat {
-        descent + textTop
     }
 }
