@@ -13,6 +13,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     private var keyObservers: [NSObjectProtocol] = []
     private var interpretingKeyEvents = false
     private var commandGeneration = UUID()
+    private var disarmed = false
+    private var focusRequested = false
 
     init(snapshot: NSAttributedString) {
         super.init(snapshot: snapshot, fallbackHeight: 16)
@@ -21,12 +23,40 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     required init?(coder: NSCoder) { nil }
 
     func attach(adapter: PreparedInputEventAdapter, connection: PreparedInputContextConnection) {
-        precondition(Thread.isMainThread && inputConnection == nil && inputAdapter == nil)
+        precondition(Thread.isMainThread && !disarmed && inputConnection == nil && inputAdapter == nil)
         inputAdapter = adapter
         inputConnection = connection
         connection.readyObserver = self
         connection.commandHandler = self
         scheduleFocusCheck()
+    }
+
+    /// Immediately stop accepting new responder and accessibility work. The
+    /// attachment owns deferred context retirement and gate cleanup.
+    func disarmForDetachment() {
+        precondition(Thread.isMainThread)
+        guard !disarmed else { return }
+        disarmed = true
+        focusRequested = false
+        focusGeneration = UUID()
+        inputAdapter = nil
+        inputConnection = nil
+    }
+
+    /// Only the explicit public focus request may arm first-responder status.
+    @discardableResult
+    func requestFocusEligibility() -> Bool {
+        precondition(Thread.isMainThread)
+        guard !disarmed, !isRetired, inputConnection?.isConnectedForEditing == true else { return false }
+        focusRequested = true
+        return true
+    }
+
+    func revokeFocusEligibility() {
+        precondition(Thread.isMainThread)
+        focusRequested = false
+        focusGeneration = UUID()
+        inputConnection?.suspendForFocusLoss()
     }
 
     private var ownsKeyFocus: Bool {
@@ -35,10 +65,97 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override func accessibilityTextState() -> AccessibilityTextState? {
-        inputConnection?.accessibilityTextState()
+        if disarmed { return super.accessibilityTextState() }
+        return inputConnection?.accessibilityTextState()
     }
 
-    override var acceptsFirstResponder: Bool { !isRetired && inputConnection != nil }
+    override func accessibilityRole() -> NSAccessibility.Role? {
+        guard !isRetired else { return nil }
+        guard !disarmed, inputConnection?.accessibilityTextState() != nil else { return .staticText }
+        return .textArea
+    }
+
+    override func isAccessibilitySelectorAllowed(_ selector: Selector) -> Bool {
+        let setters = ["setAccessibilityValue:", "setAccessibilitySelectedText:",
+                       "setAccessibilitySelectedTextRange:"]
+        if setters.contains(NSStringFromSelector(selector)) {
+            guard !disarmed, inputConnection?.accessibilityTextState() != nil,
+                  inputAdapter?.hasProvisionalCompositionForInput() == false else { return false }
+            return true
+        }
+        return super.isAccessibilitySelectorAllowed(selector)
+    }
+
+    override func setAccessibilityValue(_ value: Any?) {
+        performAccessibilityMutation(operation: .insertText) { adapter in
+            guard let text = value as? String, let state = adapter.accessibilityTextStateForInput() else { return nil }
+            return adapter.insertTextReporting(text, replacementRange: NSRange(location: 0, length: (state.text as NSString).length))
+        }
+    }
+
+    override func setAccessibilitySelectedText(_ value: String?) {
+        performAccessibilityMutation(operation: .insertText) { adapter in
+            guard let text = value else { return nil }
+            let range = adapter.selectedRangeForInput()
+            guard range.location != NSNotFound else { return nil }
+            return adapter.insertTextReporting(text, replacementRange: range)
+        }
+    }
+
+    override func setAccessibilitySelectedTextRange(_ range: NSRange) {
+        performAccessibilityMutation(operation: .setSelection) { adapter in
+            adapter.setSelectionReporting(range)
+        }
+    }
+
+    /// AX setters are synchronous but can be called out of band. They enter
+    /// the same dispatch lease as keyboard input and are rejected while a
+    /// marked composition is provisional; they never replay a failed change.
+    private func performAccessibilityMutation(operation: PreparedInputContextConnection.InputOperation,
+                                              _ body: (PreparedInputEventAdapter) -> PreparedInputEventAdapter.InputAttempt?) {
+        guard !disarmed, let connection = inputConnection,
+              connection.accessibilityTextState() != nil else { return }
+        _ = connection.performCoordinatedInput {
+            var reported = false
+            var applied = false
+            let current = connection.performResponderActivity { adapter, isCurrent in
+                guard isCurrent(), !self.disarmed else { return }
+                guard let marked = adapter.hasProvisionalCompositionForInput() else {
+                    connection.recordInputFailure(operation: operation,
+                        failure: .init(reason: .unavailable, effect: .notApplied))
+                    reported = true
+                    return
+                }
+                guard !marked else {
+                    connection.recordInputFailure(operation: operation,
+                        failure: .init(reason: .compositionActive, effect: .notApplied))
+                    reported = true
+                    return
+                }
+                guard isCurrent(), !self.disarmed, let attempt = body(adapter) else {
+                    connection.recordInputFailure(operation: operation,
+                        failure: .init(reason: .unavailable, effect: .notApplied))
+                    reported = true
+                    return
+                }
+                if let failure = attempt.failure {
+                    connection.recordInputFailure(operation: operation, failure: failure)
+                    reported = true
+                }
+                if attempt.outcome != .processed { connection.requestReset() }
+                else { applied = true }
+            }
+            if !current && !reported {
+                connection.recordInputFailure(operation: operation,
+                    failure: .init(reason: applied ? .admittedFailure : .unavailable,
+                                   effect: applied ? .mayHaveApplied : .notApplied))
+            }
+        }
+    }
+
+    override var acceptsFirstResponder: Bool {
+        !disarmed && focusRequested && !isRetired && inputConnection?.isConnectedForEditing == true
+    }
 
     override var inputContext: NSTextInputContext? {
         guard ownsKeyFocus else { return nil }
@@ -46,7 +163,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override func becomeFirstResponder() -> Bool {
-        guard !isRetired, inputConnection != nil, super.becomeFirstResponder() else { return false }
+        guard acceptsFirstResponder, super.becomeFirstResponder() else { return false }
         scheduleFocusCheck()
         needsDisplay = true
         return true
@@ -77,8 +194,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     private func suppressFocus() {
-        focusGeneration = UUID()
-        inputConnection?.suspendForFocusLoss()
+        revokeFocusEligibility()
         needsDisplay = true
     }
 
@@ -86,7 +202,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         let generation = UUID()
         focusGeneration = generation
         DispatchQueue.main.async { [weak self] in
-            guard let self = self, self.focusGeneration == generation,
+            guard let self = self, self.focusRequested, self.focusGeneration == generation,
                   self.ownsKeyFocus, let connection = self.inputConnection else { return }
             _ = connection.resumeForFocus()
             guard self.focusGeneration == generation, self.ownsKeyFocus else {
@@ -103,6 +219,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override func keyDown(with event: NSEvent) {
+        guard !disarmed else { return }
         guard let connection = inputConnection else { super.keyDown(with: event); return }
         _ = connection.performCoordinatedInput { self.routeKeyDown(event, connection: connection) }
     }
@@ -171,6 +288,19 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         connection.doCommandFromKeyBinding(selector)
     }
 
+    /// Menu actions can arrive independently of key interpretation. Each
+    /// enters a dispatch scope and is deferred until that scope has closed.
+    @objc(undo:)
+    private func requestUndo(_ sender: Any?) { requestHistory(.undo) }
+
+    @objc(redo:)
+    private func requestRedo(_ sender: Any?) { requestHistory(.redo) }
+
+    private func requestHistory(_ operation: RunestoneInputHistoryOperation) {
+        guard !disarmed, ownsKeyFocus, let connection = inputConnection else { return }
+        _ = connection.performCoordinatedInput { connection.requestHistory(operation) }
+    }
+
     func preparedInputContextConnection(_ connection: PreparedInputContextConnection, doCommand selector: Selector) {
         guard inputConnection === connection, ownsKeyFocus else {
             connection.recordInputFailure(operation: .command,
@@ -193,6 +323,11 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 failure: .init(reason: .unavailable, effect: .notApplied))
             return
         }
+        switch NSStringFromSelector(selector) {
+        case "undo:": connection.requestHistory(.undo); return
+        case "redo:": connection.requestHistory(.redo); return
+        default: break
+        }
         switch PreparedInputCommandInterpreter.performReporting(selector, adapter: adapter, view: self) {
         case .unsupported:
             if !forward(selector) {
@@ -210,7 +345,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override func mouseDown(with event: NSEvent) {
-        guard let connection = inputConnection else { return }
+        guard focusRequested, !disarmed, let connection = inputConnection else { return }
         _ = connection.performCoordinatedInput { self.routeMouseDown(event, connection: connection) }
     }
 

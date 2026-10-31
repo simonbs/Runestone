@@ -13,7 +13,7 @@ final class PreparedInputResponderRealFocusTests: XCTestCase {
         let host = FocusDocumentHost(text: "abc")
         let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
             host: host, lifetime: host.lifetime, bridge: host.bridge))
-        let responder = attachment.view
+        let responder = try XCTUnwrap(attachment.view as? PreparedInputResponderView)
         let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 320, height: 180),
                               styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
@@ -36,6 +36,7 @@ final class PreparedInputResponderRealFocusTests: XCTestCase {
             throw XCTSkip("The test process could not obtain a real key window in this session")
         }
         XCTAssertTrue(window.isKeyWindow)
+        XCTAssertTrue(responder.requestFocusEligibility())
         XCTAssertTrue(window.makeFirstResponder(responder))
         XCTAssertTrue(window.firstResponder === responder)
         let contextReady = expectation(for: NSPredicate { _, _ in responder.inputContext != nil }, evaluatedWith: nil)
@@ -65,6 +66,9 @@ final class PreparedInputResponderRealFocusTests: XCTestCase {
         XCTAssertEqual(host.text, "aabc")
         XCTAssertEqual(host.undoRegistrations, 1)
 
+        let connectionReady = expectation(for: NSPredicate { _, _ in attachment.connection.isConnectedForEditing }, evaluatedWith: nil)
+        XCTAssertEqual(XCTWaiter().wait(for: [connectionReady], timeout: 3), .completed)
+        XCTAssertTrue(responder.requestFocusEligibility())
         XCTAssertTrue(window.makeFirstResponder(responder))
         XCTAssertTrue(window.firstResponder === responder)
         let freshContext = expectation(for: NSPredicate { _, _ in

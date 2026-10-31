@@ -26,7 +26,7 @@ enum PreparedInputCommandInterpreter {
         precondition(Thread.isMainThread)
         let name = NSStringFromSelector(selector)
         guard ["insertTab:", "insertNewline:", "insertLineBreak:", "deleteBackward:", "deleteForward:",
-               "moveLeft:", "moveRight:"].contains(name) else { return .unsupported }
+               "moveLeft:", "moveRight:", "selectAll:"].contains(name) else { return .unsupported }
 
         func failure(_ reason: PreparedInputEventAdapter.InputFailure.Reason,
                      outcome: PreparedInputEventAdapter.Outcome = .unavailable) -> Result {
@@ -73,6 +73,8 @@ enum PreparedInputCommandInterpreter {
             guard selection.location < text.length else { return success() }
             let cluster = text.rangeOfComposedCharacterSequence(at: selection.location)
             return .handled(adapter.insertTextReporting("", replacementRange: cluster))
+        case "selectAll:":
+            return .handled(adapter.setSelectionReporting(NSRange(location: 0, length: text.length)))
         case "moveLeft:":
             let location: Int
             if selection.length > 0 { location = selection.location }

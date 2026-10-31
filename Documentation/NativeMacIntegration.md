@@ -7,8 +7,8 @@ boundary and outstanding evidence; it is not a Phase 1 exit or release claim.
 The app's local framework revision pin for that historical evidence was
 `b73f673e73c9e3380a1cee3899aabc1016e49496`. The recorded audit applies to that
 pin, not subsequent framework changes. The app worktree was later observed at
-`287300b44c919d0e4c5ee89660a52fd18390674c`, with its revision file pinning
-`c4dafb6869a81c005600e8a1a895aa4cd2cc3a69`; this line-ending work is newer than
+`6d49c4cce4b80cd4befe71cecfab45344c27e1a0`, with its revision file pinning
+`881f1ae164c0f10a5de16c5f77b044151ee94ef9`; the attachment work is newer than
 that pin. The current framework HEAD and queue owner are recorded separately in
 the integration queue. The committed remote
 dependency lock is a separate input and has not been updated by this work.
@@ -39,12 +39,24 @@ execution.
 accessibility text/geometry. `RunestoneInputDocumentHost`, its reservation and
 publication protocols, `RunestoneInputDocumentBridge`, and
 `RunestoneInputDocumentLifetime` expose a document-owned integration contract.
-They do not provide an editable view. The prepared attachment, input client,
-responder, commands and selection state remain internal; there is no public
-editable attachment or selection API. The app currently hosts the read-only
-view. Do not enable editing until input event contention/reset and composition
-on blur have safe behavior, and real focus, input-method and accessibility
-interaction have been verified.
+The opt-in `RunestoneEditableDocumentAttachment` creates and owns a fresh input
+view and exposes its revision-checked input state. The app installs that view
+and explicitly requests first-responder status; construction does not focus it.
+Detach immediately disarms it and may require retry while the context and gate
+quiesce. The host owns its bridge and lifetime and must retain the attachment
+until detach completes. The document view does not become reusable as an
+editable attachment. The observed app still hosts the read-only view; keep its
+release gate disabled until real focus, keyboard, input-method and accessibility
+interaction have been verified. Focus eligibility is revoked on focus or key-window
+loss, and the host must explicitly request it again. Detach does not transfer the
+window's first responder; the host owns that transition.
+
+The prepared command set covers insertion, deletion, horizontal movement,
+Select All, newline and line break; history uses the document hook described
+below. Vertical or word movement, extended/drag selection and clipboard commands
+are not yet a complete editor interaction set. Active accessibility reports an
+editable text role and routes supported setters through the input gate, but
+role-change notifications and real VoiceOver behavior remain unverified.
 
 ## Input contention and recovery plan
 
@@ -74,18 +86,23 @@ acknowledges metadata-only completion after each attempt, including rejection,
 or a separate composition-discard notice. It may retain results in its own
 bounded storage. A nested rejected attempt can complete while its outer dispatch
 still holds the gate; callbacks arrive in completion order and must not call out.
-No framework completion queue or automatic replay is involved. Delivery cannot
-be guaranteed after the host or its source view has gone away.
+A single pending history request retains metadata only; later input is rejected
+until it has been resolved, and no input event is replayed. Delivery cannot be
+guaranteed after the host or its source view has gone away.
 
-The current app gate implements only the original single-operation reservation;
-it must explicitly adopt the parent/child contract before using this capability.
-A completed synchronous dispatch means no failure was detected, not that an IME
-will issue no later callbacks or that a canonical edit occurred. Before making
-an editable attachment public, define owner-visible recovery and feedback for
-failed input and discarded composition, integrate and verify the app gate, and
-verify actual key focus, input methods, composition on blur, accessibility and
-VoiceOver in an unlocked session. Never replay stale input against a newer
-snapshot. The headless tests do not establish those interactions.
+The observed app host implements the parent/child dispatch contract, but must
+adopt the new attachment and provide the history request hook to support undo
+and redo from it. The default history implementation returns unavailable. The
+framework queues a history command until the enclosing dispatch closes; the host
+must atomically check its captured revision under the document gate. Its current
+recovery activation checks `inputDispatch` uncertainty, so app integration must
+also handle an uncertain `historyCommand` and reconcile its document state. A completed synchronous dispatch means no failure was detected,
+not that an IME will issue no later callbacks or that a canonical edit occurred.
+Before enabling the app's editing gate, define owner-visible recovery and
+feedback for failed input and discarded composition, integrate and verify the
+app host, and verify actual key focus, input methods, composition on blur,
+accessibility and VoiceOver in an unlocked session. Never replay stale input
+against a newer snapshot. The headless tests do not establish those interactions.
 
 ## Line-ending editing contract
 
@@ -106,7 +123,7 @@ commits and paste-like replacements remain literal; an ambiguous single LF is
 not treated as proof of a command. The app's future gate implementation must
 keep its snapshot and revision paired, preserve exact encoding and line endings
 through publication and undo/redo, and route only reliably identified newline
-commands through the contextual policy. No editable attachment is exposed.
+commands through the contextual policy. The app's editable release gate remains disabled.
 
 On iOS, paste, arbitrary insertion, text replacement and Writing Tools now
 preserve supplied delimiters; callers can use `TextView.insertLogicalNewline()`
