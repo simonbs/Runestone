@@ -90,13 +90,24 @@ public final class ReadOnlyDocumentView: NSView {
     /// Permanently quarantines a view whose input owner was unexpectedly lost.
     /// The no-callout flag can be set on any thread; AppKit cleanup runs on main.
     func retireInputView() {
-        retirementLock.lock()
-        let alreadyRetired = retired
-        retired = true
-        retirementLock.unlock()
-        guard !alreadyRetired else { return }
+        guard markInputViewRetired() else { return }
         if Thread.isMainThread { finishRetirement() }
-        else { DispatchQueue.main.async { [weak self] in self?.finishRetirement() } }
+        else { DispatchQueue.main.async { [self] in finishRetirement() } }
+    }
+
+    /// Immediately prevents access without AppKit callouts, including on main.
+    /// Keep the view alive until its deferred main-thread cleanup has completed.
+    func quarantineInputViewWithoutCallouts() {
+        guard markInputViewRetired() else { return }
+        DispatchQueue.main.async { [self] in finishRetirement() }
+    }
+
+    private func markInputViewRetired() -> Bool {
+        retirementLock.lock()
+        defer { retirementLock.unlock() }
+        guard !retired else { return false }
+        retired = true
+        return true
     }
 
     private func finishRetirement() {

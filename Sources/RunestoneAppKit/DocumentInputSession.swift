@@ -73,7 +73,7 @@ final class DocumentInputSession {
     // A side-effect-free, no-callout read that must not enter an event loop.
     // The owner advances it for every canonical content, encoding or metadata
     // replacement before callouts.
-    private let documentRevision: (() -> UUID)?
+    private let documentRevision: (() -> UUID?)?
     private let mutationAuthority: ReadOnlyDocumentView.InputMutationAuthority?
     private var expectedRevision: UUID
     private var installedDocumentRevision: UUID?
@@ -99,7 +99,7 @@ final class DocumentInputSession {
          prepareChange: PrepareChange? = nil,
          compositionAttributes: (() -> [NSAttributedString.Key: Any])? = nil,
          initialDocumentRevision: UUID? = nil,
-         documentRevision: (() -> UUID)? = nil) {
+         documentRevision: (() -> UUID?)? = nil) {
         self.view = view
         self.mutationPermit = mutationPermit
         self.prepareChange = prepareChange
@@ -271,8 +271,9 @@ final class DocumentInputSession {
     }
 
     private func documentIsCurrent() -> Bool {
-        guard let installed = installedDocumentRevision, let documentRevision = documentRevision else { return true }
-        guard documentRevision() == installed else {
+        if prepareChange == nil && (installedDocumentRevision == nil || documentRevision == nil) { return true }
+        guard let installed = installedDocumentRevision, let documentRevision = documentRevision,
+              let current = documentRevision(), current == installed else {
             hasDocumentConflict = true
             return false
         }
@@ -320,7 +321,10 @@ final class DocumentInputSession {
                 guard compositionIsCurrent(existing) else { return false }
             } else {
                 guard let compositionAttributes = compositionAttributes, let documentRevision = documentRevision else { return false }
-                let revision = documentRevision()
+                guard let revision = documentRevision() else {
+                    hasDocumentConflict = true
+                    return false
+                }
                 let baseline = view.content
                 let selection = storedSelection
                 let attributes = compositionAttributes()
@@ -391,7 +395,11 @@ final class DocumentInputSession {
                 let previousDocumentRevision = installedDocumentRevision
                 prepared?.publish()
                 if prepared != nil, let documentRevision = documentRevision {
-                    let publishedRevision = documentRevision()
+                    guard let publishedRevision = documentRevision() else {
+                        installedDocumentRevision = nil
+                        hasDocumentConflict = true
+                        return
+                    }
                     if changesCanonicalText && publishedRevision == previousDocumentRevision {
                         hasDocumentConflict = true
                     }

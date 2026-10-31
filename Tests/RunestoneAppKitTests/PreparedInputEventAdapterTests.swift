@@ -7,6 +7,110 @@ import XCTest
 final class PreparedInputEventAdapterTests: XCTestCase {
     private let unspecified = NSRange(location: NSNotFound, length: 0)
 
+    func testUnavailableRevisionRejectsStaleCompositionAndReconstruction() throws {
+        let owner = FakeEventOwner(text: "abc")
+        let scheduler = EventScheduler()
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        var available = true
+        let adapter = try XCTUnwrap(PreparedInputEventAdapter(view: view, snapshot: view.content,
+            initialRevision: owner.revision, documentRevision: { available ? owner.revision : nil },
+            typingAttributes: { [:] }, beginEvent: { owner.begin($0) },
+            beginReconstruction: { owner.beginReconstruction() }, requestReset: {}, schedule: scheduler.enqueue))
+        XCTAssertEqual(adapter.setMarkedText("X", selectedRange: NSRange(location: 1, length: 0),
+                                             replacementRange: unspecified), .processed)
+        available = false
+        XCTAssertEqual(adapter.selectedRangeForInput().location, NSNotFound)
+        XCTAssertNil(adapter.claimInputContext())
+        XCTAssertEqual(adapter.insertText("bad", replacementRange: unspecified), .resetRequired)
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .resetRequired)
+        XCTAssertFalse(adapter.disconnectAfterQuiescing())
+        XCTAssertEqual(view.content.string, "Xabc")
+        XCTAssertEqual(owner.text, "abc")
+        XCTAssertEqual(owner.startedLeases, owner.closedLeases)
+        available = true
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertEqual(view.content.string, "abc")
+        XCTAssertTrue(adapter.disconnectAfterQuiescing())
+    }
+
+    func testUnavailableRevisionAfterPublicationReconcilesAndDoesNotFinish() throws {
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: "abc"))
+        let scheduler = EventScheduler()
+        let revision = UUID()
+        var available = true
+        var canonical = "abc"
+        var closes = 0
+        var finishes = 0
+        var phases: [DocumentInputSession.PublicationConflictPhase] = []
+        let adapter = try XCTUnwrap(PreparedInputEventAdapter(view: view, snapshot: view.content,
+            initialRevision: revision, documentRevision: { available ? revision : nil }, typingAttributes: { [:] },
+            beginEvent: { _ in .reserved(.init(prepare: { candidate in
+                let accepted = candidate.string
+                return .init(publish: { canonical = accepted; available = false },
+                             finish: { finishes += 1 }, reconcile: { phases.append($0) })
+            }, close: { closes += 1 })) }, beginReconstruction: { .busy }, requestReset: {}, schedule: scheduler.enqueue))
+        XCTAssertEqual(adapter.insertText("X", replacementRange: unspecified), .resetRequired)
+        XCTAssertEqual(canonical, "Xabc")
+        XCTAssertEqual(phases, [.beforeFinish])
+        XCTAssertEqual(finishes, 0)
+        XCTAssertEqual(closes, 1)
+        XCTAssertNil(adapter.claimInputContext())
+        XCTAssertFalse(adapter.disconnectAfterQuiescing())
+    }
+
+    func testRetirementWaitsForContextAndIdleWorkWithoutReadingDocument() throws {
+        let owner = FakeEventOwner(text: "abc")
+        let scheduler = EventScheduler()
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        var forbidRevisionRead = false
+        let adapter = try XCTUnwrap(PreparedInputEventAdapter(view: view, snapshot: view.content,
+            initialRevision: owner.revision, documentRevision: {
+                XCTAssertFalse(forbidRevisionRead)
+                return owner.revision
+            }, typingAttributes: { [:] }, beginEvent: { owner.begin($0) },
+            beginReconstruction: { owner.beginReconstruction() }, requestReset: {}, schedule: scheduler.enqueue))
+        let token = try XCTUnwrap(adapter.claimInputContext())
+        view.quarantineInputViewWithoutCallouts()
+        forbidRevisionRead = true
+        XCTAssertFalse(adapter.retireAfterQuiescing())
+        XCTAssertTrue(adapter.releaseInputContext(token))
+        adapter.whenInputActivityIdle {
+            XCTAssertFalse(adapter.retireAfterQuiescing())
+        }
+        scheduler.runAll()
+        XCTAssertTrue(adapter.retireAfterQuiescing())
+        XCTAssertTrue(adapter.retireAfterQuiescing())
+        XCTAssertNil(view.claimInputMutation())
+        XCTAssertEqual(owner.text, "abc")
+    }
+
+    func testOffMainFinalAdapterReleaseReleasesClosurePayloadOnMain() throws {
+        let released = expectation(description: "retained closure payload released on main")
+        var probe: AdapterReleaseProbe? = AdapterReleaseProbe {
+            XCTAssertTrue(Thread.isMainThread)
+            released.fulfill()
+        }
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: "abc"))
+        let revision = UUID()
+        var adapter: PreparedInputEventAdapter? = PreparedInputEventAdapter(
+            view: view, snapshot: view.content, initialRevision: revision,
+            documentRevision: { revision }, typingAttributes: { [probe] in
+                withExtendedLifetime(probe) { [:] }
+            }, beginEvent: { _ in .busy }, beginReconstruction: { .busy }, requestReset: {})
+        XCTAssertNotNil(adapter)
+        let holder = AdapterReleaseHolder(adapter)
+        adapter = nil
+        probe = nil
+        let dropped = expectation(description: "final adapter owner dropped off main")
+        DispatchQueue.global().async {
+            holder.adapter = nil
+            XCTAssertTrue(view.isRetired)
+            dropped.fulfill()
+        }
+        wait(for: [dropped, released], timeout: 2)
+        XCTAssertTrue(view.isRetired)
+    }
+
     func testEachCompositionCallbackHasItsOwnLeaseThroughCommitCallbacks() throws {
         let owner = FakeEventOwner(text: "abc")
         let scheduler = EventScheduler()
@@ -706,6 +810,17 @@ final class PreparedInputEventAdapterTests: XCTestCase {
                                                beginReconstruction: { owner.beginReconstruction() },
                                                requestReset: reset, schedule: scheduler.enqueue))
     }
+}
+
+private final class AdapterReleaseProbe {
+    let onDeinit: () -> Void
+    init(_ onDeinit: @escaping () -> Void) { self.onDeinit = onDeinit }
+    deinit { onDeinit() }
+}
+
+private final class AdapterReleaseHolder {
+    var adapter: PreparedInputEventAdapter?
+    init(_ adapter: PreparedInputEventAdapter?) { self.adapter = adapter }
 }
 
 private final class FakeEventOwner {

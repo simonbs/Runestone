@@ -33,6 +33,36 @@ final class ReadOnlyDocumentViewRetirementTests: XCTestCase {
         XCTAssertTrue(view.isRetired)
     }
 
+    func testNoCalloutQuarantineHidesImmediatelyAndDefersAppKitCleanup() {
+        _ = NSApplication.shared
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 300, height: 200),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let parent = NSView(frame: window.contentView!.bounds)
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: "provisional"))
+        let child = NSButton(title: "child", target: nil, action: nil)
+        parent.addSubview(view)
+        view.addSubview(child)
+        window.contentView = parent
+        XCTAssertTrue(window.makeFirstResponder(child))
+        view.quarantineInputViewWithoutCallouts()
+        XCTAssertTrue(view.isRetired)
+        XCTAssertTrue(view.isHidden)
+        XCTAssertEqual(view.content.string, "")
+        XCTAssertTrue(view.superview === parent)
+        XCTAssertTrue(window.firstResponder === child)
+        view.quarantineInputViewWithoutCallouts()
+        let finished = expectation(description: "main-thread AppKit cleanup")
+        DispatchQueue.main.async {
+            XCTAssertTrue(Thread.isMainThread)
+            XCTAssertNil(view.superview)
+            XCTAssertFalse(window.firstResponder === child)
+            finished.fulfill()
+        }
+        wait(for: [finished], timeout: 1)
+        window.close()
+    }
+
     func testRetirementDetachesAccessibleSubtreeAndFirstResponderFromWindow() {
         _ = NSApplication.shared
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 300, height: 200),
