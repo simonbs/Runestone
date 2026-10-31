@@ -49,8 +49,16 @@ enum PreparedInputCommandInterpreter {
     static func moveSelection(target: Int, selection: NSRange, extending: Bool, direction: Direction,
                               adapter: PreparedInputEventAdapter, view: ReadOnlyDocumentView,
                               isAvailable: () -> Bool = { true }) -> Result {
+        moveSelection(target: InputCaretTarget(location: target, affinity: nil), selection: selection,
+                      extending: extending, direction: direction, adapter: adapter, view: view,
+                      isAvailable: isAvailable)
+    }
+
+    static func moveSelection(target: InputCaretTarget, selection: NSRange, extending: Bool, direction: Direction,
+                              adapter: PreparedInputEventAdapter, view: ReadOnlyDocumentView,
+                              isAvailable: () -> Bool = { true }) -> Result {
         let text = view.manager.stringView.string
-        guard validSelection(selection, in: text), isGraphemeBoundary(target, in: text) else {
+        guard validSelection(selection, in: text), isGraphemeBoundary(target.location, in: text) else {
             return .blocked(.init(reason: .invalidSelection, effect: .notApplied))
         }
         let anchor: Int
@@ -58,15 +66,18 @@ enum PreparedInputCommandInterpreter {
             anchor = anchorState(for: selection, view: view)?.anchor ??
                 (direction == .backward ? NSMaxRange(selection) : selection.location)
         } else {
-            anchor = target
+            anchor = target.location
         }
-        let start = min(anchor, target)
-        let range = NSRange(location: start, length: max(anchor, target) - start)
-        let attempt = adapter.setSelectionReporting(range, isAvailable: isAvailable)
+        let start = min(anchor, target.location)
+        let range = NSRange(location: start, length: max(anchor, target.location) - start)
+        let endpoint: InputSelectionState.Endpoint = range.length == 0 ? .caret :
+            (target.location == range.location ? .lowerBound : .upperBound)
+        let state = InputSelectionState(range: range, activeEndpoint: endpoint, affinity: target.affinity)
+        let attempt = adapter.setSelectionReporting(state, isAvailable: isAvailable)
         if attempt.outcome == .processed {
             if extending {
                 objc_setAssociatedObject(view, &selectionAnchorKey,
-                    SelectionAnchor(anchor: anchor, extent: target, selection: range, view: view), .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                    SelectionAnchor(anchor: anchor, extent: target.location, selection: range, view: view), .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             } else {
                 clearAnchor(view)
             }

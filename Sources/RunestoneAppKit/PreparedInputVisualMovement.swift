@@ -14,6 +14,11 @@ enum PreparedInputVisualMovement {
         case boundary
         case unavailable
     }
+    enum TargetHorizontalResult: Equatable {
+        case moved(InputCaretTarget)
+        case boundary
+        case unavailable
+    }
 
     struct Destination {
         let location: Int
@@ -60,6 +65,27 @@ enum PreparedInputVisualMovement {
         return Destination(location: target, preferredScreenX: preferredX)
     }
 
+    static func vertical(from target: InputCaretTarget, direction: Direction, preferredScreenX: CGFloat?,
+                         in view: ReadOnlyDocumentView) -> (target: InputCaretTarget, preferredScreenX: CGFloat)? {
+        guard let context = context(in: view),
+              let caret = target.affinity == nil
+                ? InputScreenCaretGeometry.rect(at: target.location, in: view)
+                : InputScreenCaretGeometry.rect(for: target, in: view),
+              let source = sourceRow(caret: caret, context: context, view: view),
+              containsRightToLeftRun(source) == false else { return nil }
+        let rows = visibleRows(in: context.layout)
+        guard let index = rows.firstIndex(where: { sameRow($0, source) }) else { return nil }
+        let next = direction == .up ? index - 1 : index + 1
+        guard rows.indices.contains(next), containsRightToLeftRun(rows[next]) == false else { return nil }
+        let x = preferredScreenX ?? caret.midX
+        guard x.isFinite,
+              let location = hit(row: rows[next], screenX: x, context: context, view: view),
+              let resolved = caretTarget(location: location, row: rows[next], view: view),
+              InputScreenCaretGeometry.rect(for: resolved, in: view) != nil,
+              stable(context, view: view) else { return nil }
+        return (resolved, x)
+    }
+
     /// True only when the adjacent visual row is not in the current complete
     /// viewport. An existing but ambiguous/clipped target must not trigger an
     /// unrelated scroll as a substitute for resolving affinity.
@@ -104,6 +130,50 @@ enum PreparedInputVisualMovement {
             return .moved(target)
         }
         return crossLine(from: source, direction: direction, context: context, view: view)
+    }
+
+    /// Affinity-aware horizontal traversal. This enables LTR soft-wrap
+    /// boundaries while retaining the existing refusal for bidi alternatives.
+    static func horizontal(from target: InputCaretTarget, direction: HorizontalDirection,
+                           in view: ReadOnlyDocumentView) -> TargetHorizontalResult {
+        guard let context = context(in: view),
+              let caret = target.affinity == nil
+                ? InputScreenCaretGeometry.rect(at: target.location, in: view)
+                : InputScreenCaretGeometry.rect(for: target, in: view),
+              let source = sourceRow(caret: caret, context: context, view: view),
+              containsRightToLeftRun(source) == false,
+              validBoundary(target.location, in: view.manager.stringView.string),
+              let edges = horizontalEdges(for: source, in: view),
+              let sourceGroup = group(at: caretDocumentX(caret, context: context, view: view), in: edges),
+              uniqueTarget(in: sourceGroup) == target.location else { return .unavailable }
+        let x = sourceGroup[0].x
+        let adjacent = edges.filter { direction == .left ? $0.x < x - horizontalTolerance : $0.x > x + horizontalTolerance }
+        if let nextX = direction == .left ? adjacent.map(\.x).max() : adjacent.map(\.x).min(),
+           let targetGroup = group(at: nextX, in: adjacent), let location = uniqueTarget(in: targetGroup),
+           let resolved = caretTarget(location: location, row: source, view: view),
+           isVisible(x: nextX, row: source, context: context), stable(context, view: view) {
+            return .moved(resolved)
+        }
+        let rows = visibleRows(in: context.layout)
+        guard let index = rows.firstIndex(where: { sameRow($0, source) }) else { return .unavailable }
+        let nextIndex = direction == .left ? index - 1 : index + 1
+        guard rows.indices.contains(nextIndex) else { return .boundary }
+        let next = rows[nextIndex]
+        if next.line.line !== source.line.line {
+            switch crossLine(from: source, direction: direction, context: context, view: view) {
+            case let .moved(location): return .moved(InputCaretTarget(location: location, affinity: nil))
+            case .boundary: return .boundary
+            case .unavailable: return .unavailable
+            }
+        }
+        guard containsRightToLeftRun(next) == false,
+              let sourcePlacement = source.placement else { return .unavailable }
+        let location = source.line.line.location +
+            (direction == .left ? sourcePlacement.fragment.range.location
+                                : sourcePlacement.fragment.range.upperBound)
+        guard let resolved = caretTarget(location: location, row: next, view: view),
+              stable(context, view: view) else { return .unavailable }
+        return .moved(resolved)
     }
 
     /// Return the visual left or right edge of the current visible fragment.
@@ -166,6 +236,26 @@ enum PreparedInputVisualMovement {
               line.location <= Int.max - range.upperBound else { return true }
         return (range.location > 0 && offset == line.location + range.location) ||
             (range.upperBound < line.data.length && offset == line.location + range.upperBound)
+    }
+
+    private static func caretTarget(location: Int, row: Row, view: ReadOnlyDocumentView) -> InputCaretTarget? {
+        guard let placement = row.placement else { return InputCaretTarget(location: location, affinity: nil) }
+        let line = row.line.line
+        let local = location - line.location
+        guard local >= 0, local <= line.data.length else { return nil }
+        let placements = row.line.placements
+        guard let index = placements.firstIndex(where: { $0.fragment.id == placement.fragment.id }) else { return nil }
+        let range = placement.fragment.range
+        let side: InputCaretAffinity.WrapSide?
+        if index > 0, local == range.location, placements[index - 1].fragment.range.upperBound == local {
+            side = .downstream
+        } else if index + 1 < placements.count, local == range.upperBound,
+                  placements[index + 1].fragment.range.location == local {
+            side = .upstream
+        } else { side = nil }
+        return InputCaretTarget(location: location, affinity: side.map {
+            InputCaretAffinity(wrapSide: $0, bidirectionalSide: nil, layoutRevision: view.inputLayoutRevision)
+        })
     }
 
     /// Only move one complete hidden grapheme at a time; never jump across

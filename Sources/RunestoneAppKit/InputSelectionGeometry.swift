@@ -16,24 +16,38 @@ enum InputSelectionGeometry {
 
     static func geometry(selection: NSRange, marked: NSRange?, in view: ReadOnlyDocumentView,
                          caretWidth: CGFloat = 1, newlineWidth: CGFloat = 4) -> Result? {
+        geometry(selection: .rangeOnly(selection), marked: marked, in: view,
+                 caretWidth: caretWidth, newlineWidth: newlineWidth)
+    }
+
+    static func geometry(selection: InputSelectionState, marked: NSRange?, in view: ReadOnlyDocumentView,
+                         caretWidth: CGFloat = 1, newlineWidth: CGFloat = 4) -> Result? {
         let revision = view.inputGeometryRevision
         let contentRevision = view.contentRevision
         let text = view.manager.stringView.string
-        guard !view.isRetired, !view.updatingViewport, valid(selection, in: text),
+        guard !view.isRetired, !view.updatingViewport, valid(selection.range, in: text),
+              selection.affinity.map({ $0.layoutRevision == view.inputLayoutRevision }) ?? true,
               marked.map({ valid($0, in: text) }) ?? true,
               caretWidth.isFinite, caretWidth > 0, newlineWidth.isFinite, newlineWidth > 0,
               let clip = view.enclosingScrollView?.contentView,
               let layout = view.visibleLayout, layout.isComplete, layout.viewport == clip.bounds,
               finitePositive(layout.viewport) else { return nil }
 
-        let selectionRects = selection.length == 0 ? [] : rects(for: selection, layout: layout, newlineWidth: newlineWidth)
+        let selectionRects = selection.range.length == 0 ? [] : rects(for: selection.range, layout: layout, newlineWidth: newlineWidth)
         let markedRects = marked.map { rects(for: $0, layout: layout, newlineWidth: newlineWidth) } ?? []
-        let caret = selection.length == 0
-            ? caretRect(at: selection.location, view: view, layout: layout, width: caretWidth) : nil
+        let caret = selection.range.length == 0
+            ? caretRect(for: InputCaretTarget(location: selection.range.location, affinity: selection.affinity),
+                        view: view, layout: layout, width: caretWidth) : nil
         guard !view.isRetired, !view.updatingViewport, view.inputGeometryRevision == revision,
               view.contentRevision == contentRevision, view.enclosingScrollView?.contentView === clip,
               clip.bounds == layout.viewport else { return nil }
         return Result(selectionRects: selectionRects, markedRects: markedRects, caretRect: caret)
+    }
+
+    private static func caretRect(for target: InputCaretTarget, view: ReadOnlyDocumentView,
+                                  layout: ViewportLayoutCoordinator.Result, width: CGFloat) -> CGRect? {
+        guard let rect = InputCaretAffinityGeometry.documentRect(for: target, in: view, caretWidth: width) else { return nil }
+        return clipped(rect, to: layout.viewport)
     }
 
     private static func rects(for range: NSRange, layout: ViewportLayoutCoordinator.Result,

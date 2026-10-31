@@ -97,6 +97,27 @@ final class InputSelectionGeometryTests: XCTestCase {
         XCTAssertGreaterThan(try XCTUnwrap(caret.caretRect).height, 0)
     }
 
+    func testCaretSelectionConsumesWrapAffinityAndRejectsStaleLayout() throws {
+        let (scroll, view) = makeView(String(repeating: "abcdefgh", count: 8), width: 55, height: 100)
+        let line = try XCTUnwrap(view.visibleLayout?.lines.first)
+        XCTAssertGreaterThan(line.placements.count, 1)
+        let boundary = line.placements[0].fragment.range.upperBound
+        let revision = view.inputLayoutRevision
+        func state(_ side: InputCaretAffinity.WrapSide) -> InputSelectionState {
+            InputSelectionState(range: NSRange(location: boundary, length: 0), activeEndpoint: .caret,
+                                affinity: .init(wrapSide: side, bidirectionalSide: nil,
+                                                layoutRevision: revision))
+        }
+        let upstream = try XCTUnwrap(InputSelectionGeometry.geometry(selection: state(.upstream), marked: nil, in: view))
+        let downstream = try XCTUnwrap(InputSelectionGeometry.geometry(selection: state(.downstream), marked: nil, in: view))
+        XCTAssertNotEqual(try XCTUnwrap(upstream.caretRect).minY, try XCTUnwrap(downstream.caretRect).minY)
+        scroll.setFrameSize(NSSize(width: 90, height: 100))
+        scroll.tile()
+        view.updateViewport()
+        XCTAssertNotEqual(view.inputLayoutRevision, revision)
+        XCTAssertNil(InputSelectionGeometry.geometry(selection: state(.upstream), marked: nil, in: view))
+    }
+
     func testClipsPartialViewportAndRejectsInvalidRanges() throws {
         let (scroll, view) = makeView("a😀b\n" + String(repeating: "line\n", count: 40), width: 100, height: 45)
         let layout = try XCTUnwrap(view.visibleLayout)

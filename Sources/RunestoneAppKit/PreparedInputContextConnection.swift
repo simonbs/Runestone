@@ -570,14 +570,15 @@ final class PreparedInputContextConnection {
 
     /// A single revision-checked query preserves the relationship between the
     /// selection, marked range and an empty provisional composition.
-    func inputState() -> (selection: NSRange, marked: NSRange?, hasComposition: Bool)? {
+    func inputState() -> (selection: NSRange, selectionState: InputSelectionState,
+                          marked: NSRange?, hasComposition: Bool)? {
         precondition(Thread.isMainThread)
         guard activated else { return nil }
         return query(nil) { $0.inputStateForHost() }
     }
 
     /// Text and range are captured together against the installed revision.
-    func selectionSnapshot() -> (range: NSRange, text: String)? {
+    func selectionSnapshot() -> (state: InputSelectionState, text: String)? {
         precondition(Thread.isMainThread)
         guard activated else { return nil }
         return query(nil) { $0.selectionSnapshotForHost() }

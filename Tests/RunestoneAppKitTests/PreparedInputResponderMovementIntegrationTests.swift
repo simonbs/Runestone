@@ -1,9 +1,63 @@
 #if canImport(AppKit)
 import AppKit
+import CoreText
 @testable import RunestoneAppKit
 import XCTest
 
 final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
+    func testPointerAndKeyboardPreserveBothSidesOfSoftWrapBoundary() throws {
+        let fixture = try MovementIntegrationFixture(String(repeating: "abcdefgh", count: 16))
+        fixture.scroll.setFrameSize(NSSize(width: 55, height: 130))
+        fixture.scroll.tile()
+        fixture.view.updateViewport()
+        let line = try XCTUnwrap(fixture.view.visibleLayout?.lines.first)
+        XCTAssertGreaterThan(line.placements.count, 1)
+        let upstream = line.placements[0]
+        let downstream = line.placements[1]
+        let boundary = upstream.fragment.range.upperBound
+        XCTAssertEqual(boundary, downstream.fragment.range.location)
+
+        func screenPoint(_ placement: LogicalLineLayoutController.Placement) -> NSPoint {
+            let x = placement.frame.minX + CTLineGetOffsetForStringIndex(placement.fragment.line, boundary, nil)
+            return fixture.window.convertPoint(toScreen: fixture.view.convert(
+                NSPoint(x: x, y: placement.frame.midY), to: nil))
+        }
+        XCTAssertTrue(fixture.connection.performCoordinatedInput {
+            fixture.view.beginPointerSelection(at: screenPoint(upstream), extending: false,
+                                               connection: fixture.connection, hasFocus: { true })
+        })
+        XCTAssertEqual(fixture.selection, NSRange(location: boundary, length: 0))
+        XCTAssertEqual(fixture.selectionState?.affinity?.wrapSide, .upstream)
+        var actual = NSRange(location: NSNotFound, length: 0)
+        let imeRect = fixture.attachment.adapter.firstRectForInput(range: fixture.selection, actualRange: &actual)
+        let state = try XCTUnwrap(fixture.selectionState)
+        let expectedIME = try XCTUnwrap(InputScreenCaretGeometry.rect(for: InputCaretTarget(
+            location: state.activeLocation, affinity: state.affinity), in: fixture.view))
+        XCTAssertEqual(actual, fixture.selection)
+        XCTAssertEqual(imeRect, expectedIME)
+        XCTAssertTrue(fixture.send("moveRight:"))
+        XCTAssertEqual(fixture.selection, NSRange(location: boundary, length: 0))
+        XCTAssertEqual(fixture.selectionState?.affinity?.wrapSide, .downstream)
+        XCTAssertTrue(fixture.send("moveLeft:"))
+        XCTAssertEqual(fixture.selectionState?.affinity?.wrapSide, .upstream)
+
+        XCTAssertTrue(fixture.connection.performCoordinatedInput {
+            fixture.view.beginPointerSelection(at: screenPoint(downstream), extending: false,
+                                               connection: fixture.connection, hasFocus: { true })
+        })
+        XCTAssertEqual(fixture.selectionState?.affinity?.wrapSide, .downstream)
+        var rangeOnly: PreparedInputEventAdapter.Outcome?
+        XCTAssertTrue(fixture.connection.performCoordinatedInput {
+            rangeOnly = fixture.attachment.adapter.setSelection(NSRange(location: boundary, length: 0))
+        })
+        XCTAssertEqual(rangeOnly, .resetRequired)
+        XCTAssertNil(fixture.selectionState)
+        XCTAssertEqual(fixture.host.preparations, 0)
+        XCTAssertEqual(fixture.host.parentStarts, fixture.host.parentCloses)
+        XCTAssertEqual(fixture.host.childStarts, fixture.host.childCloses)
+        fixture.disconnect()
+    }
+
     func testSuccessiveVerticalMovesRetainPreferredVisualColumn() throws {
         let fixture = try MovementIntegrationFixture("abcdef\nx\n\nabcdef")
         try fixture.setSelection(NSRange(location: 5, length: 0))
@@ -534,6 +588,7 @@ private final class MovementIntegrationFixture {
     }
 
     var selection: NSRange { attachment.adapter.selectedRangeForInput() }
+    var selectionState: InputSelectionState? { attachment.adapter.selectionStateForHost() }
 
     func setSelection(_ range: NSRange) throws {
         var result: PreparedInputEventAdapter.Outcome?

@@ -77,6 +77,42 @@ enum InputScreenRangeGeometry {
         characterIndex(for: screenPoint, in: view, requiresRepresentableCaret: true)
     }
 
+    /// Pointer hit including the soft-wrap side needed to reproduce its caret.
+    /// Bidirectional alternatives remain unavailable until their affinity is
+    /// consumed by every input and accessibility path.
+    static func caretTargetForPointer(for screenPoint: NSPoint, in view: ReadOnlyDocumentView) -> InputCaretTarget? {
+        let revision = view.inputGeometryRevision
+        guard screenPoint.x.isFinite, screenPoint.y.isFinite,
+              let (window, layout) = viewport(in: view) else { return nil }
+        let point = view.convert(window.convertPoint(fromScreen: screenPoint), from: nil)
+        guard let target = caretTarget(forDocumentPoint: point, in: view, layout: layout),
+              stable(view, window: window, layout: layout, revision: revision) else { return nil }
+        return target
+    }
+
+    static func caretTargetForPointerDrag(for screenPoint: NSPoint, in view: ReadOnlyDocumentView) -> InputCaretTarget? {
+        let revision = view.inputGeometryRevision
+        guard screenPoint.x.isFinite, screenPoint.y.isFinite,
+              let (window, layout) = viewport(in: view),
+              layout.viewport.width > 0, layout.viewport.height > 0 else { return nil }
+        let point = view.convert(window.convertPoint(fromScreen: screenPoint), from: nil)
+        let viewport = layout.viewport
+        let x = min(max(point.x, viewport.minX), viewport.maxX.nextDown)
+        let y = min(max(point.y, viewport.minY), viewport.maxY.nextDown)
+        let spans: [(CGFloat, CGFloat)] = layout.lines.compactMap { item in
+            let top = max(viewport.minY, item.line.yPosition)
+            let bottom = min(viewport.maxY, item.line.yPosition + item.line.data.lineHeight)
+            return top.isFinite && bottom.isFinite && top < bottom ? (top, bottom) : nil
+        }
+        guard let nearest = spans.min(by: { a, b in
+            max(a.0 - y, 0, y - a.1) < max(b.0 - y, 0, y - b.1)
+        }) else { return nil }
+        let clamped = NSPoint(x: x, y: min(max(y, nearest.0), nearest.1.nextDown))
+        guard let target = caretTarget(forDocumentPoint: clamped, in: view, layout: layout),
+              stable(view, window: window, layout: layout, revision: revision) else { return nil }
+        return target
+    }
+
     private static func characterIndex(for screenPoint: NSPoint, in view: ReadOnlyDocumentView,
                                        requiresRepresentableCaret: Bool) -> Int? {
         let geometryRevision = view.inputGeometryRevision
@@ -169,6 +205,20 @@ enum InputScreenRangeGeometry {
             .map { abs(point.x - placement.frame.minX - $0.1) }.min()
         guard let startDistance = leadingDistance, let endDistance = trailingDistance else { return nil }
         return startDistance <= endDistance ? start : end
+    }
+
+    private static func caretTarget(forDocumentPoint point: NSPoint, in view: ReadOnlyDocumentView,
+                                    layout: ViewportLayoutCoordinator.Result) -> InputCaretTarget? {
+        guard let location = characterIndex(forDocumentPoint: point, in: view, layout: layout),
+              let lineLayout = layout.lines.first(where: {
+                  point.y >= $0.line.yPosition && point.y < $0.line.yPosition + $0.line.data.lineHeight
+              }) else { return nil }
+        if lineLayout.line.data.length == 0 { return InputCaretTarget(location: location, affinity: nil) }
+        guard let placement = lineLayout.placements.first(where: {
+            point.y >= $0.frame.minY && point.y < $0.frame.maxY
+        }) else { return nil }
+        return InputCaretAffinityGeometry.target(forDocumentPoint: point, lineLayout: lineLayout,
+                                                  placement: placement, location: location, in: view)
     }
 
     private static func viewport(in view: ReadOnlyDocumentView) -> (NSWindow, ViewportLayoutCoordinator.Result)? {

@@ -629,7 +629,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     private struct VisualDestination {
-        let target: Int
+        let target: InputCaretTarget
         let direction: PreparedInputCommandInterpreter.Direction
         let extending: Bool
         let preferredX: CGFloat?
@@ -664,37 +664,54 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         }
         let origin = PreparedInputCommandInterpreter.movementOrigin(selection: selection, extending: extending,
                                                                      direction: direction, view: self)
+        let originTarget: InputCaretTarget = {
+            guard let state = presentedSelectionState, state.range == selection,
+                  state.activeLocation == origin else { return InputCaretTarget(location: origin, affinity: nil) }
+            return InputCaretTarget(location: origin, affinity: state.affinity)
+        }()
         var preferredX: CGFloat?
-        let target: Int?
+        let target: InputCaretTarget?
         if let collapseTarget = collapseTarget {
-            target = collapseTarget
+            let affinity = presentedSelectionState.flatMap { state in
+                state.range == selection && state.activeLocation == collapseTarget ? state.affinity : nil
+            }
+            target = InputCaretTarget(location: collapseTarget, affinity: affinity)
         } else if isVertical {
             let preference = verticalPreference
             let x = preference.flatMap { previous in
                 previous.selection == selection && previous.selectionRevision == inputSelectionRevision &&
                 previous.contentRevision == contentRevision && previous.geometryRevision == inputGeometryRevision ? previous.x : nil
             }
-            let value = PreparedInputVisualMovement.vertical(from: origin, direction: backward ? .up : .down,
-                                                            preferredScreenX: x, in: self)
-            if let value = value { target = value.location; preferredX = value.preferredScreenX }
-            else if (backward && origin == 0) || (!backward && origin == text.length) { target = origin }
+            let value = PreparedInputVisualMovement.vertical(from: originTarget, direction: backward ? .up : .down,
+                                                              preferredScreenX: x, in: self)
+            if let value { target = value.target; preferredX = value.preferredScreenX }
+            else if (backward && origin == 0) || (!backward && origin == text.length) {
+                target = InputCaretTarget(location: origin, affinity: originTarget.affinity)
+            }
             else { target = nil }
         } else if isHorizontal {
             let horizontalDirection: PreparedInputVisualMovement.HorizontalDirection = backward ? .left : .right
-            let result = isWord
-                ? PreparedInputVisualWordMovement.destination(from: origin, direction: horizontalDirection, in: self)
-                : PreparedInputVisualMovement.horizontal(from: origin, direction: horizontalDirection, in: self)
-            switch result {
-            case let .moved(location): target = location
-            case .boundary: target = origin
-            case .unavailable: target = nil
+            if isWord {
+                switch PreparedInputVisualWordMovement.destination(from: origin, direction: horizontalDirection, in: self) {
+                case let .moved(location): target = InputCaretTarget(location: location, affinity: nil)
+                case .boundary: target = originTarget
+                case .unavailable: target = nil
+                }
+            } else {
+                switch PreparedInputVisualMovement.horizontal(from: originTarget, direction: horizontalDirection, in: self) {
+                case let .moved(value): target = value
+                case .boundary: target = originTarget
+                case .unavailable: target = nil
+                }
             }
         } else {
             let edge: PreparedInputVisualMovement.Edge = backward ? .beginning : .end
             if name.contains("LeftEnd") || name.contains("RightEnd") {
                 target = PreparedInputVisualMovement.lineEdge(from: origin, edge: edge, in: self)
+                    .map { InputCaretTarget(location: $0, affinity: nil) }
             } else {
                 target = PreparedInputVisualMovement.logicalLineEdge(from: origin, edge: edge, in: self)
+                    .map { InputCaretTarget(location: $0, affinity: nil) }
             }
         }
         guard let target = target else { return nil }
@@ -707,7 +724,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     private func scrollForVerticalMovement(_ name: String, selection: NSRange,
                                            adapter: PreparedInputEventAdapter,
                                            isAvailable: @escaping () -> Bool) -> PreparedInputViewportStep.Outcome? {
-        guard name.hasPrefix("moveUp") || name.hasPrefix("moveDown"),
+        guard presentedSelectionState?.affinity == nil,
+              name.hasPrefix("moveUp") || name.hasPrefix("moveDown"),
               let window = window, let clip = enclosingScrollView?.contentView,
               let layout = visibleLayout, layout.isComplete, layout.viewport == clip.bounds,
               let documentRevision = adapter.installedRevisionForDispatch else { return nil }
@@ -807,11 +825,11 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         guard focusRequested, !disarmed, !isReadOnly,
               let connection = inputConnection else { return }
         if event.clickCount == 1, !event.modifierFlags.contains(.shift), let window,
-           let snapshot = connection.selectionSnapshot(), snapshot.range.length > 0 {
+           let snapshot = connection.selectionSnapshot(), snapshot.state.range.length > 0 {
             let point = window.convertPoint(toScreen: event.locationInWindow)
             if let index = InputScreenRangeGeometry.characterIndexForPointer(for: point, in: self),
-               NSLocationInRange(index, snapshot.range) {
-                pendingTextDrag = (snapshot.text, snapshot.range)
+               NSLocationInRange(index, snapshot.state.range) {
+                pendingTextDrag = (snapshot.text, snapshot.state.range)
                 return
             }
         }
@@ -887,8 +905,9 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 report(.unavailable); reported = true; return
             }
             guard isCurrent(), canUse(),
-                  let offset = InputScreenRangeGeometry.characterIndexForPointer(for: screenPoint, in: self),
+                  let target = InputScreenRangeGeometry.caretTargetForPointer(for: screenPoint, in: self),
                   isCurrent(), canUse() else { report(.unavailable); reported = true; return }
+            let offset = target.location
             let currentSelection = adapter.selectedRangeForInput()
             let text = self.manager.stringView.string
             guard PreparedInputCommandInterpreter.isValidSelectionRange(currentSelection, in: text),
@@ -904,7 +923,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             }
             PreparedInputCommandInterpreter.resetSelectionExtension(in: self)
             let selection = NSRange(location: min(anchor, offset), length: max(anchor, offset) - min(anchor, offset))
-            let attempt = adapter.setSelectionReporting(selection, isAvailable: { isCurrent() && canUse() })
+            let endpoint: InputSelectionState.Endpoint = selection.length == 0 ? .caret :
+                (offset == selection.location ? .lowerBound : .upperBound)
+            let state = InputSelectionState(range: selection, activeEndpoint: endpoint, affinity: target.affinity)
+            let attempt = adapter.setSelectionReporting(state, isAvailable: { isCurrent() && canUse() })
             if let failure = attempt.failure {
                 connection.recordInputFailure(operation: .setSelection, failure: failure)
                 reported = true
@@ -977,7 +999,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 return
             }
             guard isCurrent(), canUse(),
-                  let offset = InputScreenRangeGeometry.characterIndexForPointerDrag(for: screenPoint, in: self),
+                  let target = InputScreenRangeGeometry.caretTargetForPointerDrag(for: screenPoint, in: self),
+                  let offset = Optional(target.location),
                   PreparedInputCommandInterpreter.isValidBoundary(offset, in: self.manager.stringView.string),
                   isCurrent(), canUse(),
                   let selection = drag.selection(to: offset, current: adapter.selectedRangeForInput(),
@@ -989,7 +1012,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 self.endPointerSelection()
                 return
             }
-            let attempt = adapter.setSelectionReporting(selection, isAvailable: { isCurrent() && canUse() })
+            let endpoint: InputSelectionState.Endpoint = selection.length == 0 ? .caret :
+                (offset == selection.location ? .lowerBound : .upperBound)
+            let state = InputSelectionState(range: selection, activeEndpoint: endpoint, affinity: target.affinity)
+            let attempt = adapter.setSelectionReporting(state, isAvailable: { isCurrent() && canUse() })
             if let failure = attempt.failure {
                 connection.recordInputFailure(operation: .setSelection, failure: failure)
                 reported = true
@@ -1179,8 +1205,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         super.draw(dirtyRect)
         guard ownsKeyFocus, let connection = inputConnection else { return }
         connection.performResponderActivity { adapter, isCurrent in
-            let selection = adapter.selectedRangeForInput()
-            guard selection.location != NSNotFound, isCurrent(), ownsKeyFocus else { return }
+            guard let selection = adapter.selectionStateForHost(),
+                  selection.range.location != NSNotFound, isCurrent(), ownsKeyFocus else { return }
             let marked = adapter.markedRangeForInput()
             guard !adapter.needsInputReset, isCurrent(), ownsKeyFocus,
                   let geometry = InputSelectionGeometry.geometry(selection: selection,
