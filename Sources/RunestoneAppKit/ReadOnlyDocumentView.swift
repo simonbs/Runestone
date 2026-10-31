@@ -6,9 +6,9 @@ import RunestoneEngine
 ///
 /// Install this view as an `NSScrollView`'s document view. Supply text with
 /// appropriate AppKit font and foreground color attributes. Input, selection,
-/// accessibility navigation, and editing are not provided by this view.
+/// accessibility navigation, and interactive editing are not provided by this view.
 public final class ReadOnlyDocumentView: NSView {
-    private var snapshot: NSAttributedString
+    private var snapshot: NSMutableAttributedString
     private let fallbackHeight: CGFloat
     private let cacheLimit = 128
     private(set) var manager: LineManager
@@ -36,7 +36,7 @@ public final class ReadOnlyDocumentView: NSView {
     /// attribute values themselves are not deep-copied. Rebuilding layout takes
     /// time proportional to the size of the document.
     public func setContent(_ content: NSAttributedString) {
-        snapshot = NSAttributedString(attributedString: content)
+        snapshot = NSMutableAttributedString(attributedString: content)
         resetLayout(width: 0)
         needsDisplay = true
         if let scroll = enclosingScrollView {
@@ -46,9 +46,45 @@ public final class ReadOnlyDocumentView: NSView {
         updateViewport()
     }
 
+    /// Replaces a UTF-16 range with attributed content without resetting the document.
+    ///
+    /// Returns `false` and leaves the document unchanged if the range is out of
+    /// bounds or either endpoint splits a UTF-16 surrogate pair. The supplied
+    /// attributed string is copied; its attribute values are not deep-copied.
+    /// The scroll position is clamped after layout, but a particular text anchor
+    /// is not guaranteed to stay at the same screen position. This programmatic
+    /// operation does not provide input, selection, undo, or change notifications.
+    @discardableResult
+    public func replaceContent(in range: NSRange, with content: NSAttributedString) -> Bool {
+        let text = manager.stringView.string
+        guard range.location >= 0, range.length >= 0, range.location <= text.length,
+              range.length <= text.length - range.location,
+              isScalarBoundary(range.location, in: text),
+              isScalarBoundary(range.location + range.length, in: text) else { return false }
+        if range.length == 0 && content.length == 0 { return true }
+        let replacement = NSAttributedString(attributedString: content)
+        guard let edit = LineEditTransaction.replace(in: manager, range: range, with: replacement.string) else { return false }
+        snapshot.replaceCharacters(in: range, with: replacement)
+        let affected = edit.lineChanges.editedLines.union(edit.lineChanges.removedLines)
+        let ids = Set(affected.map(\.id))
+        for id in ids { controllers.removeValue(forKey: id)?.invalidate() }
+        controllerOrder.removeAll { ids.contains($0) }
+        visibleLayout = nil
+        needsDisplay = true
+        updateViewport()
+        return true
+    }
+
+    private func isScalarBoundary(_ offset: Int, in text: NSString) -> Bool {
+        guard offset > 0 && offset < text.length else { return true }
+        let previous = text.character(at: offset - 1)
+        let next = text.character(at: offset)
+        return !(0xD800...0xDBFF).contains(previous) || !(0xDC00...0xDFFF).contains(next)
+    }
+
     init(snapshot: NSAttributedString, fallbackHeight: CGFloat) {
         precondition(fallbackHeight.isFinite && fallbackHeight > 0)
-        self.snapshot = NSAttributedString(attributedString: snapshot)
+        self.snapshot = NSMutableAttributedString(attributedString: snapshot)
         self.fallbackHeight = fallbackHeight
         self.manager = LineManager(stringView: StringView(string: snapshot.string))
         super.init(frame: .zero)
