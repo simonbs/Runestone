@@ -11,6 +11,7 @@ final class PreparedInputDocumentAttachment {
         weak var bridge: RunestoneInputDocumentBridge?
         weak var lifetime: RunestoneInputDocumentLifetime?
         weak var connection: PreparedInputContextConnection?
+        var dispatchCoordinator: PreparedInputDispatchCoordinator?
         var registration: PreparedInputViewSynchronizer.Registration?
     }
 
@@ -90,6 +91,10 @@ final class PreparedInputDocumentAttachment {
         relay.host = host
         relay.bridge = bridge
         relay.lifetime = lifetime
+        if let dispatchHost = host as? RunestoneInputDispatchHost {
+            relay.dispatchCoordinator = PreparedInputDispatchCoordinator(host: dispatchHost, source: view,
+                gateReleased: { [weak bridge] in bridge?.synchronizer.documentGateDidBecomeAvailable() })
+        }
         guard let adapter = PreparedInputEventAdapter(view: view, snapshot: snapshot, initialRevision: revision,
             documentRevision: { [weak relay, weak view] in
                 guard let relay = relay, let view = view, !view.isRetired,
@@ -102,7 +107,13 @@ final class PreparedInputDocumentAttachment {
             }, beginEvent: { [weak relay, weak view] expected in
                 guard let relay = relay, let view = view, !view.isRetired,
                       relay.lifetime != nil, let bridge = relay.bridge, let host = relay.host else { return .stale }
-                switch host.beginInputEvent(expectedRevision: expected, source: view) {
+                let start: RunestoneInputEventStart
+                if let coordinator = relay.dispatchCoordinator {
+                    start = coordinator.beginOperation(expectedRevision: expected)
+                } else {
+                    start = host.beginInputEvent(expectedRevision: expected, source: view)
+                }
+                switch start {
                 case .stale: return .stale
                 case .busy: return .busy
                 case let .reserved(lease):
@@ -128,9 +139,11 @@ final class PreparedInputDocumentAttachment {
                             }
                             bridge.synchronizer.canonicalDidChange()
                         })
-                    }, close: {
+                    }, close: { [weak relay] in
                         lease.close()
-                        bridge.synchronizer.documentGateDidBecomeAvailable()
+                        if relay?.dispatchCoordinator == nil {
+                            bridge.synchronizer.documentGateDidBecomeAvailable()
+                        }
                         withExtendedLifetime(host) {}
                     }))
                 }
@@ -148,6 +161,7 @@ final class PreparedInputDocumentAttachment {
                                                                initiallyFocusSuspended: initiallyFocusSuspended,
                                                                makeDriver: makeDriver, schedule: schedule) else { return nil }
         relay.connection = connection
+        connection.dispatchCoordinator = relay.dispatchCoordinator
         guard lifetime.bind(connection, to: lifetimeRegistration) else {
             connection.abandonDocument()
             return nil

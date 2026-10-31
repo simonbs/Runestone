@@ -93,6 +93,7 @@ final class PreparedInputContextConnection {
     }
     private var state: State = .connected
     // The host owns focus policy. Never retain it through this notification.
+    weak var dispatchCoordinator: PreparedInputDispatchCoordinator?
     weak var readyObserver: ReadyObserver?
     weak var commandHandler: CommandHandler?
     weak var inputFailureObserver: InputFailureObserver? {
@@ -102,12 +103,14 @@ final class PreparedInputContextConnection {
     private var inputFailureRecords: [InputFailureRecord] = []
     private var inputFailureOverflowCount = 0
     private var inputFailureGeneration = UUID()
+    private var recordedFailureGeneration = UUID()
     private var lastNotifiedInputFailureGeneration: UUID?
     private var inputFailureIdleWorkPending = false
     private var inputFailureDeliveryPending = false
     private var notifyingInputFailureObserver = false
     private var focusSuspended = false
     private var activated = false
+    private var dispatchDepth = 0
     private var driverDepth = 0
     private var callbackDepth = 0
     private var inputActionGeneration = UUID()
@@ -203,6 +206,27 @@ final class PreparedInputContextConnection {
         return isActive
     }
 
+    /// The outer lease spans driver dispatch and key-binding fallback. A later
+    /// out-of-band client callback starts a separate scope.
+    @discardableResult
+    func performCoordinatedInput(_ body: () -> Void) -> Bool {
+        precondition(Thread.isMainThread)
+        guard let coordinator = dispatchCoordinator else { body(); return true }
+        let failureGeneration = recordedFailureGeneration
+        let currentGeneration = generation
+        dispatchDepth += 1
+        defer { dispatchDepth -= 1; finishActivity() }
+        return coordinator.perform(expectedRevision: adapter.installedRevisionForDispatch, body: {
+            body()
+            return self.recordedFailureGeneration == failureGeneration && self.generation == currentGeneration &&
+                self.state == .connected && !self.view.isRetired &&
+                coordinator.isCurrent(revision: self.adapter.installedRevisionForDispatch)
+        }, isStillCurrent: {
+            self.recordedFailureGeneration == failureGeneration && self.generation == currentGeneration &&
+                self.state == .connected && !self.view.isRetired
+        })
+    }
+
     /// An unavailable key was never passed to the input driver. A declined
     /// key was passed to AppKit and must never be replayed as an event.
     @discardableResult
@@ -289,7 +313,7 @@ final class PreparedInputContextConnection {
 
     private func invalidateCoordinates() {
         guard state == .connected, !focusSuspended, !view.isRetired, activated else { return }
-        guard driverDepth == 0, callbackDepth == 0 else { deferredInvalidation = true; return }
+        guard dispatchDepth == 0, driverDepth == 0, callbackDepth == 0 else { deferredInvalidation = true; return }
         guard let driver = driver else { return }
         driverDepth += 1
         defer { finishDriverCall() }
@@ -302,8 +326,8 @@ final class PreparedInputContextConnection {
     }
 
     private func finishActivity() {
-        if driverDepth == 0 && callbackDepth == 0 { view.flushAccessibilityNotificationsIfNeeded() }
-        if driverDepth == 0 && callbackDepth == 0 && deferredInvalidation && state == .connected {
+        if dispatchDepth == 0 && driverDepth == 0 && callbackDepth == 0 { view.flushAccessibilityNotificationsIfNeeded() }
+        if dispatchDepth == 0 && driverDepth == 0 && callbackDepth == 0 && deferredInvalidation && state == .connected {
             deferredInvalidation = false
             view.inputInvalidation.invalidate()
         }
@@ -321,6 +345,7 @@ final class PreparedInputContextConnection {
             inputFailureOverflowCount += 1
         }
         inputFailureGeneration = UUID()
+        recordedFailureGeneration = UUID()
         scheduleInputFailureNotificationIfNeeded()
     }
 
@@ -338,7 +363,7 @@ final class PreparedInputContextConnection {
         precondition(Thread.isMainThread)
         guard !inputFailureRecords.isEmpty || inputFailureOverflowCount > 0 else { return }
         guard inputFailureObserver != nil, inputFailureGeneration != lastNotifiedInputFailureGeneration,
-              driverDepth == 0, callbackDepth == 0, !inputFailureIdleWorkPending,
+              dispatchDepth == 0, driverDepth == 0, callbackDepth == 0, !inputFailureIdleWorkPending,
               !inputFailureDeliveryPending, !notifyingInputFailureObserver else { return }
         inputFailureIdleWorkPending = true
         adapter.whenInputActivityIdle { [weak self] in
@@ -347,7 +372,7 @@ final class PreparedInputContextConnection {
             guard !self.inputFailureRecords.isEmpty || self.inputFailureOverflowCount > 0,
                   self.inputFailureObserver != nil,
                   self.inputFailureGeneration != self.lastNotifiedInputFailureGeneration,
-                  self.driverDepth == 0, self.callbackDepth == 0 else { return }
+                  self.dispatchDepth == 0, self.driverDepth == 0, self.callbackDepth == 0 else { return }
             // The adapter is still in its idle guard. A later callback must
             // recheck all activity; a queued turn is not proof of quiescence.
             self.inputFailureDeliveryPending = true
@@ -361,7 +386,7 @@ final class PreparedInputContextConnection {
         guard !inputFailureRecords.isEmpty || inputFailureOverflowCount > 0,
               let observer = inputFailureObserver,
               inputFailureGeneration != lastNotifiedInputFailureGeneration else { return }
-        guard driverDepth == 0, callbackDepth == 0 else { return }
+        guard dispatchDepth == 0, driverDepth == 0, callbackDepth == 0 else { return }
         if adapter.inputActivityIsBusy {
             scheduleInputFailureNotificationIfNeeded()
             return
@@ -392,6 +417,10 @@ final class PreparedInputContextConnection {
     fileprivate func mutate(operation: InputOperation,
                             _ action: (PreparedInputEventAdapter) -> PreparedInputEventAdapter.InputAttempt) {
         precondition(Thread.isMainThread)
+        if let coordinator = dispatchCoordinator, !coordinator.isActive {
+            _ = performCoordinatedInput { self.mutate(operation: operation, action) }
+            return
+        }
         inputActionGeneration = UUID()
         guard state == .connected, !focusSuspended, !view.isRetired else {
             recordInputFailure(operation: operation, failure: .init(reason: .unavailable, effect: .notApplied))
@@ -406,6 +435,10 @@ final class PreparedInputContextConnection {
 
     fileprivate func command(_ selector: Selector) {
         precondition(Thread.isMainThread)
+        if let coordinator = dispatchCoordinator, !coordinator.isActive {
+            _ = performCoordinatedInput { self.command(selector) }
+            return
+        }
         inputActionGeneration = UUID()
         guard state == .connected, !focusSuspended, !view.isRetired else {
             recordInputFailure(operation: .command, failure: .init(reason: .unavailable, effect: .notApplied))
@@ -442,7 +475,7 @@ final class PreparedInputContextConnection {
     }
 
     private func drainReset() {
-        guard state == .resetRequested, driverDepth == 0, callbackDepth == 0,
+        guard state == .resetRequested, dispatchDepth == 0, driverDepth == 0, callbackDepth == 0,
               driver != nil, contextToken != nil else { return }
         state = .quiescing
         view.inputInvalidation.detach()
@@ -453,6 +486,7 @@ final class PreparedInputContextConnection {
             guard let self = self, self.state == .quiescing, self.generation == expected,
                   let driver = self.driver, let token = self.contextToken else { return }
             if self.adapter.hasProvisionalCompositionForRetirement {
+                self.dispatchCoordinator?.reportCompositionDiscarded()
                 self.recordInputFailure(operation: .compositionDiscarded,
                                         failure: .init(reason: .compositionDiscarded, effect: .mayHaveApplied))
             }
@@ -634,7 +668,7 @@ final class PreparedInputContextConnection {
         case .connected:
             state = .resetRequested
             generation = UUID()
-            if driverDepth == 0 && callbackDepth == 0 { drainReset() }
+            if dispatchDepth == 0 && driverDepth == 0 && callbackDepth == 0 { drainReset() }
             else { scheduleDrainIfNeeded() }
         case .resetRequested:
             scheduleDrainIfNeeded()

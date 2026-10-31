@@ -61,12 +61,28 @@ provisional composition, including an empty marked range. Once the old client
 has been detached, callbacks to that retired client are inert and cannot be
 reported. These reports provide detection, not automatic recovery.
 
-Before making an editable attachment public, define an owner-visible recovery
-and feedback policy for failed input and discarded composition, and coordinate
-any event-level admission or queueing with the app's exclusive document gate.
-Never replay stale input against a newer snapshot. Verify actual key focus,
-input methods, composition on blur, accessibility and VoiceOver in an unlocked
-session. The headless tests do not establish those interactions.
+`RunestoneInputDispatchHost` is an opt-in public capability for a future host.
+Its parent dispatch reservation excludes competing document operations while
+permitting sequential child reservations at the currently installed revision.
+The private responder holds that parent over both input-driver handling and
+key-binding fallback. Later input-client callbacks acquire their own scope;
+they are not attributed to the earlier dispatch. The host synchronously
+acknowledges metadata-only completion after each attempt, including rejection,
+or a separate composition-discard notice. It may retain results in its own
+bounded storage. A nested rejected attempt can complete while its outer dispatch
+still holds the gate; callbacks arrive in completion order and must not call out.
+No framework completion queue or automatic replay is involved. Delivery cannot
+be guaranteed after the host or its source view has gone away.
+
+The current app gate implements only the original single-operation reservation;
+it must explicitly adopt the parent/child contract before using this capability.
+A completed synchronous dispatch means no failure was detected, not that an IME
+will issue no later callbacks or that a canonical edit occurred. Before making
+an editable attachment public, define owner-visible recovery and feedback for
+failed input and discarded composition, integrate and verify the app gate, and
+verify actual key focus, input methods, composition on blur, accessibility and
+VoiceOver in an unlocked session. Never replay stale input against a newer
+snapshot. The headless tests do not establish those interactions.
 
 ## Scale evidence and remaining work
 

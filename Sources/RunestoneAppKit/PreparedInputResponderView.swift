@@ -104,6 +104,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
 
     override func keyDown(with event: NSEvent) {
         guard let connection = inputConnection else { super.keyDown(with: event); return }
+        _ = connection.performCoordinatedInput { self.routeKeyDown(event, connection: connection) }
+    }
+
+    private func routeKeyDown(_ event: NSEvent, connection: PreparedInputContextConnection) {
         guard ownsKeyFocus else {
             connection.recordInputFailure(operation: .undispatchedKey,
                 failure: .init(reason: .unavailable, effect: .notApplied))
@@ -207,6 +211,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
 
     override func mouseDown(with event: NSEvent) {
         guard let connection = inputConnection else { return }
+        _ = connection.performCoordinatedInput { self.routeMouseDown(event, connection: connection) }
+    }
+
+    private func routeMouseDown(_ event: NSEvent, connection: PreparedInputContextConnection) {
         func report(_ reason: PreparedInputEventAdapter.InputFailure.Reason,
                     _ effect: PreparedInputEventAdapter.InputFailure.Effect = .notApplied) {
             connection.recordInputFailure(operation: .setSelection, failure: .init(reason: reason, effect: effect))

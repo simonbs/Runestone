@@ -192,6 +192,15 @@ final class PreparedInputEventAdapter {
                                             documentRevision: documentRevision)
     }
 
+    /// The installed identity, only while a new dispatch may be admitted.
+    var installedRevisionForDispatch: UUID? {
+        precondition(Thread.isMainThread)
+        guard state == .ready, !lifecycleOperationInFlight, !drainingInputActivityIdleWork,
+              queryDepth == 0, !view.isRetired, !session.isStale,
+              !session.hasDocumentConflict else { return nil }
+        return session.installedRevisionForInput
+    }
+
     var needsInputReset: Bool {
         precondition(Thread.isMainThread)
         return state == .resetPending
