@@ -81,6 +81,44 @@ final class ViewportLayoutCoordinatorTests: XCTestCase {
         XCTAssertEqual(untouched.data.lineHeight, originalHeight, accuracy: 0.001)
     }
 
+    func testLargeDocumentDistantViewportPreparesOnlyNearbyLines() throws {
+        // Building the line index is deliberately outside this measurement:
+        // its full-document cost is a separate contract from viewport layout.
+        let lineCount = 25_000
+        let manager = LineManager(stringView: StringView(string: String(repeating: "short line\n", count: lineCount)))
+        manager.estimatedLineHeight = 16
+        manager.rebuild()
+        var requests: [Int] = []
+        var controllers: [DocumentLineNodeID: LogicalLineLayoutController] = [:]
+        let coordinator = ViewportLayoutCoordinator(manager: manager) { [font] line in
+            requests.append(line.index)
+            if let controller = controllers[line.id] { return controller }
+            let controller = LogicalLineLayoutController(manager: manager, line: line)
+            let range = NSRange(location: line.location, length: line.data.totalLength)
+            let text = manager.stringView.string.substring(with: range)
+            guard controller.prepare(NSAttributedString(string: text, attributes: [.font: font]),
+                                     width: 240, fallbackHeight: 16) else { return nil }
+            controllers[line.id] = controller
+            return controller
+        }
+
+        for row in [24_000, 12_000] {
+            requests.removeAll()
+            let target = manager.line(atRow: row)
+            let viewport = CGRect(x: 0, y: target.yPosition, width: 240, height: 80)
+            let result = try XCTUnwrap(coordinator.layout(in: viewport))
+            XCTAssertTrue(result.isComplete)
+            XCTAssertTrue(result.lines.contains { $0.line === target }, "Distant target must be laid out")
+            let prepared = Set(requests)
+            // At 16 points estimated height the viewport spans five short
+            // lines; allow space for predecessor correction and height changes.
+            XCTAssertLessThanOrEqual(requests.count, 16, "A viewport jump must not repeatedly prepare distant lines")
+            XCTAssertLessThanOrEqual(prepared.count, 16, "A viewport jump must not prepare the document prefix")
+            XCTAssertTrue(prepared.allSatisfy { $0 >= row - 8 && $0 <= row + 8 },
+                          "Preparation should stay near the requested viewport: \(prepared.sorted())")
+        }
+    }
+
     private func makeCoordinator(_ manager: LineManager, width: CGFloat) -> ViewportLayoutCoordinator {
         var controllers: [DocumentLineNodeID: LogicalLineLayoutController] = [:]
         return ViewportLayoutCoordinator(manager: manager) { [font] line in
