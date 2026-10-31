@@ -329,9 +329,13 @@ private extension LineManager {
                     documentLineTree.remove(line)
                     let otherChangeSet = setLength(of: previousLine, to: previousLine.value + 1, newLine: &newLine)
                     changeSet.union(with: otherChangeSet)
+                    return changeSet
                 } else {
                     line.data.delimiterLength = 1
                 }
+            } else if lastChar == "\u{0085}" || lastChar == "\u{2028}" || lastChar == "\u{2029}" {
+                // Match NSString's next-line, line-separator, and paragraph-separator handling.
+                line.data.delimiterLength = 1
             } else {
                 line.data.delimiterLength = 0
             }
