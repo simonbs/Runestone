@@ -416,6 +416,14 @@ public class ReadOnlyDocumentView: NSView {
         availableSyntaxFolds.keys.sorted()
     }
 
+    /// The fold header at the current caret/selection start, if any. This remains
+    /// available while the host has made the editor read-only.
+    public var syntaxFoldRowAtSelection: Int? {
+        guard displaySelection.location != NSNotFound,
+              let line = manager.line(containingCharacterAt: displaySelection.location) else { return nil }
+        return availableSyntaxFolds[line.index] == nil ? nil : line.index
+    }
+
     public func isSyntaxFoldCollapsed(atRow row: Int) -> Bool {
         collapsedSyntaxFoldHeaders.contains(row)
     }
