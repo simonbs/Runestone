@@ -13,6 +13,7 @@ let package = Package(
     products: [
         .library(name: "Runestone", targets: ["Runestone"]),
         .library(name: "RunestoneEngine", targets: ["RunestoneEngine"]),
+        .library(name: "RunestoneAppKit", targets: ["RunestoneAppKit"]),
         .library(name: "TreeSitter", targets: ["TreeSitter"])
     ],
     targets: [
@@ -25,6 +26,7 @@ let package = Package(
             .process("TextView/Appearance/Theme.xcassets")
         ]),
         .target(name: "RunestoneEngine"),
+        .target(name: "RunestoneAppKit", dependencies: ["RunestoneEngine"]),
         .target(
             name: "TreeSitter",
             path: "tree-sitter/lib",
@@ -38,6 +40,7 @@ let package = Package(
             .unsafeFlags(["-w"])
         ]),
         .testTarget(name: "RunestoneEngineTests", dependencies: ["RunestoneEngine"]),
+        .testTarget(name: "RunestoneAppKitTests", dependencies: ["RunestoneAppKit", "RunestoneEngine"]),
         .testTarget(name: "RunestoneTests", dependencies: [
             "Runestone",
             "TreeSitterSupport",
