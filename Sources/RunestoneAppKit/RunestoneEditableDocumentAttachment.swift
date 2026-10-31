@@ -66,6 +66,15 @@ public final class RunestoneEditableDocumentAttachment {
         public let text: String
     }
 
+    /// A complete immutable text snapshot used by an app-owned native
+    /// `NSTextFinderClient`. The text and selection are captured against one
+    /// installed document revision. Nil means input is inactive, stale,
+    /// resetting, detached, or has a provisional composition.
+    public struct TextFinderSnapshot: Equatable {
+        public let text: String
+        public let selection: NSRange
+    }
+
     /// The newly created document view. Do not attempt to attach it again.
     public let view: ReadOnlyDocumentView
     private var attachment: PreparedInputDocumentAttachment?
@@ -119,6 +128,50 @@ public final class RunestoneEditableDocumentAttachment {
         precondition(Thread.isMainThread)
         guard isEditable, let snapshot = attachment?.connection.selectionSnapshot() else { return nil }
         return SelectionSnapshot(range: snapshot.range, text: snapshot.text)
+    }
+
+    public var textFinderSnapshot: TextFinderSnapshot? {
+        precondition(Thread.isMainThread)
+        guard isEditable, let snapshot = attachment?.connection.textFinderSnapshot() else { return nil }
+        return TextFinderSnapshot(text: snapshot.text, selection: snapshot.selection)
+    }
+
+    /// Selects one UTF-16 range through the document input gate. This is the
+    /// primitive used by the app-owned native find client for match navigation.
+    @discardableResult
+    public func selectForTextFinder(_ range: NSRange) -> Bool {
+        precondition(Thread.isMainThread)
+        guard isEditable else { return false }
+        return attachment?.connection.setSelectionForTextFinder(range) == true
+    }
+
+    /// Replaces one UTF-16 range through the ordinary input transaction and
+    /// undo path. AppKit calls Replace All from the end of the document toward
+    /// the beginning, so each accepted replacement remains range-stable.
+    @discardableResult
+    public func replaceForTextFinder(in range: NSRange, with string: String) -> Bool {
+        precondition(Thread.isMainThread)
+        guard isEditable else { return false }
+        return attachment?.connection.replaceForTextFinder(range, with: string) == true
+    }
+
+    /// Scrolls the match's logical line into view without changing canonical
+    /// text. Selection should be applied first so the normal caret publication
+    /// and accessibility notifications describe the same match.
+    public func scrollTextFinderRangeToVisible(_ range: NSRange) {
+        precondition(Thread.isMainThread)
+        guard isEditable else { return }
+        view.scrollTextFinderRangeToVisible(range)
+    }
+
+    /// Returns conservative view-local geometry only for a fully visible
+    /// match. NSTextFinder tolerates an empty result while layout catches up.
+    public func textFinderRects(for range: NSRange) -> [NSRect] {
+        precondition(Thread.isMainThread)
+        guard isEditable, let window = view.window else { return [] }
+        let screen = view.accessibilityFrame(for: range)
+        guard !screen.isEmpty else { return [] }
+        return [view.convert(window.convertFromScreen(screen), from: nil)]
     }
 
     /// Applies presentation-only options without changing canonical document state.

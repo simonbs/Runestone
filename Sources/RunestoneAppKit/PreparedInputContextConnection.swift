@@ -530,6 +530,42 @@ final class PreparedInputContextConnection {
         return query(nil) { $0.selectionSnapshotForHost() }
     }
 
+    func textFinderSnapshot() -> (text: String, selection: NSRange)? {
+        precondition(Thread.isMainThread)
+        guard activated else { return nil }
+        return query(nil) { $0.textFinderSnapshotForHost() }
+    }
+
+    /// Host-owned find actions use the same dispatch reservation and failure
+    /// accounting as accessibility and responder mutations. A failed attempt
+    /// is never replayed by the framework.
+    func setSelectionForTextFinder(_ range: NSRange) -> Bool {
+        performTextFinderMutation(operation: .setSelection) { $0.setSelectionReporting(range) }
+    }
+
+    func replaceForTextFinder(_ range: NSRange, with string: String) -> Bool {
+        performTextFinderMutation(operation: .insertText) {
+            $0.insertTextReporting(string, replacementRange: range)
+        }
+    }
+
+    private func performTextFinderMutation(
+        operation: InputOperation,
+        _ action: @escaping (PreparedInputEventAdapter) -> PreparedInputEventAdapter.InputAttempt
+    ) -> Bool {
+        precondition(Thread.isMainThread)
+        guard activated else { return false }
+        var applied = false
+        let admitted = performCoordinatedInput {
+            self.mutate(operation: operation) { adapter in
+                let attempt = action(adapter)
+                applied = attempt.outcome == .processed
+                return attempt
+            }
+        }
+        return admitted && applied
+    }
+
     /// Accessibility must not inspect a stale or suppressed input client.
     func accessibilityTextState() -> ReadOnlyDocumentView.AccessibilityTextState? {
         guard activated else { return nil }

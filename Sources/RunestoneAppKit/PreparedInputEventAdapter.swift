@@ -453,6 +453,22 @@ final class PreparedInputEventAdapter {
         }
     }
 
+    /// Captures the complete searchable string and its selection under one
+    /// revision-checked query. A provisional composition is deliberately not
+    /// searchable: NSTextFinder must never observe or replace text that the
+    /// document host has not accepted yet.
+    func textFinderSnapshotForHost() -> (text: String, selection: NSRange)? {
+        queryForInput(nil) {
+            guard !session.hasProvisionalComposition else { return nil }
+            let text = view.snapshotForInputSession().string as NSString
+            let selection = session.selectedRange
+            guard selection.location >= 0, selection.length >= 0,
+                  selection.location <= text.length,
+                  selection.length <= text.length - selection.location else { return nil }
+            return (text: text as String, selection: selection)
+        }
+    }
+
     func selectedRangeForInput() -> NSRange {
         queryForInput(NSRange(location: NSNotFound, length: 0)) { session.selectedRange }
     }
