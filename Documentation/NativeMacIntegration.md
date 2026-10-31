@@ -79,10 +79,17 @@ focus loss, detachment, pointer re-entry, stale state or lack of progress stops
 it. Re-entering and then leaving again requires a new gesture to restart scrolling.
 The wrapping view has no horizontal scrollable extent. A step limits its delta,
 viewport size, nearby and prepared line lengths, total charged UTF-16 units and
-layout calls, with a cooperative deadline. An in-progress Core Text or AppKit
-call cannot be preempted. An interrupted layout receives one separately bounded
-recovery; if that also fails, layout remains unavailable until an independent
-viewport or content change. No input event is retained or replayed.
+layout calls, with a cooperative deadline. Its preflight checks a short buffer
+around the current and target viewports; bounded layout can reuse a limited
+number of cached, finished predecessors whose indexed heights still match.
+A work-limit refusal that is revalidated before any scroll stops the timer
+without reporting an uncertain input dispatch. Preflight does not guarantee that
+every expensive preceding line is discovered before scrolling; actual layout
+retains its independent work limits. A stale or reentrant state and an
+interruption after scrolling remain uncertain and are never replayed. An
+in-progress Core Text or AppKit call cannot be preempted. An interrupted layout
+receives one separately bounded recovery; if that also fails, layout remains
+unavailable until an independent viewport or content change.
 
 The current selection contract carries a range, not a visual caret affinity. A
 future revision-safe model must associate the active endpoint with its soft-wrap
@@ -101,7 +108,19 @@ Run `./script/build_and_run.sh --verify` on an unlocked Mac to build an isolated
 AppKit test bundle and launch it as a foreground app. The runner requires every
 selected test to execute and pass; a skipped key-window test is a failure. It
 prints the retained temporary build and XCTest log locations. The project-local
-Codex Run action invokes the same workflow.
+Codex Run action invokes the same workflow, including the real-timer drag suite.
+
+The app's foreground acceptance at framework revision `4081280f` found that an
+ordinary 720×480 viewport could reject autoscroll before moving. A matching
+short-line viewport fixture identified an overlarge preflight margin; repeated
+steps also exposed redundant predecessor layout exhausting the existing work
+budget. The bounded preflight and cached-predecessor changes now pass an
+app-sized deterministic multi-step regression and a non-key-window integration
+test using the production timer and uptime. That timer test injects focus and
+cannot establish key-window behavior. The new foreground tests use the production
+timer and app-sized scroll view, but their results must be recorded from an
+unlocked session before treating the app's failure as resolved. Re-run the
+app-owned acceptance after updating its framework pin.
 
 A foreground run against the public attachment exercised first-responder
 acquisition, blur and reacquisition, two-window transfer, synthetic key events,
