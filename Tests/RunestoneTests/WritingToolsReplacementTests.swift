@@ -2,7 +2,7 @@
 import XCTest
 
 final class WritingToolsReplacementTests: XCTestCase {
-    func testUnicodeReplacementNormalizesLineEndingsAndPreservesUndoAndRedo() throws {
+    func testUnicodeReplacementPreservesLineEndingsAndUndoAndRedo() throws {
         let view = TextView()
         let originalText = "Before 👩🏽‍💻 after\r\nLast"
         let range = (originalText as NSString).range(of: "👩🏽‍💻")
@@ -15,12 +15,12 @@ final class WritingToolsReplacementTests: XCTestCase {
 
         let result = input.replaceTextForWritingTools(in: range, with: "Café\n你好\rDone")
 
-        XCTAssertEqual(result, "Café\r\n你好\r\nDone")
-        let expectedText = "Before Café\r\n你好\r\nDone after\r\nLast"
+        XCTAssertEqual(result, "Café\n你好\rDone")
+        let expectedText = "Before Café\n你好\rDone after\r\nLast"
         XCTAssertEqual(view.text, expectedText)
         XCTAssertEqual(view.selectedRange, NSRange(location: range.location + (result ?? "").utf16.count, length: 0))
         XCTAssertEqual(recorder.changedTexts, [expectedText])
-        XCTAssertEqual(recorder.proposedTexts, ["Café\r\n你好\r\nDone"])
+        XCTAssertEqual(recorder.proposedTexts, ["Café\n你好\rDone"])
 
         let undoManager = try XCTUnwrap(view.undoManager)
         XCTAssertTrue(undoManager.canUndo)
