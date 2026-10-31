@@ -2,6 +2,7 @@
 import AppKit
 import CoreText
 import RunestoneEngine
+import RunestoneSyntax
 
 /// A read-only, wrapping Core Text view of an attributed document snapshot.
 ///
@@ -44,6 +45,12 @@ public class ReadOnlyDocumentView: NSView {
     private var pendingInputPermitRelease: InputMutationPermit?
     var inputMutationInFlight: Bool { inputMutationDepth != 0 }
     private var snapshot: NSMutableAttributedString
+    private var syntaxConfiguration: RunestoneAppKitSyntaxConfiguration?
+    private var syntaxCaptures: [RunestoneSyntaxCapture] = []
+    private var syntaxParsedRevision: UUID?
+    private var syntaxCaptureRevision: UUID?
+    private var syntaxCaptureRange: NSRange?
+    private var syntaxRequestToken = UUID()
     private(set) var contentRevision = UUID()
     private let fallbackHeight: CGFloat
     private let cacheLimit = 128
@@ -316,6 +323,9 @@ public class ReadOnlyDocumentView: NSView {
     private func finishRetirement() {
         guard !retirementFinished else { return }
         retirementFinished = true
+        syntaxConfiguration?.highlighter.cancel()
+        syntaxConfiguration = nil
+        syntaxCaptures.removeAll()
         visibleLayout = nil
         pendingViewportUpdate = false
         viewportRecoveryToken = UUID()
@@ -345,6 +355,47 @@ public class ReadOnlyDocumentView: NSView {
         return NSAttributedString(attributedString: snapshot)
     }
 
+    /// Installs or removes presentation-only syntax highlighting.
+    ///
+    /// The configuration's highlighter is owned exclusively by this view while
+    /// installed. Parsing is incremental across edits, stale work is cancelled,
+    /// and semantic queries are limited to currently visible logical lines.
+    /// Canonical attributes, selection, input, and undo state are unchanged.
+    public func applySyntaxConfiguration(_ configuration: RunestoneAppKitSyntaxConfiguration?) {
+        precondition(Thread.isMainThread)
+        guard !isRetired else { return }
+        syntaxConfiguration?.highlighter.cancel()
+        syntaxConfiguration = configuration
+        clearSyntaxPresentation()
+        invalidatePresentationControllers()
+        scheduleSyntaxUpdate()
+        updateViewport()
+    }
+
+    /// Requests fold ranges from the current parsed generation. The completion
+    /// is always delivered on the main thread. Folding presentation is left to
+    /// the host and does not alter this view's document model.
+    public func syntaxFolds(completion: @escaping (Result<[RunestoneSyntaxFold], RunestoneSyntaxError>) -> Void) {
+        precondition(Thread.isMainThread)
+        guard let highlighter = syntaxConfiguration?.highlighter,
+              syntaxParsedRevision == contentRevision else {
+            completion(.failure(.cancelled))
+            return
+        }
+        let revision = contentRevision
+        highlighter.folds { [weak self, weak highlighter] result in
+            DispatchQueue.main.async {
+                guard let self, let highlighter,
+                      self.syntaxConfiguration?.highlighter === highlighter,
+                      self.contentRevision == revision, self.syntaxParsedRevision == revision else {
+                    completion(.failure(.cancelled))
+                    return
+                }
+                completion(result)
+            }
+        }
+    }
+
     /// The input session uses this only while holding its view transaction.
     func snapshotForInputSession() -> NSAttributedString { NSAttributedString(attributedString: snapshot) }
 
@@ -370,6 +421,7 @@ public class ReadOnlyDocumentView: NSView {
         let revision = UUID()
         contentRevision = revision
         resetLayout(width: 0)
+        scheduleSyntaxUpdate()
         didCommit(revision)
         scheduleAccessibilityValueChanged()
         noteInputCoordinatesChanged()
@@ -429,6 +481,9 @@ public class ReadOnlyDocumentView: NSView {
             controllerOrder.removeAll { ids.contains($0) }
             visibleLayout = nil
         }
+        clearSyntaxPresentation()
+        invalidatePresentationControllers()
+        scheduleSyntaxUpdate()
         didCommit(revision)
         scheduleAccessibilityValueChanged()
         noteInputCoordinatesChanged()
@@ -779,6 +834,7 @@ public class ReadOnlyDocumentView: NSView {
                 visibleLayout = ViewportLayoutCoordinator.Result(viewport: clip.bounds,
                     contentOffsetAdjustmentY: clip.bounds.minY - requested.minY, lines: result.lines, isComplete: true)
                 trimControllers(keeping: Set(result.lines.map { $0.line.id }))
+                requestVisibleSyntaxIfNeeded()
                 needsDisplay = true
                 return
             }
@@ -1044,13 +1100,88 @@ public class ReadOnlyDocumentView: NSView {
         value.isFinite ? min(1, max(0, value)) : 0
     }
 
-    private func presentationAttributedSubstring(from range: NSRange) -> NSAttributedString {
+    func presentationAttributedSubstring(from range: NSRange) -> NSAttributedString {
         let attributed = snapshot.attributedSubstring(from: range)
         let kern = safeKern
-        guard kern != 0, attributed.length > 0 else { return attributed }
+        guard attributed.length > 0 else { return attributed }
         let presented = NSMutableAttributedString(attributedString: attributed)
-        presented.addAttribute(.kern, value: kern, range: NSRange(location: 0, length: presented.length))
+        if kern != 0 {
+            presented.addAttribute(.kern, value: kern, range: NSRange(location: 0, length: presented.length))
+        }
+        if syntaxCaptureRevision == contentRevision, let configuration = syntaxConfiguration {
+            for capture in syntaxCaptures {
+                let intersection = NSIntersectionRange(range, capture.range)
+                guard intersection.length > 0, let style = configuration.style(for: capture.name) else { continue }
+                let local = NSRange(location: intersection.location - range.location, length: intersection.length)
+                if let color = style.foregroundColor { presented.addAttribute(.foregroundColor, value: color, range: local) }
+                if let color = style.backgroundColor { presented.addAttribute(.backgroundColor, value: color, range: local) }
+                if let font = style.font { presented.addAttribute(.font, value: font, range: local) }
+            }
+        }
         return presented
+    }
+
+    private func scheduleSyntaxUpdate() {
+        guard let highlighter = syntaxConfiguration?.highlighter else { return }
+        let revision = contentRevision
+        let text = snapshot.string
+        syntaxParsedRevision = nil
+        syntaxRequestToken = UUID()
+        highlighter.update(text) { [weak self, weak highlighter] result in
+            DispatchQueue.main.async {
+                guard let self, let highlighter,
+                      self.syntaxConfiguration?.highlighter === highlighter,
+                      self.contentRevision == revision else { return }
+                guard case .success = result else { return }
+                self.syntaxParsedRevision = revision
+                self.requestVisibleSyntaxIfNeeded()
+            }
+        }
+    }
+
+    private func requestVisibleSyntaxIfNeeded() {
+        guard let highlighter = syntaxConfiguration?.highlighter,
+              syntaxParsedRevision == contentRevision,
+              let lines = visibleLayout?.lines, let first = lines.first, let last = lines.last else { return }
+        let start = first.line.location
+        let end = last.line.location + last.line.data.totalLength
+        let range = NSRange(location: start, length: max(0, end - start))
+        if syntaxCaptureRevision == contentRevision, let existing = syntaxCaptureRange,
+           range.location >= existing.location, NSMaxRange(range) <= NSMaxRange(existing) { return }
+        let revision = contentRevision
+        let token = UUID()
+        syntaxRequestToken = token
+        highlighter.captures(in: range) { [weak self, weak highlighter] result in
+            DispatchQueue.main.async {
+                guard let self, let highlighter,
+                      self.syntaxConfiguration?.highlighter === highlighter,
+                      self.contentRevision == revision, self.syntaxParsedRevision == revision,
+                      self.syntaxRequestToken == token, case .success(let captures) = result else { return }
+                self.syntaxCaptures = captures
+                self.syntaxCaptureRange = range
+                self.syntaxCaptureRevision = revision
+                self.invalidatePresentationControllers()
+                self.needsDisplay = true
+                self.updateViewport()
+            }
+        }
+    }
+
+    private func clearSyntaxPresentation() {
+        syntaxCaptures.removeAll()
+        syntaxParsedRevision = nil
+        syntaxCaptureRevision = nil
+        syntaxCaptureRange = nil
+        syntaxRequestToken = UUID()
+    }
+
+    private func invalidatePresentationControllers() {
+        controllers.values.forEach { $0.invalidate() }
+        controllers.removeAll()
+        controllerOrder.removeAll()
+        visibleLayout = nil
+        unwrappedWidthMeasurementGeneration = UUID()
+        scheduleUnwrappedWidthMeasurementIfNeeded()
     }
 
     private var horizontalTextInset: CGFloat {

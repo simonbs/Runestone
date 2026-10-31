@@ -47,6 +47,16 @@ final class RunestoneSyntaxHighlighterTests: XCTestCase {
         wait(for: [captures], timeout: 5)
     }
 
+    func testExplicitCancellationCompletesPendingUpdate() throws {
+        let highlighter = try makeHighlighter()
+        let cancelled = expectation(description: "cancelled")
+        highlighter.update(String(repeating: "let target = 1\n", count: 100_000)) { result in
+            if case .failure(.cancelled) = result { cancelled.fulfill() }
+        }
+        highlighter.cancel()
+        wait(for: [cancelled], timeout: 5)
+    }
+
     func testAppliesTextPredicates() throws {
         let highlighter = try RunestoneSyntaxHighlighter(language: RunestoneSyntaxLanguage(
             language: tree_sitter_json(),

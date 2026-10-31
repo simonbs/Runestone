@@ -46,13 +46,30 @@ public enum RunestoneSyntaxError: Error, Equatable {
     case cancelled
 }
 
+/// The platform-neutral parsing surface consumed by editor presentations.
+///
+/// Implementations must copy update input before returning and may invoke
+/// completions on any queue. A new update or `cancel()` invalidates all older
+/// update, capture, and fold requests.
+public protocol RunestoneSyntaxHighlighting: AnyObject, Sendable {
+    func update(_ text: String, completion: (@Sendable (Result<Void, RunestoneSyntaxError>) -> Void)?)
+    func captures(in range: NSRange,
+                  completion: @escaping @Sendable (Result<[RunestoneSyntaxCapture], RunestoneSyntaxError>) -> Void)
+    func folds(completion: @escaping @Sendable (Result<[RunestoneSyntaxFold], RunestoneSyntaxError>) -> Void)
+    func cancel()
+}
+
+public extension RunestoneSyntaxHighlighting {
+    func update(_ text: String) { update(text, completion: nil) }
+}
+
 /// Incremental, serial Tree-sitter parsing with cancellable semantic snapshots.
 ///
 /// Updates copy their input before leaving the caller. Superseded generations
 /// never publish captures or folds. Query work checks cancellation between
 /// matches, bounding obsolete work even though Tree-sitter's parse call itself
 /// is synchronous in the pinned C runtime.
-public final class RunestoneSyntaxHighlighter: @unchecked Sendable {
+public final class RunestoneSyntaxHighlighter: RunestoneSyntaxHighlighting, @unchecked Sendable {
     public typealias Completion = @Sendable (Result<[RunestoneSyntaxCapture], RunestoneSyntaxError>) -> Void
     public typealias FoldCompletion = @Sendable (Result<[RunestoneSyntaxFold], RunestoneSyntaxError>) -> Void
 
@@ -173,8 +190,13 @@ public final class RunestoneSyntaxHighlighter: @unchecked Sendable {
     }
 
     public func cancel() {
-        _ = nextGeneration()
+        let request = stateLock.withLock { () -> UpdateRequest? in
+            generation &+= 1
+            defer { updateRequest = nil }
+            return updateRequest
+        }
         queue.cancelAllOperations()
+        request?.complete(.failure(.cancelled))
     }
 }
 
@@ -204,13 +226,6 @@ private extension RunestoneSyntaxHighlighter {
                 return completion
             }
             callback?(result)
-        }
-    }
-
-    func nextGeneration() -> UInt64 {
-        stateLock.withLock {
-            generation &+= 1
-            return generation
         }
     }
 

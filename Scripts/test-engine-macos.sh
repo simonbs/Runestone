@@ -29,7 +29,9 @@ let package = Package(
         .target(name: "RunestoneAppKit", dependencies: ["RunestoneEngine", "RunestoneSyntax"]),
         .testTarget(name: "RunestoneEngineTests", dependencies: ["RunestoneEngine"]),
         .testTarget(name: "RunestoneSyntaxTests", dependencies: ["RunestoneSyntax", "TestTreeSitterLanguages"]),
-        .testTarget(name: "RunestoneAppKitTests", dependencies: ["RunestoneAppKit", "RunestoneEngine"])
+        .testTarget(name: "RunestoneAppKitTests", dependencies: [
+            "RunestoneAppKit", "RunestoneEngine", "RunestoneSyntax", "TestTreeSitterLanguages"
+        ])
     ]
 )
 MANIFEST

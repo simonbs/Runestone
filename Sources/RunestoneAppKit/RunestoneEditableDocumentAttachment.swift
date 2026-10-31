@@ -1,5 +1,6 @@
 #if canImport(AppKit)
 import AppKit
+import RunestoneSyntax
 
 /// The immutable input supplied to a host-owned logical-Return planner.
 ///
@@ -245,6 +246,23 @@ public final class RunestoneEditableDocumentAttachment {
         precondition(Thread.isMainThread)
         guard !detaching, !detached else { return }
         view.displayConfiguration = configuration
+    }
+
+    /// Applies semantic syntax presentation without changing document state.
+    public func applySyntaxConfiguration(_ configuration: RunestoneAppKitSyntaxConfiguration?) {
+        precondition(Thread.isMainThread)
+        guard !detaching, !detached else { return }
+        view.applySyntaxConfiguration(configuration)
+    }
+
+    /// Returns fold ranges for the currently parsed document generation.
+    public func syntaxFolds(completion: @escaping (Result<[RunestoneSyntaxFold], RunestoneSyntaxError>) -> Void) {
+        precondition(Thread.isMainThread)
+        guard !detaching, !detached else {
+            completion(.failure(.cancelled))
+            return
+        }
+        view.syntaxFolds(completion: completion)
     }
 
     /// Ask the containing window to make this view first responder. Returns
