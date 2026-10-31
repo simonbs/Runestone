@@ -78,6 +78,36 @@ enum InputScreenRangeGeometry {
         return index
     }
 
+    /// Dragging beyond the viewport selects its nearest laid-out edge without
+    /// inventing offscreen geometry or starting an unbounded autoscroll loop.
+    static func characterIndexForDrag(for screenPoint: NSPoint, in view: ReadOnlyDocumentView) -> Int? {
+        let revision = view.inputGeometryRevision
+        guard screenPoint.x.isFinite, screenPoint.y.isFinite,
+              let (window, layout) = viewport(in: view),
+              layout.viewport.width > 0, layout.viewport.height > 0 else { return nil }
+        let point = view.convert(window.convertPoint(fromScreen: screenPoint), from: nil)
+        guard point.x.isFinite, point.y.isFinite else { return nil }
+        let viewport = layout.viewport
+        let x = min(max(point.x, viewport.minX), viewport.maxX.nextDown)
+        let y = min(max(point.y, viewport.minY), viewport.maxY.nextDown)
+        // Whitespace below the final visible line maps to that line's edge.
+        // Only already prepared, visible lines participate in this operation.
+        let spans: [(CGFloat, CGFloat)] = layout.lines.compactMap { item in
+            let top = max(viewport.minY, item.line.yPosition)
+            let bottom = min(viewport.maxY, item.line.yPosition + item.line.data.lineHeight)
+            return top.isFinite && bottom.isFinite && top < bottom ? (top, bottom) : nil
+        }
+        guard let nearest = spans.min(by: { a, b in
+            let aDistance = max(a.0 - y, 0, y - a.1)
+            let bDistance = max(b.0 - y, 0, y - b.1)
+            return aDistance < bDistance
+        }) else { return nil }
+        let clampedY = min(max(y, nearest.0), nearest.1.nextDown)
+        guard let index = characterIndex(forDocumentPoint: NSPoint(x: x, y: clampedY), in: view, layout: layout),
+              stable(view, window: window, layout: layout, revision: revision) else { return nil }
+        return index
+    }
+
     private static func characterIndex(forDocumentPoint point: NSPoint, in view: ReadOnlyDocumentView,
                                        layout: ViewportLayoutCoordinator.Result) -> Int? {
         guard layout.viewport.contains(point),

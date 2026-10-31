@@ -99,6 +99,24 @@ final class InputScreenRangeGeometryTests: XCTestCase {
         XCTAssertNil(InputScreenRangeGeometry.characterIndex(for: start, in: view))
     }
 
+    func testDragHitTestingClampsOutsideViewportToVisibleText() throws {
+        let (window, scroll, view) = makeView("first\r\n😀last", width: 180)
+        let layouts = try XCTUnwrap(view.visibleLayout?.lines)
+        let last = try XCTUnwrap(layouts.last)
+        let placement = try XCTUnwrap(last.placements.last)
+        let edge = NSPoint(x: scroll.contentView.bounds.maxX - 1, y: placement.frame.midY)
+        let outside = NSPoint(x: scroll.contentView.bounds.maxX + 80, y: scroll.contentView.bounds.maxY + 80)
+        let expected = try XCTUnwrap(InputScreenRangeGeometry.characterIndex(
+            for: window.convertPoint(toScreen: view.convert(edge, to: nil)), in: view))
+        let actual = InputScreenRangeGeometry.characterIndexForDrag(
+            for: window.convertPoint(toScreen: view.convert(outside, to: nil)), in: view)
+        XCTAssertEqual(actual, expected)
+        XCTAssertNotEqual(actual, (view.content.string as NSString).range(of: "😀").location + 1)
+        scroll.removeFromSuperview()
+        XCTAssertNil(InputScreenRangeGeometry.characterIndexForDrag(
+            for: window.convertPoint(toScreen: view.convert(outside, to: nil)), in: view))
+    }
+
     func testRangeUsesCurrentLayoutAfterResize() throws {
         let (window, scroll, view) = makeView(String(repeating: "word ", count: 20), width: 80)
         let first = try XCTUnwrap(view.visibleLayout?.lines.first?.placements.first)
