@@ -56,6 +56,8 @@ final class DocumentInputSession {
         // The host supplies committed typing attributes separately from the
         // marked attributed string, whose runs can contain IME decorations.
         let typingAttributes: [NSAttributedString.Key: Any]
+        // Mirrors presentation text while excluding transient IME attributes.
+        var candidate: NSAttributedString
     }
 
     private enum ChangeKind {
@@ -187,7 +189,6 @@ final class DocumentInputSession {
         let range = resolvedReplacementRange(replacementRange)
         let inserted: NSAttributedString
         if let composition = composition {
-            guard containsMarkedRange(range) else { return false }
             inserted = NSAttributedString(string: content.string, attributes: composition.typingAttributes)
         } else {
             inserted = NSAttributedString(attributedString: content)
@@ -216,7 +217,6 @@ final class DocumentInputSession {
                        replacementRange: NSRange) -> Bool {
         guard isCurrent, prepareChange == nil || (compositionAttributes != nil && documentRevision != nil) else { return false }
         let range = resolvedReplacementRange(replacementRange)
-        if composition != nil, !containsMarkedRange(range) { return false }
         let inserted = NSAttributedString(attributedString: content)
         let document = view.manager.stringView.string
         guard isValid(range, in: document), inserted.length <= Int.max - (document.length - range.length),
@@ -233,8 +233,7 @@ final class DocumentInputSession {
         guard isCurrent else { return false }
         if let composition = composition {
             let range = storedMarkedRange ?? NSRange(location: storedSelection.location, length: 0)
-            let raw = view.attributedContent(in: range)
-            let clean = NSAttributedString(string: raw.string, attributes: composition.typingAttributes)
+            let clean = composition.candidate.attributedSubstring(from: range)
             return apply(range: range, replacement: clean, selection: storedSelection,
                          marked: nil, kind: .compositionCommit)
         }
@@ -255,14 +254,6 @@ final class DocumentInputSession {
 
     private func resolvedReplacementRange(_ requested: NSRange) -> NSRange {
         requested.location == NSNotFound ? (storedMarkedRange ?? storedSelection) : requested
-    }
-
-    private func containsMarkedRange(_ range: NSRange) -> Bool {
-        guard let marked = storedMarkedRange else { return true }
-        guard range.location >= 0, range.length >= 0, range.location <= marked.location,
-              range.length <= Int.max - range.location,
-              marked.length <= Int.max - marked.location else { return false }
-        return range.location + range.length >= marked.location + marked.length
     }
 
     /// Discards only the local provisional overlay. The caller must also tell
@@ -338,19 +329,29 @@ final class DocumentInputSession {
                     return false
                 }
                 composition = Composition(baseline: baseline, selection: selection, documentRevision: revision,
-                                          typingAttributes: attributes)
+                                          typingAttributes: attributes, candidate: baseline)
             }
         }
         let oldSelection = storedSelection
         let oldMarked = storedMarkedRange
-        let previous = view.attributedContent(in: range)
-        let didChange = !previous.isEqual(to: replacement)
+        var nextComposition = composition
+        if case .provisional = kind, var next = nextComposition {
+            let candidate = NSMutableAttributedString(attributedString: next.candidate)
+            candidate.replaceCharacters(in: range, with: NSAttributedString(string: replacement.string,
+                                                                               attributes: next.typingAttributes))
+            next.candidate = NSAttributedString(attributedString: candidate)
+            nextComposition = next
+        }
+        var viewRange = range
+        var viewReplacement = replacement
         var prepared: PreparedChange?
         var changesCanonicalText = false
         if case .compositionCommit = kind {
             guard let baseline = composition, let prepareChange = prepareChange,
                   compositionIsCurrent(baseline) else { return false }
-            let candidate = view.candidateContent(replacing: range, with: replacement)
+            let mutableCandidate = NSMutableAttributedString(attributedString: baseline.candidate)
+            mutableCandidate.replaceCharacters(in: range, with: replacement)
+            let candidate = NSAttributedString(attributedString: mutableCandidate)
             if candidate.string.utf16.elementsEqual(baseline.baseline.string.utf16) {
                 let restored = restore(baseline, selection: selection, transaction: transaction)
                 return restored && documentIsCurrent() && compositionIsCurrent(baseline)
@@ -366,7 +367,14 @@ final class DocumentInputSession {
             }
             prepared = accepted
             changesCanonicalText = true // Equal-to-baseline text returned above.
-        } else if case .ordinary = kind, didChange, let prepareChange = prepareChange {
+            // Every earlier marked run must be cleaned, including portions no
+            // longer covered by the latest mark.
+            viewRange = NSRange(location: 0, length: view.manager.stringView.string.length)
+            viewReplacement = candidate
+        }
+        let previous = view.attributedContent(in: viewRange)
+        let didChange = !previous.isEqual(to: viewReplacement)
+        if case .ordinary = kind, didChange, let prepareChange = prepareChange {
             let candidate = view.candidateContent(replacing: range, with: replacement)
             let accepted = prepareChange(candidate)
             guard contentMatches, documentIsCurrent(), let accepted = accepted else { return false }
@@ -374,11 +382,12 @@ final class DocumentInputSession {
             changesCanonicalText = !candidate.string.utf16.elementsEqual((view.manager.stringView.string as String).utf16)
         }
         if didChange || prepared != nil {
-            guard view.replaceContentReturningRevision(in: range, with: replacement, permit: mutationPermit, transaction: transaction, didCommit: { revision in
+            guard view.replaceContentReturningRevision(in: viewRange, with: viewReplacement, permit: mutationPermit, transaction: transaction, didCommit: { revision in
                 expectedRevision = revision
                 storedSelection = selection
                 storedMarkedRange = marked
                 if case .compositionCommit = kind { composition = nil }
+                else if case .provisional = kind { composition = nextComposition }
                 let previousDocumentRevision = installedDocumentRevision
                 prepared?.publish()
                 if prepared != nil, let documentRevision = documentRevision {
@@ -401,6 +410,7 @@ final class DocumentInputSession {
         } else {
             storedSelection = selection
             storedMarkedRange = marked
+            if case .provisional = kind { composition = nextComposition }
         }
         if didChange || oldSelection != storedSelection || oldMarked != storedMarkedRange {
             view.noteInputCoordinatesChanged()
