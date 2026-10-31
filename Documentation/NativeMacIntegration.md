@@ -112,6 +112,17 @@ and prepare Share or Services payloads without exposing the mutable input
 session. This contract does not itself implement responder-chain Services,
 sharing presentation or rich attributed-text transfer.
 
+The native Find integration adds a separate complete `textFinderSnapshot` plus
+gated selection and replacement operations. The full string and UTF-16
+selection are captured together only while the installed input revision is
+current and no provisional composition exists. Find selection and replacement
+use the same document dispatch reservation, failure reporting, canonical
+publication and undo path as responder input; invalid, stale, resetting and
+detached operations fail without replay. The attachment also forwards
+presentation-only logical-line scrolling and conservative visible match
+geometry. Runestone does not own the find bar or matching algorithm: the app's
+native `NSTextFinder`/`NSTextFinderClient` owns those Mac-specific behaviors.
+
 ## Foreground attachment evidence
 
 Run `./script/build_and_run.sh --verify` on an unlocked Mac to build an isolated
