@@ -20,6 +20,14 @@ public final class RunestoneEditableDocumentAttachment {
         public let hasComposition: Bool
     }
 
+    /// An immutable selection captured together with its matching text.
+    /// Ranges use AppKit's UTF-16 coordinate space. A caret is represented by
+    /// an empty string and a zero-length range rather than nil.
+    public struct SelectionSnapshot: Equatable {
+        public let range: NSRange
+        public let text: String
+    }
+
     /// The newly created document view. Do not attempt to attach it again.
     public let view: ReadOnlyDocumentView
     private var attachment: PreparedInputDocumentAttachment?
@@ -60,6 +68,16 @@ public final class RunestoneEditableDocumentAttachment {
         guard isEditable, let state = attachment?.connection.inputState() else { return nil }
         return InputState(selection: state.selection, markedRange: state.marked,
                           hasComposition: state.hasComposition)
+    }
+
+    /// A revision-checked selection snapshot suitable for validating and
+    /// preparing read-only operations such as Share or Services. Returns nil
+    /// while input is inactive, stale, resetting, or detached. Callers should
+    /// require a nonempty range before offering a selected-text operation.
+    public var selectionSnapshot: SelectionSnapshot? {
+        precondition(Thread.isMainThread)
+        guard isEditable, let snapshot = attachment?.connection.selectionSnapshot() else { return nil }
+        return SelectionSnapshot(range: snapshot.range, text: snapshot.text)
     }
 
     /// Ask the containing window to make this view first responder. Returns

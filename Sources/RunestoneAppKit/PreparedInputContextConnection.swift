@@ -523,6 +523,13 @@ final class PreparedInputContextConnection {
         return query(nil) { $0.inputStateForHost() }
     }
 
+    /// Text and range are captured together against the installed revision.
+    func selectionSnapshot() -> (range: NSRange, text: String)? {
+        precondition(Thread.isMainThread)
+        guard activated else { return nil }
+        return query(nil) { $0.selectionSnapshotForHost() }
+    }
+
     /// Accessibility must not inspect a stale or suppressed input client.
     func accessibilityTextState() -> ReadOnlyDocumentView.AccessibilityTextState? {
         guard activated else { return nil }

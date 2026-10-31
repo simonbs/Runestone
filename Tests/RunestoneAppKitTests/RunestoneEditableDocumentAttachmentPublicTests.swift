@@ -19,6 +19,7 @@ final class RunestoneEditableDocumentAttachmentPublicTests: XCTestCase {
         XCTAssertFalse(attachment.isEditable)
         XCTAssertFalse(attachment.view.acceptsFirstResponder)
         XCTAssertNil(attachment.inputState)
+        XCTAssertNil(attachment.selectionSnapshot)
         XCTAssertFalse(attachment.requestFirstResponder())
         waitForDetach(attachment)
         XCTAssertTrue(attachment.detach())
@@ -72,6 +73,7 @@ final class RunestoneEditableDocumentAttachmentPublicTests: XCTestCase {
         XCTAssertFalse(attachment.isEditable)
         XCTAssertFalse(attachment.requestFirstResponder())
         XCTAssertNil(attachment.inputState)
+        XCTAssertNil(attachment.selectionSnapshot)
         XCTAssertTrue(attachment.view.isHidden)
         XCTAssertEqual(attachment.view.content.string, "")
     }
