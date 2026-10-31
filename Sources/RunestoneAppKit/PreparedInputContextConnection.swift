@@ -87,6 +87,8 @@ final class PreparedInputContextConnection {
         get { payload!.proxy }
         set { payload!.proxy = newValue }
     }
+    private var textCheckingController: NSTextCheckingController?
+    private let textCheckingAnnotations = PreparedInputTextCheckingAnnotations()
     private var contextToken: PreparedInputEventAdapter.InputContextToken? {
         get { payload!.contextToken }
         set { payload!.contextToken = newValue }
@@ -160,10 +162,61 @@ final class PreparedInputContextConnection {
         guard objc_getAssociatedObject(newDriver.associationTarget, &preparedContextClientKey) == nil else { return false }
         objc_setAssociatedObject(newDriver.associationTarget, &preparedContextClientKey, client, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         client.owner = self
+        textCheckingController = NSTextCheckingController(client: client)
         driver = newDriver
         proxy = client
         view.inputInvalidation.attach { [weak self] in self?.invalidateCoordinates() }
         return true
+    }
+
+    var nativeTextCheckingController: NSTextCheckingController? { textCheckingController }
+
+    fileprivate func annotatedTextCheckingSubstring(_ proposed: NSRange, actualRange: NSRangePointer?) -> NSAttributedString? {
+        guard let snapshot = textFinderSnapshot() else { return nil }
+        let text = snapshot.text as NSString
+        guard let clamped = PreparedInputTextCheckingAnnotations.clamp(proposed, textLength: text.length) else { return nil }
+        let range: NSRange
+        if text.length == 0 { range = NSRange(location: 0, length: 0) }
+        else {
+            let probe = clamped.length == 0 ? NSRange(location: min(clamped.location, text.length - 1), length: 0) : clamped
+            range = text.paragraphRange(for: probe)
+        }
+        actualRange?.pointee = range
+        let result = NSMutableAttributedString(string: text.substring(with: range))
+        textCheckingAnnotations.apply(to: result, documentRange: range)
+        return result
+    }
+
+    fileprivate func setTextCheckingAnnotations(_ values: [NSAttributedString.Key: String], range: NSRange, adding: Bool) {
+        guard let snapshot = textFinderSnapshot() else { return }
+        let length = (snapshot.text as NSString).length
+        if adding { textCheckingAnnotations.add(values, range: range, textLength: length) }
+        else { textCheckingAnnotations.set(values, range: range, textLength: length) }
+    }
+
+    fileprivate func removeTextCheckingAnnotation(_ key: NSAttributedString.Key, range: NSRange) {
+        guard let snapshot = textFinderSnapshot() else { return }
+        textCheckingAnnotations.remove(key, range: range, textLength: (snapshot.text as NSString).length)
+    }
+
+    fileprivate func replaceTextCheckingRange(_ range: NSRange, with value: NSAttributedString) {
+        guard replaceForTextFinder(range, with: value.string) else { return }
+        textCheckingAnnotations.removeAll()
+        textCheckingController?.didChangeText(in: range)
+    }
+
+    fileprivate func selectTextCheckingRange(_ range: NSRange) {
+        guard setSelectionForTextFinder(range) else { return }
+        textCheckingController?.didChangeSelectedRange()
+    }
+
+    fileprivate func textCheckingView(for range: NSRange, firstRect: NSRectPointer?, actualRange: NSRangePointer?) -> NSView? {
+        guard let snapshot = textFinderSnapshot(),
+              let clamped = PreparedInputTextCheckingAnnotations.clamp(range, textLength: (snapshot.text as NSString).length),
+              let geometry = InputScreenRangeGeometry.firstRect(for: clamped, in: view) else { return nil }
+        firstRect?.pointee = geometry.rect
+        actualRange?.pointee = geometry.actualRange
+        return view
     }
 
     /// Only a responder that currently owns focus may expose this context.
@@ -893,7 +946,7 @@ extension PreparedInputContextConnection.Driver {
 private var preparedContextClientKey: UInt8 = 0
 
 /// The associated proxy never owns its context, adapter, view, or coordinator.
-private final class PreparedContextClient: NSObject, NSTextInputClient {
+private final class PreparedContextClient: NSObject, NSTextCheckingClient {
     weak var owner: PreparedInputContextConnection?
     func insertText(_ string: Any, replacementRange: NSRange) {
         owner?.mutate(operation: .insertText) { $0.insertTextReporting(string, replacementRange: replacementRange) }
@@ -934,6 +987,26 @@ private final class PreparedContextClient: NSObject, NSTextInputClient {
     func characterIndex(for point: NSPoint) -> Int {
         owner?.query(NSNotFound) { $0.characterIndexForInput(point: point) } ?? NSNotFound
     }
+    func annotatedSubstring(forProposedRange range: NSRange, actualRange: NSRangePointer?) -> NSAttributedString? {
+        owner?.annotatedTextCheckingSubstring(range, actualRange: actualRange)
+    }
+    func setAnnotations(_ annotations: [NSAttributedString.Key: String], range: NSRange) {
+        owner?.setTextCheckingAnnotations(annotations, range: range, adding: false)
+    }
+    func addAnnotations(_ annotations: [NSAttributedString.Key: String], range: NSRange) {
+        owner?.setTextCheckingAnnotations(annotations, range: range, adding: true)
+    }
+    func removeAnnotation(_ annotationName: NSAttributedString.Key, range: NSRange) {
+        owner?.removeTextCheckingAnnotation(annotationName, range: range)
+    }
+    func replaceCharacters(in range: NSRange, withAnnotatedString annotatedString: NSAttributedString) {
+        owner?.replaceTextCheckingRange(range, with: annotatedString)
+    }
+    func selectAndShow(_ range: NSRange) { owner?.selectTextCheckingRange(range) }
+    func view(for range: NSRange, firstRect: NSRectPointer?, actualRange: NSRangePointer?) -> NSView? {
+        owner?.textCheckingView(for: range, firstRect: firstRect, actualRange: actualRange)
+    }
+    func candidateListTouchBarItem() -> NSCandidateListTouchBarItem<AnyObject>? { nil }
 }
 
 private final class AppKitPreparedDriver: PreparedInputContextConnection.Driver {
