@@ -1,5 +1,5 @@
 import CoreText
-@testable import Runestone
+import RunestoneEngine
 import XCTest
 
 final class LineTypesetterNeutralPreparationTests: XCTestCase {
@@ -45,5 +45,39 @@ final class LineTypesetterNeutralPreparationTests: XCTestCase {
         typesetter.typesetLineFragments(toLocation: new.length)
         XCTAssertTrue(typesetter.isFinishedTypesetting)
         XCTAssertEqual(typesetter.lineFragments.last.map { NSMaxRange($0.range) }, new.length)
+    }
+
+    func testIncrementalLayoutContinuesAfterAppearanceRefresh() throws {
+        let font = CTFontCreateWithName("Menlo" as CFString, 18, nil)
+        let text = "alpha beta gamma delta epsilon zeta eta theta" as NSString
+        let input = NSAttributedString(string: text as String, attributes: [
+            NSAttributedString.Key(kCTFontAttributeName as String): font
+        ])
+        let typesetter = LineTypesetter(lineID: "incremental", preparation: DefaultLineTypesetterPreparation())
+        typesetter.constrainingWidth = 65
+        typesetter.prepareToTypeset(input)
+        typesetter.typesetLineFragments(toLocation: 1)
+        let first = try XCTUnwrap(typesetter.lineFragments.first)
+        XCTAssertFalse(typesetter.isFinishedTypesetting)
+        let consumed = typesetter.typesetLength
+
+        let updated = NSMutableAttributedString(attributedString: input)
+        updated.addAttribute(NSAttributedString.Key(kCTForegroundColorAttributeName as String),
+                             value: CGColor(gray: 0.5, alpha: 1), range: NSRange(location: 0, length: input.length))
+        let refreshed = typesetter.refreshAppearance(updated)
+        let rebuilt = try XCTUnwrap(refreshed.first)
+        XCTAssertEqual(rebuilt.range, first.range)
+        XCTAssertEqual(rebuilt.yPosition, first.yPosition)
+        XCTAssertFalse(rebuilt.line === first.line)
+        XCTAssertEqual(typesetter.typesetLength, consumed)
+
+        typesetter.typesetLineFragments(toLocation: input.length)
+        XCTAssertTrue(typesetter.isFinishedTypesetting)
+        var next = 0
+        for fragment in typesetter.lineFragments {
+            XCTAssertEqual(fragment.range.location, next)
+            next = fragment.range.upperBound
+        }
+        XCTAssertEqual(next, text.length)
     }
 }
