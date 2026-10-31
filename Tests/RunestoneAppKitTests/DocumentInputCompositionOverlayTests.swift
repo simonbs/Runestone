@@ -315,20 +315,141 @@ final class DocumentInputCompositionOverlayTests: XCTestCase {
         XCTAssertFalse(session.insertText("y", replacementRange: unspecified, attributes: typing))
     }
 
-    func testMarkedReplacementCannotLeaveOldDecorationsOutsideNewMark() throws {
-        let view = ReadOnlyDocumentView(content: NSAttributedString(string: "", attributes: typing))
+    func testPartialMarkedReplacementsCommitCleanCandidateOnUnmark() throws {
+        let cases: [(String, NSRange, String, String)] = [
+            ("inside", NSRange(location: 3, length: 1), "!", "ABx!zFG"),
+            ("left overlap", NSRange(location: 1, length: 2), "!", "A!yzFG"),
+            ("right overlap", NSRange(location: 4, length: 2), "!", "ABxy!G"),
+            ("outside", NSRange(location: 0, length: 1), "!", "!BxyzFG"),
+            ("empty", NSRange(location: 3, length: 1), "", "ABxzFG")
+        ]
+        for (name, range, replacement, expected) in cases {
+            let baseline = NSAttributedString(string: "ABCDEFG", attributes: typing)
+            let view = ReadOnlyDocumentView(content: baseline)
+            let permit = try XCTUnwrap(view.claimInputMutation())
+            var revision = UUID()
+            var accepted: NSAttributedString?
+            var preparations = 0
+            var finishes = 0
+            let session = DocumentInputSession(view: view, mutationPermit: permit, prepareChange: { candidate in
+                preparations += 1
+                accepted = candidate
+                return .init(publish: { revision = UUID() }, finish: { finishes += 1 }, reconcile: { _ in })
+            }, compositionAttributes: { self.typing }, initialDocumentRevision: revision, documentRevision: { revision })
+            let decorated = [NSAttributedString.Key.backgroundColor: NSColor.red]
+            XCTAssertTrue(session.setMarkedText("xyz", selectedRange: NSRange(location: 2, length: 0),
+                                                replacementRange: NSRange(location: 2, length: 3), attributes: decorated), name)
+            XCTAssertTrue(session.setMarkedText(replacement, selectedRange: NSRange(location: replacement.utf16.count, length: 0),
+                                                replacementRange: range, attributes: decorated), name)
+            XCTAssertEqual(view.content.string, expected, name)
+            XCTAssertEqual(session.selectedRange, NSRange(location: range.location + replacement.utf16.count, length: 0), name)
+            XCTAssertEqual(preparations, 0, name)
+            XCTAssertTrue(session.unmarkText(), name)
+            XCTAssertEqual(preparations, 1, name)
+            XCTAssertEqual(finishes, 1, name)
+            XCTAssertEqual(accepted?.string, expected, name)
+            XCTAssertEqual(view.content, accepted, name)
+            XCTAssertNil(session.markedRange, name)
+            for index in 0..<view.content.length {
+                XCTAssertNil(view.content.attribute(.backgroundColor, at: index, effectiveRange: nil), "\(name): decoration at \(index)")
+                XCTAssertEqual(view.content.attribute(.underlineStyle, at: index, effectiveRange: nil) as? Int, 2, name)
+            }
+        }
+    }
+
+    func testPartialFinalInsertCleansAllEarlierMarkedRuns() throws {
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: "ABC", attributes: typing))
+        let permit = try XCTUnwrap(view.claimInputMutation())
+        var revision = UUID()
+        var accepted: NSAttributedString?
+        var finishes = 0
+        let session = DocumentInputSession(view: view, mutationPermit: permit, prepareChange: { candidate in
+            accepted = candidate
+            return .init(publish: { revision = UUID() }, finish: { finishes += 1 }, reconcile: { _ in })
+        }, compositionAttributes: { self.typing }, initialDocumentRevision: revision, documentRevision: { revision })
+        let decorated = [NSAttributedString.Key.backgroundColor: NSColor.red]
+        XCTAssertTrue(session.setMarkedText("xyz", selectedRange: NSRange(location: 2, length: 1),
+                                            replacementRange: NSRange(location: 1, length: 1), attributes: decorated))
+        XCTAssertTrue(session.insertText("!", replacementRange: NSRange(location: 2, length: 1), attributes: decorated))
+        XCTAssertEqual(accepted?.string, "Ax!zC")
+        XCTAssertEqual(view.content, accepted)
+        XCTAssertEqual(session.selectedRange, NSRange(location: 3, length: 0))
+        XCTAssertNil(session.markedRange)
+        XCTAssertEqual(finishes, 1)
+        for index in 0..<view.content.length {
+            XCTAssertNil(view.content.attribute(.backgroundColor, at: index, effectiveRange: nil))
+        }
+    }
+
+    func testPartialCompositionCancellationAndRejectionRestoreBaseline() throws {
+        for reject in [false, true] {
+            let baseline = NSAttributedString(string: "ABC", attributes: typing)
+            let view = ReadOnlyDocumentView(content: baseline)
+            let permit = try XCTUnwrap(view.claimInputMutation())
+            var preparations = 0
+            let session = DocumentInputSession(view: view, mutationPermit: permit, prepareChange: { _ in
+                preparations += 1
+                return nil
+            }, compositionAttributes: { self.typing }, initialDocumentRevision: documentRevision, documentRevision: { self.documentRevision })
+            XCTAssertTrue(session.setSelection(NSRange(location: 1, length: 1)))
+            XCTAssertTrue(session.setMarkedText("xyz", selectedRange: NSRange(location: 3, length: 0),
+                                                replacementRange: unspecified, attributes: typing))
+            XCTAssertTrue(session.setMarkedText("!", selectedRange: NSRange(location: 1, length: 0),
+                                                replacementRange: NSRange(location: 2, length: 1), attributes: typing))
+            if reject {
+                XCTAssertFalse(session.insertText("?", replacementRange: NSRange(location: 0, length: 1), attributes: typing))
+                XCTAssertEqual(preparations, 1)
+            } else {
+                XCTAssertTrue(session.cancelComposition())
+                XCTAssertEqual(preparations, 0)
+            }
+            XCTAssertEqual(view.content, baseline)
+            XCTAssertEqual(session.selectedRange, NSRange(location: 1, length: 1))
+            XCTAssertNil(session.markedRange)
+        }
+    }
+
+    func testPartialMarkedReplacementRejectsSplitSurrogateWithoutChangingOverlay() throws {
+        let baseline = NSAttributedString(string: "A😀B", attributes: typing)
+        let view = ReadOnlyDocumentView(content: baseline)
         let permit = try XCTUnwrap(view.claimInputMutation())
         let session = DocumentInputSession(view: view, mutationPermit: permit, prepareChange: { _ in
-            .init(publish: {}, finish: {}, reconcile: { _ in })
-        }, compositionAttributes: { self.typing }, initialDocumentRevision: self.documentRevision, documentRevision: { self.documentRevision })
-        XCTAssertTrue(session.setMarkedText("abc", selectedRange: NSRange(location: 3, length: 0),
-                                            replacementRange: unspecified, attributes: typing))
-        XCTAssertFalse(session.setMarkedText("x", selectedRange: NSRange(location: 1, length: 0),
-                                             replacementRange: NSRange(location: 1, length: 1), attributes: typing))
-        XCTAssertEqual(view.content.string, "abc")
-        XCTAssertEqual(session.markedRange, NSRange(location: 0, length: 3))
+            XCTFail("Invalid replacement must not be prepared")
+            return nil
+        }, compositionAttributes: { self.typing }, initialDocumentRevision: documentRevision, documentRevision: { self.documentRevision })
+        XCTAssertTrue(session.setMarkedText("xy", selectedRange: NSRange(location: 2, length: 0),
+                                            replacementRange: NSRange(location: 3, length: 1), attributes: typing))
+        let overlay = view.content
+        XCTAssertFalse(session.setMarkedText("!", selectedRange: NSRange(location: 1, length: 0),
+                                             replacementRange: NSRange(location: 2, length: 1), attributes: typing))
+        XCTAssertFalse(session.insertText("!", replacementRange: NSRange(location: 1, length: 1), attributes: typing))
+        XCTAssertEqual(view.content, overlay)
+        XCTAssertEqual(session.markedRange, NSRange(location: 3, length: 2))
         XCTAssertTrue(session.cancelComposition())
+        XCTAssertEqual(view.content, baseline)
     }
+
+    func testPartialCompositionDoesNotRestoreStaleBaseline() throws {
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: "ABC", attributes: typing))
+        let permit = try XCTUnwrap(view.claimInputMutation())
+        var revision = UUID()
+        var preparations = 0
+        let session = DocumentInputSession(view: view, mutationPermit: permit, prepareChange: { _ in
+            preparations += 1
+            return nil
+        }, compositionAttributes: { self.typing }, initialDocumentRevision: revision, documentRevision: { revision })
+        XCTAssertTrue(session.setMarkedText("xyz", selectedRange: NSRange(location: 3, length: 0),
+                                            replacementRange: NSRange(location: 1, length: 1), attributes: typing))
+        XCTAssertTrue(session.setMarkedText("!", selectedRange: NSRange(location: 1, length: 0),
+                                            replacementRange: NSRange(location: 2, length: 1), attributes: typing))
+        revision = UUID()
+        XCTAssertFalse(session.unmarkText())
+        XCTAssertFalse(session.cancelComposition())
+        XCTAssertTrue(session.hasDocumentConflict)
+        XCTAssertEqual(preparations, 0)
+        XCTAssertEqual(view.content.string, "Ax!zC")
+    }
+
 }
 
 private final class FakeDocumentOwner: NSObject {
