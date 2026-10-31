@@ -197,6 +197,10 @@ public final class RunestoneEditableDocumentAttachment {
         return SelectionSnapshot(range: snapshot.range, text: snapshot.text)
     }
 
+    /// A revision-checked native text-service selection. The text is captured
+    /// with its UTF-16 range and is unavailable during composition or reset.
+    public var selectedTextSnapshot: SelectionSnapshot? { selectionSnapshot }
+
     /// The currently presented UTF-16 selection, including while the editor is
     /// read-only. Unlike `selectionSnapshot`, this does not imply active input
     /// or provide provisional text and is intended for presentation/navigation.
@@ -226,6 +230,15 @@ public final class RunestoneEditableDocumentAttachment {
     /// the beginning, so each accepted replacement remains range-stable.
     @discardableResult
     public func replaceForTextFinder(in range: NSRange, with string: String) -> Bool {
+        precondition(Thread.isMainThread)
+        guard isEditable else { return false }
+        return attachment?.connection.replaceForTextFinder(range, with: string) == true
+    }
+
+    /// Replaces a UTF-16 range through the document reservation and undo path.
+    /// Literal payloads are not normalized, so CR, LF and CRLF remain intact.
+    @discardableResult
+    public func replaceText(in range: NSRange, with string: String) -> Bool {
         precondition(Thread.isMainThread)
         guard isEditable else { return false }
         return attachment?.connection.replaceForTextFinder(range, with: string) == true
