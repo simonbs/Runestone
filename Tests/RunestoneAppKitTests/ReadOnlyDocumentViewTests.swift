@@ -157,6 +157,26 @@ final class ReadOnlyDocumentViewTests: XCTestCase {
         XCTAssertEqual(view.contentRevision, revision)
     }
 
+    func testLineNumberGutterReflowsWhenLineCountNeedsAnotherDigit() throws {
+        let content = (1...9).map(String.init).joined(separator: "\n")
+        let (_, view) = makeView(NSAttributedString(string: content, attributes: [.font: font]), width: 200, height: 200)
+        view.displayConfiguration = RunestoneEditorDisplayConfiguration(
+            showsLineNumbers: true,
+            minimumGutterCharacterCount: 1
+        )
+        view.updateViewport()
+        let initialX = try XCTUnwrap(view.visibleLayout?.lines.first?.placements.first?.frame.minX)
+
+        XCTAssertTrue(view.replaceContent(
+            in: NSRange(location: view.content.length, length: 0),
+            with: NSAttributedString(string: "\n10", attributes: [.font: font])
+        ))
+        view.updateViewport()
+
+        let expandedX = try XCTUnwrap(view.visibleLayout?.lines.first?.placements.first?.frame.minX)
+        XCTAssertGreaterThan(expandedX, initialX)
+    }
+
     private func makeView(_ text: NSAttributedString, width: CGFloat, height: CGFloat) -> (NSScrollView, ReadOnlyDocumentView) {
         let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: width, height: height))
         scroll.hasVerticalScroller = false

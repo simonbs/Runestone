@@ -394,6 +394,7 @@ public class ReadOnlyDocumentView: NSView {
             didCommit(contentRevision)
             return contentRevision
         }
+        let previousHorizontalTextInset = horizontalTextInset
         let replacement = NSAttributedString(attributedString: content)
         guard let edit = LineEditTransaction.replace(in: manager, range: range, with: replacement.string) else { return nil }
         snapshot.replaceCharacters(in: range, with: replacement)
@@ -401,9 +402,13 @@ public class ReadOnlyDocumentView: NSView {
         contentRevision = revision
         let affected = edit.lineChanges.editedLines.union(edit.lineChanges.removedLines)
         let ids = Set(affected.map(\.id))
-        for id in ids { controllers.removeValue(forKey: id)?.invalidate() }
-        controllerOrder.removeAll { ids.contains($0) }
-        visibleLayout = nil
+        if horizontalTextInset != previousHorizontalTextInset {
+            resetLayout(width: layoutWidth)
+        } else {
+            for id in ids { controllers.removeValue(forKey: id)?.invalidate() }
+            controllerOrder.removeAll { ids.contains($0) }
+            visibleLayout = nil
+        }
         didCommit(revision)
         scheduleAccessibilityValueChanged()
         noteInputCoordinatesChanged()
