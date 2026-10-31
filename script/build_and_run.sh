@@ -75,7 +75,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
 PLIST
 : > "$STDOUT_LOG"
 : > "$STDERR_LOG"
-FILTER='RunestoneAppKitTests.PublicAttachmentLiveKeyTests,RunestoneAppKitTests.PublicAttachmentLiveAccessibilityTests,RunestoneAppKitTests.PublicAttachmentLiveInteractionTests'
+FILTER='RunestoneAppKitTests.PublicAttachmentLiveKeyTests,RunestoneAppKitTests.PublicAttachmentLiveAccessibilityTests,RunestoneAppKitTests.PublicAttachmentLiveInteractionTests,RunestoneAppKitTests.PublicAttachmentLiveRealTimerTests'
 
 # `open -W` does not reliably propagate XCTest failures. Give the foreground
 # runner a finite deadline and inspect the XCTest log below. If it hangs, stop
@@ -129,7 +129,7 @@ import sys
 
 root, stdout, stderr = map(Path, sys.argv[1:])
 suites = ["PublicAttachmentLiveKeyTests", "PublicAttachmentLiveAccessibilityTests",
-          "PublicAttachmentLiveInteractionTests"]
+          "PublicAttachmentLiveInteractionTests", "PublicAttachmentLiveRealTimerTests"]
 expected = set()
 for suite in suites:
     source = root / "Tests" / "RunestoneAppKitTests" / (suite + ".swift")

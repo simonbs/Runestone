@@ -19,6 +19,28 @@ final class PreparedInputViewportStepTests: XCTestCase {
         withExtendedLifetime(fixture.window) {}
     }
 
+    func testAppSizedViewportCanAdvanceRepeatedlyAcrossShortLines() throws {
+        // Match the app's 720x480 foreground scroll view, 100 short lines and
+        // system-sized monospaced typing font, without substituting geometry.
+        let fixture = try ViewportStepFixture(text: String(repeating: "abcdefghijklmno\n", count: 100),
+            width: 720, height: 480, font: .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular))
+        XCTAssertEqual(fixture.scroll.contentView.bounds.size, NSSize(width: 720, height: 480))
+        let contentRevision = fixture.view.contentRevision
+        let selectionRevision = fixture.view.inputSelectionRevision
+        for step in 0..<8 {
+            let before = fixture.scroll.contentView.bounds
+            let outcome = PreparedInputViewportStep.perform(in: fixture.view, dx: 0, dy: 48,
+                                                            clock: { 0 }, isCurrent: { true })
+            XCTAssertEqual(outcome, .progressed, "viewport step \(step) at \(before)")
+            guard outcome == .progressed else { return }
+            XCTAssertGreaterThan(fixture.scroll.contentView.bounds.minY, before.minY)
+            XCTAssertEqual(fixture.view.visibleLayout?.viewport, fixture.scroll.contentView.bounds)
+            XCTAssertEqual(fixture.view.contentRevision, contentRevision)
+            XCTAssertEqual(fixture.view.inputSelectionRevision, selectionRevision)
+        }
+        withExtendedLifetime(fixture.window) {}
+    }
+
     func testNoProgressInvalidDeltaAndOversizedViewportAreRejected() throws {
         let fixture = try ViewportStepFixture(text: String(repeating: "line\n", count: 200))
         let before = fixture.scroll.contentView.bounds
@@ -195,6 +217,7 @@ private final class ViewportStepFixture {
     let view: ReadOnlyDocumentView
 
     init(text: String, width: CGFloat = 180, height: CGFloat = 80,
+         font: NSFont = .monospacedSystemFont(ofSize: 16, weight: .regular),
          scheduler: @escaping (TimeInterval, @escaping () -> Void) -> Void = { delay, work in
              DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
          }) throws {
@@ -203,7 +226,7 @@ private final class ViewportStepFixture {
                               styleMask: [.borderless], backing: .buffered, defer: false)
         let scroll = NSScrollView(frame: window.contentView!.bounds)
         let view = ReadOnlyDocumentView(snapshot: NSAttributedString(string: text,
-            attributes: [.font: NSFont.monospacedSystemFont(ofSize: 16, weight: .regular)]), fallbackHeight: 16,
+            attributes: [.font: font]), fallbackHeight: 16,
                                         viewportRecoveryScheduler: scheduler, viewportRecoveryClock: { 0 })
         window.contentView!.addSubview(scroll)
         scroll.documentView = view

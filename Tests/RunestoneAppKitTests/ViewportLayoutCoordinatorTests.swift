@@ -26,6 +26,158 @@ final class ViewportLayoutCoordinatorTests: XCTestCase {
         }
     }
 
+    func testCompletedPredecessorWithChangedIndexedHeightIsRemeasured() throws {
+        let manager = LineManager(stringView: StringView(string: "preceding\nanchor\ntail"))
+        manager.estimatedLineHeight = 16
+        manager.rebuild()
+        let first = manager.firstLine
+        let controller = LogicalLineLayoutController(manager: manager, line: first)
+        XCTAssertTrue(controller.prepare(NSAttributedString(string: "preceding\n", attributes: [.font: font]),
+                                         width: 120, fallbackHeight: 16))
+        _ = controller.layout(.toLocation(first.data.length))
+        XCTAssertTrue(controller.isFinishedTypesetting)
+        let measuredHeight = first.data.lineHeight
+        manager.setHeight(of: first, to: measuredHeight + 100)
+        XCTAssertFalse(controller.hasCurrentFinishedHeight)
+        var controllers = [first.id: controller]
+        let coordinator = ViewportLayoutCoordinator(manager: manager, cachedControllerForLine: { line in
+            controllers[line.id]
+        }) { [font] line in
+            if let known = controllers[line.id] { return known }
+            let next = LogicalLineLayoutController(manager: manager, line: line)
+            let range = NSRange(location: line.location, length: line.data.totalLength)
+            let text = manager.stringView.string.substring(with: range)
+            guard next.prepare(NSAttributedString(string: text, attributes: [.font: font]),
+                               width: 120, fallbackHeight: 16) else { return nil }
+            controllers[line.id] = next
+            return next
+        }
+        let anchor = manager.line(atRow: 1)
+        let oldY = anchor.yPosition
+        let budget = try XCTUnwrap(PreparedInputViewportWorkBudget(clock: { 0 }, timeLimit: 0.016))
+        let result = try XCTUnwrap(coordinator.layout(in: CGRect(x: 0, y: oldY, width: 120, height: 40), budget: budget))
+        XCTAssertTrue(result.isComplete)
+        XCTAssertFalse(budget.exhausted)
+        XCTAssertEqual(first.data.lineHeight, measuredHeight, accuracy: 0.001)
+        XCTAssertEqual(result.contentOffsetAdjustmentY, anchor.yPosition - oldY, accuracy: 0.001)
+        XCTAssertTrue(controller.hasCurrentFinishedHeight)
+    }
+
+    func testFinishedPredecessorHonorsTightCoordinatorBudget() throws {
+        let manager = LineManager(stringView: StringView(string: "first\nanchor\ntail"))
+        manager.estimatedLineHeight = 16
+        manager.rebuild()
+        let first = manager.firstLine
+        let controller = LogicalLineLayoutController(manager: manager, line: first)
+        XCTAssertTrue(controller.prepare(NSAttributedString(string: "first\n", attributes: [.font: font]),
+                                         width: 120, fallbackHeight: 16))
+        _ = controller.layout(.toLocation(first.data.length))
+        XCTAssertTrue(controller.hasCurrentFinishedHeight)
+        var controllers = [first.id: controller]
+        var cacheChecks = 0
+        let coordinator = ViewportLayoutCoordinator(manager: manager, cachedControllerForLine: { _ in
+            cacheChecks += 1
+            return nil
+        }) { [font] line in
+            if let known = controllers[line.id] { return known }
+            let next = LogicalLineLayoutController(manager: manager, line: line)
+            let range = NSRange(location: line.location, length: line.data.totalLength)
+            let text = manager.stringView.string.substring(with: range)
+            guard next.prepare(NSAttributedString(string: text, attributes: [.font: font]),
+                               width: 120, fallbackHeight: 16) else { return nil }
+            controllers[line.id] = next
+            return next
+        }
+        let anchor = manager.line(atRow: 1)
+        let viewport = CGRect(x: 0, y: anchor.yPosition + 1, width: 120, height: 8)
+        let budget = try XCTUnwrap(PreparedInputViewportWorkBudget(clock: { 0 }, timeLimit: 0.016, operationLimit: 3))
+        let result = try XCTUnwrap(coordinator.layout(in: viewport, budget: budget))
+        XCTAssertTrue(result.isComplete)
+        XCTAssertFalse(budget.exhausted)
+        XCTAssertTrue(result.lines.contains { $0.line === anchor })
+        XCTAssertEqual(cacheChecks, 1)
+
+        let tooSmall = try XCTUnwrap(PreparedInputViewportWorkBudget(clock: { 0 }, timeLimit: 0.016, operationLimit: 2))
+        let refused = try XCTUnwrap(coordinator.layout(in: viewport, budget: tooSmall))
+        XCTAssertFalse(refused.isComplete)
+        XCTAssertTrue(tooSmall.exhausted)
+    }
+
+    func testCachedFinishedPredecessorAvoidsPreparationCharge() throws {
+        let manager = LineManager(stringView: StringView(string: "first\nanchor\ntail"))
+        manager.estimatedLineHeight = 16
+        manager.rebuild()
+        let first = manager.firstLine
+        let controller = LogicalLineLayoutController(manager: manager, line: first)
+        XCTAssertTrue(controller.prepare(NSAttributedString(string: "first\n", attributes: [.font: font]),
+                                         width: 120, fallbackHeight: 16))
+        _ = controller.layout(.toLocation(first.data.length))
+        XCTAssertTrue(controller.hasCurrentFinishedHeight)
+        var controllers = [first.id: controller]
+        var checks = 0
+        let coordinator = ViewportLayoutCoordinator(manager: manager, cachedControllerForLine: { line in
+            checks += 1
+            return controllers[line.id]
+        }) { [font] line in
+            if let known = controllers[line.id] { return known }
+            let next = LogicalLineLayoutController(manager: manager, line: line)
+            let range = NSRange(location: line.location, length: line.data.totalLength)
+            let text = manager.stringView.string.substring(with: range)
+            guard next.prepare(NSAttributedString(string: text, attributes: [.font: font]),
+                               width: 120, fallbackHeight: 16) else { return nil }
+            controllers[line.id] = next
+            return next
+        }
+        let anchor = manager.line(atRow: 1)
+        let viewport = CGRect(x: 0, y: anchor.yPosition + 1, width: 120, height: 8)
+        let budget = try XCTUnwrap(PreparedInputViewportWorkBudget(clock: { 0 }, timeLimit: 0.016, operationLimit: 2))
+        let result = try XCTUnwrap(coordinator.layout(in: viewport, budget: budget))
+        XCTAssertTrue(result.isComplete)
+        XCTAssertFalse(budget.exhausted)
+        XCTAssertEqual(checks, 1)
+        XCTAssertTrue(result.lines.contains { $0.line === anchor })
+
+        // The ordinary non-budgeted path does not use the fast lookup.
+        let oldChecks = checks
+        XCTAssertTrue(try XCTUnwrap(coordinator.layout(in: viewport)).isComplete)
+        XCTAssertEqual(checks, oldChecks)
+    }
+
+    func testCachedPredecessorChecksAreIndependentlyBounded() throws {
+        let manager = LineManager(stringView: StringView(string: String(repeating: "line\n", count: 100)))
+        manager.estimatedLineHeight = 16
+        manager.rebuild()
+        var controllers: [DocumentLineNodeID: LogicalLineLayoutController] = [:]
+        for row in 0..<30 {
+            let line = manager.line(atRow: row)
+            let controller = LogicalLineLayoutController(manager: manager, line: line)
+            let range = NSRange(location: line.location, length: line.data.totalLength)
+            let text = manager.stringView.string.substring(with: range)
+            XCTAssertTrue(controller.prepare(NSAttributedString(string: text, attributes: [.font: font]),
+                                             width: 120, fallbackHeight: 16))
+            _ = controller.layout(.toLocation(line.data.length))
+            XCTAssertTrue(controller.hasCurrentFinishedHeight)
+            controllers[line.id] = controller
+        }
+        var checks = 0
+        var providers = 0
+        let coordinator = ViewportLayoutCoordinator(manager: manager, cachedControllerForLine: { line in
+            checks += 1
+            return controllers[line.id]
+        }) { line in
+            providers += 1
+            return controllers[line.id]
+        }
+        let anchor = manager.line(atRow: 25)
+        let viewport = CGRect(x: 0, y: anchor.yPosition, width: 120, height: 600)
+        let budget = try XCTUnwrap(PreparedInputViewportWorkBudget(clock: { 0 }, timeLimit: 0.016, operationLimit: 1))
+        let result = try XCTUnwrap(coordinator.layout(in: viewport, budget: budget))
+        XCTAssertFalse(result.isComplete)
+        XCTAssertTrue(budget.exhausted)
+        XCTAssertEqual(checks, 16)
+        XCTAssertEqual(providers, 1)
+    }
+
     func testFailedPreparationStillReturnsAccumulatedAnchorAdjustment() throws {
         let manager = LineManager(stringView: StringView(string: "first\nsecond\nanchor\ntail"))
         manager.rebuild()

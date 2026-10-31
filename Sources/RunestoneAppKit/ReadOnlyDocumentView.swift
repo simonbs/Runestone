@@ -841,7 +841,9 @@ public class ReadOnlyDocumentView: NSView {
         manager = LineManager(stringView: StringView(string: snapshot.string))
         manager.estimatedLineHeight = fallbackHeight
         manager.rebuild()
-        coordinator = ViewportLayoutCoordinator(manager: manager) { [weak self] line in
+        coordinator = ViewportLayoutCoordinator(manager: manager, cachedControllerForLine: { [weak self] line in
+            self?.controllers[line.id]
+        }) { [weak self] line in
             self?.controller(for: line)
         }
         visibleLayout = nil
