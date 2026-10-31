@@ -160,6 +160,36 @@ final class InputContextConnectionTests: XCTestCase {
         XCTAssertTrue(view.releaseInputMutation(newPermit))
     }
 
+    func testContextSurvivesFirstResponderTransitionAndBecomesInert() throws {
+        _ = NSApplication.shared
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: "abc"))
+        let host = InputContextTestResponder(frame: NSRect(x: 0, y: 0, width: 120, height: 80))
+        let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        var context: NSTextInputContext?
+        weak var client: (AnyObject & NSTextInputClient)?
+        let connection = try XCTUnwrap(InputContextConnection(view: view) { input in
+            let driver = RealDriver(client: input)
+            context = driver.context
+            client = input as AnyObject & NSTextInputClient
+            return driver
+        })
+        host.testInputContext = context
+        XCTAssertTrue(window.makeFirstResponder(host))
+        XCTAssertTrue(window.firstResponder === host)
+        XCTAssertTrue(connection.activate())
+        XCTAssertEqual(client?.selectedRange(), NSRange(location: 0, length: 0))
+        XCTAssertTrue(window.makeFirstResponder(nil))
+        XCTAssertTrue(connection.disconnect())
+        XCTAssertEqual(client?.selectedRange().location, NSNotFound)
+        let permit = try XCTUnwrap(view.claimInputMutation())
+        XCTAssertTrue(view.releaseInputMutation(permit))
+        host.testInputContext = nil
+        context = nil
+        window.close()
+    }
+
     func testActivatedAppKitContextRetainedAfterDisconnectHasInertClient() throws {
         _ = NSApplication.shared
         let view = ReadOnlyDocumentView(content: NSAttributedString(string: "abc"))
@@ -207,6 +237,12 @@ private final class FakeDriver: InputContextConnection.Driver {
     func activate() { activations += 1; onActivate?() }
     func invalidateCoordinates() { invalidations += 1 }
     func deactivate() { deactivations += 1; onDeactivate?() }
+}
+
+private final class InputContextTestResponder: NSView {
+    var testInputContext: NSTextInputContext?
+    override var acceptsFirstResponder: Bool { true }
+    override var inputContext: NSTextInputContext? { testInputContext }
 }
 
 private final class RealDriver: InputContextConnection.Driver {
