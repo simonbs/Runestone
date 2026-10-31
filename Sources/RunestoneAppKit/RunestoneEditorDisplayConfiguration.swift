@@ -1,12 +1,18 @@
 #if canImport(AppKit)
 import AppKit
 
+public enum RunestoneSelectedLineHighlightGranularity: String, CaseIterable {
+    case line
+    case lineFragment
+}
+
 /// AppKit-owned presentation options for a Runestone document surface.
 /// These values never mutate document text, input state, undo, or file metadata.
 public struct RunestoneEditorDisplayConfiguration {
     public var showsLineNumbers: Bool
     public var minimumGutterCharacterCount: Int
     public var showsSelectedLines: Bool
+    public var selectedLineHighlightGranularity: RunestoneSelectedLineHighlightGranularity
     public var showsTabs: Bool
     public var showsSpaces: Bool
     public var showsNonBreakingSpaces: Bool
@@ -30,7 +36,9 @@ public struct RunestoneEditorDisplayConfiguration {
 
     public init(
         showsLineNumbers: Bool = false, minimumGutterCharacterCount: Int = 1,
-        showsSelectedLines: Bool = false, showsTabs: Bool = false, showsSpaces: Bool = false,
+        showsSelectedLines: Bool = false,
+        selectedLineHighlightGranularity: RunestoneSelectedLineHighlightGranularity = .line,
+        showsTabs: Bool = false, showsSpaces: Bool = false,
         showsNonBreakingSpaces: Bool = false, showsLineBreaks: Bool = false,
         showsSoftLineBreaks: Bool = false, tabSymbol: String = "▸", spaceSymbol: String = "·",
         nonBreakingSpaceSymbol: String = "·", lineBreakSymbol: String = "¬", softLineBreakSymbol: String = "¬",
@@ -45,6 +53,7 @@ public struct RunestoneEditorDisplayConfiguration {
         self.showsLineNumbers = showsLineNumbers
         self.minimumGutterCharacterCount = minimumGutterCharacterCount
         self.showsSelectedLines = showsSelectedLines
+        self.selectedLineHighlightGranularity = selectedLineHighlightGranularity
         self.showsTabs = showsTabs
         self.showsSpaces = showsSpaces
         self.showsNonBreakingSpaces = showsNonBreakingSpaces
