@@ -39,11 +39,16 @@ final class LineManagerEngineTests: XCTestCase {
         }
         @discardableResult
         func replace(_ range: NSRange, with replacement: String) -> LineChangeSet {
-            text.replaceText(in: range, with: replacement)
-            let changes = manager.removeCharacters(in: range)
-            changes.union(with: manager.insert(replacement as NSString, at: range.location))
+            let oldEnd = manager.linePosition(at: range.location + range.length)
+            guard let edit = LineEditTransaction.replace(in: manager, range: range, with: replacement) else {
+                XCTFail("Valid edit was rejected")
+                return LineChangeSet()
+            }
+            XCTAssertEqual(edit.oldEndPosition, oldEnd)
+            XCTAssertEqual(edit.startPosition, manager.linePosition(at: range.location))
+            XCTAssertEqual(edit.newEndPosition, manager.linePosition(at: range.location + (replacement as NSString).length))
             assertIndex()
-            return changes
+            return edit.lineChanges
         }
 
         assertIndex()
@@ -62,6 +67,47 @@ final class LineManagerEngineTests: XCTestCase {
         replace(NSRange(location: crlf.location + 1, length: 1), with: "")
         replace(NSRange(location: 2, length: manager.line(atRow: 1).location), with: "新\n😀\r\n")
         replace(NSRange(location: 0, length: text.string.length), with: "")
+    }
+
+    func testTransactionReportsCrossLineUTF16Positions() throws {
+        let text = StringView(string: "😀one\r\nnext\nend")
+        let manager = LineManager(stringView: text)
+        manager.rebuild()
+        let result = try XCTUnwrap(LineEditTransaction.replace(in: manager, range: NSRange(location: 2, length: 7), with: "🐢\nZ"))
+        XCTAssertEqual(result.oldEndPosition, LinePosition(row: 1, column: 2))
+        XCTAssertEqual(result.startPosition, LinePosition(row: 0, column: 2))
+        XCTAssertEqual(result.newEndPosition, LinePosition(row: 1, column: 1))
+        XCTAssertEqual(text.string as String, "😀🐢\nZxt\nend")
+        XCTAssertEqual(manager.lineCount, 3)
+    }
+
+    func testTransactionAcceptsInsertionAtEmptyAndTrailingPositions() throws {
+        let text = StringView(string: "")
+        let manager = LineManager(stringView: text)
+        manager.rebuild()
+        let insertion = try XCTUnwrap(LineEditTransaction.replace(in: manager, range: NSRange(location: 0, length: 0), with: "😀\n"))
+        XCTAssertEqual(insertion.newEndPosition, LinePosition(row: 1, column: 0))
+        let append = try XCTUnwrap(LineEditTransaction.replace(in: manager, range: NSRange(location: text.string.length, length: 0), with: "end"))
+        XCTAssertEqual(append.startPosition, LinePosition(row: 1, column: 0))
+        XCTAssertEqual(append.newEndPosition, LinePosition(row: 1, column: 3))
+        XCTAssertEqual(text.string as String, "😀\nend")
+    }
+
+    func testInvalidTransactionDoesNotChangeTextOrLineIndex() {
+        let text = StringView(string: "😀first\r\nsecond")
+        let manager = LineManager(stringView: text)
+        manager.rebuild()
+        let first = manager.firstLine
+        let last = manager.lastLine
+        let original = text.string as String
+        for range in [NSRange(location: NSNotFound, length: 1), NSRange(location: 0, length: Int.max),
+                      NSRange(location: text.string.length + 1, length: 0)] {
+            XCTAssertNil(LineEditTransaction.replace(in: manager, range: range, with: "changed"))
+            XCTAssertEqual(text.string as String, original)
+            XCTAssertEqual(manager.lineCount, 2)
+            XCTAssertTrue(manager.firstLine === first)
+            XCTAssertTrue(manager.lastLine === last)
+        }
     }
 
     func testFoldedHeightAndHitTestingUseSharedLineGeometry() {

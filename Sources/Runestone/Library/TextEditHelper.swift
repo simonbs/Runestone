@@ -1,4 +1,5 @@
 import Foundation
+import RunestoneEngine
 
 struct TextEditResult {
     let textChange: TextChange
@@ -22,23 +23,16 @@ final class TextEditHelper {
     }
 
     func replaceText(in range: NSRange, with newString: String) -> TextEditResult {
-        let nsNewString = newString as NSString
-        let byteRange = ByteRange(utf16Range: range)
-        let oldEndLinePosition = lineManager.linePosition(at: range.location + range.length)!
-        stringView.replaceText(in: range, with: newString)
-        let lineChangeSet = LineChangeSet()
-        let lineChangeSetFromRemovingCharacters = lineManager.removeCharacters(in: range)
-        lineChangeSet.union(with: lineChangeSetFromRemovingCharacters)
-        let lineChangeSetFromInsertingCharacters = lineManager.insert(nsNewString, at: range.location)
-        lineChangeSet.union(with: lineChangeSetFromInsertingCharacters)
-        let startLinePosition = lineManager.linePosition(at: range.location)!
-        let newEndLinePosition = lineManager.linePosition(at: range.location + nsNewString.length)!
-        let textChange = TextChange(byteRange: byteRange,
+        precondition(lineManager.stringView === stringView)
+        guard let edit = LineEditTransaction.replace(in: lineManager, range: range, with: newString) else {
+            preconditionFailure("Invalid text replacement range")
+        }
+        let textChange = TextChange(byteRange: ByteRange(utf16Range: range),
                                     bytesAdded: newString.byteCount,
-                                    oldEndLinePosition: oldEndLinePosition,
-                                    startLinePosition: startLinePosition,
-                                    newEndLinePosition: newEndLinePosition)
-        return TextEditResult(textChange: textChange, lineChangeSet: lineChangeSet)
+                                    oldEndLinePosition: edit.oldEndPosition,
+                                    startLinePosition: edit.startPosition,
+                                    newEndLinePosition: edit.newEndPosition)
+        return TextEditResult(textChange: textChange, lineChangeSet: edit.lineChanges)
     }
 
     func string(byApplying batchReplaceSet: BatchReplaceSet) -> NSString {
