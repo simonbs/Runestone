@@ -948,6 +948,16 @@ private var preparedContextClientKey: UInt8 = 0
 /// The associated proxy never owns its context, adapter, view, or coordinator.
 private final class PreparedContextClient: NSObject, NSTextCheckingClient {
     weak var owner: PreparedInputContextConnection?
+    var autocorrectionType: NSTextInputTraitType = .default
+    var spellCheckingType: NSTextInputTraitType = .yes
+    var grammarCheckingType: NSTextInputTraitType = .yes
+    var smartQuotesType: NSTextInputTraitType = .default
+    var smartDashesType: NSTextInputTraitType = .default
+    var smartInsertDeleteType: NSTextInputTraitType = .default
+    var textReplacementType: NSTextInputTraitType = .default
+    var textCompletionType: NSTextInputTraitType = .yes
+    var writingToolsBehavior: NSWritingToolsBehavior = .limited
+    var allowedWritingToolsResultOptions: NSWritingToolsResultOptions = .plainText
     func insertText(_ string: Any, replacementRange: NSRange) {
         owner?.mutate(operation: .insertText) { $0.insertTextReporting(string, replacementRange: replacementRange) }
     }
