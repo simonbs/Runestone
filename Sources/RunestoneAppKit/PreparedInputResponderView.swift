@@ -48,6 +48,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         inputConnection = connection
         connection.readyObserver = self
         connection.commandHandler = self
+        registerForDraggedTypes([.string])
         scheduleFocusCheck()
     }
 
@@ -64,6 +65,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         focusGeneration = UUID()
         inputAdapter = nil
         inputConnection = nil
+        unregisterDraggedTypes()
     }
 
     /// Suspends or resumes mutation without retiring this view or its document
@@ -802,6 +804,27 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         guard focusRequested, !disarmed, !isReadOnly,
               let connection = inputConnection else { return }
         _ = connection.performCoordinatedInput { self.routeMouseDown(event, connection: connection) }
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        canAcceptTextDrop(sender) ? .copy : []
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        canAcceptTextDrop(sender) ? .copy : []
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        guard canAcceptTextDrop(sender), let connection = inputConnection,
+              let string = sender.draggingPasteboard.string(forType: .string), let window else { return false }
+        let point = window.convertPoint(toScreen: sender.draggingLocation)
+        guard let offset = InputScreenRangeGeometry.characterIndexForPointerDrag(for: point, in: self) else { return false }
+        return connection.replaceForTextFinder(NSRange(location: offset, length: 0), with: string)
+    }
+
+    private func canAcceptTextDrop(_ sender: NSDraggingInfo) -> Bool {
+        guard !disarmed, !isReadOnly, !isRetired, inputConnection?.isConnectedForEditing == true else { return false }
+        return sender.draggingPasteboard.availableType(from: [.string]) == .string
     }
 
     private func routeMouseDown(_ event: NSEvent, connection: PreparedInputContextConnection) {
