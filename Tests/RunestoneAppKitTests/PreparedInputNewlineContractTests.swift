@@ -108,6 +108,96 @@ final class PreparedInputNewlineContractTests: XCTestCase {
         XCTAssertTrue(fixture.adapter.disconnectAfterQuiescing())
     }
 
+    func testLogicalNewlinePlannerAppliesLanguageIndentationWithContextualEndingAndUndo() throws {
+        var received: RunestoneLogicalNewlineContext?
+        let initial = "if value {\r\nnext"
+        let fixture = try NewlineFixture(initial) { context in
+            received = context
+            return RunestoneLogicalNewlineEdit(
+                replacementRange: context.selection,
+                replacementText: context.lineEnding + "    ",
+                selectedRange: NSRange(location: context.selection.location + context.lineEnding.utf16.count + 4,
+                                       length: 0)
+            )
+        }
+        let location = (initial as NSString).range(of: "{").upperBound
+        XCTAssertEqual(fixture.adapter.setSelection(NSRange(location: location, length: 0)), .processed)
+        XCTAssertEqual(fixture.command("insertNewline:"), .processed)
+        XCTAssertEqual(received?.text, initial)
+        XCTAssertEqual(received?.selection, NSRange(location: location, length: 0))
+        XCTAssertEqual(received?.lineEnding, "\r\n")
+        XCTAssertEqual(fixture.owner.text, "if value {\r\n    \r\nnext")
+        XCTAssertEqual(fixture.adapter.selectedRangeForInput(), NSRange(location: location + 6, length: 0))
+        fixture.owner.undo.undo()
+        XCTAssertEqual(fixture.owner.text, initial)
+        fixture.owner.undo.redo()
+        XCTAssertEqual(fixture.owner.text, "if value {\r\n    \r\nnext")
+        XCTAssertEqual(fixture.adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertTrue(fixture.adapter.disconnectAfterQuiescing())
+    }
+
+    func testLogicalNewlinePlannerCanContinueAndTerminateMarkdown() throws {
+        let continued = try NewlineFixture("1. first\r\nnext") { context in
+            RunestoneLogicalNewlineEdit(
+                replacementRange: context.selection, replacementText: context.lineEnding + "2. ",
+                selectedRange: NSRange(location: context.selection.location + context.lineEnding.utf16.count + 3,
+                                       length: 0)
+            )
+        }
+        XCTAssertEqual(continued.adapter.setSelection(NSRange(location: 8, length: 0)), .processed)
+        XCTAssertEqual(continued.command("insertNewline:"), .processed)
+        XCTAssertEqual(continued.owner.text, "1. first\r\n2. \r\nnext")
+        XCTAssertEqual(continued.owner.publications, 1)
+        XCTAssertTrue(continued.adapter.disconnectAfterQuiescing())
+
+        let terminated = try NewlineFixture("- \r\nnext") { context in
+            RunestoneLogicalNewlineEdit(replacementRange: NSRange(location: 0, length: 2), replacementText: "",
+                                        selectedRange: NSRange(location: 0, length: 0))
+        }
+        XCTAssertEqual(terminated.adapter.setSelection(NSRange(location: 2, length: 0)), .processed)
+        XCTAssertEqual(terminated.command("insertNewline:"), .processed)
+        XCTAssertEqual(terminated.owner.text, "\r\nnext")
+        XCTAssertEqual(terminated.adapter.selectedRangeForInput(), NSRange(location: 0, length: 0))
+        XCTAssertTrue(terminated.adapter.disconnectAfterQuiescing())
+    }
+
+    func testLogicalNewlinePlannerNeverSeesLiteralOrMarkedPayloadsOrExplicitLineBreak() throws {
+        var calls = 0
+        let fixture = try NewlineFixture("A\r\nB") { context in
+            calls += 1
+            return RunestoneLogicalNewlineEdit(
+                replacementRange: context.selection, replacementText: context.lineEnding + "planned",
+                selectedRange: NSRange(location: context.selection.location + context.lineEnding.utf16.count + 7,
+                                       length: 0)
+            )
+        }
+        XCTAssertEqual(fixture.adapter.setSelection(NSRange(location: 1, length: 0)), .processed)
+        XCTAssertEqual(fixture.adapter.insertText("\n", replacementRange: unspecified), .processed)
+        XCTAssertEqual(calls, 0)
+        XCTAssertEqual(fixture.adapter.setMarkedText("日\n本", selectedRange: NSRange(location: 3, length: 0),
+                                                     replacementRange: unspecified), .processed)
+        XCTAssertEqual(calls, 0)
+        XCTAssertEqual(fixture.adapter.insertText("日\n本", replacementRange: unspecified), .processed)
+        XCTAssertEqual(calls, 0)
+        XCTAssertEqual(fixture.command("insertLineBreak:"), .processed)
+        XCTAssertEqual(calls, 0)
+        XCTAssertTrue(fixture.owner.text.contains("\n日\n本\u{2028}"))
+        XCTAssertTrue(fixture.adapter.disconnectAfterQuiescing())
+    }
+
+    func testInvalidLogicalNewlinePlanIsRejectedWithoutFallbackOrReplay() throws {
+        let fixture = try NewlineFixture("A\r\nB") { _ in
+            RunestoneLogicalNewlineEdit(replacementRange: NSRange(location: 99, length: 0), replacementText: "bad",
+                                        selectedRange: NSRange(location: 102, length: 0))
+        }
+        XCTAssertEqual(fixture.adapter.setSelection(NSRange(location: 1, length: 0)), .processed)
+        XCTAssertNotEqual(fixture.command("insertNewline:"), .processed)
+        XCTAssertEqual(fixture.owner.text, "A\r\nB")
+        XCTAssertEqual(fixture.owner.publications, 0)
+        XCTAssertFalse(fixture.owner.undo.canUndo)
+        XCTAssertTrue(fixture.adapter.disconnectAfterQuiescing())
+    }
+
     func testBusyAndStaleNewlineAreNotReplayedAgainstCanonicalDocument() throws {
         for stale in [false, true] {
             let fixture = try NewlineFixture("A\r\nB")
@@ -144,14 +234,15 @@ private final class NewlineFixture {
     let view: ReadOnlyDocumentView
     let adapter: PreparedInputEventAdapter
 
-    init(_ text: String) throws {
+    init(_ text: String, logicalNewlinePlanner: @escaping RunestoneLogicalNewlinePlanner = { _ in nil }) throws {
         let owner = NewlineOwner(text)
         let view = ReadOnlyDocumentView(content: NSAttributedString(string: text))
         self.owner = owner
         self.view = view
         adapter = try XCTUnwrap(PreparedInputEventAdapter(view: view, snapshot: view.content,
             initialRevision: owner.revision, documentRevision: { owner.revision }, typingAttributes: { [:] },
-            beginEvent: { owner.begin($0) }, beginReconstruction: { owner.reconstruct() }, requestReset: {}))
+            beginEvent: { owner.begin($0) }, beginReconstruction: { owner.reconstruct() }, requestReset: {},
+            logicalNewlinePlanner: logicalNewlinePlanner))
     }
 
     func command(_ name: String) -> PreparedInputEventAdapter.Outcome? {

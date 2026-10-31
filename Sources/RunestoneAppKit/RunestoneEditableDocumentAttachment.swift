@@ -1,6 +1,44 @@
 #if canImport(AppKit)
 import AppKit
 
+/// The immutable input supplied to a host-owned logical-Return planner.
+///
+/// The planner runs synchronously on the main thread after the framework has
+/// acquired the document input reservation. It must be side-effect-free and
+/// must not enter an event loop. Returning nil preserves Runestone's ordinary
+/// contextual-newline insertion.
+public struct RunestoneLogicalNewlineContext {
+    public let text: String
+    public let selection: NSRange
+    public let lineEnding: String
+
+    public init(text: String, selection: NSRange, lineEnding: String) {
+        self.text = text
+        self.selection = selection
+        self.lineEnding = lineEnding
+    }
+}
+
+/// A host-planned logical-Return edit, expressed in UTF-16 document ranges.
+///
+/// This supports both language indentation (which commonly replaces the
+/// selection) and transformations such as Markdown continuation/termination
+/// (which may replace a prefix before the caret). Invalid edits are rejected
+/// without falling back to a second insertion.
+public struct RunestoneLogicalNewlineEdit {
+    public let replacementRange: NSRange
+    public let replacementText: String
+    public let selectedRange: NSRange
+
+    public init(replacementRange: NSRange, replacementText: String, selectedRange: NSRange) {
+        self.replacementRange = replacementRange
+        self.replacementText = replacementText
+        self.selectedRange = selectedRange
+    }
+}
+
+public typealias RunestoneLogicalNewlinePlanner = (RunestoneLogicalNewlineContext) -> RunestoneLogicalNewlineEdit?
+
 /// An explicit, document-owned connection to a prepared editable AppKit view.
 ///
 /// Keep this object alive while the view is installed. The host owns its own
@@ -46,10 +84,13 @@ public final class RunestoneEditableDocumentAttachment {
     /// its lifetime sentinel and bridge independently of this attachment.
     public static func attach(host: RunestoneInputDispatchHost,
                               lifetime: RunestoneInputDocumentLifetime,
-                              bridge: RunestoneInputDocumentBridge) -> RunestoneEditableDocumentAttachment? {
+                              bridge: RunestoneInputDocumentBridge,
+                              logicalNewlinePlanner: @escaping RunestoneLogicalNewlinePlanner = { _ in nil })
+        -> RunestoneEditableDocumentAttachment? {
         precondition(Thread.isMainThread)
-        guard let attachment = PreparedInputDocumentAttachment.attachResponder(host: host, lifetime: lifetime,
-                                                                                 bridge: bridge) else { return nil }
+        guard let attachment = PreparedInputDocumentAttachment.attachResponder(
+            host: host, lifetime: lifetime, bridge: bridge, logicalNewlinePlanner: logicalNewlinePlanner
+        ) else { return nil }
         return RunestoneEditableDocumentAttachment(attachment)
     }
 
