@@ -57,7 +57,10 @@ final class DocumentInputSession {
     @discardableResult
     func setSelection(_ range: NSRange) -> Bool {
         guard isCurrent, isValid(range, in: view.manager.stringView.string) else { return false }
-        storedSelection = range
+        if storedSelection != range {
+            storedSelection = range
+            view.noteInputCoordinatesChanged()
+        }
         return true
     }
 
@@ -111,7 +114,10 @@ final class DocumentInputSession {
     @discardableResult
     func unmarkText() -> Bool {
         guard isCurrent else { return false }
-        storedMarkedRange = nil
+        if storedMarkedRange != nil {
+            storedMarkedRange = nil
+            view.noteInputCoordinatesChanged()
+        }
         return true
     }
 
@@ -137,6 +143,8 @@ final class DocumentInputSession {
             isApplyingChange = false
             view.endInputMutation()
         }
+        let oldSelection = storedSelection
+        let oldMarked = storedMarkedRange
         let previous = view.attributedContent(in: range)
         let didChange = !previous.isEqual(to: replacement)
         if didChange {
@@ -151,6 +159,9 @@ final class DocumentInputSession {
         } else {
             storedSelection = selection
             storedMarkedRange = marked
+        }
+        if didChange || oldSelection != storedSelection || oldMarked != storedMarkedRange {
+            view.noteInputCoordinatesChanged()
         }
         if didChange, let contentDidChange = contentDidChange { contentDidChange(view.content) }
         return true
