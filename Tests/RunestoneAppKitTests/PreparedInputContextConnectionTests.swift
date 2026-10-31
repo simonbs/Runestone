@@ -733,6 +733,310 @@ final class PreparedInputContextConnectionTests: XCTestCase {
         XCTAssertEqual(client.selectedRange().location, NSNotFound)
     }
 
+    func testBusyCallbacksAreReportedInOrderAndNeverReplayed() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var driver: ContextFakeDriver?
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let value = ContextFakeDriver(client: client); driver = value; return value
+        }, schedule: queue.enqueue))
+        let observer = ContextInputFailureObserver()
+        connection.inputFailureObserver = observer
+        XCTAssertTrue(connection.activate())
+        let client = try XCTUnwrap(driver?.client)
+        owner.active = true
+        client.insertText("x", replacementRange: unspecified)
+        client.setMarkedText("y", selectedRange: NSRange(location: 1, length: 0), replacementRange: unspecified)
+        client.unmarkText()
+        XCTAssertEqual(observer.notifications, 0)
+        XCTAssertEqual(owner.text, "abc")
+        XCTAssertEqual(owner.undoCount, 0)
+        owner.active = false
+        queue.runAll()
+        XCTAssertEqual(observer.notifications, 1)
+        let batch = connection.takeInputFailures()
+        XCTAssertEqual(batch.records.map(\.operation), [.insertText, .setMarkedText, .unmarkText])
+        XCTAssertEqual(batch.records.map(\.failure.reason), [.busy, .unavailable, .unavailable])
+        XCTAssertTrue(batch.records.allSatisfy { $0.failure.effect == .notApplied })
+        XCTAssertEqual(batch.overflowCount, 0)
+        XCTAssertEqual(owner.text, "abc")
+        XCTAssertEqual(owner.undoCount, 0)
+        // A retained client is detached after cleanup and cannot create reports.
+        client.insertText("old", replacementRange: unspecified)
+        XCTAssertTrue(connection.takeInputFailures().records.isEmpty)
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+        XCTAssertTrue(connection.isDisconnected)
+    }
+
+    func testFailureMailboxIsBoundedAndExplicitlyAcknowledged() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var driver: ContextFakeDriver?
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let value = ContextFakeDriver(client: client); driver = value; return value
+        }, schedule: queue.enqueue))
+        XCTAssertTrue(connection.activate())
+        let client = try XCTUnwrap(driver?.client)
+        owner.active = true
+        client.insertText("x", replacementRange: unspecified)
+        for _ in 0..<20 { client.unmarkText() }
+        let batch = connection.takeInputFailures()
+        XCTAssertEqual(batch.records.count, 16)
+        XCTAssertEqual(batch.records.first?.operation, .insertText)
+        XCTAssertTrue(batch.records.dropFirst().allSatisfy { $0.operation == .unmarkText })
+        XCTAssertEqual(batch.overflowCount, 5)
+        let cleared = connection.takeInputFailures()
+        XCTAssertTrue(cleared.records.isEmpty)
+        XCTAssertEqual(cleared.overflowCount, 0)
+        owner.active = false
+        queue.runAll()
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+        XCTAssertTrue(connection.isDisconnected)
+    }
+
+    func testFailureObserverWaitsForNestedDriverAndAdapterActivity() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var driver: ContextFakeDriver?
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let value = ContextFakeDriver(client: client); driver = value; return value
+        }, schedule: queue.enqueue))
+        let observer = ContextInputFailureObserver()
+        var insideDriver = false
+        observer.onNotify = { _ in
+            XCTAssertFalse(insideDriver)
+            XCTAssertFalse(adapter.inputActivityIsBusy)
+        }
+        connection.inputFailureObserver = observer
+        owner.active = true
+        driver?.onActivate = {
+            insideDriver = true
+            driver?.client?.insertText("x", replacementRange: self.unspecified)
+            queue.runAll() // nested event loop while the driver remains active
+            XCTAssertEqual(observer.notifications, 0)
+            insideDriver = false
+        }
+        XCTAssertFalse(connection.activate())
+        owner.active = false
+        queue.runAll()
+        XCTAssertEqual(observer.notifications, 1)
+        XCTAssertEqual(connection.takeInputFailures().records.first?.failure.reason, .busy)
+        driver?.onActivate = nil
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+    }
+
+    func testObserverIsWeakAndPendingBatchCanBeObservedLater() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view,
+            makeDriver: { ContextFakeDriver(client: $0) }, schedule: queue.enqueue))
+        var observer: ContextInputFailureObserver? = ContextInputFailureObserver()
+        weak let weakObserver = observer
+        connection.inputFailureObserver = observer
+        observer = nil
+        XCTAssertNil(weakObserver)
+        connection.recordInputFailure(operation: .command, failure: .init(reason: .busy, effect: .notApplied))
+        queue.runAll()
+        let next = ContextInputFailureObserver()
+        connection.inputFailureObserver = next
+        queue.runAll()
+        XCTAssertEqual(next.notifications, 1)
+        XCTAssertEqual(connection.takeInputFailures().records.map(\.operation), [.command])
+        queue.runAll()
+        XCTAssertEqual(next.notifications, 1)
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+    }
+
+    func testEmptyCompositionDiscardIsReportedOnlyOnceAndOldClientIsInert() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var driver: ContextFakeDriver?
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let value = ContextFakeDriver(client: client); if driver == nil { driver = value }; return value
+        }, schedule: queue.enqueue))
+        let observer = ContextInputFailureObserver()
+        connection.inputFailureObserver = observer
+        XCTAssertTrue(connection.activate())
+        let client = try XCTUnwrap(driver?.client)
+        client.setMarkedText("", selectedRange: NSRange(location: 0, length: 0),
+                             replacementRange: NSRange(location: 1, length: 1))
+        XCTAssertFalse(client.hasMarkedText())
+        XCTAssertEqual(view.content.string, "ac")
+        driver?.onDiscard = { XCTAssertEqual(observer.notifications, 0) }
+        connection.requestReset()
+        queue.runAll()
+        XCTAssertEqual(observer.notifications, 1)
+        let failures = connection.takeInputFailures().records
+        XCTAssertEqual(failures.map(\.operation), [.compositionDiscarded])
+        XCTAssertEqual(failures.map(\.failure.reason), [.compositionDiscarded])
+        XCTAssertEqual(failures.map(\.failure.effect), [.mayHaveApplied])
+        XCTAssertEqual(view.content.string, "abc")
+        XCTAssertEqual(owner.text, "abc")
+        client.insertText("old", replacementRange: unspecified)
+        XCTAssertTrue(connection.takeInputFailures().records.isEmpty)
+        driver?.onDiscard = nil
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+    }
+
+    func testMissingCommandHandlerReportsFailureWithoutMutation() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var driver: ContextFakeDriver?
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let value = ContextFakeDriver(client: client); driver = value; return value
+        }, schedule: queue.enqueue))
+        XCTAssertTrue(connection.activate())
+        try XCTUnwrap(driver?.client).doCommand(by: NSSelectorFromString("deleteBackward:"))
+        let batch = connection.takeInputFailures()
+        XCTAssertEqual(batch.records.map(\.operation), [.command])
+        XCTAssertEqual(batch.records.map(\.failure.reason), [.unavailable])
+        XCTAssertEqual(batch.records.map(\.failure.effect), [.notApplied])
+        XCTAssertEqual(owner.text, "abc")
+        XCTAssertEqual(owner.undoCount, 0)
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+    }
+
+    func testUndispatchedKeyAndFallbackFailureHaveDistinctEffects() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view,
+            makeDriver: { ContextFakeDriver(client: $0) }, schedule: queue.enqueue))
+        let event = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                                                   windowNumber: 0, context: nil, characters: "a",
+                                                   charactersIgnoringModifiers: "a", isARepeat: false, keyCode: 0))
+        XCTAssertEqual(connection.dispatchKey(event), .unavailable)
+        XCTAssertFalse(connection.performKeyBindingFallback { XCTFail("Fallback must not run") })
+        let batch = connection.takeInputFailures()
+        XCTAssertEqual(batch.records.map(\.operation), [.undispatchedKey, .keyBindingFallback])
+        XCTAssertEqual(batch.records.map(\.failure.effect), [.notApplied, .mayHaveApplied])
+        XCTAssertEqual(owner.text, "abc")
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+    }
+
+    func testFocusLossDuringDriverDispatchReportsInterruptionWithoutReplaying() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var driver: ContextFakeDriver?
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let value = ContextFakeDriver(client: client); driver = value; return value
+        }, schedule: queue.enqueue))
+        XCTAssertTrue(connection.activate())
+        let event = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                                                   windowNumber: 0, context: nil, characters: "a",
+                                                   charactersIgnoringModifiers: "a", isARepeat: false, keyCode: 0))
+        driver?.onHandle = {
+            connection.suspendForFocusLoss()
+            queue.runAll() // A nested event loop cannot retire the active driver.
+            XCTAssertEqual(driver?.discards, 0)
+            return false
+        }
+        XCTAssertEqual(connection.dispatchKey(event), .handled)
+        let batch = connection.takeInputFailures()
+        XCTAssertEqual(batch.records.map(\.operation), [.inputDispatchInterrupted])
+        XCTAssertEqual(batch.records.map(\.failure.reason), [.unavailable])
+        XCTAssertEqual(batch.records.map(\.failure.effect), [.mayHaveApplied])
+        XCTAssertEqual(owner.text, "abc")
+        XCTAssertEqual(owner.undoCount, 0)
+        driver?.onHandle = nil
+        queue.runAll()
+        XCTAssertTrue(connection.takeInputFailures().records.isEmpty)
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+    }
+
+    func testFocusLossAfterPublishedCallbackReportsInterruptionWithoutReplaying() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var driver: ContextFakeDriver?
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let value = ContextFakeDriver(client: client); driver = value; return value
+        }, schedule: queue.enqueue))
+        XCTAssertTrue(connection.activate())
+        let client = try XCTUnwrap(driver?.client)
+        let event = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                                                   windowNumber: 0, context: nil, characters: "x",
+                                                   charactersIgnoringModifiers: "x", isARepeat: false, keyCode: 0))
+        driver?.onHandle = {
+            client.insertText("x", replacementRange: self.unspecified)
+            connection.suspendForFocusLoss()
+            return false
+        }
+        XCTAssertEqual(connection.dispatchKey(event), .handled)
+        let batch = connection.takeInputFailures()
+        XCTAssertEqual(batch.records.map(\.operation), [.inputDispatchInterrupted])
+        XCTAssertEqual(batch.records.map(\.failure.reason), [.unavailable])
+        XCTAssertEqual(batch.records.map(\.failure.effect), [.mayHaveApplied])
+        XCTAssertEqual(owner.text, "xabc")
+        XCTAssertEqual(owner.undoCount, 1)
+        driver?.onHandle = nil
+        queue.runAll()
+        XCTAssertEqual(owner.text, "xabc")
+        XCTAssertEqual(owner.undoCount, 1)
+        XCTAssertTrue(connection.takeInputFailures().records.isEmpty)
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+    }
+
+    func testFocusLossAfterRejectedCallbackReportsBothOutcomes() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var driver: ContextFakeDriver?
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let value = ContextFakeDriver(client: client); driver = value; return value
+        }, schedule: queue.enqueue))
+        XCTAssertTrue(connection.activate())
+        let client = try XCTUnwrap(driver?.client)
+        let event = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                                                   windowNumber: 0, context: nil, characters: "a",
+                                                   charactersIgnoringModifiers: "a", isARepeat: false, keyCode: 0))
+        owner.active = true
+        driver?.onHandle = {
+            client.insertText("x", replacementRange: self.unspecified)
+            connection.suspendForFocusLoss()
+            return false
+        }
+        XCTAssertEqual(connection.dispatchKey(event), .handled)
+        let batch = connection.takeInputFailures()
+        XCTAssertEqual(batch.records.map(\.operation), [.insertText, .inputDispatchInterrupted])
+        XCTAssertEqual(batch.records.map(\.failure.reason), [.busy, .unavailable])
+        XCTAssertEqual(batch.records.map(\.failure.effect), [.notApplied, .mayHaveApplied])
+        XCTAssertEqual(owner.text, "abc")
+        XCTAssertEqual(owner.undoCount, 0)
+        driver?.onHandle = nil
+        owner.active = false
+        queue.runAll()
+        XCTAssertTrue(connection.takeInputFailures().records.isEmpty)
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+    }
+
     private func makeAdapter(_ owner: ContextOwner, _ view: ReadOnlyDocumentView,
                              _ queue: ContextQueue) throws -> PreparedInputEventAdapter {
         try XCTUnwrap(PreparedInputEventAdapter(view: view, snapshot: view.content, initialRevision: owner.revision,
@@ -740,6 +1044,15 @@ final class PreparedInputContextConnectionTests: XCTestCase {
                                                beginEvent: { owner.begin($0) },
                                                beginReconstruction: { owner.beginReconstruction() },
                                                requestReset: {}, schedule: queue.enqueue))
+    }
+}
+
+private final class ContextInputFailureObserver: PreparedInputContextConnection.InputFailureObserver {
+    var notifications = 0
+    var onNotify: ((PreparedInputContextConnection) -> Void)?
+    func preparedInputContextConnectionHasInputFailures(_ connection: PreparedInputContextConnection) {
+        notifications += 1
+        onNotify?(connection)
     }
 }
 

@@ -94,6 +94,51 @@ final class PreparedInputCommandInterpreterTests: XCTestCase {
         XCTAssertTrue(fixture.adapter.disconnectAfterQuiescing())
     }
 
+    func testReportingDistinguishesUnsupportedBlockedAndBusyCommands() throws {
+        let fixture = try CommandFixture("abc")
+        XCTAssertEqual(fixture.runReporting("transpose:"), .unsupported)
+        XCTAssertEqual(fixture.adapter.setMarkedText("", selectedRange: NSRange(location: 0, length: 0),
+                                                     replacementRange: NSRange(location: NSNotFound, length: 0)), .processed)
+        XCTAssertEqual(fixture.runReporting("deleteBackward:"),
+                       .blocked(.init(reason: .compositionActive, effect: .notApplied)))
+        XCTAssertEqual(fixture.owner.text, "abc")
+        XCTAssertEqual(fixture.owner.undoCount, 0)
+        XCTAssertEqual(fixture.adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertEqual(fixture.adapter.setSelection(NSRange(location: 1, length: 0)), .processed)
+        fixture.owner.busy = true
+        XCTAssertEqual(fixture.runReporting("moveRight:"),
+                       .handled(.init(outcome: .resetRequired,
+                                      failure: .init(reason: .busy, effect: .notApplied))))
+        XCTAssertEqual(fixture.owner.text, "abc")
+        fixture.owner.busy = false
+        XCTAssertEqual(fixture.adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertEqual(fixture.owner.undoCount, 0)
+        XCTAssertTrue(fixture.adapter.disconnectAfterQuiescing())
+    }
+
+    func testReportingDoesNotDeleteAcrossInteriorGrapheme() throws {
+        let fixture = try CommandFixture("A\u{301}B")
+        XCTAssertEqual(fixture.adapter.setSelection(NSRange(location: 1, length: 0)), .processed)
+        XCTAssertEqual(fixture.runReporting("deleteForward:"),
+                       .blocked(.init(reason: .invalidSelection, effect: .notApplied)))
+        XCTAssertEqual(fixture.owner.text, "A\u{301}B")
+        XCTAssertEqual(fixture.owner.undoCount, 0)
+        XCTAssertTrue(fixture.adapter.disconnectAfterQuiescing())
+    }
+
+    func testReportingRejectsCommandAgainstStaleSelectionWithoutMutating() throws {
+        let fixture = try CommandFixture("abc")
+        fixture.owner.text = "newer"
+        fixture.owner.revision = UUID()
+        XCTAssertEqual(fixture.runReporting("insertTab:"),
+                       .handled(.init(outcome: .resetRequired,
+                                      failure: .init(reason: .unavailable, effect: .notApplied))))
+        XCTAssertEqual(fixture.owner.text, "newer")
+        XCTAssertEqual(fixture.owner.undoCount, 0)
+        XCTAssertEqual(fixture.adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertTrue(fixture.adapter.disconnectAfterQuiescing())
+    }
+
     func testBusyDocumentRejectsCommandWithoutRetryOrUndo() throws {
         let fixture = try CommandFixture("abc")
         fixture.owner.busy = true
@@ -124,6 +169,10 @@ private final class CommandFixture {
 
     func run(_ selector: String) -> PreparedInputEventAdapter.Outcome? {
         PreparedInputCommandInterpreter.perform(NSSelectorFromString(selector), adapter: adapter, view: view)
+    }
+
+    func runReporting(_ selector: String) -> PreparedInputCommandInterpreter.Result {
+        PreparedInputCommandInterpreter.performReporting(NSSelectorFromString(selector), adapter: adapter, view: view)
     }
 }
 

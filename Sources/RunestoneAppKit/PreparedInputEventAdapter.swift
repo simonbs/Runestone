@@ -47,6 +47,35 @@ final class PreparedInputEventAdapter {
         case unavailable
     }
 
+    /// Describes one attempted input operation; failure is nil only on success.
+    /// Only `.notApplied` proves this particular callback did not enter the
+    /// session. It is not permission to replay an input-method event.
+    struct InputFailure: Equatable {
+        enum Reason: Equatable {
+            case busy, stale, reentrant, unavailable, admittedFailure
+            case unsupported, compositionActive, compositionDiscarded, invalidSelection
+        }
+        enum Effect: Equatable { case notApplied, mayHaveApplied }
+        let reason: Reason
+        let effect: Effect
+
+        init(reason: Reason, effect: Effect) {
+            self.reason = reason
+            self.effect = effect
+        }
+    }
+
+    struct InputAttempt: Equatable {
+        let outcome: Outcome
+        let failure: InputFailure?
+
+        init(outcome: Outcome, failure: InputFailure?) {
+            precondition((outcome == .processed) == (failure == nil))
+            self.outcome = outcome
+            self.failure = failure
+        }
+    }
+
     enum ReservationResult {
         case reserved(Reservation)
         case stale
@@ -276,6 +305,10 @@ final class PreparedInputEventAdapter {
 
     @discardableResult
     func insertText(_ value: Any, replacementRange: NSRange) -> Outcome {
+        insertTextReporting(value, replacementRange: replacementRange).outcome
+    }
+
+    func insertTextReporting(_ value: Any, replacementRange: NSRange) -> InputAttempt {
         perform { session in
             guard let text = self.attributedInput(value), !self.nestedMutationRejected else { return false }
             return session.insertText(text, replacementRange: replacementRange)
@@ -284,6 +317,10 @@ final class PreparedInputEventAdapter {
 
     @discardableResult
     func setMarkedText(_ value: Any, selectedRange: NSRange, replacementRange: NSRange) -> Outcome {
+        setMarkedTextReporting(value, selectedRange: selectedRange, replacementRange: replacementRange).outcome
+    }
+
+    func setMarkedTextReporting(_ value: Any, selectedRange: NSRange, replacementRange: NSRange) -> InputAttempt {
         perform { session in
             guard let text = self.attributedInput(value), !self.nestedMutationRejected else { return false }
             return session.setMarkedText(text, selectedRange: selectedRange, replacementRange: replacementRange)
@@ -291,15 +328,21 @@ final class PreparedInputEventAdapter {
     }
 
     @discardableResult
-    func unmarkText() -> Outcome { perform { $0.unmarkText() } }
+    func unmarkText() -> Outcome { unmarkTextReporting().outcome }
+
+    func unmarkTextReporting() -> InputAttempt { perform { $0.unmarkText() } }
 
     /// The host must first discard its input context's conversion session.
     /// A stale composition cannot be restored and requires reconstruction.
     @discardableResult
-    func cancelCompositionAfterQuiescing() -> Outcome { perform { $0.cancelComposition() } }
+    func cancelCompositionAfterQuiescing() -> Outcome { cancelCompositionAfterQuiescingReporting().outcome }
+
+    func cancelCompositionAfterQuiescingReporting() -> InputAttempt { perform { $0.cancelComposition() } }
 
     @discardableResult
-    func setSelection(_ range: NSRange) -> Outcome { perform { $0.setSelection(range) } }
+    func setSelection(_ range: NSRange) -> Outcome { setSelectionReporting(range).outcome }
+
+    func setSelectionReporting(_ range: NSRange) -> InputAttempt { perform { $0.setSelection(range) } }
 
     /// Query results are available only while both the view and canonical revision
     /// match. Geometry providers may call out, so all results are checked again.
@@ -320,6 +363,14 @@ final class PreparedInputEventAdapter {
         queryForInput(NSRange(location: NSNotFound, length: 0)) {
             session.markedRange ?? NSRange(location: NSNotFound, length: 0)
         }
+    }
+
+    /// Read only from an adapter idle-work callback, after mutation and query
+    /// stacks have unwound and before retiring the old input context. This does
+    /// not consult the document or restore a potentially stale baseline.
+    var hasProvisionalCompositionForRetirement: Bool {
+        precondition(Thread.isMainThread && drainingInputActivityIdleWork && state != .handling && queryDepth == 0)
+        return session?.hasProvisionalComposition ?? false
     }
 
     /// A composition can remain provisional even when an empty marked update
@@ -412,30 +463,42 @@ final class PreparedInputEventAdapter {
 
     /// Each operation synchronously enters the session after acquiring the gate.
     @discardableResult
-    private func perform(_ operation: (DocumentInputSession) -> Bool) -> Outcome {
+    private func perform(_ operation: (DocumentInputSession) -> Bool) -> InputAttempt {
         precondition(Thread.isMainThread)
         defer {
             schedulePendingInputContextReleaseIfIdle()
             scheduleInputActivityIdleDrainIfPossible()
         }
-        guard !lifecycleOperationInFlight, !drainingInputActivityIdleWork else { return .unavailable }
+        func rejected(_ outcome: Outcome, _ reason: InputFailure.Reason,
+                      _ effect: InputFailure.Effect) -> InputAttempt {
+            InputAttempt(outcome: outcome, failure: InputFailure(reason: reason, effect: effect))
+        }
+        guard !lifecycleOperationInFlight, !drainingInputActivityIdleWork else {
+            return rejected(.unavailable, .unavailable, .notApplied)
+        }
         if queryDepth > 0 {
             queryNeedsReset = true
             if state == .handling { nestedMutationRejected = true }
-            return .resetRequired
+            return rejected(.resetRequired, .reentrant, .notApplied)
         }
         if state == .handling {
             nestedMutationRejected = true
-            return .resetRequired
+            return rejected(.resetRequired, .reentrant, .notApplied)
         }
         guard state == .ready, let revision = session.installedRevisionForInput else {
-            return state == .resetPending ? .resetRequired : .unavailable
+            return rejected(state == .resetPending ? .resetRequired : .unavailable, .unavailable, .notApplied)
         }
         state = .handling
         nestedMutationRejected = false
-        guard case let .reserved(lease) = beginEvent(revision) else {
+        let lease: Reservation
+        switch beginEvent(revision) {
+        case let .reserved(reservation): lease = reservation
+        case .busy:
             scheduleReset()
-            return .resetRequired
+            return rejected(.resetRequired, .busy, .notApplied)
+        case .stale:
+            scheduleReset()
+            return rejected(.resetRequired, .stale, .notApplied)
         }
         reservation = lease
         let result: Bool
@@ -454,9 +517,15 @@ final class PreparedInputEventAdapter {
             isCurrent = false
         }
         let accepted = result && !nestedMutationRejected && isCurrent && !session.isStale && !session.hasDocumentConflict
-        if accepted { state = .ready; return .processed }
+        if accepted {
+            state = .ready
+            return InputAttempt(outcome: .processed, failure: nil)
+        }
         scheduleReset()
-        return .resetRequired
+        // The session may already have published. Never invite a caller to
+        // retry an admitted operation, even when this particular failure
+        // happened before its publication.
+        return rejected(.resetRequired, .admittedFailure, .mayHaveApplied)
     }
 
     /// Adopts the latest gated canonical snapshot without a live input client.

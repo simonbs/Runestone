@@ -34,6 +34,116 @@ final class PreparedInputResponderViewTests: XCTestCase {
         window.close()
     }
 
+    func testCommandRoutingReportsBlockedAndUnsupportedWithoutDuplicateForwarding() throws {
+        let host = ResponderTestHost("abc")
+        let queue = ResponderTestQueue()
+        let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
+            host: host, lifetime: host.lifetime, bridge: host.bridge,
+            makeDriver: { ResponderTestDriver($0) }, schedule: queue.enqueue))
+        let view = try XCTUnwrap(attachment.view as? PreparedInputResponderView)
+        let connection = attachment.connection
+        XCTAssertTrue(connection.resumeForFocus())
+        XCTAssertEqual(attachment.adapter.setMarkedText("", selectedRange: NSRange(location: 0, length: 0),
+                                                        replacementRange: NSRange(location: NSNotFound, length: 0)), .processed)
+        var forwarded = 0
+        view.routeCommand(NSSelectorFromString("deleteBackward:"), on: connection) { _ in forwarded += 1; return true }
+        XCTAssertEqual(forwarded, 0)
+        var batch = connection.takeInputFailures()
+        XCTAssertEqual(batch.records, [.init(operation: .command,
+                                              failure: .init(reason: .compositionActive, effect: .notApplied))])
+        XCTAssertEqual(batch.overflowCount, 0)
+        XCTAssertEqual(host.text, "abc")
+        XCTAssertEqual(host.undoCount, 0)
+        view.routeCommand(NSSelectorFromString("transpose:"), on: connection) { _ in forwarded += 1; return true }
+        XCTAssertTrue(connection.takeInputFailures().records.isEmpty)
+        view.routeCommand(NSSelectorFromString("transpose:"), on: connection) { _ in forwarded += 1; return false }
+        batch = connection.takeInputFailures()
+        XCTAssertEqual(forwarded, 2)
+        XCTAssertEqual(batch.records, [.init(operation: .command,
+                                              failure: .init(reason: .unsupported, effect: .mayHaveApplied))])
+        XCTAssertFalse(attachment.disconnect())
+        queue.runAll()
+        XCTAssertTrue(attachment.disconnect())
+    }
+
+    func testBusySelectionCommandIsReportedOnceAndNeverReplayed() throws {
+        let host = ResponderTestHost("abc")
+        let queue = ResponderTestQueue()
+        let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
+            host: host, lifetime: host.lifetime, bridge: host.bridge,
+            makeDriver: { ResponderTestDriver($0) }, schedule: queue.enqueue))
+        let view = try XCTUnwrap(attachment.view as? PreparedInputResponderView)
+        let connection = attachment.connection
+        XCTAssertTrue(connection.resumeForFocus())
+        host.busy = true
+        var forwarded = 0
+        view.routeCommand(NSSelectorFromString("moveRight:"), on: connection) { _ in forwarded += 1; return true }
+        let batch = connection.takeInputFailures()
+        XCTAssertEqual(batch.records, [.init(operation: .command,
+                                              failure: .init(reason: .busy, effect: .notApplied))])
+        XCTAssertEqual(batch.overflowCount, 0)
+        XCTAssertEqual(forwarded, 0)
+        XCTAssertEqual(host.text, "abc")
+        XCTAssertEqual(host.undoCount, 0)
+        queue.runAll()
+        host.busy = false
+        connection.resumeAfterQuiescing()
+        XCTAssertEqual(attachment.adapter.selectedRangeForInput(), NSRange(location: 0, length: 0))
+        XCTAssertTrue(connection.takeInputFailures().records.isEmpty)
+        XCTAssertEqual(host.text, "abc")
+        XCTAssertEqual(host.undoCount, 0)
+        XCTAssertFalse(attachment.disconnect())
+        queue.runAll()
+        XCTAssertTrue(attachment.disconnect())
+    }
+
+    func testOutOfBandKeyBindingCallbacksReportRatherThanDisappear() throws {
+        let host = ResponderTestHost("abc")
+        let queue = ResponderTestQueue()
+        let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
+            host: host, lifetime: host.lifetime, bridge: host.bridge,
+            makeDriver: { ResponderTestDriver($0) }, schedule: queue.enqueue))
+        let view = try XCTUnwrap(attachment.view as? PreparedInputResponderView)
+        XCTAssertTrue(attachment.connection.resumeForFocus())
+        // No window/focus or active interpretKeyEvents stack: the fallback
+        // methods cannot safely apply these out-of-band callbacks.
+        view.insertTextFromKeyBinding("x")
+        view.doCommandFromKeyBinding(NSSelectorFromString("deleteBackward:"))
+        XCTAssertEqual(attachment.connection.takeInputFailures().records, [
+            .init(operation: .insertText, failure: .init(reason: .unavailable, effect: .notApplied)),
+            .init(operation: .command, failure: .init(reason: .unavailable, effect: .notApplied))
+        ])
+        XCTAssertEqual(host.text, "abc")
+        XCTAssertEqual(host.undoCount, 0)
+        XCTAssertFalse(attachment.disconnect())
+        queue.runAll()
+        XCTAssertTrue(attachment.disconnect())
+    }
+
+    func testStaleCommandReportsUnavailableInsteadOfForwarding() throws {
+        let host = ResponderTestHost("abc")
+        let queue = ResponderTestQueue()
+        let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
+            host: host, lifetime: host.lifetime, bridge: host.bridge,
+            makeDriver: { ResponderTestDriver($0) }, schedule: queue.enqueue))
+        let view = try XCTUnwrap(attachment.view as? PreparedInputResponderView)
+        let connection = attachment.connection
+        XCTAssertTrue(connection.resumeForFocus())
+        host.text = "newer"
+        host.inputRevision = UUID()
+        var forwarded = false
+        view.routeCommand(NSSelectorFromString("insertTab:"), on: connection) { _ in forwarded = true; return true }
+        XCTAssertFalse(forwarded)
+        XCTAssertEqual(connection.takeInputFailures().records,
+                       [.init(operation: .command, failure: .init(reason: .unavailable, effect: .notApplied))])
+        XCTAssertEqual(host.text, "newer")
+        XCTAssertEqual(host.undoCount, 0)
+        queue.runAll()
+        XCTAssertFalse(attachment.disconnect())
+        queue.runAll()
+        XCTAssertTrue(attachment.disconnect())
+    }
+
     func testAbandonedAttachmentImmediatelyRetiresRetainedResponder() throws {
         let host = ResponderTestHost("abc")
         let queue = ResponderTestQueue()
