@@ -2,10 +2,13 @@
 import AppKit
 import RunestoneEngine
 
-/// Internal drawing surface for an immutable attributed document snapshot.
-/// Input, editing, selection, and public editor API are supplied by later layers.
-final class ReadOnlyDocumentView: NSView {
-    private let snapshot: NSAttributedString
+/// A read-only, wrapping Core Text view of an attributed document snapshot.
+///
+/// Install this view as an `NSScrollView`'s document view. Supply text with
+/// appropriate AppKit font and foreground color attributes. Input, selection,
+/// accessibility navigation, and editing are not provided by this view.
+public final class ReadOnlyDocumentView: NSView {
+    private var snapshot: NSAttributedString
     private let fallbackHeight: CGFloat
     private let cacheLimit = 128
     private(set) var manager: LineManager
@@ -17,7 +20,31 @@ final class ReadOnlyDocumentView: NSView {
     private var updatingViewport = false
     private(set) var visibleLayout: ViewportLayoutCoordinator.Result?
 
-    override var isFlipped: Bool { true }
+    public override var isFlipped: Bool { true }
+
+    /// Creates a view containing a copy of the supplied attributed string.
+    /// Attribute values are not deep-copied and should be treated as immutable.
+    public convenience init(content: NSAttributedString) {
+        self.init(snapshot: content, fallbackHeight: 16)
+    }
+
+    /// A copy of the current document snapshot.
+    public var content: NSAttributedString { NSAttributedString(attributedString: snapshot) }
+
+    /// Replaces the snapshot and resets the scroll position to the start.
+    /// Subsequent mutations of the attributed string do not affect the view;
+    /// attribute values themselves are not deep-copied. Rebuilding layout takes
+    /// time proportional to the size of the document.
+    public func setContent(_ content: NSAttributedString) {
+        snapshot = NSAttributedString(attributedString: content)
+        resetLayout(width: 0)
+        needsDisplay = true
+        if let scroll = enclosingScrollView {
+            scroll.contentView.scroll(to: .zero)
+            scroll.reflectScrolledClipView(scroll.contentView)
+        }
+        updateViewport()
+    }
 
     init(snapshot: NSAttributedString, fallbackHeight: CGFloat) {
         precondition(fallbackHeight.isFinite && fallbackHeight > 0)
@@ -28,13 +55,13 @@ final class ReadOnlyDocumentView: NSView {
         resetLayout(width: 0)
     }
 
-    required init?(coder: NSCoder) { nil }
+    public required init?(coder: NSCoder) { nil }
 
     deinit {
         if let observer = boundsObserver { NotificationCenter.default.removeObserver(observer) }
     }
 
-    override func viewDidMoveToSuperview() {
+    public override func viewDidMoveToSuperview() {
         super.viewDidMoveToSuperview()
         if let observer = boundsObserver { NotificationCenter.default.removeObserver(observer) }
         boundsObserver = nil
@@ -48,7 +75,7 @@ final class ReadOnlyDocumentView: NSView {
         updateViewport()
     }
 
-    override func layout() {
+    public override func layout() {
         super.layout()
         updateViewport()
     }
@@ -109,7 +136,7 @@ final class ReadOnlyDocumentView: NSView {
         needsLayout = true
     }
 
-    override func draw(_ dirtyRect: NSRect) {
+    public override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         guard let result = visibleLayout, let context = NSGraphicsContext.current?.cgContext else { return }
         for line in result.lines {
