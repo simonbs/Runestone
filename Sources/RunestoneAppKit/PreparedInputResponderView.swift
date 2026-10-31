@@ -21,6 +21,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     // A gesture has a single finite budget even if it re-enters the viewport.
     private var pointerAutoscrollStarted = false
     var inputViewportClock: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
+    // The default is AppKit’s shared pasteboard; tests can provide an isolated named one.
+    var inputPasteboardProvider: () -> NSPasteboard = { .general }
     private struct VerticalPreference {
         let x: CGFloat
         let selection: NSRange
@@ -392,7 +394,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         guard !disarmed, ownsKeyFocus, let action = item.action, let connection = inputConnection,
               let adapter = inputAdapter, connection.accessibilityTextState() != nil else { return false }
         let allowed = canPerformEditingAction(action, connection: connection, adapter: adapter,
-            pasteboard: PreparedInputClipboardCommand.SystemPasteboard(board: .general))
+            pasteboard: PreparedInputClipboardCommand.SystemPasteboard(board: self.inputPasteboardProvider()))
         return allowed && ownsKeyFocus && inputConnection === connection && connection.isActiveForInput
     }
 
@@ -440,7 +442,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         guard !disarmed, ownsKeyFocus, let connection = inputConnection else { return }
         let perform = {
             self.routeClipboard(operation, on: connection,
-                pasteboard: PreparedInputClipboardCommand.SystemPasteboard(board: .general),
+                pasteboard: PreparedInputClipboardCommand.SystemPasteboard(board: self.inputPasteboardProvider()),
                 hasFocus: { self.ownsKeyFocus })
         }
         if connection.dispatchCoordinator?.isActive == true { perform() }
@@ -522,7 +524,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             default: operation = .paste
             }
             routeClipboard(operation, on: connection,
-                pasteboard: PreparedInputClipboardCommand.SystemPasteboard(board: .general),
+                pasteboard: PreparedInputClipboardCommand.SystemPasteboard(board: self.inputPasteboardProvider()),
                 hasFocus: { self.ownsKeyFocus })
             return
         case "undo:": connection.requestHistory(.undo); return
