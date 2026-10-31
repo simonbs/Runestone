@@ -1,0 +1,144 @@
+import CoreText
+import Foundation
+
+public struct LineFragmentID: Identifiable, Hashable {
+    public let id: String
+
+    public init(lineId: String, lineFragmentIndex: Int) {
+        self.id = "\(lineId)[\(lineFragmentIndex)]"
+    }
+}
+
+extension LineFragmentID: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        id
+    }
+}
+
+public final class LineFragment {
+    /// ID of the line fragment.
+    public let id: LineFragmentID
+    /// Index of the line fragment within the line.
+    public let index: Int
+    /// The range of the visible characters.
+    ///
+    /// This range does not contain the hidden characters as defined by ``hiddenLength``.
+    public let visibleRange: NSRange
+    /// The length of the hidden characters.
+    ///
+    /// Hidden characters are whitespace characters that would be placed at the beginning of the next line fragment if they were rendered. We hide these to align with the behavior of UITextView and NSTextView.
+    public let hiddenLength: Int
+    /// The underlying line.
+    public let line: CTLine
+    /// The lenth of the descent.
+    public let descent: CGFloat
+    /// The non-scaled height of the line fragment.
+    public let baseSize: CGSize
+    /// The scaled height of the line fragment.
+    ///
+    /// This takes the line height mulitplier into account.
+    public let scaledSize: CGSize
+    /// The y-position of the line fragment.
+    ///
+    /// This is relative to the beginning of the line.
+    public let yPosition: CGFloat
+    /// Vertical text placement in the fragment's top-down and Core Text coordinates.
+    public var verticalGeometry: LineFragmentVerticalGeometry {
+        LineFragmentVerticalGeometry(baseHeight: baseSize.height, scaledHeight: scaledSize.height, descent: descent)
+    }
+
+    /// Entire range of the line fragment.
+    ///
+    /// The range also contains the ``hiddenLength`` of the line fragment. That is, the visible content of the line fragment is placed in the range `range.location` to `range.length - hiddenLength`.
+    public var range: NSRange {
+        NSRange(location: visibleRange.location, length: visibleRange.length + hiddenLength)
+    }
+
+    public convenience init(
+        id: LineFragmentID,
+        index: Int,
+        visibleRange: NSRange,
+        line: CTLine,
+        descent: CGFloat,
+        baseSize: CGSize,
+        scaledSize: CGSize,
+        yPosition: CGFloat
+    ) {
+        self.init(
+            id: id,
+            index: index,
+            visibleRange: visibleRange,
+            hiddenLength: 0,
+            line: line,
+            descent: descent,
+            baseSize: baseSize,
+            scaledSize: scaledSize,
+            yPosition: yPosition
+        )
+    }
+
+    private init(
+        id: LineFragmentID,
+        index: Int,
+        visibleRange: NSRange,
+        hiddenLength: Int,
+        line: CTLine,
+        descent: CGFloat,
+        baseSize: CGSize,
+        scaledSize: CGSize,
+        yPosition: CGFloat
+    ) {
+        self.id = id
+        self.index = index
+        self.visibleRange = visibleRange
+        self.hiddenLength = hiddenLength
+        self.line = line
+        self.descent = descent
+        self.baseSize = baseSize
+        self.scaledSize = scaledSize
+        self.yPosition = yPosition
+    }
+
+    public func withLine(_ line: CTLine) -> LineFragment {
+        Self(id: id, index: index, visibleRange: visibleRange, hiddenLength: hiddenLength,
+             line: line, descent: descent, baseSize: baseSize, scaledSize: scaledSize, yPosition: yPosition)
+    }
+
+    public func withHiddenLength(_ hiddenLength: Int) -> LineFragment {
+        Self(
+            id: id,
+            index: index,
+            visibleRange: visibleRange,
+            hiddenLength: hiddenLength,
+            line: line,
+            descent: descent,
+            baseSize: baseSize,
+            scaledSize: scaledSize,
+            yPosition: yPosition
+        )
+    }
+
+    public func caretLocation(forLineLocalLocation lineLocalLocation: Int) -> Int? {
+        let lineFragmentLocalLocation = lineLocalLocation - range.location
+        guard lineFragmentLocalLocation >= 0 && lineFragmentLocalLocation <= range.length else {
+            return nil
+        }
+        return min(lineLocalLocation, visibleRange.upperBound)
+    }
+
+    public func caretRange(forLineLocalRange lineLocalRange: NSRange) -> NSRange? {
+        guard let lowerBound = caretLocation(forLineLocalLocation: lineLocalRange.lowerBound) else {
+            return nil
+        }
+        guard let upperBound = caretLocation(forLineLocalLocation: lineLocalRange.upperBound) else {
+            return nil
+        }
+        return NSRange(location: lowerBound, length: upperBound - lowerBound)
+    }
+}
+
+extension LineFragment: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        "[LineFragment id=\(id) descent=\(descent) baseSize=\(baseSize) scaledSize=\(scaledSize) yPosition=\(yPosition)]"
+    }
+}
