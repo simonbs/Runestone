@@ -15,6 +15,7 @@ final class LogicalLineLayoutController {
     }
 
     var isFinishedTypesetting: Bool { prepared && typesetter.isFinishedTypesetting }
+    private(set) var measuredTextWidth: CGFloat = 0
 
     /// A completed typesetter needs no further preceding-line layout only if
     /// its measured height is still the one installed in the shared index.
@@ -48,7 +49,8 @@ final class LogicalLineLayoutController {
     /// complete current line, including its delimiter, in UTF-16 coordinates.
     @discardableResult
     func prepare(_ input: NSAttributedString, width: CGFloat, heightMultiplier: CGFloat = 1,
-                 fallbackHeight: CGFloat, lineBreakMode: LineBreakMode = .byWordWrapping) -> Bool {
+                 fallbackHeight: CGFloat, lineBreakMode: LineBreakMode = .byWordWrapping,
+                 wrapsLines: Bool = true) -> Bool {
         invalidate()
         guard isAttached, width.isFinite, width > 0, heightMultiplier.isFinite, heightMultiplier > 0,
               fallbackHeight.isFinite, fallbackHeight > 0,
@@ -63,7 +65,17 @@ final class LogicalLineLayoutController {
             return false
         }
         self.fallbackHeight = fallbackHeight
-        typesetter.constrainingWidth = width
+        if wrapsLines {
+            measuredTextWidth = 0
+            typesetter.constrainingWidth = width
+        } else {
+            let line = CTLineCreateWithAttributedString(input)
+            let measured = CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
+            measuredTextWidth = measured.isFinite ? max(0, ceil(measured)) : 0
+            // One finite fragment preserves Core Text geometry without asking the
+            // engine to invent an unbounded layout width.
+            typesetter.constrainingWidth = max(1, measuredTextWidth + 1)
+        }
         typesetter.lineFragmentHeightMultiplier = heightMultiplier
         typesetter.lineBreakMode = lineBreakMode
         typesetter.prepareToTypeset(input)
@@ -75,6 +87,7 @@ final class LogicalLineLayoutController {
     /// Discards cached input and fragments. The owner calls this on line edits.
     func invalidate() {
         prepared = false
+        measuredTextWidth = 0
         generation &+= 1
         typesetter.reset()
     }

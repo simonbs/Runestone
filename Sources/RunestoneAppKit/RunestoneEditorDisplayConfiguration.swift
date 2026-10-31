@@ -9,6 +9,7 @@ public enum RunestoneSelectedLineHighlightGranularity: String, CaseIterable {
 /// AppKit-owned presentation options for a Runestone document surface.
 /// These values never mutate document text, input state, undo, or file metadata.
 public struct RunestoneEditorDisplayConfiguration {
+    public var isLineWrappingEnabled: Bool
     public var showsLineNumbers: Bool
     public var minimumGutterCharacterCount: Int
     public var showsSelectedLines: Bool
@@ -35,6 +36,7 @@ public struct RunestoneEditorDisplayConfiguration {
     public var characterWidth: CGFloat
 
     public init(
+        isLineWrappingEnabled: Bool = true,
         showsLineNumbers: Bool = false, minimumGutterCharacterCount: Int = 1,
         showsSelectedLines: Bool = false,
         selectedLineHighlightGranularity: RunestoneSelectedLineHighlightGranularity = .line,
@@ -50,6 +52,7 @@ public struct RunestoneEditorDisplayConfiguration {
         pageGuideColor: NSColor = .separatorColor, maximumContentWidthColumn: Int? = nil,
         characterWidth: CGFloat = 8
     ) {
+        self.isLineWrappingEnabled = isLineWrappingEnabled
         self.showsLineNumbers = showsLineNumbers
         self.minimumGutterCharacterCount = minimumGutterCharacterCount
         self.showsSelectedLines = showsSelectedLines
