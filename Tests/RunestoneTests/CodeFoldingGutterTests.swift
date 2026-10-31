@@ -55,7 +55,7 @@ final class CodeFoldingGutterTests: XCTestCase {
 
             view.isCodeFoldingEnabled = false
             settle(view, input: input)
-            XCTAssertTrue(input.lineManager.foldedLineProjection.spans.isEmpty)
+            XCTAssertFalse((0..<max(input.lineManager.lineCount, 4)).contains { input.lineManager.isLineHidden($0) })
             XCTAssertTrue(foldingButtons(in: gutter).isEmpty)
             XCTAssertEqual(input.lineManager.contentHeight, expandedHeight, accuracy: 0.5)
             XCTAssertEqual(view.text, source)

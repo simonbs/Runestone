@@ -33,7 +33,7 @@ final class CodeFoldingTests: XCTestCase {
         settle(view, input: input)
 
         XCTAssertEqual(view.text, source)
-        XCTAssertTrue(input.lineManager.foldedLineProjection.spans.isEmpty)
+        XCTAssertFalse((0..<max(input.lineManager.lineCount, 4)).contains { input.lineManager.isLineHidden($0) })
         XCTAssertTrue(foldingButtons(in: input.gutterContainerView).isEmpty)
     }
 
@@ -197,7 +197,7 @@ final class CodeFoldingTests: XCTestCase {
         XCTAssertTrue(delegate.didReplaceDocument, "The collapse must exercise the selection callback before applying its old range.")
         XCTAssertEqual(view.text, "x")
         XCTAssertEqual(input.lineManager.lineCount, 1)
-        XCTAssertTrue(input.lineManager.foldedLineProjection.spans.isEmpty)
+        XCTAssertFalse((0..<max(input.lineManager.lineCount, 4)).contains { input.lineManager.isLineHidden($0) })
         XCTAssertTrue(input.foldingController.rangesByRow.isEmpty)
         XCTAssertLessThanOrEqual(NSMaxRange(view.selectedRange), 1)
     }

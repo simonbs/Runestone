@@ -1,9 +1,11 @@
 import Foundation
 
-final class LineChangeSet {
-    private(set) var insertedLines: Set<DocumentLineNode> = []
-    private(set) var removedLines: Set<DocumentLineNode> = []
-    private(set) var editedLines: Set<DocumentLineNode> = []
+public final class LineChangeSet {
+    public private(set) var insertedLines: Set<DocumentLineNode> = []
+    public private(set) var removedLines: Set<DocumentLineNode> = []
+    public private(set) var editedLines: Set<DocumentLineNode> = []
+
+    public init() {}
 
     func markLineInserted(_ line: DocumentLineNode) {
         removedLines.remove(line)
@@ -17,13 +19,13 @@ final class LineChangeSet {
         removedLines.insert(line)
     }
 
-    func markLineEdited(_ line: DocumentLineNode) {
+    public func markLineEdited(_ line: DocumentLineNode) {
         if !insertedLines.contains(line) && !removedLines.contains(line) {
             editedLines.insert(line)
         }
     }
 
-    func union(with otherChangeSet: LineChangeSet) {
+    public func union(with otherChangeSet: LineChangeSet) {
         insertedLines.formUnion(otherChangeSet.insertedLines)
         removedLines.formUnion(otherChangeSet.removedLines)
         editedLines.formUnion(otherChangeSet.editedLines)
@@ -31,7 +33,7 @@ final class LineChangeSet {
 }
 
 extension LineChangeSet: CustomDebugStringConvertible {
-    var debugDescription: String {
+    public var debugDescription: String {
         "[LineChangeSet insertedLines=\(insertedLines) removedLines=\(removedLines) editedLines=\(editedLines)]"
     }
 }

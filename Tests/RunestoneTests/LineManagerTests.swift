@@ -2,16 +2,6 @@
 import XCTest
 
 final class LineManagerTests: XCTestCase {
-    func testLineLength() {
-        let tree = DocumentLineTree(minimumValue: 0, rootValue: 0, rootData: .init(lineHeight: 0))
-        let firstLine = tree.node(containingLocation: 0)
-        firstLine?.data.totalLength = 6
-        firstLine?.data.delimiterLength = 1
-        XCTAssertEqual(firstLine?.data.length, 5)
-        firstLine?.data.delimiterLength = 2
-        XCTAssertEqual(firstLine?.data.length, 4)
-    }
-
     func testUnicodeLineByteRangesSurviveSplitJoinAndDeletion() {
         let stringView = StringView(string: "😀e\u{301}\tfirst\r\nאבגד second\n第三行\rfinal 😀\r\n")
         let manager = LineManager(stringView: stringView)
@@ -78,6 +68,7 @@ private extension LineManagerTests {
             XCTAssertEqual(node.location, entry.location, file: file, line: line)
             XCTAssertEqual(node.data.totalLength, entry.length, file: file, line: line)
             XCTAssertEqual(node.data.delimiterLength, entry.delimiter, file: file, line: line)
+            XCTAssertEqual(node.data.length, entry.length - entry.delimiter, file: file, line: line)
             XCTAssertEqual(node.data.startByte, ByteCount(utf16Length: entry.location), file: file, line: line)
             XCTAssertEqual(node.data.byteCount, ByteCount(utf16Length: entry.length), file: file, line: line)
             XCTAssertTrue(manager.line(containingByteAt: ByteCount(utf16Length: entry.location)) === node,
