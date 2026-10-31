@@ -271,6 +271,12 @@ public final class RunestoneEditableDocumentAttachment {
         return view.syntaxFoldRows
     }
 
+    public var syntaxFoldRowAtSelection: Int? {
+        precondition(Thread.isMainThread)
+        guard !detaching, !detached else { return nil }
+        return view.syntaxFoldRowAtSelection
+    }
+
     public func isSyntaxFoldCollapsed(atRow row: Int) -> Bool {
         precondition(Thread.isMainThread)
         guard !detaching, !detached else { return false }
