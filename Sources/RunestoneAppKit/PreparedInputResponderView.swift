@@ -27,6 +27,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     var inputViewportClock: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
     // The default is AppKit’s shared pasteboard; tests can provide an isolated named one.
     var inputPasteboardProvider: () -> NSPasteboard = { .general }
+    var fileDropHandler: (([URL]) -> Bool)?
     private struct VerticalPreference {
         let x: CGFloat
         let selection: NSRange
@@ -48,7 +49,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         inputConnection = connection
         connection.readyObserver = self
         connection.commandHandler = self
-        registerForDraggedTypes([.string])
+        registerForDraggedTypes([.string, .fileURL])
         scheduleFocusCheck()
     }
 
@@ -807,19 +808,27 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        canAcceptTextDrop(sender) ? .copy : []
+        dragOperation(for: sender)
     }
 
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
-        canAcceptTextDrop(sender) ? .copy : []
+        dragOperation(for: sender)
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        if let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL],
+           !urls.isEmpty, let fileDropHandler { return fileDropHandler(urls) }
         guard canAcceptTextDrop(sender), let connection = inputConnection,
               let string = sender.draggingPasteboard.string(forType: .string), let window else { return false }
         let point = window.convertPoint(toScreen: sender.draggingLocation)
         guard let offset = InputScreenRangeGeometry.characterIndexForPointerDrag(for: point, in: self) else { return false }
         return connection.replaceForTextFinder(NSRange(location: offset, length: 0), with: string)
+    }
+
+    private func dragOperation(for sender: NSDraggingInfo) -> NSDragOperation {
+        if fileDropHandler != nil,
+           sender.draggingPasteboard.availableType(from: [.fileURL]) == .fileURL { return .copy }
+        return canAcceptTextDrop(sender) ? .copy : []
     }
 
     private func canAcceptTextDrop(_ sender: NSDraggingInfo) -> Bool {
