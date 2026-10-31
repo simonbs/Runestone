@@ -43,6 +43,32 @@ final class RunestoneEditableDocumentAttachmentPublicTests: XCTestCase {
         waitForDetach(second)
     }
 
+    func testReadOnlyTransitionKeepsViewAndDocumentConnectionReusable() throws {
+        _ = NSApplication.shared
+        let host = PublicAttachmentHost("preserved")
+        let attachment = try makeAttachment(host: host)
+        let view = attachment.view
+
+        XCTAssertFalse(attachment.isReadOnly)
+        XCTAssertTrue(attachment.isEditable)
+        XCTAssertTrue(attachment.setReadOnly(true))
+        XCTAssertTrue(attachment.isReadOnly)
+        XCTAssertFalse(attachment.isEditable)
+        XCTAssertFalse(attachment.requestFirstResponder())
+        XCTAssertTrue(attachment.view === view)
+        XCTAssertEqual(view.content.string, "preserved")
+        XCTAssertEqual(view.accessibilityRole(), .staticText)
+
+        XCTAssertTrue(attachment.setReadOnly(false))
+        XCTAssertFalse(attachment.isReadOnly)
+        XCTAssertTrue(attachment.isEditable)
+        XCTAssertTrue(attachment.view === view)
+        XCTAssertEqual(view.content.string, "preserved")
+
+        XCTAssertFalse(attachment.detach())
+        waitForDetach(attachment)
+    }
+
     func testBridgeRejectsDifferentDocumentHost() throws {
         _ = NSApplication.shared
         let firstHost = PublicAttachmentHost("first")

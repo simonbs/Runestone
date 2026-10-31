@@ -15,6 +15,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     private var interpretingKeyEvents = false
     private var commandGeneration = UUID()
     private var disarmed = false
+    private(set) var isReadOnly = false
     private var focusRequested = false
     private var dragSelection: PreparedInputDragSelection?
     /// Invalidated whenever a pointer gesture ends, even if the next gesture
@@ -65,11 +66,36 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         inputConnection = nil
     }
 
+    /// Suspends or resumes mutation without retiring this view or its document
+    /// connection. Entering read-only mode first relinquishes first responder,
+    /// which gives the ordinary focus-loss path ownership of composition
+    /// cancellation and context retirement. The adapter keeps its canonical
+    /// selection so a later explicit focus request can resume from that range.
+    @discardableResult
+    func setReadOnly(_ value: Bool) -> Bool {
+        precondition(Thread.isMainThread)
+        guard !disarmed, !isRetired else { return false }
+        guard value != isReadOnly else { return true }
+        if value {
+            if let window, window.firstResponder === self,
+               !window.makeFirstResponder(nil) { return false }
+            suppressFocus()
+            isReadOnly = true
+        } else {
+            isReadOnly = false
+        }
+        scheduleAccessibilityValueChanged()
+        scheduleAccessibilitySelectionChanged()
+        needsDisplay = true
+        return true
+    }
+
     /// Only the explicit public focus request may arm first-responder status.
     @discardableResult
     func requestFocusEligibility() -> Bool {
         precondition(Thread.isMainThread)
-        guard !disarmed, !isRetired, inputConnection?.isConnectedForEditing == true else { return false }
+        guard !disarmed, !isReadOnly, !isRetired,
+              inputConnection?.isConnectedForEditing == true else { return false }
         focusRequested = true
         return true
     }
@@ -88,13 +114,14 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override func accessibilityTextState() -> AccessibilityTextState? {
-        if disarmed { return super.accessibilityTextState() }
+        if disarmed || isReadOnly { return super.accessibilityTextState() }
         return inputConnection?.accessibilityTextState()
     }
 
     override func accessibilityRole() -> NSAccessibility.Role? {
         guard !isRetired else { return nil }
-        guard !disarmed, inputConnection?.accessibilityTextState() != nil else { return .staticText }
+        guard !disarmed, !isReadOnly,
+              inputConnection?.accessibilityTextState() != nil else { return .staticText }
         return .textArea
     }
 
@@ -102,7 +129,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         let setters = ["setAccessibilityValue:", "setAccessibilitySelectedText:",
                        "setAccessibilitySelectedTextRange:"]
         if setters.contains(NSStringFromSelector(selector)) {
-            guard !disarmed, inputConnection?.accessibilityTextState() != nil,
+            guard !disarmed, !isReadOnly, inputConnection?.accessibilityTextState() != nil,
                   inputAdapter?.hasProvisionalCompositionForInput() == false else { return false }
             return true
         }
@@ -180,7 +207,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override var acceptsFirstResponder: Bool {
-        !disarmed && focusRequested && !isRetired && inputConnection?.isConnectedForEditing == true
+        !disarmed && !isReadOnly && focusRequested && !isRetired &&
+            inputConnection?.isConnectedForEditing == true
     }
 
     override var inputContext: NSTextInputContext? {
@@ -249,7 +277,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
 
     override func keyDown(with event: NSEvent) {
         endPointerSelection()
-        guard !disarmed else { return }
+        guard !disarmed, !isReadOnly else { return }
         guard let connection = inputConnection else { super.keyDown(with: event); return }
         _ = connection.performCoordinatedInput { self.routeKeyDown(event, connection: connection) }
     }
@@ -406,7 +434,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     func canPerformEditingAction(_ selector: Selector, connection: PreparedInputContextConnection,
                                  adapter: PreparedInputEventAdapter,
                                  pasteboard: PreparedInputClipboardCommand.Pasteboard) -> Bool {
-        guard !disarmed, inputConnection === connection, inputAdapter === adapter,
+        guard !disarmed, !isReadOnly, inputConnection === connection, inputAdapter === adapter,
               connection.isActiveForInput, connection.accessibilityTextState() != nil else { return false }
         let name = NSStringFromSelector(selector)
         switch name {
@@ -735,7 +763,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override func mouseDown(with event: NSEvent) {
-        guard focusRequested, !disarmed, let connection = inputConnection else { return }
+        guard focusRequested, !disarmed, !isReadOnly,
+              let connection = inputConnection else { return }
         _ = connection.performCoordinatedInput { self.routeMouseDown(event, connection: connection) }
     }
 
@@ -816,7 +845,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override func mouseDragged(with event: NSEvent) {
-        guard focusRequested, !disarmed, dragSelection != nil, let connection = inputConnection else { return }
+        guard focusRequested, !disarmed, !isReadOnly, dragSelection != nil,
+              let connection = inputConnection else { return }
         if !connection.performCoordinatedInput({ self.routeMouseDragged(event, connection: connection) }) {
             endPointerSelection()
         }
