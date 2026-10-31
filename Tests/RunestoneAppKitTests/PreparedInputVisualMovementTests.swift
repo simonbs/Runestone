@@ -1,5 +1,6 @@
 #if canImport(AppKit)
 import AppKit
+import CoreText
 @testable import RunestoneAppKit
 import XCTest
 
@@ -23,12 +24,95 @@ final class PreparedInputVisualMovementTests: XCTestCase {
         let (window, _, view) = makeView("alpha beta gamma delta epsilon zeta\nsecond", width: 75, height: 140)
         let line = try XCTUnwrap(view.visibleLayout?.lines.first)
         XCTAssertGreaterThan(line.placements.count, 1)
-        let next = try XCTUnwrap(PreparedInputVisualMovement.vertical(from: 0, direction: .down,
+        let next = try XCTUnwrap(PreparedInputVisualMovement.vertical(from: 2, direction: .down,
                                                                      preferredScreenX: nil, in: view))
         XCTAssertGreaterThan(next.location, 0)
         XCTAssertLessThan(next.location, line.line.data.length)
         XCTAssertTrue(line.placements.dropFirst().contains { $0.documentRange.location <= next.location &&
             next.location <= $0.documentRange.upperBound })
+        withExtendedLifetime(window) {}
+    }
+
+    func testVerticalMovementRejectsSharedWrapSourceAndTarget() throws {
+        let text = String(repeating: "abcdefgh", count: 8)
+        let (window, _, view) = makeView(text, width: 55, height: 160)
+        let line = try XCTUnwrap(view.visibleLayout?.lines.first)
+        XCTAssertGreaterThan(line.placements.count, 1)
+        let boundary = line.line.location + line.placements[1].fragment.range.location
+        XCTAssertEqual(boundary, line.line.location + line.placements[0].fragment.range.upperBound)
+        XCTAssertNil(PreparedInputVisualMovement.vertical(from: boundary, direction: .down, preferredScreenX: nil, in: view))
+        XCTAssertFalse(PreparedInputVisualMovement.verticalNeedsViewportStep(from: boundary, direction: .down, in: view))
+        // Hitting the beginning of the next wrapped row would produce that
+        // same offset, whose stored caret resolves ambiguously between rows.
+        XCTAssertNil(PreparedInputVisualMovement.vertical(from: 0, direction: .down, preferredScreenX: nil, in: view))
+        withExtendedLifetime(window) {}
+    }
+
+    func testVerticalMovementRejectsHiddenWrapWhitespace() throws {
+        let text = String(repeating: "abc        def ", count: 8)
+        var checked = false
+        for width in [CGFloat(25), 30, 35, 40, 45, 50, 60, 75, 90] {
+            let (window, _, view) = makeView(text, width: width, height: 160)
+            guard let line = view.visibleLayout?.lines.first,
+                  let row = line.placements.first(where: { $0.fragment.hiddenLength >= 2 &&
+                      $0.fragment.range.upperBound < line.line.data.length }) else { continue }
+            let hidden = line.line.location + row.fragment.visibleRange.upperBound + 1
+            XCTAssertNil(PreparedInputVisualMovement.vertical(from: hidden, direction: .down, preferredScreenX: nil, in: view))
+            XCTAssertFalse(PreparedInputVisualMovement.verticalNeedsViewportStep(from: hidden, direction: .down, in: view))
+            checked = true
+            withExtendedLifetime(window) {}
+            break
+        }
+        XCTAssertTrue(checked, "Expected a visible wrapped row with hidden whitespace")
+    }
+
+    func testVerticalMovementRejectsBidirectionalJunction() throws {
+        let text = "abcdefghijklmnop\nabc אבגד xyz"
+        let (window, _, view) = makeView(text, width: 300, height: 100)
+        let junction = (text as NSString).range(of: "א").location
+        let caret = try XCTUnwrap(InputScreenCaretGeometry.rect(at: junction, in: view))
+        XCTAssertNil(PreparedInputVisualMovement.vertical(from: junction, direction: .up, preferredScreenX: nil, in: view))
+        XCTAssertFalse(PreparedInputVisualMovement.verticalNeedsViewportStep(from: junction, direction: .up, in: view))
+        XCTAssertNil(PreparedInputVisualMovement.vertical(from: 0, direction: .down, preferredScreenX: caret.midX, in: view))
+        withExtendedLifetime(window) {}
+    }
+
+    func testPointerHitAcceptsUnambiguousLTRAndClampsDragToHitRow() throws {
+        let (window, _, view) = makeView("abcdef\nghijkl", width: 160, height: 80)
+        let caret = try XCTUnwrap(InputScreenCaretGeometry.rect(at: 2, in: view))
+        XCTAssertEqual(InputScreenRangeGeometry.characterIndexForPointer(for: NSPoint(x: caret.minX + 0.1, y: caret.midY), in: view), 2)
+        let viewport = try XCTUnwrap(view.visibleLayout?.viewport)
+        let outside = window.convertPoint(toScreen: view.convert(NSPoint(x: view.convert(window.convertFromScreen(caret), from: nil).minX + 0.1,
+                                                                         y: viewport.minY - 10), to: nil))
+        XCTAssertEqual(InputScreenRangeGeometry.characterIndexForPointerDrag(for: outside, in: view), 2)
+        withExtendedLifetime(window) {}
+    }
+
+    func testPointerHitRejectsSharedWrapBoundaryInBothRows() throws {
+        let text = String(repeating: "abcdefgh", count: 8)
+        let (window, _, view) = makeView(text, width: 55, height: 160)
+        let layout = try XCTUnwrap(view.visibleLayout)
+        let line = try XCTUnwrap(layout.lines.first)
+        XCTAssertGreaterThan(line.placements.count, 1)
+        let first = line.placements[0]
+        let boundary = line.line.location + line.placements[1].fragment.range.location
+        XCTAssertEqual(boundary, line.line.location + first.fragment.range.upperBound)
+        let downstream = try XCTUnwrap(InputScreenCaretGeometry.rect(at: boundary, in: view))
+        XCTAssertNil(InputScreenRangeGeometry.characterIndexForPointer(for: NSPoint(x: downstream.minX + 0.1, y: downstream.midY), in: view))
+        let x = first.frame.minX + CTLineGetOffsetForStringIndex(first.fragment.line, first.fragment.visibleRange.upperBound, nil)
+        XCTAssertLessThan(x + 0.1, layout.viewport.maxX)
+        let top = window.convertPoint(toScreen: view.convert(NSPoint(x: x + 0.1, y: layout.viewport.minY - 10), to: nil))
+        XCTAssertNil(InputScreenRangeGeometry.characterIndexForPointerDrag(for: top, in: view))
+        withExtendedLifetime(window) {}
+    }
+
+    func testPointerHitRejectsBidirectionalJunction() throws {
+        let text = "abc אבגד xyz"
+        let (window, _, view) = makeView(text, width: 300, height: 80)
+        let junction = (text as NSString).range(of: "א").location
+        let caret = try XCTUnwrap(InputScreenCaretGeometry.rect(at: junction, in: view))
+        XCTAssertNil(InputScreenRangeGeometry.characterIndexForPointer(for: NSPoint(x: caret.minX + 0.1, y: caret.midY), in: view))
+        XCTAssertNil(InputScreenRangeGeometry.characterIndexForPointerDrag(for: NSPoint(x: caret.minX + 0.1, y: caret.midY), in: view))
         withExtendedLifetime(window) {}
     }
 
@@ -121,6 +205,60 @@ final class PreparedInputVisualMovementTests: XCTestCase {
         XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: combining.location + 1, direction: .right, in: view),
                        .unavailable)
         withExtendedLifetime(window) {}
+    }
+
+    func testHorizontalMovementStepsInsideHiddenWrapWhitespaceWithoutSkipping() throws {
+        let text = String(repeating: "abc        def ", count: 8)
+        var checked = false
+        for width in [CGFloat(25), 30, 35, 40, 45, 50, 60, 75, 90] {
+            let (window, _, view) = makeView(text, width: width, height: 160)
+            guard let line = view.visibleLayout?.lines.first,
+                  let row = line.placements.first(where: { $0.fragment.hiddenLength >= 3 &&
+                      $0.fragment.range.upperBound < line.line.data.length }) else { continue }
+            let start = line.line.location + row.fragment.visibleRange.upperBound
+            let end = line.line.location + row.fragment.range.upperBound
+            XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: start, direction: .right, in: view), .moved(start + 1))
+            XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: start + 1, direction: .right, in: view), .moved(start + 2))
+            XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: start + 2, direction: .left, in: view), .moved(start + 1))
+            XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: end - 1, direction: .right, in: view), .unavailable)
+            checked = true
+            withExtendedLifetime(window) {}
+            break
+        }
+        XCTAssertTrue(checked, "Expected a visible wrapped row with multiple hidden whitespace characters")
+    }
+
+    func testHorizontalMovementRejectsSharedSoftWrapBoundaryWithoutAffinity() throws {
+        let text = String(repeating: "abcdefgh", count: 8)
+        let (window, _, view) = makeView(text, width: 55, height: 160)
+        let line = try XCTUnwrap(view.visibleLayout?.lines.first)
+        XCTAssertGreaterThan(line.placements.count, 1)
+        let first = line.placements[0]
+        let second = line.placements[1]
+        XCTAssertEqual(first.fragment.hiddenLength, 0)
+        let boundary = line.line.location + first.fragment.range.upperBound
+        XCTAssertEqual(boundary, line.line.location + second.fragment.range.location)
+        let previous = (text as NSString).rangeOfComposedCharacterSequence(at: boundary - 1).location
+        XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: previous, direction: .right, in: view), .unavailable)
+        XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: boundary, direction: .left, in: view), .unavailable)
+        withExtendedLifetime(window) {}
+    }
+
+    func testHiddenWrapWhitespaceRejectsAmbiguousRightToLeftRun() throws {
+        let text = String(repeating: "אבג        דהו ", count: 8)
+        var checked = false
+        for width in [CGFloat(25), 30, 35, 40, 45, 50, 60, 75, 90] {
+            let (window, _, view) = makeView(text, width: width, height: 160)
+            guard let line = view.visibleLayout?.lines.first,
+                  let row = line.placements.first(where: { $0.fragment.hiddenLength >= 2 &&
+                      $0.fragment.range.upperBound < line.line.data.length }) else { continue }
+            let start = line.line.location + row.fragment.visibleRange.upperBound
+            XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: start, direction: .right, in: view), .unavailable)
+            checked = true
+            withExtendedLifetime(window) {}
+            break
+        }
+        XCTAssertTrue(checked, "Expected a visible right-to-left wrapped row with hidden whitespace")
     }
 
     func testHorizontalMovementCrossesVisibleCRLFWithoutSplittingIt() throws {

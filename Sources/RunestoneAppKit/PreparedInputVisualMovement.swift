@@ -43,7 +43,8 @@ enum PreparedInputVisualMovement {
                          in view: ReadOnlyDocumentView) -> Destination? {
         guard let context = context(in: view),
               let caret = InputScreenCaretGeometry.rect(at: location, in: view),
-              let source = sourceRow(caret: caret, context: context, view: view) else { return nil }
+              let source = sourceRow(caret: caret, context: context, view: view),
+              unambiguousVerticalCaret(location, caret: caret, row: source, context: context, view: view) else { return nil }
         let rows = visibleRows(in: context.layout)
         guard let index = rows.firstIndex(where: { sameRow($0, source) }) else { return nil }
         let next = direction == .up ? index - 1 : index + 1
@@ -51,8 +52,27 @@ enum PreparedInputVisualMovement {
         let preferredX = preferredScreenX ?? caret.midX
         guard preferredX.isFinite, let target = hit(row: rows[next], screenX: preferredX,
                                                    context: context, view: view),
+              let targetCaret = InputScreenCaretGeometry.rect(at: target, in: view),
+              let resolvedRow = sourceRow(caret: targetCaret, context: context, view: view),
+              sameRow(resolvedRow, rows[next]),
+              unambiguousVerticalCaret(target, caret: targetCaret, row: resolvedRow, context: context, view: view),
               stable(context, view: view) else { return nil }
         return Destination(location: target, preferredScreenX: preferredX)
+    }
+
+    /// True only when the adjacent visual row is not in the current complete
+    /// viewport. An existing but ambiguous/clipped target must not trigger an
+    /// unrelated scroll as a substitute for resolving affinity.
+    static func verticalNeedsViewportStep(from location: Int, direction: Direction,
+                                          in view: ReadOnlyDocumentView) -> Bool {
+        guard let context = context(in: view),
+              let caret = InputScreenCaretGeometry.rect(at: location, in: view),
+              let source = sourceRow(caret: caret, context: context, view: view),
+              unambiguousVerticalCaret(location, caret: caret, row: source, context: context, view: view) else { return false }
+        let rows = visibleRows(in: context.layout)
+        guard let index = rows.firstIndex(where: { sameRow($0, source) }) else { return false }
+        let next = direction == .up ? index - 1 : index + 1
+        return !rows.indices.contains(next) && stable(context, view: view)
     }
 
     /// Move to the next visual caret edge only when Core Text gives one
@@ -64,8 +84,13 @@ enum PreparedInputVisualMovement {
         guard let context = context(in: view),
               let caret = InputScreenCaretGeometry.rect(at: location, in: view),
               let source = sourceRow(caret: caret, context: context, view: view),
-              validBoundary(location, in: view.manager.stringView.string),
-              let sourceEdges = horizontalEdges(for: source, in: view),
+              validBoundary(location, in: view.manager.stringView.string) else { return .unavailable }
+        // Collapsed wrap whitespace can contain several distinct UTF-16
+        // positions at the same visual x. Those positions are representable
+        // individually even though the shared end-of-fragment boundary is not.
+        if let result = hiddenTailStep(from: location, direction: direction, source: source,
+                                       context: context, view: view) { return result }
+        guard let sourceEdges = horizontalEdges(for: source, in: view),
               let sourceGroup = group(at: caretDocumentX(caret, context: context, view: view), in: sourceEdges),
               uniqueTarget(in: sourceGroup) == location else { return .unavailable }
         let x = sourceGroup[0].x
@@ -73,6 +98,7 @@ enum PreparedInputVisualMovement {
         if let nextX = direction == .left ? adjacent.map(\.x).max() : adjacent.map(\.x).min() {
             guard let targetGroup = group(at: nextX, in: adjacent),
                   let target = uniqueTarget(in: targetGroup),
+                  !isSharedWrapBoundary(target, in: source),
                   isVisible(x: nextX, row: source, context: context),
                   stable(context, view: view) else { return .unavailable }
             return .moved(target)
@@ -128,6 +154,51 @@ enum PreparedInputVisualMovement {
         let text = view.manager.stringView.string
         guard validBoundary(target, in: text), stable(context, view: view) else { return nil }
         return target
+    }
+
+    /// At a soft wrap the same insertion offset denotes the end of one row
+    /// and the start of another. The public range has no affinity to choose.
+    private static func isSharedWrapBoundary(_ offset: Int, in row: Row) -> Bool {
+        guard let placement = row.placement else { return false }
+        let line = row.line.line
+        let range = placement.fragment.range
+        guard range.location >= 0, range.length >= 0, range.location <= Int.max - range.length,
+              line.location <= Int.max - range.upperBound else { return true }
+        return (range.location > 0 && offset == line.location + range.location) ||
+            (range.upperBound < line.data.length && offset == line.location + range.upperBound)
+    }
+
+    /// Only move one complete hidden grapheme at a time; never jump across
+    /// hidden content or enter the shared boundary of the next visual row.
+    private static func hiddenTailStep(from location: Int, direction: HorizontalDirection, source: Row,
+                                       context: Context, view: ReadOnlyDocumentView) -> HorizontalResult? {
+        guard let placement = source.placement, placement.fragment.hiddenLength > 0 else { return nil }
+        let line = source.line.line
+        let visible = placement.fragment.visibleRange
+        let range = placement.fragment.range
+        guard visible.location >= 0, visible.length >= 0, range.location >= 0, range.length >= 0,
+              visible.location <= Int.max - visible.length, range.location <= Int.max - range.length,
+              line.location <= Int.max - range.upperBound else { return .unavailable }
+        let start = line.location + visible.upperBound
+        let end = line.location + min(range.upperBound, line.data.length)
+        guard start <= location && location < end else { return nil }
+        guard containsRightToLeftRun(source) == false else { return .unavailable }
+        let text = view.manager.stringView.string
+        let target: Int
+        switch direction {
+        case .left:
+            guard location > start else { return nil }
+            let cluster = text.rangeOfComposedCharacterSequence(at: location - 1)
+            guard cluster.upperBound == location, cluster.location >= start else { return .unavailable }
+            target = cluster.location
+        case .right:
+            let cluster = text.rangeOfComposedCharacterSequence(at: location)
+            guard cluster.location == location, cluster.upperBound <= end else { return .unavailable }
+            target = cluster.upperBound
+        }
+        guard validBoundary(target, in: text), !isSharedWrapBoundary(target, in: source),
+              stable(context, view: view) else { return .unavailable }
+        return .moved(target)
     }
 
     private static let horizontalTolerance: CGFloat = 0.01
@@ -198,6 +269,42 @@ enum PreparedInputVisualMovement {
     private static func uniqueTarget(in edges: [HorizontalEdge]) -> Int? {
         guard let first = edges.first, !edges.contains(where: { $0.ambiguous || $0.target != first.target }) else { return nil }
         return first.target
+    }
+
+    /// A vertical move stores only a UTF-16 offset. Verify that the offset
+    /// resolves to exactly one visible caret on this row; hidden wrap tails,
+    /// shared wrap boundaries, and bidi alternatives need an affinity instead.
+    private static func unambiguousVerticalCaret(_ offset: Int, caret: NSRect, row: Row,
+                                                 context: Context, view: ReadOnlyDocumentView) -> Bool {
+        guard validBoundary(offset, in: view.manager.stringView.string),
+              !isSharedWrapBoundary(offset, in: row) else { return false }
+        if let placement = row.placement, placement.fragment.hiddenLength > 0 {
+            let visible = placement.fragment.visibleRange
+            guard visible.location >= 0, visible.length >= 0,
+                  visible.location <= Int.max - visible.length,
+                  row.line.line.location <= Int.max - visible.upperBound,
+                  offset < row.line.line.location + visible.upperBound else { return false }
+        }
+        guard let edges = horizontalEdges(for: row, in: view),
+              let candidates = group(at: caretDocumentX(caret, context: context, view: view), in: edges),
+              uniqueTarget(in: candidates) == offset else { return false }
+        return stable(context, view: view)
+    }
+
+    /// The pointer's hit row must agree with the row that a stored offset
+    /// will later draw on. The hit point is in document coordinates and must
+    /// already have been clamped by the drag hit test when appropriate.
+    static func isRepresentablePointerHit(_ offset: Int, documentPoint: NSPoint,
+                                          in view: ReadOnlyDocumentView) -> Bool {
+        guard documentPoint.x.isFinite, documentPoint.y.isFinite,
+              let context = context(in: view), context.layout.viewport.contains(documentPoint),
+              let hitRow = visibleRows(in: context.layout).first(where: {
+                  documentPoint.y >= $0.frame.minY && documentPoint.y < $0.frame.maxY
+              }), let caret = InputScreenCaretGeometry.rect(at: offset, in: view),
+              let resolvedRow = sourceRow(caret: caret, context: context, view: view),
+              sameRow(hitRow, resolvedRow),
+              unambiguousVerticalCaret(offset, caret: caret, row: resolvedRow, context: context, view: view) else { return false }
+        return stable(context, view: view)
     }
 
     private static func isVisible(x: CGFloat, row: Row, context: Context) -> Bool {
