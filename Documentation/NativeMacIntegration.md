@@ -2,15 +2,13 @@
 
 This is the Runestone-side counterpart to RunestoneEditor's
 `Documentation/NativeMacDependencyAndScaleEvidence.md` at app revision
-`f69a24f5028817b35fc43e385f9c437c2de52f1a`. It records the reviewed capability
+`0eb07a52cfeb7059ed3fbf385cab691cb928686c`. It records the reviewed capability
 boundary and outstanding evidence; it is not a Phase 1 exit or release claim.
 The app's local framework revision pin for that evidence is
-`1c02a94658ad3bedf6048e1bcf979232df8a1e85`. That revision is the reviewed
-framework source baseline; later changes to this note and test fixtures do not
-change the exported products or runtime capabilities. The current framework
-HEAD and queue owner are recorded separately in the integration queue. The
-committed remote dependency lock is a separate input and has not been updated
-by this work.
+`b73f673e73c9e3380a1cee3899aabc1016e49496`. The app audit applies to that
+pin, not subsequent framework changes. The current framework HEAD and queue
+owner are recorded separately in the integration queue. The committed remote
+dependency lock is a separate input and has not been updated by this work.
 
 ## Products and ownership
 
@@ -44,6 +42,31 @@ editable attachment or selection API. The app currently hosts the read-only
 view. Do not enable editing until input event contention/reset and composition
 on blur have safe behavior, and real focus, input-method and accessibility
 interaction have been verified.
+
+## Input contention and recovery plan
+
+The internal input adapter reports whether each failed callback was rejected
+before admission or may have taken effect. A pre-admission `notApplied` result
+applies only to that callback; it says nothing about the rest of an input-method
+event and does not authorize replay. An admitted failure or interrupted driver
+dispatch can follow publication and is reported as `mayHaveApplied`. Recognized
+commands that cannot run are reported instead of being forwarded as unrelated
+commands. No text, selection payload or event is retained or replayed.
+
+The private connection keeps the first 16 failure records in order and counts
+additional records, saturating at the integer limit. Its weak observer is
+notified after input activity becomes idle; the owner must call
+`takeInputFailures()` to acknowledge the batch. Reset reports discarded
+provisional composition, including an empty marked range. Once the old client
+has been detached, callbacks to that retired client are inert and cannot be
+reported. These reports provide detection, not automatic recovery.
+
+Before making an editable attachment public, define an owner-visible recovery
+and feedback policy for failed input and discarded composition, and coordinate
+any event-level admission or queueing with the app's exclusive document gate.
+Never replay stale input against a newer snapshot. Verify actual key focus,
+input methods, composition on blur, accessibility and VoiceOver in an unlocked
+session. The headless tests do not establish those interactions.
 
 ## Scale evidence and remaining work
 

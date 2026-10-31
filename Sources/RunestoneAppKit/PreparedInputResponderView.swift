@@ -103,18 +103,42 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override func keyDown(with event: NSEvent) {
-        guard ownsKeyFocus, let connection = inputConnection else { super.keyDown(with: event); return }
+        guard let connection = inputConnection else { super.keyDown(with: event); return }
+        guard ownsKeyFocus else {
+            connection.recordInputFailure(operation: .undispatchedKey,
+                failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
         let beforeCommands = commandGeneration
         let beforeContent = contentRevision
         let beforeGeometry = inputGeometryRevision
-        let handled = connection.handle(event)
-        guard ownsKeyFocus, inputConnection === connection, !isRetired else { return }
-        if handled || commandGeneration != beforeCommands || contentRevision != beforeContent ||
-            inputGeometryRevision != beforeGeometry { return }
-        // The input context has declined the event. Key bindings fall back to
-        // insertText: or doCommandBySelector:, guarded below by focus/activity.
+        switch connection.dispatchKey(event) {
+        case .handled, .unavailable:
+            return
+        case .declined:
+            break
+        }
+        // The input context has already seen this event. If focus was lost,
+        // its effects are uncertain and the event must never be replayed.
+        guard ownsKeyFocus, inputConnection === connection, !isRetired else {
+            connection.recordInputFailure(operation: .keyBindingFallback,
+                failure: .init(reason: .unavailable, effect: .mayHaveApplied))
+            return
+        }
+        if commandGeneration != beforeCommands || contentRevision != beforeContent ||
+            inputGeometryRevision != beforeGeometry {
+            connection.recordInputFailure(operation: .keyBindingFallback,
+                failure: .init(reason: .unavailable, effect: .mayHaveApplied))
+            return
+        }
+        // The connection reports a failed fallback guard itself, once, with
+        // mayHaveApplied because AppKit has already handled the driver call.
         _ = connection.performKeyBindingFallback {
-            guard ownsKeyFocus, inputConnection === connection, !interpretingKeyEvents else { return }
+            guard ownsKeyFocus, inputConnection === connection, !interpretingKeyEvents else {
+                connection.recordInputFailure(operation: .keyBindingFallback,
+                    failure: .init(reason: .unavailable, effect: .mayHaveApplied))
+                return
+            }
             interpretingKeyEvents = true
             defer { interpretingKeyEvents = false }
             interpretKeyEvents([event])
@@ -123,40 +147,102 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
 
     @objc(insertText:)
     func insertTextFromKeyBinding(_ value: Any) {
-        guard interpretingKeyEvents, ownsKeyFocus, let connection = inputConnection else { return }
+        guard let connection = inputConnection else { return }
+        guard interpretingKeyEvents, ownsKeyFocus else {
+            connection.recordInputFailure(operation: .insertText,
+                failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
         connection.insertTextFromKeyBinding(value, replacementRange: NSRange(location: NSNotFound, length: 0))
     }
 
     @objc(doCommandBySelector:)
     func doCommandFromKeyBinding(_ selector: Selector) {
-        guard interpretingKeyEvents, ownsKeyFocus, let connection = inputConnection else { return }
+        guard let connection = inputConnection else { return }
+        guard interpretingKeyEvents, ownsKeyFocus else {
+            connection.recordInputFailure(operation: .command,
+                failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
         connection.doCommandFromKeyBinding(selector)
     }
 
     func preparedInputContextConnection(_ connection: PreparedInputContextConnection, doCommand selector: Selector) {
-        guard inputConnection === connection, ownsKeyFocus, let adapter = inputAdapter else { return }
+        guard inputConnection === connection, ownsKeyFocus else {
+            connection.recordInputFailure(operation: .command,
+                failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
+        routeCommand(selector, on: connection) { [weak self] selector in
+            guard let self = self else { return false }
+            return self.nextResponder?.tryToPerform(selector, with: self) ?? false
+        }
+    }
+
+    /// The window-ownership check is performed by the responder callback; this
+    /// internal seam also allows deterministic command-routing verification.
+    func routeCommand(_ selector: Selector, on connection: PreparedInputContextConnection,
+                      forward: (Selector) -> Bool) {
         commandGeneration = UUID()
-        if let outcome = PreparedInputCommandInterpreter.perform(selector, adapter: adapter, view: self) {
-            if outcome != .processed { connection.requestReset() }
-        } else {
-            _ = nextResponder?.tryToPerform(selector, with: self)
+        guard inputConnection === connection, let adapter = inputAdapter else {
+            connection.recordInputFailure(operation: .command,
+                failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
+        switch PreparedInputCommandInterpreter.performReporting(selector, adapter: adapter, view: self) {
+        case .unsupported:
+            if !forward(selector) {
+                // The responder chain has already been invoked; it may have
+                // performed work even if it reports that it did not handle it.
+                connection.recordInputFailure(operation: .command,
+                    failure: .init(reason: .unsupported, effect: .mayHaveApplied))
+            }
+        case let .blocked(failure):
+            connection.recordInputFailure(operation: .command, failure: failure)
+        case let .handled(attempt):
+            if let failure = attempt.failure { connection.recordInputFailure(operation: .command, failure: failure) }
+            if attempt.outcome != .processed { connection.requestReset() }
         }
     }
 
     override func mouseDown(with event: NSEvent) {
-        guard !isRetired, let window = window else { return }
-        guard window.makeFirstResponder(self), ownsKeyFocus, let connection = inputConnection else { return }
-        // A first click can arrive before the scheduled focus check runs.
-        guard connection.resumeForFocus(), ownsKeyFocus else { return }
-        connection.performResponderActivity { adapter, isCurrent in
-            guard adapter.hasProvisionalCompositionForInput() == false,
-                  !adapter.needsInputReset, isCurrent(), ownsKeyFocus else { return }
+        guard let connection = inputConnection else { return }
+        func report(_ reason: PreparedInputEventAdapter.InputFailure.Reason,
+                    _ effect: PreparedInputEventAdapter.InputFailure.Effect = .notApplied) {
+            connection.recordInputFailure(operation: .setSelection, failure: .init(reason: reason, effect: effect))
+        }
+        guard !isRetired, let window = window,
+              window.makeFirstResponder(self), ownsKeyFocus,
+              connection.resumeForFocus(), ownsKeyFocus else { report(.unavailable); return }
+        var entered = false
+        var reported = false
+        var applied = false
+        let remainedCurrent = connection.performResponderActivity { adapter, isCurrent in
+            entered = true
+            guard let provisional = adapter.hasProvisionalCompositionForInput() else {
+                report(.unavailable); reported = true; return
+            }
+            guard !provisional else { report(.compositionActive); reported = true; return }
+            guard !adapter.needsInputReset, isCurrent(), ownsKeyFocus else {
+                report(.unavailable); reported = true; return
+            }
             let screenPoint = window.convertPoint(toScreen: event.locationInWindow)
             guard isCurrent(), ownsKeyFocus,
                   let offset = InputScreenRangeGeometry.characterIndex(for: screenPoint, in: self),
-                  isCurrent(), ownsKeyFocus else { return }
-            if adapter.setSelection(NSRange(location: offset, length: 0)) != .processed { connection.requestReset() }
+                  isCurrent(), ownsKeyFocus else { report(.unavailable); reported = true; return }
+            let attempt = adapter.setSelectionReporting(NSRange(location: offset, length: 0))
+            if let failure = attempt.failure {
+                connection.recordInputFailure(operation: .setSelection, failure: failure)
+                reported = true
+            }
+            if attempt.outcome != .processed { connection.requestReset() }
+            else { applied = true }
             needsDisplay = true
+        }
+        if !remainedCurrent && !reported {
+            report(applied ? .admittedFailure : .unavailable, applied ? .mayHaveApplied : .notApplied)
+        } else if !entered && !reported {
+            report(.unavailable)
         }
     }
 

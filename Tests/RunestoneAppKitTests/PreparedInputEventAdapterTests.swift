@@ -49,7 +49,10 @@ final class PreparedInputEventAdapterTests: XCTestCase {
                 return .init(publish: { canonical = accepted; available = false },
                              finish: { finishes += 1 }, reconcile: { phases.append($0) })
             }, close: { closes += 1 })) }, beginReconstruction: { .busy }, requestReset: {}, schedule: scheduler.enqueue))
-        XCTAssertEqual(adapter.insertText("X", replacementRange: unspecified), .resetRequired)
+        let attempt = adapter.insertTextReporting("X", replacementRange: unspecified)
+        XCTAssertEqual(attempt.outcome, .resetRequired)
+        XCTAssertEqual(attempt.failure?.reason, .admittedFailure)
+        XCTAssertEqual(attempt.failure?.effect, .mayHaveApplied)
         XCTAssertEqual(canonical, "Xabc")
         XCTAssertEqual(phases, [.beforeFinish])
         XCTAssertEqual(finishes, 0)
@@ -111,6 +114,133 @@ final class PreparedInputEventAdapterTests: XCTestCase {
         XCTAssertTrue(view.isRetired)
     }
 
+    func testReportingRejectsBusyAndStaleReplacementBeforeAdmissionWithoutReplay() throws {
+        for stale in [false, true] {
+            let owner = FakeEventOwner(text: "abcd")
+            let scheduler = EventScheduler()
+            let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+            let adapter = try makeAdapter(view: view, owner: owner, scheduler: scheduler) {}
+            XCTAssertEqual(adapter.setSelection(NSRange(location: 1, length: 2)), .processed)
+            let initialLeaseCount = owner.startedLeases.count
+            if stale { owner.rejectAsStale = true }
+            else { owner.activeLease = UUID() }
+            let attempt = adapter.insertTextReporting("X", replacementRange: NSRange(location: 1, length: 2))
+            XCTAssertEqual(attempt.outcome, .resetRequired)
+            XCTAssertEqual(attempt.failure?.reason, stale ? .stale : .busy)
+            XCTAssertEqual(attempt.failure?.effect, .notApplied)
+            XCTAssertEqual(owner.startedLeases.count, initialLeaseCount)
+            XCTAssertTrue(owner.prepareLeases.isEmpty)
+            XCTAssertEqual(owner.text, "abcd")
+            XCTAssertEqual(view.content.string, "abcd")
+            let later = adapter.insertTextReporting("Y", replacementRange: unspecified)
+            XCTAssertEqual(later.failure?.reason, .unavailable)
+            XCTAssertEqual(later.failure?.effect, .notApplied)
+            owner.activeLease = nil
+            owner.rejectAsStale = false
+            owner.text = "newer"
+            owner.revision = UUID()
+            XCTAssertEqual(adapter.reconstructWithoutInputContext(), .processed)
+            scheduler.runAll()
+            XCTAssertEqual(owner.text, "newer")
+            XCTAssertEqual(view.content.string, "newer")
+            XCTAssertEqual(owner.undoCount, 0)
+            XCTAssertTrue(adapter.disconnectAfterQuiescing())
+        }
+    }
+
+    func testReportingRejectsContendedCompositionAndSelectionWithoutRestoringStaleBaseline() throws {
+        enum Operation: CaseIterable { case update, insert, unmark, cancel, selection }
+        for operation in Operation.allCases {
+            let owner = FakeEventOwner(text: "abc")
+            let scheduler = EventScheduler()
+            let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+            let adapter = try makeAdapter(view: view, owner: owner, scheduler: scheduler) {}
+            XCTAssertEqual(adapter.setMarkedText("に", selectedRange: NSRange(location: 1, length: 0),
+                                                 replacementRange: unspecified), .processed)
+            let leaseCount = owner.startedLeases.count
+            owner.activeLease = UUID()
+            let attempt: PreparedInputEventAdapter.InputAttempt
+            switch operation {
+            case .update:
+                attempt = adapter.setMarkedTextReporting("日本", selectedRange: NSRange(location: 2, length: 0),
+                                                         replacementRange: unspecified)
+            case .insert:
+                attempt = adapter.insertTextReporting("日", replacementRange: unspecified)
+            case .unmark:
+                attempt = adapter.unmarkTextReporting()
+            case .cancel:
+                attempt = adapter.cancelCompositionAfterQuiescingReporting()
+            case .selection:
+                attempt = adapter.setSelectionReporting(NSRange(location: 1, length: 0))
+            }
+            XCTAssertEqual(attempt.outcome, .resetRequired)
+            XCTAssertEqual(attempt.failure?.reason, .busy)
+            XCTAssertEqual(attempt.failure?.effect, .notApplied)
+            XCTAssertEqual(owner.startedLeases.count, leaseCount)
+            XCTAssertEqual(view.content.string, "にabc")
+            XCTAssertEqual(owner.text, "abc")
+            XCTAssertTrue(owner.prepareLeases.isEmpty)
+            XCTAssertEqual(owner.undoCount, 0)
+            owner.activeLease = nil
+            owner.text = "newest"
+            owner.revision = UUID()
+            XCTAssertEqual(adapter.reconstructWithoutInputContext(), .processed)
+            scheduler.runAll()
+            XCTAssertEqual(view.content.string, "newest")
+            XCTAssertEqual(owner.text, "newest")
+            XCTAssertEqual(owner.undoCount, 0)
+            XCTAssertTrue(adapter.disconnectAfterQuiescing())
+        }
+    }
+
+    func testNestedAttemptIsNotAppliedAndAdmittedOuterFailureIsNotSafeToRetry() throws {
+        let owner = FakeEventOwner(text: "abc")
+        let scheduler = EventScheduler()
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(view: view, owner: owner, scheduler: scheduler) {}
+        var nested: PreparedInputEventAdapter.InputAttempt?
+        var order: [String] = []
+        owner.onBegin = {
+            order.append("nested begin")
+            nested = adapter.setSelectionReporting(NSRange(location: 1, length: 0))
+            order.append("nested end")
+        }
+        let outer = adapter.insertTextReporting("X", replacementRange: unspecified)
+        order.append("outer end")
+        owner.onBegin = nil
+        XCTAssertEqual(order, ["nested begin", "nested end", "outer end"])
+        XCTAssertEqual(nested?.failure?.reason, .reentrant)
+        XCTAssertEqual(nested?.failure?.effect, .notApplied)
+        XCTAssertEqual(outer.failure?.reason, .admittedFailure)
+        XCTAssertEqual(outer.failure?.effect, .mayHaveApplied)
+        XCTAssertEqual(owner.text, "abc")
+        XCTAssertTrue(owner.prepareLeases.isEmpty)
+        XCTAssertEqual(owner.closedLeases, owner.startedLeases)
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .processed)
+        scheduler.runAll()
+        XCTAssertEqual(owner.text, "abc")
+        XCTAssertTrue(adapter.disconnectAfterQuiescing())
+    }
+
+    func testRetirementDetectsProvisionalCompositionWithEmptyMarkedRange() throws {
+        let owner = FakeEventOwner(text: "abc")
+        let scheduler = EventScheduler()
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(view: view, owner: owner, scheduler: scheduler) {}
+        XCTAssertEqual(adapter.setSelection(NSRange(location: 1, length: 1)), .processed)
+        XCTAssertEqual(adapter.setMarkedText("", selectedRange: NSRange(location: 0, length: 0),
+                                             replacementRange: unspecified), .processed)
+        XCTAssertEqual(adapter.markedRangeForInput().location, NSNotFound)
+        var sawComposition = false
+        adapter.whenInputActivityIdle { sawComposition = adapter.hasProvisionalCompositionForRetirement }
+        scheduler.runAll()
+        XCTAssertTrue(sawComposition)
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertEqual(view.content.string, "abc")
+        XCTAssertEqual(owner.undoCount, 0)
+        XCTAssertTrue(adapter.disconnectAfterQuiescing())
+    }
+
     func testEachCompositionCallbackHasItsOwnLeaseThroughCommitCallbacks() throws {
         let owner = FakeEventOwner(text: "abc")
         let scheduler = EventScheduler()
@@ -118,8 +248,10 @@ final class PreparedInputEventAdapterTests: XCTestCase {
         var resets = 0
         let adapter = try makeAdapter(view: view, owner: owner, scheduler: scheduler) { resets += 1 }
 
-        XCTAssertEqual(adapter.setMarkedText("に", selectedRange: NSRange(location: 1, length: 0),
-                                             replacementRange: unspecified), .processed)
+        let firstMark = adapter.setMarkedTextReporting("に", selectedRange: NSRange(location: 1, length: 0),
+                                                       replacementRange: unspecified)
+        XCTAssertEqual(firstMark.outcome, .processed)
+        XCTAssertNil(firstMark.failure)
         XCTAssertEqual(view.content.string, "にabc")
         XCTAssertEqual(owner.text, "abc")
         XCTAssertEqual(owner.prepareLeases.count, 0)

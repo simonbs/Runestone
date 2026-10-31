@@ -23,6 +23,28 @@ final class PreparedInputContextConnection {
     protocol CommandHandler: AnyObject {
         func preparedInputContextConnection(_ connection: PreparedInputContextConnection, doCommand selector: Selector)
     }
+    /// Each record concerns one callback or dispatch attempt, never the
+    /// outcome of a whole input-method event and never authorizes replay.
+    enum InputOperation: Equatable {
+        case insertText, setMarkedText, unmarkText, cancelComposition, setSelection
+        case command, undispatchedKey, keyBindingFallback, inputDispatchInterrupted, compositionDiscarded
+    }
+    struct InputFailureRecord: Equatable {
+        let operation: InputOperation
+        let failure: PreparedInputEventAdapter.InputFailure
+    }
+    struct InputFailureBatch: Equatable {
+        let records: [InputFailureRecord]
+        /// Additional records dropped after capacity, saturating at Int.max.
+        let overflowCount: Int
+    }
+    protocol InputFailureObserver: AnyObject {
+        /// Asynchronous, after driver, client and adapter activity has unwound.
+        /// The owner acknowledges and clears by taking the batch explicitly.
+        func preparedInputContextConnectionHasInputFailures(_ connection: PreparedInputContextConnection)
+    }
+    enum KeyDispatchOutcome: Equatable { case handled, declined, unavailable }
+
     typealias DriverFactory = (NSTextInputClient) -> Driver
     private enum State { case connected, resetRequested, quiescing, reconstructing, waiting, disconnected }
 
@@ -73,6 +95,17 @@ final class PreparedInputContextConnection {
     // The host owns focus policy. Never retain it through this notification.
     weak var readyObserver: ReadyObserver?
     weak var commandHandler: CommandHandler?
+    weak var inputFailureObserver: InputFailureObserver? {
+        didSet { scheduleInputFailureNotificationIfNeeded() }
+    }
+    private static let maximumInputFailureRecords = 16
+    private var inputFailureRecords: [InputFailureRecord] = []
+    private var inputFailureOverflowCount = 0
+    private var inputFailureGeneration = UUID()
+    private var lastNotifiedInputFailureGeneration: UUID?
+    private var inputFailureIdleWorkPending = false
+    private var inputFailureDeliveryPending = false
+    private var notifyingInputFailureObserver = false
     private var focusSuspended = false
     private var activated = false
     private var driverDepth = 0
@@ -170,20 +203,39 @@ final class PreparedInputContextConnection {
         return isActive
     }
 
+    /// An unavailable key was never passed to the input driver. A declined
+    /// key was passed to AppKit and must never be replayed as an event.
     @discardableResult
-    func handle(_ event: NSEvent) -> Bool {
+    func dispatchKey(_ event: NSEvent) -> KeyDispatchOutcome {
         precondition(Thread.isMainThread)
         guard state == .connected, !focusSuspended, !view.isRetired, activated,
-              driverDepth == 0, callbackDepth == 0, let driver = driver else { return false }
+              driverDepth == 0, callbackDepth == 0, let driver = driver else {
+            let reason: PreparedInputEventAdapter.InputFailure.Reason =
+                driverDepth != 0 || callbackDepth != 0 ? .reentrant : .unavailable
+            recordInputFailure(operation: .undispatchedKey, failure: .init(reason: reason, effect: .notApplied))
+            return .unavailable
+        }
         let previousAction = inputActionGeneration
+        let expectedGeneration = generation
         driverDepth += 1
         defer { finishDriverCall() }
         let handled = driver.handle(event)
-        // Queries alone do not consume a key, but an insertion, marked-text
-        // change or command must never be repeated by the key-binding fallback.
-        return handled || inputActionGeneration != previousAction || state != .connected ||
-            focusSuspended || view.isRetired
+        let receivedCallback = inputActionGeneration != previousAction
+        let interrupted = state != .connected || focusSuspended || view.isRetired || !activated ||
+            generation != expectedGeneration || self.driver !== driver
+        if interrupted {
+            // The input method has seen the event, so its effects are unknown.
+            // This describes the interrupted dispatch and never permits replay.
+            recordInputFailure(operation: .inputDispatchInterrupted,
+                               failure: .init(reason: .unavailable, effect: .mayHaveApplied))
+        }
+        // Queries alone do not consume a key. Never repeat a callback as a
+        // key-binding fallback even if the input driver reports false.
+        return handled || receivedCallback || interrupted ? .handled : .declined
     }
+
+    @discardableResult
+    func handle(_ event: NSEvent) -> Bool { dispatchKey(event) == .handled }
 
     /// Keep the whole system key-binding interpreter call on the activity stack.
     /// The responder must check focus again before invoking this fallback.
@@ -191,7 +243,13 @@ final class PreparedInputContextConnection {
     func performKeyBindingFallback(_ body: () -> Void) -> Bool {
         precondition(Thread.isMainThread)
         guard state == .connected, !focusSuspended, !view.isRetired, activated,
-              driverDepth == 0, callbackDepth == 0 else { return false }
+              driverDepth == 0, callbackDepth == 0 else {
+            // AppKit may already have seen the event before fallback was
+            // requested; do not infer that the whole event had no effects.
+            recordInputFailure(operation: .keyBindingFallback,
+                               failure: .init(reason: .unavailable, effect: .mayHaveApplied))
+            return false
+        }
         driverDepth += 1
         defer { finishDriverCall() }
         body()
@@ -221,7 +279,7 @@ final class PreparedInputContextConnection {
 
     /// Used only by the responder's system key-binding callbacks.
     func insertTextFromKeyBinding(_ value: Any, replacementRange: NSRange) {
-        mutate { $0.insertText(value, replacementRange: replacementRange) }
+        mutate(operation: .insertText) { $0.insertTextReporting(value, replacementRange: replacementRange) }
     }
 
     /// Used only by the responder's system key-binding callbacks.
@@ -250,6 +308,69 @@ final class PreparedInputContextConnection {
             view.inputInvalidation.invalidate()
         }
         scheduleDrainIfNeeded()
+        scheduleInputFailureNotificationIfNeeded()
+    }
+
+    /// Stores bounded metadata only; previous callbacks in the same AppKit
+    /// event may already have changed the document.
+    func recordInputFailure(operation: InputOperation, failure: PreparedInputEventAdapter.InputFailure) {
+        precondition(Thread.isMainThread)
+        if inputFailureRecords.count < Self.maximumInputFailureRecords {
+            inputFailureRecords.append(InputFailureRecord(operation: operation, failure: failure))
+        } else if inputFailureOverflowCount < Int.max {
+            inputFailureOverflowCount += 1
+        }
+        inputFailureGeneration = UUID()
+        scheduleInputFailureNotificationIfNeeded()
+    }
+
+    /// Acknowledges the batch. No typed value or event is retained or retried.
+    func takeInputFailures() -> InputFailureBatch {
+        precondition(Thread.isMainThread)
+        let batch = InputFailureBatch(records: inputFailureRecords, overflowCount: inputFailureOverflowCount)
+        inputFailureRecords.removeAll(keepingCapacity: true)
+        inputFailureOverflowCount = 0
+        inputFailureGeneration = UUID()
+        return batch
+    }
+
+    private func scheduleInputFailureNotificationIfNeeded() {
+        precondition(Thread.isMainThread)
+        guard !inputFailureRecords.isEmpty || inputFailureOverflowCount > 0 else { return }
+        guard inputFailureObserver != nil, inputFailureGeneration != lastNotifiedInputFailureGeneration,
+              driverDepth == 0, callbackDepth == 0, !inputFailureIdleWorkPending,
+              !inputFailureDeliveryPending, !notifyingInputFailureObserver else { return }
+        inputFailureIdleWorkPending = true
+        adapter.whenInputActivityIdle { [weak self] in
+            guard let self = self else { return }
+            self.inputFailureIdleWorkPending = false
+            guard !self.inputFailureRecords.isEmpty || self.inputFailureOverflowCount > 0,
+                  self.inputFailureObserver != nil,
+                  self.inputFailureGeneration != self.lastNotifiedInputFailureGeneration,
+                  self.driverDepth == 0, self.callbackDepth == 0 else { return }
+            // The adapter is still in its idle guard. A later callback must
+            // recheck all activity; a queued turn is not proof of quiescence.
+            self.inputFailureDeliveryPending = true
+            self.schedule { [weak self] in self?.deliverInputFailureNotification() }
+        }
+    }
+
+    private func deliverInputFailureNotification() {
+        precondition(Thread.isMainThread)
+        inputFailureDeliveryPending = false
+        guard !inputFailureRecords.isEmpty || inputFailureOverflowCount > 0,
+              let observer = inputFailureObserver,
+              inputFailureGeneration != lastNotifiedInputFailureGeneration else { return }
+        guard driverDepth == 0, callbackDepth == 0 else { return }
+        if adapter.inputActivityIsBusy {
+            scheduleInputFailureNotificationIfNeeded()
+            return
+        }
+        lastNotifiedInputFailureGeneration = inputFailureGeneration
+        notifyingInputFailureObserver = true
+        observer.preparedInputContextConnectionHasInputFailures(self)
+        notifyingInputFailureObserver = false
+        scheduleInputFailureNotificationIfNeeded()
     }
 
     fileprivate func query<T>(_ fallback: T, _ action: (PreparedInputEventAdapter) -> T) -> T {
@@ -268,22 +389,35 @@ final class PreparedInputContextConnection {
         return query(nil) { $0.accessibilityTextStateForInput() }
     }
 
-    fileprivate func mutate(_ action: (PreparedInputEventAdapter) -> PreparedInputEventAdapter.Outcome) {
+    fileprivate func mutate(operation: InputOperation,
+                            _ action: (PreparedInputEventAdapter) -> PreparedInputEventAdapter.InputAttempt) {
         precondition(Thread.isMainThread)
         inputActionGeneration = UUID()
-        guard state == .connected, !focusSuspended, !view.isRetired else { return }
+        guard state == .connected, !focusSuspended, !view.isRetired else {
+            recordInputFailure(operation: operation, failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
         callbackDepth += 1
         defer { callbackDepth -= 1; finishActivity() }
-        if action(adapter) != .processed { requestReset() }
+        let attempt = action(adapter)
+        if let failure = attempt.failure { recordInputFailure(operation: operation, failure: failure) }
+        if attempt.outcome != .processed { requestReset() }
     }
 
     fileprivate func command(_ selector: Selector) {
         precondition(Thread.isMainThread)
         inputActionGeneration = UUID()
-        guard state == .connected, !focusSuspended, !view.isRetired else { return }
+        guard state == .connected, !focusSuspended, !view.isRetired else {
+            recordInputFailure(operation: .command, failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
         callbackDepth += 1
         defer { callbackDepth -= 1; finishActivity() }
-        commandHandler?.preparedInputContextConnection(self, doCommand: selector)
+        guard let handler = commandHandler else {
+            recordInputFailure(operation: .command, failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
+        handler.preparedInputContextConnection(self, doCommand: selector)
     }
 
     /// Suppress callbacks immediately, but never discard on the triggering stack.
@@ -318,6 +452,10 @@ final class PreparedInputContextConnection {
         adapter.whenInputActivityIdle { [weak self] in
             guard let self = self, self.state == .quiescing, self.generation == expected,
                   let driver = self.driver, let token = self.contextToken else { return }
+            if self.adapter.hasProvisionalCompositionForRetirement {
+                self.recordInputFailure(operation: .compositionDiscarded,
+                                        failure: .init(reason: .compositionDiscarded, effect: .mayHaveApplied))
+            }
             self.driverDepth += 1
             driver.discardMarkedText()
             if self.activated { driver.deactivate() }
@@ -550,12 +688,12 @@ private var preparedContextClientKey: UInt8 = 0
 private final class PreparedContextClient: NSObject, NSTextInputClient {
     weak var owner: PreparedInputContextConnection?
     func insertText(_ string: Any, replacementRange: NSRange) {
-        owner?.mutate { $0.insertText(string, replacementRange: replacementRange) }
+        owner?.mutate(operation: .insertText) { $0.insertTextReporting(string, replacementRange: replacementRange) }
     }
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
-        owner?.mutate { $0.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange) }
+        owner?.mutate(operation: .setMarkedText) { $0.setMarkedTextReporting(string, selectedRange: selectedRange, replacementRange: replacementRange) }
     }
-    func unmarkText() { owner?.mutate { $0.unmarkText() } }
+    func unmarkText() { owner?.mutate(operation: .unmarkText) { $0.unmarkTextReporting() } }
     func doCommand(by selector: Selector) { owner?.command(selector) }
     func selectedRange() -> NSRange {
         owner?.query(NSRange(location: NSNotFound, length: 0)) { $0.selectedRangeForInput() }

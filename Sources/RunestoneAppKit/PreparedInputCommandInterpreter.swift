@@ -1,70 +1,88 @@
 #if canImport(AppKit)
 import AppKit
 
-/// A small set of commands for a prepared input session. This is not a complete
-/// AppKit command dispatcher: unsupported selectors and commands during marked
-/// text are left to the caller. Left/right currently use logical text order,
-/// not visual bidirectional layout order.
+/// A limited internal command dispatcher. It distinguishes selectors which the
+/// responder may forward from recognized commands which are unsafe to perform.
+/// Left/right use logical text order, not visual bidirectional layout order.
 enum PreparedInputCommandInterpreter {
-    /// nil means the command was not handled. A non-nil result must be observed
-    /// by the connection so that a rejected event triggers its normal reset;
-    /// a rejected edit must never be retried as a second document mutation.
+    enum Result: Equatable {
+        case unsupported
+        case blocked(PreparedInputEventAdapter.InputFailure)
+        case handled(PreparedInputEventAdapter.InputAttempt)
+    }
+
+    /// Legacy convenience used by existing callers; nil includes both unsupported
+    /// and blocked commands. New responders must use performReporting to distinguish them.
     static func perform(_ selector: Selector, adapter: PreparedInputEventAdapter,
                         view: ReadOnlyDocumentView) -> PreparedInputEventAdapter.Outcome? {
+        switch performReporting(selector, adapter: adapter, view: view) {
+        case .unsupported, .blocked: return nil
+        case let .handled(attempt): return attempt.outcome
+        }
+    }
+
+    static func performReporting(_ selector: Selector, adapter: PreparedInputEventAdapter,
+                                 view: ReadOnlyDocumentView) -> Result {
         precondition(Thread.isMainThread)
         let name = NSStringFromSelector(selector)
         guard ["insertTab:", "deleteBackward:", "deleteForward:",
-               "moveLeft:", "moveRight:"].contains(name) else { return nil }
+               "moveLeft:", "moveRight:"].contains(name) else { return .unsupported }
 
+        func failure(_ reason: PreparedInputEventAdapter.InputFailure.Reason,
+                     outcome: PreparedInputEventAdapter.Outcome = .unavailable) -> Result {
+            .handled(.init(outcome: outcome, failure: .init(reason: reason, effect: .notApplied)))
+        }
+        func success() -> Result { .handled(.init(outcome: .processed, failure: nil)) }
         let selection = adapter.selectedRangeForInput()
         guard selection.location != NSNotFound else {
-            return adapter.needsInputReset ? .resetRequired : .unavailable
+            return failure(.unavailable, outcome: adapter.needsInputReset ? .resetRequired : .unavailable)
         }
         guard let provisional = adapter.hasProvisionalCompositionForInput() else {
-            return adapter.needsInputReset ? .resetRequired : .unavailable
+            return failure(.unavailable, outcome: adapter.needsInputReset ? .resetRequired : .unavailable)
         }
-        guard !provisional else { return nil }
-        guard !view.isRetired else { return .unavailable }
+        guard !provisional else { return .blocked(.init(reason: .compositionActive, effect: .notApplied)) }
+        guard !view.isRetired else { return failure(.unavailable) }
         let text = view.content.string as NSString
         guard selection.location >= 0, selection.length >= 0,
               selection.location <= text.length,
-              selection.length <= text.length - selection.location else { return .resetRequired }
+              selection.length <= text.length - selection.location else {
+            return failure(.invalidSelection, outcome: .resetRequired)
+        }
         let end = selection.location + selection.length
-        // Input methods may place the caret at a scalar boundary inside one
-        // grapheme. Deleting the whole cluster there would erase characters
-        // on the opposite side of the caret that were never selected.
+        // Never delete unselected text on the opposite side of a caret inside
+        // one composed grapheme; this is a recognized but blocked command.
         if selection.length == 0, (name == "deleteBackward:" || name == "deleteForward:"),
            selection.location > 0, selection.location < text.length,
            text.rangeOfComposedCharacterSequence(at: selection.location).location < selection.location {
-            return nil
+            return .blocked(.init(reason: .invalidSelection, effect: .notApplied))
         }
         switch name {
         case "insertTab:":
-            return adapter.insertText("\t", replacementRange: selection)
+            return .handled(adapter.insertTextReporting("\t", replacementRange: selection))
         case "deleteBackward:":
-            if selection.length > 0 { return adapter.insertText("", replacementRange: selection) }
-            guard selection.location > 0 else { return .processed }
+            if selection.length > 0 { return .handled(adapter.insertTextReporting("", replacementRange: selection)) }
+            guard selection.location > 0 else { return success() }
             let cluster = text.rangeOfComposedCharacterSequence(at: selection.location - 1)
-            return adapter.insertText("", replacementRange: cluster)
+            return .handled(adapter.insertTextReporting("", replacementRange: cluster))
         case "deleteForward:":
-            if selection.length > 0 { return adapter.insertText("", replacementRange: selection) }
-            guard selection.location < text.length else { return .processed }
+            if selection.length > 0 { return .handled(adapter.insertTextReporting("", replacementRange: selection)) }
+            guard selection.location < text.length else { return success() }
             let cluster = text.rangeOfComposedCharacterSequence(at: selection.location)
-            return adapter.insertText("", replacementRange: cluster)
+            return .handled(adapter.insertTextReporting("", replacementRange: cluster))
         case "moveLeft:":
             let location: Int
             if selection.length > 0 { location = selection.location }
             else if selection.location > 0 { location = text.rangeOfComposedCharacterSequence(at: selection.location - 1).location }
-            else { return .processed }
-            return adapter.setSelection(NSRange(location: location, length: 0))
+            else { return success() }
+            return .handled(adapter.setSelectionReporting(NSRange(location: location, length: 0)))
         case "moveRight:":
             let location: Int
             if selection.length > 0 { location = end }
             else if end < text.length { location = NSMaxRange(text.rangeOfComposedCharacterSequence(at: end)) }
-            else { return .processed }
-            return adapter.setSelection(NSRange(location: location, length: 0))
+            else { return success() }
+            return .handled(adapter.setSelectionReporting(NSRange(location: location, length: 0)))
         default:
-            return nil
+            return .unsupported
         }
     }
 }
