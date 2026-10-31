@@ -73,6 +73,11 @@ public final class RunestoneEditableDocumentAttachment {
     public struct TextFinderSnapshot: Equatable {
         public let text: String
         public let selection: NSRange
+
+        public init(text: String, selection: NSRange) {
+            self.text = text
+            self.selection = selection
+        }
     }
 
     /// The newly created document view. Do not attempt to attach it again.
