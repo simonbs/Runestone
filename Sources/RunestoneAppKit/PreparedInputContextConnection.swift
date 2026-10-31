@@ -35,6 +35,8 @@ final class PreparedInputContextConnection {
     private var wantsDisconnect = false
     private var resetDuringReconstruction = false
     private var notifyingBlocked = false
+    private var retryRequestedDuringBlocked = false
+    private var blockedRetryGeneration = UUID()
 
     init?(adapter: PreparedInputEventAdapter, view: ReadOnlyDocumentView,
           makeDriver: DriverFactory? = nil,
@@ -180,20 +182,32 @@ final class PreparedInputContextConnection {
         }
     }
 
-    /// Call again after a blocked document gate or stale snapshot becomes ready.
+    /// Call after an actual document-gate release or stale snapshot becoming
+    /// ready. The host must send a new signal for every later gate release; a
+    /// blocked callback is an advisory notification, not a polling mechanism.
     func resumeAfterQuiescing() {
+        resumeAfterQuiescing(isBlockedRetry: false)
+    }
+
+    private func resumeAfterQuiescing(isBlockedRetry: Bool) {
         precondition(Thread.isMainThread)
-        guard state == .waiting, !notifyingBlocked else { return }
+        guard state == .waiting else { return }
+        if notifyingBlocked {
+            retryRequestedDuringBlocked = true
+            return
+        }
+        // A newer attempt supersedes any previously queued readiness signal.
+        blockedRetryGeneration = UUID()
         state = .reconstructing
         resetDuringReconstruction = false
         switch adapter.reconstructWithoutInputContext() {
         case .processed:
             break
         case .resetRequired:
-            notifyBlocked()
+            notifyBlocked(suppressRetry: isBlockedRetry)
             return
         case .unavailable:
-            guard adapter.inputActivityIsBusy else { notifyBlocked(); return }
+            guard adapter.inputActivityIsBusy else { notifyBlocked(suppressRetry: isBlockedRetry); return }
             // A nested run loop can deliver the scheduled resume while the
             // adapter's idle cleanup is still unwinding. Retry only after its
             // activity guard becomes idle, rather than treating a queued turn
@@ -210,16 +224,16 @@ final class PreparedInputContextConnection {
             return
         }
         if wantsDisconnect {
-            guard adapter.disconnectAfterQuiescing() else { notifyBlocked(); return }
+            guard adapter.disconnectAfterQuiescing() else { notifyBlocked(suppressRetry: isBlockedRetry); return }
             state = .disconnected
             return
         }
-        guard let token = adapter.claimInputContext() else { notifyBlocked(); return }
+        guard let token = adapter.claimInputContext() else { notifyBlocked(suppressRetry: isBlockedRetry); return }
         contextToken = token
         guard installDriver() else {
             precondition(adapter.releaseInputContext(token))
             contextToken = nil
-            notifyBlocked()
+            notifyBlocked(suppressRetry: isBlockedRetry)
             return
         }
         state = .connected
@@ -231,11 +245,27 @@ final class PreparedInputContextConnection {
         // to reactivate this fresh context after a reset.
     }
 
-    private func notifyBlocked() {
+    private func notifyBlocked(suppressRetry: Bool) {
         state = .waiting
+        // The host was already notified for the attempt that scheduled this
+        // retry. Wait for a new external readiness signal if it is still busy.
+        guard !suppressRetry else { return }
+        retryRequestedDuringBlocked = false
         notifyingBlocked = true
-        defer { notifyingBlocked = false }
         blocked()
+        notifyingBlocked = false
+        guard retryRequestedDuringBlocked else { return }
+        retryRequestedDuringBlocked = false
+        let expected = generation
+        let retry = UUID()
+        blockedRetryGeneration = retry
+        schedule { [weak self] in
+            guard let self = self, self.generation == expected,
+                  self.blockedRetryGeneration == retry else { return }
+            // One retry per external signal: a callback that repeatedly claims
+            // readiness while the gate is still busy must not spin the queue.
+            self.resumeAfterQuiescing(isBlockedRetry: true)
+        }
     }
 
     var isDisconnected: Bool { state == .disconnected }
