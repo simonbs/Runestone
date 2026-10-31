@@ -69,11 +69,22 @@ enum InputScreenRangeGeometry {
     }
 
     static func characterIndex(for screenPoint: NSPoint, in view: ReadOnlyDocumentView) -> Int? {
+        characterIndex(for: screenPoint, in: view, requiresRepresentableCaret: false)
+    }
+
+    /// Pointer selection cannot retain bidi or wrap affinity in its NSRange.
+    static func characterIndexForPointer(for screenPoint: NSPoint, in view: ReadOnlyDocumentView) -> Int? {
+        characterIndex(for: screenPoint, in: view, requiresRepresentableCaret: true)
+    }
+
+    private static func characterIndex(for screenPoint: NSPoint, in view: ReadOnlyDocumentView,
+                                       requiresRepresentableCaret: Bool) -> Int? {
         let geometryRevision = view.inputGeometryRevision
         guard screenPoint.x.isFinite, screenPoint.y.isFinite,
               let (window, layout) = viewport(in: view) else { return nil }
         let point = view.convert(window.convertPoint(fromScreen: screenPoint), from: nil)
         guard let index = characterIndex(forDocumentPoint: point, in: view, layout: layout),
+              (!requiresRepresentableCaret || PreparedInputVisualMovement.isRepresentablePointerHit(index, documentPoint: point, in: view)),
               stable(view, window: window, layout: layout, revision: geometryRevision) else { return nil }
         return index
     }
@@ -81,6 +92,16 @@ enum InputScreenRangeGeometry {
     /// Dragging beyond the viewport selects its nearest laid-out edge without
     /// inventing offscreen geometry or starting an unbounded autoscroll loop.
     static func characterIndexForDrag(for screenPoint: NSPoint, in view: ReadOnlyDocumentView) -> Int? {
+        characterIndexForDrag(for: screenPoint, in: view, requiresRepresentableCaret: false)
+    }
+
+    /// The same drag clamping as above, with pointer-affinity validation.
+    static func characterIndexForPointerDrag(for screenPoint: NSPoint, in view: ReadOnlyDocumentView) -> Int? {
+        characterIndexForDrag(for: screenPoint, in: view, requiresRepresentableCaret: true)
+    }
+
+    private static func characterIndexForDrag(for screenPoint: NSPoint, in view: ReadOnlyDocumentView,
+                                              requiresRepresentableCaret: Bool) -> Int? {
         let revision = view.inputGeometryRevision
         guard screenPoint.x.isFinite, screenPoint.y.isFinite,
               let (window, layout) = viewport(in: view),
@@ -103,7 +124,9 @@ enum InputScreenRangeGeometry {
             return aDistance < bDistance
         }) else { return nil }
         let clampedY = min(max(y, nearest.0), nearest.1.nextDown)
-        guard let index = characterIndex(forDocumentPoint: NSPoint(x: x, y: clampedY), in: view, layout: layout),
+        let clampedPoint = NSPoint(x: x, y: clampedY)
+        guard let index = characterIndex(forDocumentPoint: clampedPoint, in: view, layout: layout),
+              (!requiresRepresentableCaret || PreparedInputVisualMovement.isRepresentablePointerHit(index, documentPoint: clampedPoint, in: view)),
               stable(view, window: window, layout: layout, revision: revision) else { return nil }
         return index
     }
