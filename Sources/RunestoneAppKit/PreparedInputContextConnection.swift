@@ -242,6 +242,23 @@ final class PreparedInputContextConnection {
         })
     }
 
+    /// Synchronous input callouts recheck this after invoking outside code.
+    var isActiveForInput: Bool {
+        precondition(Thread.isMainThread)
+        return state == .connected && !focusSuspended && !view.isRetired && activated &&
+            pendingHistory == nil && !historyInFlight
+    }
+
+    /// Side-effect-free advisory validation; execution reacquires the gate.
+    func canPerformHistory(_ operation: RunestoneInputHistoryOperation) -> Bool {
+        precondition(Thread.isMainThread)
+        guard state == .connected, !focusSuspended, !view.isRetired, activated,
+              pendingHistory == nil, !historyInFlight, let coordinator = dispatchCoordinator,
+              let revision = adapter.installedRevisionForDispatch,
+              adapter.hasProvisionalCompositionForInput() == false else { return false }
+        return coordinator.canPerformHistory(operation, expectedRevision: revision)
+    }
+
     /// Queue one document-owned history action from an admitted input scope.
     /// The host will perform it only after that scope and all callbacks unwind.
     func requestHistory(_ operation: RunestoneInputHistoryOperation) {

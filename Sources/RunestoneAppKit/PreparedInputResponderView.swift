@@ -6,7 +6,8 @@ import AppKit
 /// both weakly so retaining a view cannot keep its document alive.
 final class PreparedInputResponderView: ReadOnlyDocumentView,
                                         PreparedInputContextConnection.ReadyObserver,
-                                        PreparedInputContextConnection.CommandHandler {
+                                        PreparedInputContextConnection.CommandHandler,
+                                        NSUserInterfaceValidations {
     private weak var inputAdapter: PreparedInputEventAdapter?
     private weak var inputConnection: PreparedInputContextConnection?
     private var focusGeneration = UUID()
@@ -15,6 +16,15 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     private var commandGeneration = UUID()
     private var disarmed = false
     private var focusRequested = false
+    private var dragSelection: PreparedInputDragSelection?
+    private struct VerticalPreference {
+        let x: CGFloat
+        let selection: NSRange
+        let selectionRevision: UUID
+        let contentRevision: UUID
+        let geometryRevision: UUID
+    }
+    private var verticalPreference: VerticalPreference?
 
     init(snapshot: NSAttributedString) {
         super.init(snapshot: snapshot, fallbackHeight: 16)
@@ -37,6 +47,9 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         precondition(Thread.isMainThread)
         guard !disarmed else { return }
         disarmed = true
+        dragSelection = nil
+        verticalPreference = nil
+        PreparedInputCommandInterpreter.resetSelectionExtension(in: self)
         focusRequested = false
         focusGeneration = UUID()
         inputAdapter = nil
@@ -115,6 +128,9 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                                               _ body: (PreparedInputEventAdapter) -> PreparedInputEventAdapter.InputAttempt?) {
         guard !disarmed, let connection = inputConnection,
               connection.accessibilityTextState() != nil else { return }
+        dragSelection = nil
+        verticalPreference = nil
+        PreparedInputCommandInterpreter.resetSelectionExtension(in: self)
         _ = connection.performCoordinatedInput {
             var reported = false
             var applied = false
@@ -194,6 +210,9 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     private func suppressFocus() {
+        dragSelection = nil
+        verticalPreference = nil
+        PreparedInputCommandInterpreter.resetSelectionExtension(in: self)
         revokeFocusEligibility()
         needsDisplay = true
     }
@@ -219,6 +238,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override func keyDown(with event: NSEvent) {
+        dragSelection = nil
         guard !disarmed else { return }
         guard let connection = inputConnection else { super.keyDown(with: event); return }
         _ = connection.performCoordinatedInput { self.routeKeyDown(event, connection: connection) }
@@ -288,6 +308,156 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         connection.doCommandFromKeyBinding(selector)
     }
 
+    @objc(copy:)
+    private func copyText(_ sender: Any?) { performClipboardMenuAction(.copy) }
+
+    @objc(cut:)
+    private func cutText(_ sender: Any?) { performClipboardMenuAction(.cut) }
+
+    @objc(paste:)
+    private func pasteText(_ sender: Any?) { performClipboardMenuAction(.paste) }
+
+    override func selectAll(_ sender: Any?) { performStandardCommand("selectAll:") }
+
+    /// Menu actions and key-binding methods share the same admitted event.
+    /// When AppKit invokes a selector during interpretation, do not nest a
+    /// second reservation around it.
+    private func performStandardCommand(_ name: String) {
+        guard let connection = inputConnection else { return }
+        performStandardCommand(name, on: connection, hasFocus: { self.ownsKeyFocus })
+    }
+
+    /// Headless seam for AppKit's direct selector path. A live action supplies
+    /// the window-focus check; tests can exercise scope ordering without a key window.
+    func performStandardCommand(_ name: String, on connection: PreparedInputContextConnection,
+                                hasFocus: @escaping () -> Bool) {
+        guard !disarmed, inputConnection === connection, connection.isActiveForInput, hasFocus() else { return }
+        let perform = { self.routeCommand(NSSelectorFromString(name), on: connection, hasFocus: hasFocus) { _ in false } }
+        if connection.dispatchCoordinator?.isActive == true { perform() }
+        else { _ = connection.performCoordinatedInput(perform) }
+    }
+
+    override func insertTab(_ sender: Any?) { performStandardCommand("insertTab:") }
+    override func insertNewline(_ sender: Any?) { performStandardCommand("insertNewline:") }
+    override func insertLineBreak(_ sender: Any?) { performStandardCommand("insertLineBreak:") }
+    override func deleteBackward(_ sender: Any?) { performStandardCommand("deleteBackward:") }
+    override func deleteForward(_ sender: Any?) { performStandardCommand("deleteForward:") }
+    override func deleteWordBackward(_ sender: Any?) { performStandardCommand("deleteWordBackward:") }
+    override func deleteWordForward(_ sender: Any?) { performStandardCommand("deleteWordForward:") }
+    override func moveLeft(_ sender: Any?) { performStandardCommand("moveLeft:") }
+    override func moveRight(_ sender: Any?) { performStandardCommand("moveRight:") }
+    override func moveBackward(_ sender: Any?) { performStandardCommand("moveBackward:") }
+    override func moveForward(_ sender: Any?) { performStandardCommand("moveForward:") }
+    override func moveLeftAndModifySelection(_ sender: Any?) { performStandardCommand("moveLeftAndModifySelection:") }
+    override func moveRightAndModifySelection(_ sender: Any?) { performStandardCommand("moveRightAndModifySelection:") }
+    override func moveBackwardAndModifySelection(_ sender: Any?) { performStandardCommand("moveBackwardAndModifySelection:") }
+    override func moveForwardAndModifySelection(_ sender: Any?) { performStandardCommand("moveForwardAndModifySelection:") }
+    override func moveWordLeft(_ sender: Any?) { performStandardCommand("moveWordLeft:") }
+    override func moveWordRight(_ sender: Any?) { performStandardCommand("moveWordRight:") }
+    override func moveWordBackward(_ sender: Any?) { performStandardCommand("moveWordBackward:") }
+    override func moveWordForward(_ sender: Any?) { performStandardCommand("moveWordForward:") }
+    override func moveWordLeftAndModifySelection(_ sender: Any?) { performStandardCommand("moveWordLeftAndModifySelection:") }
+    override func moveWordRightAndModifySelection(_ sender: Any?) { performStandardCommand("moveWordRightAndModifySelection:") }
+    override func moveWordBackwardAndModifySelection(_ sender: Any?) { performStandardCommand("moveWordBackwardAndModifySelection:") }
+    override func moveWordForwardAndModifySelection(_ sender: Any?) { performStandardCommand("moveWordForwardAndModifySelection:") }
+    override func moveUp(_ sender: Any?) { performStandardCommand("moveUp:") }
+    override func moveDown(_ sender: Any?) { performStandardCommand("moveDown:") }
+    override func moveUpAndModifySelection(_ sender: Any?) { performStandardCommand("moveUpAndModifySelection:") }
+    override func moveDownAndModifySelection(_ sender: Any?) { performStandardCommand("moveDownAndModifySelection:") }
+    override func moveToBeginningOfLine(_ sender: Any?) { performStandardCommand("moveToBeginningOfLine:") }
+    override func moveToEndOfLine(_ sender: Any?) { performStandardCommand("moveToEndOfLine:") }
+    override func moveToBeginningOfLineAndModifySelection(_ sender: Any?) { performStandardCommand("moveToBeginningOfLineAndModifySelection:") }
+    override func moveToEndOfLineAndModifySelection(_ sender: Any?) { performStandardCommand("moveToEndOfLineAndModifySelection:") }
+    override func moveToLeftEndOfLine(_ sender: Any?) { performStandardCommand("moveToLeftEndOfLine:") }
+    override func moveToRightEndOfLine(_ sender: Any?) { performStandardCommand("moveToRightEndOfLine:") }
+    override func moveToLeftEndOfLineAndModifySelection(_ sender: Any?) { performStandardCommand("moveToLeftEndOfLineAndModifySelection:") }
+    override func moveToRightEndOfLineAndModifySelection(_ sender: Any?) { performStandardCommand("moveToRightEndOfLineAndModifySelection:") }
+    override func moveToBeginningOfParagraph(_ sender: Any?) { performStandardCommand("moveToBeginningOfParagraph:") }
+    override func moveToEndOfParagraph(_ sender: Any?) { performStandardCommand("moveToEndOfParagraph:") }
+    override func moveToBeginningOfParagraphAndModifySelection(_ sender: Any?) { performStandardCommand("moveToBeginningOfParagraphAndModifySelection:") }
+    override func moveToEndOfParagraphAndModifySelection(_ sender: Any?) { performStandardCommand("moveToEndOfParagraphAndModifySelection:") }
+    override func moveToBeginningOfDocument(_ sender: Any?) { performStandardCommand("moveToBeginningOfDocument:") }
+    override func moveToEndOfDocument(_ sender: Any?) { performStandardCommand("moveToEndOfDocument:") }
+    override func moveToBeginningOfDocumentAndModifySelection(_ sender: Any?) { performStandardCommand("moveToBeginningOfDocumentAndModifySelection:") }
+    override func moveToEndOfDocumentAndModifySelection(_ sender: Any?) { performStandardCommand("moveToEndOfDocumentAndModifySelection:") }
+
+    /// AppKit calls this before enabling an edit menu item. Actual execution
+    /// repeats all revision, composition and gate checks.
+    func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
+        guard !disarmed, ownsKeyFocus, let action = item.action, let connection = inputConnection,
+              let adapter = inputAdapter, connection.accessibilityTextState() != nil else { return false }
+        let allowed = canPerformEditingAction(action, connection: connection, adapter: adapter,
+            pasteboard: PreparedInputClipboardCommand.SystemPasteboard(board: .general))
+        return allowed && ownsKeyFocus && inputConnection === connection && connection.isActiveForInput
+    }
+
+    /// Headless seam for menu validation; the public responder additionally
+    /// requires active window focus before calling this method.
+    func canPerformEditingAction(_ selector: Selector, connection: PreparedInputContextConnection,
+                                 adapter: PreparedInputEventAdapter,
+                                 pasteboard: PreparedInputClipboardCommand.Pasteboard) -> Bool {
+        guard !disarmed, inputConnection === connection, inputAdapter === adapter,
+              connection.isActiveForInput, connection.accessibilityTextState() != nil else { return false }
+        let name = NSStringFromSelector(selector)
+        switch name {
+        case "copy:": return PreparedInputClipboardCommand.canPerform(.copy, adapter: adapter, view: self, pasteboard: pasteboard)
+        case "cut:": return PreparedInputClipboardCommand.canPerform(.cut, adapter: adapter, view: self, pasteboard: pasteboard)
+        case "paste:": return PreparedInputClipboardCommand.canPerform(.paste, adapter: adapter, view: self, pasteboard: pasteboard)
+        case "undo:": return connection.canPerformHistory(.undo)
+        case "redo:": return connection.canPerformHistory(.redo)
+        case "selectAll:":
+            guard let state = adapter.inputStateForHost(), !state.hasComposition else { return false }
+            return self.manager.stringView.string.length > 0
+        default:
+            guard let state = adapter.inputStateForHost(), !state.hasComposition else { return false }
+            let text = self.manager.stringView.string
+            guard PreparedInputCommandInterpreter.isValidSelectionRange(state.selection, in: text) else { return false }
+            if isVisualMovement(name) { return visualDestination(name, selection: state.selection) != nil }
+            guard PreparedInputCommandInterpreter.supports(name) else { return false }
+            if name == "deleteBackward:" || name == "deleteWordBackward:" {
+                return state.selection.length > 0 || state.selection.location > 0
+            }
+            if name == "deleteForward:" || name == "deleteWordForward:" {
+                return state.selection.length > 0 || state.selection.upperBound < text.length
+            }
+            return true
+        }
+    }
+
+    private func performClipboardMenuAction(_ operation: PreparedInputClipboardCommand.Operation) {
+        guard !disarmed, ownsKeyFocus, let connection = inputConnection else { return }
+        let perform = {
+            self.routeClipboard(operation, on: connection,
+                pasteboard: PreparedInputClipboardCommand.SystemPasteboard(board: .general),
+                hasFocus: { self.ownsKeyFocus })
+        }
+        if connection.dispatchCoordinator?.isActive == true { perform() }
+        else { _ = connection.performCoordinatedInput(perform) }
+    }
+
+    /// Called only inside an admitted dispatch. No input or pasteboard payload
+    /// is retained after this synchronous action returns.
+    func routeClipboard(_ operation: PreparedInputClipboardCommand.Operation,
+                        on connection: PreparedInputContextConnection,
+                        pasteboard: PreparedInputClipboardCommand.Pasteboard,
+                        hasFocus: () -> Bool = { true }) {
+        guard !disarmed, inputConnection === connection, let adapter = inputAdapter else {
+            connection.recordInputFailure(operation: .command, failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
+        dragSelection = nil
+        verticalPreference = nil
+        if operation != .copy { PreparedInputCommandInterpreter.resetSelectionExtension(in: self) }
+        let category: PreparedInputContextConnection.InputOperation = operation == .copy ? .command : .insertText
+        switch PreparedInputClipboardCommand.perform(operation, adapter: adapter, view: self, pasteboard: pasteboard,
+            isAvailable: { !self.disarmed && self.inputConnection === connection && connection.isActiveForInput && hasFocus() }) {
+        case .processed: break
+        case let .failed(failure, needsReset):
+            connection.recordInputFailure(operation: category, failure: failure)
+            if needsReset { connection.requestReset() }
+        }
+    }
+
     /// Menu actions can arrive independently of key interpretation. Each
     /// enters a dispatch scope and is deferred until that scope has closed.
     @objc(undo:)
@@ -298,7 +468,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
 
     private func requestHistory(_ operation: RunestoneInputHistoryOperation) {
         guard !disarmed, ownsKeyFocus, let connection = inputConnection else { return }
-        _ = connection.performCoordinatedInput { connection.requestHistory(operation) }
+        if connection.dispatchCoordinator?.isActive == true { connection.requestHistory(operation) }
+        else { _ = connection.performCoordinatedInput { connection.requestHistory(operation) } }
     }
 
     func preparedInputContextConnection(_ connection: PreparedInputContextConnection, doCommand selector: Selector) {
@@ -307,7 +478,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 failure: .init(reason: .unavailable, effect: .notApplied))
             return
         }
-        routeCommand(selector, on: connection) { [weak self] selector in
+        routeCommand(selector, on: connection, hasFocus: { self.ownsKeyFocus }) { [weak self] selector in
             guard let self = self else { return false }
             return self.nextResponder?.tryToPerform(selector, with: self) ?? false
         }
@@ -316,31 +487,169 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     /// The window-ownership check is performed by the responder callback; this
     /// internal seam also allows deterministic command-routing verification.
     func routeCommand(_ selector: Selector, on connection: PreparedInputContextConnection,
-                      forward: (Selector) -> Bool) {
+                      hasFocus: @escaping () -> Bool = { true }, forward: (Selector) -> Bool) {
         commandGeneration = UUID()
         guard inputConnection === connection, let adapter = inputAdapter else {
             connection.recordInputFailure(operation: .command,
                 failure: .init(reason: .unavailable, effect: .notApplied))
             return
         }
-        switch NSStringFromSelector(selector) {
+        let isAvailable = { !self.disarmed && self.inputConnection === connection && connection.isActiveForInput && hasFocus() }
+        let name = NSStringFromSelector(selector)
+        if isVisualMovement(name) {
+            routeVisualMovement(name, adapter: adapter, connection: connection, isAvailable: isAvailable)
+            return
+        }
+        verticalPreference = nil
+        switch name {
+        case "copy:", "cut:", "paste:":
+            let operation: PreparedInputClipboardCommand.Operation
+            switch NSStringFromSelector(selector) {
+            case "copy:": operation = .copy
+            case "cut:": operation = .cut
+            default: operation = .paste
+            }
+            routeClipboard(operation, on: connection,
+                pasteboard: PreparedInputClipboardCommand.SystemPasteboard(board: .general),
+                hasFocus: { self.ownsKeyFocus })
+            return
         case "undo:": connection.requestHistory(.undo); return
         case "redo:": connection.requestHistory(.redo); return
         default: break
         }
-        switch PreparedInputCommandInterpreter.performReporting(selector, adapter: adapter, view: self) {
+        switch PreparedInputCommandInterpreter.performReporting(selector, adapter: adapter, view: self, isAvailable: isAvailable) {
         case .unsupported:
-            if !forward(selector) {
-                // The responder chain has already been invoked; it may have
-                // performed work even if it reports that it did not handle it.
-                connection.recordInputFailure(operation: .command,
-                    failure: .init(reason: .unsupported, effect: .mayHaveApplied))
-            }
+            // Unsupported editing selectors are not routed to another owner
+            // while this document's input reservation is held.
+            connection.recordInputFailure(operation: .command,
+                failure: .init(reason: .unsupported, effect: .notApplied))
         case let .blocked(failure):
             connection.recordInputFailure(operation: .command, failure: failure)
         case let .handled(attempt):
             if let failure = attempt.failure { connection.recordInputFailure(operation: .command, failure: failure) }
             if attempt.outcome != .processed { connection.requestReset() }
+        }
+    }
+
+    private func isVisualMovement(_ name: String) -> Bool {
+        let names: Set<String> = ["moveLeft:", "moveRight:", "moveLeftAndModifySelection:",
+            "moveRightAndModifySelection:", "moveWordLeft:", "moveWordRight:",
+            "moveWordLeftAndModifySelection:", "moveWordRightAndModifySelection:", "moveUp:", "moveDown:",
+            "moveUpAndModifySelection:", "moveDownAndModifySelection:",
+            "moveToBeginningOfLine:", "moveToEndOfLine:",
+            "moveToBeginningOfLineAndModifySelection:", "moveToEndOfLineAndModifySelection:",
+            "moveToLeftEndOfLine:", "moveToRightEndOfLine:",
+            "moveToLeftEndOfLineAndModifySelection:", "moveToRightEndOfLineAndModifySelection:"]
+        return names.contains(name)
+    }
+
+    private struct VisualDestination {
+        let target: Int
+        let direction: PreparedInputCommandInterpreter.Direction
+        let extending: Bool
+        let preferredX: CGFloat?
+    }
+
+    /// Compute without mutation so menu validation can use the same geometry
+    /// and reject unavailable/ambiguous commands before enabling the item.
+    private func visualDestination(_ name: String, selection: NSRange) -> VisualDestination? {
+        let text = manager.stringView.string
+        guard PreparedInputCommandInterpreter.isValidSelectionRange(selection, in: text) else { return nil }
+        let extending = name.contains("AndModifySelection:")
+        let isVertical = name.hasPrefix("moveUp") || name.hasPrefix("moveDown")
+        let isWord = name.hasPrefix("moveWordLeft") || name.hasPrefix("moveWordRight")
+        let isHorizontal = isWord || name == "moveLeft:" || name == "moveRight:" ||
+            name == "moveLeftAndModifySelection:" || name == "moveRightAndModifySelection:"
+        let backward = name.contains("Left") || name.contains("Beginning") || name.hasPrefix("moveUp")
+        var direction: PreparedInputCommandInterpreter.Direction = backward ? .backward : .forward
+        var collapseTarget: Int?
+        if isHorizontal && selection.length > 0 {
+            // Pick the visually nearer endpoint rather than assuming that an
+            // RTL run's logical order is its left-to-right order.
+            guard let a = InputScreenCaretGeometry.rect(at: selection.location, in: self),
+                  let b = InputScreenCaretGeometry.rect(at: selection.upperBound, in: self),
+                  let window = window else { return nil }
+            let first = self.convert(window.convertFromScreen(a), from: nil)
+            let last = self.convert(window.convertFromScreen(b), from: nil)
+            let firstBefore = abs(first.midY - last.midY) > 0.5 ? first.midY < last.midY : first.midX < last.midX
+            guard abs(first.midY - last.midY) > 0.5 || abs(first.midX - last.midX) > 0.01 else { return nil }
+            let chosen = (backward == firstBefore) ? selection.location : selection.upperBound
+            direction = chosen == selection.location ? .backward : .forward
+            if !extending { collapseTarget = chosen }
+        }
+        let origin = PreparedInputCommandInterpreter.movementOrigin(selection: selection, extending: extending,
+                                                                     direction: direction, view: self)
+        var preferredX: CGFloat?
+        let target: Int?
+        if let collapseTarget = collapseTarget {
+            target = collapseTarget
+        } else if isVertical {
+            let preference = verticalPreference
+            let x = preference.flatMap { previous in
+                previous.selection == selection && previous.selectionRevision == inputSelectionRevision &&
+                previous.contentRevision == contentRevision && previous.geometryRevision == inputGeometryRevision ? previous.x : nil
+            }
+            let value = PreparedInputVisualMovement.vertical(from: origin, direction: backward ? .up : .down,
+                                                            preferredScreenX: x, in: self)
+            if let value = value { target = value.location; preferredX = value.preferredScreenX }
+            else if (backward && origin == 0) || (!backward && origin == text.length) { target = origin }
+            else { target = nil }
+        } else if isHorizontal {
+            let horizontalDirection: PreparedInputVisualMovement.HorizontalDirection = backward ? .left : .right
+            let result = isWord
+                ? PreparedInputVisualWordMovement.destination(from: origin, direction: horizontalDirection, in: self)
+                : PreparedInputVisualMovement.horizontal(from: origin, direction: horizontalDirection, in: self)
+            switch result {
+            case let .moved(location): target = location
+            case .boundary: target = origin
+            case .unavailable: target = nil
+            }
+        } else {
+            let edge: PreparedInputVisualMovement.Edge = backward ? .beginning : .end
+            if name.contains("LeftEnd") || name.contains("RightEnd") {
+                target = PreparedInputVisualMovement.lineEdge(from: origin, edge: edge, in: self)
+            } else {
+                target = PreparedInputVisualMovement.logicalLineEdge(from: origin, edge: edge, in: self)
+            }
+        }
+        guard let target = target else { return nil }
+        return VisualDestination(target: target, direction: direction, extending: extending, preferredX: preferredX)
+    }
+
+    /// Apply a current Core Text destination through the document reservation.
+    private func routeVisualMovement(_ name: String, adapter: PreparedInputEventAdapter,
+                                     connection: PreparedInputContextConnection, isAvailable: () -> Bool) {
+        guard let state = adapter.inputStateForHost() else {
+            verticalPreference = nil
+            connection.recordInputFailure(operation: .command, failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
+        guard !state.hasComposition else {
+            verticalPreference = nil
+            connection.recordInputFailure(operation: .command, failure: .init(reason: .compositionActive, effect: .notApplied))
+            return
+        }
+        guard let destination = visualDestination(name, selection: state.selection) else {
+            verticalPreference = nil
+            connection.recordInputFailure(operation: .command, failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
+        switch PreparedInputCommandInterpreter.moveSelection(target: destination.target, selection: state.selection,
+            extending: destination.extending, direction: destination.direction, adapter: adapter, view: self,
+            isAvailable: isAvailable) {
+        case let .handled(attempt):
+            if let failure = attempt.failure { connection.recordInputFailure(operation: .command, failure: failure) }
+            if attempt.outcome != .processed { connection.requestReset(); verticalPreference = nil }
+            else if let x = destination.preferredX, let current = adapter.inputStateForHost() {
+                verticalPreference = VerticalPreference(x: x, selection: current.selection, selectionRevision: inputSelectionRevision,
+                                                        contentRevision: contentRevision, geometryRevision: inputGeometryRevision)
+            } else { verticalPreference = nil }
+        case let .blocked(failure):
+            verticalPreference = nil
+            connection.recordInputFailure(operation: .command, failure: failure)
+        case .unsupported:
+            verticalPreference = nil
+            connection.recordInputFailure(operation: .command, failure: .init(reason: .unsupported, effect: .notApplied))
         }
     }
 
@@ -350,13 +659,30 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     private func routeMouseDown(_ event: NSEvent, connection: PreparedInputContextConnection) {
+        guard !isRetired, let window = window, event.window === window,
+              window.makeFirstResponder(self), ownsKeyFocus,
+              connection.resumeForFocus(), ownsKeyFocus else {
+            dragSelection = nil
+            connection.recordInputFailure(operation: .setSelection,
+                failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
+        beginPointerSelection(at: window.convertPoint(toScreen: event.locationInWindow),
+                              extending: event.modifierFlags.contains(.shift), connection: connection,
+                              hasFocus: { self.ownsKeyFocus })
+    }
+
+    /// Caller holds the outer dispatch scope; the focus predicate is checked
+    /// around geometry callouts and is injectable for headless tests.
+    func beginPointerSelection(at screenPoint: NSPoint, extending: Bool, connection: PreparedInputContextConnection,
+                               hasFocus: @escaping () -> Bool) {
+        dragSelection = nil
+        verticalPreference = nil
+        let canUse = { !self.disarmed && self.inputConnection === connection && hasFocus() }
         func report(_ reason: PreparedInputEventAdapter.InputFailure.Reason,
                     _ effect: PreparedInputEventAdapter.InputFailure.Effect = .notApplied) {
             connection.recordInputFailure(operation: .setSelection, failure: .init(reason: reason, effect: effect))
         }
-        guard !isRetired, let window = window,
-              window.makeFirstResponder(self), ownsKeyFocus,
-              connection.resumeForFocus(), ownsKeyFocus else { report(.unavailable); return }
         var entered = false
         var reported = false
         var applied = false
@@ -366,20 +692,38 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 report(.unavailable); reported = true; return
             }
             guard !provisional else { report(.compositionActive); reported = true; return }
-            guard !adapter.needsInputReset, isCurrent(), ownsKeyFocus else {
+            guard !adapter.needsInputReset, isCurrent(), canUse() else {
                 report(.unavailable); reported = true; return
             }
-            let screenPoint = window.convertPoint(toScreen: event.locationInWindow)
-            guard isCurrent(), ownsKeyFocus,
+            guard isCurrent(), canUse(),
                   let offset = InputScreenRangeGeometry.characterIndex(for: screenPoint, in: self),
-                  isCurrent(), ownsKeyFocus else { report(.unavailable); reported = true; return }
-            let attempt = adapter.setSelectionReporting(NSRange(location: offset, length: 0))
+                  isCurrent(), canUse() else { report(.unavailable); reported = true; return }
+            let currentSelection = adapter.selectedRangeForInput()
+            let text = self.manager.stringView.string
+            guard PreparedInputCommandInterpreter.isValidSelectionRange(currentSelection, in: text),
+                  PreparedInputCommandInterpreter.isValidBoundary(offset, in: text), isCurrent(), canUse() else {
+                report(.invalidSelection); reported = true; return
+            }
+            let anchor: Int
+            if extending {
+                anchor = PreparedInputCommandInterpreter.selectionAnchor(for: currentSelection, in: self) ??
+                    (offset < currentSelection.location ? currentSelection.upperBound : currentSelection.location)
+            } else {
+                anchor = offset
+            }
+            PreparedInputCommandInterpreter.resetSelectionExtension(in: self)
+            let selection = NSRange(location: min(anchor, offset), length: max(anchor, offset) - min(anchor, offset))
+            let attempt = adapter.setSelectionReporting(selection, isAvailable: { isCurrent() && canUse() })
             if let failure = attempt.failure {
                 connection.recordInputFailure(operation: .setSelection, failure: failure)
                 reported = true
             }
             if attempt.outcome != .processed { connection.requestReset() }
-            else { applied = true }
+            else {
+                applied = true
+                dragSelection = PreparedInputDragSelection(anchor: anchor, selection: selection,
+                    contentRevision: contentRevision, selectionRevision: inputSelectionRevision)
+            }
             needsDisplay = true
         }
         if !remainedCurrent && !reported {
@@ -388,6 +732,81 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             report(.unavailable)
         }
     }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard focusRequested, !disarmed, dragSelection != nil, let connection = inputConnection else { return }
+        _ = connection.performCoordinatedInput { self.routeMouseDragged(event, connection: connection) }
+    }
+
+    private func routeMouseDragged(_ event: NSEvent, connection: PreparedInputContextConnection) {
+        guard let window = window, event.window === window, ownsKeyFocus, !isRetired else {
+            dragSelection = nil
+            connection.recordInputFailure(operation: .setSelection,
+                failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
+        continuePointerSelection(at: window.convertPoint(toScreen: event.locationInWindow),
+                                 connection: connection, hasFocus: { self.ownsKeyFocus })
+    }
+
+    /// One drag event, scoped and revision checked independently of prior events.
+    func continuePointerSelection(at screenPoint: NSPoint, connection: PreparedInputContextConnection,
+                                  hasFocus: @escaping () -> Bool) {
+        guard var drag = dragSelection, !isRetired else {
+            connection.recordInputFailure(operation: .setSelection,
+                failure: .init(reason: .unavailable, effect: .notApplied))
+            return
+        }
+        let canUse = { !self.disarmed && self.inputConnection === connection && hasFocus() }
+        var reported = false
+        var applied = false
+        let current = connection.performResponderActivity { adapter, isCurrent in
+            guard isCurrent(), canUse(),
+                  adapter.hasProvisionalCompositionForInput() == false,
+                  self.contentRevision == drag.contentRevision else {
+                connection.recordInputFailure(operation: .setSelection,
+                    failure: .init(reason: .unavailable, effect: .notApplied))
+                reported = true
+                self.dragSelection = nil
+                return
+            }
+            guard isCurrent(), canUse(),
+                  let offset = InputScreenRangeGeometry.characterIndexForDrag(for: screenPoint, in: self),
+                  PreparedInputCommandInterpreter.isValidBoundary(offset, in: self.manager.stringView.string),
+                  isCurrent(), canUse(),
+                  let selection = drag.selection(to: offset, current: adapter.selectedRangeForInput(),
+                                                 contentRevision: self.contentRevision,
+                                                 selectionRevision: self.inputSelectionRevision) else {
+                connection.recordInputFailure(operation: .setSelection,
+                    failure: .init(reason: .unavailable, effect: .notApplied))
+                reported = true
+                self.dragSelection = nil
+                return
+            }
+            let attempt = adapter.setSelectionReporting(selection, isAvailable: { isCurrent() && canUse() })
+            if let failure = attempt.failure {
+                connection.recordInputFailure(operation: .setSelection, failure: failure)
+                reported = true
+            }
+            if attempt.outcome != .processed {
+                self.dragSelection = nil
+                connection.requestReset()
+            } else {
+                applied = true
+                drag.didApply(selectionRevision: self.inputSelectionRevision)
+                self.dragSelection = drag
+                self.needsDisplay = true
+            }
+        }
+        if !current && !reported {
+            dragSelection = nil
+            connection.recordInputFailure(operation: .setSelection,
+                failure: .init(reason: applied ? .admittedFailure : .unavailable,
+                               effect: applied ? .mayHaveApplied : .notApplied))
+        }
+    }
+
+    override func mouseUp(with event: NSEvent) { dragSelection = nil }
 
     override func noteInputCoordinatesChanged() {
         super.noteInputCoordinatesChanged()

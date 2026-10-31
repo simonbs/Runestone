@@ -104,6 +104,15 @@ final class PreparedInputDispatchCoordinator {
                            outcome: .rejectedBeforeAdmission(reason))
     }
 
+    /// Advisory menu validation; never grants a reservation or permits replay.
+    func canPerformHistory(_ operation: RunestoneInputHistoryOperation, expectedRevision: UUID) -> Bool {
+        precondition(Thread.isMainThread)
+        guard state == .idle, let host = host, let source = source, !source.isRetired,
+              host.inputRevision == expectedRevision else { return false }
+        let allowed = host.canPerformInputHistory(operation, expectedRevision: expectedRevision, source: source)
+        return allowed && state == .idle && !source.isRetired && host.inputRevision == expectedRevision
+    }
+
     /// Execute history only after the outer input scope closed. The host owns
     /// admission, publication, synchronization and gate release. Never retry.
     func performHistory(_ operation: RunestoneInputHistoryOperation, id: UUID, expectedRevision: UUID,

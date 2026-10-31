@@ -7,8 +7,8 @@ boundary and outstanding evidence; it is not a Phase 1 exit or release claim.
 The app's local framework revision pin for that historical evidence was
 `b73f673e73c9e3380a1cee3899aabc1016e49496`. The recorded audit applies to that
 pin, not subsequent framework changes. The app worktree was later observed at
-`6d49c4cce4b80cd4befe71cecfab45344c27e1a0`, with its revision file pinning
-`881f1ae164c0f10a5de16c5f77b044151ee94ef9`; the attachment work is newer than
+`94236e9b1fb8ec22d1a65e285fa91a52be1226c4`, with its revision file pinning
+`d1b5ea3f86fb962a92d274a50d855be4c9a1fc27`; the interaction work is newer than
 that pin. The current framework HEAD and queue owner are recorded separately in
 the integration queue. The committed remote
 dependency lock is a separate input and has not been updated by this work.
@@ -45,18 +45,33 @@ and explicitly requests first-responder status; construction does not focus it.
 Detach immediately disarms it and may require retry while the context and gate
 quiesce. The host owns its bridge and lifetime and must retain the attachment
 until detach completes. The document view does not become reusable as an
-editable attachment. The observed app still hosts the read-only view; keep its
-release gate disabled until real focus, keyboard, input-method and accessibility
+editable attachment. The observed app has a disabled-by-default editable gate
+and otherwise hosts the read-only view; keep its release gate disabled until
+real focus, keyboard, input-method and accessibility
 interaction have been verified. Focus eligibility is revoked on focus or key-window
 loss, and the host must explicitly request it again. Detach does not transfer the
 window's first responder; the host owns that transition.
 
-The prepared command set covers insertion, deletion, horizontal movement,
-Select All, newline and line break; history uses the document hook described
-below. Vertical or word movement, extended/drag selection and clipboard commands
-are not yet a complete editor interaction set. Active accessibility reports an
-editable text role and routes supported setters through the input gate, but
-role-change notifications and real VoiceOver behavior remain unverified.
+The prepared command set includes plain-text copy/cut/paste, word movement and
+deletion, visual horizontal/vertical movement, line/document/paragraph edges,
+extended selection, Select All, newline and line break. Copy/cut validate the
+selected UTF-16 boundaries; paste retains its exact text and line endings.
+Pasteboard callouts and child-gate admission recheck focus and revision. A cut
+writes the pasteboard before deleting; failures after the write are uncertain
+and are never replayed. Menu validation disables unsupported or unavailable
+commands. The app must implement `canPerformInputHistory` as well as the
+existing history operation for Undo/Redo menu validation; its default is false.
+
+Visual navigation uses the current Core Text viewport and preserves a preferred
+horizontal coordinate over vertical moves. It rejects clipped or unavailable
+geometry and ambiguous bidi caret affinity rather than guessing. Horizontal
+movement across a wrapped fragment and some RTL line boundaries is unavailable
+until affinity is represented. Visual word traversal has explicit 128-step and
+4,096-visible-UTF-16-unit limits. Pointer drags clamp to already laid-out viewport
+edges; offscreen autoscroll is not implemented. These are deterministic gaps,
+not claims of complete editor behavior. Active accessibility reports an editable
+text role and routes supported setters through the input gate, but role-change
+notifications and real VoiceOver behavior remain unverified.
 
 ## Input contention and recovery plan
 
@@ -90,14 +105,13 @@ A single pending history request retains metadata only; later input is rejected
 until it has been resolved, and no input event is replayed. Delivery cannot be
 guaranteed after the host or its source view has gone away.
 
-The observed app host implements the parent/child dispatch contract, but must
-adopt the new attachment and provide the history request hook to support undo
-and redo from it. The default history implementation returns unavailable. The
+The observed app host implements the parent/child dispatch and history hooks,
+and its editable attachment integration is behind a disabled release gate. The
 framework queues a history command until the enclosing dispatch closes; the host
-must atomically check its captured revision under the document gate. Its current
-recovery activation checks `inputDispatch` uncertainty, so app integration must
-also handle an uncertain `historyCommand` and reconcile its document state. A completed synchronous dispatch means no failure was detected,
-not that an IME will issue no later callbacks or that a canonical edit occurred.
+must atomically check its captured revision under the document gate and handle
+uncertain history outcomes. A completed synchronous dispatch means no failure
+was detected, not that an IME will issue no later callbacks or that a canonical
+edit occurred.
 Before enabling the app's editing gate, define owner-visible recovery and
 feedback for failed input and discarded composition, integrate and verify the
 app host, and verify actual key focus, input methods, composition on blur,
