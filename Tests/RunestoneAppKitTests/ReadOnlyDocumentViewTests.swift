@@ -36,6 +36,56 @@ final class ReadOnlyDocumentViewTests: XCTestCase {
         })
     }
 
+    func testIncrementalEditInvalidatesStaleLayoutsAndKeepsUnchangedLines() throws {
+        let (scroll, view) = makeView(NSAttributedString(string: "first\nsecond\nlast", attributes: [.font: font]),
+                                      width: 180, height: 100)
+        let previous = try XCTUnwrap(view.visibleLayout)
+        let first = try XCTUnwrap(previous.lines.first)
+        let last = view.manager.line(atRow: 2)
+        let replacement = NSAttributedString(string: "longer\nnew", attributes: [.font: font])
+        XCTAssertTrue(view.replaceContent(in: NSRange(location: 0, length: 12), with: replacement))
+        XCTAssertEqual(view.manager.stringView.string as String, view.content.string)
+        XCTAssertTrue(view.manager.lastLine === last)
+        XCTAssertTrue(first.controller.layout(.toLocation(1)).isEmpty)
+        let current = try XCTUnwrap(view.visibleLayout)
+        XCTAssertTrue(current.lines.contains { $0.line === last })
+        XCTAssertEqual(current.viewport.minY, scroll.contentView.bounds.minY, accuracy: 0.01)
+    }
+
+    func testMalformedAttributedReplacementStaysSynchronized() throws {
+        let malformed = NSMutableAttributedString(string: "😀", attributes: [.font: font])
+        malformed.mutableString.deleteCharacters(in: NSRange(location: 0, length: 1))
+        guard malformed.mutableString.length == 1 && malformed.mutableString.character(at: 0) == 0xDE00 else {
+            throw XCTSkip("Foundation repaired the malformed UTF-16 input")
+        }
+        func assertSynchronized(_ view: ReadOnlyDocumentView) {
+            let stored = NSMutableAttributedString(attributedString: view.content).mutableString
+            XCTAssertEqual(stored.length, view.manager.stringView.string.length)
+            guard stored.length == view.manager.stringView.string.length else { return }
+            for index in 0..<stored.length {
+                XCTAssertEqual(stored.character(at: index), view.manager.stringView.string.character(at: index))
+            }
+        }
+        let view = ReadOnlyDocumentView(content: malformed)
+        assertSynchronized(view)
+        view.setContent(NSAttributedString(string: ""))
+        XCTAssertTrue(view.replaceContent(in: NSRange(location: 0, length: 0), with: malformed))
+        assertSynchronized(view)
+        view.setContent(malformed)
+        assertSynchronized(view)
+    }
+
+    func testEmptyIncrementalEditInsideCRLFIsANoOp() {
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: "a\r\nb"))
+        let first = view.manager.firstLine
+        let last = view.manager.lastLine
+        XCTAssertTrue(view.replaceContent(in: NSRange(location: 2, length: 0), with: NSAttributedString(string: "")))
+        XCTAssertTrue(view.manager.firstLine === first)
+        XCTAssertTrue(view.manager.lastLine === last)
+        XCTAssertEqual(view.manager.lineCount, 2)
+        XCTAssertEqual(view.content.string, "a\r\nb")
+    }
+
     func testResizeKeepsVisibleTextAndRewrapsIt() throws {
         let lines = (0..<120).map { "\($0): " + String(repeating: "long wrapped text ", count: 12) }
         let (scroll, view) = makeView(NSAttributedString(string: lines.joined(separator: "\n"), attributes: [.font: font]),
