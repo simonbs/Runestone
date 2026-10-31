@@ -37,9 +37,15 @@ Runestone uses GitHub's [Tree-sitter](https://tree-sitter.github.io/tree-sitter/
 
 ## Package platforms
 
-The `Runestone` editor product uses UIKit and supports iOS. The `RunestoneEngine`
-product contains platform-neutral Core Text geometry and supports iOS and macOS 26
-or later. To run its isolated macOS tests, use `Scripts/test-engine-macos.sh`.
+The package exports `Runestone`, `RunestoneEngine`, `RunestoneAppKit`, and
+`TreeSitter`. `Runestone` is the UIKit-based iOS editor. `RunestoneEngine`
+contains shared line, layout, and Core Text geometry primitives, while
+`RunestoneAppKit` provides a macOS 26 read-only document view, rendering helpers,
+and document-host integration protocols. Its editable attachment and responder
+are internal and are not a public editor API. `TreeSitter` is the C library used
+by the iOS editor. For the native Mac capability map, app dependency evidence,
+and open scale work, see [Native Mac integration](Documentation/NativeMacIntegration.md).
+To run isolated macOS engine tests, use `Scripts/test-engine-macos.sh`.
 
 ## 🚀 Getting Started
 
