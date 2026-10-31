@@ -15,6 +15,11 @@ final class PreparedInputViewSynchronizer {
     private var registrations: [ObjectIdentifier: Registration] = [:]
     private let schedule: (@escaping () -> Void) -> Void
     private var wakeScheduled = false
+    private var wakeRunning = false
+    private var wakeRoundOpen = false
+    private var wakeRoundExternal = false
+    private var anotherExternalRound = false
+    private var visited: Set<ObjectIdentifier> = []
 
     init(schedule: @escaping (@escaping () -> Void) -> Void = { DispatchQueue.main.async(execute: $0) }) {
         self.schedule = schedule
@@ -55,25 +60,56 @@ final class PreparedInputViewSynchronizer {
         }
     }
 
-    /// Notify after the document gate actually becomes available. A busy retry
-    /// waits for a later release notification; a main-queue turn is not itself
-    /// proof of input or document quiescence. Multiple releases may coalesce.
-    func documentGateDidBecomeAvailable() {
+    /// Call after each actual gate release. Pass the registration only for a
+    /// reconstruction lease; ordinary edits and external operations use nil.
+    /// A reconstruction release wakes other views, but must not wake itself.
+    /// One release round visits each view at most once, so failing views cannot
+    /// keep one another retrying solely by releasing their own leases.
+    func documentGateDidBecomeAvailable(afterReconstructionBy origin: Registration? = nil) {
         precondition(Thread.isMainThread)
-        guard !wakeScheduled else { return }
+        if !wakeRoundOpen {
+            wakeRoundOpen = true
+            wakeRoundExternal = origin == nil
+            visited.removeAll()
+            if let origin = origin { visited.insert(ObjectIdentifier(origin)) }
+        } else if origin == nil {
+            // A genuinely new external release must survive an in-flight round.
+            anotherExternalRound = true
+        } else if !wakeRoundExternal, let origin = origin {
+            visited.insert(ObjectIdentifier(origin))
+        }
+        scheduleWakeIfNeeded()
+    }
+
+    private func scheduleWakeIfNeeded() {
+        guard wakeRoundOpen, !wakeRunning, !wakeScheduled else { return }
         wakeScheduled = true
-        schedule { [weak self] in
-            guard let self = self else { return }
-            self.wakeScheduled = false
-            for registration in Array(self.registrations.values) {
-                let id = ObjectIdentifier(registration)
-                guard self.registrations[id] === registration else { continue }
-                guard let connection = registration.connection else {
-                    self.registrations.removeValue(forKey: id)
-                    continue
-                }
-                connection.resumeAfterQuiescing()
+        schedule { [weak self] in self?.runWakeRound() }
+    }
+
+    private func runWakeRound() {
+        precondition(Thread.isMainThread)
+        guard wakeRoundOpen, !wakeRunning else { return }
+        wakeScheduled = false
+        wakeRunning = true
+        for registration in Array(registrations.values) {
+            let id = ObjectIdentifier(registration)
+            guard registrations[id] === registration, !visited.contains(id) else { continue }
+            visited.insert(id)
+            guard let connection = registration.connection else {
+                registrations.removeValue(forKey: id)
+                continue
             }
+            connection.documentGateDidBecomeAvailable()
+        }
+        wakeRunning = false
+        wakeRoundOpen = false
+        visited.removeAll()
+        if anotherExternalRound {
+            anotherExternalRound = false
+            wakeRoundOpen = true
+            wakeRoundExternal = true
+            scheduleWakeIfNeeded()
         }
     }
 }

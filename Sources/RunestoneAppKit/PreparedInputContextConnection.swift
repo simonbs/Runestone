@@ -36,6 +36,7 @@ final class PreparedInputContextConnection {
     private var resetDuringReconstruction = false
     private var notifyingBlocked = false
     private var retryRequestedDuringBlocked = false
+    private var gateReleaseDuringReconstruction = false
     private var blockedRetryGeneration = UUID()
 
     init?(adapter: PreparedInputEventAdapter, view: ReadOnlyDocumentView,
@@ -189,6 +190,17 @@ final class PreparedInputContextConnection {
         resumeAfterQuiescing(isBlockedRetry: false)
     }
 
+    /// A real gate release may arrive in a nested event loop while a previous
+    /// reconstruction still has callouts on the stack. Preserve that wakeup.
+    func documentGateDidBecomeAvailable() {
+        precondition(Thread.isMainThread)
+        if state == .reconstructing {
+            gateReleaseDuringReconstruction = true
+            return
+        }
+        resumeAfterQuiescing()
+    }
+
     private func resumeAfterQuiescing(isBlockedRetry: Bool) {
         precondition(Thread.isMainThread)
         guard state == .waiting else { return }
@@ -200,6 +212,7 @@ final class PreparedInputContextConnection {
         blockedRetryGeneration = UUID()
         state = .reconstructing
         resetDuringReconstruction = false
+        gateReleaseDuringReconstruction = false
         switch adapter.reconstructWithoutInputContext() {
         case .processed:
             break
@@ -247,14 +260,15 @@ final class PreparedInputContextConnection {
 
     private func notifyBlocked(suppressRetry: Bool) {
         state = .waiting
-        // The host was already notified for the attempt that scheduled this
-        // retry. Wait for a new external readiness signal if it is still busy.
-        guard !suppressRetry else { return }
+        let receivedGateRelease = gateReleaseDuringReconstruction
+        gateReleaseDuringReconstruction = false
         retryRequestedDuringBlocked = false
-        notifyingBlocked = true
-        blocked()
-        notifyingBlocked = false
-        guard retryRequestedDuringBlocked else { return }
+        if !suppressRetry {
+            notifyingBlocked = true
+            blocked()
+            notifyingBlocked = false
+        }
+        guard receivedGateRelease || retryRequestedDuringBlocked else { return }
         retryRequestedDuringBlocked = false
         let expected = generation
         let retry = UUID()
@@ -262,8 +276,8 @@ final class PreparedInputContextConnection {
         schedule { [weak self] in
             guard let self = self, self.generation == expected,
                   self.blockedRetryGeneration == retry else { return }
-            // One retry per external signal: a callback that repeatedly claims
-            // readiness while the gate is still busy must not spin the queue.
+            // A newly observed gate release may warrant one more attempt.
+            // An advisory blocked callback alone cannot cause polling.
             self.resumeAfterQuiescing(isBlockedRetry: true)
         }
     }

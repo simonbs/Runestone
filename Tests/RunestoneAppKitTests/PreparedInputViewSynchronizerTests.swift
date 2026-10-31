@@ -66,6 +66,48 @@ final class PreparedInputViewSynchronizerTests: XCTestCase {
         XCTAssertTrue(second.connection.isDisconnected)
     }
 
+    func testExternalReleaseDuringReconstructionIsNotLostInNestedLoop() throws {
+        _ = NSApplication.shared
+        let queue = SyncQueue()
+        let synchronizer = PreparedInputViewSynchronizer(schedule: queue.enqueue)
+        let document = SyncDocument(text: "abc", synchronizer: synchronizer)
+        let host = try SyncView(document: document, synchronizer: synchronizer, queue: queue)
+        document.onReconstructionClose = {
+            document.onReconstructionClose = nil
+            document.beginExternalChange()
+            document.replaceExternally("newest")
+            document.endExternalChange()
+            queue.runAll() // Deliver the release before reconstruction returns.
+        }
+        host.connection.requestReset()
+        queue.runAll()
+        XCTAssertEqual(host.view.content.string, "newest")
+        XCTAssertEqual(host.drivers.count, 2)
+        XCTAssertFalse(host.connection.disconnect())
+        queue.runAll()
+        XCTAssertTrue(host.connection.isDisconnected)
+    }
+
+    func testFailedReconstructionReleasesCannotMakeViewsPollEachOther() throws {
+        _ = NSApplication.shared
+        let queue = SyncQueue()
+        let synchronizer = PreparedInputViewSynchronizer(schedule: queue.enqueue)
+        let document = SyncDocument(text: "abc", synchronizer: synchronizer)
+        let first = try SyncView(document: document, synchronizer: synchronizer, queue: queue)
+        let second = try SyncView(document: document, synchronizer: synchronizer, queue: queue)
+        // Retired views cannot adopt a snapshot, so both reconstructions fail
+        // after acquiring and releasing their document reservations.
+        first.view.retireInputView()
+        second.view.retireInputView()
+        first.connection.requestReset()
+        second.connection.requestReset()
+        queue.runAll() // Fails if the two releases keep retrying each other.
+        XCTAssertEqual(first.drivers.count, 1)
+        XCTAssertEqual(second.drivers.count, 1)
+        XCTAssertFalse(first.connection.isDisconnected)
+        XCTAssertFalse(second.connection.isDisconnected)
+    }
+
     func testRegistrationDoesNotOwnConnectionAndUnregistrationInvalidatesQueuedWake() throws {
         _ = NSApplication.shared
         let queue = SyncQueue()
@@ -91,7 +133,7 @@ final class PreparedInputViewSynchronizerTests: XCTestCase {
         // There is no strong coordinator-to-connection reference, even if a
         // registration is left behind by an owner that disappears.
         var other: SyncView? = try SyncView(document: document, synchronizer: synchronizer, queue: queue)
-        weak var oldConnection = other?.connection
+        weak let oldConnection = other?.connection
         XCTAssertFalse(try XCTUnwrap(other).connection.disconnect())
         queue.runAll()
         other = nil
@@ -115,7 +157,7 @@ private final class SyncView {
         let adapter = try XCTUnwrap(PreparedInputEventAdapter(view: view, snapshot: view.content,
             initialRevision: document.revision, documentRevision: { document.revision }, typingAttributes: { [:] },
             beginEvent: { document.begin($0, origin: token.registration) },
-            beginReconstruction: { document.beginReconstruction() }, requestReset: {}, schedule: queue.enqueue))
+            beginReconstruction: { document.beginReconstruction(origin: token.registration) }, requestReset: {}, schedule: queue.enqueue))
         let storage = SyncDrivers()
         let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
             let driver = SyncDriver(client: client)
@@ -157,6 +199,7 @@ private final class SyncDocument {
     private(set) var undoCount = 0
     var onFinish: (() -> Void)?
     private let synchronizer: PreparedInputViewSynchronizer
+    var onReconstructionClose: (() -> Void)?
     init(text: String, synchronizer: PreparedInputViewSynchronizer) {
         self.text = text
         self.synchronizer = synchronizer
@@ -178,12 +221,13 @@ private final class SyncDocument {
             synchronizer.documentGateDidBecomeAvailable()
         }))
     }
-    func beginReconstruction() -> PreparedInputEventAdapter.ReconstructionStart {
+    func beginReconstruction(origin: PreparedInputViewSynchronizer.Registration?) -> PreparedInputEventAdapter.ReconstructionStart {
         guard !busy else { return .busy }
         busy = true
         return .reserved(.init(snapshot: NSAttributedString(string: text), revision: revision, close: { [self] in
             busy = false
-            synchronizer.documentGateDidBecomeAvailable()
+            synchronizer.documentGateDidBecomeAvailable(afterReconstructionBy: origin)
+            onReconstructionClose?()
         }))
     }
     func beginExternalChange() { precondition(!busy); busy = true }
