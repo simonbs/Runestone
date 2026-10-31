@@ -32,7 +32,7 @@ final class ViewportLayoutCoordinator {
     /// Returns nil for an invalid viewport. Even an incomplete result carries an
     /// adjustment that the host must apply before retrying. Complete placements
     /// and the corrected viewport belong to the same transaction.
-    func layout(in requestedViewport: CGRect) -> Result? {
+    func layout(in requestedViewport: CGRect, budget: PreparedInputViewportWorkBudget? = nil) -> Result? {
         guard requestedViewport.minX.isFinite, requestedViewport.minY.isFinite,
               requestedViewport.width.isFinite, requestedViewport.height.isFinite,
               requestedViewport.maxX.isFinite, requestedViewport.maxY.isFinite,
@@ -41,9 +41,19 @@ final class ViewportLayoutCoordinator {
         var controllers: [DocumentLineNodeID: LogicalLineLayoutController] = [:]
         func controller(for line: DocumentLineNode) -> LogicalLineLayoutController? {
             if let cached = controllers[line.id] { return cached }
-            guard let prepared = controllerForLine(line) else { return nil }
+            guard budget?.consume(line) ?? true else { return nil }
+            guard let prepared = controllerForLine(line), budget?.check() ?? true else { return nil }
             controllers[line.id] = prepared
             return prepared
+        }
+        func layout(_ request: LogicalLineLayoutRequest, controller: LogicalLineLayoutController,
+                    line: DocumentLineNode) -> [LogicalLineLayoutController.Placement]? {
+            guard budget?.consume(line) ?? true else { return nil }
+            let placements = controller.layout(request)
+            return (budget?.check() ?? true) ? placements : nil
+        }
+        if budget != nil && previousLines.count > 80 {
+            return Result(viewport: viewport, contentOffsetAdjustmentY: 0, lines: [], isComplete: false)
         }
         let overlapping = previousLines.filter { line in
             isAttachedAndVisible(line) && line.yPosition + line.data.lineHeight > viewport.minY && line.yPosition < viewport.maxY
@@ -60,7 +70,11 @@ final class ViewportLayoutCoordinator {
                 return Result(viewport: viewport, contentOffsetAdjustmentY: viewport.minY - requestedViewport.minY,
                               lines: [], isComplete: false)
             }
-            _ = controller.layout(.toLocation(line.data.length))
+            guard layout(.toLocation(line.data.length), controller: controller, line: line) != nil else {
+                viewport.origin.y += anchor.yPosition - oldAnchorY
+                return Result(viewport: viewport, contentOffsetAdjustmentY: viewport.minY - requestedViewport.minY,
+                              lines: [], isComplete: false)
+            }
             remaining -= line.data.lineHeight
             preceding = manager.previousVisibleLine(before: line)
         }
@@ -74,15 +88,26 @@ final class ViewportLayoutCoordinator {
                 return Result(viewport: viewport, contentOffsetAdjustmentY: viewport.minY - requestedViewport.minY,
                               lines: [], isComplete: false)
             }
-            var placements = controller.layout(.inRect(localViewport(viewport, for: line)))
+            guard var placements = layout(.inRect(localViewport(viewport, for: line)), controller: controller, line: line) else {
+                return Result(viewport: viewport, contentOffsetAdjustmentY: viewport.minY - requestedViewport.minY,
+                              lines: [], isComplete: false)
+            }
             // Finishing an overestimated first line may leave the requested top
             // beyond its actual tail. Re-resolve before publishing placements.
             if layouts.isEmpty && controller.isFinishedTypesetting && line.yPosition + line.data.lineHeight <= viewport.minY {
                 viewport.origin.y += max(line.yPosition, line.yPosition + line.data.lineHeight - viewport.height) - viewport.minY
-                placements = controller.layout(.inRect(localViewport(viewport, for: line)))
+                guard let corrected = layout(.inRect(localViewport(viewport, for: line)), controller: controller, line: line) else {
+                    return Result(viewport: viewport, contentOffsetAdjustmentY: viewport.minY - requestedViewport.minY,
+                                  lines: [], isComplete: false)
+                }
+                placements = corrected
             }
             layouts.append(LineLayout(line: line, controller: controller, placements: placements))
             next = manager.nextVisibleLine(after: line)
+        }
+        guard budget?.check() ?? true else {
+            return Result(viewport: viewport, contentOffsetAdjustmentY: viewport.minY - requestedViewport.minY,
+                          lines: [], isComplete: false)
         }
         previousLines = layouts.map(\.line)
         return Result(viewport: viewport, contentOffsetAdjustmentY: viewport.minY - requestedViewport.minY,
