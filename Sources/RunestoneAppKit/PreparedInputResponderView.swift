@@ -355,6 +355,34 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     @objc(paste:)
     private func pasteText(_ sender: Any?) { performClipboardMenuAction(.paste) }
 
+    @objc(checkSpelling:)
+    private func checkSpelling(_ sender: Any?) { inputConnection?.nativeTextCheckingController?.checkSpelling(sender) }
+
+    @objc(showGuessPanel:)
+    private func showGuessPanel(_ sender: Any?) { inputConnection?.nativeTextCheckingController?.showGuessPanel(sender) }
+
+    @objc(changeSpelling:)
+    private func changeSpelling(_ sender: Any?) { inputConnection?.nativeTextCheckingController?.changeSpelling(sender) }
+
+    @objc(orderFrontSubstitutionsPanel:)
+    private func orderFrontSubstitutionsPanel(_ sender: Any?) {
+        inputConnection?.nativeTextCheckingController?.orderFrontSubstitutionsPanel(sender)
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        guard !disarmed, let connection = inputConnection,
+              let snapshot = connection.textFinderSnapshot(), let window,
+              event.window === window else { return super.menu(for: event) }
+        let point = window.convertPoint(toScreen: event.locationInWindow)
+        guard let index = InputScreenRangeGeometry.characterIndexForPointer(for: point, in: self),
+              index >= 0, index <= (snapshot.text as NSString).length else { return super.menu(for: event) }
+        let clicked = NSLocationInRange(index, snapshot.selection) ||
+            (snapshot.selection.length == 0 && index == snapshot.selection.location)
+        var effective = snapshot.selection
+        return connection.nativeTextCheckingController?.menu(at: index, clickedOnSelection: clicked,
+                                                              effectiveRange: &effective) ?? super.menu(for: event)
+    }
+
     override func selectAll(_ sender: Any?) { performStandardCommand("selectAll:") }
 
     /// Menu actions and key-binding methods share the same admitted event.
@@ -447,6 +475,12 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         case "selectAll:":
             guard let state = adapter.inputStateForHost(), !state.hasComposition else { return false }
             return self.manager.stringView.string.length > 0
+        case "checkSpelling:", "showGuessPanel:", "orderFrontSubstitutionsPanel:":
+            guard let state = adapter.inputStateForHost(), !state.hasComposition else { return false }
+            return connection.nativeTextCheckingController != nil
+        case "changeSpelling:":
+            guard let state = adapter.inputStateForHost(), !state.hasComposition else { return false }
+            return state.selection.length > 0 && connection.nativeTextCheckingController != nil
         default:
             guard let state = adapter.inputStateForHost(), !state.hasComposition else { return false }
             let text = self.manager.stringView.string
