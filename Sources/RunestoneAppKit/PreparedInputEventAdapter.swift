@@ -1,5 +1,6 @@
 #if canImport(AppKit)
 import AppKit
+import RunestoneEngine
 
 /// Event-scoped document ownership for a prepared input session. This is not
 /// an NSTextInputClient or an editor and must not be exposed as one.
@@ -321,6 +322,26 @@ final class PreparedInputEventAdapter {
         perform { session in
             guard let text = self.attributedInput(value), !self.nestedMutationRejected else { return false }
             return session.insertText(text, replacementRange: replacementRange)
+        }
+    }
+
+    /// Only an explicit logical newline command may use the shared policy.
+    /// Resolve against the installed snapshot after acquiring the document gate;
+    /// arbitrary insertText and marked-text payloads remain literal.
+    func insertLogicalNewlineReporting() -> InputAttempt { insertLogicalBreakReporting(explicit: nil) }
+
+    /// AppKit's line-break command explicitly requests a Unicode line separator,
+    /// which is distinct from a document-style newline or paragraph break.
+    func insertLogicalLineBreakReporting() -> InputAttempt { insertLogicalBreakReporting(explicit: "\u{2028}") }
+
+    private func insertLogicalBreakReporting(explicit: String?) -> InputAttempt {
+        perform { session in
+            let selection = session.selectedRange
+            guard !session.hasProvisionalComposition,
+                  let ending = RunestoneLineEndingPolicy.newline(in: self.view.manager.stringView.string,
+                                                                 replacing: selection),
+                  let attributed = self.attributedInput(explicit ?? ending), !self.nestedMutationRejected else { return false }
+            return session.insertText(attributed, replacementRange: selection)
         }
     }
 

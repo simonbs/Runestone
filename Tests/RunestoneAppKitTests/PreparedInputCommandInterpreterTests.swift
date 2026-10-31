@@ -49,7 +49,6 @@ final class PreparedInputCommandInterpreterTests: XCTestCase {
     func testTabInsertionUsesOneDocumentTransactionAndUndo() throws {
         let fixture = try CommandFixture("ab")
         XCTAssertEqual(fixture.adapter.setSelection(NSRange(location: 1, length: 1)), .processed)
-        XCTAssertNil(fixture.run("insertNewline:")) // Document line-ending policy is not available yet.
         XCTAssertEqual(fixture.run("insertTab:"), .processed)
         XCTAssertEqual(fixture.owner.text, "a\t")
         XCTAssertEqual(fixture.owner.undoCount, 1)
