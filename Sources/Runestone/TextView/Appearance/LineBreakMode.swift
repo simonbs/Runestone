@@ -1,9 +1,4 @@
-import Foundation
+import RunestoneEngine
 
- /// Line break mode for text view.
- public enum LineBreakMode: Int, CaseIterable {
-     /// Wrap at word boundaries.
-     case byWordWrapping = 0
-     /// Wrap at character boundaries.
-     case byCharWrapping = 1
- }
+/// Line break mode for text view.
+public typealias LineBreakMode = RunestoneEngine.LineBreakMode
