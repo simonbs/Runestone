@@ -24,6 +24,8 @@ public final class ReadOnlyDocumentView: NSView {
     private var inputMutationAuthority: InputMutationAuthority?
     private var activeInputTransaction: InputMutationTransaction?
     private var inputMutationDepth = 0
+    private var pendingInputPermitRelease: InputMutationPermit?
+    var inputMutationInFlight: Bool { inputMutationDepth != 0 }
     private var snapshot: NSMutableAttributedString
     private(set) var contentRevision = UUID()
     private let fallbackHeight: CGFloat
@@ -169,6 +171,13 @@ public final class ReadOnlyDocumentView: NSView {
         return true
     }
 
+    /// Call on the main thread after the context client has been detached.
+    func releaseInputMutationWhenIdle(_ permit: InputMutationPermit) {
+        guard inputMutationPermit === permit else { return }
+        if inputMutationDepth == 0 { _ = releaseInputMutation(permit) }
+        else { pendingInputPermitRelease = permit }
+    }
+
     func permitsMutation(with permit: InputMutationPermit?) -> Bool {
         if let owner = inputMutationPermit { return owner === permit }
         return permit == nil
@@ -199,6 +208,10 @@ public final class ReadOnlyDocumentView: NSView {
         precondition(inputMutationDepth == 1 && activeInputTransaction === transaction)
         activeInputTransaction = nil
         inputMutationDepth -= 1
+        if let permit = pendingInputPermitRelease {
+            pendingInputPermitRelease = nil
+            _ = releaseInputMutation(permit)
+        }
         inputInvalidation.resume()
     }
 
