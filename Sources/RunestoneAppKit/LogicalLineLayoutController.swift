@@ -16,6 +16,19 @@ final class LogicalLineLayoutController {
 
     var isFinishedTypesetting: Bool { prepared && typesetter.isFinishedTypesetting }
 
+    /// A completed typesetter needs no further preceding-line layout only if
+    /// its measured height is still the one installed in the shared index.
+    var hasCurrentFinishedHeight: Bool {
+        guard isFinishedTypesetting, isAttached else { return false }
+        let measured = typesetter.estimatedLineHeight(fragmentHeight: fallbackHeight)
+        return measured.isFinite && abs(measured - line.data.lineHeight) < CGFloat.ulpOfOne
+    }
+
+    /// Defend the cached lookup against a controller for another line.
+    func hasCurrentFinishedHeight(for expectedLine: DocumentLineNode) -> Bool {
+        line === expectedLine && hasCurrentFinishedHeight
+    }
+
     private let manager: LineManager
     private let line: DocumentLineNode
     private let typesetter: LineTypesetter

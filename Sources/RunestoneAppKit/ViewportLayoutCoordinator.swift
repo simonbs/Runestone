@@ -20,12 +20,19 @@ final class ViewportLayoutCoordinator {
 
     private let manager: LineManager
     private let controllerForLine: (DocumentLineNode) -> LogicalLineLayoutController?
+    private let cachedControllerForLine: ((DocumentLineNode) -> LogicalLineLayoutController?)?
     private var previousLines: [DocumentLineNode] = []
+    /// Limit cheap cache checks independently of the preparation/layout budget.
+    private static let maximumCachedPredecessorLookups = 16
 
     /// The provider must return a prepared controller for the current line, or
     /// nil if preparation fails. Preparation may itself change indexed height.
-    init(manager: LineManager, controllerForLine: @escaping (DocumentLineNode) -> LogicalLineLayoutController?) {
+    /// The optional cache lookup must be side-effect free and never prepare a line.
+    init(manager: LineManager,
+         cachedControllerForLine: ((DocumentLineNode) -> LogicalLineLayoutController?)? = nil,
+         controllerForLine: @escaping (DocumentLineNode) -> LogicalLineLayoutController?) {
         self.manager = manager
+        self.cachedControllerForLine = cachedControllerForLine
         self.controllerForLine = controllerForLine
     }
 
@@ -64,16 +71,42 @@ final class ViewportLayoutCoordinator {
         let oldAnchorY = anchor.yPosition
         var remaining = max(0, oldAnchorY - viewport.minY + viewport.height * 0.5)
         var preceding = manager.previousVisibleLine(before: anchor)
+        var cachedPredecessorLookups = 0
         while let line = preceding, remaining > 0 {
+            if let budget = budget, let cachedControllerForLine = cachedControllerForLine,
+               cachedPredecessorLookups < Self.maximumCachedPredecessorLookups {
+                cachedPredecessorLookups += 1
+                guard budget.check() else {
+                    viewport.origin.y += anchor.yPosition - oldAnchorY
+                    return Result(viewport: viewport, contentOffsetAdjustmentY: viewport.minY - requestedViewport.minY,
+                                  lines: [], isComplete: false)
+                }
+                let cached = cachedControllerForLine(line)
+                guard budget.check() else {
+                    viewport.origin.y += anchor.yPosition - oldAnchorY
+                    return Result(viewport: viewport, contentOffsetAdjustmentY: viewport.minY - requestedViewport.minY,
+                                  lines: [], isComplete: false)
+                }
+                if cached?.hasCurrentFinishedHeight(for: line) == true {
+                    remaining -= line.data.lineHeight
+                    preceding = manager.previousVisibleLine(before: line)
+                    continue
+                }
+            }
             guard let controller = controller(for: line) else {
                 viewport.origin.y += anchor.yPosition - oldAnchorY
                 return Result(viewport: viewport, contentOffsetAdjustmentY: viewport.minY - requestedViewport.minY,
                               lines: [], isComplete: false)
             }
-            guard layout(.toLocation(line.data.length), controller: controller, line: line) != nil else {
-                viewport.origin.y += anchor.yPosition - oldAnchorY
-                return Result(viewport: viewport, contentOffsetAdjustmentY: viewport.minY - requestedViewport.minY,
-                              lines: [], isComplete: false)
+            // Under a work budget, completed preceding rows with their
+            // correct indexed height need no discarded placement materialization.
+            // Preserve the ordinary unbudgeted path and remeasure stale heights.
+            if budget == nil || !controller.hasCurrentFinishedHeight(for: line) {
+                guard layout(.toLocation(line.data.length), controller: controller, line: line) != nil else {
+                    viewport.origin.y += anchor.yPosition - oldAnchorY
+                    return Result(viewport: viewport, contentOffsetAdjustmentY: viewport.minY - requestedViewport.minY,
+                                  lines: [], isComplete: false)
+                }
             }
             remaining -= line.data.lineHeight
             preceding = manager.previousVisibleLine(before: line)

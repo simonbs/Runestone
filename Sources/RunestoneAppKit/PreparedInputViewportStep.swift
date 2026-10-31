@@ -47,6 +47,9 @@ enum PreparedInputViewportStep {
     enum Outcome: Equatable {
         case progressed
         case boundary
+        /// The preflight refused bounded work before any viewport mutation,
+        /// and the caller's captured input state remained current afterwards.
+        case refusedBeforeScroll
         /// A callout may already have moved the viewport. Never replay an
         /// input event on the basis of this result.
         case unavailable
@@ -72,6 +75,7 @@ enum PreparedInputViewportStep {
     static func perform(in view: ReadOnlyDocumentView, dx: CGFloat, dy: CGFloat,
                         clock: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
                         timeLimit: TimeInterval = 0.016, operationLimit: Int = 80,
+                        allowRefusalBeforeScroll: Bool = false,
                         isCurrent: () -> Bool) -> Outcome {
         precondition(Thread.isMainThread)
         guard dx.isFinite, dy.isFinite, abs(dx) <= maximumDelta, abs(dy) <= maximumDelta,
@@ -106,8 +110,9 @@ enum PreparedInputViewportStep {
 
         guard let budget = PreparedInputViewportWorkBudget(clock: clock, timeLimit: timeLimit,
                                                            operationLimit: operationLimit) else { return .unavailable }
-        return view.withBoundedViewportWork(budget) { () -> Outcome in
-            guard budget.check(), identitiesMatch(geometryMustMatch: true), clip.bounds == initial else { return .unavailable }
+        let result = view.withBoundedViewportWork(budget) { () -> Outcome in
+            guard budget.check() else { return .refusedBeforeScroll }
+            guard identitiesMatch(geometryMustMatch: true), clip.bounds == initial else { return .unavailable }
             if dx == 0 && dy == 0 { return .boundary }
             var proposed = initial
             proposed.origin.x += dx
@@ -117,8 +122,13 @@ enum PreparedInputViewportStep {
             guard identitiesMatch(geometryMustMatch: true), clip.bounds == initial,
                   constrained.size == initial.size, validViewport(constrained) else { return .unavailable }
             if constrained.origin == initial.origin { return .boundary }
-            guard preflight(view.manager, current: initial, target: constrained, budget: budget),
-                  identitiesMatch(geometryMustMatch: true), clip.bounds == initial, budget.check() else { return .unavailable }
+            switch preflight(view.manager, current: initial, target: constrained, budget: budget) {
+            case .refused: return .refusedBeforeScroll
+            case .invalid: return .unavailable
+            case .allowed: break
+            }
+            guard identitiesMatch(geometryMustMatch: true), clip.bounds == initial else { return .unavailable }
+            guard budget.check() else { return .refusedBeforeScroll }
 
             clip.scroll(to: constrained.origin)
             guard budget.check(), identitiesMatch(geometryMustMatch: false) else { return .unavailable }
@@ -137,6 +147,17 @@ enum PreparedInputViewportStep {
                   abs(clip.bounds.minY - constrained.minY) < 0.01, budget.check() else { return .unavailable }
             return clip.bounds.origin == initial.origin ? .unavailable : .progressed
         } ?? .unavailable
+        guard result == .refusedBeforeScroll else { return result }
+        // `withBoundedViewportWork` has unwound, including its deferred
+        // recovery handling. Reject reentrant changes in the clock, preflight,
+        // constraint or identity callouts rather than hiding an interruption.
+        guard allowRefusalBeforeScroll, clip.bounds == initial,
+              let fresh = view.visibleLayout, fresh.isComplete, fresh.viewport == initial,
+              identitiesMatch(geometryMustMatch: true), clip.bounds == initial,
+              view.visibleLayout?.isComplete == true, view.visibleLayout?.viewport == initial else {
+            return .unavailable
+        }
+        return .refusedBeforeScroll
     }
 
     private static func validViewport(_ bounds: CGRect) -> Bool {
@@ -145,19 +166,24 @@ enum PreparedInputViewportStep {
             bounds.width <= maximumViewportDimension && bounds.height <= maximumViewportDimension
     }
 
+    private enum Preflight { case allowed, refused, invalid }
+
     private static func preflight(_ manager: LineManager, current: CGRect, target: CGRect,
-                                  budget: PreparedInputViewportWorkBudget) -> Bool {
+                                  budget: PreparedInputViewportWorkBudget) -> Preflight {
         let height = manager.contentHeight
-        guard height.isFinite, height > 0 else { return false }
-        let margin = max(current.height, maximumDelta)
+        guard height.isFinite, height > 0 else { return .invalid }
+        // Only a short scroll is permitted. Inspect a small buffer around
+        // its current and target viewports; actual layout remains separately
+        // bounded per preparation, line length and elapsed time.
+        let margin = maximumDelta
         let low = max(0, min(current.minY, target.minY) - margin)
         let high = min(height, max(current.maxY, target.maxY) + margin)
-        guard low.isFinite, high.isFinite, let first = manager.line(containingYOffset: min(low, height)) else { return false }
+        guard low.isFinite, high.isFinite, let first = manager.line(containingYOffset: min(low, height)) else { return .invalid }
         var start = first
         for _ in 0..<neighborAllowance {
-            guard budget.check() else { return false }
+            guard budget.check() else { return .refused }
             guard let previous = manager.previousVisibleLine(before: start) else { break }
-            guard previous !== start else { return false }
+            guard previous !== start else { return .invalid }
             start = previous
         }
         var currentLine: DocumentLineNode? = start
@@ -166,20 +192,22 @@ enum PreparedInputViewportStep {
         var beyond = 0
         while let line = currentLine {
             let length = line.data.totalLength
-            guard budget.check(), length >= 0, length <= maximumLineUnits, seen < maximumLines,
-                  length <= maximumTotalUnits - units, line.yPosition.isFinite,
-                  line.data.lineHeight.isFinite, line.data.lineHeight > 0 else { return false }
+            guard budget.check() else { return .refused }
+            guard length >= 0, line.yPosition.isFinite, line.data.lineHeight.isFinite,
+                  line.data.lineHeight > 0 else { return .invalid }
+            guard length <= maximumLineUnits, seen < maximumLines,
+                  length <= maximumTotalUnits - units else { return .refused }
             seen += 1
             units += length
             if line.yPosition >= high {
                 beyond += 1
-                if beyond >= neighborAllowance { return true }
+                if beyond >= neighborAllowance { return .allowed }
             }
             let next = manager.nextVisibleLine(after: line)
-            guard next !== line else { return false }
+            guard next !== line else { return .invalid }
             currentLine = next
         }
-        return true
+        return .allowed
     }
 }
 #endif

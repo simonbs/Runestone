@@ -135,10 +135,10 @@ final class LivePublicFixture {
     private let previousPolicy: NSApplication.ActivationPolicy
     private var closed = false
 
-    init(text: String) throws {
+    init(text: String, font: NSFont = .monospacedSystemFont(ofSize: 14, weight: .regular)) throws {
         let app = NSApplication.shared
         previousPolicy = app.activationPolicy()
-        let host = LivePublicHost(text: text)
+        let host = LivePublicHost(text: text, font: font)
         let attachment = try XCTUnwrap(RunestoneEditableDocumentAttachment.attach(
             host: host, lifetime: host.lifetime, bridge: host.bridge))
         let responder = try XCTUnwrap(attachment.view as? PreparedInputResponderView)
@@ -243,6 +243,7 @@ final class LivePublicHost: NSObject, RunestoneInputDispatchHost {
     let lifetime = RunestoneInputDocumentLifetime()
     let bridge = RunestoneInputDocumentBridge()
     let undo = UndoManager()
+    let font: NSFont
     var text: String
     var inputRevision = UUID()
     var externallyBusy = false
@@ -257,7 +258,7 @@ final class LivePublicHost: NSObject, RunestoneInputDispatchHost {
     var publications = 0
     var completions: [RunestoneInputDispatchCompletion] = []
 
-    init(text: String) { self.text = text; super.init(); undo.groupsByEvent = false }
+    init(text: String, font: NSFont = .monospacedSystemFont(ofSize: 14, weight: .regular)) { self.text = text; self.font = font; super.init(); undo.groupsByEvent = false }
     var gateBusy: Bool { externallyBusy || parentOpen || reconstructionOpen || historyOpen }
     func beginInputDispatch(expectedRevision: UUID, source: ReadOnlyDocumentView) -> RunestoneInputDispatchStart {
         guard !gateBusy else { return .busy }
@@ -277,7 +278,7 @@ final class LivePublicHost: NSObject, RunestoneInputDispatchHost {
         return .reserved(LivePublicSnapshot(self))
     }
     func typingAttributes(for source: ReadOnlyDocumentView) -> [NSAttributedString.Key: Any] {
-        [.font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)]
+        [.font: font]
     }
     func inputDispatchDidComplete(_ completion: RunestoneInputDispatchCompletion, source: ReadOnlyDocumentView) {
         completions.append(completion)
@@ -358,7 +359,7 @@ private final class LivePublicSnapshot: RunestoneInputReconstructionReservation 
     init(_ host: LivePublicHost) {
         self.host = host
         snapshot = NSAttributedString(string: host.text,
-            attributes: [.font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)])
+            attributes: [.font: host.font])
         revision = host.inputRevision
     }
     func close() { host.reconstructionOpen = false }

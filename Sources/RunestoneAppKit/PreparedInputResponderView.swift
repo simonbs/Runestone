@@ -17,6 +17,9 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     private var disarmed = false
     private var focusRequested = false
     private var dragSelection: PreparedInputDragSelection?
+    /// Invalidated whenever a pointer gesture ends, even if the next gesture
+    /// recreates the same range and revisions while a timer callback is active.
+    private var pointerGestureGeneration = UUID()
     private var pointerAutoscrollClock: PreparedInputAutoscrollClock?
     // A gesture has a single finite budget even if it re-enters the viewport.
     private var pointerAutoscrollStarted = false
@@ -701,7 +704,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 destination = visualDestination(name, selection: state.selection)
             case .boundary:
                 break
-            case .unavailable:
+            case .unavailable, .refusedBeforeScroll:
+                // Keyboard command failure semantics are unchanged.
                 viewportMayHaveChanged = true
             }
         }
@@ -896,8 +900,12 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     override func mouseUp(with event: NSEvent) { endPointerSelection() }
 
     private func endPointerSelection() {
+        let endingGeneration = UUID()
+        pointerGestureGeneration = endingGeneration
         pointerAutoscrollClock?.stop()
-        dragSelection = nil
+        // Cancellation can call out. Do not clear a newer gesture installed
+        // while the previous timer was being invalidated.
+        if pointerGestureGeneration == endingGeneration { dragSelection = nil }
     }
 
     /// Test injection is done before a gesture and uses the same clock and
@@ -953,15 +961,26 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     /// Called on a later run-loop turn with only a screen point. Every tick
     /// obtains a fresh dispatch lease and rejects stale selection or content.
     func performPointerAutoscrollStep(at screenPoint: NSPoint, hasFocus: @escaping () -> Bool) -> Bool {
+        let gestureGeneration = pointerGestureGeneration
         guard let connection = inputConnection, let adapter = inputAdapter,
               let drag = dragSelection, let delta = pointerScrollDelta(at: screenPoint),
-              delta.x != 0 || delta.y != 0 else { endPointerSelection(); return false }
+              delta.x != 0 || delta.y != 0 else {
+            if pointerGestureGeneration == gestureGeneration { endPointerSelection() }
+            return false
+        }
         var advanced = false
         let admitted = connection.performCoordinatedInput {
+            guard let documentRevision = adapter.installedRevisionForDispatch else {
+                connection.recordInputFailure(operation: .setSelection,
+                    failure: .init(reason: .unavailable, effect: .mayHaveApplied))
+                return
+            }
             let isCurrent = {
                 guard !self.disarmed, !self.isRetired, self.inputConnection === connection,
                       self.inputAdapter === adapter, connection.isActiveForInput, hasFocus(),
-                      let currentDrag = self.dragSelection,
+                      self.pointerGestureGeneration == gestureGeneration,
+                      adapter.installedRevisionForDispatch == documentRevision,
+                      let currentDrag = self.dragSelection, currentDrag.anchor == drag.anchor,
                       currentDrag.contentRevision == drag.contentRevision,
                       currentDrag.selectionRevision == drag.selectionRevision,
                       currentDrag.expectedSelection == drag.expectedSelection,
@@ -969,13 +988,34 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                       self.inputSelectionRevision == drag.selectionRevision,
                       let state = adapter.inputStateForHost(), !state.hasComposition,
                       state.selection == drag.expectedSelection else { return false }
-                return true
+                // Querying the host and focus are callouts. Check their effects
+                // before treating a refused step as a clean no-op.
+                return !self.disarmed && !self.isRetired && self.inputConnection === connection &&
+                    self.inputAdapter === adapter && connection.isActiveForInput && hasFocus() &&
+                    self.pointerGestureGeneration == gestureGeneration &&
+                    adapter.installedRevisionForDispatch == documentRevision &&
+                    self.contentRevision == drag.contentRevision && self.inputSelectionRevision == drag.selectionRevision &&
+                    self.dragSelection?.anchor == drag.anchor &&
+                    self.dragSelection?.contentRevision == drag.contentRevision &&
+                    self.dragSelection?.selectionRevision == drag.selectionRevision &&
+                    self.dragSelection?.expectedSelection == drag.expectedSelection
             }
-            guard isCurrent() else { return }
+            guard isCurrent() else {
+                connection.recordInputFailure(operation: .setSelection,
+                    failure: .init(reason: .unavailable, effect: .mayHaveApplied))
+                return
+            }
             let step = PreparedInputViewportStep.perform(in: self, dx: delta.x, dy: delta.y,
-                                                         clock: self.inputViewportClock, isCurrent: isCurrent)
+                                                         clock: self.inputViewportClock,
+                                                         allowRefusalBeforeScroll: true, isCurrent: isCurrent)
             switch step {
-            case .boundary: return
+            case .boundary, .refusedBeforeScroll:
+                guard isCurrent() else {
+                    connection.recordInputFailure(operation: .setSelection,
+                        failure: .init(reason: .unavailable, effect: .mayHaveApplied))
+                    return
+                }
+                return
             case .unavailable:
                 connection.recordInputFailure(operation: .setSelection,
                     failure: .init(reason: .unavailable, effect: .mayHaveApplied))
@@ -993,7 +1033,12 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                     failure: .init(reason: .admittedFailure, effect: .mayHaveApplied))
             }
         }
-        guard admitted && advanced else { endPointerSelection(); return false }
+        guard admitted && advanced else {
+            // A reentrant callback can begin a new gesture while this tick is
+            // unwinding. The old tick must not cancel the new gesture or clock.
+            if pointerGestureGeneration == gestureGeneration { endPointerSelection() }
+            return false
+        }
         return true
     }
 
