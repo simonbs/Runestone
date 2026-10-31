@@ -132,6 +132,35 @@ final class DocumentInputSession {
         return contentMatches
     }
 
+    /// Replaces provisional or stale presentation from a canonical snapshot.
+    /// The caller owns the document reservation and has quiesced all input
+    /// clients. No accepted-change callback, canonical write or undo occurs.
+    @discardableResult
+    func adoptCanonicalSnapshot(_ content: NSAttributedString, revision: UUID) -> Bool {
+        guard prepareChange != nil, let documentRevision = documentRevision,
+              documentRevision() == revision, let authority = mutationAuthority,
+              !isApplyingChange,
+              let transaction = view.beginInputMutation(with: mutationPermit, authority: authority) else { return false }
+        isApplyingChange = true
+        defer { isApplyingChange = false; view.endInputMutation(transaction) }
+        let range = NSRange(location: 0, length: view.manager.stringView.string.length)
+        guard view.replaceContentReturningRevision(in: range, with: content, permit: mutationPermit,
+                                                    transaction: transaction, didCommit: { viewRevision in
+            expectedRevision = viewRevision
+            installedDocumentRevision = revision
+            storedSelection = NSRange(location: 0, length: 0)
+            storedMarkedRange = nil
+            composition = nil
+            hasDocumentConflict = false
+        }) != nil else { return false }
+        view.noteInputCoordinatesChanged()
+        guard contentMatches, documentRevision() == revision else {
+            hasDocumentConflict = true
+            return false
+        }
+        return true
+    }
+
     /// Sets a document-relative UTF-16 selection, rejecting invalid ranges.
     @discardableResult
     func setSelection(_ range: NSRange) -> Bool {

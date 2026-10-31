@@ -55,6 +55,159 @@ final class PreparedInputEventAdapterTests: XCTestCase {
         XCTAssertTrue(adapter.disconnectAfterQuiescing())
     }
 
+    func testStaleCompositionReconstructsFromLatestCanonicalSnapshot() throws {
+        let owner = FakeEventOwner(text: "abc")
+        let scheduler = EventScheduler()
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        var resets = 0
+        let adapter = try makeAdapter(view: view, owner: owner, scheduler: scheduler) { resets += 1 }
+        XCTAssertEqual(adapter.setMarkedText("に", selectedRange: NSRange(location: 1, length: 0),
+                                             replacementRange: unspecified), .processed)
+        XCTAssertEqual(view.content.string, "にabc")
+        owner.text = "newer"
+        owner.revision = UUID()
+        XCTAssertEqual(adapter.insertText("x", replacementRange: unspecified), .resetRequired)
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertEqual(view.content.string, "newer")
+        XCTAssertEqual(owner.text, "newer")
+        XCTAssertEqual(owner.undoCount, 0)
+        scheduler.runAll()
+        XCTAssertEqual(resets, 0)
+        XCTAssertEqual(adapter.insertText("!", replacementRange: unspecified), .processed)
+        XCTAssertEqual(owner.text, "!newer")
+        XCTAssertTrue(adapter.disconnectAfterQuiescing())
+    }
+
+    func testReconstructionConflictRetriesNewestRevisionAndInvalidatesOldReset() throws {
+        let original = String(repeating: "line\n", count: 100)
+        let owner = FakeEventOwner(text: original)
+        let scheduler = EventScheduler()
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: original))
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 180, height: 80))
+        scroll.documentView = view
+        scroll.tile()
+        view.updateViewport()
+        var resets = 0
+        let adapter = try makeAdapter(view: view, owner: owner, scheduler: scheduler) { resets += 1 }
+        XCTAssertEqual(adapter.setMarkedText("に", selectedRange: NSRange(location: 1, length: 0),
+                                             replacementRange: unspecified), .processed)
+        owner.text = "short"
+        owner.revision = UUID()
+        XCTAssertEqual(adapter.insertText("x", replacementRange: unspecified), .resetRequired)
+        view.postsFrameChangedNotifications = true
+        var observed = false
+        let observer = NotificationCenter.default.addObserver(forName: NSView.frameDidChangeNotification,
+                                                               object: view, queue: nil) { _ in
+            guard !observed else { return }
+            observed = true
+            XCTAssertEqual(view.content.string, "short")
+            XCTAssertEqual(owner.text, "short")
+            XCTAssertNotNil(owner.activeLease)
+            XCTAssertNil(view.claimInputMutation())
+            owner.text = "newest"
+            owner.revision = UUID()
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .resetRequired)
+        XCTAssertTrue(observed)
+        XCTAssertEqual(owner.text, "newest")
+        XCTAssertEqual(owner.undoCount, 0)
+        XCTAssertFalse(adapter.disconnectAfterQuiescing())
+        scheduler.runAll()
+        XCTAssertEqual(resets, 1)
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertEqual(view.content.string, "newest")
+        XCTAssertEqual(owner.text, "newest")
+        XCTAssertTrue(adapter.disconnectAfterQuiescing())
+    }
+
+    func testStaleCapturedSnapshotDoesNotReplaceProvisionalView() throws {
+        let owner = FakeEventOwner(text: "abc")
+        let scheduler = EventScheduler()
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(view: view, owner: owner, scheduler: scheduler) {}
+        XCTAssertEqual(adapter.setMarkedText("に", selectedRange: NSRange(location: 1, length: 0),
+                                             replacementRange: unspecified), .processed)
+        owner.text = "newer"
+        owner.revision = UUID()
+        // Deliberately violate the reservation after capturing its snapshot.
+        owner.onReconstruction = { owner.text = "newest"; owner.revision = UUID() }
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .resetRequired)
+        XCTAssertEqual(view.content.string, "にabc")
+        XCTAssertEqual(owner.text, "newest")
+        XCTAssertFalse(adapter.disconnectAfterQuiescing())
+        owner.onReconstruction = nil
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertEqual(view.content.string, "newest")
+        XCTAssertTrue(adapter.disconnectAfterQuiescing())
+    }
+
+    func testRevisionChangeWhenReconstructionLeaseClosesRequiresRetry() throws {
+        let owner = FakeEventOwner(text: "abc")
+        let scheduler = EventScheduler()
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(view: view, owner: owner, scheduler: scheduler) {}
+        owner.text = "first"
+        owner.revision = UUID()
+        owner.onClose = { owner.text = "newest"; owner.revision = UUID() }
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .resetRequired)
+        XCTAssertEqual(view.content.string, "first")
+        XCTAssertEqual(owner.text, "newest")
+        XCTAssertFalse(adapter.disconnectAfterQuiescing())
+        owner.onClose = nil
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertEqual(view.content.string, "newest")
+        XCTAssertTrue(adapter.disconnectAfterQuiescing())
+    }
+
+    func testNestedInputDuringReconstructionLayoutRequiresReset() throws {
+        let original = String(repeating: "line\n", count: 100)
+        let owner = FakeEventOwner(text: original)
+        let scheduler = EventScheduler()
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: original))
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 180, height: 80))
+        scroll.documentView = view
+        scroll.tile()
+        view.updateViewport()
+        var resets = 0
+        let adapter = try makeAdapter(view: view, owner: owner, scheduler: scheduler) { resets += 1 }
+        owner.text = "short"
+        owner.revision = UUID()
+        view.postsFrameChangedNotifications = true
+        var observed = false
+        let observer = NotificationCenter.default.addObserver(forName: NSView.frameDidChangeNotification,
+                                                               object: view, queue: nil) { _ in
+            guard !observed else { return }
+            observed = true
+            XCTAssertEqual(adapter.insertText("nested", replacementRange: self.unspecified), .resetRequired)
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .resetRequired)
+        XCTAssertTrue(observed)
+        XCTAssertEqual(view.content.string, "short")
+        XCTAssertEqual(owner.text, "short")
+        XCTAssertEqual(owner.undoCount, 0)
+        scheduler.runAll()
+        XCTAssertEqual(resets, 1)
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertTrue(adapter.disconnectAfterQuiescing())
+    }
+
+    func testEmptySnapshotCanReplaceAndClearComposition() throws {
+        let owner = FakeEventOwner(text: "abc")
+        let scheduler = EventScheduler()
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(view: view, owner: owner, scheduler: scheduler) {}
+        XCTAssertEqual(adapter.setMarkedText("に", selectedRange: NSRange(location: 1, length: 0),
+                                             replacementRange: unspecified), .processed)
+        owner.text = ""
+        owner.revision = UUID()
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertEqual(view.content.string, "")
+        XCTAssertEqual(owner.undoCount, 0)
+        XCTAssertTrue(adapter.disconnectAfterQuiescing())
+    }
+
     func testAcceptedCallbackRunsBeforeLeaseIsClosed() throws {
         let owner = FakeEventOwner(text: "abc")
         let scheduler = EventScheduler()
@@ -87,8 +240,10 @@ final class PreparedInputEventAdapterTests: XCTestCase {
         XCTAssertEqual(owner.startedLeases.count, 1)
         scheduler.runAll()
         XCTAssertEqual(resets, 1)
-        XCTAssertTrue(adapter.disconnectAfterQuiescing())
+        XCTAssertFalse(adapter.disconnectAfterQuiescing())
         owner.onClose = nil
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertTrue(adapter.disconnectAfterQuiescing())
     }
 
     func testNestedInputFromTypingProviderDoesNotPublishOuterEdit() throws {
@@ -102,7 +257,8 @@ final class PreparedInputEventAdapterTests: XCTestCase {
             XCTAssertNotNil(owner.activeLease)
             XCTAssertEqual(weakAdapter?.insertText("nested", replacementRange: self.unspecified), .resetRequired)
             return [:]
-        }, beginEvent: { owner.begin($0) }, requestReset: {}, schedule: scheduler.enqueue)
+        }, beginEvent: { owner.begin($0) }, beginReconstruction: { owner.beginReconstruction() },
+           requestReset: {}, schedule: scheduler.enqueue)
         weakAdapter = adapter
         XCTAssertEqual(try XCTUnwrap(adapter).insertText("X", replacementRange: unspecified), .resetRequired)
         XCTAssertEqual(owner.text, "abc")
@@ -143,6 +299,8 @@ final class PreparedInputEventAdapterTests: XCTestCase {
         XCTAssertEqual(owner.undoCount, 0)
         XCTAssertEqual(owner.reconciledPhases, [.beforeFinish])
         XCTAssertEqual(owner.closedLeases, owner.startedLeases)
+        XCTAssertFalse(adapter.disconnectAfterQuiescing())
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .processed)
         XCTAssertTrue(adapter.disconnectAfterQuiescing())
     }
 
@@ -216,9 +374,11 @@ final class PreparedInputEventAdapterTests: XCTestCase {
         XCTAssertEqual(scheduler.count, 1)
         scheduler.runAll()
         XCTAssertEqual(resets, 1)
-        XCTAssertTrue(adapter.disconnectAfterQuiescing())
-        view.setContent(NSAttributedString(string: owner.text))
+        XCTAssertFalse(adapter.disconnectAfterQuiescing())
+        owner.onBegin = nil
+        XCTAssertEqual(adapter.reconstructWithoutInputContext(), .processed)
         XCTAssertEqual(view.content.string, "newer")
+        XCTAssertTrue(adapter.disconnectAfterQuiescing())
     }
 
     private func makeAdapter(view: ReadOnlyDocumentView, owner: FakeEventOwner,
@@ -228,6 +388,7 @@ final class PreparedInputEventAdapterTests: XCTestCase {
                                                documentRevision: { owner.revision },
                                                typingAttributes: { [:] },
                                                beginEvent: { owner.begin($0) },
+                                               beginReconstruction: { owner.beginReconstruction() },
                                                requestReset: reset, schedule: scheduler.enqueue))
     }
 }
@@ -247,8 +408,25 @@ private final class FakeEventOwner {
     var onBegin: (() -> Void)?
     var onFinish: (() -> Void)?
     var onClose: (() -> Void)?
+    var onReconstruction: (() -> Void)?
 
     init(text: String) { self.text = text }
+
+    func beginReconstruction() -> PreparedInputEventAdapter.ReconstructionStart {
+        guard activeLease == nil else { return .busy }
+        let id = UUID()
+        activeLease = id
+        startedLeases.append(id)
+        let lease = PreparedInputEventAdapter.ReconstructionReservation(
+            snapshot: NSAttributedString(string: text), revision: revision, close: { [self] in
+                XCTAssertEqual(activeLease, id)
+                closedLeases.append(id)
+                activeLease = nil
+                onClose?()
+            })
+        onReconstruction?()
+        return .reserved(lease)
+    }
 
     func begin(_ expected: UUID) -> PreparedInputEventAdapter.ReservationResult {
         guard !rejectAsStale, expected == revision else { return .stale }

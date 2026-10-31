@@ -20,6 +20,24 @@ final class PreparedInputEventAdapter {
         }
     }
 
+    /// A snapshot captured together with its revision while the document gate
+    /// is held. close releases that gate after reconstruction has completed.
+    final class ReconstructionReservation {
+        let snapshot: NSAttributedString
+        let revision: UUID
+        let close: () -> Void
+        init(snapshot: NSAttributedString, revision: UUID, close: @escaping () -> Void) {
+            self.snapshot = NSAttributedString(attributedString: snapshot)
+            self.revision = revision
+            self.close = close
+        }
+    }
+
+    enum ReconstructionStart {
+        case reserved(ReconstructionReservation)
+        case busy
+    }
+
     enum Outcome: Equatable {
         case processed
         // State may already have been published. Never retry this event.
@@ -38,6 +56,7 @@ final class PreparedInputEventAdapter {
     private let view: ReadOnlyDocumentView
     private let permit: ReadOnlyDocumentView.InputMutationPermit
     private let beginEvent: BeginEvent
+    private let beginReconstruction: () -> ReconstructionStart
     private let documentRevision: () -> UUID
     private let typingAttributes: () -> [NSAttributedString.Key: Any]
     private let requestReset: () -> Void
@@ -46,6 +65,7 @@ final class PreparedInputEventAdapter {
     private var state: State = .ready
     private var reservation: Reservation?
     private var nestedMutationRejected = false
+    private var resetGeneration = UUID()
     private var session: DocumentInputSession!
     private var ownsPermit = true
 
@@ -54,7 +74,9 @@ final class PreparedInputEventAdapter {
     init?(view: ReadOnlyDocumentView, snapshot: NSAttributedString, initialRevision: UUID,
           documentRevision: @escaping () -> UUID,
           typingAttributes: @escaping () -> [NSAttributedString.Key: Any],
-          beginEvent: @escaping BeginEvent, requestReset: @escaping () -> Void,
+          beginEvent: @escaping BeginEvent,
+          beginReconstruction: @escaping () -> ReconstructionStart,
+          requestReset: @escaping () -> Void,
           schedule: @escaping (@escaping () -> Void) -> Void = { DispatchQueue.main.async(execute: $0) }) {
         precondition(Thread.isMainThread)
         let viewRevision = view.contentRevision
@@ -67,6 +89,7 @@ final class PreparedInputEventAdapter {
         self.view = view
         self.permit = permit
         self.beginEvent = beginEvent
+        self.beginReconstruction = beginReconstruction
         self.documentRevision = documentRevision
         self.typingAttributes = typingAttributes
         self.requestReset = requestReset
@@ -158,10 +181,41 @@ final class PreparedInputEventAdapter {
         return .resetRequired
     }
 
+    /// Adopts the latest gated canonical snapshot without a live input client.
+    /// A real host must first prove its context and driver calls are quiescent.
+    @discardableResult
+    func reconstructWithoutInputContext() -> Outcome {
+        precondition(Thread.isMainThread)
+        if state == .handling {
+            nestedMutationRejected = true
+            return .resetRequired
+        }
+        guard state == .ready || state == .resetPending else { return .unavailable }
+        state = .handling
+        nestedMutationRejected = false
+        guard case let .reserved(lease) = beginReconstruction() else {
+            scheduleReset()
+            return .resetRequired
+        }
+        let revision = lease.revision
+        let adopted = !nestedMutationRejected && documentRevision() == revision &&
+            session.adoptCanonicalSnapshot(lease.snapshot, revision: revision)
+        lease.close()
+        let current = documentRevision() == revision && session.installedRevisionForInput == revision
+        guard adopted, current, !nestedMutationRejected, !session.hasDocumentConflict else {
+            scheduleReset()
+            return .resetRequired
+        }
+        state = .ready
+        return .processed
+    }
+
     private func scheduleReset() {
         state = .resetPending
+        let generation = UUID()
+        resetGeneration = generation
         schedule { [weak self] in
-            guard let self = self, self.state == .resetPending else { return }
+            guard let self = self, self.state == .resetPending, self.resetGeneration == generation else { return }
             // The host must additionally wait for its context/driver call
             // depth to reach zero; a queued block is not itself quiescence.
             self.requestReset()
@@ -173,7 +227,8 @@ final class PreparedInputEventAdapter {
     @discardableResult
     func disconnectAfterQuiescing() -> Bool {
         precondition(Thread.isMainThread)
-        guard state == .ready || state == .resetPending, !session.hasProvisionalComposition else { return false }
+        guard state == .ready || state == .resetPending, !session.hasProvisionalComposition,
+              !session.hasDocumentConflict, session.installedRevisionForInput == documentRevision() else { return false }
         guard view.releaseInputMutation(permit) else { return false }
         state = .disconnected
         ownsPermit = false
