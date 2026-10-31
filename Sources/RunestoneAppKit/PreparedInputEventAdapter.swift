@@ -590,11 +590,10 @@ final class PreparedInputEventAdapter {
         let result: InputScreenRangeGeometry.RangeGeometry? = queryForInput(nil) {
             guard validInputRange(range) else { return nil }
             let geometry: InputScreenRangeGeometry.RangeGeometry?
-            if range.length == 0, let state = session.selectionState,
-               state.range == range, state.affinity != nil,
-               let rect = InputScreenCaretGeometry.rect(for: InputCaretTarget(location: state.activeLocation,
-                                                                                affinity: state.affinity), in: view) {
-                geometry = (rect, range)
+            if range.length == 0, let state = session.selectionStateForGeometry,
+               state.range == range, state.affinity != nil {
+                geometry = InputScreenCaretGeometry.rect(for: InputCaretTarget(
+                    location: state.activeLocation, affinity: state.affinity), in: view).map { ($0, range) }
             } else {
                 geometry = rectProvider(range, view)
             }

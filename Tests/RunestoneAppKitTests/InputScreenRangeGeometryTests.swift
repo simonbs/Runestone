@@ -58,6 +58,45 @@ final class InputScreenRangeGeometryTests: XCTestCase {
         }
     }
 
+    func testPointerTargetsRoundTripPrimaryAndSecondaryBidiCarets() throws {
+        let text = "abc אבגד xyz"
+        let (window, _, view) = makeView(text, width: 300)
+        let placement = try XCTUnwrap(view.visibleLayout?.lines.first?.placements.first)
+        let location = (text as NSString).range(of: "א").location
+        var secondary: CGFloat = 0
+        let primary = CTLineGetOffsetForStringIndex(placement.fragment.line, location, &secondary)
+        XCTAssertNotEqual(primary, secondary, accuracy: 0.01)
+        func target(_ x: CGFloat, side: InputCaretAffinity.BidirectionalSide) throws -> InputCaretTarget {
+            for delta in [CGFloat(-0.25), 0.25] {
+                let point = window.convertPoint(toScreen: view.convert(
+                    NSPoint(x: placement.frame.minX + x + delta, y: placement.frame.midY), to: nil))
+                if let target = InputScreenRangeGeometry.caretTargetForPointer(for: point, in: view),
+                   target.location == location, target.affinity?.bidirectionalSide == side { return target }
+            }
+            return try XCTUnwrap(nil, "Expected a uniquely owned pointer side for bidi caret")
+        }
+        let a = try target(primary, side: .primary)
+        let b = try target(secondary, side: .secondary)
+        func screenPoint(_ x: CGFloat) -> NSPoint {
+            window.convertPoint(toScreen: view.convert(
+                NSPoint(x: placement.frame.minX + x, y: placement.frame.midY), to: nil))
+        }
+        XCTAssertNil(InputScreenRangeGeometry.caretTargetForPointer(for: screenPoint(primary), in: view))
+        XCTAssertNil(InputScreenRangeGeometry.caretTargetForPointer(for: screenPoint(secondary), in: view))
+        XCTAssertEqual(a.location, location)
+        XCTAssertEqual(b.location, location)
+        XCTAssertEqual(a.affinity?.bidirectionalSide, .primary)
+        XCTAssertEqual(b.affinity?.bidirectionalSide, .secondary)
+        XCTAssertEqual(try XCTUnwrap(InputScreenCaretGeometry.rect(for: a, in: view)).minX,
+                       window.convertToScreen(view.convert(NSRect(
+                        x: placement.frame.minX + primary, y: placement.frame.minY,
+                        width: 1, height: placement.frame.height), to: nil)).minX, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(InputScreenCaretGeometry.rect(for: b, in: view)).minX,
+                       window.convertToScreen(view.convert(NSRect(
+                        x: placement.frame.minX + secondary, y: placement.frame.minY,
+                        width: 1, height: placement.frame.height), to: nil)).minX, accuracy: 0.01)
+    }
+
     func testHiddenWrapWhitespaceReturnsCaretRange() throws {
         let text = String(repeating: "abc        def ", count: 8)
         var checked = false

@@ -5,6 +5,59 @@ import CoreText
 import XCTest
 
 final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
+    func testPointerAndIMEUseBidiCaretAffinity() throws {
+        let text = "abc אבגד xyz"
+        let fixture = try MovementIntegrationFixture(text)
+        let placement = try XCTUnwrap(fixture.view.visibleLayout?.lines.first?.placements.first)
+        let location = (text as NSString).range(of: "א").location
+        var secondaryX: CGFloat = 0
+        let primaryX = CTLineGetOffsetForStringIndex(placement.fragment.line, location, &secondaryX)
+        func point(_ x: CGFloat, side: InputCaretAffinity.BidirectionalSide) throws -> NSPoint {
+            for delta in [CGFloat(-0.25), 0.25] {
+                let point = fixture.window.convertPoint(toScreen: fixture.view.convert(
+                    NSPoint(x: placement.frame.minX + x + delta, y: placement.frame.midY), to: nil))
+                if let target = InputScreenRangeGeometry.caretTargetForPointer(for: point, in: fixture.view),
+                   target.location == location, target.affinity?.bidirectionalSide == side { return point }
+            }
+            return try XCTUnwrap(nil, "Expected a uniquely owned pointer side for bidi caret")
+        }
+        for (x, side) in [(primaryX, InputCaretAffinity.BidirectionalSide.primary),
+                          (secondaryX, .secondary)] {
+            let pointerPoint = try point(x, side: side)
+            XCTAssertTrue(fixture.connection.performCoordinatedInput {
+                fixture.view.beginPointerSelection(at: pointerPoint, extending: false,
+                                                   connection: fixture.connection, hasFocus: { true })
+            })
+            let state = try XCTUnwrap(fixture.selectionState)
+            XCTAssertEqual(state.range, NSRange(location: location, length: 0))
+            XCTAssertEqual(state.affinity?.bidirectionalSide, side)
+            var actual = NSRange(location: NSNotFound, length: 0)
+            let rect = fixture.attachment.adapter.firstRectForInput(range: state.range, actualRange: &actual)
+            XCTAssertEqual(actual, state.range)
+            XCTAssertEqual(rect, InputScreenCaretGeometry.rect(for: InputCaretTarget(
+                location: state.activeLocation, affinity: state.affinity), in: fixture.view))
+        }
+        let secondaryPoint = try point(secondaryX, side: .secondary)
+        XCTAssertTrue(fixture.connection.performCoordinatedInput {
+            fixture.view.beginPointerSelection(at: secondaryPoint, extending: false,
+                                               connection: fixture.connection, hasFocus: { true })
+        })
+        let staleState = try XCTUnwrap(fixture.selectionState)
+        XCTAssertEqual(staleState.affinity?.bidirectionalSide, .secondary)
+        fixture.scroll.setFrameSize(NSSize(width: 200, height: 130))
+        fixture.scroll.tile()
+        fixture.view.updateViewport()
+        var staleActual = NSRange(location: 0, length: 0)
+        XCTAssertEqual(fixture.attachment.adapter.firstRectForInput(
+            range: staleState.range, actualRange: &staleActual), .zero)
+        XCTAssertEqual(staleActual.location, NSNotFound)
+        XCTAssertNil(fixture.selectionState)
+        XCTAssertEqual(fixture.host.preparations, 0)
+        XCTAssertEqual(fixture.host.parentStarts, fixture.host.parentCloses)
+        XCTAssertEqual(fixture.host.childStarts, fixture.host.childCloses)
+        fixture.disconnect()
+    }
+
     func testPointerAndKeyboardPreserveBothSidesOfSoftWrapBoundary() throws {
         let fixture = try MovementIntegrationFixture(String(repeating: "abcdefgh", count: 16))
         fixture.scroll.setFrameSize(NSSize(width: 55, height: 130))

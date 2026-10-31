@@ -1,9 +1,41 @@
 #if canImport(AppKit)
 import AppKit
+import CoreText
 @testable import RunestoneAppKit
 import XCTest
 
 final class AccessibilityTextGeometryTests: XCTestCase {
+    func testSelectedCaretFrameConsumesBidiAffinityWithoutKeyFocus() throws {
+        let text = "abc אבגד xyz"
+        let window = ReportedVisibleWindow(contentRect: NSRect(x: 100, y: 100, width: 300, height: 80),
+                                           styleMask: [.borderless], backing: .buffered, defer: false)
+        let scroll = NSScrollView(frame: try XCTUnwrap(window.contentView).bounds)
+        let view = ReadOnlyDocumentView(snapshot: NSAttributedString(
+            string: text, attributes: [.font: NSFont.monospacedSystemFont(ofSize: 16, weight: .regular)]),
+                                        fallbackHeight: 16)
+        window.contentView?.addSubview(scroll)
+        scroll.documentView = view
+        scroll.tile()
+        view.updateViewport()
+        XCTAssertFalse(window.isKeyWindow)
+        let placement = try XCTUnwrap(view.visibleLayout?.lines.first?.placements.first)
+        let location = (text as NSString).range(of: "א").location
+        var secondary: CGFloat = 0
+        _ = CTLineGetOffsetForStringIndex(placement.fragment.line, location, &secondary)
+        let state = InputSelectionState(range: NSRange(location: location, length: 0), activeEndpoint: .caret,
+            affinity: .init(wrapSide: nil, bidirectionalSide: .secondary,
+                            layoutRevision: view.inputLayoutRevision))
+        view.updateDisplaySelection(state)
+        let frame = try XCTUnwrap(AccessibilityTextGeometry.frame(for: state.range, in: view))
+        XCTAssertEqual(frame.minX, window.convertToScreen(view.convert(NSRect(
+            x: placement.frame.minX + secondary, y: placement.frame.minY,
+            width: 1, height: placement.frame.height), to: nil)).minX, accuracy: 0.01)
+        scroll.setFrameSize(NSSize(width: 250, height: 80))
+        scroll.tile()
+        view.updateViewport()
+        XCTAssertNil(AccessibilityTextGeometry.frame(for: state.range, in: view))
+    }
+
     func testVisibleRangeUsesViewportAndPreservesVisibleLineDelimiters() throws {
         let text = "first\nsecond\n" + String(repeating: "word ", count: 80)
         let (window, scroll, view) = makeView(text, width: 150, height: 60)
@@ -204,5 +236,9 @@ final class AccessibilityTextGeometryTests: XCTestCase {
         addTeardownBlock { window.orderOut(nil); window.close() }
         return (window, scroll, view)
     }
+}
+
+private final class ReportedVisibleWindow: NSWindow {
+    override var isVisible: Bool { true }
 }
 #endif

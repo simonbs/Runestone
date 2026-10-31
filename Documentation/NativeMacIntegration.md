@@ -66,11 +66,13 @@ Visual navigation uses the current Core Text viewport and preserves a preferred
 horizontal coordinate over vertical moves. When an adjacent vertical row is
 outside the viewport, a command can request one bounded scroll and retry against
 new, revision-checked geometry. A source caret that is already offscreen, a
-clipped or unavailable destination, and an ambiguous bidi caret remain
-unavailable. Horizontal and vertical movement preserve the selected side of a
-shared left-to-right soft-wrap boundary; individually representable hidden
-whitespace remains traversable. Some RTL line transitions still require bidi
-affinity. Visual word traversal has
+clipped or unavailable destination remain unavailable. Horizontal and vertical
+movement preserve the selected side of a shared left-to-right soft-wrap boundary.
+Vertical movement uses primary/secondary caret identity when the current viewport
+uniquely resolves a visible bidi transition; horizontal bidi traversal remains
+unavailable until coincident visual edges are fully invertible. Individually
+representable hidden whitespace remains traversable. Word, visual-line-edge and
+offscreen transitions that cannot carry affinity remain unavailable. Visual word traversal has
 128-step and 4,096-visible-UTF-16-unit limits.
 
 Pointer selection can autoscroll from a viewport edge. Each tick obtains a new
@@ -104,13 +106,14 @@ The selection contract now associates its active endpoint with a revision-checke
 visual affinity. Soft-wrap upstream/downstream identity is produced by pointer
 hit testing and consumed by drawing, keyboard and pointer navigation, collapsed
 selected-caret input-method first-rect queries, selected-caret accessibility geometry and the
-additive public selection snapshot. A semantic layout revision invalidates an
+additive public selection snapshot. Primary/secondary identity at visible bidi
+junctions uses the same contract. Range-only AppKit, Text Finder and accessibility
+setters reject currently visible ambiguous offsets rather than inventing a side. A semantic layout revision invalidates an
 old affinity when content width, font, folding or other layout changes can alter
-fragment identity; window movement and scrolling do not. The same model reserves
-primary/secondary bidi identity, but bidi alternatives remain deliberately
-unavailable until every traversal path has matching coverage. Deterministic bidi
-affinity and offscreen navigation gaps therefore remain; these are not claims of
-complete editor behavior. Active accessibility reports an
+fragment identity; window movement and scrolling do not. Mixed wrap/bidi cases,
+word and line-edge affinity, and offscreen affinity retries remain deliberately
+unavailable until every traversal path has matching coverage. These remaining
+gaps are not claims of complete editor behavior. Active accessibility reports an
 editable text role and routes supported setters through the input gate, but
 role-change notifications and real VoiceOver behavior remain unverified.
 

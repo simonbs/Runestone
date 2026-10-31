@@ -103,8 +103,7 @@ public final class RunestoneEditableDocumentAttachment {
     public enum SelectionEndpoint: Equatable { case caret, lowerBound, upperBound }
 
     /// Additive presentation identity for a caret that shares its UTF-16
-    /// offset with another visual position. Bidi fields are reserved while
-    /// ambiguous bidi traversal remains unavailable.
+    /// offset with another visual position.
     public struct CaretAffinity: Equatable {
         public enum WrapSide: Equatable { case upstream, downstream }
         public enum BidirectionalSide: Equatable { case primary, secondary }
