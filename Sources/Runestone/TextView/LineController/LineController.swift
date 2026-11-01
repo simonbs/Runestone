@@ -22,7 +22,7 @@ final class LineController {
     var lineFragmentHeightMultiplier: CGFloat = 1 {
         didSet {
             if lineFragmentHeightMultiplier != oldValue {
-                invalidatePrefixReuse()
+                invalidateLayout()
                 typesetter.lineFragmentHeightMultiplier = lineFragmentHeightMultiplier
             }
         }
@@ -37,7 +37,7 @@ final class LineController {
     var estimatedLineFragmentHeight: CGFloat = 15
     var tabWidth: CGFloat = 10 {
         didSet {
-            if tabWidth != oldValue { invalidatePrefixReuse() }
+            if tabWidth != oldValue { invalidateSyntaxHighlighting() }
         }
     }
     var constrainingWidth: CGFloat {
@@ -45,7 +45,7 @@ final class LineController {
             typesetter.constrainingWidth
         }
         set {
-            if typesetter.constrainingWidth != newValue { invalidatePrefixReuse() }
+            if typesetter.constrainingWidth != newValue { invalidateLayout() }
             typesetter.constrainingWidth = newValue
         }
     }
@@ -73,7 +73,7 @@ final class LineController {
     var kern: CGFloat = 0 {
         didSet {
             if kern != oldValue {
-                invalidatePrefixReuse()
+                invalidateLayout()
                 isDefaultAttributesInvalid = true
             }
         }
@@ -83,7 +83,7 @@ final class LineController {
             typesetter.lineBreakMode
         }
         set {
-            if typesetter.lineBreakMode != newValue { invalidatePrefixReuse() }
+            if typesetter.lineBreakMode != newValue { invalidateLayout() }
             typesetter.lineBreakMode = newValue
         }
     }
@@ -170,6 +170,15 @@ final class LineController {
         isTypesetterInvalid = true
         isDefaultAttributesInvalid = true
         isSyntaxHighlightingInvalid = true
+        _lineHeight = nil
+    }
+
+    /// Reflow the existing styled string without discarding attributes or restarting
+    /// a pending highlight request. Geometry changes do not change syntax captures.
+    func invalidateLayout() {
+        invalidatePrefixReuse()
+        isLineFragmentCacheInvalid = true
+        isTypesetterInvalid = true
         _lineHeight = nil
     }
 

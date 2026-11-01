@@ -67,6 +67,53 @@ final class LineHighlightRequestTests: XCTestCase {
         XCTAssertEqual(fixture.controller.attributedString?.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor, .red)
     }
 
+    func testLayoutInvalidationRetainsStyledStringAndReflowsWithoutHighlightingAgain() throws {
+        let fixture = Fixture(text: String(repeating: "hello world    ", count: 10), width: 150)
+        fixture.controller.prepareToDisplayString(toLocation: 150, syntaxHighlightAsynchronously: true)
+        fixture.highlighter.complete(0, font: .systemFont(ofSize: 28))
+        let styled = try XCTUnwrap(fixture.controller.attributedString)
+        let previousCount = fixture.controller.numberOfLineFragments
+
+        fixture.controller.constrainingWidth = 300
+        fixture.controller.lineFragmentHeightMultiplier = 1.5
+        fixture.controller.invalidateLayout()
+        fixture.controller.prepareToDisplayString(toLocation: 150, syntaxHighlightAsynchronously: true)
+
+        XCTAssertTrue(fixture.controller.attributedString === styled)
+        XCTAssertEqual(fixture.highlighter.requests.count, 1)
+        XCTAssertEqual(styled.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor, .red)
+        XCTAssertEqual(styled.attribute(.font, at: 0, effectiveRange: nil) as? UIFont, .systemFont(ofSize: 28))
+        XCTAssertLessThan(fixture.controller.numberOfLineFragments, previousCount)
+        let fresh = LineTypesetter(lineID: "fresh")
+        fresh.constrainingWidth = 300
+        fresh.lineFragmentHeightMultiplier = 1.5
+        fresh.prepareToTypeset(styled)
+        fresh.typesetLineFragments(toLocation: 150, additionalLineFragmentCount: 1)
+        for expected in fresh.lineFragments {
+            let actual = try XCTUnwrap(fixture.controller.lineFragmentNode(atIndex: expected.index).data.lineFragment)
+            XCTAssertEqual(actual.range, expected.range)
+            XCTAssertEqual(actual.scaledSize, expected.scaledSize)
+            XCTAssertEqual(actual.yPosition, expected.yPosition)
+        }
+        XCTAssertEqual(fixture.controller.lineWidth, ceil(fresh.maximumLineWidth))
+    }
+
+    func testLayoutInvalidationKeepsPendingHighlightRequestValid() throws {
+        let fixture = Fixture(text: String(repeating: "hello world    ", count: 10), width: 150)
+        fixture.prepare()
+        let input = fixture.highlighter.requests[0].input
+        fixture.controller.constrainingWidth = 220
+        fixture.controller.invalidateLayout()
+        fixture.prepare()
+        XCTAssertTrue(input.isValid())
+        XCTAssertEqual(fixture.highlighter.requests.count, 1)
+        fixture.highlighter.complete(0, font: .systemFont(ofSize: 28))
+        fixture.prepare()
+        XCTAssertEqual(fixture.highlighter.requests.count, 1)
+        XCTAssertEqual(fixture.controller.attributedString?.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor, .red)
+        XCTAssertEqual(fixture.controller.caretRect(atIndex: 0).height, UIFont.systemFont(ofSize: 28).totalLineHeight, accuracy: 1)
+    }
+
     func testCancelledLineCanHighlightOnRevisitWithoutOldCompletionClearingReplacement() {
         let fixture = Fixture()
         fixture.prepare()

@@ -1165,7 +1165,7 @@ final class TextInputView: UIView, UITextInput {
         internalLanguageMode.parse(string) { [weak self] finished in
             if let self = self, finished {
                 self.refreshCodeFolding()
-                self.invalidateLines()
+                self.invalidateLines(includingSyntaxHighlighting: true)
                 self.layoutManager.setNeedsLayout()
                 self.layoutManager.layoutIfNeeded()
                 self.invalidateSpellChecking()
@@ -1236,7 +1236,7 @@ final class TextInputView: UIView, UITextInput {
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
         if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
-            invalidateLines()
+            invalidateLines(includingSyntaxHighlighting: true)
             layoutManager.setNeedsLayout()
         }
     }
@@ -1331,13 +1331,16 @@ private extension TextInputView {
         layoutManager.layoutIfNeeded()
     }
 
-    private func invalidateLines() {
+    private func invalidateLines(includingSyntaxHighlighting: Bool = false) {
         for lineController in lineControllerStorage {
             lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
             lineController.tabWidth = indentController.tabWidth
             lineController.kern = kern
             lineController.lineBreakMode = lineBreakMode
-            lineController.invalidateSyntaxHighlighting()
+            lineController.invalidateLayout()
+            if includingSyntaxHighlighting {
+                lineController.invalidateSyntaxHighlighting()
+            }
         }
     }
 
