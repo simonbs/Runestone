@@ -129,7 +129,7 @@ open class TextView: UIScrollView {
             textInputView.preferredSpellCheckingType = newValue
         }
     }
-    /// The language used for spelling, such as `en_US`, or `nil` to follow the keyboard and preferred languages.
+    /// The language used for spelling, such as `en_US`, or `nil` to accept words in the keyboard and preferred system languages.
     ///
     /// Use a language from `UITextChecker.availableLanguages`. An unsupported explicit language disables checking.
     /// Spelling is checked incrementally in visible text. Set ``spellCheckingType`` to `.yes` to enable it

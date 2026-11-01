@@ -2173,7 +2173,7 @@ extension TextInputView: EditMenuControllerDelegate {
 // MARK: - Spelling
 private struct SpellingRequest: Equatable {
     let visibleRanges: [NSRange]
-    let language: String
+    let languages: [String]
     let excludedRanges: [NSRange]
 }
 
@@ -2205,27 +2205,17 @@ extension TextInputView {
         !isWritingToolsActive && (preferredSpellCheckingType == .yes || (preferredSpellCheckingType == .default && autocorrectionType != .no))
     }
 
-    private var resolvedSpellingLanguage: String? {
-        let languages = UITextChecker.availableLanguages
-        func match(_ preferred: String, allowsLanguageFallback: Bool) -> String? {
-            let normalized = preferred.replacingOccurrences(of: "-", with: "_")
-            if let exact = languages.first(where: { $0.caseInsensitiveCompare(normalized) == .orderedSame }) {
-                return exact
-            }
-            guard allowsLanguageFallback, let base = normalized.split(separator: "_").first else {
-                return nil
-            }
-            return languages.first { $0.split(separator: "_").first?.lowercased() == base.lowercased() }
-        }
-        if let language = spellCheckingLanguage {
-            return match(language, allowsLanguageFallback: false)
-        }
-        let preferredLanguages = [textInputMode?.primaryLanguage].compactMap { $0 } + Locale.preferredLanguages
-        return preferredLanguages.compactMap { match($0, allowsLanguageFallback: true) }.first ?? languages.first
+    private var resolvedSpellingLanguages: [String] {
+        SpellingLanguageResolver.resolve(explicitLanguage: spellCheckingLanguage,
+                                         keyboardLanguages: [textInputMode?.primaryLanguage].compactMap { $0 }
+                                            + UITextInputMode.activeInputModes.compactMap { $0.primaryLanguage },
+                                         preferredLanguages: Locale.preferredLanguages,
+                                         availableLanguages: UITextChecker.availableLanguages)
     }
 
     private func checkVisibleSpellingIfNeeded() {
-        guard isSpellCheckingEnabled, let language = resolvedSpellingLanguage,
+        let languages = resolvedSpellingLanguages
+        guard isSpellCheckingEnabled, !languages.isEmpty,
               !layoutManager.visibleTextRanges.isEmpty else {
             if lastSpellingRequest != nil {
                 spellCheckingService.invalidate()
@@ -2238,12 +2228,12 @@ extension TextInputView {
         if isEditing, let selection = selectedRange, selection.length == 0 {
             excludedRanges.append(selection)
         }
-        let request = SpellingRequest(visibleRanges: layoutManager.visibleTextRanges, language: language, excludedRanges: excludedRanges)
+        let request = SpellingRequest(visibleRanges: layoutManager.visibleTextRanges, languages: languages, excludedRanges: excludedRanges)
         guard lastSpellingRequest != request else {
             return
         }
         lastSpellingRequest = request
-        spellCheckingService.schedule(text: string, visibleRanges: request.visibleRanges, language: language,
+        spellCheckingService.schedule(text: string, visibleRanges: request.visibleRanges, languages: languages,
                                       excludedRanges: excludedRanges, shouldCheck: { [weak self] range in
             guard let self = self else {
                 return false
@@ -2286,7 +2276,7 @@ extension TextInputView {
             guard let word = tokenizer.rangeEnclosingPosition(position, with: .word, inDirection: direction) as? IndexedRange,
                   selection.location >= word.range.location, selection.location <= NSMaxRange(word.range),
                   let target = spellingTarget(in: word.range),
-                  spellCheckingService.isMisspelled(for: word.range, in: string, language: target.language),
+                  spellCheckingService.isMisspelled(for: word.range, in: string, languages: target.languages),
                   let rect = layoutManager.spellingRects(for: word.range).first(where: { $0.contains(point) }) else {
                 continue
             }
@@ -2316,7 +2306,7 @@ extension TextInputView {
 
     private func spellingTarget(in requestedRange: NSRange) -> SpellingSuggestion? {
         guard isEditing, isEditableForSystemTextReplacement, isSpellCheckingEnabled, markedRange == nil,
-              WritingToolsRange.isValid(requestedRange, in: string), let language = resolvedSpellingLanguage else {
+              WritingToolsRange.isValid(requestedRange, in: string), !resolvedSpellingLanguages.isEmpty else {
             return nil
         }
         var range = requestedRange
@@ -2331,7 +2321,7 @@ extension TextInputView {
         guard let original = spellCheckingService.word(for: range, in: string) else {
             return nil
         }
-        let target = SpellingSuggestion(range: range, original: original, replacement: "", language: language,
+        let target = SpellingSuggestion(range: range, original: original, replacement: "", languages: resolvedSpellingLanguages,
                                         revision: spellingRevision, selection: selectedRange)
         guard delegate?.textInputView(self, shouldCheckSpellingIn: range) ?? true, isCurrentSpellingSuggestion(target) else {
             return nil
@@ -2343,8 +2333,8 @@ extension TextInputView {
         guard let target = spellingTarget(in: requestedRange) else {
             return []
         }
-        return spellCheckingService.suggestions(for: target.range, in: string, language: target.language).prefix(3).map { replacement in
-            SpellingSuggestion(range: target.range, original: target.original, replacement: replacement, language: target.language,
+        return spellCheckingService.suggestions(for: target.range, in: string, languages: target.languages).prefix(3).map { replacement in
+            SpellingSuggestion(range: target.range, original: target.original, replacement: replacement, languages: target.languages,
                                revision: target.revision, selection: target.selection)
         }
     }
@@ -2356,7 +2346,7 @@ extension TextInputView {
         if SpellCheckingService.hasLearnedWord(target.original) {
             return showUnlearnSpellingAction ? [SpellingWordAction(kind: .unlearn, target: target)] : []
         }
-        guard spellCheckingService.isMisspelled(for: target.range, in: string, language: target.language) else {
+        guard spellCheckingService.isMisspelled(for: target.range, in: string, languages: target.languages) else {
             return []
         }
         var actions: [SpellingWordAction] = []
@@ -2384,7 +2374,7 @@ extension TextInputView {
             }
             SpellCheckingService.unlearnWord(target.original)
         } else {
-            guard !isLearned, spellCheckingService.isMisspelled(for: target.range, in: string, language: target.language) else {
+            guard !isLearned, spellCheckingService.isMisspelled(for: target.range, in: string, languages: target.languages) else {
                 return
             }
             switch action.kind {
@@ -2411,12 +2401,12 @@ extension TextInputView {
 
     private func isCurrentSpellingCorrection(_ suggestion: SpellingSuggestion) -> Bool {
         isCurrentSpellingSuggestion(suggestion)
-            && spellCheckingService.isMisspelled(for: suggestion.range, in: string, language: suggestion.language)
+            && spellCheckingService.isMisspelled(for: suggestion.range, in: string, languages: suggestion.languages)
     }
 
     private func isCurrentSpellingSuggestion(_ suggestion: SpellingSuggestion) -> Bool {
         isEditing && isEditableForSystemTextReplacement && isSpellCheckingEnabled && markedRange == nil
-            && suggestion.revision == spellingRevision && suggestion.language == resolvedSpellingLanguage
+            && suggestion.revision == spellingRevision && suggestion.languages == resolvedSpellingLanguages
             && suggestion.selection == selectedRange && text(in: suggestion.range) == suggestion.original
     }
 

@@ -4,7 +4,7 @@ struct SpellingSuggestion {
     let range: NSRange
     let original: String
     let replacement: String
-    let language: String
+    let languages: [String]
     let revision: UInt
     let selection: NSRange?
 }

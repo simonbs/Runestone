@@ -77,15 +77,21 @@ final class SpellCheckingService {
 
     func schedule(text: NSString, visibleRanges: [NSRange], language: String, excludedRanges: [NSRange] = [],
                   shouldCheck: ((NSRange) -> Bool)? = nil, completion: @escaping ([NSRange]) -> Void) {
+        schedule(text: text, visibleRanges: visibleRanges, languages: [language], excludedRanges: excludedRanges,
+                 shouldCheck: shouldCheck, completion: completion)
+    }
+
+    func schedule(text: NSString, visibleRanges: [NSRange], languages: [String], excludedRanges: [NSRange] = [],
+                  shouldCheck: ((NSRange) -> Bool)? = nil, completion: @escaping ([NSRange]) -> Void) {
         invalidate()
         let validRanges = visibleRanges.filter { Self.isValid($0, in: text) && $0.length > 0 }
-        guard !validRanges.isEmpty, !language.isEmpty else {
+        guard !validRanges.isEmpty, !languages.isEmpty, languages.allSatisfy({ !$0.isEmpty }) else {
             completion([])
             return
         }
         let chunks = Self.makeChunks(text: text, visibleRanges: validRanges)
         let currentGeneration = generation
-        request = Request(chunks: chunks, language: language, excludedRanges: excludedRanges,
+        request = Request(chunks: chunks, languages: languages, excludedRanges: excludedRanges,
                           shouldCheck: shouldCheck, completion: completion)
         DispatchQueue.main.asyncAfter(deadline: .now() + debounceInterval) { [weak self] in
             self?.checkNextBatch(generation: currentGeneration)
@@ -119,21 +125,37 @@ final class SpellCheckingService {
 
     /// Checks synchronously so dictionary actions do not depend on viewport results or available guesses.
     func isMisspelled(for range: NSRange, in text: NSString, language: String) -> Bool {
-        guard let word = word(for: range, in: text), !language.isEmpty else {
+        isMisspelled(for: range, in: text, languages: [language])
+    }
+
+    func isMisspelled(for range: NSRange, in text: NSString, languages: [String]) -> Bool {
+        guard let word = word(for: range, in: text), !languages.isEmpty, languages.allSatisfy({ !$0.isEmpty }) else {
             return false
         }
         let wordRange = NSRange(location: 0, length: range.length)
-        return checker.rangeOfMisspelledWord(in: word, range: wordRange, startingAt: 0, wrap: false, language: language) == wordRange
+        return languages.allSatisfy { language in
+            checker.rangeOfMisspelledWord(in: word, range: wordRange, startingAt: 0, wrap: false, language: language) == wordRange
+        }
     }
 
     /// Checks the selected word synchronously so correction menus do not depend on debounced viewport results.
     func suggestions(for range: NSRange, in text: NSString, language: String) -> [String] {
-        guard isMisspelled(for: range, in: text, language: language) else {
+        suggestions(for: range, in: text, languages: [language])
+    }
+
+    func suggestions(for range: NSRange, in text: NSString, languages: [String]) -> [String] {
+        guard isMisspelled(for: range, in: text, languages: languages) else {
             return []
         }
         let word = text.substring(with: range)
         let wordRange = NSRange(location: 0, length: range.length)
-        return checker.guesses(forWordRange: wordRange, in: word, language: language) ?? []
+        var suggestions: [String] = []
+        for language in languages {
+            for guess in checker.guesses(forWordRange: wordRange, in: word, language: language) ?? [] where !suggestions.contains(guess) {
+                suggestions.append(guess)
+            }
+        }
+        return suggestions
     }
 
     private func checkNextBatch(generation expectedGeneration: UInt) {
@@ -145,8 +167,16 @@ final class SpellCheckingService {
         while request.chunkIndex < request.chunks.count, calls < 16 {
             let chunk = request.chunks[request.chunkIndex]
             let string = chunk.text as NSString
+            if let candidate = request.candidate {
+                checkCandidate(candidate, in: string, request: request, chunkLocation: chunk.location)
+                calls += 1
+                guard generation == expectedGeneration else {
+                    return
+                }
+                continue
+            }
             let range = checker.rangeOfMisspelledWord(in: chunk.text, range: NSRange(location: 0, length: string.length),
-                                                      startingAt: request.offset, wrap: false, language: request.language)
+                                                      startingAt: request.offset, wrap: false, language: request.languages[0])
             calls += 1
             guard range.location != NSNotFound, range.length > 0, Self.isValid(range, in: string),
                   range.location >= request.offset else {
@@ -163,12 +193,21 @@ final class SpellCheckingService {
                 guard generation == expectedGeneration else {
                     return
                 }
-                request.words[documentRange] = string.substring(with: range)
+                if request.languages.count == 1 {
+                    request.words[documentRange] = string.substring(with: range)
+                } else {
+                    request.candidate = range
+                    request.candidateLanguageIndex = 1
+                }
             }
             guard generation == expectedGeneration else {
                 return
             }
         }
+        finishBatch(request, generation: expectedGeneration)
+    }
+
+    private func finishBatch(_ request: Request, generation expectedGeneration: UInt) {
         if request.chunkIndex == request.chunks.count {
             misspelledRanges = request.words.keys.sorted { $0.location < $1.location }
             self.request = nil
@@ -180,6 +219,25 @@ final class SpellCheckingService {
         }
     }
 
+    private func checkCandidate(_ candidate: NSRange, in string: NSString, request: Request, chunkLocation: Int) {
+        let word = string.substring(with: candidate)
+        let wordRange = NSRange(location: 0, length: candidate.length)
+        let language = request.languages[request.candidateLanguageIndex]
+        let misspelling = checker.rangeOfMisspelledWord(in: word, range: wordRange, startingAt: 0, wrap: false, language: language)
+        if misspelling != wordRange {
+            request.candidate = nil
+        } else {
+            request.candidateLanguageIndex += 1
+            if request.candidateLanguageIndex == request.languages.count {
+                let documentRange = NSRange(location: chunkLocation + candidate.location, length: candidate.length)
+                request.words[documentRange] = word
+                request.candidate = nil
+            }
+        }
+    }
+}
+
+private extension SpellCheckingService {
     private static func makeChunks(text: NSString, visibleRanges: [NSRange]) -> [Chunk] {
         // Merge overlapping word-context windows, but do not copy hidden columns between unwrapped lines.
         var mergedRanges: [NSRange] = []
@@ -265,18 +323,20 @@ final class SpellCheckingService {
 
     private final class Request {
         let chunks: [Chunk]
-        let language: String
+        let languages: [String]
         let excludedRanges: [NSRange]
         let shouldCheck: ((NSRange) -> Bool)?
         let completion: ([NSRange]) -> Void
         var chunkIndex = 0
         var offset = 0
         var words: [NSRange: String] = [:]
+        var candidate: NSRange?
+        var candidateLanguageIndex = 1
 
-        init(chunks: [Chunk], language: String, excludedRanges: [NSRange], shouldCheck: ((NSRange) -> Bool)?,
+        init(chunks: [Chunk], languages: [String], excludedRanges: [NSRange], shouldCheck: ((NSRange) -> Bool)?,
              completion: @escaping ([NSRange]) -> Void) {
             self.chunks = chunks
-            self.language = language
+            self.languages = languages
             self.excludedRanges = excludedRanges
             self.shouldCheck = shouldCheck
             self.completion = completion
