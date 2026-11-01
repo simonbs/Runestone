@@ -16,12 +16,8 @@ jobs:
         include:
           - runner: macos-15
             xcode: "16.4"
-            destination: iPhone 16 Pro
-            os: "18.5"
           - runner: macos-26
             xcode: "26.2"
-            destination: iPhone 17 Pro
-            os: "26.2"
     env:
       DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
     steps:
@@ -52,5 +48,5 @@ jobs:
             -project Example/Example.xcodeproj\
             -scheme Example\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}" \
+            -destination 'generic/platform=iOS Simulator' \
           2>&1 | xcsift -f toon

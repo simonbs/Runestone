@@ -11,8 +11,6 @@ concurrency:
   cancel-in-progress: true
 env:
   DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
-  XCODEBUILD_DESTINATION: iPhone 16 Pro
-  XCODEBUILD_OS: "18.5"
 jobs:
   analyze:
     name: Analyze
@@ -42,14 +40,14 @@ jobs:
               - 'Sources/**'
               - 'Tests/**'
               - 'UITests/**'
+      - name: Install xcsift
+        if: steps.changes.outputs.src == 'true'
+        run: brew install xcsift
       - name: Initialize CodeQL
         if: steps.changes.outputs.src == 'true'
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
-      - name: Install xcsift
-        if: steps.changes.outputs.src == 'true'
-        run: brew install xcsift
       - name: Build
         if: steps.changes.outputs.src == 'true'
         run: |
@@ -57,7 +55,7 @@ jobs:
           xcodebuild\
             -scheme Runestone\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=${{ env.XCODEBUILD_DESTINATION }},OS=${{ env.XCODEBUILD_OS }}" \
+            -destination 'generic/platform=iOS Simulator' \
           2>&1 | xcsift -f toon
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
