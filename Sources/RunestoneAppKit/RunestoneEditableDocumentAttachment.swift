@@ -336,7 +336,7 @@ public final class RunestoneEditableDocumentAttachment {
         return attachment?.connection.applyHostEdit(edit) == true
     }
 
-    /// Scrolls the match's logical line into view without changing canonical
+    /// Scrolls the match's wrapped fragment into view without changing canonical
     /// text. Selection should be applied first so the normal caret publication
     /// and accessibility notifications describe the same match.
     public func scrollTextFinderRangeToVisible(_ range: NSRange) {

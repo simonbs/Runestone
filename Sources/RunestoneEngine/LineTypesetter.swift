@@ -198,6 +198,24 @@ public final class LineTypesetter {
         return lineFragments
     }
 
+    /// Typesets toward a UTF-16 location while consuming at most the supplied
+    /// number of new fragments. Hosts use this to prepare distant navigation
+    /// targets over multiple run-loop turns without one unbounded main-thread
+    /// layout pass.
+    @discardableResult
+    public func typesetLineFragments(toLocation location: Int, maximumNewLineFragmentCount: Int) -> [LineFragment] {
+        guard maximumNewLineFragmentCount > 0 else { return [] }
+        let lineFragments = typesetLineFragments(until: .characterIndex(location),
+                                                 additionalLineFragmentCount: 1,
+                                                 maximumNewLineFragmentCount: maximumNewLineFragmentCount)
+        if isFinishedTypesetting {
+            attributedString = nil
+            typesetter = nil
+            unbrokenRun = nil
+        }
+        return lineFragments
+    }
+
     /// Returns an already typeset fragment with the given identifier.
     public func lineFragment(withID lineFragmentID: LineFragmentID) -> LineFragment? {
         if let index = lineFragmentsMap[lineFragmentID] {
@@ -217,13 +235,15 @@ private extension LineTypesetter {
         maximumLineWidth = max(maximumLineWidth, typesetResult.maximumLineWidth)
     }
 
-    private func typesetLineFragments(until condition: TypesetEndCondition, additionalLineFragmentCount: Int = 0) -> [LineFragment] {
+    private func typesetLineFragments(until condition: TypesetEndCondition, additionalLineFragmentCount: Int = 0,
+                                      maximumNewLineFragmentCount: Int = .max) -> [LineFragment] {
         guard let typesetter = typesetter else {
             return []
         }
         let typesetResult = typesetLineFragments(
             until: condition,
             additionalLineFragmentCount: additionalLineFragmentCount,
+            maximumNewLineFragmentCount: maximumNewLineFragmentCount,
             using: typesetter,
             stringLength: stringLength
         )
@@ -234,6 +254,7 @@ private extension LineTypesetter {
     private func typesetLineFragments(
         until condition: TypesetEndCondition,
         additionalLineFragmentCount: Int = 0,
+        maximumNewLineFragmentCount: Int = .max,
         using typesetter: CTTypesetter,
         stringLength: Int
     ) -> TypesetResult {
@@ -246,7 +267,8 @@ private extension LineTypesetter {
         var remainingAdditionalLineFragmentCount = additionalLineFragmentCount
         let conditionAllowsKeepTypesetting = condition.shouldKeepTypesetting(currentYPosition: nextYPosition, currentCharacterIndex: startOffset)
         var shouldKeepTypesetting = conditionAllowsKeepTypesetting || remainingAdditionalLineFragmentCount > 0
-        while startOffset < stringLength && shouldKeepTypesetting, let lineFragment = makeNextLineFragment(using: typesetter) {
+        while startOffset < stringLength && shouldKeepTypesetting && lineFragments.count < maximumNewLineFragmentCount,
+              let lineFragment = makeNextLineFragment(using: typesetter) {
             lineFragments.append(lineFragment)
             nextYPosition += lineFragment.scaledSize.height
             startOffset += lineFragment.range.length

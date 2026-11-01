@@ -3,6 +3,27 @@ import RunestoneEngine
 import XCTest
 
 final class LineTypesetterNeutralPreparationTests: XCTestCase {
+    func testTargetTypesettingHonorsMaximumNewFragmentCount() {
+        let input = NSAttributedString(string: String(repeating: "a", count: 1_048_576), attributes: [
+            NSAttributedString.Key(kCTFontAttributeName as String): CTFontCreateWithName("Menlo" as CFString, 18, nil)
+        ])
+        let typesetter = LineTypesetter(lineID: "bounded-target", preparation: DefaultLineTypesetterPreparation())
+        typesetter.constrainingWidth = 65
+        typesetter.prepareToTypeset(input)
+
+        let first = typesetter.typesetLineFragments(toLocation: input.length,
+                                                     maximumNewLineFragmentCount: 7)
+        XCTAssertEqual(first.count, 7)
+        XCTAssertEqual(typesetter.lineFragments.count, 7)
+        XCTAssertFalse(typesetter.isFinishedTypesetting)
+
+        let second = typesetter.typesetLineFragments(toLocation: input.length,
+                                                      maximumNewLineFragmentCount: 7)
+        XCTAssertEqual(second.count, 7)
+        XCTAssertEqual(typesetter.lineFragments.count, 14)
+        XCTAssertGreaterThan(typesetter.typesetLength, first.last?.range.upperBound ?? 0)
+    }
+
     func testFallbackWrapsUnicodeWithoutSplittingOrLosingText() {
         let text = "alpha cafe\u{301} 😀 beta\r\n" as NSString
         let input = NSAttributedString(string: text as String, attributes: [

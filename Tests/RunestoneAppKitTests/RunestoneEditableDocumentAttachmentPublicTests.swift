@@ -1,6 +1,6 @@
 #if canImport(AppKit)
 import AppKit
-import RunestoneAppKit
+@testable import RunestoneAppKit
 import XCTest
 
 final class RunestoneEditableDocumentAttachmentPublicTests: XCTestCase {
@@ -107,6 +107,43 @@ final class RunestoneEditableDocumentAttachmentPublicTests: XCTestCase {
         XCTAssertNil(attachment.presentedSelectionRange)
     }
 
+    func testFarWrappedReadOnlyRangeNavigationPublishesSelectionAndVisiblePlacement() throws {
+        _ = NSApplication.shared
+        let text = String(repeating: "alpha beta ", count: 20_000)
+        let host = PublicAttachmentHost(text)
+        let attachment = try makeAttachment(host: host)
+        XCTAssertTrue(attachment.setReadOnly(true))
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 340, height: 180))
+        let window = NSWindow(contentRect: scroll.frame, styleMask: .borderless, backing: .buffered, defer: false)
+        window.contentView = scroll
+        scroll.documentView = attachment.view
+        scroll.tile()
+        attachment.view.layoutSubtreeIfNeeded()
+        waitUntil(timeout: 2) {
+            abs(attachment.view.frame.width - scroll.contentView.bounds.width) < 0.01
+        }
+        let ranges = [NSRange(location: text.utf16.count / 2, length: 1),
+                      NSRange(location: text.utf16.count - 2, length: 1)]
+
+        for range in ranges {
+            XCTAssertTrue(attachment.selectAndRevealDocumentRange(range))
+            waitUntil(timeout: 5) {
+                attachment.presentedSelectionRange == range && scroll.contentView.bounds.minY > 0 &&
+                    attachment.view.visibleLayout?.lines.contains { line in
+                        line.placements.contains { placement in
+                            placement.documentRange.location <= range.location &&
+                                range.location < placement.documentRange.upperBound
+                        }
+                    } == true
+            }
+            XCTAssertGreaterThan(scroll.contentView.bounds.minY, 0)
+            XCTAssertEqual(attachment.presentedSelectionRange, range)
+        }
+
+        XCTAssertFalse(attachment.detach())
+        waitForDetach(attachment)
+    }
+
     func testBridgeRejectsDifferentDocumentHost() throws {
         _ = NSApplication.shared
         let firstHost = PublicAttachmentHost("first")
@@ -144,6 +181,14 @@ final class RunestoneEditableDocumentAttachmentPublicTests: XCTestCase {
 
     private func makeAttachment(host: PublicAttachmentHost) throws -> RunestoneEditableDocumentAttachment {
         try XCTUnwrap(RunestoneEditableDocumentAttachment.attach(host: host, lifetime: host.lifetime, bridge: host.bridge))
+    }
+
+    private func waitUntil(timeout: TimeInterval, _ condition: () -> Bool) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition(), Date() < deadline {
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.01))
+        }
+        XCTAssertTrue(condition())
     }
 
     private func waitForDetach(_ attachment: RunestoneEditableDocumentAttachment) {
