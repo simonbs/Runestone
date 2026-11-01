@@ -17,6 +17,8 @@ final class LayoutHighlightingTests: XCTestCase {
         try assertSyntax(in: view)
 
         let changes: [(String, () -> Void)] = [
+            ("character spacing", { view.kern = 0.7 }),
+            ("tab width", { view.indentStrategy = .tab(length: 8) }),
             ("wrapping on", { view.isLineWrappingEnabled = true }),
             ("line numbers on", { view.showLineNumbers = true }),
             ("wider gutter", { view.gutterMinimumCharacterCount = 6 }),
@@ -61,16 +63,63 @@ final class LayoutHighlightingTests: XCTestCase {
         XCTAssertEqual(view.selectedRange, selection)
     }
 
-    func testThemeChangeStillReplacesSyntaxStyles() throws {
+    func testThemeChangeKeepsPreviousStylesUntilReplacementIsReady() throws {
         let (view, input) = try makeView(theme: LayoutCountingTheme())
         try assertSyntax(in: view)
         let replacement = LayoutCountingTheme(stringColor: .purple, numberColor: .orange)
         view.theme = replacement
-        input.layoutLines(toLocation: source.utf16.count)
+        settle(view, input: input)
+        try assertSyntax(in: view)
+        let recolored = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in replacement.lookupCount > 0 }, object: nil)
+        wait(for: [recolored], timeout: 5)
         settle(view, input: input)
         XCTAssertGreaterThan(replacement.lookupCount, 0)
         try assertSyntax(in: view, stringColor: .purple, numberColor: .orange)
         XCTAssertEqual(view.text, source)
+    }
+
+    func testTabWidthImmediatelyUpdatesCaretAndContentWidth() throws {
+        let (view, input) = try makePlainView(text: "a\tb", tabLength: 2)
+        let before = try caretX(in: view, at: 2)
+        let previousContentWidth = input.contentSize.width
+        view.indentStrategy = .tab(length: 80)
+        settle(view, input: input)
+        let (fresh, freshInput) = try makePlainView(text: "a\tb", tabLength: 80)
+        settle(fresh, input: freshInput)
+        XCTAssertGreaterThan(try caretX(in: view, at: 2), before)
+        XCTAssertEqual(try caretX(in: view, at: 2), try caretX(in: fresh, at: 2), accuracy: 0.5)
+        XCTAssertGreaterThan(view.contentSize.width, previousContentWidth)
+        XCTAssertEqual(view.contentSize.width, freshInput.contentSize.width, accuracy: 0.5)
+    }
+
+    func testNewlyCreatedLinesKeepConfiguredCharacterSpacing() throws {
+        let (view, input) = try makePlainView(text: "abc", tabLength: 4)
+        view.kern = 3
+        settle(view, input: input)
+        let expected = try caretX(in: view, at: 2)
+        view.text = "abcd"
+        input.layoutLines(toLocation: 4)
+        settle(view, input: input)
+        XCTAssertEqual(try caretX(in: view, at: 2), expected, accuracy: 0.5)
+    }
+
+    private func makePlainView(text: String, tabLength: Int) throws -> (TextView, TextInputView) {
+        let view = TextView(frame: CGRect(x: 0, y: 0, width: 380, height: 500))
+        view.contentInsetAdjustmentBehavior = .never
+        view.isAutomaticScrollEnabled = false
+        view.isLineWrappingEnabled = false
+        view.indentStrategy = .tab(length: tabLength)
+        view.text = text
+        let input = try XCTUnwrap(view.subviews.compactMap { $0 as? TextInputView }.first)
+        settle(view, input: input)
+        input.layoutLines(toLocation: text.utf16.count)
+        settle(view, input: input)
+        return (view, input)
+    }
+
+    private func caretX(in view: TextView, at offset: Int) throws -> CGFloat {
+        let position = try XCTUnwrap(view.position(from: view.beginningOfDocument, offset: offset))
+        return view.caretRect(for: position).minX
     }
 
     func testLanguageChangeStillClearsPreviousSyntaxStyles() throws {

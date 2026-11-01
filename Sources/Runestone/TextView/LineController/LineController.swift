@@ -37,7 +37,10 @@ final class LineController {
     var estimatedLineFragmentHeight: CGFloat = 15
     var tabWidth: CGFloat = 10 {
         didSet {
-            if tabWidth != oldValue { invalidateSyntaxHighlighting() }
+            if tabWidth != oldValue {
+                invalidateLayout()
+                isLayoutAttributesInvalid = true
+            }
         }
     }
     var constrainingWidth: CGFloat {
@@ -74,7 +77,7 @@ final class LineController {
         didSet {
             if kern != oldValue {
                 invalidateLayout()
-                isDefaultAttributesInvalid = true
+                isLayoutAttributesInvalid = true
             }
         }
     }
@@ -105,6 +108,8 @@ final class LineController {
     private var isLineFragmentCacheInvalid = true
     private var isStringInvalid = true
     private var isDefaultAttributesInvalid = true
+    private var isLayoutAttributesInvalid = true
+    private var hasAppliedSyntaxHighlighting = false
     private var isSyntaxHighlightingInvalid = true
     private var isTypesetterInvalid = true
     private var allowsPrefixReuse = false
@@ -153,6 +158,11 @@ final class LineController {
     }
 
     func cancelSyntaxHighlighting() {
+        // A staged appearance has not reached the displayed string yet. Rebuild
+        // its defaults if this request is cancelled and the line is revisited.
+        if let input = pendingHighlightInput, input.attributedString !== attributedString {
+            isDefaultAttributesInvalid = true
+        }
         pendingHighlightInput = nil
         cachedSyntaxHighlighter?.cancel()
     }
@@ -249,14 +259,15 @@ private extension LineController {
         // new object. Never retain an additional snapshot after this preparation.
         let previous = allowsPrefixReuse && isStringInvalid && !syntaxHighlightAsynchronously ? attributedString : nil
         allowsPrefixReuse = false
-        if isStringInvalid || isDefaultAttributesInvalid
+        if !syntaxHighlightAsynchronously || isStringInvalid || isDefaultAttributesInvalid
             || pendingHighlightInput.map({ $0.byteRange != line.data.totalByteRange }) == true {
             cancelSyntaxHighlighting()
         }
         clearLineFragmentControllersIfNecessary()
         updateStringIfNecessary()
-        updateDefaultAttributesIfNecessary()
-        updateSyntaxHighlightingIfNecessary(async: syntaxHighlightAsynchronously)
+        let stagedInput = updateDefaultAttributesIfNecessary(async: syntaxHighlightAsynchronously)
+        updateLayoutAttributesIfNecessary()
+        updateSyntaxHighlightingIfNecessary(async: syntaxHighlightAsynchronously, stagedInput: stagedInput)
         updateTypesetterIfNecessary(previous: previous, prefixLimit: previous == nil ? 0 : prefixLimit(for: amount))
     }
 
@@ -304,27 +315,49 @@ private extension LineController {
                 attributedString = nil
             }
             isStringInvalid = false
+            hasAppliedSyntaxHighlighting = false
             isDefaultAttributesInvalid = true
             isSyntaxHighlightingInvalid = true
             isTypesetterInvalid = true
         }
     }
 
-    private func updateDefaultAttributesIfNecessary() {
-        if isDefaultAttributesInvalid {
-            if let input = createLineSyntaxHighlightInput() {
-                let defaultStringAttributes = DefaultStringAttributes(
-                    textColor: theme.textColor,
-                    font: theme.font,
-                    kern: kern,
-                    tabWidth: tabWidth
-                )
-                defaultStringAttributes.apply(to: input.attributedString)
-            }
-            isDefaultAttributesInvalid = false
-            isSyntaxHighlightingInvalid = true
-            isTypesetterInvalid = true
+    private var defaultStringAttributes: DefaultStringAttributes {
+        DefaultStringAttributes(textColor: theme.textColor, font: theme.font, kern: kern, tabWidth: tabWidth)
+    }
+
+    private func updateDefaultAttributesIfNecessary(async: Bool) -> LineSyntaxHighlighterInput? {
+        guard isDefaultAttributesInvalid, let attributedString else {
+            return nil
         }
+        // Keep already styled text visible while a replacement appearance is
+        // highlighted. The pending request owns the temporary string, so it is
+        // released on completion or cancellation rather than cached per line.
+        let shouldStage = async && hasAppliedSyntaxHighlighting && syntaxHighlighter?.canHighlight == true
+        let target = shouldStage ? NSMutableAttributedString(string: attributedString.string) : attributedString
+        defaultStringAttributes.apply(to: target)
+        isDefaultAttributesInvalid = false
+        isSyntaxHighlightingInvalid = true
+        if shouldStage {
+            return LineSyntaxHighlighterInput(attributedString: target, byteRange: line.data.totalByteRange)
+        }
+        isLayoutAttributesInvalid = false
+        isTypesetterInvalid = true
+        return nil
+    }
+
+    private func updateLayoutAttributesIfNecessary() {
+        guard isLayoutAttributesInvalid else {
+            return
+        }
+        if let attributedString {
+            defaultStringAttributes.applyLayout(to: attributedString)
+        }
+        if let input = pendingHighlightInput, input.attributedString !== attributedString {
+            defaultStringAttributes.applyLayout(to: input.attributedString)
+        }
+        isLayoutAttributesInvalid = false
+        isTypesetterInvalid = true
     }
 
     private func updateTypesetterIfNecessary(previous: NSAttributedString? = nil, prefixLimit: Int = 0) {
@@ -343,7 +376,7 @@ private extension LineController {
         }
     }
 
-    private func updateSyntaxHighlightingIfNecessary(async: Bool) {
+    private func updateSyntaxHighlightingIfNecessary(async: Bool, stagedInput: LineSyntaxHighlighterInput?) {
         guard isSyntaxHighlightingInvalid else {
             return
         }
@@ -354,7 +387,7 @@ private extension LineController {
             isSyntaxHighlightingInvalid = false
             return
         }
-        guard let input = createLineSyntaxHighlightInput() else {
+        guard let input = stagedInput ?? createLineSyntaxHighlightInput() else {
             isSyntaxHighlightingInvalid = false
             return
         }
@@ -371,24 +404,38 @@ private extension LineController {
                     && self.line.data.totalByteRange == input.byteRange
             }
             syntaxHighlighter.syntaxHighlight(input) { [weak self] result in
-                guard let self = self, self.pendingHighlightInput === input else {
-                    return
-                }
-                self.pendingHighlightInput = nil
-                if case .success(let attributesResult) = result {
-                    self.didApplyHighlightAttributes(attributesResult)
-                }
+                self?.completeSyntaxHighlighting(input, result: result)
             }
         } else {
             cancelSyntaxHighlighting()
             syntaxHighlighter.syntaxHighlight(input)
+            hasAppliedSyntaxHighlighting = true
             isSyntaxHighlightingInvalid = false
             isTypesetterInvalid = true
         }
     }
 
+    private func completeSyntaxHighlighting(_ input: LineSyntaxHighlighterInput,
+                                            result: Result<LineSyntaxHiglighterSetAttributesResult, Error>) {
+        guard pendingHighlightInput === input, line.data.totalByteRange == input.byteRange else {
+            return
+        }
+        pendingHighlightInput = nil
+        if case .success(let attributesResult) = result {
+            if attributedString !== input.attributedString {
+                attributedString = input.attributedString
+                isTypesetterInvalid = true
+            }
+            hasAppliedSyntaxHighlighting = true
+            didApplyHighlightAttributes(attributesResult)
+        } else if attributedString !== input.attributedString {
+            isDefaultAttributesInvalid = true
+        }
+    }
+
     private func didApplyHighlightAttributes(_ result: LineSyntaxHiglighterSetAttributesResult) {
         let oldWidth = lineWidth
+        let oldHeight = lineHeight
         isSyntaxHighlightingInvalid = false
         if result.isSizingInvalid || isTypesetterInvalid {
             isTypesetterInvalid = true
@@ -401,7 +448,7 @@ private extension LineController {
             reapplyLineFragmentToLineFragmentControllers()
             setNeedsDisplayOnLineFragmentViews()
         }
-        if abs(lineWidth - oldWidth) > CGFloat.ulpOfOne {
+        if abs(lineWidth - oldWidth) > CGFloat.ulpOfOne || abs(lineHeight - oldHeight) > CGFloat.ulpOfOne {
             delegate?.lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(self)
         }
     }

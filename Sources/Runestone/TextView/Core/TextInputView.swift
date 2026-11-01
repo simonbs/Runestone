@@ -573,6 +573,8 @@ final class TextInputView: UIView, UITextInput {
         didSet {
             if indentStrategy != oldValue {
                 indentController.indentStrategy = indentStrategy
+                invalidateLines()
+                contentSizeService.invalidateContentSize()
                 layoutManager.setNeedsLayout()
                 setNeedsLayout()
                 layoutIfNeeded()
@@ -2091,6 +2093,7 @@ extension TextInputView: LineControllerStorageDelegate {
         lineController.estimatedLineFragmentHeight = theme.font.totalLineHeight
         lineController.lineFragmentHeightMultiplier = lineHeightMultiplier
         lineController.tabWidth = indentController.tabWidth
+        lineController.kern = kern
         lineController.theme = theme
         lineController.lineBreakMode = lineBreakMode
     }

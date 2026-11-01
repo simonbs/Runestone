@@ -6,7 +6,7 @@ import XCTest
 @MainActor
 final class LineHighlightRequestTests: XCTestCase {
     func testAppearanceCompletionUpdatesExistingControllersAndCaretGeometry() throws {
-        let fixture = Fixture(text: String(repeating: "hello אבג 😀\tworld     ", count: 8), width: 150)
+        let fixture = HighlightRequestFixture(text: String(repeating: "hello אבג 😀\tworld     ", count: 8), width: 150)
         fixture.prepare()
         let rect = CGRect(x: 0, y: 0, width: 150, height: 1_000)
         let displayed = fixture.controller.lineFragmentControllers(in: rect)
@@ -35,7 +35,7 @@ final class LineHighlightRequestTests: XCTestCase {
     }
 
     func testFontCompletionReflowsControllerLikeFreshStyledTypesetting() throws {
-        let fixture = Fixture(text: String(repeating: "hello world    ", count: 10), width: 150)
+        let fixture = HighlightRequestFixture(text: String(repeating: "hello world    ", count: 10), width: 150)
         fixture.controller.prepareToDisplayString(toLocation: 150, syntaxHighlightAsynchronously: true)
         let originalHeight = fixture.controller.caretRect(atIndex: 0).height
         fixture.highlighter.complete(0, font: .systemFont(ofSize: 28))
@@ -57,8 +57,19 @@ final class LineHighlightRequestTests: XCTestCase {
         XCTAssertEqual(fixture.controller.lineWidth, ceil(fresh.maximumLineWidth))
     }
 
+    func testFontHeightChangeNotifiesLayoutEvenWhenLineWidthIsUnchanged() {
+        let fixture = HighlightRequestFixture(text: "\t")
+        fixture.prepare()
+        let width = fixture.controller.lineWidth
+        let height = fixture.controller.lineHeight
+        fixture.highlighter.complete(0, font: .systemFont(ofSize: 28))
+        XCTAssertEqual(fixture.controller.lineWidth, width)
+        XCTAssertGreaterThan(fixture.controller.lineHeight, height)
+        XCTAssertEqual(fixture.sizeChangeCount, 1)
+    }
+
     func testRepeatedPreparationCompletesOneRequest() throws {
-        let fixture = Fixture()
+        let fixture = HighlightRequestFixture()
         for _ in 0..<20 { fixture.prepare() }
         XCTAssertEqual(fixture.highlighter.requests.count, 1)
         fixture.highlighter.complete(0)
@@ -68,7 +79,7 @@ final class LineHighlightRequestTests: XCTestCase {
     }
 
     func testLayoutInvalidationRetainsStyledStringAndReflowsWithoutHighlightingAgain() throws {
-        let fixture = Fixture(text: String(repeating: "hello world    ", count: 10), width: 150)
+        let fixture = HighlightRequestFixture(text: String(repeating: "hello world    ", count: 10), width: 150)
         fixture.controller.prepareToDisplayString(toLocation: 150, syntaxHighlightAsynchronously: true)
         fixture.highlighter.complete(0, font: .systemFont(ofSize: 28))
         let styled = try XCTUnwrap(fixture.controller.attributedString)
@@ -99,7 +110,7 @@ final class LineHighlightRequestTests: XCTestCase {
     }
 
     func testLayoutInvalidationKeepsPendingHighlightRequestValid() throws {
-        let fixture = Fixture(text: String(repeating: "hello world    ", count: 10), width: 150)
+        let fixture = HighlightRequestFixture(text: String(repeating: "hello world    ", count: 10), width: 150)
         fixture.prepare()
         let input = fixture.highlighter.requests[0].input
         fixture.controller.constrainingWidth = 220
@@ -115,7 +126,7 @@ final class LineHighlightRequestTests: XCTestCase {
     }
 
     func testCancelledLineCanHighlightOnRevisitWithoutOldCompletionClearingReplacement() {
-        let fixture = Fixture()
+        let fixture = HighlightRequestFixture()
         fixture.prepare()
         fixture.controller.cancelSyntaxHighlighting()
         XCTAssertFalse(fixture.highlighter.requests[0].input.isValid())
@@ -135,7 +146,7 @@ final class LineHighlightRequestTests: XCTestCase {
             { $0.invalidateSyntaxHighlighter() },
             { $0.theme = DefaultTheme() }
         ] {
-            let fixture = Fixture()
+            let fixture = HighlightRequestFixture()
             fixture.prepare()
             invalidate(fixture.controller)
             XCTAssertFalse(fixture.highlighter.requests[0].input.isValid())
@@ -149,7 +160,7 @@ final class LineHighlightRequestTests: XCTestCase {
     }
 
     func testSynchronousDestinationSupersedesPendingRequest() {
-        let fixture = Fixture()
+        let fixture = HighlightRequestFixture()
         fixture.prepare()
         fixture.controller.prepareToDisplayString(toLocation: 3, syntaxHighlightAsynchronously: false)
         XCTAssertFalse(fixture.highlighter.requests[0].input.isValid())
@@ -160,9 +171,10 @@ final class LineHighlightRequestTests: XCTestCase {
     }
 }
 
-private final class Fixture: LineControllerDelegate {
+final class HighlightRequestFixture: LineControllerDelegate {
     let controller: LineController
-    let highlighter = ControlledHighlighter()
+    let highlighter = ControlledLineHighlighter()
+    private(set) var sizeChangeCount = 0
 
     init(text: String = "let target = 42", width: CGFloat = 320) {
         let string = StringView(string: text)
@@ -180,10 +192,12 @@ private final class Fixture: LineControllerDelegate {
     }
 
     func lineSyntaxHighlighter(for lineController: LineController) -> LineSyntaxHighlighter? { highlighter }
-    func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController) {}
+    func lineControllerDidInvalidateLineWidthDuringAsyncSyntaxHighlight(_ lineController: LineController) {
+        sizeChangeCount += 1
+    }
 }
 
-private final class ControlledHighlighter: LineSyntaxHighlighter {
+final class ControlledLineHighlighter: LineSyntaxHighlighter {
     struct Request {
         let input: LineSyntaxHighlighterInput
         let completion: AsyncCallback
@@ -192,18 +206,24 @@ private final class ControlledHighlighter: LineSyntaxHighlighter {
     var canHighlight: Bool { true }
     var requests: [Request] = []
     var synchronousCount = 0
+    var synchronousColor = UIColor.red
 
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput) {
         synchronousCount += 1
+        input.attributedString.addAttribute(.foregroundColor, value: synchronousColor,
+                                            range: NSRange(location: 0, length: input.attributedString.length))
     }
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput, completion: @escaping AsyncCallback) {
         requests.append(Request(input: input, completion: completion))
     }
     func cancel() {}
-    func complete(_ index: Int, font: UIFont? = nil) {
+    func fail(_ index: Int) {
+        requests[index].completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
+    }
+    func complete(_ index: Int, font: UIFont? = nil, color: UIColor = .red) {
         let request = requests[index]
         if request.input.isValid() {
-            request.input.attributedString.addAttribute(.foregroundColor, value: UIColor.red,
+            request.input.attributedString.addAttribute(.foregroundColor, value: color,
                                                         range: NSRange(location: 0, length: request.input.attributedString.length))
         }
         if request.input.isValid(), let font {
