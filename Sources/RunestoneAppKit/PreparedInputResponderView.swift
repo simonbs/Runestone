@@ -801,7 +801,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 destination = visualDestination(name, selection: state.selection)
             case .boundary:
                 break
-            case .unavailable, .refusedBeforeScroll:
+            case .unavailable, .viewportChanged, .refusedBeforeScroll:
                 // Keyboard command failure semantics are unchanged.
                 viewportMayHaveChanged = true
             }
@@ -1184,6 +1184,17 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             case .unavailable:
                 connection.recordInputFailure(operation: .setSelection,
                     failure: .init(reason: .unavailable, effect: .mayHaveApplied))
+                return
+            case .viewportChanged:
+                // Scrolling is view state, and this tick has not attempted a
+                // selection operation. Stop cleanly when the captured input
+                // state is still current; a reentrant input change remains
+                // uncertain and must enter recovery.
+                guard isCurrent() else {
+                    connection.recordInputFailure(operation: .setSelection,
+                        failure: .init(reason: .unavailable, effect: .mayHaveApplied))
+                    return
+                }
                 return
             case .progressed: break
             }

@@ -76,7 +76,7 @@ final class PreparedInputViewportStepTests: XCTestCase {
         let token = NotificationCenter.default.addObserver(forName: NSView.boundsDidChangeNotification,
             object: fixture.scroll.contentView, queue: nil) { _ in valid = false; notifications += 1 }
         defer { NotificationCenter.default.removeObserver(token) }
-        XCTAssertEqual(PreparedInputViewportStep.perform(in: fixture.view, dx: 0, dy: 20, clock: { 0 }, isCurrent: { valid }), .unavailable)
+        XCTAssertEqual(PreparedInputViewportStep.perform(in: fixture.view, dx: 0, dy: 20, clock: { 0 }, isCurrent: { valid }), .viewportChanged)
         XCTAssertGreaterThan(notifications, 0)
         let after = fixture.scroll.contentView.bounds
         XCTAssertEqual(PreparedInputViewportStep.perform(in: fixture.view, dx: 0, dy: 20, clock: { 0 }, isCurrent: { false }), .unavailable)
@@ -96,7 +96,7 @@ final class PreparedInputViewportStepTests: XCTestCase {
             }
         defer { NotificationCenter.default.removeObserver(boundsObserver) }
         XCTAssertEqual(PreparedInputViewportStep.perform(in: movedBounds.view, dx: 0, dy: 20,
-                                                       clock: { 0 }, isCurrent: { true }), .unavailable)
+                                                       clock: { 0 }, isCurrent: { true }), .viewportChanged)
         XCTAssertTrue(changed)
 
         let movedWindow = try ViewportStepFixture(text: String(repeating: "line\n", count: 200))
@@ -110,7 +110,7 @@ final class PreparedInputViewportStepTests: XCTestCase {
             }
         defer { NotificationCenter.default.removeObserver(windowObserver) }
         XCTAssertEqual(PreparedInputViewportStep.perform(in: movedWindow.view, dx: 0, dy: 20,
-                                                       clock: { 0 }, isCurrent: { true }), .unavailable)
+                                                       clock: { 0 }, isCurrent: { true }), .viewportChanged)
         XCTAssertTrue(windowChanged)
         withExtendedLifetime((movedBounds.window, movedWindow.window)) {}
     }
@@ -160,7 +160,7 @@ final class PreparedInputViewportStepTests: XCTestCase {
         let before = clip.bounds
         let result = PreparedInputViewportStep.perform(in: fixture.view, dx: 0, dy: 20,
             clock: { 0 }, operationLimit: 1, isCurrent: { true })
-        XCTAssertEqual(result, .unavailable)
+        XCTAssertEqual(result, .viewportChanged)
         XCTAssertNotEqual(clip.bounds, before)
         XCTAssertNil(fixture.view.visibleLayout)
         fixture.view.updateViewport()
@@ -187,7 +187,7 @@ final class PreparedInputViewportStepTests: XCTestCase {
                 return 0
             }, isCurrent: { true })
         XCTAssertTrue(reentered)
-        XCTAssertEqual(result, .unavailable)
+        XCTAssertEqual(result, .viewportChanged)
         XCTAssertNil(fixture.view.visibleLayout)
         fixture.view.updateViewport()
         XCTAssertNil(fixture.view.visibleLayout)
