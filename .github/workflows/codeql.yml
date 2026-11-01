@@ -57,7 +57,7 @@ jobs:
           xcodebuild\
             -scheme Runestone\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=${{ env.XCODEBUILD_DESTINATION }},OS=${{ env.XCODEBUILD_OS }}"\
+            -destination "platform=iOS Simulator,name=${{ env.XCODEBUILD_DESTINATION }},OS=${{ env.XCODEBUILD_OS }}" \
           2>&1 | xcsift -f toon
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

@@ -52,5 +52,5 @@ jobs:
             -project Example/Example.xcodeproj\
             -scheme Example\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}"\
+            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}" \
           2>&1 | xcsift -f toon

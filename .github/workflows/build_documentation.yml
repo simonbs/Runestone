@@ -39,5 +39,5 @@ jobs:
           xcodebuild docbuild\
             -scheme Runestone\
             -destination 'generic/platform=iOS'\
-            -derivedDataPath ../DerivedData\
+            -derivedDataPath ../DerivedData \
           2>&1 | xcsift -f toon

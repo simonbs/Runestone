@@ -52,7 +52,7 @@ jobs:
           xcodebuild build-for-testing\
             -scheme Runestone-Package\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}"\
+            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}" \
           2>&1 | xcsift -f toon
       - name: Test
         if: steps.changes.outputs.src == 'true'
@@ -61,5 +61,5 @@ jobs:
           xcodebuild test-without-building\
             -scheme Runestone-Package\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}"\
+            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}" \
           2>&1 | xcsift -f toon
