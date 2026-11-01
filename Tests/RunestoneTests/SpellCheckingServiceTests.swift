@@ -226,6 +226,47 @@ final class SpellCheckingServiceTests: XCTestCase {
         XCTAssertTrue(service.suggestions(for: misspelling, in: text, language: "en_US").contains("misspelled"))
     }
 
+    func testMixedLanguagesAcceptEitherDictionaryAndOfferCorrectionsOnlyForRealTypos() {
+        let service = SpellCheckingService(checker: BilingualSpellChecker(), debounceInterval: 0)
+        let text = "Documentation dokumentation mispell" as NSString
+        let languages = ["en_US", "da_DK"]
+        let completed = expectation(description: "Both dictionaries checked")
+        service.schedule(text: text, visibleRanges: [NSRange(location: 0, length: text.length)], languages: languages) { ranges in
+            XCTAssertEqual(ranges, [text.range(of: "mispell")])
+            completed.fulfill()
+        }
+        wait(for: [completed], timeout: 2)
+        for word in ["Documentation", "dokumentation"] {
+            let range = text.range(of: word)
+            XCTAssertFalse(service.isMisspelled(for: range, in: text, languages: languages))
+            XCTAssertTrue(service.suggestions(for: range, in: text, languages: languages).isEmpty)
+        }
+        let typo = text.range(of: "mispell")
+        XCTAssertTrue(service.isMisspelled(for: typo, in: text, languages: languages))
+        XCTAssertEqual(service.suggestions(for: typo, in: text, languages: languages), ["misspell", "fejl"])
+        XCTAssertTrue(service.isMisspelled(for: text.range(of: "dokumentation"), in: text, language: "en_US"))
+    }
+
+    func testSecondaryDictionaryWorkYieldsAndCanBeCancelled() {
+        let checker = BilingualSpellChecker()
+        let service = SpellCheckingService(checker: checker, debounceInterval: 0)
+        let text = String(repeating: "mispell ", count: 40) as NSString
+        let obsolete = expectation(description: "Cancelled multilingual request")
+        obsolete.isInverted = true
+        service.schedule(text: text, visibleRanges: [NSRange(location: 0, length: text.length)],
+                         languages: ["en_US", "da_DK"]) { _ in obsolete.fulfill() }
+        // Queue cancellation from the first call; it must run before the next bounded batch.
+        checker.onFirstCall = {
+            DispatchQueue.main.async {
+                XCTAssertLessThanOrEqual(checker.calls, 16)
+                XCTAssertGreaterThan(checker.calls, 0)
+                service.invalidate()
+            }
+        }
+        wait(for: [obsolete], timeout: 0.1)
+        XCTAssertTrue(service.misspelledRanges.isEmpty)
+    }
+
     private func requireEnglishDictionary() throws {
         guard UITextChecker.availableLanguages.contains("en_US") else {
             throw XCTSkip("The simulator does not have the English spelling dictionary installed.")
@@ -257,5 +298,30 @@ private final class StubSpellChecker: SpellChecking {
 
     func guesses(forWordRange range: NSRange, in string: String, language: String) -> [String]? {
         suggestions
+    }
+}
+
+private final class BilingualSpellChecker: SpellChecking {
+    var ignoredWords: [String]?
+    var calls = 0
+    var onFirstCall: (() -> Void)?
+
+    func ignoreWord(_ wordToIgnore: String) {
+        ignoredWords = (ignoredWords ?? []) + [wordToIgnore]
+    }
+
+    func rangeOfMisspelledWord(in string: String, range: NSRange, startingAt offset: Int, wrap: Bool, language: String) -> NSRange {
+        calls += 1
+        if calls == 1 { onFirstCall?() }
+        let text = string as NSString
+        let searchRange = NSRange(location: offset, length: text.length - offset)
+        let words = language == "en_US" ? ["dokumentation", "mispell"] : ["Documentation", "mispell"]
+        return words.filter { !(ignoredWords ?? []).contains($0) }
+            .map { text.range(of: $0, range: searchRange) }
+            .filter { $0.location != NSNotFound }.min { $0.location < $1.location } ?? NSRange(location: NSNotFound, length: 0)
+    }
+
+    func guesses(forWordRange range: NSRange, in string: String, language: String) -> [String]? {
+        language == "en_US" ? ["misspell"] : ["misspell", "fejl"]
     }
 }
