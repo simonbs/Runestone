@@ -10,19 +10,20 @@ concurrency:
 jobs:
   build:
     name: Build and Test (Xcode ${{ matrix.xcode }})
-    runs-on: macos-14
-    continue-on-error: true
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
         include:
-          - xcode: 16.2
-            destination: iPhone 16 Pro
-            os: 18.2
-          - xcode: 15.2
-            destination: iPhone 15 Pro
-            os: 17.2
+          - runner: macos-15
+            xcode: "16.4"
+            device_type: iPhone-16-Pro
+            ios_major: "18"
+          - runner: macos-26
+            xcode: "26.2"
+            device_type: iPhone-17-Pro
+            ios_major: "26"
     env:
-      DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer    
+      DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,6 +42,38 @@ jobs:
               - 'Sources/**'
               - '!Sources/Runestone/Documentation.docc/**'
               - 'Tests/**'
+      - name: Install xcsift
+        if: steps.changes.outputs.src == 'true'
+        run: brew install xcsift
+      - name: Create CI Simulator
+        if: steps.changes.outputs.src == 'true'
+        run: |
+          set -euo pipefail
+          runtime_list="$RUNNER_TEMP/runestone-runtimes.json"
+          xcrun simctl list runtimes -j > "$runtime_list"
+          runtime_id=$(python3 - "$runtime_list" "${{ matrix.ios_major }}" <<'PYTHON'
+          import json
+          import sys
+
+          with open(sys.argv[1]) as runtime_file:
+              runtimes = json.load(runtime_file)["runtimes"]
+          major = int(sys.argv[2])
+          available_ios = [runtime for runtime in runtimes
+                           if runtime.get("isAvailable", False)
+                           and runtime["identifier"].startswith("com.apple.CoreSimulator.SimRuntime.iOS-")]
+          compatible = [runtime for runtime in available_ios
+                        if int(runtime["version"].split(".")[0]) == major]
+          if not compatible:
+              versions = ", ".join(runtime["version"] for runtime in available_ios) or "none"
+              sys.exit(f"No available iOS {major}.x simulator runtime; available iOS versions: {versions}")
+          selected = max(compatible, key=lambda runtime: tuple(int(part) for part in runtime["version"].split(".")))
+          print(f"Using available iOS {selected['version']} runtime ({selected['identifier']})", file=sys.stderr)
+          print(selected["identifier"])
+          PYTHON
+          )
+          SIMULATOR_UDID=$(xcrun simctl create "Runestone CI ${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            "com.apple.CoreSimulator.SimDeviceType.${{ matrix.device_type }}" "$runtime_id")
+          echo "SIMULATOR_UDID=$SIMULATOR_UDID" >> "$GITHUB_ENV"
       - name: Build
         if: steps.changes.outputs.src == 'true'
         run: |
@@ -48,8 +81,8 @@ jobs:
           xcodebuild build-for-testing\
             -scheme Runestone-Package\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}"\
-          | xcbeautify --renderer github-actions
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+          2>&1 | xcsift -f toon
       - name: Test
         if: steps.changes.outputs.src == 'true'
         run: |
@@ -57,5 +90,8 @@ jobs:
           xcodebuild test-without-building\
             -scheme Runestone-Package\
             -sdk iphonesimulator\
-            -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}"\
-          | xcbeautify --renderer github-actions
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+          2>&1 | xcsift -f toon
+      - name: Delete CI Simulator
+        if: always() && env.SIMULATOR_UDID != ''
+        run: xcrun simctl delete "$SIMULATOR_UDID"
