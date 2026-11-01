@@ -60,6 +60,7 @@ public class ReadOnlyDocumentView: NSView {
     private(set) var manager: LineManager
     private var controllers: [DocumentLineNodeID: LogicalLineLayoutController] = [:]
     private var controllerOrder: [DocumentLineNodeID] = []
+    private var rangeRevealGeneration = UUID()
     private var coordinator: ViewportLayoutCoordinator!
     private var layoutWidth: CGFloat = 0
     private var measuredUnwrappedContentWidth: CGFloat = 0
@@ -230,17 +231,72 @@ public class ReadOnlyDocumentView: NSView {
     func scrollTextFinderRangeToVisible(_ range: NSRange) {
         precondition(Thread.isMainThread)
         let text = manager.stringView.string
-        guard !isRetired, range.location >= 0, range.length >= 0,
+        guard !isRetired else { return }
+        guard range.location >= 0, range.length >= 0,
               range.location <= text.length, range.length <= text.length - range.location,
               let clip = enclosingScrollView?.contentView else { return }
         let location = min(range.location, max(0, text.length - 1))
         let line = manager.visibleLine(containingCharacterAt: location) ?? manager.lastVisibleLine
+        let generation = UUID()
+        rangeRevealGeneration = generation
+        guard location >= line.location, location <= line.location + line.data.length,
+              let controller = controller(for: line) else {
+            scrollRangeRevealFrameToVisible(CGRect(x: 0, y: line.yPosition, width: clip.bounds.width,
+                                                  height: line.data.lineHeight), clip: clip)
+            return
+        }
+        continueRangeReveal(location: location, line: line, controller: controller, clip: clip,
+                            revealWindow: window, contentRevision: contentRevision,
+                            layoutWidth: layoutWidth, generation: generation)
+    }
+
+    /// Distant locations in one wrapped logical line are prepared over bounded
+    /// run-loop turns. This is host navigation work, not input movement: it may
+    /// typeset offscreen layout, but never invents or publishes geometry before
+    /// the authoritative target fragment becomes visible.
+    private func continueRangeReveal(location: Int, line: DocumentLineNode,
+                                     controller: LogicalLineLayoutController, clip: NSClipView,
+                                     revealWindow: NSWindow?,
+                                     contentRevision: UUID, layoutWidth: CGFloat, generation: UUID) {
+        guard !isRetired, rangeRevealGeneration == generation, self.contentRevision == contentRevision,
+              self.layoutWidth == layoutWidth, enclosingScrollView?.contentView === clip,
+              window === revealWindow, manager.line(atRow: line.index) === line,
+              controllers[line.id] === controller else { return }
+        switch controller.prepareTargetPlacement(at: location, maximumNewFragmentCount: 64,
+                                                 horizontalInset: horizontalTextInset) {
+        case .found(let placement):
+            let size = documentFrameSize(for: clip)
+            if frame.size != size { setFrameSize(size) }
+            guard rangeRevealGeneration == generation, self.contentRevision == contentRevision,
+                  self.layoutWidth == layoutWidth, enclosingScrollView?.contentView === clip,
+                  window === revealWindow, manager.line(atRow: line.index) === line,
+                  controllers[line.id] === controller else { return }
+            scrollRangeRevealFrameToVisible(placement.frame, clip: clip)
+        case .pending:
+            let size = documentFrameSize(for: clip)
+            if frame.size != size { setFrameSize(size) }
+            DispatchQueue.main.async { [weak self, weak clip] in
+                guard let self, let clip else { return }
+                self.continueRangeReveal(location: location, line: line, controller: controller, clip: clip,
+                                         revealWindow: revealWindow, contentRevision: contentRevision,
+                                         layoutWidth: layoutWidth,
+                                         generation: generation)
+            }
+        case .unavailable:
+            break
+        }
+    }
+
+    private func scrollRangeRevealFrameToVisible(_ frame: CGRect, clip: NSClipView) {
+        guard frame.minY.isFinite, frame.maxY.isFinite else { return }
         var proposed = clip.bounds
-        proposed.origin.y = line.yPosition
+        if frame.minY < proposed.minY { proposed.origin.y = frame.minY }
+        else if frame.maxY > proposed.maxY { proposed.origin.y = frame.maxY - proposed.height }
         let constrained = clip.constrainBoundsRect(proposed)
-        guard constrained.origin != clip.bounds.origin else { return }
-        clip.scroll(to: constrained.origin)
-        enclosingScrollView?.reflectScrolledClipView(clip)
+        if constrained.origin != clip.bounds.origin {
+            clip.scroll(to: constrained.origin)
+            enclosingScrollView?.reflectScrolledClipView(clip)
+        }
         updateViewport()
     }
 
@@ -1155,6 +1211,7 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     private func resetLayout(width: CGFloat) {
+        rangeRevealGeneration = UUID()
         inputLayoutRevision = UUID()
         layoutWidth = width
         measuredUnwrappedContentWidth = 0

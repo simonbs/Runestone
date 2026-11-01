@@ -1,6 +1,6 @@
 #if canImport(AppKit)
 import AppKit
-import RunestoneAppKit
+@testable import RunestoneAppKit
 import XCTest
 
 final class ReadOnlyDocumentPublicAPITests: XCTestCase {
@@ -189,6 +189,40 @@ final class ReadOnlyDocumentPublicAPITests: XCTestCase {
         waitUntil { abs(view.frame.width - scroll.contentView.bounds.width) < 0.01 }
         XCTAssertEqual(view.content.string, "short")
         XCTAssertEqual(view.frame.width, scroll.contentView.bounds.width, accuracy: 0.01)
+    }
+
+    func testPendingFarRangeRevealCancelsWhenItsLayoutContextChanges() {
+        enum Change { case content, width, window }
+        for change in [Change.content, .width, .window] {
+            let attributed = NSAttributedString(string: String(repeating: "alpha beta ", count: 20_000),
+                                                attributes: [.font: NSFont.monospacedSystemFont(ofSize: 14,
+                                                                                               weight: .regular)])
+            let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 340, height: 180))
+            let window = NSWindow(contentRect: scroll.frame, styleMask: .borderless,
+                                  backing: .buffered, defer: false)
+            window.contentView = scroll
+            let view = ReadOnlyDocumentView(content: attributed)
+            scroll.documentView = view
+            scroll.tile()
+            view.layoutSubtreeIfNeeded()
+            waitUntil { abs(view.frame.width - scroll.contentView.bounds.width) < 0.01 }
+            XCTAssertTrue(view.selectAndRevealDocumentRange(NSRange(location: attributed.length - 2, length: 1)))
+
+            switch change {
+            case .content:
+                view.setContent(NSAttributedString(string: "replacement"))
+            case .width:
+                scroll.frame.size.width = 500
+                scroll.tile()
+                view.layoutSubtreeIfNeeded()
+            case .window:
+                window.contentView = nil
+            }
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+
+            XCTAssertEqual(scroll.contentView.bounds.minY, 0, accuracy: 0.01)
+            if case .content = change { XCTAssertEqual(view.content.string, "replacement") }
+        }
     }
 
     private func waitUntil(timeout: TimeInterval = 1, _ condition: () -> Bool) {

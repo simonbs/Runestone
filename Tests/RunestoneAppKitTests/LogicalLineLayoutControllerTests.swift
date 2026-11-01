@@ -7,6 +7,29 @@ import XCTest
 final class LogicalLineLayoutControllerTests: XCTestCase {
     private let font = NSFont.monospacedSystemFont(ofSize: 16, weight: .regular)
 
+    func testTargetPlacementMakesBoundedProgressToFarWrappedLocation() throws {
+        let source = String(repeating: "alpha beta ", count: 2_000)
+        let manager = LineManager(stringView: StringView(string: source))
+        manager.rebuild()
+        let controller = LogicalLineLayoutController(manager: manager, line: manager.firstLine)
+        XCTAssertTrue(controller.prepare(NSAttributedString(string: source, attributes: [.font: font]),
+                                         width: 90, fallbackHeight: 16))
+        let location = source.utf16.count - 2
+        var turns = 0
+        var placement: LogicalLineLayoutController.Placement?
+        while placement == nil, turns < 1_000 {
+            switch controller.prepareTargetPlacement(at: location, maximumNewFragmentCount: 7) {
+            case .found(let value): placement = value
+            case .pending: turns += 1
+            case .unavailable: return XCTFail("Target unexpectedly unavailable")
+            }
+        }
+        let result = try XCTUnwrap(placement)
+        XCTAssertGreaterThan(turns, 1)
+        XCTAssertTrue(result.fragment.range.contains(location))
+        XCTAssertGreaterThan(result.frame.minY, 0)
+    }
+
     func testIncrementalWrappedLayoutUpdatesFollowingLinePosition() throws {
         let firstText = String(repeating: "café 😀 word ", count: 20) + "\r\n"
         let text = StringView(string: firstText + "last")

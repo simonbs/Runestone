@@ -6,6 +6,11 @@ import RunestoneEngine
 /// The host must invalidate this controller for edited or removed lines and
 /// reprepare after changes to text, attributes, width, or typography.
 final class LogicalLineLayoutController {
+    enum TargetPlacement {
+        case found(Placement)
+        case pending
+        case unavailable
+    }
     struct Placement {
         let fragment: LineFragment
         let documentRange: NSRange
@@ -128,6 +133,28 @@ final class LogicalLineLayoutController {
         }
     }
 
+    /// Incrementally prepares a wrapped fragment containing a document UTF-16
+    /// location. Each call creates at most `maximumNewFragmentCount` fragments;
+    /// callers schedule another turn for `.pending`.
+    func prepareTargetPlacement(at documentLocation: Int, maximumNewFragmentCount: Int,
+                                horizontalInset: CGFloat = 0) -> TargetPlacement {
+        guard prepared, isAttached, maximumNewFragmentCount > 0 else { return .unavailable }
+        let local = documentLocation - line.location
+        guard local >= 0, local <= line.data.length else { return .unavailable }
+        func target() -> LineFragment? {
+            if local == line.data.length { return typesetter.lineFragments.last }
+            return typesetter.lineFragments.first { fragment in
+                fragment.range.location <= local && local < fragment.range.upperBound
+            }
+        }
+        if let fragment = target() { return .found(placement(fragment, horizontalInset: horizontalInset)) }
+        _ = typesetter.typesetLineFragments(toLocation: local,
+                                            maximumNewLineFragmentCount: maximumNewFragmentCount)
+        manager.setHeight(of: line, to: typesetter.estimatedLineHeight(fragmentHeight: fallbackHeight))
+        if let fragment = target() { return .found(placement(fragment, horizontalInset: horizontalInset)) }
+        return typesetter.isFinishedTypesetting ? .unavailable : .pending
+    }
+
     /// Draws current placements in the caller's top-down document coordinates.
     /// The caller owns clipping. Invalidated placements are ignored and the
     /// line's current position is used even if preceding heights have changed.
@@ -145,6 +172,15 @@ final class LogicalLineLayoutController {
     private var isAttached: Bool {
         let row = line.index
         return row >= 0 && row < manager.lineCount && manager.line(atRow: row) === line
+    }
+
+    private func placement(_ fragment: LineFragment, horizontalInset: CGFloat) -> Placement {
+        Placement(fragment: fragment,
+                  documentRange: NSRange(location: line.location + fragment.visibleRange.location,
+                                         length: fragment.visibleRange.length),
+                  frame: CGRect(x: horizontalInset, y: line.yPosition + fragment.yPosition,
+                                width: fragment.scaledSize.width, height: fragment.scaledSize.height),
+                  ownerID: ownerID, generation: generation)
     }
 }
 #endif
