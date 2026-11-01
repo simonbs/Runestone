@@ -397,6 +397,14 @@ open class TextView: UIScrollView {
         set { textInputView.isCodeFoldingEnabled = newValue }
     }
 
+    /// Determines whether animated code folding produces haptic feedback on supported devices.
+    ///
+    /// The default value is true. Disabling feedback does not affect folding animations.
+    public var isCodeFoldingHapticFeedbackEnabled: Bool {
+        get { textInputView.isCodeFoldingHapticFeedbackEnabled }
+        set { textInputView.isCodeFoldingHapticFeedbackEnabled = newValue }
+    }
+
     /// Enable to show line numbers in the gutter.
     public var showLineNumbers: Bool {
         get {

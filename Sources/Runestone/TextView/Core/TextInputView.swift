@@ -69,7 +69,7 @@ extension TextInputView {
         delegate?.textInputViewWillBeginFoldingTransition(self)
         layoutManager.animateFoldingChange(atRow: row, animated: animated, changes: {
             _ = self.foldingController.toggle(at: row)
-            if animated, self.window != nil {
+            if animated, self.window != nil, self.isCodeFoldingHapticFeedbackEnabled {
                 let feedback = isCollapsing ? self.collapseFeedback : self.expandFeedback
                 feedback.impactOccurred(intensity: 0.5)
             }
@@ -440,8 +440,9 @@ final class TextInputView: UIView, UITextInput {
         }
     }
     let foldingController = CodeFoldingController()
-    private lazy var collapseFeedback = UIImpactFeedbackGenerator(style: .rigid)
-    private lazy var expandFeedback = UIImpactFeedbackGenerator(style: .soft)
+    var isCodeFoldingHapticFeedbackEnabled = true
+    lazy var collapseFeedback = UIImpactFeedbackGenerator(style: .rigid)
+    lazy var expandFeedback = UIImpactFeedbackGenerator(style: .soft)
     private var foldingRevision: UInt = 0
     private var isApplyingFoldingEdit = false
     var lineSelectionDisplayType: LineSelectionDisplayType {

@@ -23,6 +23,36 @@ final class CodeFoldingGutterTests: XCTestCase {
         super.tearDown()
     }
 
+    func testFoldingFeedbackCanBeDisabledWithoutDisablingAnimatedFolds() async throws {
+        let (view, input) = try makeTextView()
+        let collapseFeedback = FoldingFeedbackSpy(style: .rigid)
+        let expandFeedback = FoldingFeedbackSpy(style: .soft)
+        input.collapseFeedback = collapseFeedback
+        input.expandFeedback = expandFeedback
+        XCTAssertTrue(view.isCodeFoldingHapticFeedbackEnabled)
+
+        for feedbackEnabled in [true, false, true] {
+            view.isCodeFoldingHapticFeedbackEnabled = feedbackEnabled
+            let previousCollapseCount = collapseFeedback.intensities.count
+            let previousExpandCount = expandFeedback.intensities.count
+            for isCollapsing in [true, false] {
+                let button = try XCTUnwrap(foldingButtons(in: input.gutterContainerView).first { button in
+                    button.accessibilityIdentifier == "Runestone.Fold.1"
+                })
+                let action = try XCTUnwrap(button.actions(forTarget: button, forControlEvent: .touchUpInside)?.first)
+                _ = button.perform(NSSelectorFromString(action))
+                XCTAssertEqual(input.lineManager.isLineHidden(3), isCollapsing)
+                try await Task.sleep(nanoseconds: 400_000_000)
+                settle(view, input: input)
+            }
+            XCTAssertEqual(collapseFeedback.intensities.count, previousCollapseCount + (feedbackEnabled ? 1 : 0))
+            XCTAssertEqual(expandFeedback.intensities.count, previousExpandCount + (feedbackEnabled ? 1 : 0))
+            XCTAssertEqual(view.text, source)
+        }
+        XCTAssertEqual(collapseFeedback.intensities, [0.5, 0.5])
+        XCTAssertEqual(expandFeedback.intensities, [0.5, 0.5])
+    }
+
     func testGutterDisclosureCoversLineWithAndWithoutNumbersAndDisablingRestoresText() throws {
         for showLineNumbers in [false, true] {
             let (view, input) = try makeTextView(showLineNumbers: showLineNumbers)
@@ -136,4 +166,12 @@ final class CodeFoldingGutterTests: XCTestCase {
         }
     }
 
+}
+
+private final class FoldingFeedbackSpy: UIImpactFeedbackGenerator {
+    private(set) var intensities: [CGFloat] = []
+
+    override func impactOccurred(intensity: CGFloat) {
+        intensities.append(intensity)
+    }
 }
