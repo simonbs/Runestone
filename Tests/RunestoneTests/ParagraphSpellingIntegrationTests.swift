@@ -40,7 +40,7 @@ final class ParagraphSpellingIntegrationTests: XCTestCase {
         let view = editor.view
         let input = editor.input
         let fixture = editor.detection
-        view.spellCheckingLanguage = "en_US"
+        view.spellCheckingLanguage = "EN"
         view.layoutIfNeeded()
         input.layoutSubviews()
         fixture.scheduler.complete()

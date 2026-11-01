@@ -131,8 +131,9 @@ open class TextView: UIScrollView {
     }
     /// The language used for spelling, such as `en_US`, or `nil` to detect the language of visible paragraphs.
     ///
-    /// Use a language from `UITextChecker.availableLanguages`. An explicit choice bypasses detection;
-    /// an unsupported explicit language disables checking. Short or uncertain paragraphs fall back to the
+    /// Use a language from `UITextChecker.availableLanguages`. A bare code such as `en` resolves to the first
+    /// advertised dictionary for that language in Apple's preference order. An explicit choice bypasses detection;
+    /// an unavailable regional or script choice disables checking. Short or uncertain paragraphs fall back to the
     /// keyboard and preferred system dictionaries. Detected languages are transient and are not persisted.
     /// Spelling is checked incrementally in visible text. Set ``spellCheckingType`` to `.yes` to enable it
     /// independently of autocorrection. The delegate can exclude code or other non-prose ranges.
