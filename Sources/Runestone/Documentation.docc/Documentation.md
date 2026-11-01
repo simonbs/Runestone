@@ -75,6 +75,7 @@ Syntax highlighting is based on GitHub's [Tree-sitter](https://github.com/tree-s
 
 - <doc:CodeFolding>
 - ``TextView/isCodeFoldingEnabled``
+- ``TextView/isCodeFoldingHapticFeedbackEnabled``
 - ``TreeSitterLanguage/foldsQuery``
 
 ### Indentation

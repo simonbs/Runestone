@@ -21,6 +21,7 @@ The language used by the text view must provide a folding query. Languages from 
 Tap anywhere in the gutter beside a line with a chevron to collapse or expand the lines below it, including on its line number. The tap target covers the full height of that line, including wrapped text. The line containing the chevron stays visible. The folding controls are available even when line numbers are hidden.
 
 On supported devices, collapsing a section produces a light tap and expanding it produces a softer haptic.
+Set <doc:TextView/isCodeFoldingHapticFeedbackEnabled> to `false` to suppress this feedback while retaining folding animations, for example in an automatic preview. Feedback is enabled by default.
 
 Collapsing text does not change the document or add an undo operation. Copying and saving still include the hidden text, and line numbers continue to refer to the complete document. If you collapse a section that contains another collapsed section, the inner section stays collapsed when you expand its parent.
 

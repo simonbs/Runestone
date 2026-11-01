@@ -61,6 +61,7 @@
 ### Gutter
 
 - ``isCodeFoldingEnabled``
+- ``isCodeFoldingHapticFeedbackEnabled``
 - <doc:CodeFolding>
 - ``gutterLeadingPadding``
 - ``gutterTrailingPadding``
