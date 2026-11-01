@@ -11,7 +11,9 @@ concurrency:
 jobs:
   build:
     name: Build Documentation
-    runs-on: macos-14
+    runs-on: macos-15
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,6 +21,8 @@ jobs:
           submodules: recursive
       - name: Setup Pages
         uses: actions/configure-pages@v4
+      - name: Install xcsift
+        run: brew install xcsift
       - name: Build Documentation
         run: |
           set -o pipefail &&\
@@ -26,7 +30,7 @@ jobs:
             -scheme Runestone\
             -destination 'generic/platform=iOS'\
             -derivedDataPath ../DerivedData\
-          | xcbeautify --renderer github-actions
+          2>&1 | xcsift -f toon
       - name: Process Archive
         run: |
           mkdir _site

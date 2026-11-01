@@ -10,12 +10,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 env:
-  XCODEBUILD_DESTINATION: iPhone 15 Pro
-  XCODEBUILD_OS: 17.2
+  DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+  XCODEBUILD_DESTINATION: iPhone 16 Pro
+  XCODEBUILD_OS: "18.5"
 jobs:
   analyze:
     name: Analyze
-    runs-on: macos-14
+    runs-on: macos-15
     permissions:
       security-events: write
     strategy:
@@ -33,6 +34,7 @@ jobs:
         with:
           filters: |
             src:
+              - '.github/workflows/codeql.yml'
               - 'Package.swift'
               - '.gitmodules'
               - 'tree-sitter'
@@ -45,6 +47,9 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
+      - name: Install xcsift
+        if: steps.changes.outputs.src == 'true'
+        run: brew install xcsift
       - name: Build
         if: steps.changes.outputs.src == 'true'
         run: |
@@ -53,7 +58,7 @@ jobs:
             -scheme Runestone\
             -sdk iphonesimulator\
             -destination "platform=iOS Simulator,name=${{ env.XCODEBUILD_DESTINATION }},OS=${{ env.XCODEBUILD_OS }}"\
-          | xcbeautify --renderer github-actions
+          2>&1 | xcsift -f toon
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         if: steps.changes.outputs.src == 'true'

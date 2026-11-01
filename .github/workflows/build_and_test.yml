@@ -10,19 +10,20 @@ concurrency:
 jobs:
   build:
     name: Build and Test (Xcode ${{ matrix.xcode }})
-    runs-on: macos-14
-    continue-on-error: true
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
         include:
-          - xcode: 16.2
+          - runner: macos-15
+            xcode: "16.4"
             destination: iPhone 16 Pro
-            os: 18.2
-          - xcode: 15.2
-            destination: iPhone 15 Pro
-            os: 17.2
+            os: "18.5"
+          - runner: macos-26
+            xcode: "26.2"
+            destination: iPhone 17 Pro
+            os: "26.2"
     env:
-      DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer    
+      DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,6 +42,9 @@ jobs:
               - 'Sources/**'
               - '!Sources/Runestone/Documentation.docc/**'
               - 'Tests/**'
+      - name: Install xcsift
+        if: steps.changes.outputs.src == 'true'
+        run: brew install xcsift
       - name: Build
         if: steps.changes.outputs.src == 'true'
         run: |
@@ -49,7 +53,7 @@ jobs:
             -scheme Runestone-Package\
             -sdk iphonesimulator\
             -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}"\
-          | xcbeautify --renderer github-actions
+          2>&1 | xcsift -f toon
       - name: Test
         if: steps.changes.outputs.src == 'true'
         run: |
@@ -58,4 +62,4 @@ jobs:
             -scheme Runestone-Package\
             -sdk iphonesimulator\
             -destination "platform=iOS Simulator,name=${{ matrix.destination }},OS=${{ matrix.os }}"\
-          | xcbeautify --renderer github-actions
+          2>&1 | xcsift -f toon
