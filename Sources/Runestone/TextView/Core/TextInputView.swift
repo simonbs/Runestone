@@ -223,7 +223,7 @@ final class TextInputView: UIView, UITextInput {
                                                                 lineManager: lineManager,
                                                                 lineControllerStorage: lineControllerStorage)
     var autocorrectionType: UITextAutocorrectionType = .default {
-        didSet { invalidateSpellChecking() }
+        didSet { invalidateSpellChecking(preservingParagraphLanguages: false) }
     }
     var autocapitalizationType: UITextAutocapitalizationType = .sentences
     var smartQuotesType: UITextSmartQuotesType = .default
@@ -233,7 +233,7 @@ final class TextInputView: UIView, UITextInput {
     // Keep that popup disabled independently of the public spelling preference and keyboard autocorrection.
     var spellCheckingType: UITextSpellCheckingType = .no
     var preferredSpellCheckingType: UITextSpellCheckingType = .default {
-        didSet { invalidateSpellChecking() }
+        didSet { invalidateSpellChecking(preservingParagraphLanguages: false) }
     }
     var showIgnoreSpellingAction = false {
         didSet { invalidateSpellChecking() }
@@ -245,7 +245,7 @@ final class TextInputView: UIView, UITextInput {
         didSet { invalidateSpellChecking() }
     }
     var spellCheckingLanguage: String? {
-        didSet { invalidateSpellChecking() }
+        didSet { invalidateSpellChecking(preservingParagraphLanguages: false) }
     }
     var keyboardType: UIKeyboardType = .default
     var keyboardAppearance: UIKeyboardAppearance = .default
@@ -338,7 +338,7 @@ final class TextInputView: UIView, UITextInput {
         guard active != isWritingToolsActive else {
             return
         }
-        invalidateSpellChecking()
+        invalidateSpellChecking(preservingParagraphLanguages: false)
         if active {
             timedUndoManager.endUndoGrouping()
             textBeforeWritingTools = string.copy() as? NSString
@@ -731,7 +731,7 @@ final class TextInputView: UIView, UITextInput {
                 stopWritingTools()
                 resetCodeFolding()
                 textMutationVersion &+= 1
-                invalidateSpellChecking()
+                invalidateSpellChecking(preservingParagraphLanguages: false)
                 stringView.string = newValue
                 languageMode.parse(newValue)
                 // Rebuilding creates new line IDs. Release controllers and pending highlighting for the old lines.
@@ -906,6 +906,14 @@ final class TextInputView: UIView, UITextInput {
     private var hasPendingFullLayout = false
     private let editMenuController = EditMenuController()
     private let spellCheckingService = SpellCheckingService()
+    private var lastParagraphSpellingViewport: [NSRange]?
+    var paragraphSpellingLanguageService = ParagraphSpellingLanguageService() {
+        didSet {
+            oldValue.invalidate()
+            configureParagraphSpellingLanguageService()
+            invalidateSpellChecking(preservingParagraphLanguages: false)
+        }
+    }
     private var spellingRevision: UInt = 0
     private var lastSpellingRequest: SpellingRequest?
     private var lastLegacySpellingRequest: LegacySpellingRequest?
@@ -1107,7 +1115,7 @@ final class TextInputView: UIView, UITextInput {
         stopWritingTools()
         resetCodeFolding()
         textMutationVersion &+= 1
-        invalidateSpellChecking()
+        invalidateSpellChecking(preservingParagraphLanguages: false)
         let oldText = stringView.string
         let newText = state.stringView.string
         stringView = state.stringView
@@ -1692,7 +1700,7 @@ extension TextInputView {
         let previousText = writingToolsController?.hasContext == true ? string.copy() as? NSString : nil
         let previousVersion = textMutationVersion
         textMutationVersion &+= 1
-        invalidateSpellChecking()
+        invalidateSpellChecking(preservingParagraphLanguages: true, paragraphTextDidChange: true)
         let nsNewString = newString as NSString
         let currentText = text(in: range) ?? ""
         let newRange = NSRange(location: range.location, length: nsNewString.length)
@@ -2180,6 +2188,7 @@ extension TextInputView: EditMenuControllerDelegate {
 private struct SpellingRequest: Equatable {
     let visibleRanges: [NSRange]
     let languages: [String]
+    let languageRegions: [SpellingLanguageRegion]
     let excludedRanges: [NSRange]
 }
 
@@ -2190,6 +2199,7 @@ private struct LegacySpellingRequest: Equatable {
 
 extension TextInputView {
     private func observeSpellingLanguage() {
+        configureParagraphSpellingLanguageService()
         for name in [UITextInputMode.currentInputModeDidChangeNotification, UIApplication.didBecomeActiveNotification,
                      SpellCheckingService.learnedWordsDidChangeNotification] {
             NotificationCenter.default.publisher(for: name)
@@ -2198,7 +2208,20 @@ extension TextInputView {
         }
     }
 
-    func invalidateSpellChecking() {
+    private func configureParagraphSpellingLanguageService() {
+        paragraphSpellingLanguageService.onChange = { [weak self] in
+            self?.invalidateSpellingDecorations()
+        }
+    }
+
+    func invalidateSpellChecking(preservingParagraphLanguages: Bool = true, paragraphTextDidChange: Bool = false) {
+        paragraphSpellingLanguageService.invalidate(preservingLanguages: preservingParagraphLanguages,
+                                                    preservingRegions: preservingParagraphLanguages && !paragraphTextDidChange)
+        lastParagraphSpellingViewport = nil
+        invalidateSpellingDecorations()
+    }
+
+    private func invalidateSpellingDecorations() {
         editMenuController.dismissSpellingMenu()
         spellingRevision &+= 1
         lastSpellingRequest = nil
@@ -2219,6 +2242,22 @@ extension TextInputView {
                                          availableLanguages: UITextChecker.availableLanguages)
     }
 
+    private func spellingLanguages(for range: NSRange) -> [String] {
+        let fallback = resolvedSpellingLanguages
+        prepareParagraphSpellingLanguagesIfNeeded(fallback: fallback)
+        return spellCheckingLanguage == nil ? paragraphSpellingLanguageService.languages(for: range, fallback: fallback) : fallback
+    }
+
+    private func prepareParagraphSpellingLanguagesIfNeeded(fallback: [String]) {
+        if spellCheckingLanguage == nil, isSpellCheckingEnabled, !layoutManager.visibleTextRanges.isEmpty,
+           lastParagraphSpellingViewport != layoutManager.visibleTextRanges {
+            let available = fallback + UITextChecker.availableLanguages.filter { !fallback.contains($0) }
+            paragraphSpellingLanguageService.update(text: string, visibleRanges: layoutManager.visibleTextRanges,
+                                                    availableLanguages: available)
+            lastParagraphSpellingViewport = layoutManager.visibleTextRanges
+        }
+    }
+
     private func checkVisibleSpellingIfNeeded() {
         let languages = resolvedSpellingLanguages
         guard isSpellCheckingEnabled, !languages.isEmpty,
@@ -2230,17 +2269,20 @@ extension TextInputView {
             }
             return
         }
+        prepareParagraphSpellingLanguagesIfNeeded(fallback: languages)
+        let languageRegions = spellCheckingLanguage == nil ? paragraphSpellingLanguageService.regions : []
         var excludedRanges = [markedRange].compactMap { $0 }
         if isEditing, let selection = selectedRange, selection.length == 0 {
             excludedRanges.append(selection)
         }
-        let request = SpellingRequest(visibleRanges: layoutManager.visibleTextRanges, languages: languages, excludedRanges: excludedRanges)
+        let request = SpellingRequest(visibleRanges: layoutManager.visibleTextRanges, languages: languages,
+                                      languageRegions: languageRegions, excludedRanges: excludedRanges)
         guard lastSpellingRequest != request else {
             return
         }
         lastSpellingRequest = request
         spellCheckingService.schedule(text: string, visibleRanges: request.visibleRanges, languages: languages,
-                                      excludedRanges: excludedRanges, shouldCheck: { [weak self] range in
+                                      languageRegions: languageRegions, excludedRanges: excludedRanges, shouldCheck: { [weak self] range in
             guard let self = self else {
                 return false
             }
@@ -2307,7 +2349,7 @@ extension TextInputView {
 
     func resetIgnoredSpellingWords() {
         spellCheckingService.resetIgnoredWords()
-        invalidateSpellChecking()
+        invalidateSpellChecking(preservingParagraphLanguages: false)
     }
 
     private func spellingTarget(in requestedRange: NSRange) -> SpellingSuggestion? {
@@ -2327,7 +2369,7 @@ extension TextInputView {
         guard let original = spellCheckingService.word(for: range, in: string) else {
             return nil
         }
-        let target = SpellingSuggestion(range: range, original: original, replacement: "", languages: resolvedSpellingLanguages,
+        let target = SpellingSuggestion(range: range, original: original, replacement: "", languages: spellingLanguages(for: range),
                                         revision: spellingRevision, selection: selectedRange)
         guard delegate?.textInputView(self, shouldCheckSpellingIn: range) ?? true, isCurrentSpellingSuggestion(target) else {
             return nil
@@ -2412,7 +2454,7 @@ extension TextInputView {
 
     private func isCurrentSpellingSuggestion(_ suggestion: SpellingSuggestion) -> Bool {
         isEditing && isEditableForSystemTextReplacement && isSpellCheckingEnabled && markedRange == nil
-            && suggestion.revision == spellingRevision && suggestion.languages == resolvedSpellingLanguages
+            && suggestion.revision == spellingRevision && suggestion.languages == spellingLanguages(for: suggestion.range)
             && suggestion.selection == selectedRange && text(in: suggestion.range) == suggestion.original
     }
 

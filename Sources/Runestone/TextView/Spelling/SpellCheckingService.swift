@@ -81,7 +81,8 @@ final class SpellCheckingService {
                  shouldCheck: shouldCheck, completion: completion)
     }
 
-    func schedule(text: NSString, visibleRanges: [NSRange], languages: [String], excludedRanges: [NSRange] = [],
+    func schedule(text: NSString, visibleRanges: [NSRange], languages: [String], languageRegions: [SpellingLanguageRegion] = [],
+                  excludedRanges: [NSRange] = [],
                   shouldCheck: ((NSRange) -> Bool)? = nil, completion: @escaping ([NSRange]) -> Void) {
         invalidate()
         let validRanges = visibleRanges.filter { Self.isValid($0, in: text) && $0.length > 0 }
@@ -89,9 +90,11 @@ final class SpellCheckingService {
             completion([])
             return
         }
-        let chunks = Self.makeChunks(text: text, visibleRanges: validRanges)
+        let chunks = Self.makeChunks(text: text, visibleRanges: validRanges).flatMap { chunk in
+            Self.chunksApplyingLanguages(chunk, fallback: languages, regions: languageRegions)
+        }
         let currentGeneration = generation
-        request = Request(chunks: chunks, languages: languages, excludedRanges: excludedRanges,
+        request = Request(chunks: chunks, excludedRanges: excludedRanges,
                           shouldCheck: shouldCheck, completion: completion)
         DispatchQueue.main.asyncAfter(deadline: .now() + debounceInterval) { [weak self] in
             self?.checkNextBatch(generation: currentGeneration)
@@ -168,7 +171,7 @@ final class SpellCheckingService {
             let chunk = request.chunks[request.chunkIndex]
             let string = chunk.text as NSString
             if let candidate = request.candidate {
-                checkCandidate(candidate, in: string, request: request, chunkLocation: chunk.location)
+                checkCandidate(candidate, in: string, request: request, chunk: chunk)
                 calls += 1
                 guard generation == expectedGeneration else {
                     return
@@ -176,7 +179,7 @@ final class SpellCheckingService {
                 continue
             }
             let range = checker.rangeOfMisspelledWord(in: chunk.text, range: NSRange(location: 0, length: string.length),
-                                                      startingAt: request.offset, wrap: false, language: request.languages[0])
+                                                      startingAt: request.offset, wrap: false, language: chunk.languages[0])
             calls += 1
             guard range.location != NSNotFound, range.length > 0, Self.isValid(range, in: string),
                   range.location >= request.offset else {
@@ -193,7 +196,7 @@ final class SpellCheckingService {
                 guard generation == expectedGeneration else {
                     return
                 }
-                if request.languages.count == 1 {
+                if chunk.languages.count == 1 {
                     request.words[documentRange] = string.substring(with: range)
                 } else {
                     request.candidate = range
@@ -219,17 +222,17 @@ final class SpellCheckingService {
         }
     }
 
-    private func checkCandidate(_ candidate: NSRange, in string: NSString, request: Request, chunkLocation: Int) {
+    private func checkCandidate(_ candidate: NSRange, in string: NSString, request: Request, chunk: Chunk) {
         let word = string.substring(with: candidate)
         let wordRange = NSRange(location: 0, length: candidate.length)
-        let language = request.languages[request.candidateLanguageIndex]
+        let language = chunk.languages[request.candidateLanguageIndex]
         let misspelling = checker.rangeOfMisspelledWord(in: word, range: wordRange, startingAt: 0, wrap: false, language: language)
         if misspelling != wordRange {
             request.candidate = nil
         } else {
             request.candidateLanguageIndex += 1
-            if request.candidateLanguageIndex == request.languages.count {
-                let documentRange = NSRange(location: chunkLocation + candidate.location, length: candidate.length)
+            if request.candidateLanguageIndex == chunk.languages.count {
+                let documentRange = NSRange(location: chunk.location + candidate.location, length: candidate.length)
                 request.words[documentRange] = word
                 request.candidate = nil
             }
@@ -238,6 +241,25 @@ final class SpellCheckingService {
 }
 
 private extension SpellCheckingService {
+    private static func chunksApplyingLanguages(_ chunk: Chunk, fallback: [String], regions: [SpellingLanguageRegion]) -> [Chunk] {
+        let text = chunk.text as NSString
+        let chunkRange = NSRange(location: chunk.location, length: text.length)
+        let applicable = regions.filter { NSIntersectionRange($0.range, chunkRange).length > 0 && !$0.languages.isEmpty }
+        var boundaries = Set([chunkRange.location, NSMaxRange(chunkRange)])
+        for region in applicable {
+            let intersection = NSIntersectionRange(region.range, chunkRange)
+            boundaries.insert(intersection.location)
+            boundaries.insert(NSMaxRange(intersection))
+        }
+        let sorted = boundaries.sorted()
+        return zip(sorted, sorted.dropFirst()).map { start, end in
+            let range = NSRange(location: start, length: end - start)
+            let languages = applicable.first { $0.range.location <= start && NSMaxRange($0.range) >= end }?.languages ?? fallback
+            return Chunk(location: start, text: text.substring(with: NSRange(location: start - chunk.location, length: range.length)),
+                         languages: languages)
+        }
+    }
+
     private static func makeChunks(text: NSString, visibleRanges: [NSRange]) -> [Chunk] {
         // Merge overlapping word-context windows, but do not copy hidden columns between unwrapped lines.
         var mergedRanges: [NSRange] = []
@@ -319,11 +341,17 @@ private extension SpellCheckingService {
     private struct Chunk {
         let location: Int
         let text: String
+        let languages: [String]
+
+        init(location: Int, text: String, languages: [String] = []) {
+            self.location = location
+            self.text = text
+            self.languages = languages
+        }
     }
 
     private final class Request {
         let chunks: [Chunk]
-        let languages: [String]
         let excludedRanges: [NSRange]
         let shouldCheck: ((NSRange) -> Bool)?
         let completion: ([NSRange]) -> Void
@@ -333,10 +361,9 @@ private extension SpellCheckingService {
         var candidate: NSRange?
         var candidateLanguageIndex = 1
 
-        init(chunks: [Chunk], languages: [String], excludedRanges: [NSRange], shouldCheck: ((NSRange) -> Bool)?,
+        init(chunks: [Chunk], excludedRanges: [NSRange], shouldCheck: ((NSRange) -> Bool)?,
              completion: @escaping ([NSRange]) -> Void) {
             self.chunks = chunks
-            self.languages = languages
             self.excludedRanges = excludedRanges
             self.shouldCheck = shouldCheck
             self.completion = completion
