@@ -53,6 +53,9 @@ enum PreparedInputViewportStep {
         /// A callout may already have moved the viewport. Never replay an
         /// input event on the basis of this result.
         case unavailable
+        /// The viewport moved, but the step could not publish current geometry.
+        /// No selection operation has been attempted by the viewport step.
+        case viewportChanged
     }
 
     static let maximumDelta: CGFloat = 64
@@ -147,6 +150,7 @@ enum PreparedInputViewportStep {
                   abs(clip.bounds.minY - constrained.minY) < 0.01, budget.check() else { return .unavailable }
             return clip.bounds.origin == initial.origin ? .unavailable : .progressed
         } ?? .unavailable
+        if result == .unavailable, clip.bounds != initial { return .viewportChanged }
         guard result == .refusedBeforeScroll else { return result }
         // `withBoundedViewportWork` has unwound, including its deferred
         // recovery handling. Reject reentrant changes in the clock, preflight,

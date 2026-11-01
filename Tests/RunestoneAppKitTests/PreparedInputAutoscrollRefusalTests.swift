@@ -6,6 +6,25 @@ import XCTest
 /// A timer step is its own admitted dispatch. A refusal that is proven to
 /// precede viewport and selection work is a normal stop, not an uncertain edit.
 final class PreparedInputAutoscrollRefusalTests: XCTestCase {
+    func testPostScrollBudgetExpiryStopsWithoutUncertainSelectionDispatch() throws {
+        let text = String(repeating: "abcdefghijklmno\n", count: 100)
+        let fixture = try RefusalFixture(text: text, width: 700, height: 452)
+        defer { fixture.close() }
+        let point = try fixture.startDraggingOutside()
+        let bounds = fixture.scroll.contentView.bounds
+        let selection = fixture.attachment.adapter.selectedRangeForInput()
+        fixture.view.inputViewportClock = {
+            fixture.scroll.contentView.bounds == bounds ? 0 : 1
+        }
+
+        XCTAssertFalse(fixture.view.performPointerAutoscrollStep(at: point, hasFocus: { true }))
+        XCTAssertGreaterThan(fixture.scroll.contentView.bounds.minY, bounds.minY)
+        XCTAssertEqual(fixture.attachment.adapter.selectedRangeForInput(), selection)
+        XCTAssertEqual(fixture.host.completions.last?.outcome, .completed)
+        XCTAssertTrue(fixture.attachment.connection.takeInputFailures().records.isEmpty)
+        XCTAssertFalse(fixture.clock.isRunning)
+    }
+
     func testLongNearbyLineStopsBeforeScrollWithoutUncertainDispatch() throws {
         let text = String(repeating: "short\n", count: 12) + String(repeating: "x", count: 5_000) + "\nlast"
         let fixture = try RefusalFixture(text: text)
@@ -129,7 +148,7 @@ private final class RefusalFixture {
     let clock: PreparedInputAutoscrollClock
     let queue: RefusalQueue
 
-    init(text: String) throws {
+    init(text: String, width: CGFloat = 240, height: CGFloat = 130) throws {
         _ = NSApplication.shared
         let host = LivePublicHost(text: text)
         let queue = RefusalQueue()
@@ -137,7 +156,7 @@ private final class RefusalFixture {
             host: host, lifetime: host.lifetime, bridge: host.bridge,
             makeDriver: { RefusalDriver($0) }, schedule: queue.enqueue))
         let view = try XCTUnwrap(attachment.view as? PreparedInputResponderView)
-        let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 240, height: 130),
+        let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: width, height: height),
                               styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         let scroll = NSScrollView(frame: try XCTUnwrap(window.contentView).bounds)
