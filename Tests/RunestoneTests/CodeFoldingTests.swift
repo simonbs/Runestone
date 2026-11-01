@@ -99,7 +99,18 @@ final class CodeFoldingTests: XCTestCase {
         XCTAssertTrue(input.lineManager.isLineHidden(51))
         XCTAssertEqual(view.contentOffset.y, bottomOffset, accuracy: 0.5)
         XCTAssertGreaterThanOrEqual(view.contentSize.height, originalHeight)
-        try await Task.sleep(nanoseconds: 600_000_000)
+        // Observe the completed transition rather than assuming animation frames
+        // have run after a fixed delay on a loaded simulator.
+        let deadline = ProcessInfo.processInfo.systemUptime + 5
+        while ProcessInfo.processInfo.systemUptime < deadline {
+            let expectedHeight = input.contentSize.height + view.bounds.height * 0.25
+            let maximum = max(-view.adjustedContentInset.top,
+                              view.contentSize.height - view.bounds.height + view.adjustedContentInset.bottom)
+            if abs(view.contentSize.height - expectedHeight) <= 0.5, abs(view.contentOffset.y - maximum) <= 0.5 {
+                break
+            }
+            try await Task.sleep(nanoseconds: 25_000_000)
+        }
         XCTAssertLessThan(view.contentSize.height, originalHeight)
         XCTAssertEqual(view.contentSize.height, input.contentSize.height + view.bounds.height * 0.25, accuracy: 0.5)
         let finalMaximum = max(-view.adjustedContentInset.top,
