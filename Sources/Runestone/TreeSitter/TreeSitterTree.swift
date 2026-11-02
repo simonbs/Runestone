@@ -1,5 +1,6 @@
 import Foundation
 import TreeSitter
+import TreeSitterSupport
 
 final class TreeSitterTree {
     let pointer: OpaquePointer
@@ -26,6 +27,11 @@ final class TreeSitterTree {
     }
 
     func rangesChanged(comparingTo otherTree: TreeSitterTree) -> [TreeSitterTextRange] {
+        // A bounded proof can avoid expanding shared repetition subtrees after
+        // syntax-preserving edits. Every uncertain case uses the stock diff.
+        if runestone_trees_have_same_structure(pointer, otherTree.pointer) {
+            return []
+        }
         var count = CUnsignedInt(0)
         let ptr = ts_tree_get_changed_ranges(pointer, otherTree.pointer, &count)
         defer { free(ptr) }

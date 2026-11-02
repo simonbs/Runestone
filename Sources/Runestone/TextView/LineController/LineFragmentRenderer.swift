@@ -43,6 +43,10 @@ final class LineFragmentRenderer {
 
     /// A horizontally scrolled viewport can cover disjoint logical ranges in bidirectional text.
     func visibleCharacterRanges(in horizontalRange: ClosedRange<CGFloat>) -> [NSRange] {
+        Self.visibleCharacterRanges(in: horizontalRange, lineFragment: lineFragment)
+    }
+
+    static func visibleCharacterRanges(in horizontalRange: ClosedRange<CGFloat>, lineFragment: LineFragment) -> [NSRange] {
         let runs = CTLineGetGlyphRuns(lineFragment.line) as? [CTRun] ?? []
         return runs.compactMap { run in
             guard let bounds = horizontalBounds(of: run), bounds.overlaps(horizontalRange) else {
@@ -77,7 +81,7 @@ final class LineFragmentRenderer {
             let stringRange = CTRunGetStringRange(run)
             let runRange = NSRange(location: stringRange.location, length: stringRange.length)
             let intersection = NSIntersectionRange(visibleRange, runRange)
-            guard intersection.length > 0, let bounds = horizontalBounds(of: run) else {
+            guard intersection.length > 0, let bounds = Self.horizontalBounds(of: run) else {
                 return nil
             }
             let runMinX = bounds.lowerBound
@@ -134,7 +138,7 @@ private extension LineFragmentRenderer {
         }
     }
 
-    private func horizontalBounds(of run: CTRun) -> ClosedRange<CGFloat>? {
+    private static func horizontalBounds(of run: CTRun) -> ClosedRange<CGFloat>? {
         let count = CTRunGetGlyphCount(run)
         guard count > 0 else {
             return nil

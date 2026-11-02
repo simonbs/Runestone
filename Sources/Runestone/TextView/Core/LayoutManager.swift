@@ -254,9 +254,37 @@ final class LayoutManager {
         }
     }
     /// The text covered by the fragments from the most recent viewport layout.
-    private(set) var visibleTextRange: NSRange?
+    var visibleTextRange: NSRange? {
+        visibleTextRanges.reduce(nil as NSRange?) { result, range in
+            result.map { NSUnionRange($0, range) } ?? range
+        }
+    }
     /// Individual visible ranges avoid including hidden columns between long unwrapped lines.
-    private(set) var visibleTextRanges: [NSRange] = []
+    var visibleTextRanges: [NSRange] {
+        if let cachedVisibleTextRanges {
+            return cachedVisibleTextRanges
+        }
+        let ranges = visibleTextFragments.flatMap { snapshot in
+            let localRanges = snapshot.horizontalRange.map { horizontalRange in
+                LineFragmentRenderer.visibleCharacterRanges(in: horizontalRange, lineFragment: snapshot.fragment)
+            } ?? [snapshot.fragment.visibleRange]
+            return localRanges.map { localRange in
+                NSRange(location: snapshot.lineLocation + localRange.location, length: localRange.length)
+            }
+        }
+        cachedVisibleTextRanges = ranges
+        return ranges
+    }
+
+    // Freeze the completed layout's drawing objects and coordinates. Controllers
+    // can receive new fragments before the next layout; spelling must not mix them.
+    private struct VisibleTextFragment {
+        let fragment: LineFragment
+        let lineLocation: Int
+        let horizontalRange: ClosedRange<CGFloat>?
+    }
+    private var visibleTextFragments: [VisibleTextFragment] = []
+    private var cachedVisibleTextRanges: [NSRange]?
 
     // MARK: - Views
     let gutterContainerView = GutterContainerView()
@@ -576,8 +604,8 @@ extension LayoutManager {
     private func layoutLinesInViewport() {
         // Immediately bail out from generating lines in a viewport of zero size.
         guard viewport.size.width > 0 && viewport.size.height > 0 else {
-            visibleTextRange = nil
-            visibleTextRanges = []
+            visibleTextFragments = []
+            cachedVisibleTextRanges = []
             return
         }
         let highlightDestinationSynchronously = needsSynchronousDestinationHighlight
@@ -598,8 +626,7 @@ extension LayoutManager {
         var nextLine = lineManager.line(containingYOffset: insetViewport.minY)
         var appearedLineIDs: Set<DocumentLineNodeID> = []
         var appearedLineFragmentIDs: Set<LineFragmentID> = []
-        var visibleRange: NSRange?
-        var visibleRanges: [NSRange] = []
+        var textFragments: [VisibleTextFragment] = []
         var maxY = insetViewport.minY
         while let line = nextLine, maxY < insetViewport.maxY, constrainingLineWidth > 0 {
             appearedLineIDs.insert(line.id)
@@ -632,11 +659,10 @@ extension LayoutManager {
                 let lineFragment = lineFragmentController.lineFragment
                 var lineFragmentFrame: CGRect = .zero
                 appearedLineFragmentIDs.insert(lineFragment.id)
-                for localRange in visibleCharacterRanges(in: lineFragmentController) {
-                    let documentRange = NSRange(location: line.location + localRange.location, length: localRange.length)
-                    visibleRange = visibleRange.map { NSUnionRange($0, documentRange) } ?? documentRange
-                    visibleRanges.append(documentRange)
-                }
+                let horizontalRange: ClosedRange<CGFloat>? = isLineWrappingEnabled ? nil
+                    : (viewport.minX - leadingLineSpacing - 32) ... (viewport.maxX - leadingLineSpacing + 32)
+                textFragments.append(VisibleTextFragment(fragment: lineFragment, lineLocation: line.location,
+                                                         horizontalRange: horizontalRange))
                 updateSpelling(on: lineFragmentController, lineLocation: line.location)
                 lineFragmentController.highlightedRangeFragments = highlightService.highlightedRangeFragments(for: lineFragment,
                                                                                                               inLineWithID: line.id)
@@ -665,8 +691,8 @@ extension LayoutManager {
         linesContainerView.frame = CGRect(x: 0, y: 0, width: contentSize.width, height: contentSize.height)
         // Update the visible lines and line fragments. Clean up everything that is not in the viewport anymore.
         visibleLineIDs = appearedLineIDs
-        visibleTextRange = visibleRange
-        visibleTextRanges = visibleRanges
+        visibleTextFragments = textFragments
+        cachedVisibleTextRanges = nil
         let disappearedLineIDs = oldVisibleLineIDs.subtracting(appearedLineIDs)
         let disappearedLineFragmentIDs = oldVisibleLineFragmentIDs.subtracting(appearedLineFragmentIDs)
         for disappearedLineID in disappearedLineIDs {
@@ -863,16 +889,6 @@ extension LayoutManager {
 
 // MARK: - Spelling
 private extension LayoutManager {
-    private func visibleCharacterRanges(in controller: LineFragmentController) -> [NSRange] {
-        if isLineWrappingEnabled {
-            return [controller.lineFragment.visibleRange]
-        }
-        // Include partially visible glyphs and a small margin; the spelling service expands to word boundaries.
-        let lowerBound = viewport.minX - leadingLineSpacing - 32
-        let upperBound = viewport.maxX - leadingLineSpacing + 32
-        return controller.visibleCharacterRanges(in: lowerBound ... upperBound)
-    }
-
     private func updateSpellingOnVisibleLines() {
         for lineID in visibleLineIDs {
             guard let lineController = lineControllerStorage[lineID] else {

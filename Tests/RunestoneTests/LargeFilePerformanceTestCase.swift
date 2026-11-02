@@ -14,7 +14,7 @@ class LargeFilePerformanceTestCase: XCTestCase {
         let lineKind = unbroken ? "long-unbroken" : (longLines ? "long" : "short")
         let prefix = purePlainText ? "pure-ascii-" : ""
         let scenario = "\(prefix)\(lineKind)-\(highlighted ? "json" : "plain")-\(wrapping ? "wrapped" : "unwrapped")"
-        let view = TextView(frame: CGRect(x: 0, y: 0, width: 390, height: 700))
+        let view = TextView(frame: LargeFileTestViewport.frame(defaultSize: CGSize(width: 390, height: 700)))
         view.contentInsetAdjustmentBehavior = .never
         view.isLineWrappingEnabled = wrapping
         view.isAutomaticScrollEnabled = false
@@ -45,7 +45,8 @@ class LargeFilePerformanceTestCase: XCTestCase {
         let loadMilliseconds = milliseconds(since: loadStart)
         report(scenario: scenario, phase: "load", samples: [loadMilliseconds],
                extra: ["utf8Bytes": fixture.utf8.count, "logicalLines": input.lineManager.lineCount,
-                       "maximumLineUTF8Bytes": maximumLineUTF8Bytes(in: fixture)])
+                       "maximumLineUTF8Bytes": maximumLineUTF8Bytes(in: fixture),
+                       "viewportWidth": Double(view.bounds.width), "viewportHeight": Double(view.bounds.height)])
         XCTAssertGreaterThanOrEqual(fixture.utf8.count, 25 * 1_024 * 1_024)
         XCTAssertEqual(input.string.length, fixture.utf16.count)
 

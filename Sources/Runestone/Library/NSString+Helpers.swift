@@ -24,6 +24,7 @@ extension NSString {
         if didGetBytes {
             return UnsafePointer<Int8>(buffer)
         } else {
+            buffer.deallocate()
             return nil
         }
     }
