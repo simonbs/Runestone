@@ -44,6 +44,35 @@ final class SpellCheckingTests: XCTestCase {
         attachScreenshot(of: app, named: "Spell checking disabled")
     }
 
+    func testDismissingKeyboardDismissesSpellingMenu() throws {
+        let app = XCUIApplication().disablingTextPersistance()
+        app.launch()
+        app.navigationBars.buttons["Spelling"].tap()
+        let textView = try XCTUnwrap(app.textView)
+        XCTAssertTrue(textView.waitForExistence(timeout: 5))
+        let originalText = try XCTUnwrap(textView.value as? String)
+        let firstWord = app.coordinate(withNormalizedOffset: .zero).withOffset(
+            CGVector(dx: textView.frame.minX + 30, dy: app.navigationBars.firstMatch.frame.maxY + 15)
+        )
+        firstWord.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        let suggestion = app.descendants(matching: .any).matching(identifier: "misspelled").firstMatch
+        XCTAssertTrue(suggestion.waitForExistence(timeout: 5))
+
+        app.navigationBars.buttons["Done"].tap()
+        let keyboardDismissed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"), object: app.keyboards.firstMatch
+        )
+        let menuDismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: suggestion)
+        XCTAssertEqual(XCTWaiter.wait(for: [keyboardDismissed, menuDismissed], timeout: 5), .completed)
+        XCTAssertEqual(textView.value as? String, originalText)
+
+        firstWord.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(suggestion.waitForExistence(timeout: 5))
+        XCTAssertEqual(textView.value as? String, originalText)
+    }
+
     func testIgnoringSpellingUntilDocumentIsReloaded() throws {
         let app = XCUIApplication().disablingTextPersistance()
         app.launch()

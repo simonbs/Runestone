@@ -1732,6 +1732,10 @@ extension TextView: UIGestureRecognizerDelegate {
 
 // MARK: - KeyboardObserverDelegate
 extension TextView: KeyboardObserverDelegate {
+    func keyboardObserver(_ keyboardObserver: KeyboardObserver, keyboardWillHideWith animation: KeyboardObserver.Animation?) {
+        textInputView.dismissSpellingMenu()
+    }
+
     func keyboardObserver(_ keyboardObserver: KeyboardObserver,
                           keyboardWillShowWithHeight keyboardHeight: CGFloat,
                           animation: KeyboardObserver.Animation?) {
