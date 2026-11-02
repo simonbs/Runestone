@@ -15,7 +15,8 @@ let package = Package(
     ],
     targets: [
         .target(name: "Runestone", dependencies: [
-            "TreeSitter"
+            "TreeSitter",
+            "TreeSitterSupport"
         ], resources: [
             .copy("PrivacyInfo.xcprivacy"),
             .process("TextView/Appearance/Theme.xcassets")
@@ -27,12 +28,14 @@ let package = Package(
             publicHeadersPath: "include",
             cSettings: [.headerSearchPath("src"), .define("_DARWIN_C_SOURCE")]
         ),
+        .target(name: "TreeSitterSupport", dependencies: ["TreeSitter"]),
         .target(name: "TestTreeSitterLanguages", cSettings: [
             .headerSearchPath("private"),
             .unsafeFlags(["-w"])
         ]),
         .testTarget(name: "RunestoneTests", dependencies: [
             "Runestone",
+            "TreeSitterSupport",
             "TestTreeSitterLanguages"
         ])
     ],
