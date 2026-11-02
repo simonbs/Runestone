@@ -27,11 +27,16 @@ final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
     private let languageMode: TreeSitterInternalLanguageMode
     private let operationQueue: OperationQueue
     private var currentOperation: Operation?
+    private var currentRequest: TreeSitterHighlightRequest?
 
     init(stringView: StringView, languageMode: TreeSitterInternalLanguageMode, operationQueue: OperationQueue) {
         self.stringView = stringView
         self.languageMode = languageMode
         self.operationQueue = operationQueue
+    }
+
+    deinit {
+        cancel()
     }
 
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput) {
@@ -43,55 +48,60 @@ final class TreeSitterSyntaxHighlighter: LineSyntaxHighlighter {
 
     func syntaxHighlight(_ input: LineSyntaxHighlighterInput, completion: @escaping AsyncCallback) {
         cancel()
-        let snapshot = languageMode.makeHighlightSnapshot()
+        let request = TreeSitterHighlightRequest(snapshot: languageMode.makeHighlightSnapshot())
         let operation = BlockOperation()
-        operation.addExecutionBlock { [weak operation, weak self] in
-            guard let operation = operation, let self = self else {
-                DispatchQueue.main.async {
-                    completion(.failure(TreeSitterSyntaxHighlighterError.operationDeallocated))
-                }
-                return
-            }
-            guard !operation.isCancelled else {
-                DispatchQueue.main.async {
-                    completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
-                }
+        operation.addExecutionBlock { [weak operation, weak request] in
+            guard let operation = operation, let request = request, !operation.isCancelled,
+                  let snapshot = request.takeSnapshot() else {
                 return
             }
             let captures = snapshot.captures(in: input.byteRange) { operation.isCancelled }
             if !operation.isCancelled {
-                DispatchQueue.main.async {
-                    defer {
-                        if self.currentOperation === operation { self.currentOperation = nil }
-                    }
-                    if self.currentOperation === operation && !operation.isCancelled && input.isValid() {
-                        let tokens = self.tokens(for: captures, localTo: input.byteRange)
-                        guard self.currentOperation === operation && !operation.isCancelled && input.isValid() else {
-                            completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
-                            return
-                        }
-                        let result = withExtendedLifetime(snapshot) {
-                            self.setAttributes(for: tokens, on: input.attributedString)
-                        }
-                        completion(.success(result))
-                    } else {
-                        completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
-                    }
+                request.complete(snapshot: snapshot, captures: captures)
+            }
+        }
+        // Operation completion also runs when canceled before its execution
+        // block starts, so every request still delivers one completion callback.
+        operation.completionBlock = { [weak operation, weak request, weak self] in
+            if operation?.isCancelled != false { request?.cancel() }
+            DispatchQueue.main.async { [weak operation, weak request, weak self] in
+                guard let self = self, let operation = operation else {
+                    completion(.failure(TreeSitterSyntaxHighlighterError.operationDeallocated))
+                    return
                 }
-            } else {
-                DispatchQueue.main.async {
+                defer {
                     if self.currentOperation === operation { self.currentOperation = nil }
+                    if self.currentRequest === request { self.currentRequest = nil }
+                    request?.cancel()
+                }
+                guard let request = request, self.currentRequest === request,
+                      self.currentOperation === operation, !operation.isCancelled, input.isValid(),
+                      let completed = request.takeCompleted() else {
                     completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
+                    return
+                }
+                withExtendedLifetime(completed.snapshot) {
+                    let tokens = self.tokens(for: completed.captures, localTo: input.byteRange)
+                    guard self.currentRequest === request, self.currentOperation === operation,
+                          !operation.isCancelled, input.isValid() else {
+                        completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
+                        return
+                    }
+                    let result = self.setAttributes(for: tokens, on: input.attributedString)
+                    completion(.success(result))
                 }
             }
         }
         currentOperation = operation
+        currentRequest = request
         operationQueue.addOperation(operation)
     }
 
     func cancel() {
         currentOperation?.cancel()
         currentOperation = nil
+        currentRequest?.cancel()
+        currentRequest = nil
     }
 }
 

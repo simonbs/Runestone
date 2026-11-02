@@ -92,6 +92,43 @@ final class TreeSitterSyntaxHighlightingTests: XCTestCase {
     }
 
     @MainActor
+    func testCancellationBeforeWorkerStartsStillCompletesTheRequest() {
+        let context = makeAsyncContext(text: "let target = 42;")
+        context.queue.isSuspended = true
+        defer { context.queue.isSuspended = false }
+        let input = makeInput("let target = 42;")
+        let rejected = expectation(description: "Canceled queued request completes")
+        rejected.assertForOverFulfill = true
+        context.highlighter.syntaxHighlight(input) { result in
+            if case .success = result { XCTFail("Canceled queued work must not succeed.") }
+            rejected.fulfill()
+        }
+        context.highlighter.cancel()
+        context.queue.isSuspended = false
+        wait(for: [rejected], timeout: 5)
+    }
+
+    @MainActor
+    func testCompletedRequestDoesNotRetainHighlighterUntilMainQueueDrains() {
+        var context: AsyncContext? = makeAsyncContext(text: "let target = 42;")
+        let queue = context!.queue
+        weak var weakHighlighter = context!.highlighter
+        let input = makeInput("let target = 42;")
+        let original = NSAttributedString(attributedString: input.attributedString)
+        let rejected = expectation(description: "Deallocated highlighter still completes request")
+        context!.highlighter.syntaxHighlight(input) { result in
+            if case .success = result { XCTFail("A deallocated highlighter must not apply its pending result.") }
+            rejected.fulfill()
+        }
+        // Keep the main queue blocked until the worker has produced its result.
+        queue.waitUntilAllOperationsAreFinished()
+        context = nil
+        XCTAssertNil(weakHighlighter, "Queued result delivery must not retain the highlighter and its full document.")
+        wait(for: [rejected], timeout: 5)
+        XCTAssertTrue(input.attributedString.isEqual(to: original))
+    }
+
+    @MainActor
     func testInvalidatedInputCannotApplyCompletedBackgroundCaptures() throws {
         let context = makeAsyncContext(text: "let target = 42;")
         let input = makeInput("let target = 42;")
