@@ -10,12 +10,14 @@ final class TreeSitterHighlightRequest {
     }
 
     private let lock = NSLock()
+    private let resourceDisposer: TreeSitterHighlightResourceDisposer
     private var pendingSnapshot: TreeSitterHighlightSnapshot?
     private var completed: Completed?
     private var isCancelled = false
 
-    init(snapshot: TreeSitterHighlightSnapshot) {
+    init(snapshot: TreeSitterHighlightSnapshot, resourceDisposer: TreeSitterHighlightResourceDisposer = .shared) {
         pendingSnapshot = snapshot
+        self.resourceDisposer = resourceDisposer
     }
 
     func takeSnapshot() -> TreeSitterHighlightSnapshot? {
@@ -46,13 +48,14 @@ final class TreeSitterHighlightRequest {
     func cancel() {
         lock.lock()
         isCancelled = true
-        let snapshot = pendingSnapshot
-        let result = completed
+        guard pendingSnapshot != nil || completed != nil else {
+            lock.unlock()
+            return
+        }
+        let resources = TreeSitterHighlightResources(snapshot: pendingSnapshot, completed: completed)
         pendingSnapshot = nil
         completed = nil
         lock.unlock()
-        // Tree destruction can release substantial storage; do it outside the
-        // lock so a finishing worker never waits on document deallocation.
-        withExtendedLifetime((snapshot, result)) {}
+        resourceDisposer.dispose(resources)
     }
 }
