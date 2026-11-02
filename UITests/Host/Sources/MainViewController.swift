@@ -41,8 +41,15 @@ final class MainViewController: UIViewController {
         let text = "mispelled word.\n\nTap the underlined word to correct it."
         textView.setState(TextViewState(text: text))
         textView.selectedRange = NSRange(location: (text as NSString).length, length: 0)
-        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Undo", style: .plain, target: self, action: #selector(undoSpellingCorrection))
+        navigationItem.leftBarButtonItems = [
+            UIBarButtonItem(title: "Undo", style: .plain, target: self, action: #selector(undoSpellingCorrection)),
+            UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(dismissKeyboard))
+        ]
         updateSpellingButton()
+    }
+
+    @objc private func dismissKeyboard() {
+        contentView.textView.resignFirstResponder()
     }
 
     @objc private func configureSpellingDictionary() {

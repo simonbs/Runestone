@@ -57,6 +57,32 @@ final class SpellingMenuSettingsTests: XCTestCase {
         input.dismissSpellingMenu()
     }
 
+    func testKeyboardHidingDismissesSpellingMenuWhileStillEditing() throws {
+        guard #available(iOS 16, *) else {
+            throw XCTSkip("Standalone spelling menus require iOS 16")
+        }
+        let (view, input) = try makeEditor(word: "mispelled")
+        let window = showEditor(view, input: input)
+        defer { window.isHidden = true }
+        NotificationCenter.default.post(name: UIResponder.keyboardWillShowNotification, object: nil)
+        let range = input.string.range(of: "mispelled")
+        input.selectedRange = NSRange(location: NSMaxRange(range), length: 0)
+        let rect = input.firstRect(for: IndexedRange(range))
+        input.presentSpellingMenu(at: CGPoint(x: rect.midX, y: rect.midY))
+        let interaction = try XCTUnwrap(input.interactions.compactMap { $0 as? UIEditMenuInteraction }.first)
+        let delegate = try XCTUnwrap(interaction.delegate)
+        let configuration = UIEditMenuConfiguration(identifier: "Runestone.Spelling" as NSString, sourcePoint: .zero)
+        XCTAssertNotNil(delegate.editMenuInteraction?(interaction, menuFor: configuration, suggestedActions: []))
+        XCTAssertEqual(input.selectedRange, range)
+
+        NotificationCenter.default.post(name: UIResponder.keyboardWillHideNotification, object: nil)
+
+        XCTAssertTrue(input.isEditing, "The keyboard can hide without ending editing")
+        XCTAssertNil(delegate.editMenuInteraction?(interaction, menuFor: configuration, suggestedActions: []))
+        XCTAssertEqual(input.selectedRange, range)
+        XCTAssertEqual(view.text, "mispelled")
+    }
+
     func testSingleTapDoesNotSelectWordsWhileSpellingInteractionIsUnavailable() throws {
         let mutations: [(TextView, TextInputView) -> Void] = [
             { view, _ in view.spellCheckingType = .no },
