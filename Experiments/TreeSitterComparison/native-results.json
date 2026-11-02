@@ -1,0 +1,270 @@
+{
+  "status": "final bounded candidate ready for isolated iOS integration trial; no production integration performed",
+  "all_native_processes_finished": true,
+  "tree_sitter_revision": "10eb5ac119eec9cb4267a8e035066473983f5f3a",
+  "patch": "comparison-bounded-final.patch",
+  "patch_sha256": "6e1ae705f4b4814a12cf9b0989219cf6b7af44274cacbd2e68a94eeb49bbeaa8",
+  "source": "comparison-bounded-final/src/get_changed_ranges.c",
+  "source_sha256": "2bf624521b7cd566ed9ba6eec07be52b9a9abf74946c3e4e5142e50223df5a5a",
+  "library": "comparison-bounded-final.dylib",
+  "library_sha256": "d1f9089d92c96e74c80e5f1a300d11649367c2fb12581c68ec9cd748a64abf83",
+  "superseded_artifacts": [
+    {
+      "patch": "comparison-only.patch",
+      "sha256": "6188712f8b471dd1e1da3171154d3f888590182f731c3e6d1fa6f74076a2e22d",
+      "results": "results.json",
+      "status": "REJECTED for no-sharing hidden-depth regression; original recommendation and 27% headline superseded, files preserved unchanged",
+      "evidence": "benchmark-hidden-guarded.log: depth512 baseline0.079ms candidate171.3834ms (guarded version retains the original nested search)"
+    },
+    {
+      "patch": "rejected-parser.patch",
+      "status": "REJECTED for concrete JSON tree/range mismatch; preserved",
+      "evidence": "reproduce-parser.log and counterexample-first/"
+    },
+    {
+      "patch": "comparison-immediate.patch",
+      "status": "SUPERSEDED by cheap same-child-slot early guard and error-cost guard; do not integrate intermediate version"
+    }
+  ],
+  "safety_conditions": [
+    "same current child-slot address before inspecting parent metadata",
+    "immediate hidden parents only; no ancestor-pair search",
+    "equal current visible depths and equal projected visible contributions",
+    "same heap parent pointer and byte/point position",
+    "unchanged subtree, no external tokens, zero error cost",
+    "no intersecting included-range changes",
+    "same enclosing visible symbols/aliases; existing traversal on every miss"
+  ],
+  "native_validation_matrix": [
+    {
+      "check": "UTF8 randomized edit chains; all five grammars",
+      "count": 5000,
+      "unit": "edits",
+      "log": "validate-bounded-final-utf8.log",
+      "status": "pass"
+    },
+    {
+      "check": "UTF16LE 4096-byte callback, retained snapshots; all five grammars",
+      "count": 5000,
+      "unit": "edits",
+      "log": "validate-bounded-final-utf16-callback-snapshot.log",
+      "status": "pass"
+    },
+    {
+      "check": "Included ranges, UTF8; all five grammars",
+      "count": 1200,
+      "unit": "operations",
+      "log": "validate-bounded-final-included-utf8.log",
+      "status": "pass"
+    },
+    {
+      "check": "Included ranges, UTF16LE callback+snapshots; all five grammars",
+      "count": 1200,
+      "unit": "operations",
+      "log": "validate-bounded-final-included-utf16-callback-snapshot.log",
+      "status": "pass"
+    },
+    {
+      "check": "Padding/aliases/recursion, shared and independently parsed trees, snapshots, UTF8",
+      "count": 27000,
+      "unit": "exact range comparisons",
+      "log": "boundary-bounded-final-utf8.log",
+      "status": "pass"
+    },
+    {
+      "check": "Padding/aliases/recursion, shared and independently parsed trees, snapshots, UTF16LE callback",
+      "count": 27000,
+      "unit": "exact range comparisons",
+      "log": "boundary-bounded-final-utf16.log",
+      "status": "pass"
+    },
+    {
+      "check": "Malformed/error/snapshot fixtures, UTF8 and UTF16LE callback",
+      "count": 12000,
+      "unit": "exact range comparisons",
+      "log": "errors-bounded-final.log",
+      "status": "pass"
+    },
+    {
+      "check": "ASan+UBSan, engine/harness instrumented, grammar objects not instrumented",
+      "count": 1000,
+      "unit": "edits",
+      "log": "validate-bounded-final-sanitized.log",
+      "status": "pass"
+    },
+    {
+      "check": "25MiB ASCII-equivalent JSON, 204800 records, UTF16LE callback+retained snapshots",
+      "count": 4,
+      "unit": "edits",
+      "log": "validate-bounded-final-large-utf16.log",
+      "status": "pass"
+    }
+  ],
+  "native_operations_and_exact_comparisons": 79404,
+  "candidate_baseline_range_mismatches": 0,
+  "candidate_baseline_parse_mismatches": 0,
+  "known_baseline_fresh_discrepancies": {
+    "python_utf8": 22,
+    "python_utf16": 21,
+    "both_engines_identical": true
+  },
+  "error_reachability": {
+    "shared_unchanged_hidden_parent_nonzero_error_no_external_occurrences_after_edits": 93561,
+    "identity_comparison_occurrences": 9918,
+    "not_unique_nodes": true,
+    "old_patch_error_bug_proven": false,
+    "notes": "errors-notes.txt; nine malformed initial fixtures and one permissive HTML fixture without an initial error"
+  },
+  "upstream": {
+    "tests": 69,
+    "tree_tests": 12,
+    "parser_tests": 51,
+    "feature_corpus_tests": 1,
+    "language_corpus_tests": 5,
+    "languages": [
+      "json",
+      "javascript",
+      "html",
+      "python",
+      "rust"
+    ],
+    "status": "pass on baseline and exact final candidate",
+    "candidate_log": "upstream-bounded-final.log",
+    "baseline_logs": [
+      "upstream-baseline-tree.log",
+      "upstream-baseline-parser.log",
+      "upstream-baseline-parser-retry.log",
+      "upstream-baseline-features-retry.log",
+      "upstream-baseline-corpus.log"
+    ],
+    "setup_note": "Baseline parser initially33pass/18cache-permission failures and feature cache failure; redirected XDG_CACHE_HOME into temp and reran only failed18+feature successfully. No remaining failures.",
+    "rust": "1.90.0",
+    "features": "--no-default-features; Node used for grammar.js",
+    "seed": 123456789,
+    "fixture_revisions": {
+      "html": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+      "javascript": "44c892e0be055ac465d5eeddae6d3e194424e7de",
+      "json": "ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
+      "python": "bffb65a8cfe4e46290331dfef0dbf0ef3679de11",
+      "rust": "18b0515fca567f5a10aee9978c6d2640e878671a",
+      "php": "e8074c9943298d30a1af9ff84c2b61a6dc600d86"
+    },
+    "reproduction_script": "run-upstream-final.sh"
+  },
+  "benchmark_context": "Native clang -O3 -DNDEBUG, 25MiB ASCII-equivalent JSON (~50MiB UTF16LE), 204800 128-character records, 4096-byte callback. ABBA, 6 post-warmup samples per direction per run; no native validation/builds running during final measurements.",
+  "incremental_benchmark": [
+    {
+      "engine": "baseline",
+      "operation": "insert",
+      "samples": 12,
+      "parse_ms": 60.1695,
+      "comparison_ms": 69.0035,
+      "total_ms": 128.846
+    },
+    {
+      "engine": "baseline",
+      "operation": "undo",
+      "samples": 12,
+      "parse_ms": 73.3775,
+      "comparison_ms": 68.26650000000001,
+      "total_ms": 141.465
+    },
+    {
+      "engine": "comparison-bounded-final",
+      "operation": "insert",
+      "samples": 12,
+      "parse_ms": 56.9415,
+      "comparison_ms": 49.718,
+      "total_ms": 106.2655
+    },
+    {
+      "engine": "comparison-bounded-final",
+      "operation": "undo",
+      "samples": 12,
+      "parse_ms": 73.42699999999999,
+      "comparison_ms": 49.543,
+      "total_ms": 122.851
+    }
+  ],
+  "incremental_logs": "benchmark-bounded-final-abba-*.csv",
+  "no_sharing_benchmark": [
+    {
+      "case": "middle-edit-fresh-parse",
+      "engine": "baseline-control-0",
+      "samples": 12,
+      "wall_ms": 70.549,
+      "cpu_ms": 70.4415
+    },
+    {
+      "case": "middle-edit-fresh-parse",
+      "engine": "baseline-control-1",
+      "samples": 12,
+      "wall_ms": 70.6695,
+      "cpu_ms": 70.5495
+    },
+    {
+      "case": "middle-edit-fresh-parse",
+      "engine": "candidate",
+      "samples": 12,
+      "wall_ms": 72.1745,
+      "cpu_ms": 72.167
+    },
+    {
+      "case": "whole-replacement",
+      "engine": "baseline-control-0",
+      "samples": 12,
+      "wall_ms": 39.468,
+      "cpu_ms": 39.459
+    },
+    {
+      "case": "whole-replacement",
+      "engine": "baseline-control-1",
+      "samples": 12,
+      "wall_ms": 39.385000000000005,
+      "cpu_ms": 39.343
+    },
+    {
+      "case": "whole-replacement",
+      "engine": "candidate",
+      "samples": 12,
+      "wall_ms": 39.103,
+      "cpu_ms": 39.08
+    }
+  ],
+  "no_sharing_log": "benchmark-wholesale-bounded-final.csv",
+  "no_sharing_description": "Both trees parsed independently; old tree edited before comparison. middle edit and whole-document replacement; all exact ranges compared. Two baseline controls and one candidate, alternating order, 12 post-warmup samples each; wall and process CPU times.",
+  "hidden_depth_log": "benchmark-hidden-bounded-final.log",
+  "hidden_depth512_ms": {
+    "baseline": 0.0744,
+    "candidate": 0.076
+  },
+  "limitations": [
+    "No iOS build/simulator/rendering commands run here; frozen XCTest matrix and rendering/core oracles remain coordinator-owned",
+    "~2.3% (1.6ms) overhead measured on no-sharing25MiB middle-edit case; whole replacement and deep-hidden miss essentially unchanged",
+    "No full upstream workspace/wasm suite; focused69 native tests",
+    "Sanitizer grammar objects not instrumented; engine and harness instrumented"
+  ],
+  "repository_files_changed": [],
+  "new_primary_artifacts": [
+    "comparison-bounded-final.patch",
+    "results-final.json",
+    "benchmark-wholesale.c",
+    "benchmark-hidden.c",
+    "hidden-depth/grammar.json",
+    "hidden-depth/src/parser.c",
+    "validate-boundaries.c",
+    "validate-errors.c",
+    "boundary-notes.txt",
+    "errors-notes.txt",
+    "run-upstream-final.sh"
+  ],
+  "modified_temporary_artifacts": [
+    "benchmark.c",
+    "validate.c",
+    "validate-included.c",
+    "build.py",
+    "copied engine variants listed by directory",
+    "upstream/lib/src/get_changed_ranges.c"
+  ],
+  "toolchain_and_dependency_location": "Temporary cargo/, rustup/, upstream/, and xdg-cache/ under experiment root"
+}

@@ -1594,7 +1594,7 @@ extension TextInputView {
             }
         }
         let editedLineIDs = Set(lineChangeSet.editedLines.map(\.id))
-        layoutManager.redisplayLines(withIDs: editedLineIDs)
+        layoutManager.redisplayLines(withIDs: editedLineIDs, allowingPrefixReuse: true)
         if didAddOrRemoveLines {
             gutterWidthService.invalidateLineNumberWidth()
         }

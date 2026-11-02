@@ -15,6 +15,12 @@ private final class TypesetResult {
 }
 
 final class LineTypesetter {
+    private struct Configuration: Equatable {
+        let width: CGFloat
+        let mode: LineBreakMode
+        let heightMultiplier: CGFloat
+    }
+
     private enum TypesetEndCondition {
         case yPosition(_ targetYPosition: CGFloat)
         case characterIndex(_ targetCharacterIndex: Int)
@@ -55,21 +61,28 @@ final class LineTypesetter {
     private var stringLength = 0
     private var attributedString: NSAttributedString?
     private var typesetter: CTTypesetter?
+    private var unbrokenRun: UnbrokenLineBreakContext.Run?
     private var lineFragmentsMap: [LineFragmentID: Int] = [:]
     private var startOffset = 0
     private var nextYPosition: CGFloat = 0
     private var lineFragmentIndex = 0
+    private var preparedConfiguration: Configuration?
+    private var currentConfiguration: Configuration {
+        Configuration(width: constrainingWidth, mode: lineBreakMode, heightMultiplier: lineFragmentHeightMultiplier)
+    }
 
     init(lineID: String) {
         self.lineID = lineID
     }
 
     func reset() {
+        preparedConfiguration = nil
         lineFragments = []
         maximumLineWidth = 0
         stringLength = 0
         attributedString = nil
         typesetter = nil
+        unbrokenRun = nil
         lineFragmentsMap = [:]
         startOffset = 0
         nextYPosition = 0
@@ -77,9 +90,47 @@ final class LineTypesetter {
     }
 
     func prepareToTypeset(_ attributedString: NSAttributedString) {
-        self.attributedString = attributedString
-        stringLength = CFAttributedStringGetLength(attributedString)
-        typesetter = CTTypesetterCreateWithAttributedString(stringForTypesetting(attributedString))
+        if lineFragments.isEmpty { preparedConfiguration = currentConfiguration }
+        let context: UnbrokenLineBreakContext?
+        if case .byWordWrapping = lineBreakMode {
+            context = UnbrokenLineBreakContext.make(for: attributedString)
+        } else {
+            context = nil
+        }
+        let preparedString = context?.text ?? attributedString
+        self.attributedString = preparedString
+        unbrokenRun = context?.run
+        stringLength = CFAttributedStringGetLength(preparedString)
+        typesetter = CTTypesetterCreateWithAttributedString(stringForTypesetting(preparedString))
+    }
+
+    /// The controller grants one-shot reuse only for a clean text invalidation.
+    /// Keep the previous input local to this call; ordinary preparation owns no
+    /// extra snapshot and performs no prefix validation.
+    func reprepareToTypeset(_ string: NSAttributedString, previous: NSAttributedString, prefixLimit: Int) -> [LineFragment] {
+        var count = 0
+        if preparedConfiguration == currentConfiguration, lineBreakMode == .byWordWrapping,
+           constrainingWidth.isFinite, constrainingWidth > 0,
+           lineFragmentHeightMultiplier.isFinite, lineFragmentHeightMultiplier > 0 {
+            count = LinePrefixReuse.count(from: previous, to: string, fragments: lineFragments, limit: prefixLimit)
+        }
+        let prefix = Array(lineFragments.prefix(count))
+        reset()
+        prepareToTypeset(string)
+        guard let typesetter else {
+            return []
+        }
+        for fragment in prefix {
+            let range = CFRange(location: fragment.visibleRange.location, length: fragment.visibleRange.length)
+            let rebuilt = fragment.withLine(CTTypesetterCreateLine(typesetter, range))
+            lineFragments.append(rebuilt)
+            lineFragmentsMap[rebuilt.id] = rebuilt.index
+            maximumLineWidth = max(maximumLineWidth, rebuilt.scaledSize.width)
+        }
+        startOffset = lineFragments.last?.range.upperBound ?? 0
+        nextYPosition = lineFragments.last.map { $0.yPosition + $0.scaledSize.height } ?? 0
+        lineFragmentIndex = lineFragments.count
+        return lineFragments
     }
 
     // The caller has verified that only appearance attributes changed. Rebuild
@@ -97,6 +148,7 @@ final class LineTypesetter {
         if isFinishedTypesetting {
             self.attributedString = nil
             self.typesetter = nil
+            unbrokenRun = nil
         }
         return lineFragments
     }
@@ -107,6 +159,7 @@ final class LineTypesetter {
         if isFinishedTypesetting {
             attributedString = nil
             typesetter = nil
+            unbrokenRun = nil
         }
         return lineFragments
     }
@@ -117,6 +170,7 @@ final class LineTypesetter {
         if isFinishedTypesetting {
             attributedString = nil
             typesetter = nil
+            unbrokenRun = nil
         }
         return lineFragments
     }
@@ -208,28 +262,88 @@ private extension LineTypesetter {
     }
 
     private func makeNextLineFragment(using typesetter: CTTypesetter) -> LineFragment? {
-        // suggestNextLineBreak(using:) uses CTTypesetterSuggestLineBreak but it may return lines that are longer than our constraining width.
-        // In that case we keep removeing characters from the line until we're below the constraining width.
-        var length = suggestNextLineBreak(using: typesetter)
-        var lineFragment: LineFragment?
-        while lineFragment == nil || lineFragment!.scaledSize.width > constrainingWidth {
-            let visibleRange = CFRangeMake(startOffset, length)
-            lineFragment = makeLineFragment(for: visibleRange, in: typesetter, lineFragmentIndex: lineFragmentIndex, yPosition: nextYPosition)
-            length -= 1
+        guard let attributedString, startOffset < stringLength,
+              let string = CFAttributedStringGetString(attributedString) else { return nil }
+        let suggestedLength = suggestNextLineBreak(using: typesetter)
+        let proposedEnd = startOffset + min(max(0, suggestedLength), stringLength - startOffset)
+        var end = composedBoundary(atOrBefore: proposedEnd, in: string)
+        if end <= startOffset {
+            let first = composedRange(at: startOffset, in: string)
+            end = first.location + first.length
         }
-        guard let lineFragment else {
-            return nil
+        var minimumEnd: Int?
+        while true {
+            let visibleRange = CFRange(location: startOffset, length: end - startOffset)
+            let fragment = makeLineFragment(for: visibleRange, in: typesetter,
+                                            lineFragmentIndex: lineFragmentIndex, yPosition: nextYPosition)
+            if fragment.scaledSize.width <= constrainingWidth {
+                let hiddenLength = lengthOfWhitespace(startingAt: end, in: string)
+                return hiddenLength > 0 ? fragment.withHiddenLength(hiddenLength) : fragment
+            }
+            if minimumEnd == nil {
+                let first = composedRange(at: startOffset, in: string)
+                minimumEnd = first.location + first.length
+            }
+            // A single oversized grapheme must overflow rather than disappear or
+            // make no progress. Zero-length CoreText ranges mean the whole suffix.
+            guard let minimumEnd, end > minimumEnd else {
+                let hiddenLength = lengthOfWhitespace(startingAt: end, in: string)
+                return hiddenLength > 0 ? fragment.withHiddenLength(hiddenLength) : fragment
+            }
+            let last = composedRange(at: end - 1, in: string)
+            end = max(minimumEnd, last.location)
         }
-        let whitespaceLength = lengthOfWhitespace(after: startOffset + length)
-        guard whitespaceLength > 0 else {
-            return lineFragment
+    }
+
+    /// Fast ASCII boundaries avoid asking Unicode segmentation about ordinary
+    /// code on every fragment. Adjacent non-ASCII units use composed sequences.
+    private func composedBoundary(atOrBefore location: Int, in string: CFString) -> Int {
+        guard location > 0, location < stringLength else {
+            return location
         }
-        return lineFragment.withHiddenLength(whitespaceLength)
+        let previous = CFStringGetCharacterAtIndex(string, location - 1)
+        let current = CFStringGetCharacterAtIndex(string, location)
+        if previous < 128 && current < 128 {
+            return previous == 13 && current == 10 ? location - 1 : location
+        }
+        return composedRange(at: location, in: string).location
+    }
+
+    private func composedRange(at location: Int, in string: CFString) -> CFRange {
+        let unit = CFStringGetCharacterAtIndex(string, location)
+        if unit == 10, location > 0, CFStringGetCharacterAtIndex(string, location - 1) == 13 {
+            return CFRange(location: location - 1, length: 2)
+        }
+        if location + 1 < stringLength {
+            let next = CFStringGetCharacterAtIndex(string, location + 1)
+            if unit == 13 && next == 10 {
+                return CFRange(location: location, length: 2)
+            }
+            if unit < 128 && next < 128,
+               location == 0 || CFStringGetCharacterAtIndex(string, location - 1) < 128 {
+                return CFRange(location: location, length: 1)
+            }
+        } else if unit < 128, location == 0 || CFStringGetCharacterAtIndex(string, location - 1) < 128 {
+            return CFRange(location: location, length: 1)
+        }
+        return CFStringGetRangeOfComposedCharactersAtIndex(string, location)
     }
 
     private func suggestNextLineBreak(using typesetter: CTTypesetter) -> Int {
         guard let attributedString else {
             return stringLength
+        }
+        if case .byWordWrapping = lineBreakMode,
+           let run = unbrokenRun, startOffset < run.range.upperBound,
+           run.allowsInitialOffset || startOffset > run.range.lowerBound,
+           constrainingWidth.isFinite, constrainingWidth >= 32,
+           lineFragmentHeightMultiplier.isFinite, lineFragmentHeightMultiplier > 0 {
+            let length = CTTypesetterSuggestClusterBreak(typesetter, startOffset, Double(constrainingWidth))
+            if length > 0 && length < run.range.upperBound - startOffset {
+                return length
+            }
+            if length <= 0 { unbrokenRun = nil }
+            // Keep quoted-run entry/exit native, outside the word wrapper's lookback.
         }
         let lineBreakSuggester = LineBreakSuggester(
             lineBreakMode: lineBreakMode,
@@ -240,17 +354,20 @@ private extension LineTypesetter {
         return lineBreakSuggester.suggestLineBreak(startingAt: startOffset)
     }
 
-    private func lengthOfWhitespace(after location: Int) -> Int {
-        guard let attributedString, location < attributedString.length - 1 else {
+    private func lengthOfWhitespace(startingAt location: Int, in string: CFString) -> Int {
+        guard let attributedString, location < stringLength else {
             return 0
         }
-        var nextCharacter = location + 1
-        var length = 0
-        while attributedString.isWhitespaceCharacter(at: nextCharacter) {
-            nextCharacter += 1
-            length += 1
+        var next = location
+        while attributedString.isWhitespaceCharacter(at: next) {
+            next += 1
         }
-        return length
+        guard next > location else {
+            return 0
+        }
+        // A space followed by a combining mark belongs to one visible grapheme;
+        // hiding only the space would leave the next fragment inside that cluster.
+        return max(0, composedBoundary(atOrBefore: next, in: string) - location)
     }
 
     private func makeLineFragment(

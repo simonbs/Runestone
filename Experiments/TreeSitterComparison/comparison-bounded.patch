@@ -1,0 +1,68 @@
+--- a/lib/src/get_changed_ranges.c
++++ b/lib/src/get_changed_ranges.c
+@@ -394,6 +394,54 @@
+   return IteratorMatches;
+ }
+ 
++// Experimental: collapse matching shared hidden ancestors before the normal walk.
++static bool iterator_skip_shared_hidden(
++  Iterator *old_iter, Iterator *new_iter, Length position,
++  const TSRangeArray *included_differences, unsigned included_index
++) {
++  // The same child slot implies a shared immediate parent. Reject unrelated
++  // trees before loading parent nodes or checking their visibility.
++  if (array_back(&old_iter->cursor.stack)->subtree !=
++      array_back(&new_iter->cursor.stack)->subtree) return false;
++  if (old_iter->visible_depth != new_iter->visible_depth) return false;
++  unsigned old_count = old_iter->cursor.stack.size;
++  unsigned new_count = new_iter->cursor.stack.size;
++  if (old_count < 3 || new_count < 3) return false;
++  // Ascending from a visible node outside padding removes one visible level.
++  // All other ancestors considered below are hidden, so require both cursors
++  // to lose the same number of visible levels before collapsing their stacks.
++  bool old_leaves_visible_node = !old_iter->in_padding && iterator_tree_is_visible(old_iter);
++  bool new_leaves_visible_node = !new_iter->in_padding && iterator_tree_is_visible(new_iter);
++  if (old_leaves_visible_node != new_leaves_visible_node) return false;
++  // Inspect only the immediate hidden parents. Searching arbitrary ancestor
++  // pairs can be quadratic in hidden depth when the trees share no subtrees.
++  Iterator old_parent = *old_iter;
++  Iterator new_parent = *new_iter;
++  old_parent.cursor.stack.size--;
++  new_parent.cursor.stack.size--;
++  old_parent.in_padding = new_parent.in_padding = false;
++  TreeCursorEntry old_entry = *array_back(&old_parent.cursor.stack);
++  TreeCursorEntry new_entry = *array_back(&new_parent.cursor.stack);
++  Subtree tree = *old_entry.subtree;
++  if (tree.data.is_inline || tree.ptr != new_entry.subtree->ptr ||
++      old_entry.position.bytes != new_entry.position.bytes ||
++      old_entry.position.extent.row != new_entry.position.extent.row ||
++      old_entry.position.extent.column != new_entry.position.extent.column ||
++      ts_subtree_has_changes(tree) || ts_subtree_has_external_tokens(tree) ||
++      ts_subtree_error_cost(tree) > 0) return false;
++  if (iterator_tree_is_visible(&old_parent) || iterator_tree_is_visible(&new_parent)) return false;
++  Length right = iterator_end_position(&old_parent);
++  if (right.bytes <= position.bytes || ts_range_array_intersects(
++      included_differences, included_index, position.bytes, right.bytes)) return false;
++  // The enclosing visible syntax must agree. Structural size/state changes
++  // are allowed, as they are the reason we descended into the hidden node.
++  if (iterator_compare(&old_parent, &new_parent) == IteratorDiffers) return false;
++  iterator_ascend(old_iter);
++  iterator_ascend(new_iter);
++  old_iter->in_padding = new_iter->in_padding = false;
++  return true;
++}
++
+ #ifdef DEBUG_GET_CHANGED_RANGES
+ static inline void iterator_print_state(Iterator *self) {
+   TreeCursorEntry entry = *array_back(&self->cursor.stack);
+@@ -445,6 +493,10 @@
+ 
+     // Compare the old and new subtrees.
+     IteratorComparison comparison = iterator_compare(&old_iter, &new_iter);
++    if (comparison != IteratorDiffers && iterator_skip_shared_hidden(
++      &old_iter, &new_iter, position, included_range_differences,
++      included_range_difference_index
++    )) comparison = IteratorMatches;
+ 
+     // Even if the two subtrees appear to be identical, they could differ
+     // internally if they contain a range of text that was previously

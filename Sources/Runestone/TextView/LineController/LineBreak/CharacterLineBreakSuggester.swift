@@ -8,6 +8,10 @@ struct CharacterLineBreakSuggester {
 
     func suggestLineBreak(startingAt startOffset: Int) -> Int {
         let length = CTTypesetterSuggestClusterBreak(typesetter, startOffset, Double(constrainingWidth))
+        guard length > 0 else {
+            // LineTypesetter will force one complete grapheme when none fits.
+            return 0
+        }
         guard startOffset + length < attributedString.length else {
             // There is no character after suggested line break.
             return length
