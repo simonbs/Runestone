@@ -73,7 +73,8 @@ final class LargeFileCorrectnessTests: XCTestCase {
                 try compareWithFresh(view, input: input, expected: expected, location: location,
                                      language: language)
             }
-            print("LARGE_FILE_CORRECTNESS checkpoint=\(name) long=\(longLines) wrapping=\(wrapping) utf16=\(input.string.length)")
+            print("LARGE_FILE_CORRECTNESS checkpoint=\(name) long=\(longLines) wrapping=\(wrapping) utf16=\(input.string.length)"
+                  + " viewportWidth=\(view.bounds.width) viewportHeight=\(view.bounds.height)")
         }
 
         if asciiEligible {
@@ -429,7 +430,7 @@ private extension LargeFileCorrectnessTests {
     }
 
     private func makeView(wrapping: Bool) -> TextView {
-        let view = TextView(frame: CGRect(x: 0, y: 0, width: 390, height: 300))
+        let view = TextView(frame: LargeFileTestViewport.frame(defaultSize: CGSize(width: 390, height: 300)))
         view.contentInsetAdjustmentBehavior = .never
         view.isLineWrappingEnabled = wrapping
         view.isAutomaticScrollEnabled = false

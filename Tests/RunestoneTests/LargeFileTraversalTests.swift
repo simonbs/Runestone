@@ -22,7 +22,7 @@ final class LargeFileTraversalTests: XCTestCase {
                           "Set RUNESTONE_PERFORMANCE=1 in the test runner to run distributed traversal.")
         let fixture = makeFixture(lineLength: longLines ? 60_000 : 128)
         let scenario = "\(longLines ? "long" : "short")-json-\(wrapping ? "wrapped" : "unwrapped")"
-        let view = TextView(frame: CGRect(x: 0, y: 0, width: 390, height: 700))
+        let view = TextView(frame: LargeFileTestViewport.frame(defaultSize: CGSize(width: 390, height: 700)))
         view.contentInsetAdjustmentBehavior = .never
         view.isLineWrappingEnabled = wrapping
         view.isAutomaticScrollEnabled = false
@@ -206,6 +206,8 @@ final class LargeFileTraversalTests: XCTestCase {
         result["offsetY"] = Double(view.contentOffset.y)
         result["contentWidth"] = Double(view.contentSize.width)
         result["contentHeight"] = Double(view.contentSize.height)
+        result["viewportWidth"] = Double(view.bounds.width)
+        result["viewportHeight"] = Double(view.bounds.height)
         result["visibleFragmentCount"] = visibleFragments(in: view).count
         if let data = try? JSONSerialization.data(withJSONObject: result, options: [.sortedKeys]),
            let json = String(data: data, encoding: .utf8) {
