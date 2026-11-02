@@ -196,7 +196,7 @@ private extension TreeSitterLanguageLayer {
         injectionsQueryCursor.execute()
         let captures = injectionsQueryCursor.validCaptures(in: stringView)
         let injectedLanguages = injectedLanguages(from: captures)
-        let capturedIDs = injectedLanguages.map(\.id)
+        let capturedIDs = Set(injectedLanguages.map(\.id))
         let currentIDs = childLanguageLayerStore.allIDs
         for id in currentIDs {
             if !capturedIDs.contains(id) {

@@ -4,6 +4,60 @@ import UIKit
 import XCTest
 
 final class TreeSitterSyntaxHighlightingTests: XCTestCase {
+    func testIncrementalEditsPreserveSurvivingInjectionsAndRemoveDeletedRegions() {
+        let javaScript = TreeSitterLanguage(tree_sitter_javascript(), highlightsQuery: .init(string: "(number) @number"))
+        let html = TreeSitterLanguage(tree_sitter_html(), highlightsQuery: .init(string: "(tag_name) @type"),
+                                      injectionsQuery: .init(string: """
+        ((script_element (raw_text) @injection.content) (#set! injection.language "javascript"))
+        """))
+        let stringView = StringView(string: """
+        <script>let first = 1;</script>
+        <script>let middle = 2;</script>
+        <script>let last = 3;</script>
+        """)
+        let lineManager = LineManager(stringView: stringView)
+        lineManager.rebuild()
+        let parser = TreeSitterParser(encoding: .preferredUTF16)
+        let delegate = MockTreeSitterParserDelegate()
+        parser.delegate = delegate
+        let provider = JavaScriptLanguageProvider(language: javaScript)
+        let layer = TreeSitterLanguageLayer(language: html.internalLanguage, languageProvider: provider,
+                                            parser: parser, stringView: stringView, lineManager: lineManager)
+        layer.parse(stringView.string, predicateStringView: stringView)
+        let editor = TextEditHelper(stringView: stringView, lineManager: lineManager, lineEndings: .lf)
+
+        func numbers() -> [String] {
+            layer.captures(in: ByteRange(utf16Range: NSRange(location: 0, length: stringView.string.length)))
+                .filter { $0.name == "number" }
+                .map { stringView.string.substring(with: NSRange($0.byteRange)) }
+        }
+
+        func replace(_ text: String, with replacement: String) {
+            let range = stringView.string.range(of: text)
+            XCTAssertNotEqual(range.location, NSNotFound)
+            guard range.location != NSNotFound else {
+                return
+            }
+            let change = editor.replaceText(in: range, with: replacement).textChange
+            delegate.string = stringView.string
+            _ = layer.apply(TreeSitterInputEdit(
+                startByte: change.byteRange.location,
+                oldEndByte: change.byteRange.upperBound,
+                newEndByte: change.byteRange.location + change.bytesAdded,
+                startPoint: TreeSitterTextPoint(change.startLinePosition),
+                oldEndPoint: TreeSitterTextPoint(change.oldEndLinePosition),
+                newEndPoint: TreeSitterTextPoint(change.newEndLinePosition)))
+        }
+
+        XCTAssertEqual(numbers(), ["1", "2", "3"])
+        replace("<script>let middle = 2;</script>", with: "<p>outside 99</p>")
+        XCTAssertEqual(numbers(), ["1", "3"], "Deleted injections must not leave captures in ordinary HTML.")
+        replace("<p>outside 99</p>", with: "<script>let added = 4;</script>")
+        XCTAssertEqual(numbers(), ["1", "4", "3"], "New and surviving injections must all remain queryable.")
+        replace("last = 3", with: "last = 30")
+        XCTAssertEqual(numbers(), ["1", "4", "30"], "Editing one injection must preserve its siblings.")
+    }
+
     func testHighlightEmbeddedJavaScriptWithUnicodeAndTextPredicates() throws {
         let javaScript = TreeSitterLanguage(
             tree_sitter_javascript(),

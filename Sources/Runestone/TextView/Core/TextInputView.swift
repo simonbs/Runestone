@@ -2260,7 +2260,9 @@ extension TextInputView {
     }
 
     private func checkVisibleSpellingIfNeeded() {
-        let languages = resolvedSpellingLanguages
+        // Language discovery can contact system services. Disabled spelling only
+        // needs to clear an existing request, without discovering its languages.
+        let languages = isSpellCheckingEnabled ? resolvedSpellingLanguages : []
         guard isSpellCheckingEnabled, !languages.isEmpty,
               !layoutManager.visibleTextRanges.isEmpty else {
             if lastSpellingRequest != nil {
