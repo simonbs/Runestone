@@ -108,10 +108,12 @@ public extension Theme {
         case .found:
             return HighlightedRange(range: foundTextRange,
                                     color: .systemYellow.withAlphaComponent(0.2),
+                                    cornerRadius: 3,
                                     presentationRole: .foundSearchResult)
         case .highlighted:
             return HighlightedRange(range: foundTextRange,
                                     color: .systemYellow,
+                                    cornerRadius: 5,
                                     presentationRole: .selectedSearchResult)
         case .normal:
             return nil

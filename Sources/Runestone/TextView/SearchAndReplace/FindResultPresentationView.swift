@@ -7,21 +7,23 @@ final class FindResultPresentationView: UIView {
                 return
             }
             isHidden = !isActive
+            selectedResultPlateView.isHidden = !isActive
             if !isActive {
-                selectedResultContainer.removeFromSuperview()
                 selectedRange = nil
-                currentViewport = .null
+                currentBounds = .null
                 currentRanges = []
+                cachedPresentations = []
             }
         }
     }
+    let selectedResultPlateView = UIView()
 
     private weak var sourceView: UIView?
     private let dimmingLayer = CAShapeLayer()
-    private let selectedResultContainer = UIView()
     private var selectedRange: NSRange?
-    private var currentViewport = CGRect.null
+    private var currentBounds = CGRect.null
     private var currentRanges: [HighlightedRange] = []
+    private var cachedPresentations: [RangePresentation] = []
 
     init(sourceView: UIView) {
         self.sourceView = sourceView
@@ -32,7 +34,8 @@ final class FindResultPresentationView: UIView {
         dimmingLayer.fillColor = UIColor.black.withAlphaComponent(0.22).cgColor
         dimmingLayer.fillRule = .evenOdd
         layer.addSublayer(dimmingLayer)
-        selectedResultContainer.isUserInteractionEnabled = false
+        selectedResultPlateView.isHidden = true
+        selectedResultPlateView.isUserInteractionEnabled = false
     }
 
     required init?(coder: NSCoder) {
@@ -40,7 +43,6 @@ final class FindResultPresentationView: UIView {
     }
 
     func update(highlightedRanges: [HighlightedRange],
-                viewport: CGRect,
                 selectionRects: (UITextRange) -> [UITextSelectionRect]) {
         guard isActive, let sourceView else {
             return
@@ -48,31 +50,40 @@ final class FindResultPresentationView: UIView {
         let searchRanges = highlightedRanges.filter { $0.presentationRole != .standard }
         let selected = searchRanges.first { $0.presentationRole == .selectedSearchResult }
         let shouldAnimate = selectedRange != nil && selected?.range != selectedRange
-        let needsRebuild = currentViewport != viewport || currentRanges != searchRanges
-        guard needsRebuild else {
+        let boundsChanged = currentBounds != sourceView.bounds
+        let rangesChanged = currentRanges != searchRanges
+        guard boundsChanged || rangesChanged else {
             return
         }
-        currentViewport = viewport
+        let geometryChanged = boundsChanged || currentRanges.map(\.range) != searchRanges.map(\.range)
+        currentBounds = sourceView.bounds
         currentRanges = searchRanges
-        frame = viewport
+        frame = sourceView.bounds
         dimmingLayer.frame = bounds
-        let presentations = presentations(for: searchRanges,
-                                          sourceView: sourceView,
-                                          viewport: viewport,
-                                          selectionRects: selectionRects)
-        updateDimming(using: presentations)
-        selectedResultContainer.removeFromSuperview()
-        selectedResultContainer.subviews.forEach { $0.removeFromSuperview() }
-        if let selectedPresentation = presentations.first(where: { $0.range.presentationRole == .selectedSearchResult }) {
-            updateSelectedResult(using: selectedPresentation, sourceView: sourceView, viewport: viewport)
-            animateSelectedResult(shouldAnimate)
+        if geometryChanged {
+            cachedPresentations = presentations(for: searchRanges,
+                                                sourceView: sourceView,
+                                                selectionRects: selectionRects)
+        } else {
+            cachedPresentations = zip(searchRanges, cachedPresentations).map { range, presentation in
+                RangePresentation(range: range, rects: presentation.rects)
+            }
         }
+        updateDimming()
+        updateSelectedResultPlate(animated: shouldAnimate)
         selectedRange = selected?.range
+    }
+
+    func updateLayoutIfNeeded(highlightedRanges: [HighlightedRange],
+                              selectionRects: (UITextRange) -> [UITextSelectionRect]) {
+        guard sourceView?.bounds != currentBounds else {
+            return
+        }
+        update(highlightedRanges: highlightedRanges, selectionRects: selectionRects)
     }
 
     private func presentations(for ranges: [HighlightedRange],
                                sourceView: UIView,
-                               viewport: CGRect,
                                selectionRects: (UITextRange) -> [UITextSelectionRect]) -> [RangePresentation] {
         guard let textInput = sourceView as? UITextInput else {
             return []
@@ -84,84 +95,83 @@ final class FindResultPresentationView: UIView {
                   let textRange = textInput.textRange(from: start, to: end) else {
                 return nil
             }
-            let rects = selectionRects(textRange).map { selectionRect in
-                selectionRect.rect.offsetBy(dx: -viewport.minX, dy: -viewport.minY)
-            }
-            return RangePresentation(range: highlightedRange, rects: rects)
+            return RangePresentation(range: highlightedRange, rects: selectionRects(textRange).map(\.rect))
         }
     }
 
-    private func updateDimming(using presentations: [RangePresentation]) {
+    private func updateDimming() {
         let path = UIBezierPath(rect: bounds)
-        for presentation in presentations {
-            for rect in presentation.rects where !rect.isEmpty && rect.intersects(bounds) {
-                path.append(UIBezierPath(roundedRect: rect, cornerRadius: presentation.range.cornerRadius))
+        for presentation in cachedPresentations {
+            for rect in displayRects(for: presentation) where !rect.isEmpty {
+                path.append(UIBezierPath(roundedRect: rect,
+                                         cornerRadius: cornerRadius(for: presentation.range)))
             }
         }
         dimmingLayer.path = path.cgPath
     }
 
-    private func updateSelectedResult(using presentation: RangePresentation,
-                                      sourceView: UIView,
-                                      viewport: CGRect) {
-        let visibleRects = presentation.rects.filter { !$0.isEmpty && $0.intersects(bounds) }
-        guard !visibleRects.isEmpty else {
+    private func updateSelectedResultPlate(animated: Bool) {
+        selectedResultPlateView.subviews.forEach { $0.removeFromSuperview() }
+        guard let presentation = cachedPresentations.first(where: { presentation in
+            presentation.range.presentationRole == .selectedSearchResult
+        }) else {
+            selectedResultPlateView.isHidden = true
             return
         }
-        addSubview(selectedResultContainer)
-        let union = visibleRects.reduce(CGRect.null) { $0.union($1) }
-        selectedResultContainer.frame = union
-        let presentationSuperview = superview
-        removeFromSuperview()
-        for rect in visibleRects {
-            addSelectedResultSnapshot(for: rect,
-                                      sourceView: sourceView,
-                                      viewport: viewport,
-                                      cornerRadius: presentation.range.cornerRadius,
-                                      union: union)
-        }
-        if let presentationSuperview {
-            presentationSuperview.addSubview(self)
-        }
-    }
-
-    private func addSelectedResultSnapshot(for rect: CGRect,
-                                           sourceView: UIView,
-                                           viewport: CGRect,
-                                           cornerRadius: CGFloat,
-                                           union: CGRect) {
-        let sourceRect = rect.offsetBy(dx: viewport.minX, dy: viewport.minY)
-        guard let snapshot = sourceView.resizableSnapshotView(from: sourceRect,
-                                                              afterScreenUpdates: true,
-                                                              withCapInsets: .zero) else {
+        let rects = presentation.rects.filter { !$0.isEmpty }.map(selectedDisplayRect(for:))
+        guard !rects.isEmpty else {
+            selectedResultPlateView.isHidden = true
             return
         }
-        let shadowView = UIView(frame: rect.offsetBy(dx: -union.minX, dy: -union.minY))
-        shadowView.isUserInteractionEnabled = false
-        shadowView.layer.shadowColor = UIColor.black.cgColor
-        shadowView.layer.shadowOpacity = 0.22
-        shadowView.layer.shadowRadius = 8
-        shadowView.layer.shadowOffset = CGSize(width: 0, height: 3)
-        shadowView.layer.shadowPath = UIBezierPath(roundedRect: shadowView.bounds, cornerRadius: cornerRadius).cgPath
-        snapshot.frame = shadowView.bounds
-        snapshot.layer.cornerRadius = cornerRadius
-        snapshot.layer.cornerCurve = .continuous
-        snapshot.clipsToBounds = true
-        shadowView.addSubview(snapshot)
-        selectedResultContainer.addSubview(shadowView)
+        selectedResultPlateView.isHidden = false
+        let union = rects.reduce(CGRect.null) { $0.union($1) }
+        selectedResultPlateView.frame = union
+        for rect in rects {
+            let plate = UIView(frame: rect.offsetBy(dx: -union.minX, dy: -union.minY))
+            plate.isUserInteractionEnabled = false
+            plate.backgroundColor = presentation.range.color
+            plate.layer.cornerRadius = Self.selectedCornerRadius
+            plate.layer.cornerCurve = .continuous
+            plate.layer.shadowColor = UIColor.black.cgColor
+            plate.layer.shadowOpacity = 0.22
+            plate.layer.shadowRadius = 8
+            plate.layer.shadowOffset = CGSize(width: 0, height: 3)
+            plate.layer.shadowPath = UIBezierPath(roundedRect: plate.bounds,
+                                                  cornerRadius: Self.selectedCornerRadius).cgPath
+            selectedResultPlateView.addSubview(plate)
+        }
+        animateSelectedResultPlate(animated)
     }
 
-    private func animateSelectedResult(_ animated: Bool) {
+    private func animateSelectedResultPlate(_ animated: Bool) {
         guard animated, !UIAccessibility.isReduceMotionEnabled else {
-            selectedResultContainer.transform = .identity
+            selectedResultPlateView.transform = .identity
             return
         }
-        selectedResultContainer.transform = CGAffineTransform(scaleX: 1.2, y: 1.1)
-        let animator = UIViewPropertyAnimator(duration: 0.2, dampingRatio: 0.82) {
-            self.selectedResultContainer.transform = .identity
+        selectedResultPlateView.transform = CGAffineTransform(scaleX: 1.2, y: 1.1)
+        let animator = UIViewPropertyAnimator(duration: 0.18, dampingRatio: 0.86) {
+            self.selectedResultPlateView.transform = .identity
         }
         animator.startAnimation()
     }
+
+    private func displayRects(for presentation: RangePresentation) -> [CGRect] {
+        presentation.range.presentationRole == .selectedSearchResult
+            ? presentation.rects.map(selectedDisplayRect(for:))
+            : presentation.rects
+    }
+
+    private func selectedDisplayRect(for sourceRect: CGRect) -> CGRect {
+        sourceRect.insetBy(dx: -Self.selectedHorizontalPadding, dy: -Self.selectedVerticalPadding)
+    }
+
+    private func cornerRadius(for range: HighlightedRange) -> CGFloat {
+        range.presentationRole == .selectedSearchResult ? Self.selectedCornerRadius : range.cornerRadius
+    }
+
+    private static let selectedHorizontalPadding: CGFloat = 4
+    private static let selectedVerticalPadding: CGFloat = 3
+    private static let selectedCornerRadius: CGFloat = 5
 }
 
 private struct RangePresentation {

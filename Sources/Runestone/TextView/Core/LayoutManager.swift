@@ -293,6 +293,11 @@ final class LayoutManager {
     private var lineNumberLabelReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineNumberView>()
     private var visibleLineIDs: Set<DocumentLineNodeID> = []
     private let linesContainerView = UIView()
+    func installFindResultPlateView(_ view: UIView) {
+        if view.superview !== linesContainerView {
+            linesContainerView.insertSubview(view, at: 0)
+        }
+    }
     var writingToolsHiddenRanges: [NSRange] = [] {
         didSet { updateWritingToolsMask() }
     }
