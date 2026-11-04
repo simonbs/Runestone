@@ -77,6 +77,29 @@ final class HighlightBackgroundRenderingTests: XCTestCase {
         XCTAssertTrue(hasUnderline, "The spelling underline must paint above the opaque token background.")
     }
 
+    func testHighlightForegroundOverrideRecolorsOnlyConfiguredText() throws {
+        let sourceColor = UIColor(red: 1, green: 0, blue: 0, alpha: 1)
+        let overrideColor = UIColor(red: 0, green: 0, blue: 1, alpha: 1)
+        let attributed = NSAttributedString(string: "abcdef", attributes: [
+            .font: UIFont.monospacedSystemFont(ofSize: 24, weight: .regular),
+            .foregroundColor: sourceColor
+        ])
+        let fragment = try XCTUnwrap(makeFragments(attributed, width: 500).first)
+        let renderer = LineFragmentRenderer(lineFragment: fragment, invisibleCharacterConfiguration: .init())
+        renderer.highlightedRangeFragments = [
+            HighlightedRangeFragment(range: NSRange(location: 0, length: 3), containsStart: true,
+                                     containsEnd: true, color: .yellow,
+                                     foregroundColor: overrideColor, cornerRadius: 0),
+            HighlightedRangeFragment(range: NSRange(location: 3, length: 3), containsStart: true,
+                                     containsEnd: true, color: .yellow, cornerRadius: 0)
+        ]
+
+        let bitmap = try draw(renderer)
+        let overrideEnd = Int(CTLineGetOffsetForStringIndex(fragment.line, 3, nil))
+        XCTAssertTrue(bitmap.containsDominantColor(overrideColor, inXRange: 0 ..< overrideEnd))
+        XCTAssertTrue(bitmap.containsDominantColor(sourceColor, inXRange: overrideEnd ..< bitmap.width))
+    }
+
     private func makeFragments(_ string: NSAttributedString, width: CGFloat) -> [LineFragment] {
         let typesetter = LineTypesetter(lineID: "test")
         typesetter.constrainingWidth = width
@@ -113,4 +136,23 @@ private struct Bitmap {
         let offset = ((height - 1 - y) * width + x) * 4
         return Array(bytes[offset ..< offset + 4])
     }
+
+    func containsDominantColor(_ color: UIColor, inXRange xRange: Range<Int>) -> Bool {
+        var targetRed: CGFloat = 0
+        var targetGreen: CGFloat = 0
+        var targetBlue: CGFloat = 0
+        color.getRed(&targetRed, green: &targetGreen, blue: &targetBlue, alpha: nil)
+        let range = max(0, xRange.lowerBound) ..< min(width, xRange.upperBound)
+        return range.contains { x in
+            (0 ..< height).contains { y in
+                let value = pixel(x: x, y: y)
+                let target = [targetRed, targetGreen, targetBlue]
+                let channels = value.prefix(3).map { CGFloat($0) / 255 }
+                return zip(target, channels).allSatisfy { expected, actual in
+                    expected < 0.1 ? actual < 0.3 : actual > 0.7
+                }
+            }
+        }
+    }
+
 }

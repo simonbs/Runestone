@@ -52,6 +52,44 @@ final class UITextSearchingHelperTests: XCTestCase {
         wait(for: [applied], timeout: 2)
     }
 
+    func testSearchDecorationPreservesPresentationRole() {
+        let theme = DefaultTheme()
+        let range = NSRange(location: 1, length: 2)
+
+        XCTAssertEqual(theme.highlightedRange(forFoundTextRange: range, ofStyle: .found)?.presentationRole,
+                       .foundSearchResult)
+        XCTAssertEqual(theme.highlightedRange(forFoundTextRange: range, ofStyle: .highlighted)?.presentationRole,
+                       .selectedSearchResult)
+        XCTAssertEqual(HighlightedRange(range: range, color: .red).presentationRole, .standard)
+    }
+
+    func testFindSessionControlsResultPresentation() {
+        let textView = TextView()
+        textView.isFindResultPresentationEnabled = true
+        let helper = UITextSearchingHelper()
+        helper.textView = textView
+        let interaction = UIFindInteraction(sessionDelegate: helper)
+        let session = UIFindSession()
+
+        helper.findInteraction(interaction, didBegin: session)
+        XCTAssertTrue(textView.isFindResultPresentationActive)
+
+        helper.findInteraction(interaction, didEnd: session)
+        XCTAssertFalse(textView.isFindResultPresentationActive)
+    }
+
+    func testFindResultPresentationIsOptIn() {
+        let textView = TextView()
+        let helper = UITextSearchingHelper()
+        helper.textView = textView
+        let interaction = UIFindInteraction(sessionDelegate: helper)
+
+        helper.findInteraction(interaction, didBegin: UIFindSession())
+
+        XCTAssertTrue(textView.isFindResultPresentationActive)
+        XCTAssertFalse(textView.isFindResultPresentationEnabled)
+    }
+
     func testDocumentReplacementDiscardsPendingDecorations() {
         let textView = TextView()
         textView.text = "abcdef"

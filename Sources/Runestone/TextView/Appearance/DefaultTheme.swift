@@ -77,10 +77,16 @@ public final class DefaultTheme: Runestone.Theme {
         switch style {
         case .found:
             let color = UIColor(themeColorNamed: "search_match_found")
-            return HighlightedRange(range: foundTextRange, color: color, cornerRadius: 2)
+            return HighlightedRange(range: foundTextRange,
+                                    color: color,
+                                    cornerRadius: 3,
+                                    presentationRole: .foundSearchResult)
         case .highlighted:
             let color = UIColor(themeColorNamed: "search_match_highlighted")
-            return HighlightedRange(range: foundTextRange, color: color, cornerRadius: 2)
+            return HighlightedRange(range: foundTextRange,
+                                    color: color,
+                                    cornerRadius: 5,
+                                    presentationRole: .selectedSearchResult)
         case .normal:
             return nil
         @unknown default:

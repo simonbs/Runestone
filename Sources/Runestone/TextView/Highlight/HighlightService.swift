@@ -11,6 +11,20 @@ final class HighlightService {
     var highlightedRanges: [HighlightedRange] = [] {
         didSet {
             if highlightedRanges != oldValue {
+                selectedSearchResultRange = highlightedRanges.first { highlightedRange in
+                    highlightedRange.presentationRole == .selectedSearchResult
+                }?.range
+                if hasUnchangedRangeGeometry(comparedTo: oldValue) {
+                    updateHighlightedRangeFragments(changedFrom: oldValue)
+                } else {
+                    invalidateHighlightedRangeFragments()
+                }
+            }
+        }
+    }
+    var isFindResultPresentationActive = false {
+        didSet {
+            if isFindResultPresentationActive != oldValue {
                 invalidateHighlightedRangeFragments()
             }
         }
@@ -18,6 +32,7 @@ final class HighlightService {
 
     private var highlightedRangeFragmentsPerLine: [DocumentLineNodeID: [HighlightedRangeFragment]] = [:]
     private var highlightedRangeFragmentsPerLineFragment: [LineFragmentID: [HighlightedRangeFragment]] = [:]
+    private var selectedSearchResultRange: NSRange?
 
     init(lineManager: LineManager) {
         self.lineManager = lineManager
@@ -32,9 +47,49 @@ final class HighlightService {
             return highlightedLineFragments
         }
     }
+
+    func hiddenTextRanges(for lineFragment: LineFragment, inLineRange lineRange: NSRange) -> [NSRange] {
+        guard isFindResultPresentationActive, let selectedRange = selectedSearchResultRange else {
+            return []
+        }
+        let intersection = NSIntersectionRange(selectedRange, lineRange)
+        guard intersection.length > 0 else {
+            return []
+        }
+        let localRange = intersection.local(to: lineRange)
+        let fragmentIntersection = NSIntersectionRange(localRange, lineFragment.visibleRange)
+        return fragmentIntersection.length > 0 ? [fragmentIntersection] : []
+    }
 }
 
 private extension HighlightService {
+    private func hasUnchangedRangeGeometry(comparedTo oldRanges: [HighlightedRange]) -> Bool {
+        highlightedRanges.count == oldRanges.count
+            && zip(highlightedRanges, oldRanges).allSatisfy { $0.range == $1.range }
+    }
+
+    private func updateHighlightedRangeFragments(changedFrom oldRanges: [HighlightedRange]) {
+        let changedRanges = zip(highlightedRanges, oldRanges).compactMap { newRange, oldRange in
+            newRange == oldRange ? nil : newRange.range
+        }
+        let affectedLines = Dictionary(changedRanges
+            .flatMap(lineManager.lines(in:))
+            .map { ($0.id, $0) }) { first, _ in first }
+        guard !affectedLines.isEmpty else {
+            return
+        }
+        highlightedRangeFragmentsPerLineFragment.removeAll()
+        for line in affectedLines.values {
+            let lineRange = NSRange(location: line.location, length: line.data.totalLength)
+            highlightedRangeFragmentsPerLine[line.id] = highlightedRanges.compactMap { highlightedRange in
+                guard shouldRender(highlightedRange), highlightedRange.range.overlaps(lineRange) else {
+                    return nil
+                }
+                return makeHighlightedRangeFragment(for: highlightedRange, in: lineRange)
+            }
+        }
+    }
+
     private func invalidateHighlightedRangeFragments() {
         highlightedRangeFragmentsPerLine.removeAll()
         highlightedRangeFragmentsPerLineFragment.removeAll()
@@ -43,22 +98,14 @@ private extension HighlightService {
 
     private func createHighlightedRangeFragmentsPerLine() -> [DocumentLineNodeID: [HighlightedRangeFragment]] {
         var result: [DocumentLineNodeID: [HighlightedRangeFragment]] = [:]
-        for highlightedRange in highlightedRanges where highlightedRange.range.length > 0 {
+        for highlightedRange in highlightedRanges where shouldRender(highlightedRange) {
             let lines = lineManager.lines(in: highlightedRange.range)
             for line in lines {
                 let lineRange = NSRange(location: line.location, length: line.data.totalLength)
                 guard highlightedRange.range.overlaps(lineRange) else {
                     continue
                 }
-                let cappedRange = highlightedRange.range.capped(to: lineRange)
-                let cappedLocalRange = cappedRange.local(to: lineRange)
-                let containsStart = cappedRange.lowerBound == highlightedRange.range.lowerBound
-                let containsEnd = cappedRange.upperBound == highlightedRange.range.upperBound
-                let highlightedRangeFragment = HighlightedRangeFragment(range: cappedLocalRange,
-                                                                        containsStart: containsStart,
-                                                                        containsEnd: containsEnd,
-                                                                        color: highlightedRange.color,
-                                                                        cornerRadius: highlightedRange.cornerRadius)
+                let highlightedRangeFragment = makeHighlightedRangeFragment(for: highlightedRange, in: lineRange)
                 if let existingHighlightedRangeFragments = result[line.id] {
                     result[line.id] = existingHighlightedRangeFragments + [highlightedRangeFragment]
                 } else {
@@ -67,6 +114,22 @@ private extension HighlightService {
             }
         }
         return result
+    }
+
+    private func makeHighlightedRangeFragment(for highlightedRange: HighlightedRange,
+                                              in lineRange: NSRange) -> HighlightedRangeFragment {
+        let cappedRange = highlightedRange.range.capped(to: lineRange)
+        return HighlightedRangeFragment(range: cappedRange.local(to: lineRange),
+                                        containsStart: cappedRange.lowerBound == highlightedRange.range.lowerBound,
+                                        containsEnd: cappedRange.upperBound == highlightedRange.range.upperBound,
+                                        color: highlightedRange.color,
+                                        foregroundColor: highlightedRange.foregroundColor,
+                                        cornerRadius: highlightedRange.cornerRadius)
+    }
+
+    private func shouldRender(_ highlightedRange: HighlightedRange) -> Bool {
+        highlightedRange.range.length > 0
+            && (!isFindResultPresentationActive || highlightedRange.presentationRole != .selectedSearchResult)
     }
 
     private func createHighlightedLineFragments(for lineFragment: LineFragment,
@@ -85,6 +148,7 @@ private extension HighlightService {
                                             containsStart: containsStart,
                                             containsEnd: containsEnd,
                                             color: lineHighlightedRangeFragment.color,
+                                            foregroundColor: lineHighlightedRangeFragment.foregroundColor,
                                             cornerRadius: lineHighlightedRangeFragment.cornerRadius)
         }
     }

@@ -215,6 +215,14 @@ extension UITextSearchingHelper: UIFindInteractionDelegate {
     func findInteraction(_ interaction: UIFindInteraction, sessionFor view: UIView) -> UIFindSession? {
         UITextSearchingFindSession(searchableObject: self)
     }
+
+    func findInteraction(_ interaction: UIFindInteraction, didBegin session: UIFindSession) {
+        _textView.isFindResultPresentationActive = true
+    }
+
+    func findInteraction(_ interaction: UIFindInteraction, didEnd session: UIFindSession) {
+        _textView.isFindResultPresentationActive = false
+    }
 }
 
 private extension SearchQuery {

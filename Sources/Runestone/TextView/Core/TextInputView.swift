@@ -716,8 +716,45 @@ final class TextInputView: UIView, UITextInput {
                 highlightService.highlightedRanges = newValue
                 layoutManager.setNeedsLayout()
                 layoutManager.layoutIfNeeded()
+                findResultPresentationView.update(highlightedRanges: newValue,
+                                                  selectionRects: selectionRects(for:))
             }
         }
+    }
+    var isFindResultPresentationEnabled = false {
+        didSet {
+            updateFindResultPresentation()
+        }
+    }
+    var isFindResultPresentationActive: Bool {
+        get {
+            isFindResultPresentationRequested
+        }
+        set {
+            isFindResultPresentationRequested = newValue
+            updateFindResultPresentation()
+        }
+    }
+    private var isFindResultPresentationRequested = false
+
+    private func updateFindResultPresentation() {
+        let isActive = isFindResultPresentationEnabled && isFindResultPresentationRequested
+        findResultPresentationView.isActive = isActive
+        highlightService.isFindResultPresentationActive = isActive
+        layoutManager.setNeedsLayout()
+        layoutManager.layoutIfNeeded()
+        guard isActive else {
+            return
+        }
+        if findResultPresentationView.superview == nil {
+            addSubview(findResultPresentationView)
+        }
+        findResultPresentationView.update(highlightedRanges: highlightedRanges,
+                                          selectionRects: selectionRects(for:))
+    }
+
+    func selectedResultTextSegments(for range: NSRange) -> [SelectedResultTextSegment] {
+        layoutManager.selectedResultTextSegments(for: range)
     }
 
     // MARK: - Contents
@@ -880,6 +917,7 @@ final class TextInputView: UIView, UITextInput {
     private let contentSizeService: ContentSizeService
     private let caretRectService: CaretRectService
     private let selectionRectService: SelectionRectService
+    private lazy var findResultPresentationView = FindResultPresentationView(sourceView: self)
     private let highlightService: HighlightService
     private let invisibleCharacterConfiguration = InvisibleCharacterConfiguration()
     private var markedRange: NSRange? {
@@ -1035,6 +1073,10 @@ final class TextInputView: UIView, UITextInput {
         checkVisibleSpellingIfNeeded()
         updateLegacySpellingMenuIfNeeded()
         writingToolsController?.layoutDidChange()
+        if findResultPresentationView.isActive {
+            bringSubviewToFront(findResultPresentationView)
+            findResultPresentationView.updateLayoutIfNeeded(selectionRects: selectionRects(for:))
+        }
         // We notify the input delegate about selection changes in layoutSubviews so we have a chance of disabling notifying the input delegate during an editing operation.
         // We will sometimes disable notifying the input delegate when the user enters Korean text.
         // This workaround is inspired by a dialog with Alexander Blach (@lextar), developer of Textastic.
