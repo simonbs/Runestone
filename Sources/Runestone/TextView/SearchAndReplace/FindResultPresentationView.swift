@@ -24,6 +24,7 @@ final class FindResultPresentationView: UIView {
     private weak var sourceView: UIView?
     private let dimmingLayer = CAShapeLayer()
     private var selectedRange: NSRange?
+    private var currentDimmingBounds = CGRect.null
     private var currentBounds = CGRect.null
     private var currentRanges: [HighlightedRange] = []
     private var cachedPresentations: [RangePresentation] = []
@@ -57,7 +58,7 @@ final class FindResultPresentationView: UIView {
         let shouldAnimate = selectedRange != nil && selected?.range != selectedRange
         let boundsChanged = currentBounds != sourceView.bounds
         let rangesChanged = currentRanges != searchRanges
-        guard boundsChanged || rangesChanged else {
+        guard boundsChanged || rangesChanged || dimmingBounds != currentDimmingBounds else {
             return
         }
         let geometryChanged = currentBounds.width != sourceView.bounds.width
@@ -65,7 +66,6 @@ final class FindResultPresentationView: UIView {
         currentBounds = sourceView.bounds
         currentRanges = searchRanges
         frame = sourceView.bounds
-        dimmingLayer.frame = bounds
         if geometryChanged {
             cachedPresentations = presentations(for: searchRanges,
                                                 sourceView: sourceView,
@@ -84,12 +84,12 @@ final class FindResultPresentationView: UIView {
         guard let sourceView else {
             return
         }
+        let dimmingBoundsChanged = dimmingBounds != currentDimmingBounds
         let boundsChanged = sourceView.bounds != currentBounds
         let geometryChanged = sourceView.bounds.width != currentBounds.width
         if boundsChanged {
             currentBounds = sourceView.bounds
             frame = sourceView.bounds
-            dimmingLayer.frame = bounds
             if geometryChanged {
                 cachedPresentations = presentations(for: currentRanges,
                                                     sourceView: sourceView,
@@ -99,7 +99,7 @@ final class FindResultPresentationView: UIView {
         guard let selectedIndex = cachedPresentations.firstIndex(where: { presentation in
             presentation.range.presentationRole == .selectedSearchResult
         }) else {
-            if boundsChanged {
+            if boundsChanged || dimmingBoundsChanged {
                 updateDimming()
             }
             return
@@ -116,7 +116,7 @@ final class FindResultPresentationView: UIView {
         if let refreshedPresentation, selectedGeometryChanged {
             cachedPresentations[selectedIndex] = refreshedPresentation
         }
-        if boundsChanged || selectedGeometryChanged {
+        if boundsChanged || dimmingBoundsChanged || selectedGeometryChanged {
             updateDimming()
         }
         if geometryChanged || selectedGeometryChanged || segmentSignature != selectedTextSegmentSignature {
@@ -155,17 +155,27 @@ final class FindResultPresentationView: UIView {
         return RangePresentation(range: range, rects: selectionRects(textRange).map(\.rect))
     }
 
+    private var dimmingBounds: CGRect {
+        // The viewport includes adjusted content insets and scroll bounce regions
+        // outside the text content, including the area behind navigation bars.
+        let viewport = (sourceView as? TextInputView)?.viewport ?? bounds
+        return bounds.union(viewport)
+    }
+
     private func updateDimming() {
-        let path = UIBezierPath(rect: bounds)
+        let coverage = dimmingBounds
+        let path = UIBezierPath(rect: CGRect(origin: .zero, size: coverage.size))
         for presentation in cachedPresentations {
             for rect in displayRects(for: presentation) where !rect.isEmpty {
-                path.append(UIBezierPath(roundedRect: rect,
+                path.append(UIBezierPath(roundedRect: rect.offsetBy(dx: -coverage.minX, dy: -coverage.minY),
                                          cornerRadius: cornerRadius(for: presentation.range)))
             }
         }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        dimmingLayer.frame = coverage
         dimmingLayer.path = path.cgPath
+        currentDimmingBounds = coverage
         CATransaction.commit()
     }
 
