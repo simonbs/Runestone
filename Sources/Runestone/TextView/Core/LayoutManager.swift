@@ -288,6 +288,8 @@ final class LayoutManager {
 
     // MARK: - Views
     let gutterContainerView = GutterContainerView()
+    var isFindResultPresentationActive = false
+    private let gutterDimmingLayer = CALayer()
     private let foldingButtonReuseQueue = ViewReuseQueue<Int, FoldingGutterButton>()
     private var lineFragmentViewReuseQueue = ViewReuseQueue<LineFragmentID, LineFragmentView>()
     private var lineNumberLabelReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineNumberView>()
@@ -355,6 +357,7 @@ final class LayoutManager {
         // Line numbers decorate the text; separate VoiceOver stops obscure the editor's controls.
         self.lineNumbersContainerView.accessibilityElementsHidden = true
         self.gutterContainerView.isUserInteractionEnabled = true
+        self.gutterDimmingLayer.backgroundColor = FindResultPresentationView.dimmingColor.cgColor
         self.gutterBackgroundView.isUserInteractionEnabled = false
         self.gutterSelectionBackgroundView.isUserInteractionEnabled = false
         self.lineSelectionBackgroundView.isUserInteractionEnabled = false
@@ -509,6 +512,11 @@ extension LayoutManager {
         gutterContainerView.frame = CGRect(x: viewport.minX, y: 0, width: totalGutterWidth, height: contentSize.height)
         gutterBackgroundView.frame = CGRect(x: 0, y: viewport.minY, width: totalGutterWidth, height: viewport.height)
         lineNumbersContainerView.frame = CGRect(x: 0, y: 0, width: totalGutterWidth, height: contentSize.height)
+        // The gutter is above the text input's search overlay. Dim its complete
+        // viewport separately, including controls added or reused during layout.
+        gutterDimmingLayer.frame = gutterBackgroundView.frame
+        gutterDimmingLayer.isHidden = !isFindResultPresentationActive || (!showLineNumbers && !isCodeFoldingEnabled)
+        gutterContainerView.layer.addSublayer(gutterDimmingLayer)
     }
 
     private func layoutLineSelection() {
