@@ -11,7 +11,11 @@ final class HighlightService {
     var highlightedRanges: [HighlightedRange] = [] {
         didSet {
             if highlightedRanges != oldValue {
-                invalidateHighlightedRangeFragments()
+                if hasUnchangedRangeGeometry(comparedTo: oldValue) {
+                    updateHighlightedRangeFragments(changedFrom: oldValue)
+                } else {
+                    invalidateHighlightedRangeFragments()
+                }
             }
         }
     }
@@ -35,6 +39,33 @@ final class HighlightService {
 }
 
 private extension HighlightService {
+    private func hasUnchangedRangeGeometry(comparedTo oldRanges: [HighlightedRange]) -> Bool {
+        highlightedRanges.count == oldRanges.count
+            && zip(highlightedRanges, oldRanges).allSatisfy { $0.range == $1.range }
+    }
+
+    private func updateHighlightedRangeFragments(changedFrom oldRanges: [HighlightedRange]) {
+        let changedRanges = zip(highlightedRanges, oldRanges).compactMap { newRange, oldRange in
+            newRange == oldRange ? nil : newRange.range
+        }
+        let affectedLines = Dictionary(changedRanges
+            .flatMap(lineManager.lines(in:))
+            .map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        guard !affectedLines.isEmpty else {
+            return
+        }
+        highlightedRangeFragmentsPerLineFragment.removeAll()
+        for line in affectedLines.values {
+            let lineRange = NSRange(location: line.location, length: line.data.totalLength)
+            highlightedRangeFragmentsPerLine[line.id] = highlightedRanges.compactMap { highlightedRange in
+                guard highlightedRange.range.length > 0, highlightedRange.range.overlaps(lineRange) else {
+                    return nil
+                }
+                return makeHighlightedRangeFragment(for: highlightedRange, in: lineRange)
+            }
+        }
+    }
+
     private func invalidateHighlightedRangeFragments() {
         highlightedRangeFragmentsPerLine.removeAll()
         highlightedRangeFragmentsPerLineFragment.removeAll()
@@ -50,15 +81,7 @@ private extension HighlightService {
                 guard highlightedRange.range.overlaps(lineRange) else {
                     continue
                 }
-                let cappedRange = highlightedRange.range.capped(to: lineRange)
-                let cappedLocalRange = cappedRange.local(to: lineRange)
-                let containsStart = cappedRange.lowerBound == highlightedRange.range.lowerBound
-                let containsEnd = cappedRange.upperBound == highlightedRange.range.upperBound
-                let highlightedRangeFragment = HighlightedRangeFragment(range: cappedLocalRange,
-                                                                        containsStart: containsStart,
-                                                                        containsEnd: containsEnd,
-                                                                        color: highlightedRange.color,
-                                                                        cornerRadius: highlightedRange.cornerRadius)
+                let highlightedRangeFragment = makeHighlightedRangeFragment(for: highlightedRange, in: lineRange)
                 if let existingHighlightedRangeFragments = result[line.id] {
                     result[line.id] = existingHighlightedRangeFragments + [highlightedRangeFragment]
                 } else {
@@ -67,6 +90,16 @@ private extension HighlightService {
             }
         }
         return result
+    }
+
+    private func makeHighlightedRangeFragment(for highlightedRange: HighlightedRange,
+                                              in lineRange: NSRange) -> HighlightedRangeFragment {
+        let cappedRange = highlightedRange.range.capped(to: lineRange)
+        return HighlightedRangeFragment(range: cappedRange.local(to: lineRange),
+                                        containsStart: cappedRange.lowerBound == highlightedRange.range.lowerBound,
+                                        containsEnd: cappedRange.upperBound == highlightedRange.range.upperBound,
+                                        color: highlightedRange.color,
+                                        cornerRadius: highlightedRange.cornerRadius)
     }
 
     private func createHighlightedLineFragments(for lineFragment: LineFragment,
