@@ -9,6 +9,8 @@ final class FindResultPresentationView: UIView {
             isHidden = !isActive
             selectedResultPlateView.isHidden = !isActive
             if !isActive {
+                selectedResultPlateView.layer.removeAnimation(forKey: Self.bounceAnimationKey)
+                selectedResultPlateView.transform = .identity
                 selectedRange = nil
                 currentBounds = .null
                 currentRanges = []
@@ -147,9 +149,12 @@ final class FindResultPresentationView: UIView {
     }
 
     private func animateSelectedResultPlate(_ animated: Bool) {
+        guard animated else {
+            return
+        }
         selectedResultPlateView.layer.removeAnimation(forKey: Self.bounceAnimationKey)
         selectedResultPlateView.transform = .identity
-        guard animated, !UIAccessibility.isReduceMotionEnabled else {
+        guard !UIAccessibility.isReduceMotionEnabled else {
             return
         }
         let animation = CAKeyframeAnimation(keyPath: "transform.scale")

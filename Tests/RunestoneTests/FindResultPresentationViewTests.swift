@@ -77,6 +77,32 @@ final class FindResultPresentationViewTests: XCTestCase {
         XCTAssertEqual(presentationView.selectedResultPlateView.transform, .identity)
     }
 
+    func testFollowUpLayoutDoesNotCancelSelectionAnimation() {
+        let sourceView = UITextView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        sourceView.text = "xx"
+        let presentationView = FindResultPresentationView(sourceView: sourceView)
+        presentationView.isActive = true
+        let selectionRects: (UITextRange) -> [UITextSelectionRect] = { _ in
+            [TextSelectionRect(rect: CGRect(x: 10, y: 10, width: 10, height: 18),
+                               writingDirection: .natural, containsStart: true, containsEnd: true)]
+        }
+        presentationView.update(highlightedRanges: ranges(count: 2, selectedIndex: 0),
+                                selectionRects: selectionRects)
+        presentationView.update(highlightedRanges: ranges(count: 2, selectedIndex: 1),
+                                selectionRects: selectionRects)
+        XCTAssertNotNil(presentationView.selectedResultPlateView.layer.animation(
+            forKey: FindResultPresentationView.bounceAnimationKey
+        ))
+
+        sourceView.bounds.origin.y = 20
+        presentationView.updateLayoutIfNeeded(highlightedRanges: ranges(count: 2, selectedIndex: 1),
+                                              selectionRects: selectionRects)
+
+        XCTAssertNotNil(presentationView.selectedResultPlateView.layer.animation(
+            forKey: FindResultPresentationView.bounceAnimationKey
+        ))
+    }
+
     private func ranges(count: Int, selectedIndex: Int) -> [HighlightedRange] {
         (0 ..< count).map { index in
             HighlightedRange(id: "result-\(index)",
