@@ -289,7 +289,7 @@ private extension LineFragmentRenderer {
 }
 
 extension LineFragmentRenderer {
-    func drawText(to context: CGContext, excludingHiddenRanges: Bool = true) {
+    func drawText(to context: CGContext, excludingHiddenRanges: Bool = true, foregroundColor: UIColor? = nil) {
         context.saveGState()
         if excludingHiddenRanges, !hiddenTextRanges.isEmpty {
             let path = UIBezierPath(rect: CGRect(x: -100_000, y: 0, width: 200_000,
@@ -309,8 +309,39 @@ extension LineFragmentRenderer {
         context.scaleBy(x: 1, y: -1)
         let yPosition = lineFragment.descent + (lineFragment.scaledSize.height - lineFragment.baseSize.height) / 2
         context.textPosition = CGPoint(x: 0, y: yPosition)
-        CTLineDraw(lineFragment.line, context)
+        if let foregroundColor {
+            drawLine(to: context, foregroundColor: foregroundColor, baseline: yPosition)
+        } else {
+            CTLineDraw(lineFragment.line, context)
+            drawHighlightedRangeForegrounds(to: context, baseline: yPosition)
+        }
         context.restoreGState()
+    }
+
+    private func drawHighlightedRangeForegrounds(to context: CGContext, baseline: CGFloat) {
+        for fragment in highlightedRangeFragments {
+            guard let foregroundColor = fragment.foregroundColor else {
+                continue
+            }
+            for segment in spellingUnderlineSegments(in: fragment.range) {
+                context.saveGState()
+                context.clip(to: CGRect(x: segment.lowerBound, y: 0,
+                                        width: segment.upperBound - segment.lowerBound,
+                                        height: lineFragment.scaledSize.height))
+                drawLine(to: context, foregroundColor: foregroundColor, baseline: baseline)
+                context.restoreGState()
+            }
+        }
+    }
+
+    private func drawLine(to context: CGContext, foregroundColor: UIColor, baseline: CGFloat) {
+        context.beginTransparencyLayer(auxiliaryInfo: nil)
+        context.textPosition = CGPoint(x: 0, y: baseline)
+        CTLineDraw(lineFragment.line, context)
+        context.setBlendMode(.sourceIn)
+        context.setFillColor(foregroundColor.cgColor)
+        context.fill(CGRect(x: -100_000, y: -100_000, width: 200_000, height: 200_000))
+        context.endTransparencyLayer()
     }
 
 }

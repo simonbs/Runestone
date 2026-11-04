@@ -123,6 +123,7 @@ private extension HighlightService {
                                         containsStart: cappedRange.lowerBound == highlightedRange.range.lowerBound,
                                         containsEnd: cappedRange.upperBound == highlightedRange.range.upperBound,
                                         color: highlightedRange.color,
+                                        foregroundColor: highlightedRange.foregroundColor,
                                         cornerRadius: highlightedRange.cornerRadius)
     }
 
@@ -147,6 +148,7 @@ private extension HighlightService {
                                             containsStart: containsStart,
                                             containsEnd: containsEnd,
                                             color: lineHighlightedRangeFragment.color,
+                                            foregroundColor: lineHighlightedRangeFragment.foregroundColor,
                                             cornerRadius: lineHighlightedRangeFragment.cornerRadius)
         }
     }

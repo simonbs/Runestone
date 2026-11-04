@@ -206,7 +206,8 @@ final class FindResultPresentationView: UIView {
         selectedTextSegmentSignature = segments.map(SelectedResultTextSegmentSignature.init)
         if sourceView is TextInputView {
             for segment in segments {
-                let textView = SelectedResultTextView(segment: segment)
+                let textView = SelectedResultTextView(segment: segment,
+                                                      foregroundColor: presentation.range.foregroundColor)
                 textView.frame = segment.frame.offsetBy(dx: -union.minX, dy: -union.minY)
                 selectedResultPlateView.addSubview(textView)
             }
@@ -275,9 +276,11 @@ private struct SelectedResultTextSegmentSignature: Equatable {
 
 private final class SelectedResultTextView: UIView {
     private let segment: SelectedResultTextSegment
+    private let foregroundColor: UIColor?
 
-    init(segment: SelectedResultTextSegment) {
+    init(segment: SelectedResultTextSegment, foregroundColor: UIColor?) {
         self.segment = segment
+        self.foregroundColor = foregroundColor
         super.init(frame: .zero)
         backgroundColor = .clear
         isUserInteractionEnabled = false
@@ -293,7 +296,7 @@ private final class SelectedResultTextView: UIView {
             return
         }
         context.translateBy(x: -segment.horizontalOffset, y: 0)
-        segment.renderer.drawText(to: context, excludingHiddenRanges: false)
+        segment.renderer.drawText(to: context, excludingHiddenRanges: false, foregroundColor: foregroundColor)
     }
 }
 
