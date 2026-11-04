@@ -749,9 +749,12 @@ final class TextInputView: UIView, UITextInput {
         if findResultPresentationView.superview == nil {
             addSubview(findResultPresentationView)
         }
-        layoutManager.installFindResultPlateView(findResultPresentationView.selectedResultPlateView)
         findResultPresentationView.update(highlightedRanges: highlightedRanges,
                                           selectionRects: selectionRects(for:))
+    }
+
+    func selectedResultTextSegments(for range: NSRange) -> [SelectedResultTextSegment] {
+        layoutManager.selectedResultTextSegments(for: range)
     }
 
     // MARK: - Contents

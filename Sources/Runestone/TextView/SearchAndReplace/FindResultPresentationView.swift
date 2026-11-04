@@ -38,6 +38,7 @@ final class FindResultPresentationView: UIView {
         layer.addSublayer(dimmingLayer)
         selectedResultPlateView.isHidden = true
         selectedResultPlateView.isUserInteractionEnabled = false
+        addSubview(selectedResultPlateView)
     }
 
     required init?(coder: NSCoder) {
@@ -145,6 +146,13 @@ final class FindResultPresentationView: UIView {
                                                   cornerRadius: Self.selectedCornerRadius).cgPath
             selectedResultPlateView.addSubview(plate)
         }
+        if let sourceView = sourceView as? TextInputView {
+            for segment in sourceView.selectedResultTextSegments(for: presentation.range.range) {
+                let textView = SelectedResultTextView(segment: segment)
+                textView.frame = segment.frame.offsetBy(dx: -union.minX, dy: -union.minY)
+                selectedResultPlateView.addSubview(textView)
+            }
+        }
         animateSelectedResultPlate(animated)
     }
 
@@ -187,6 +195,36 @@ final class FindResultPresentationView: UIView {
     private static let selectedVerticalPadding: CGFloat = 3
     private static let selectedCornerRadius: CGFloat = 5
     static let bounceAnimationKey = "find-result-bounce"
+}
+
+struct SelectedResultTextSegment {
+    let frame: CGRect
+    let horizontalOffset: CGFloat
+    let renderer: LineFragmentRenderer
+}
+
+private final class SelectedResultTextView: UIView {
+    private let segment: SelectedResultTextSegment
+
+    init(segment: SelectedResultTextSegment) {
+        self.segment = segment
+        super.init(frame: .zero)
+        backgroundColor = .clear
+        isUserInteractionEnabled = false
+        clipsToBounds = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func draw(_ rect: CGRect) {
+        guard let context = UIGraphicsGetCurrentContext() else {
+            return
+        }
+        context.translateBy(x: -segment.horizontalOffset, y: 0)
+        segment.renderer.drawText(to: context, excludingHiddenRanges: false)
+    }
 }
 
 private struct RangePresentation {

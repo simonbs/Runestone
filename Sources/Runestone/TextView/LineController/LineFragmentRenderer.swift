@@ -18,6 +18,7 @@ final class LineFragmentRenderer {
     var markedTextBackgroundColor: UIColor = .systemFill
     var markedTextBackgroundCornerRadius: CGFloat = 0
     var highlightedRangeFragments: [HighlightedRangeFragment] = []
+    var hiddenTextRanges: [NSRange] = []
     var misspelledRanges: [NSRange] = []
 
     private var showInvisibleCharacters: Bool {
@@ -288,8 +289,21 @@ private extension LineFragmentRenderer {
 }
 
 extension LineFragmentRenderer {
-    func drawText(to context: CGContext) {
+    func drawText(to context: CGContext, excludingHiddenRanges: Bool = true) {
         context.saveGState()
+        if excludingHiddenRanges, !hiddenTextRanges.isEmpty {
+            let path = UIBezierPath(rect: CGRect(x: -100_000, y: 0, width: 200_000,
+                                                 height: lineFragment.scaledSize.height))
+            for range in hiddenTextRanges {
+                let startX = CTLineGetOffsetForStringIndex(lineFragment.line, range.lowerBound, nil)
+                let endX = CTLineGetOffsetForStringIndex(lineFragment.line, range.upperBound, nil)
+                path.append(UIBezierPath(rect: CGRect(x: min(startX, endX), y: 0,
+                                                      width: abs(endX - startX),
+                                                      height: lineFragment.scaledSize.height)))
+            }
+            context.addPath(path.cgPath)
+            context.clip(using: .evenOdd)
+        }
         context.textMatrix = .identity
         context.translateBy(x: 0, y: lineFragment.scaledSize.height)
         context.scaleBy(x: 1, y: -1)

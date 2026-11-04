@@ -293,11 +293,6 @@ final class LayoutManager {
     private var lineNumberLabelReuseQueue = ViewReuseQueue<DocumentLineNodeID, LineNumberView>()
     private var visibleLineIDs: Set<DocumentLineNodeID> = []
     private let linesContainerView = UIView()
-    func installFindResultPlateView(_ view: UIView) {
-        if view.superview !== linesContainerView {
-            linesContainerView.insertSubview(view, at: 0)
-        }
-    }
     var writingToolsHiddenRanges: [NSRange] = [] {
         didSet { updateWritingToolsMask() }
     }
@@ -671,6 +666,10 @@ extension LayoutManager {
                 updateSpelling(on: lineFragmentController, lineLocation: line.location)
                 lineFragmentController.highlightedRangeFragments = highlightService.highlightedRangeFragments(for: lineFragment,
                                                                                                               inLineWithID: line.id)
+                lineFragmentController.hiddenTextRanges = highlightService.hiddenTextRanges(
+                    for: lineFragment,
+                    inLineRange: NSRange(location: line.location, length: line.data.totalLength)
+                )
                 layoutLineFragmentView(for: lineFragmentController,
                                        lineLocation: line.location,
                                        lineYPosition: lineYPosition,
@@ -861,6 +860,32 @@ private extension LayoutManager {
 
 // MARK: - Spelling geometry
 extension LayoutManager {
+    func selectedResultTextSegments(for range: NSRange) -> [SelectedResultTextSegment] {
+        lineFragmentViewReuseQueue.visibleViews.values.flatMap { view -> [SelectedResultTextSegment] in
+            guard let renderer = view.renderer else {
+                return []
+            }
+            let fragmentRange = renderer.lineFragment.visibleRange
+            let documentRange = NSRange(location: view.documentLineLocation + fragmentRange.location,
+                                        length: fragmentRange.length)
+            let intersection = NSIntersectionRange(documentRange, range)
+            guard intersection.length > 0 else {
+                return []
+            }
+            let localRange = NSRange(location: intersection.location - view.documentLineLocation,
+                                     length: intersection.length)
+            return renderer.spellingUnderlineSegments(in: localRange).map { horizontalRange in
+                let frame = CGRect(x: view.frame.minX + horizontalRange.lowerBound,
+                                   y: view.frame.minY,
+                                   width: horizontalRange.upperBound - horizontalRange.lowerBound,
+                                   height: view.frame.height)
+                return SelectedResultTextSegment(frame: frame,
+                                                 horizontalOffset: horizontalRange.lowerBound,
+                                                 renderer: renderer)
+            }
+        }
+    }
+
     /// Visible word rectangles in text input coordinates, split at wrapping and bidirectional run boundaries.
     func spellingRects(for range: NSRange) -> [CGRect] {
         guard range.location >= 0, range.location <= stringView.string.length,

@@ -43,6 +43,22 @@ final class HighlightService {
             return highlightedLineFragments
         }
     }
+
+    func hiddenTextRanges(for lineFragment: LineFragment, inLineRange lineRange: NSRange) -> [NSRange] {
+        guard isFindResultPresentationActive,
+              let selectedRange = highlightedRanges.first(where: { highlightedRange in
+                  highlightedRange.presentationRole == .selectedSearchResult
+              })?.range else {
+            return []
+        }
+        let intersection = NSIntersectionRange(selectedRange, lineRange)
+        guard intersection.length > 0 else {
+            return []
+        }
+        let localRange = intersection.local(to: lineRange)
+        let fragmentIntersection = NSIntersectionRange(localRange, lineFragment.visibleRange)
+        return fragmentIntersection.length > 0 ? [fragmentIntersection] : []
+    }
 }
 
 private extension HighlightService {

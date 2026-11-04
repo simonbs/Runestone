@@ -65,6 +65,17 @@ final class LineFragmentController {
             }
         }
     }
+    var hiddenTextRanges: [NSRange] {
+        get {
+            renderer.hiddenTextRanges
+        }
+        set {
+            if newValue != renderer.hiddenTextRanges {
+                renderer.hiddenTextRanges = newValue
+                lineFragmentView?.setNeedsDisplay()
+            }
+        }
+    }
     /// Misspelled ranges in coordinates local to the document line.
     var misspelledRanges: [NSRange] {
         get {
