@@ -50,7 +50,7 @@ private extension HighlightService {
         }
         let affectedLines = Dictionary(changedRanges
             .flatMap(lineManager.lines(in:))
-            .map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            .map { ($0.id, $0) }) { first, _ in first }
         guard !affectedLines.isEmpty else {
             return
         }

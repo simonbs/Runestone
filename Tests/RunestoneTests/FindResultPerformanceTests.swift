@@ -51,7 +51,10 @@ final class FindResultPerformanceTests: XCTestCase {
     }
 
     private func matches(of query: String, in text: String) -> [NSRange] {
-        let expression = try! NSRegularExpression(pattern: NSRegularExpression.escapedPattern(for: query))
+        guard let expression = try? NSRegularExpression(pattern: NSRegularExpression.escapedPattern(for: query)) else {
+            XCTFail("Unable to create search expression")
+            return []
+        }
         return expression.matches(in: text, range: NSRange(location: 0, length: text.utf16.count)).map(\.range)
     }
 
@@ -73,12 +76,16 @@ final class FindResultPerformanceTests: XCTestCase {
         result["meanMs"] = samples.reduce(0, +) / Double(max(1, samples.count))
         result["maxMs"] = sorted.last ?? 0
         result["p95Ms"] = sorted.isEmpty ? 0 : sorted[min(sorted.count - 1, Int(ceil(Double(sorted.count) * 0.95)) - 1)]
-        let data = try! JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
+        guard let data = try? JSONSerialization.data(withJSONObject: result, options: [.sortedKeys]),
+              let message = String(bytes: data, encoding: .utf8) else {
+            XCTFail("Unable to encode performance result")
+            return
+        }
         let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
         attachment.name = phase
         attachment.lifetime = .keepAlways
         add(attachment)
-        print("RUNESTONE_FIND_PERFORMANCE \(String(decoding: data, as: UTF8.self))")
+        print("RUNESTONE_FIND_PERFORMANCE \(message)")
     }
 }
 
