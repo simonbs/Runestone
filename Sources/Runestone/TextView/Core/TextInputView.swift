@@ -741,6 +741,7 @@ final class TextInputView: UIView, UITextInput {
         let isActive = isFindResultPresentationEnabled && isFindResultPresentationRequested
         findResultPresentationView.isActive = isActive
         highlightService.isFindResultPresentationActive = isActive
+        layoutManager.isFindResultPresentationActive = isActive
         layoutManager.setNeedsLayout()
         layoutManager.layoutIfNeeded()
         guard isActive else {

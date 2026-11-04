@@ -36,7 +36,7 @@ final class FindResultPresentationView: UIView {
         isHidden = true
         isUserInteractionEnabled = false
         backgroundColor = .clear
-        dimmingLayer.fillColor = UIColor.black.withAlphaComponent(0.22).cgColor
+        dimmingLayer.fillColor = Self.dimmingColor.cgColor
         dimmingLayer.fillRule = .evenOdd
         layer.addSublayer(dimmingLayer)
         selectedResultPlateView.isHidden = true
@@ -259,6 +259,8 @@ final class FindResultPresentationView: UIView {
     private func cornerRadius(for range: HighlightedRange) -> CGFloat {
         range.presentationRole == .selectedSearchResult ? Self.selectedCornerRadius : range.cornerRadius
     }
+
+    static let dimmingColor = UIColor.black.withAlphaComponent(0.22)
 
     private static let selectedHorizontalPadding: CGFloat = 4
     private static let selectedVerticalPadding: CGFloat = 3
