@@ -107,7 +107,10 @@ final class FindResultPresentationView: UIView {
                                          cornerRadius: cornerRadius(for: presentation.range)))
             }
         }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         dimmingLayer.path = path.cgPath
+        CATransaction.commit()
     }
 
     private func updateSelectedResultPlate(animated: Bool) {
@@ -144,15 +147,21 @@ final class FindResultPresentationView: UIView {
     }
 
     private func animateSelectedResultPlate(_ animated: Bool) {
+        selectedResultPlateView.layer.removeAnimation(forKey: Self.bounceAnimationKey)
+        selectedResultPlateView.transform = .identity
         guard animated, !UIAccessibility.isReduceMotionEnabled else {
-            selectedResultPlateView.transform = .identity
             return
         }
-        selectedResultPlateView.transform = CGAffineTransform(scaleX: 1.2, y: 1.1)
-        let animator = UIViewPropertyAnimator(duration: 0.18, dampingRatio: 0.86) {
-            self.selectedResultPlateView.transform = .identity
-        }
-        animator.startAnimation()
+        let animation = CAKeyframeAnimation(keyPath: "transform.scale")
+        animation.values = [1, 1.13, 0.985, 1]
+        animation.keyTimes = [0, 0.38, 0.76, 1]
+        animation.timingFunctions = [
+            CAMediaTimingFunction(name: .easeOut),
+            CAMediaTimingFunction(name: .easeInEaseOut),
+            CAMediaTimingFunction(name: .easeOut)
+        ]
+        animation.duration = 0.24
+        selectedResultPlateView.layer.add(animation, forKey: Self.bounceAnimationKey)
     }
 
     private func displayRects(for presentation: RangePresentation) -> [CGRect] {
@@ -172,6 +181,7 @@ final class FindResultPresentationView: UIView {
     private static let selectedHorizontalPadding: CGFloat = 4
     private static let selectedVerticalPadding: CGFloat = 3
     private static let selectedCornerRadius: CGFloat = 5
+    static let bounceAnimationKey = "find-result-bounce"
 }
 
 private struct RangePresentation {
