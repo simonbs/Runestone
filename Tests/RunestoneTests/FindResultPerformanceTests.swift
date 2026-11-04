@@ -17,7 +17,9 @@ final class FindResultPerformanceTests: XCTestCase {
         defer { window.isHidden = true }
         view.layoutIfNeeded()
 
+        let searchStart = CACurrentMediaTime()
         let ranges = matches(of: "post", in: view.text)
+        report(phase: "search-1000-matches", milliseconds: (CACurrentMediaTime() - searchStart) * 1_000)
         let applyStart = CACurrentMediaTime()
         var highlights = ranges.enumerated().map { index, range in
             highlight(range, selected: index == 0)
