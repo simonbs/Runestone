@@ -106,6 +106,45 @@ final class FindResultPresentationViewTests: XCTestCase {
         ))
     }
 
+    func testDimmingCoversViewportOutsideContentAndTracksInsetChanges() throws {
+        let sourceView = TextInputView(theme: DefaultTheme())
+        sourceView.frame = CGRect(x: 0, y: 0, width: 320, height: 480)
+        sourceView.string = "x"
+        sourceView.viewport = CGRect(x: -20, y: -100, width: 360, height: 700)
+        let presentationView = FindResultPresentationView(sourceView: sourceView)
+        sourceView.addSubview(presentationView)
+        presentationView.isActive = true
+        let resultRect = CGRect(x: 10, y: 10, width: 10, height: 18)
+        let selectionRects: (UITextRange) -> [UITextSelectionRect] = { _ in
+            [TextSelectionRect(rect: resultRect, writingDirection: .natural,
+                               containsStart: true, containsEnd: true)]
+        }
+        presentationView.update(highlightedRanges: ranges(count: 1, selectedIndex: 0),
+                                selectionRects: selectionRects)
+        let dimmingLayer = try XCTUnwrap(presentationView.layer.sublayers?.first as? CAShapeLayer)
+        func isDimmed(_ point: CGPoint) throws -> Bool {
+            let path = try XCTUnwrap(dimmingLayer.path)
+            let localPoint = CGPoint(x: point.x - dimmingLayer.frame.minX,
+                                     y: point.y - dimmingLayer.frame.minY)
+            return path.contains(localPoint, using: .evenOdd)
+        }
+        XCTAssertTrue(try isDimmed(CGPoint(x: 100, y: -80)), "Cover the navigation inset")
+        XCTAssertTrue(try isDimmed(CGPoint(x: -10, y: 100)), "Cover horizontal insets")
+        XCTAssertTrue(try isDimmed(CGPoint(x: 100, y: 580)), "Cover below short content")
+        XCTAssertFalse(try isDimmed(CGPoint(x: 15, y: 15)), "Keep result cutouts aligned")
+
+        sourceView.viewport = CGRect(x: 0, y: -160, width: 320, height: 640)
+        presentationView.updateLayoutIfNeeded(selectionRects: selectionRects)
+        XCTAssertTrue(try isDimmed(CGPoint(x: 100, y: -140)), "Track viewport-only changes")
+        XCTAssertFalse(try isDimmed(CGPoint(x: 15, y: 15)))
+
+        presentationView.update(highlightedRanges: [], selectionRects: selectionRects)
+        sourceView.viewport = CGRect(x: 0, y: -200, width: 320, height: 680)
+        presentationView.updateLayoutIfNeeded(selectionRects: selectionRects)
+        XCTAssertTrue(try isDimmed(CGPoint(x: 100, y: -180)), "Dim even without matches")
+        XCTAssertTrue(try isDimmed(CGPoint(x: 15, y: 15)))
+    }
+
     private func ranges(count: Int, selectedIndex: Int) -> [HighlightedRange] {
         (0 ..< count).map { index in
             HighlightedRange(id: "result-\(index)",
