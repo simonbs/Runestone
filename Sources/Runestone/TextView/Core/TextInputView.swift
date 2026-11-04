@@ -721,21 +721,34 @@ final class TextInputView: UIView, UITextInput {
             }
         }
     }
+    var isFindResultPresentationEnabled = false {
+        didSet {
+            updateFindResultPresentation()
+        }
+    }
     var isFindResultPresentationActive: Bool {
         get {
-            findResultPresentationView.isActive
+            isFindResultPresentationRequested
         }
         set {
-            findResultPresentationView.isActive = newValue
-            if newValue {
-                if findResultPresentationView.superview == nil {
-                    addSubview(findResultPresentationView)
-                }
-                layoutManager.installFindResultPlateView(findResultPresentationView.selectedResultPlateView)
-                findResultPresentationView.update(highlightedRanges: highlightedRanges,
-                                                  selectionRects: selectionRects(for:))
-            }
+            isFindResultPresentationRequested = newValue
+            updateFindResultPresentation()
         }
+    }
+    private var isFindResultPresentationRequested = false
+
+    private func updateFindResultPresentation() {
+        let isActive = isFindResultPresentationEnabled && isFindResultPresentationRequested
+        findResultPresentationView.isActive = isActive
+        guard isActive else {
+            return
+        }
+        if findResultPresentationView.superview == nil {
+            addSubview(findResultPresentationView)
+        }
+        layoutManager.installFindResultPlateView(findResultPresentationView.selectedResultPlateView)
+        findResultPresentationView.update(highlightedRanges: highlightedRanges,
+                                          selectionRects: selectionRects(for:))
     }
 
     // MARK: - Contents

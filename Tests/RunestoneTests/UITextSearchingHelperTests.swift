@@ -65,6 +65,7 @@ final class UITextSearchingHelperTests: XCTestCase {
 
     func testFindSessionControlsResultPresentation() {
         let textView = TextView()
+        textView.isFindResultPresentationEnabled = true
         let helper = UITextSearchingHelper()
         helper.textView = textView
         let interaction = UIFindInteraction(sessionDelegate: helper)
@@ -75,6 +76,18 @@ final class UITextSearchingHelperTests: XCTestCase {
 
         helper.findInteraction(interaction, didEnd: session)
         XCTAssertFalse(textView.isFindResultPresentationActive)
+    }
+
+    func testFindResultPresentationIsOptIn() {
+        let textView = TextView()
+        let helper = UITextSearchingHelper()
+        helper.textView = textView
+        let interaction = UIFindInteraction(sessionDelegate: helper)
+
+        helper.findInteraction(interaction, didBegin: UIFindSession())
+
+        XCTAssertTrue(textView.isFindResultPresentationActive)
+        XCTAssertFalse(textView.isFindResultPresentationEnabled)
     }
 
     func testDocumentReplacementDiscardsPendingDecorations() {
