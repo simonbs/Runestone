@@ -106,9 +106,13 @@ public extension Theme {
     func highlightedRange(forFoundTextRange foundTextRange: NSRange, ofStyle style: UITextSearchFoundTextStyle) -> HighlightedRange? {
         switch style {
         case .found:
-            return HighlightedRange(range: foundTextRange, color: .systemYellow.withAlphaComponent(0.2))
+            return HighlightedRange(range: foundTextRange,
+                                    color: .systemYellow.withAlphaComponent(0.2),
+                                    presentationRole: .foundSearchResult)
         case .highlighted:
-            return HighlightedRange(range: foundTextRange, color: .systemYellow)
+            return HighlightedRange(range: foundTextRange,
+                                    color: .systemYellow,
+                                    presentationRole: .selectedSearchResult)
         case .normal:
             return nil
         @unknown default:

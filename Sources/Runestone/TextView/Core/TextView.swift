@@ -683,6 +683,18 @@ open class TextView: UIScrollView {
             highlightNavigationController.highlightedRanges = newValue
         }
     }
+    /// Whether search results are presented above dimmed editor content.
+    ///
+    /// Enable this while a custom find interaction is active. Runestone manages
+    /// this property automatically for its built-in find interaction.
+    public var isFindResultPresentationActive: Bool {
+        get {
+            textInputView.isFindResultPresentationActive
+        }
+        set {
+            textInputView.isFindResultPresentationActive = newValue
+        }
+    }
     /// Wheter the text view should loop when navigating through highlighted ranges using `selectPreviousHighlightedRange` or `selectNextHighlightedRange` on the text view.
     public var highlightedRangeLoopingMode: HighlightedRangeLoopingMode {
         get {
