@@ -35,9 +35,10 @@ final class FindResultPresentationViewTests: XCTestCase {
         let presentationView = FindResultPresentationView(sourceView: sourceView)
         presentationView.isActive = true
         var geometryCallCount = 0
+        var selectedY: CGFloat = 10
         let selectionRects: (UITextRange) -> [UITextSelectionRect] = { _ in
             geometryCallCount += 1
-            return [TextSelectionRect(rect: CGRect(x: 10, y: 10, width: 8, height: 18),
+            return [TextSelectionRect(rect: CGRect(x: 10, y: selectedY, width: 8, height: 18),
                                       writingDirection: .natural, containsStart: true, containsEnd: true)]
         }
 
@@ -46,14 +47,16 @@ final class FindResultPresentationViewTests: XCTestCase {
         XCTAssertEqual(geometryCallCount, resultCount)
 
         for index in 0 ..< 100 {
+            selectedY = 10 + CGFloat(index)
             sourceView.bounds.origin.y = CGFloat(index)
             sourceView.bounds.size.height = 2_000 + CGFloat(index)
             presentationView.updateLayoutIfNeeded(selectionRects: selectionRects)
         }
+        XCTAssertEqual(presentationView.selectedResultPlateView.frame.minY, selectedY - 3)
         presentationView.update(highlightedRanges: ranges(count: resultCount, selectedIndex: 1),
                                 selectionRects: selectionRects)
-        XCTAssertEqual(geometryCallCount, resultCount,
-                       "Scrolling and moving between existing results must reuse cached text geometry")
+        XCTAssertEqual(geometryCallCount, resultCount + 100,
+                       "Layout must refresh only the selected result, not every match")
     }
 
     func testChangingSelectionAnimatesThePlateItself() {

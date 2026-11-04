@@ -15,6 +15,7 @@ final class FindResultPresentationView: UIView {
                 currentBounds = .null
                 currentRanges = []
                 cachedPresentations = []
+                selectedTextSegmentSignature = []
             }
         }
     }
@@ -26,6 +27,7 @@ final class FindResultPresentationView: UIView {
     private var currentBounds = CGRect.null
     private var currentRanges: [HighlightedRange] = []
     private var cachedPresentations: [RangePresentation] = []
+    private var selectedTextSegmentSignature: [SelectedResultTextSegmentSignature] = []
 
     init(sourceView: UIView) {
         self.sourceView = sourceView
@@ -79,21 +81,46 @@ final class FindResultPresentationView: UIView {
     }
 
     func updateLayoutIfNeeded(selectionRects: (UITextRange) -> [UITextSelectionRect]) {
-        guard let sourceView, sourceView.bounds != currentBounds else {
+        guard let sourceView else {
             return
         }
+        let boundsChanged = sourceView.bounds != currentBounds
         let geometryChanged = sourceView.bounds.width != currentBounds.width
-        currentBounds = sourceView.bounds
-        frame = sourceView.bounds
-        dimmingLayer.frame = bounds
-        if geometryChanged {
-            cachedPresentations = presentations(for: currentRanges,
-                                                sourceView: sourceView,
-                                                selectionRects: selectionRects)
+        if boundsChanged {
+            currentBounds = sourceView.bounds
+            frame = sourceView.bounds
+            dimmingLayer.frame = bounds
+            if geometryChanged {
+                cachedPresentations = presentations(for: currentRanges,
+                                                    sourceView: sourceView,
+                                                    selectionRects: selectionRects)
+            }
         }
-        updateDimming()
-        if geometryChanged || !selectedResultPlateView.subviews.contains(where: { $0 is SelectedResultTextView }) {
-            updateSelectedResultPlate(animated: false)
+        guard let selectedIndex = cachedPresentations.firstIndex(where: { presentation in
+            presentation.range.presentationRole == .selectedSearchResult
+        }) else {
+            if boundsChanged {
+                updateDimming()
+            }
+            return
+        }
+        let selectedPresentation = cachedPresentations[selectedIndex]
+        let refreshedPresentation = presentation(for: selectedPresentation.range,
+                                                 sourceView: sourceView,
+                                                 selectionRects: selectionRects)
+        let selectedSegments = (sourceView as? TextInputView)?.selectedResultTextSegments(
+            for: selectedPresentation.range.range
+        ) ?? []
+        let segmentSignature = selectedSegments.map(SelectedResultTextSegmentSignature.init)
+        let selectedGeometryChanged = refreshedPresentation?.rects != selectedPresentation.rects
+        if let refreshedPresentation, selectedGeometryChanged {
+            cachedPresentations[selectedIndex] = refreshedPresentation
+        }
+        if boundsChanged || selectedGeometryChanged {
+            updateDimming()
+        }
+        if geometryChanged || selectedGeometryChanged || segmentSignature != selectedTextSegmentSignature {
+            updateSelectedResultPlate(animated: false, selectedSegments: selectedSegments)
         }
     }
 
@@ -104,14 +131,28 @@ final class FindResultPresentationView: UIView {
             return []
         }
         return ranges.compactMap { highlightedRange in
-            guard let start = textInput.position(from: textInput.beginningOfDocument,
-                                                 offset: highlightedRange.range.location),
-                  let end = textInput.position(from: start, offset: highlightedRange.range.length),
-                  let textRange = textInput.textRange(from: start, to: end) else {
-                return nil
-            }
-            return RangePresentation(range: highlightedRange, rects: selectionRects(textRange).map(\.rect))
+            presentation(for: highlightedRange, textInput: textInput, selectionRects: selectionRects)
         }
+    }
+
+    private func presentation(for range: HighlightedRange,
+                              sourceView: UIView,
+                              selectionRects: (UITextRange) -> [UITextSelectionRect]) -> RangePresentation? {
+        guard let textInput = sourceView as? UITextInput else {
+            return nil
+        }
+        return presentation(for: range, textInput: textInput, selectionRects: selectionRects)
+    }
+
+    private func presentation(for range: HighlightedRange,
+                              textInput: UITextInput,
+                              selectionRects: (UITextRange) -> [UITextSelectionRect]) -> RangePresentation? {
+        guard let start = textInput.position(from: textInput.beginningOfDocument, offset: range.range.location),
+              let end = textInput.position(from: start, offset: range.range.length),
+              let textRange = textInput.textRange(from: start, to: end) else {
+            return nil
+        }
+        return RangePresentation(range: range, rects: selectionRects(textRange).map(\.rect))
     }
 
     private func updateDimming() {
@@ -128,8 +169,9 @@ final class FindResultPresentationView: UIView {
         CATransaction.commit()
     }
 
-    private func updateSelectedResultPlate(animated: Bool) {
+    private func updateSelectedResultPlate(animated: Bool, selectedSegments: [SelectedResultTextSegment]? = nil) {
         selectedResultPlateView.subviews.forEach { $0.removeFromSuperview() }
+        selectedTextSegmentSignature = []
         guard let presentation = cachedPresentations.first(where: { presentation in
             presentation.range.presentationRole == .selectedSearchResult
         }) else {
@@ -158,8 +200,12 @@ final class FindResultPresentationView: UIView {
                                                   cornerRadius: Self.selectedCornerRadius).cgPath
             selectedResultPlateView.addSubview(plate)
         }
-        if let sourceView = sourceView as? TextInputView {
-            for segment in sourceView.selectedResultTextSegments(for: presentation.range.range) {
+        let segments = selectedSegments
+            ?? (sourceView as? TextInputView)?.selectedResultTextSegments(for: presentation.range.range)
+            ?? []
+        selectedTextSegmentSignature = segments.map(SelectedResultTextSegmentSignature.init)
+        if sourceView is TextInputView {
+            for segment in segments {
                 let textView = SelectedResultTextView(segment: segment)
                 textView.frame = segment.frame.offsetBy(dx: -union.minX, dy: -union.minY)
                 selectedResultPlateView.addSubview(textView)
@@ -213,6 +259,18 @@ struct SelectedResultTextSegment {
     let frame: CGRect
     let horizontalOffset: CGFloat
     let renderer: LineFragmentRenderer
+}
+
+private struct SelectedResultTextSegmentSignature: Equatable {
+    let frame: CGRect
+    let horizontalOffset: CGFloat
+    let renderer: ObjectIdentifier
+
+    init(segment: SelectedResultTextSegment) {
+        frame = segment.frame
+        horizontalOffset = segment.horizontalOffset
+        renderer = ObjectIdentifier(segment.renderer)
+    }
 }
 
 private final class SelectedResultTextView: UIView {
