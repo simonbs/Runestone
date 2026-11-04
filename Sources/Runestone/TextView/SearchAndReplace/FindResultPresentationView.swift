@@ -58,7 +58,8 @@ final class FindResultPresentationView: UIView {
         guard boundsChanged || rangesChanged else {
             return
         }
-        let geometryChanged = boundsChanged || currentRanges.map(\.range) != searchRanges.map(\.range)
+        let geometryChanged = currentBounds.width != sourceView.bounds.width
+            || currentRanges.map(\.range) != searchRanges.map(\.range)
         currentBounds = sourceView.bounds
         currentRanges = searchRanges
         frame = sourceView.bounds
@@ -77,12 +78,23 @@ final class FindResultPresentationView: UIView {
         selectedRange = selected?.range
     }
 
-    func updateLayoutIfNeeded(highlightedRanges: [HighlightedRange],
-                              selectionRects: (UITextRange) -> [UITextSelectionRect]) {
-        guard sourceView?.bounds != currentBounds else {
+    func updateLayoutIfNeeded(selectionRects: (UITextRange) -> [UITextSelectionRect]) {
+        guard let sourceView, sourceView.bounds != currentBounds else {
             return
         }
-        update(highlightedRanges: highlightedRanges, selectionRects: selectionRects)
+        let geometryChanged = sourceView.bounds.width != currentBounds.width
+        currentBounds = sourceView.bounds
+        frame = sourceView.bounds
+        dimmingLayer.frame = bounds
+        if geometryChanged {
+            cachedPresentations = presentations(for: currentRanges,
+                                                sourceView: sourceView,
+                                                selectionRects: selectionRects)
+        }
+        updateDimming()
+        if geometryChanged || !selectedResultPlateView.subviews.contains(where: { $0 is SelectedResultTextView }) {
+            updateSelectedResultPlate(animated: false)
+        }
     }
 
     private func presentations(for ranges: [HighlightedRange],

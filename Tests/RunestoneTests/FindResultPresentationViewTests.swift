@@ -45,9 +45,10 @@ final class FindResultPresentationViewTests: XCTestCase {
                                 selectionRects: selectionRects)
         XCTAssertEqual(geometryCallCount, resultCount)
 
-        for _ in 0 ..< 100 {
-            presentationView.updateLayoutIfNeeded(highlightedRanges: ranges(count: resultCount, selectedIndex: 0),
-                                                  selectionRects: selectionRects)
+        for index in 0 ..< 100 {
+            sourceView.bounds.origin.y = CGFloat(index)
+            sourceView.bounds.size.height = 2_000 + CGFloat(index)
+            presentationView.updateLayoutIfNeeded(selectionRects: selectionRects)
         }
         presentationView.update(highlightedRanges: ranges(count: resultCount, selectedIndex: 1),
                                 selectionRects: selectionRects)
@@ -95,8 +96,7 @@ final class FindResultPresentationViewTests: XCTestCase {
         ))
 
         sourceView.bounds.origin.y = 20
-        presentationView.updateLayoutIfNeeded(highlightedRanges: ranges(count: 2, selectedIndex: 1),
-                                              selectionRects: selectionRects)
+        presentationView.updateLayoutIfNeeded(selectionRects: selectionRects)
 
         XCTAssertNotNil(presentationView.selectedResultPlateView.layer.animation(
             forKey: FindResultPresentationView.bounceAnimationKey

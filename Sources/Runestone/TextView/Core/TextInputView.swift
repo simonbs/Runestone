@@ -1075,8 +1075,7 @@ final class TextInputView: UIView, UITextInput {
         writingToolsController?.layoutDidChange()
         if findResultPresentationView.isActive {
             bringSubviewToFront(findResultPresentationView)
-            findResultPresentationView.updateLayoutIfNeeded(highlightedRanges: highlightedRanges,
-                                                            selectionRects: selectionRects(for:))
+            findResultPresentationView.updateLayoutIfNeeded(selectionRects: selectionRects(for:))
         }
         // We notify the input delegate about selection changes in layoutSubviews so we have a chance of disabling notifying the input delegate during an editing operation.
         // We will sometimes disable notifying the input delegate when the user enters Korean text.

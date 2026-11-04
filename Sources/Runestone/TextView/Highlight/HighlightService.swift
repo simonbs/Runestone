@@ -11,6 +11,9 @@ final class HighlightService {
     var highlightedRanges: [HighlightedRange] = [] {
         didSet {
             if highlightedRanges != oldValue {
+                selectedSearchResultRange = highlightedRanges.first { highlightedRange in
+                    highlightedRange.presentationRole == .selectedSearchResult
+                }?.range
                 if hasUnchangedRangeGeometry(comparedTo: oldValue) {
                     updateHighlightedRangeFragments(changedFrom: oldValue)
                 } else {
@@ -29,6 +32,7 @@ final class HighlightService {
 
     private var highlightedRangeFragmentsPerLine: [DocumentLineNodeID: [HighlightedRangeFragment]] = [:]
     private var highlightedRangeFragmentsPerLineFragment: [LineFragmentID: [HighlightedRangeFragment]] = [:]
+    private var selectedSearchResultRange: NSRange?
 
     init(lineManager: LineManager) {
         self.lineManager = lineManager
@@ -45,10 +49,7 @@ final class HighlightService {
     }
 
     func hiddenTextRanges(for lineFragment: LineFragment, inLineRange lineRange: NSRange) -> [NSRange] {
-        guard isFindResultPresentationActive,
-              let selectedRange = highlightedRanges.first(where: { highlightedRange in
-                  highlightedRange.presentationRole == .selectedSearchResult
-              })?.range else {
+        guard isFindResultPresentationActive, let selectedRange = selectedSearchResultRange else {
             return []
         }
         let intersection = NSIntersectionRange(selectedRange, lineRange)
