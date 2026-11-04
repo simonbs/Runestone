@@ -740,6 +740,9 @@ final class TextInputView: UIView, UITextInput {
     private func updateFindResultPresentation() {
         let isActive = isFindResultPresentationEnabled && isFindResultPresentationRequested
         findResultPresentationView.isActive = isActive
+        highlightService.isFindResultPresentationActive = isActive
+        layoutManager.setNeedsLayout()
+        layoutManager.layoutIfNeeded()
         guard isActive else {
             return
         }
