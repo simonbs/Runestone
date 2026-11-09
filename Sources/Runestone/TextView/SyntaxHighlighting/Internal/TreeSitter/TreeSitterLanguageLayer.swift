@@ -13,6 +13,7 @@ final class TreeSitterLanguageLayer {
     private let parser: TreeSitterParser
     private let stringView: StringView
     private var queryStringView: StringView
+    private var includedRange: TreeSitterTextRange?
     private var childLanguageLayerStore = TreeSitterLanguageLayerStore()
     private weak var parentLanguageLayer: TreeSitterLanguageLayer?
     private let languageProvider: TreeSitterLanguageProvider?
@@ -96,7 +97,8 @@ extension TreeSitterLanguageLayer {
 
     private func prepareParser(toParse ranges: [TreeSitterTextRange]) {
         parser.language = language.languagePointer
-        if !ranges.isEmpty && parentLanguageLayer != nil {
+        includedRange = parentLanguageLayer != nil ? ranges.first : nil
+        if includedRange != nil {
             parser.setIncludedRanges(ranges)
         } else {
             parser.removeAllIncludedRanges()
@@ -211,11 +213,39 @@ private extension TreeSitterLanguageLayer {
         let lineChangeSet = LineChangeSet()
         for injectedLanguage in injectedLanguages {
             if let childLanguageLayer = childLanguageLayer(withID: injectedLanguage.id, forLanguageNamed: injectedLanguage.languageName) {
-                let childLineChangeSet = childLanguageLayer.apply(edit, parsing: [injectedLanguage.textRange])
-                lineChangeSet.union(with: childLineChangeSet)
+                if !childLanguageLayer.reuseTree(for: injectedLanguage.textRange, after: edit) {
+                    let childLineChangeSet = childLanguageLayer.apply(edit, parsing: [injectedLanguage.textRange])
+                    lineChangeSet.union(with: childLineChangeSet)
+                }
             }
         }
         return lineChangeSet
+    }
+
+    private func reuseTree(for range: TreeSitterTextRange, after edit: TreeSitterInputEdit) -> Bool {
+        guard tree != nil, let includedRange,
+              let unchangedRange = includedRange.translatedOutsideEdit(edit),
+              unchangedRange.rawValue.start_byte == range.rawValue.start_byte,
+              unchangedRange.rawValue.end_byte == range.rawValue.end_byte,
+              unchangedRange.rawValue.start_point.row == range.rawValue.start_point.row,
+              unchangedRange.rawValue.start_point.column == range.rawValue.start_point.column,
+              unchangedRange.rawValue.end_point.row == range.rawValue.end_point.row,
+              unchangedRange.rawValue.end_point.column == range.rawValue.end_point.column else {
+            return false
+        }
+        updateUntouchedTree(after: edit)
+        return true
+    }
+
+    private func updateUntouchedTree(after edit: TreeSitterInputEdit) {
+        queryStringView = stringView
+        if let includedRange, edit.oldEndByte < includedRange.startByte {
+            tree?.apply(edit)
+            self.includedRange = includedRange.translatedOutsideEdit(edit)
+        }
+        for child in childLanguageLayerStore.allLayers {
+            child.updateUntouchedTree(after: edit)
+        }
     }
 
     private func injectedLanguages(from captures: [TreeSitterCapture]) -> [TreeSitterInjectedLanguage] {

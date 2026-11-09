@@ -24,6 +24,31 @@ final class TreeSitterTextRange {
     }
 }
 
+extension TreeSitterTextRange {
+    /// An edit at either boundary can change what the injected grammar sees.
+    func translatedOutsideEdit(_ edit: TreeSitterInputEdit) -> TreeSitterTextRange? {
+        if edit.startByte > endByte {
+            return self
+        }
+        guard edit.oldEndByte < startByte else {
+            return nil
+        }
+        func translate(_ point: TreeSitterTextPoint) -> TreeSitterTextPoint {
+            let row = edit.newEndPoint.row + (point.row - edit.oldEndPoint.row)
+            let column = point.row == edit.oldEndPoint.row
+                ? edit.newEndPoint.column + (point.column - edit.oldEndPoint.column)
+                : point.column
+            return TreeSitterTextPoint(row: row, column: column)
+        }
+        return TreeSitterTextRange(
+            startPoint: translate(startPoint),
+            endPoint: translate(endPoint),
+            startByte: edit.newEndByte + (startByte - edit.oldEndByte),
+            endByte: edit.newEndByte + (endByte - edit.oldEndByte)
+        )
+    }
+}
+
 extension TreeSitterTextRange: CustomDebugStringConvertible {
     var debugDescription: String {
         "[TreeSitterTextRange startByte=\(startByte) endByte=\(endByte) startPoint=\(startPoint) endPoint=\(endPoint)]"
