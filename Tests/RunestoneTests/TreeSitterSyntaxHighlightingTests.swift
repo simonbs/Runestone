@@ -50,6 +50,10 @@ final class TreeSitterSyntaxHighlightingTests: XCTestCase {
         }
 
         XCTAssertEqual(numbers(), ["1", "2", "3"])
+        replace("</script>\n<script>let middle", with: "</script>\n<p>😀</p>\n<script>let middle")
+        XCTAssertEqual(numbers(), ["1", "2", "3"], "An edit outside an injection must shift surviving captures.")
+        replace("<p>😀</p>\n", with: "")
+        XCTAssertEqual(numbers(), ["1", "2", "3"], "Removing lines before an injection must shift its captures back.")
         replace("<script>let middle = 2;</script>", with: "<p>outside 99</p>")
         XCTAssertEqual(numbers(), ["1", "3"], "Deleted injections must not leave captures in ordinary HTML.")
         replace("<p>outside 99</p>", with: "<script>let added = 4;</script>")
