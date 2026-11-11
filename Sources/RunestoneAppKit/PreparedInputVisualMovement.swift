@@ -155,47 +155,77 @@ enum PreparedInputVisualMovement {
               validBoundary(target.location, in: view.manager.stringView.string) else { return .unavailable }
         guard let containsRTL = containsRightToLeftRun(source) else { return .unavailable }
         if containsRTL {
+            let current = target.affinity == nil
+                ? caretTarget(location: target.location, row: source,
+                              documentX: caretDocumentX(caret, context: context, view: view), view: view)
+                : target
             guard let stops = visualCaretStops(for: source, in: view),
-                  let index = stops.firstIndex(where: { $0.target == target }) else { return .unavailable }
+                  let index = stops.firstIndex(where: { $0.target == current }) else { return .unavailable }
             let next = direction == .left ? index - 1 : index + 1
-            guard stops.indices.contains(next),
-                  isVisible(x: stops[next].x, row: source, context: context),
-                  InputScreenCaretGeometry.rect(for: stops[next].target, in: view) != nil,
-                  stable(context, view: view) else { return .unavailable }
-            return .moved(stops[next].target)
-        }
-        guard
-              let edges = horizontalEdges(for: source, in: view),
-              let sourceGroup = group(at: caretDocumentX(caret, context: context, view: view), in: edges),
-              uniqueTarget(in: sourceGroup) == target.location else { return .unavailable }
-        let x = sourceGroup[0].x
-        let adjacent = edges.filter { direction == .left ? $0.x < x - horizontalTolerance : $0.x > x + horizontalTolerance }
-        if let nextX = direction == .left ? adjacent.map(\.x).max() : adjacent.map(\.x).min(),
-           let targetGroup = group(at: nextX, in: adjacent), let location = uniqueTarget(in: targetGroup),
-           let resolved = caretTarget(location: location, row: source, view: view),
-           isVisible(x: nextX, row: source, context: context), stable(context, view: view) {
-            return .moved(resolved)
-        }
-        let rows = visibleRows(in: context.layout)
-        guard let index = rows.firstIndex(where: { sameRow($0, source) }) else { return .unavailable }
-        let nextIndex = direction == .left ? index - 1 : index + 1
-        guard rows.indices.contains(nextIndex) else { return .boundary }
-        let next = rows[nextIndex]
-        if next.line.line !== source.line.line {
-            switch crossLine(from: source, direction: direction, context: context, view: view) {
-            case let .moved(location): return .moved(InputCaretTarget(location: location, affinity: nil))
-            case .boundary: return .boundary
-            case .unavailable: return .unavailable
+            if stops.indices.contains(next) {
+                return visibleStop(stops[next], row: source, context: context, view: view)
+            }
+        } else {
+            guard let edges = horizontalEdges(for: source, in: view),
+                  let sourceGroup = group(at: caretDocumentX(caret, context: context, view: view), in: edges),
+                  uniqueTarget(in: sourceGroup) == target.location else { return .unavailable }
+            let x = sourceGroup[0].x
+            let adjacent = edges.filter { direction == .left ? $0.x < x - horizontalTolerance : $0.x > x + horizontalTolerance }
+            if let nextX = direction == .left ? adjacent.map(\.x).max() : adjacent.map(\.x).min() {
+                guard let targetGroup = group(at: nextX, in: adjacent), let location = uniqueTarget(in: targetGroup),
+                      let resolved = caretTarget(location: location, row: source, documentX: nextX, view: view)
+                else { return .unavailable }
+                return visibleStop(VisualCaretStop(target: resolved, x: nextX), row: source, context: context, view: view)
             }
         }
-        guard containsRightToLeftRun(next) == false,
-              let sourcePlacement = source.placement else { return .unavailable }
-        let location = source.line.line.location +
-            (direction == .left ? sourcePlacement.fragment.range.location
-                                : sourcePlacement.fragment.range.upperBound)
-        guard let resolved = caretTarget(location: location, row: next, view: view),
+        return crossRow(from: source, direction: direction, context: context, view: view)
+    }
+
+    private static func visibleStop(_ stop: VisualCaretStop, row: Row, context: Context,
+                                    view: ReadOnlyDocumentView) -> TargetHorizontalResult {
+        guard isVisible(x: stop.x, row: row, context: context),
+              InputScreenCaretGeometry.rect(for: stop.target, in: view) != nil,
               stable(context, view: view) else { return .unavailable }
-        return .moved(resolved)
+        return .moved(stop.target)
+    }
+
+    private static func crossRow(from source: Row, direction: HorizontalDirection, context: Context,
+                                 view: ReadOnlyDocumentView) -> TargetHorizontalResult {
+        let rows = visibleRows(in: context.layout)
+        guard let index = rows.firstIndex(where: { sameRow($0, source) }) else { return .unavailable }
+        let left = direction == .left
+        let nextIndex = left ? index - 1 : index + 1
+        let sourceRange = source.placement?.fragment.range ?? NSRange(location: 0, length: 0)
+        let sourceLine = source.line.line
+        let atLineEdge = left ? sourceRange.location == 0 : sourceRange.upperBound >= sourceLine.data.length
+        let neighbor = left ? view.manager.previousVisibleLine(before: sourceLine)
+                            : view.manager.nextVisibleLine(after: sourceLine)
+        guard rows.indices.contains(nextIndex) else {
+            return atLineEdge && neighbor == nil && stable(context, view: view) ? .boundary : .unavailable
+        }
+        let next = rows[nextIndex]
+        let nextRange = next.placement?.fragment.range ?? NSRange(location: 0, length: 0)
+        if next.line.line === sourceLine {
+            guard left ? nextRange.upperBound == sourceRange.location : sourceRange.upperBound == nextRange.location
+            else { return .unavailable }
+        } else {
+            guard atLineEdge, next.line.line === neighbor,
+                  left ? nextRange.upperBound >= next.line.line.data.length : nextRange.location == 0
+            else { return .unavailable }
+        }
+
+        guard let containsRTL = containsRightToLeftRun(next) else { return .unavailable }
+        if containsRTL {
+            guard let stops = visualCaretStops(for: next, in: view),
+                  let stop = left ? stops.last : stops.first else { return .unavailable }
+            return visibleStop(stop, row: next, context: context, view: view)
+        }
+        guard let edges = horizontalEdges(for: next, in: view),
+              let x = left ? edges.map(\.x).max() : edges.map(\.x).min(),
+              let group = group(at: x, in: edges), let location = uniqueTarget(in: group),
+              let resolved = caretTarget(location: location, row: next, documentX: x, view: view)
+        else { return .unavailable }
+        return visibleStop(VisualCaretStop(target: resolved, x: x), row: next, context: context, view: view)
     }
 
     /// Return the visual left or right edge of the current visible fragment.
@@ -266,16 +296,9 @@ enum PreparedInputVisualMovement {
         let line = row.line.line
         let local = location - line.location
         guard local >= 0, local <= line.data.length else { return nil }
-        let placements = row.line.placements
-        guard let index = placements.firstIndex(where: { $0.fragment.id == placement.fragment.id }) else { return nil }
-        let range = placement.fragment.range
-        let side: InputCaretAffinity.WrapSide?
-        if index > 0, local == range.location, placements[index - 1].fragment.range.upperBound == local {
-            side = .downstream
-        } else if index + 1 < placements.count, local == range.upperBound,
-                  placements[index + 1].fragment.range.location == local {
-            side = .upstream
-        } else { side = nil }
+        let side = InputCaretAffinityGeometry.wrapSide(
+            at: local, range: placement.fragment.range, lineLength: line.data.length
+        )
         var secondary: CGFloat = 0
         let primary = CTLineGetOffsetForStringIndex(placement.fragment.line, local, &secondary)
         guard primary.isFinite, secondary.isFinite else { return nil }
@@ -288,7 +311,6 @@ enum PreparedInputVisualMovement {
             guard abs(primaryDistance - secondaryDistance) > horizontalTolerance else { return nil }
             bidi = primaryDistance < secondaryDistance ? .primary : .secondary
         } else { bidi = nil }
-        guard side == nil || bidi == nil else { return nil }
         let affinity = side == nil && bidi == nil ? nil : InputCaretAffinity(
             wrapSide: side, bidirectionalSide: bidi, layoutRevision: view.inputLayoutRevision)
         return InputCaretTarget(location: location, affinity: affinity)
@@ -350,7 +372,7 @@ enum PreparedInputVisualMovement {
     /// same visual x are accepted only when exactly one owns each adjacent
     /// interval; every other coincident configuration remains unavailable.
     private static func visualCaretStops(for row: Row, in view: ReadOnlyDocumentView) -> [VisualCaretStop]? {
-        guard let placement = row.placement, row.line.placements.count == 1 else { return nil }
+        guard let placement = row.placement else { return nil }
         let line = row.line.line
         let visible = placement.fragment.visibleRange
         let contentEnd = min(visible.upperBound, line.data.length)

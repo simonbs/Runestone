@@ -14,7 +14,9 @@ enum InputCaretAffinityGeometry {
         let candidates = lineLayout.placements.filter {
             $0.fragment.range.location <= local && local <= $0.fragment.range.upperBound
         }
-        if candidates.count > 1 { return true }
+        if candidates.contains(where: { wrapSide(at: local, range: $0.fragment.range, lineLength: line.data.length) != nil }) {
+            return true
+        }
         guard let placement = candidates.first else { return false }
         var secondary: CGFloat = 0
         let primary = CTLineGetOffsetForStringIndex(placement.fragment.line, local, &secondary)
@@ -26,8 +28,6 @@ enum InputCaretAffinityGeometry {
                        placement: LogicalLineLayoutController.Placement,
                        in view: ReadOnlyDocumentView) -> InputCaretTarget? {
         let line = lineLayout.line
-        let placements = lineLayout.placements
-        guard let index = placements.firstIndex(where: { $0.fragment.id == placement.fragment.id }) else { return nil }
         let visible = placement.fragment.visibleRange
         let contentEnd = min(visible.upperBound, line.data.length)
         let text = view.manager.stringView.string
@@ -87,18 +87,17 @@ enum InputCaretAffinityGeometry {
         guard let first = identities.first,
               identities.allSatisfy({ $0.0 == first.0 && $0.1 == first.1 }) else { return nil }
         let local = first.0 - line.location
-        let range = placement.fragment.range
-        let wrapSide: InputCaretAffinity.WrapSide?
-        if index > 0, local == range.location,
-           placements[index - 1].fragment.range.upperBound == local { wrapSide = .downstream }
-        else if index + 1 < placements.count, local == range.upperBound,
-                placements[index + 1].fragment.range.location == local { wrapSide = .upstream }
-        else { wrapSide = nil }
-        guard wrapSide == nil || first.1 == nil else { return nil }
+        let wrapSide = wrapSide(at: local, range: placement.fragment.range, lineLength: line.data.length)
         let affinity = wrapSide != nil || first.1 != nil
             ? InputCaretAffinity(wrapSide: wrapSide, bidirectionalSide: first.1,
                                  layoutRevision: view.inputLayoutRevision) : nil
         return InputCaretTarget(location: first.0, affinity: affinity)
+    }
+
+    static func wrapSide(at offset: Int, range: NSRange, lineLength: Int) -> InputCaretAffinity.WrapSide? {
+        if offset == range.location, offset > 0 { return .downstream }
+        if offset == range.upperBound, offset < lineLength { return .upstream }
+        return nil
     }
 
     static func documentRect(for target: InputCaretTarget, in view: ReadOnlyDocumentView,
@@ -108,8 +107,7 @@ enum InputCaretAffinityGeometry {
               let layout = view.visibleLayout,
               let lineLayout = layout.lines.first(where: { $0.line === line }) else { return nil }
         if let affinity = target.affinity {
-            guard affinity.layoutRevision == view.inputLayoutRevision,
-                  affinity.wrapSide == nil || affinity.bidirectionalSide == nil else { return nil }
+            guard affinity.layoutRevision == view.inputLayoutRevision else { return nil }
         }
         let local = min(target.location, line.location + line.data.length) - line.location
         let candidates = lineLayout.placements.filter {

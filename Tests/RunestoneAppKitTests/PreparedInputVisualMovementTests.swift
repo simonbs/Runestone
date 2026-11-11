@@ -122,6 +122,68 @@ final class PreparedInputVisualMovementTests: XCTestCase {
         withExtendedLifetime(window) {}
     }
 
+    func testAffinityAwareMovementCrossesWrappedBidiRowsInBothDirections() throws {
+        let text = "abcאבגדxyzabcאבגדxyz"
+        let (window, _, view) = makeView(text, width: 78, height: 170)
+        defer { withExtendedLifetime(window) {} }
+        XCTAssertGreaterThan(try XCTUnwrap(view.visibleLayout?.lines.first).placements.count, 1)
+        var current = InputCaretTarget(location: 0, affinity: nil)
+        var visited = [current]
+        for _ in 0..<(text.utf16.count * 3) {
+            let result = PreparedInputVisualMovement.horizontal(from: current, direction: .right, in: view)
+            if result == .boundary { break }
+            guard case let .moved(next) = result else { return XCTFail("Unavailable after \(current)") }
+            XCTAssertFalse(visited.contains(next), "Horizontal movement must not cycle")
+            XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: next, direction: .left, in: view), .moved(current))
+            visited.append(next)
+            current = next
+        }
+        XCTAssertEqual(current.location, text.utf16.count)
+        XCTAssertTrue(visited.contains { $0.affinity?.wrapSide != nil })
+        XCTAssertTrue(visited.contains { $0.affinity?.bidirectionalSide != nil })
+    }
+
+    func testWrappedBidirectionalCaretRetainsBothAffinities() throws {
+        let text = "abcאבגדxyzabcאבגדxyz"
+        for width in stride(from: CGFloat(42), through: 120, by: 1) {
+            let (window, _, view) = makeView(text, width: width, height: 170)
+            defer { withExtendedLifetime(window) {} }
+            let placements = try XCTUnwrap(view.visibleLayout?.lines.first).placements
+            for placement in placements.dropLast() {
+                let offset = placement.fragment.range.upperBound
+                var secondary: CGFloat = 0
+                let primary = CTLineGetOffsetForStringIndex(placement.fragment.line, offset, &secondary)
+                guard abs(primary - secondary) > 0.01 else { continue }
+                let target = InputCaretTarget(location: offset, affinity: .init(
+                    wrapSide: .upstream, bidirectionalSide: .secondary, layoutRevision: view.inputLayoutRevision
+                ))
+                let rect = try XCTUnwrap(InputCaretAffinityGeometry.documentRect(for: target, in: view))
+                XCTAssertEqual(rect.minX, placement.frame.minX + secondary, accuracy: 0.01)
+                XCTAssertGreaterThanOrEqual(rect.midY, placement.frame.minY)
+                XCTAssertLessThan(rect.midY, placement.frame.maxY)
+                return
+            }
+        }
+        XCTFail("Expected a wrapped fragment ending at a bidirectional split caret")
+    }
+
+    func testAffinityAwareMovementCrossesHardLineIntoAndOutOfBidirectionalText() {
+        let (window, _, view) = makeView("abc\r\nאבגד\nxyz", width: 220, height: 100)
+        defer { withExtendedLifetime(window) {} }
+        let before = InputCaretTarget(location: 3, affinity: nil)
+        guard case let .moved(next) = PreparedInputVisualMovement.horizontal(
+            from: before, direction: .right, in: view
+        ) else { return XCTFail("Expected the next row's visual left edge") }
+        XCTAssertEqual(next.location, 9)
+        XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: next, direction: .left, in: view), .moved(before))
+        let after = InputCaretTarget(location: 10, affinity: nil)
+        guard case let .moved(previous) = PreparedInputVisualMovement.horizontal(
+            from: after, direction: .left, in: view
+        ) else { return XCTFail("Expected the previous row's visual right edge") }
+        XCTAssertEqual(previous.location, 5)
+        XCTAssertEqual(PreparedInputVisualMovement.horizontal(from: previous, direction: .right, in: view), .moved(after))
+    }
+
     func testBidiCaretGraphPreservesComposedCharacterBoundariesWithoutLoops() throws {
         let text = "ab👩‍💻 אבגד e\u{301}z"
         let (window, _, view) = makeView(text, width: 400, height: 80)
