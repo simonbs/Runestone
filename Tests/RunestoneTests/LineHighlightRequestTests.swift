@@ -218,7 +218,7 @@ final class ControlledLineHighlighter: LineSyntaxHighlighter {
     }
     func cancel() {}
     func fail(_ index: Int) {
-        requests[index].completion(.failure(TreeSitterSyntaxHighlighterError.cancelled))
+        requests[index].completion(.failure(TreeSitterSyntaxHighlightProviderError.cancelled))
     }
     func complete(_ index: Int, font: UIFont? = nil, color: UIColor = .red) {
         let request = requests[index]
