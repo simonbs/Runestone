@@ -300,6 +300,97 @@ public class ReadOnlyDocumentView: NSView {
         updateViewport()
     }
 
+    func offscreenMovementLine(for target: InputCaretTarget) -> DocumentLineNode? {
+        guard !isRetired, !updatingViewport, window != nil,
+              let clip = enclosingScrollView?.contentView, let layout = visibleLayout,
+              layout.isComplete, layout.viewport == clip.bounds, PreparedInputViewportStep.validViewport(clip.bounds),
+              target.affinity.map({ $0.layoutRevision == inputLayoutRevision }) ?? true,
+              movementCaretRect(for: target) == nil,
+              let line = manager.line(containingCharacterAt: target.location), !manager.isLineHidden(line.index),
+              line.data.totalLength <= PreparedInputViewportWorkBudget.maximumLineUnits else { return nil }
+        return line
+    }
+
+    /// Prepare only the source line and the destination viewport under the
+    /// same input budget. The caller may recompute its command once after this
+    /// returns current, visible geometry.
+    func revealOffscreenMovementCaret(_ target: InputCaretTarget, clock: @escaping () -> TimeInterval,
+                                      isCurrent: () -> Bool) -> PreparedInputViewportStep.Outcome? {
+        guard let line = offscreenMovementLine(for: target),
+              let scroll = enclosingScrollView, let window,
+              let budget = PreparedInputViewportWorkBudget(clock: clock, timeLimit: 0.016) else { return nil }
+        let clip = scroll.contentView
+        let initial = clip.bounds
+        let geometry = inputGeometryRevision
+        let layoutRevision = inputLayoutRevision
+
+        func current() -> Bool {
+            isCurrent() && !isRetired && self.window === window && enclosingScrollView === scroll &&
+                scroll.contentView === clip && scroll.documentView === self && clip.bounds.size == initial.size &&
+                inputLayoutRevision == layoutRevision
+        }
+
+        let result = withBoundedViewportWork(budget) { () -> PreparedInputViewportStep.Outcome in
+            guard current(), clip.bounds == initial, inputGeometryRevision == geometry,
+                  budget.consume(line) else { return .refusedBeforeScroll }
+            let previousHeight = line.data.lineHeight
+            let rect = prepareMovementCaretRect(target, line: line)
+            // A newly measured line above the viewport can invalidate its row
+            // positions even if the caret cannot be reached within this budget.
+            defer {
+                if line.data.lineHeight != previousHeight, clip.bounds == initial {
+                    visibleLayout = nil
+                }
+            }
+            guard let rect, !rect.intersects(initial), budget.check(), current(), clip.bounds == initial
+            else { return .refusedBeforeScroll }
+
+            let size = documentFrameSize(for: clip)
+            if frame.size != size { setFrameSize(size) }
+            guard current(), clip.bounds == initial, budget.check() else { return .unavailable }
+            var proposed = initial
+            if rect.minX < initial.minX || rect.maxX > initial.maxX { proposed.origin.x = rect.midX - initial.width / 2 }
+            if rect.minY < initial.minY || rect.maxY > initial.maxY { proposed.origin.y = rect.midY - initial.height / 2 }
+            let constrained = clip.constrainBoundsRect(proposed)
+            guard current(), clip.bounds == initial, constrained.size == initial.size,
+                  PreparedInputViewportStep.validViewport(constrained), constrained.intersects(rect),
+                  constrained.origin != initial.origin, budget.check() else { return .unavailable }
+
+            rangeRevealGeneration = UUID()
+            clip.scroll(to: constrained.origin)
+            guard current(), budget.check() else { return .unavailable }
+            scroll.reflectScrolledClipView(clip)
+            guard current(), budget.check() else { return .unavailable }
+            if visibleLayout?.viewport != clip.bounds || visibleLayout?.isComplete != true { updateViewport() }
+            guard current(), budget.check(), movementCaretRect(for: target) != nil else { return .unavailable }
+            return .progressed
+        }
+        if result == .progressed, current(), movementCaretRect(for: target) != nil { return .progressed }
+        if clip.bounds != initial || inputGeometryRevision != geometry { return .viewportChanged }
+        return result == .unavailable ? .unavailable : .refusedBeforeScroll
+    }
+
+    private func movementCaretRect(for target: InputCaretTarget) -> NSRect? {
+        target.affinity == nil ? InputScreenCaretGeometry.rect(at: target.location, in: self)
+                               : InputScreenCaretGeometry.rect(for: target, in: self)
+    }
+
+    private func prepareMovementCaretRect(_ target: InputCaretTarget, line: DocumentLineNode) -> NSRect? {
+        if line.data.length == 0 {
+            guard target.affinity == nil else { return nil }
+            return NSRect(x: 0, y: line.yPosition, width: 1, height: line.data.lineHeight)
+        }
+        guard let controller = controller(for: line) else { return nil }
+        let lookup = target.affinity?.wrapSide == .upstream ? target.location - 1 : target.location
+        guard case .found(let placement) = controller.prepareTargetPlacement(
+            at: lookup, maximumNewFragmentCount: 64, horizontalInset: horizontalTextInset
+        ) else { return nil }
+        let side = InputCaretAffinityGeometry.wrapSide(at: target.location - line.location,
+                                                       range: placement.fragment.range, lineLength: line.data.length)
+        guard target.affinity == nil || target.affinity?.wrapSide == side else { return nil }
+        return InputCaretAffinityGeometry.documentRect(for: target, placement: placement, lineStart: line.location)
+    }
+
     func scheduleAccessibilityValueChanged() {
         guard !isRetired else { return }
         accessibilityValueDirty = true
@@ -975,6 +1066,9 @@ public class ReadOnlyDocumentView: NSView {
             proposed.origin.y = result.viewport.minY
             let constrained = clip.constrainBoundsRect(proposed)
             if clip.bounds.origin != constrained.origin {
+                // The coordinator has already resolved this anchor correction.
+                // Its synchronous bounds notification needs no second pass.
+                updatingBounds = constrained
                 clip.scroll(to: constrained.origin)
                 enclosingScrollView?.reflectScrolledClipView(clip)
                 guard !isRetired, contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }

@@ -128,18 +128,24 @@ enum InputCaretAffinityGeometry {
             placement = candidates.first
         }
         if let placement {
-            guard var rect = InputCaretGeometry.rect(for: placement, lineStart: line.location,
-                                                     documentOffset: target.location, caretWidth: caretWidth) else { return nil }
-            if let bidiSide = target.affinity?.bidirectionalSide {
-                var secondary: CGFloat = 0
-                let primary = CTLineGetOffsetForStringIndex(placement.fragment.line, local, &secondary)
-                guard primary.isFinite, secondary.isFinite, abs(primary - secondary) > 0.01 else { return nil }
-                rect.origin.x = placement.frame.minX + (bidiSide == .primary ? primary : secondary)
-            }
-            return rect
+            return documentRect(for: target, placement: placement, lineStart: line.location, caretWidth: caretWidth)
         }
         guard line.data.length == 0 else { return nil }
         return NSRect(x: 0, y: line.yPosition, width: caretWidth, height: line.data.lineHeight)
     }
+
+    static func documentRect(for target: InputCaretTarget, placement: LogicalLineLayoutController.Placement,
+                             lineStart: Int, caretWidth: CGFloat = 1) -> NSRect? {
+        guard var rect = InputCaretGeometry.rect(for: placement, lineStart: lineStart,
+                                                 documentOffset: target.location, caretWidth: caretWidth) else { return nil }
+        if let bidiSide = target.affinity?.bidirectionalSide {
+            var secondary: CGFloat = 0
+            let primary = CTLineGetOffsetForStringIndex(placement.fragment.line, target.location - lineStart, &secondary)
+            guard primary.isFinite, secondary.isFinite, abs(primary - secondary) > 0.01 else { return nil }
+            rect.origin.x = placement.frame.minX + (bidiSide == .primary ? primary : secondary)
+        }
+        return rect
+    }
+
 }
 #endif

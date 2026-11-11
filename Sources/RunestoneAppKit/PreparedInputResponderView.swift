@@ -492,6 +492,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             guard PreparedInputCommandInterpreter.isValidSelectionRange(state.selection, in: text) else { return false }
             if isVisualMovement(name) {
                 if visualDestination(name, selection: state.selection) != nil { return true }
+                if let target = offscreenMovementOrigin(name, selection: state.selection),
+                   offscreenMovementLine(for: target) != nil { return true }
                 guard name.hasPrefix("moveUp") || name.hasPrefix("moveDown") else { return false }
                 let up = name.hasPrefix("moveUp")
                 let origin = PreparedInputCommandInterpreter.movementOrigin(selection: state.selection,
@@ -723,6 +725,38 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         return VisualDestination(target: target, direction: direction, extending: extending, preferredX: preferredX)
     }
 
+    private func offscreenMovementOrigin(_ name: String, selection: NSRange) -> InputCaretTarget? {
+        let vertical = name.hasPrefix("moveUp") || name.hasPrefix("moveDown")
+        // Horizontal collapse of an extended range needs both visible edges.
+        guard selection.length == 0 || vertical else { return nil }
+        let backward = name.contains("Left") || name.contains("Beginning") || name.hasPrefix("moveUp")
+        let origin = PreparedInputCommandInterpreter.movementOrigin(
+            selection: selection, extending: name.contains("AndModifySelection:"),
+            direction: backward ? .backward : .forward, view: self
+        )
+        let affinity = presentedSelectionState.flatMap {
+            $0.range == selection && $0.activeLocation == origin ? $0.affinity : nil
+        }
+        return InputCaretTarget(location: origin, affinity: affinity)
+    }
+
+    private func movementViewportCheck(selection: NSRange, adapter: PreparedInputEventAdapter,
+                                       isAvailable: @escaping () -> Bool) -> (() -> Bool)? {
+        guard let window, let clip = enclosingScrollView?.contentView,
+              let documentRevision = adapter.installedRevisionForDispatch else { return nil }
+        let content = contentRevision
+        let selectionRevision = inputSelectionRevision
+        return {
+            guard isAvailable(), !self.isRetired, self.window === window,
+                  self.enclosingScrollView?.contentView === clip,
+                  self.contentRevision == content, self.inputSelectionRevision == selectionRevision,
+                  adapter.installedRevisionForDispatch == documentRevision,
+                  let current = adapter.inputStateForHost(), !current.hasComposition,
+                  current.selection == selection else { return false }
+            return isAvailable() && self.contentRevision == content && self.inputSelectionRevision == selectionRevision
+        }
+    }
+
     /// Make at most one short, bounded viewport step for a vertical command.
     /// The original input event is not retained: the same admitted scope
     /// recomputes geometry only after revision and selection revalidation.
@@ -732,7 +766,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         guard name.hasPrefix("moveUp") || name.hasPrefix("moveDown"),
               let window = window, let clip = enclosingScrollView?.contentView,
               let layout = visibleLayout, layout.isComplete, layout.viewport == clip.bounds,
-              let documentRevision = adapter.installedRevisionForDispatch else { return nil }
+              let check = movementViewportCheck(selection: selection, adapter: adapter, isAvailable: isAvailable)
+        else { return nil }
         let up = name.hasPrefix("moveUp")
         let extending = name.contains("AndModifySelection:")
         let direction: PreparedInputCommandInterpreter.Direction = up ? .backward : .forward
@@ -761,15 +796,6 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             value.selection == selection && value.selectionRevision == selectionRevision &&
             value.contentRevision == content && value.geometryRevision == geometry ? value.x : nil
         } ?? (affinity?.bidirectionalSide == nil ? caret.midX : caret.minX)
-        let check = {
-            guard isAvailable(), !self.isRetired, self.window === window,
-                  self.enclosingScrollView?.contentView === clip,
-                  self.contentRevision == content, self.inputSelectionRevision == selectionRevision,
-                  adapter.installedRevisionForDispatch == documentRevision,
-                  let current = adapter.inputStateForHost(), !current.hasComposition,
-                  current.selection == selection else { return false }
-            return isAvailable() && self.contentRevision == content && self.inputSelectionRevision == selectionRevision
-        }
         let result = PreparedInputViewportStep.perform(in: self, dx: 0, dy: up ? -amount : amount, clock: inputViewportClock, isCurrent: check)
         if result == .progressed && check() {
             verticalPreference = VerticalPreference(x: priorX, selection: selection, selectionRevision: selectionRevision,
@@ -793,17 +819,24 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         }
         var destination = visualDestination(name, selection: state.selection)
         var viewportMayHaveChanged = false
-        if destination == nil, let step = scrollForVerticalMovement(name, selection: state.selection,
-                                                                     adapter: adapter, isAvailable: isAvailable) {
+        if destination == nil {
+            let offscreenStep: PreparedInputViewportStep.Outcome?
+            if let origin = offscreenMovementOrigin(name, selection: state.selection),
+               let check = movementViewportCheck(selection: state.selection, adapter: adapter, isAvailable: isAvailable) {
+                offscreenStep = revealOffscreenMovementCaret(origin, clock: inputViewportClock, isCurrent: check)
+            } else { offscreenStep = nil }
+            let step = offscreenStep ?? scrollForVerticalMovement(name, selection: state.selection,
+                                                                  adapter: adapter, isAvailable: isAvailable)
             switch step {
             case .progressed:
                 viewportMayHaveChanged = true
                 destination = visualDestination(name, selection: state.selection)
-            case .boundary:
-                break
-            case .unavailable, .viewportChanged, .refusedBeforeScroll:
-                // Keyboard command failure semantics are unchanged.
+            case .unavailable, .viewportChanged:
                 viewportMayHaveChanged = true
+            case .refusedBeforeScroll:
+                viewportMayHaveChanged = offscreenStep == nil
+            case .boundary, nil:
+                break
             }
         }
         guard let destination = destination else {

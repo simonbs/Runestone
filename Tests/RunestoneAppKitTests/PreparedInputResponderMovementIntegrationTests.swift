@@ -171,6 +171,52 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         fixture.disconnect()
     }
 
+    func testVisualMovementRevealsAnAlreadyOffscreenCaretAndMovesOnce() throws {
+        let fixture = try MovementIntegrationFixture(String(repeating: "abcdef\n", count: 250))
+        defer { fixture.disconnect() }
+        let origin = 180 * 7 + 3
+        try fixture.setSelection(NSRange(location: origin, length: 0))
+        fixture.scroll.contentView.scroll(to: .zero)
+        fixture.view.updateViewport()
+        XCTAssertNil(InputScreenCaretGeometry.rect(at: origin, in: fixture.view))
+
+        let parents = fixture.host.parentStarts
+        let children = fixture.host.childStarts
+        XCTAssertTrue(fixture.send("moveDown:"))
+        XCTAssertEqual(fixture.selection, NSRange(location: origin + 7, length: 0))
+        XCTAssertNotNil(InputScreenCaretGeometry.rect(at: origin + 7, in: fixture.view))
+        XCTAssertGreaterThan(fixture.scroll.contentView.bounds.minY, 1000)
+        XCTAssertEqual(fixture.host.parentStarts - parents, 1)
+        XCTAssertEqual(fixture.host.childStarts - children, 1)
+        XCTAssertEqual(fixture.host.parentStarts, fixture.host.parentCloses)
+        XCTAssertEqual(fixture.host.childStarts, fixture.host.childCloses)
+
+        try fixture.setSelection(NSRange(location: origin, length: 0))
+        fixture.scroll.contentView.scroll(to: .zero)
+        fixture.view.updateViewport()
+        XCTAssertNil(InputScreenCaretGeometry.rect(at: origin, in: fixture.view))
+        XCTAssertTrue(fixture.send("moveLeft:"))
+        XCTAssertEqual(fixture.selection, NSRange(location: origin - 1, length: 0))
+        XCTAssertNotNil(InputScreenCaretGeometry.rect(at: origin - 1, in: fixture.view))
+    }
+
+    func testOffscreenMovementRefusesAnOversizedSourceLineWithoutScrolling() throws {
+        let prefix = String(repeating: "abcdef\n", count: 250)
+        let fixture = try MovementIntegrationFixture(prefix + String(repeating: "x", count: 4097))
+        defer { fixture.disconnect() }
+        let origin = prefix.utf16.count + 5
+        try fixture.setSelection(NSRange(location: origin, length: 0))
+        fixture.scroll.contentView.scroll(to: .zero)
+        fixture.view.updateViewport()
+        let bounds = fixture.scroll.contentView.bounds
+        let children = fixture.host.childStarts
+        XCTAssertTrue(fixture.send("moveRight:"))
+        XCTAssertEqual(fixture.selection, NSRange(location: origin, length: 0))
+        XCTAssertEqual(fixture.scroll.contentView.bounds, bounds)
+        XCTAssertEqual(fixture.host.childStarts, children)
+        XCTAssertEqual(fixture.connection.takeInputFailures().records.last?.failure.effect, .notApplied)
+    }
+
     func testBidiAffinitySurvivesBoundedVerticalViewportRetry() throws {
         let text = String(repeating: "lead\n", count: 6) + "abc אבגד xyz\n" +
             String(repeating: "next line\n", count: 20)

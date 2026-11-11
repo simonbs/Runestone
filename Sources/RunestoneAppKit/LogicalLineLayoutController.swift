@@ -142,7 +142,9 @@ final class LogicalLineLayoutController {
         let local = documentLocation - line.location
         guard local >= 0, local <= line.data.length else { return .unavailable }
         func target() -> LineFragment? {
-            if local == line.data.length { return typesetter.lineFragments.last }
+            if local == line.data.length {
+                return typesetter.isFinishedTypesetting ? typesetter.lineFragments.last : nil
+            }
             return typesetter.lineFragments.first { fragment in
                 fragment.range.location <= local && local < fragment.range.upperBound
             }

@@ -30,6 +30,29 @@ final class LogicalLineLayoutControllerTests: XCTestCase {
         XCTAssertGreaterThan(result.frame.minY, 0)
     }
 
+    func testTargetPlacementAtDocumentEndWaitsForTheFinalWrappedFragment() throws {
+        let source = String(repeating: "alpha beta ", count: 100)
+        let manager = LineManager(stringView: StringView(string: source))
+        manager.rebuild()
+        let controller = LogicalLineLayoutController(manager: manager, line: manager.firstLine)
+        XCTAssertTrue(controller.prepare(NSAttributedString(string: source, attributes: [.font: font]),
+                                         width: 90, fallbackHeight: 16))
+        let end = source.utf16.count
+        if case .pending = controller.prepareTargetPlacement(at: end, maximumNewFragmentCount: 1) {} else {
+            XCTFail("The first fragment does not contain the document end")
+        }
+        for _ in 0..<100 {
+            switch controller.prepareTargetPlacement(at: end, maximumNewFragmentCount: 7) {
+            case .found(let placement):
+                XCTAssertEqual(placement.fragment.range.upperBound, end)
+                return
+            case .pending: continue
+            case .unavailable: return XCTFail("Document end is a valid target")
+            }
+        }
+        XCTFail("The final fragment did not become available")
+    }
+
     func testIncrementalWrappedLayoutUpdatesFollowingLinePosition() throws {
         let firstText = String(repeating: "café 😀 word ", count: 20) + "\r\n"
         let text = StringView(string: firstText + "last")

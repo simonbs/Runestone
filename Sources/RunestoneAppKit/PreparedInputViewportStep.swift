@@ -5,6 +5,7 @@ import RunestoneEngine
 /// Cooperative limits shared by every pass triggered by a single input step.
 /// A Core Text operation already in progress cannot be interrupted by the deadline.
 final class PreparedInputViewportWorkBudget {
+    static let maximumLineUnits = 4_096
     private let clock: () -> TimeInterval
     private let deadline: TimeInterval
     private let operationLimit: Int
@@ -33,7 +34,7 @@ final class PreparedInputViewportWorkBudget {
 
     func consume(_ line: DocumentLineNode) -> Bool {
         let length = line.data.totalLength
-        guard check(), operations < operationLimit, length >= 0, length <= 4_096,
+        guard check(), operations < operationLimit, length >= 0, length <= Self.maximumLineUnits,
               length <= 16_384 - units else { exhausted = true; return false }
         operations += 1
         units += length
@@ -164,7 +165,7 @@ enum PreparedInputViewportStep {
         return .refusedBeforeScroll
     }
 
-    private static func validViewport(_ bounds: CGRect) -> Bool {
+    static func validViewport(_ bounds: CGRect) -> Bool {
         bounds.origin.x.isFinite && bounds.origin.y.isFinite && bounds.width.isFinite && bounds.height.isFinite &&
             bounds.maxX.isFinite && bounds.maxY.isFinite && bounds.width > 0 && bounds.height > 0 &&
             bounds.width <= maximumViewportDimension && bounds.height <= maximumViewportDimension
