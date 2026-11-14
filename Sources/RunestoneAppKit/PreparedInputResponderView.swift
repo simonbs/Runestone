@@ -9,6 +9,11 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                                         PreparedInputContextConnection.CommandHandler,
                                         NSDraggingSource,
                                         NSUserInterfaceValidations {
+    private final class InsertionIndicator: NSTextInsertionIndicator {
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    }
+
+    private let insertionIndicator = InsertionIndicator(frame: .zero)
     private weak var inputAdapter: PreparedInputEventAdapter?
     private weak var inputConnection: PreparedInputContextConnection?
     private var focusGeneration = UUID()
@@ -41,6 +46,9 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
 
     init(snapshot: NSAttributedString) {
         super.init(snapshot: snapshot, fallbackHeight: 16)
+        insertionIndicator.displayMode = .hidden
+        insertionIndicator.setAccessibilityElement(false)
+        addSubview(insertionIndicator)
     }
 
     required init?(coder: NSCoder) { nil }
@@ -61,6 +69,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         precondition(Thread.isMainThread)
         guard !disarmed else { return }
         disarmed = true
+        insertionIndicator.displayMode = .hidden
         endPointerSelection()
         verticalPreference = nil
         PreparedInputCommandInterpreter.resetSelectionExtension(in: self)
@@ -110,6 +119,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         endPointerSelection()
         focusRequested = false
         focusGeneration = UUID()
+        insertionIndicator.displayMode = .hidden
         inputConnection?.suspendForFocusLoss()
     }
 
@@ -1258,7 +1268,9 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
-        guard ownsKeyFocus, let connection = inputConnection else { return }
+        var caret: NSRect?
+        defer { updateInsertionIndicator(caret) }
+        guard ownsKeyFocus, !disarmed, !isReadOnly, let connection = inputConnection else { return }
         connection.performResponderActivity { adapter, isCurrent in
             guard let selection = adapter.selectionStateForHost(),
                   selection.range.location != NSNotFound, isCurrent(), ownsKeyFocus else { return }
@@ -1273,8 +1285,18 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             for rect in geometry.markedRects where rect.intersects(dirtyRect) {
                 NSBezierPath(rect: NSRect(x: rect.minX, y: rect.maxY - 1, width: rect.width, height: 1)).fill()
             }
-            if let caret = geometry.caretRect, caret.intersects(dirtyRect) { NSBezierPath(rect: caret).fill() }
+            caret = geometry.caretRect
         }
+    }
+
+    private func updateInsertionIndicator(_ caret: NSRect?) {
+        guard let caret, ownsKeyFocus, !disarmed, !isReadOnly else {
+            if insertionIndicator.displayMode != .hidden { insertionIndicator.displayMode = .hidden }
+            return
+        }
+        // AppKit restarts its blink delay when the frame is set.
+        if insertionIndicator.frame != caret { insertionIndicator.frame = caret }
+        if insertionIndicator.displayMode != .automatic { insertionIndicator.displayMode = .automatic }
     }
 
     deinit { keyObservers.forEach { NotificationCenter.default.removeObserver($0) } }
