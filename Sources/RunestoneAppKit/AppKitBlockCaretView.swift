@@ -2,6 +2,7 @@
 import AppKit
 
 final class AppKitBlockCaretView: NSView {
+    private var fill = NSColor.textInsertionPointColor
     private var glyph: String?
     private var font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
 
@@ -24,12 +25,13 @@ final class AppKitBlockCaretView: NSView {
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-    func update(frame: NSRect, glyph: String?, font: NSFont) {
+    func update(frame: NSRect, glyph: String?, font: NSFont, color: NSColor) {
         let restartBlink = isHidden || self.frame != frame || self.glyph != glyph
-        if restartBlink || self.font != font {
+        if restartBlink || self.font != font || fill != color {
             self.frame = frame
             self.glyph = glyph
             self.font = font
+            fill = color
             needsDisplay = true
         }
         isHidden = false
@@ -51,7 +53,6 @@ final class AppKitBlockCaretView: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        let fill = NSColor.textInsertionPointColor
         fill.setFill()
         bounds.fill()
         guard let glyph else { return }

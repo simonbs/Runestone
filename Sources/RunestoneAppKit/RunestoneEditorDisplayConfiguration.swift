@@ -38,6 +38,10 @@ public struct RunestoneEditorDisplayConfiguration {
     public var textFont: NSFont?
     /// Draws a filled character cell at the insertion point.
     public var usesBlockCaret: Bool = false
+    /// A nil color uses the native system insertion point color.
+    public var caretColor: NSColor?
+    /// A nil color uses the native system selection highlight.
+    public var selectionColor: NSColor?
     public var lineHeightMultiplier: CGFloat
     public var kern: CGFloat
     public var verticalOverscrollFactor: CGFloat

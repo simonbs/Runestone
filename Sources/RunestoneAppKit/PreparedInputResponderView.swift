@@ -1280,7 +1280,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 insertionIndicator.displayMode = .hidden
                 if let caret, ownsKeyFocus, !disarmed, !isReadOnly {
                     blockCaret.update(frame: caret, glyph: blockGlyph,
-                                      font: displayConfiguration.textFont ?? .monospacedSystemFont(ofSize: 13, weight: .regular))
+                                      font: displayConfiguration.textFont ?? .monospacedSystemFont(ofSize: 13, weight: .regular),
+                                      color: displayConfiguration.caretColor ?? .textInsertionPointColor)
                 } else {
                     blockCaret.isHidden = true
                 }
@@ -1298,7 +1299,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                   let geometry = InputSelectionGeometry.geometry(selection: selection,
                       marked: marked.location == NSNotFound ? nil : marked, in: self),
                   isCurrent(), ownsKeyFocus else { return }
-            NSColor.selectedTextBackgroundColor.withAlphaComponent(0.35).setFill()
+            (displayConfiguration.selectionColor ?? NSColor.selectedTextBackgroundColor.withAlphaComponent(0.35)).setFill()
             for rect in geometry.selectionRects where rect.intersects(dirtyRect) { NSBezierPath(rect: rect).fill() }
             NSColor.textColor.setFill()
             for rect in geometry.markedRects where rect.intersects(dirtyRect) {
@@ -1333,6 +1334,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             if insertionIndicator.displayMode != .hidden { insertionIndicator.displayMode = .hidden }
             return
         }
+        let color = displayConfiguration.caretColor ?? .textInsertionPointColor
+        if insertionIndicator.color != color { insertionIndicator.color = color }
         // AppKit restarts its blink delay when the frame is set.
         if insertionIndicator.frame != caret { insertionIndicator.frame = caret }
         if insertionIndicator.displayMode != .automatic { insertionIndicator.displayMode = .automatic }
