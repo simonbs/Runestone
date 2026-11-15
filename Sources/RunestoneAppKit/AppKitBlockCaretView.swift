@@ -75,14 +75,9 @@ final class AppKitBlockCaretView: NSView {
             channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
         }
         let luminance = 0.2126 * linear(rgb.redComponent) + 0.7152 * linear(rgb.greenComponent) + 0.0722 * linear(rgb.blueComponent)
-        let contrastWithBlack = (luminance + 0.05) / 0.05
-        let contrastWithWhite = 1.05 / (luminance + 0.05)
-        // Favor white on saturated blue when it still has strong contrast.
-        if contrastWithWhite >= 3.75, rgb.blueComponent > rgb.greenComponent,
-           rgb.greenComponent >= rgb.redComponent, rgb.blueComponent - rgb.redComponent > 0.25 {
-            return .white
-        }
-        return contrastWithBlack >= contrastWithWhite ? .black : .white
+        // Prefer white for the small caret glyph when it clears a 4:1 contrast ratio.
+        // Otherwise black provides the stronger contrast.
+        return 1.05 / (luminance + 0.05) >= 4 ? .white : .black
     }
 }
 #endif

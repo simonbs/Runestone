@@ -6,11 +6,13 @@ import RunestoneEngine
 import XCTest
 
 final class InputCaretGeometryTests: XCTestCase {
-    func testBlockCaretUsesWhiteOnSaturatedBlueButBlackOnLightFills() {
+    func testBlockCaretTextContrastAcrossFillColors() {
         let blue = NSColor(srgbRed: 0, green: 122.0 / 255, blue: 1, alpha: 1)
+        let gray = NSColor(srgbRed: 119.0 / 255, green: 119.0 / 255, blue: 119.0 / 255, alpha: 1)
         let lightBlue = NSColor(srgbRed: 0.55, green: 0.8, blue: 1, alpha: 1)
 
         XCTAssertEqual(AppKitBlockCaretView.contrastColor(for: blue), .white)
+        XCTAssertEqual(AppKitBlockCaretView.contrastColor(for: gray), .white)
         XCTAssertEqual(AppKitBlockCaretView.contrastColor(for: lightBlue), .black)
         XCTAssertEqual(AppKitBlockCaretView.contrastColor(for: .white), .black)
         XCTAssertEqual(AppKitBlockCaretView.contrastColor(for: .black), .white)

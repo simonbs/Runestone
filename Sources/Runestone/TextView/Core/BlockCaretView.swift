@@ -49,12 +49,8 @@ final class BlockCaretView: UILabel {
             channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
         }
         let luminance = 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
-        let contrastWithBlack = (luminance + 0.05) / 0.05
-        let contrastWithWhite = 1.05 / (luminance + 0.05)
-        // Favor white on saturated blue when it still has strong contrast.
-        if contrastWithWhite >= 3.75, blue > green, green >= red, blue - red > 0.25 {
-            return .white
-        }
-        return contrastWithBlack >= contrastWithWhite ? .black : .white
+        // Prefer white for the small caret glyph when it clears a 4:1 contrast ratio.
+        // Otherwise black provides the stronger contrast.
+        return 1.05 / (luminance + 0.05) >= 4 ? .white : .black
     }
 }
