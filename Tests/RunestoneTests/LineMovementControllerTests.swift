@@ -58,6 +58,27 @@ final class LineMovementControllerTests: XCTestCase {
         XCTAssertTrue((5..<input.string.length).contains(beforeLayout))
     }
 
+    func testHorizontalKeyboardMovementTraversesEmptyLinesWithLineNumbers() throws {
+        for newline in ["\n", "\r\n"] {
+            let input = makeInput(["", "", "ddd", "", ""].joined(separator: newline))
+            input.showLineNumbers = true
+            let newlineWidth = newline.utf16.count
+            let start = 2 * newlineWidth
+            let end = start + 3
+            let stops = [0, newlineWidth, start, start + 1, start + 2, end, end + newlineWidth, end + 2 * newlineWidth]
+
+            var location = 0
+            for target in stops.dropFirst() {
+                location = try movement(in: input, from: IndexedPosition(index: location), direction: .right)
+                XCTAssertEqual(location, target)
+            }
+            for target in stops.dropLast().reversed() {
+                location = try movement(in: input, from: IndexedPosition(index: location), direction: .left)
+                XCTAssertEqual(location, target)
+            }
+        }
+    }
+
     private func makeInput(_ text: String) -> TextInputView {
         let input = TextInputView(theme: DefaultTheme())
         input.scrollViewWidth = 365
