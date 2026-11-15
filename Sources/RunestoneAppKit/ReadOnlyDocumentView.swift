@@ -56,6 +56,7 @@ public class ReadOnlyDocumentView: NSView {
     private var collapsedSyntaxFoldHeaders: Set<Int> = []
     private(set) var contentRevision = UUID()
     private let fallbackHeight: CGFloat
+    private var emptyLineFontHeight: CGFloat?
     private let cacheLimit = 128
     private(set) var manager: LineManager
     private var controllers: [DocumentLineNodeID: LogicalLineLayoutController] = [:]
@@ -100,6 +101,16 @@ public class ReadOnlyDocumentView: NSView {
     public var displayConfiguration = RunestoneEditorDisplayConfiguration() {
         didSet {
             guard !isRetired else { return }
+            if oldValue.textFont != displayConfiguration.textFont {
+                emptyLineFontHeight = displayConfiguration.textFont.map { font in
+                    let sample = CTLineCreateWithAttributedString(NSAttributedString(string: "M", attributes: [.font: font]))
+                    var ascent: CGFloat = 0
+                    var descent: CGFloat = 0
+                    var leading: CGFloat = 0
+                    CTLineGetTypographicBounds(sample, &ascent, &descent, &leading)
+                    return ascent + descent + leading
+                }
+            }
             resetLayout(width: 0)
             if !displayConfiguration.isCodeFoldingEnabled {
                 availableSyntaxFolds.removeAll()
@@ -1313,7 +1324,7 @@ public class ReadOnlyDocumentView: NSView {
         controllers.removeAll()
         controllerOrder.removeAll()
         manager = LineManager(stringView: StringView(string: snapshot.string))
-        manager.estimatedLineHeight = fallbackHeight * safeLineHeightMultiplier
+        manager.estimatedLineHeight = emptyLineTextHeight * safeLineHeightMultiplier
         manager.rebuild()
         applyCollapsedSyntaxFolds(updatePresentation: false)
         coordinator = ViewportLayoutCoordinator(manager: manager, cachedControllerForLine: { [weak self] line in
@@ -1336,7 +1347,7 @@ public class ReadOnlyDocumentView: NSView {
               range.length <= snapshot.length - range.location else { return nil }
         let controller = LogicalLineLayoutController(manager: manager, line: line)
         guard controller.prepare(presentationAttributedSubstring(from: range), width: effectiveTextWidth,
-                                 heightMultiplier: safeLineHeightMultiplier, fallbackHeight: fallbackHeight,
+                                 heightMultiplier: safeLineHeightMultiplier, fallbackHeight: emptyLineTextHeight,
                                  wrapsLines: displayConfiguration.isLineWrappingEnabled) else { return nil }
         if !displayConfiguration.isLineWrappingEnabled {
             measuredUnwrappedContentWidth = max(measuredUnwrappedContentWidth,
@@ -1451,6 +1462,16 @@ public class ReadOnlyDocumentView: NSView {
         visibleLayout = nil
         unwrappedWidthMeasurementGeneration = UUID()
         scheduleUnwrappedWidthMeasurementIfNeeded()
+    }
+
+    private var emptyLineTextHeight: CGFloat {
+        guard let height = emptyLineFontHeight, height.isFinite, height > 0 else { return fallbackHeight }
+        return height
+    }
+
+    func emptyLineCaretRect(y: CGFloat, rowHeight: CGFloat, width: CGFloat) -> NSRect {
+        let height = emptyLineTextHeight
+        return NSRect(x: horizontalTextInset, y: y + (rowHeight - height) / 2, width: width, height: height)
     }
 
     var horizontalTextInset: CGFloat {

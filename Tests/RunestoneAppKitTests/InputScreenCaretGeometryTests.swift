@@ -38,6 +38,21 @@ final class InputScreenCaretGeometryTests: XCTestCase {
         _ = scroll
     }
 
+    func testEmptyCaretMatchesTextHeightWithExtraLineSpacing() throws {
+        let font = NSFont.monospacedSystemFont(ofSize: 20, weight: .regular)
+        let (window, scroll, view) = makeView("M\n")
+        view.setContent(NSAttributedString(string: "M\n", attributes: [.font: font]))
+        view.displayConfiguration = .init(lineHeightMultiplier: 1.5, textFont: font)
+
+        let typed = try XCTUnwrap(InputScreenCaretGeometry.rect(at: 0, in: view))
+        let empty = try XCTUnwrap(InputScreenCaretGeometry.rect(at: 2, in: view))
+        XCTAssertEqual(empty.height, typed.height, accuracy: 0.01)
+        view.displayConfiguration.lineHeightMultiplier = 1
+        let withoutExtraSpacing = try XCTUnwrap(InputScreenCaretGeometry.rect(at: 2, in: view))
+        XCTAssertEqual(empty.height, withoutExtraSpacing.height, accuracy: 0.01)
+        withExtendedLifetime((window, scroll)) {}
+    }
+
     func testCaretTracksScrollAndDetachedViewHasNoScreenGeometry() throws {
         let (window, scroll, view) = makeView((0..<30).map { "line \($0)" }.joined(separator: "\n"))
         let before = try XCTUnwrap(InputScreenCaretGeometry.rect(at: 0, in: view))

@@ -131,7 +131,7 @@ enum InputCaretAffinityGeometry {
             return documentRect(for: target, placement: placement, lineStart: line.location, caretWidth: caretWidth)
         }
         guard line.data.length == 0 else { return nil }
-        return NSRect(x: view.horizontalTextInset, y: line.yPosition, width: caretWidth, height: line.data.lineHeight)
+        return view.emptyLineCaretRect(y: line.yPosition, rowHeight: line.data.lineHeight, width: caretWidth)
     }
 
     static func documentRect(for target: InputCaretTarget, placement: LogicalLineLayoutController.Placement,
