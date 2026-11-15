@@ -35,10 +35,11 @@ final class AppKitBlockCaretView: NSView {
         isHidden = false
         if restartBlink {
             let animation = CAKeyframeAnimation(keyPath: "opacity")
-            animation.values = [1, 0]
-            animation.keyTimes = [0, 0.5]
+            // Match the native indicator's one-second cycle and stepped fades.
+            animation.values = [1, 0.75, 0.5, 0.25, 0, 0.25, 0.5, 0.75, 1]
+            animation.keyTimes = [0, 0.5375, 0.575, 0.6125, 0.65, 0.8875, 0.925, 0.9625, 1]
             animation.calculationMode = .discrete
-            animation.duration = 1.1
+            animation.duration = 1
             animation.repeatCount = .infinity
             layer?.add(animation, forKey: "blink")
         }
@@ -72,6 +73,12 @@ final class AppKitBlockCaretView: NSView {
             channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
         }
         let luminance = 0.2126 * linear(rgb.redComponent) + 0.7152 * linear(rgb.greenComponent) + 0.0722 * linear(rgb.blueComponent)
+        // White reads more clearly on the system blue caret.
+        if luminance <= 0.24, rgb.blueComponent > rgb.greenComponent,
+           rgb.greenComponent >= rgb.redComponent,
+           rgb.blueComponent - rgb.redComponent > 0.25 {
+            return .white
+        }
         return luminance > 0.179 ? .black : .white
     }
 }
