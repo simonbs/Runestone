@@ -33,8 +33,8 @@ enum InputSelectionGeometry {
               let layout = view.visibleLayout, layout.isComplete, layout.viewport == clip.bounds,
               finitePositive(layout.viewport) else { return nil }
 
-        let selectionRects = selection.range.length == 0 ? [] : rects(for: selection.range, layout: layout, newlineWidth: newlineWidth)
-        let markedRects = marked.map { rects(for: $0, layout: layout, newlineWidth: newlineWidth) } ?? []
+        let selectionRects = selection.range.length == 0 ? [] : rects(for: selection.range, layout: layout, textInset: view.horizontalTextInset, newlineWidth: newlineWidth)
+        let markedRects = marked.map { rects(for: $0, layout: layout, textInset: view.horizontalTextInset, newlineWidth: newlineWidth) } ?? []
         let caret = selection.range.length == 0
             ? caretRect(for: InputCaretTarget(location: selection.range.location, affinity: selection.affinity),
                         view: view, layout: layout, width: caretWidth) : nil
@@ -51,7 +51,7 @@ enum InputSelectionGeometry {
     }
 
     private static func rects(for range: NSRange, layout: ViewportLayoutCoordinator.Result,
-                              newlineWidth: CGFloat) -> [CGRect] {
+                              textInset: CGFloat, newlineWidth: CGFloat) -> [CGRect] {
         guard range.length > 0 else { return [] }
         var result: [CGRect] = []
         for lineLayout in layout.lines {
@@ -91,31 +91,11 @@ enum InputSelectionGeometry {
             // Delimiters have no glyph but still need a visible selection cell.
             if line.data.totalLength > line.data.length, range.location < line.location + line.data.totalLength,
                range.upperBound > lineEnd,
-               let rect = lineEndRect(lineLayout, width: newlineWidth), let clipped = clipped(rect, to: layout.viewport) {
+               let rect = lineEndRect(lineLayout, textInset: textInset, width: newlineWidth), let clipped = clipped(rect, to: layout.viewport) {
                 result.append(clipped)
             }
         }
         return result
-    }
-
-    private static func caretRect(at offset: Int, view: ReadOnlyDocumentView,
-                                  layout: ViewportLayoutCoordinator.Result, width: CGFloat) -> CGRect? {
-        guard let line = view.manager.line(containingCharacterAt: offset),
-              let lineLayout = layout.lines.first(where: { $0.line === line }) else { return nil }
-        let local = min(offset, line.location + line.data.length)
-        let placement = lineLayout.placements.first {
-            line.location + $0.fragment.range.location <= local && local < line.location + $0.fragment.range.upperBound
-        } ?? (local == line.location + line.data.length ? lineLayout.placements.last {
-            line.location + $0.fragment.range.upperBound == local
-        } : nil)
-        let rect: CGRect?
-        if let placement = placement {
-            rect = InputCaretGeometry.rect(for: placement, lineStart: line.location, documentOffset: local, caretWidth: width)
-        } else if line.data.length == 0 {
-            rect = CGRect(x: 0, y: line.yPosition, width: width, height: line.data.lineHeight)
-        } else { rect = nil }
-        guard let rect = rect else { return nil }
-        return clipped(rect, to: layout.viewport)
     }
 
     /// Hidden whitespace is collapsed at the logical trailing edge of the
@@ -141,9 +121,9 @@ enum InputSelectionGeometry {
         return CGRect(x: rtl ? edge - width : edge, y: caret.minY, width: width, height: caret.height)
     }
 
-    private static func lineEndRect(_ lineLayout: ViewportLayoutCoordinator.LineLayout, width: CGFloat) -> CGRect? {
+    private static func lineEndRect(_ lineLayout: ViewportLayoutCoordinator.LineLayout, textInset: CGFloat, width: CGFloat) -> CGRect? {
         let line = lineLayout.line
-        if line.data.length == 0 { return CGRect(x: 0, y: line.yPosition, width: width, height: line.data.lineHeight) }
+        if line.data.length == 0 { return CGRect(x: textInset, y: line.yPosition, width: width, height: line.data.lineHeight) }
         guard let placement = lineLayout.placements.last(where: {
             $0.fragment.range.upperBound == line.data.length
         }) else { return nil }

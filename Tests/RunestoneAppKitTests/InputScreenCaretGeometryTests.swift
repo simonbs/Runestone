@@ -15,6 +15,29 @@ final class InputScreenCaretGeometryTests: XCTestCase {
         _ = scroll
     }
 
+    func testEmptyCaretMovesWithLineNumberGutterWithoutEditing() throws {
+        let (window, scroll, view) = makeView("")
+        let selection = NSRange(location: 0, length: 0)
+        let before = try XCTUnwrap(InputSelectionGeometry.geometry(selection: selection, marked: nil, in: view)?.caretRect)
+
+        view.displayConfiguration.showsLineNumbers = true
+        let after = try XCTUnwrap(InputSelectionGeometry.geometry(selection: selection, marked: nil, in: view)?.caretRect)
+        XCTAssertGreaterThan(after.minX, before.minX)
+        XCTAssertEqual(InputScreenCaretGeometry.rect(at: 0, in: view),
+                       window.convertToScreen(view.convert(after, to: nil)))
+
+        view.setContent(NSAttributedString(string: "a\n", attributes: [.font: NSFont.systemFont(ofSize: 16)]))
+        let first = try XCTUnwrap(InputScreenCaretGeometry.rect(at: 0, in: view))
+        let trailing = try XCTUnwrap(InputScreenCaretGeometry.rect(at: 2, in: view))
+        XCTAssertEqual(first.minX, trailing.minX, accuracy: 0.01)
+
+        view.displayConfiguration.showsLineNumbers = false
+        let withoutGutter = try XCTUnwrap(InputSelectionGeometry.geometry(
+            selection: NSRange(location: 2, length: 0), marked: nil, in: view)?.caretRect)
+        XCTAssertEqual(withoutGutter.minX, before.minX)
+        _ = scroll
+    }
+
     func testCaretTracksScrollAndDetachedViewHasNoScreenGeometry() throws {
         let (window, scroll, view) = makeView((0..<30).map { "line \($0)" }.joined(separator: "\n"))
         let before = try XCTUnwrap(InputScreenCaretGeometry.rect(at: 0, in: view))

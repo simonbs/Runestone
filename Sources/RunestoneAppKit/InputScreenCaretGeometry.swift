@@ -51,7 +51,7 @@ enum InputScreenCaretGeometry {
         } else {
             guard line.data.length == 0, offset == line.location,
                   line.data.lineHeight.isFinite, line.data.lineHeight > 0 else { return nil }
-            documentRect = NSRect(x: 0, y: line.yPosition, width: caretWidth, height: line.data.lineHeight)
+            documentRect = NSRect(x: view.horizontalTextInset, y: line.yPosition, width: caretWidth, height: line.data.lineHeight)
         }
         guard documentRect.intersects(layout.viewport) else { return nil }
         let result = window.convertToScreen(view.convert(documentRect, to: nil))

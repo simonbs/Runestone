@@ -1453,7 +1453,7 @@ public class ReadOnlyDocumentView: NSView {
         scheduleUnwrappedWidthMeasurementIfNeeded()
     }
 
-    private var horizontalTextInset: CGFloat {
+    var horizontalTextInset: CGFloat {
         let folding = foldingGutterWidth
         guard displayConfiguration.showsLineNumbers else { return folding }
         let digits = max(displayConfiguration.minimumGutterCharacterCount, String(max(1, manager.lineCount)).count)
