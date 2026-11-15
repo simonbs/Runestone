@@ -59,7 +59,7 @@ final class AppKitBlockCaretView: NSView {
         guard let glyph else { return }
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,
-            .foregroundColor: contrastColor(for: fill)
+            .foregroundColor: Self.contrastColor(for: fill)
         ]
         let text = NSAttributedString(string: glyph, attributes: attributes)
         let size = text.size()
@@ -69,7 +69,7 @@ final class AppKitBlockCaretView: NSView {
         NSGraphicsContext.restoreGraphicsState()
     }
 
-    private func contrastColor(for color: NSColor) -> NSColor {
+    static func contrastColor(for color: NSColor) -> NSColor {
         guard let rgb = color.usingColorSpace(.sRGB) else { return .white }
         func linear(_ channel: CGFloat) -> CGFloat {
             channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
@@ -77,6 +77,11 @@ final class AppKitBlockCaretView: NSView {
         let luminance = 0.2126 * linear(rgb.redComponent) + 0.7152 * linear(rgb.greenComponent) + 0.0722 * linear(rgb.blueComponent)
         let contrastWithBlack = (luminance + 0.05) / 0.05
         let contrastWithWhite = 1.05 / (luminance + 0.05)
+        // Favor white on saturated blue when it still has strong contrast.
+        if contrastWithWhite >= 3.75, rgb.blueComponent > rgb.greenComponent,
+           rgb.greenComponent >= rgb.redComponent, rgb.blueComponent - rgb.redComponent > 0.25 {
+            return .white
+        }
         return contrastWithBlack >= contrastWithWhite ? .black : .white
     }
 }

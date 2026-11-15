@@ -51,6 +51,10 @@ final class BlockCaretView: UILabel {
         let luminance = 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
         let contrastWithBlack = (luminance + 0.05) / 0.05
         let contrastWithWhite = 1.05 / (luminance + 0.05)
+        // Favor white on saturated blue when it still has strong contrast.
+        if contrastWithWhite >= 3.75, blue > green, green >= red, blue - red > 0.25 {
+            return .white
+        }
         return contrastWithBlack >= contrastWithWhite ? .black : .white
     }
 }

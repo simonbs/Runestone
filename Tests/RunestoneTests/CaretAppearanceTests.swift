@@ -6,6 +6,19 @@ import XCTest
 @available(iOS 17, *)
 @MainActor
 final class CaretAppearanceTests: XCTestCase {
+    func testBlockCaretUsesWhiteOnSaturatedBlueButBlackOnLightFills() {
+        let caret = BlockCaretView()
+        let font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        let traits = UITraitCollection(userInterfaceStyle: .light)
+        let blue = UIColor(red: 0, green: 122.0 / 255, blue: 1, alpha: 1)
+        let lightBlue = UIColor(red: 0.55, green: 0.8, blue: 1, alpha: 1)
+
+        caret.update(frame: .zero, glyph: "4", font: font, color: blue)
+        XCTAssertEqual(caret.textColor.resolvedColor(with: traits), .white)
+        caret.update(frame: .zero, glyph: "4", font: font, color: lightBlue)
+        XCTAssertEqual(caret.textColor.resolvedColor(with: traits), .black)
+    }
+
     func testCaretAppearsAtFullSizeWhenFocusChangesInsideAnAnimation() throws {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         let controller = UIViewController()
