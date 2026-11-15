@@ -26,6 +26,7 @@ final class AppKitBlockCaretView: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
     func update(frame: NSRect, glyph: String?, font: NSFont, color: NSColor) {
+        let color = color.withAlphaComponent(1)
         let restartBlink = isHidden || self.frame != frame || self.glyph != glyph
         if restartBlink || self.font != font || fill != color {
             self.frame = frame
@@ -74,13 +75,9 @@ final class AppKitBlockCaretView: NSView {
             channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
         }
         let luminance = 0.2126 * linear(rgb.redComponent) + 0.7152 * linear(rgb.greenComponent) + 0.0722 * linear(rgb.blueComponent)
-        // White reads more clearly on the system blue caret.
-        if luminance <= 0.24, rgb.blueComponent > rgb.greenComponent,
-           rgb.greenComponent >= rgb.redComponent,
-           rgb.blueComponent - rgb.redComponent > 0.25 {
-            return .white
-        }
-        return luminance > 0.179 ? .black : .white
+        let contrastWithBlack = (luminance + 0.05) / 0.05
+        let contrastWithWhite = 1.05 / (luminance + 0.05)
+        return contrastWithBlack >= contrastWithWhite ? .black : .white
     }
 }
 #endif
