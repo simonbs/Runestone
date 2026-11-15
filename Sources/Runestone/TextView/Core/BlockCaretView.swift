@@ -26,7 +26,9 @@ final class BlockCaretView: UILabel {
         text = glyph
         let fill = color.withAlphaComponent(1)
         backgroundColor = fill
-        textColor = Self.contrastColor(for: fill)
+        textColor = UIColor { traits in
+            Self.contrastColor(for: fill.resolvedColor(with: traits))
+        }
         isHidden = false
         if needsBlink {
             let animation = CAKeyframeAnimation(keyPath: "opacity")
@@ -47,10 +49,8 @@ final class BlockCaretView: UILabel {
             channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
         }
         let luminance = 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
-        // White reads more clearly on the standard blue caret.
-        if luminance <= 0.24, blue > green, green >= red, blue - red > 0.25 {
-            return .white
-        }
-        return luminance > 0.179 ? .black : .white
+        let contrastWithBlack = (luminance + 0.05) / 0.05
+        let contrastWithWhite = 1.05 / (luminance + 0.05)
+        return contrastWithBlack >= contrastWithWhite ? .black : .white
     }
 }
