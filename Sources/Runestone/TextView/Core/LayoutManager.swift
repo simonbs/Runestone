@@ -548,6 +548,11 @@ extension LayoutManager {
             let height = (realEndLine.yPosition + realEndLine.data.lineHeight) - minY
             return CGRect(x: 0, y: textContainerInset.top + minY, width: scrollViewWidth, height: height)
         case .lineFragment:
+            if selectedRange.length == 0, startLine.data.totalLength == 0 {
+                // An empty final row has no text fragment. Use its indexed geometry.
+                return CGRect(x: 0, y: textContainerInset.top + startLine.yPosition,
+                              width: scrollViewWidth, height: startLine.data.lineHeight)
+            }
             let startCaretRect = caretRectService.caretRect(at: selectedRange.lowerBound, allowMovingCaretToNextLineFragment: false)
             let endCaretRect = caretRectService.caretRect(at: selectedRange.upperBound, allowMovingCaretToNextLineFragment: false)
             let startLineFragmentHeight = startCaretRect.height * lineHeightMultiplier

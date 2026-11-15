@@ -18,6 +18,32 @@ final class DefaultThemeTests: XCTestCase {
         assertAppearance(of: inputView, gutter: gutter, theme: DefaultTheme.shared)
     }
 
+    func testFragmentLineHighlightCoversEmptyFinalLine() throws {
+        let view = TextView(frame: CGRect(x: 0, y: 0, width: 240, height: 180))
+        let inputView = try XCTUnwrap(descendants(of: view).compactMap { $0 as? TextInputView }.first)
+        let theme = CustomTheme()
+        view.theme = theme
+        inputView.isEditing = true
+
+        for text in ["", "hello\n\n"] {
+            view.text = text
+            view.selectedRange = NSRange(location: (text as NSString).length, length: 0)
+            view.lineSelectionDisplayType = .line
+            view.layoutSubviews()
+            inputView.layoutSubviews()
+            let highlight = try XCTUnwrap(inputView.subviews.first { $0.backgroundColor == theme.selectedLineBackgroundColor })
+            let lineFrame = highlight.frame
+
+            view.lineSelectionDisplayType = .lineFragment
+            view.layoutSubviews()
+            inputView.layoutSubviews()
+
+            XCTAssertFalse(highlight.isHidden)
+            XCTAssertGreaterThan(highlight.frame.height, 0)
+            XCTAssertEqual(highlight.frame, lineFrame)
+        }
+    }
+
     func testLayoutManagerInitializesInvisibleCharactersAndUpdatesTheirTheme() {
         let stringView = StringView(string: "hello")
         let lineManager = LineManager(stringView: stringView)

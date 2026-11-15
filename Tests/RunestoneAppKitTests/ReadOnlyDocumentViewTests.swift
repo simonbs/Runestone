@@ -192,6 +192,28 @@ final class ReadOnlyDocumentViewTests: XCTestCase {
         XCTAssertEqual(view.selectedLineHighlightRects(in: layout).count, 1)
     }
 
+    func testFragmentLineHighlightCoversEmptyFinalLine() throws {
+        for string in ["", "hello\n\n"] {
+            let text = NSAttributedString(string: string, attributes: [.font: font])
+            let (_, view) = makeView(text, width: 200, height: 200)
+            view.displayConfiguration = RunestoneEditorDisplayConfiguration(
+                showsSelectedLines: true,
+                selectedLineHighlightGranularity: .lineFragment
+            )
+            view.updateDisplaySelection(NSRange(location: text.length, length: 0))
+            view.updateViewport()
+            let layout = try XCTUnwrap(view.visibleLayout)
+            let lastLine = try XCTUnwrap(layout.lines.last?.line)
+            let highlights = view.selectedLineHighlightRects(in: layout)
+
+            XCTAssertEqual(highlights.count, 1)
+            let highlight = try XCTUnwrap(highlights.first)
+            XCTAssertEqual(highlight.minY, lastLine.yPosition)
+            XCTAssertEqual(highlight.height, lastLine.data.lineHeight)
+            XCTAssertGreaterThan(highlight.height, 0)
+        }
+    }
+
     func testTypographyAndOverscrollArePresentationOnly() throws {
         let text = NSAttributedString(
             string: (0..<40).map { "\($0) " + String(repeating: "wide text ", count: 12) }.joined(separator: "\n"),

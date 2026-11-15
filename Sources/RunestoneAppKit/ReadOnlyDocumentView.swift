@@ -1217,18 +1217,14 @@ public class ReadOnlyDocumentView: NSView {
     func selectedLineHighlightRects(in result: ViewportLayoutCoordinator.Result) -> [CGRect] {
         guard displayConfiguration.showsSelectedLines else { return [] }
         let gutter = horizontalTextInset
-        switch displayConfiguration.selectedLineHighlightGranularity {
-        case .line:
-            return result.lines.filter { isSelected($0.line) }.map { layout in
-                CGRect(x: gutter, y: layout.line.yPosition,
-                       width: max(0, bounds.width - gutter), height: layout.line.data.lineHeight)
+        return result.lines.filter { isSelected($0.line) }.flatMap { layout -> [CGRect] in
+            let width = max(0, bounds.width - gutter)
+            if displayConfiguration.selectedLineHighlightGranularity == .line || layout.line.data.totalLength == 0 {
+                // The empty final line has a row in the line index but no text fragment.
+                return [CGRect(x: gutter, y: layout.line.yPosition, width: width, height: layout.line.data.lineHeight)]
             }
-        case .lineFragment:
-            return result.lines.filter { isSelected($0.line) }.flatMap { layout in
-                layout.placements.filter(isSelected).map { placement in
-                    CGRect(x: gutter, y: placement.frame.minY,
-                           width: max(0, bounds.width - gutter), height: placement.frame.height)
-                }
+            return layout.placements.filter(isSelected).map { placement in
+                CGRect(x: gutter, y: placement.frame.minY, width: width, height: placement.frame.height)
             }
         }
     }
