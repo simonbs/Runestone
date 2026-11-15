@@ -36,6 +36,7 @@ enum PreparedInputVisualMovement {
         let window: NSWindow
         let clip: NSClipView
         let layout: ViewportLayoutCoordinator.Result
+        let horizontalTextInset: CGFloat
         let geometryRevision: UUID
         let contentRevision: UUID
     }
@@ -50,7 +51,7 @@ enum PreparedInputVisualMovement {
               let caret = InputScreenCaretGeometry.rect(at: location, in: view),
               let source = sourceRow(caret: caret, context: context, view: view),
               unambiguousVerticalCaret(location, caret: caret, row: source, context: context, view: view) else { return nil }
-        let rows = visibleRows(in: context.layout)
+        let rows = visibleRows(in: context)
         guard let index = rows.firstIndex(where: { sameRow($0, source) }) else { return nil }
         let next = direction == .up ? index - 1 : index + 1
         guard rows.indices.contains(next) else { return nil }
@@ -72,7 +73,7 @@ enum PreparedInputVisualMovement {
                 ? InputScreenCaretGeometry.rect(at: target.location, in: view)
                 : InputScreenCaretGeometry.rect(for: target, in: view),
               let source = sourceRow(caret: caret, context: context, view: view) else { return nil }
-        let rows = visibleRows(in: context.layout)
+        let rows = visibleRows(in: context)
         guard let index = rows.firstIndex(where: { sameRow($0, source) }) else { return nil }
         let next = direction == .up ? index - 1 : index + 1
         guard rows.indices.contains(next) else { return nil }
@@ -93,7 +94,7 @@ enum PreparedInputVisualMovement {
               let caret = InputScreenCaretGeometry.rect(at: location, in: view),
               let source = sourceRow(caret: caret, context: context, view: view),
               unambiguousVerticalCaret(location, caret: caret, row: source, context: context, view: view) else { return false }
-        let rows = visibleRows(in: context.layout)
+        let rows = visibleRows(in: context)
         guard let index = rows.firstIndex(where: { sameRow($0, source) }) else { return false }
         let next = direction == .up ? index - 1 : index + 1
         return !rows.indices.contains(next) && stable(context, view: view)
@@ -106,7 +107,7 @@ enum PreparedInputVisualMovement {
                 ? InputScreenCaretGeometry.rect(at: target.location, in: view)
                 : InputScreenCaretGeometry.rect(for: target, in: view),
               let source = sourceRow(caret: caret, context: context, view: view) else { return false }
-        let rows = visibleRows(in: context.layout)
+        let rows = visibleRows(in: context)
         guard let index = rows.firstIndex(where: { sameRow($0, source) }) else { return false }
         let next = direction == .up ? index - 1 : index + 1
         return !rows.indices.contains(next) && stable(context, view: view)
@@ -191,7 +192,7 @@ enum PreparedInputVisualMovement {
 
     private static func crossRow(from source: Row, direction: HorizontalDirection, context: Context,
                                  view: ReadOnlyDocumentView) -> TargetHorizontalResult {
-        let rows = visibleRows(in: context.layout)
+        let rows = visibleRows(in: context)
         guard let index = rows.firstIndex(where: { sameRow($0, source) }) else { return .unavailable }
         let left = direction == .left
         let nextIndex = left ? index - 1 : index + 1
@@ -529,7 +530,7 @@ enum PreparedInputVisualMovement {
                                           in view: ReadOnlyDocumentView) -> Bool {
         guard documentPoint.x.isFinite, documentPoint.y.isFinite,
               let context = context(in: view), context.layout.viewport.contains(documentPoint),
-              let hitRow = visibleRows(in: context.layout).first(where: {
+              let hitRow = visibleRows(in: context).first(where: {
                   documentPoint.y >= $0.frame.minY && documentPoint.y < $0.frame.maxY
               }), let caret = InputScreenCaretGeometry.rect(at: offset, in: view),
               let resolvedRow = sourceRow(caret: caret, context: context, view: view),
@@ -561,7 +562,7 @@ enum PreparedInputVisualMovement {
             ? view.manager.previousVisibleLine(before: source.line.line)
             : view.manager.nextVisibleLine(after: source.line.line)
         guard let neighbor = neighbor else { return stable(context, view: view) ? .boundary : .unavailable }
-        let rows = visibleRows(in: context.layout)
+        let rows = visibleRows(in: context)
         guard let index = rows.firstIndex(where: { sameRow($0, source) }) else { return .unavailable }
         let next = direction == .left ? index - 1 : index + 1
         guard rows.indices.contains(next), rows[next].line.line === neighbor else { return .unavailable }
@@ -592,7 +593,7 @@ enum PreparedInputVisualMovement {
               layout.viewport.minX.isFinite, layout.viewport.minY.isFinite,
               layout.viewport.maxX.isFinite, layout.viewport.maxY.isFinite,
               layout.viewport.width > 0, layout.viewport.height > 0 else { return nil }
-        return Context(window: window, clip: clip, layout: layout,
+        return Context(window: window, clip: clip, layout: layout, horizontalTextInset: view.horizontalTextInset,
                        geometryRevision: view.inputGeometryRevision, contentRevision: view.contentRevision)
     }
 
@@ -602,11 +603,14 @@ enum PreparedInputVisualMovement {
             view.inputGeometryRevision == context.geometryRevision && view.contentRevision == context.contentRevision
     }
 
-    private static func visibleRows(in layout: ViewportLayoutCoordinator.Result) -> [Row] {
+    private static func visibleRows(in context: Context) -> [Row] {
+        let layout = context.layout
         var rows: [Row] = []
         for line in layout.lines {
             if line.line.data.length == 0 {
-                let frame = CGRect(x: 0, y: line.line.yPosition, width: 1, height: line.line.data.lineHeight)
+                // Match the caret's document x when there is no text fragment.
+                let frame = CGRect(x: context.horizontalTextInset, y: line.line.yPosition,
+                                   width: 1, height: line.line.data.lineHeight)
                 if frame.minY.isFinite, frame.height.isFinite, frame.height > 0,
                    frame.maxY > layout.viewport.minY, frame.minY < layout.viewport.maxY {
                     rows.append(Row(line: line, placement: nil, frame: frame))
@@ -624,7 +628,7 @@ enum PreparedInputVisualMovement {
     private static func sourceRow(caret: NSRect, context: Context, view: ReadOnlyDocumentView) -> Row? {
         let documentRect = view.convert(context.window.convertFromScreen(caret), from: nil)
         guard documentRect.midY.isFinite else { return nil }
-        return visibleRows(in: context.layout).first {
+        return visibleRows(in: context).first {
             documentRect.midY >= $0.frame.minY && documentRect.midY < $0.frame.maxY
         }
     }

@@ -269,6 +269,33 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         fixture.disconnect()
     }
 
+    func testHorizontalArrowsTraverseEmptyLinesWithLineNumbers() throws {
+        for separator in ["\n", "\r\n"] {
+            let text = ["", "", "ddd", "", ""].joined(separator: separator)
+            let fixture = try MovementIntegrationFixture(text)
+            defer { fixture.disconnect() }
+            var display = fixture.view.displayConfiguration
+            display.showsLineNumbers = true
+            fixture.view.displayConfiguration = display
+            fixture.view.updateViewport()
+            XCTAssertGreaterThan(fixture.view.horizontalTextInset, 0)
+
+            let newlineWidth = separator.utf16.count
+            let start = 2 * newlineWidth
+            let end = start + 3
+            let stops = [0, newlineWidth, start, start + 1, start + 2, end, end + newlineWidth, end + 2 * newlineWidth]
+            try fixture.setSelection(NSRange(location: 0, length: 0))
+            for (command, targets) in [("moveRight:", Array(stops.dropFirst())),
+                                       ("moveLeft:", Array(stops.dropLast().reversed()))] {
+                for target in targets {
+                    XCTAssertTrue(fixture.send(command))
+                    XCTAssertEqual(fixture.selection, NSRange(location: target, length: 0), command)
+                }
+            }
+            XCTAssertEqual(fixture.host.text, text)
+        }
+    }
+
     func testLineAndHorizontalCommandsUseCurrentRevisionAndChildGate() throws {
         let fixture = try MovementIntegrationFixture("ab\r\ncd")
         try fixture.setSelection(NSRange(location: 1, length: 0))
