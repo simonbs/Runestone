@@ -270,6 +270,12 @@ open class TextView: UIScrollView {
     }
 #endif
 
+    /// Draws a filled character cell at the insertion point instead of a vertical bar.
+    public var usesBlockCaret: Bool {
+        get { textInputView.usesBlockCaret }
+        set { textInputView.usesBlockCaret = newValue }
+    }
+
     /// Returns the undo manager used by the text view.
     override public var undoManager: UndoManager? {
         textInputView.undoManager
@@ -277,10 +283,10 @@ open class TextView: UIScrollView {
     /// The color of the insertion point. This can be used to control the color of the caret.
     public var insertionPointColor: UIColor {
         get {
-            textInputView.insertionPointColor
+            textInputView.configuredInsertionPointColor
         }
         set {
-            textInputView.insertionPointColor = newValue
+            textInputView.configuredInsertionPointColor = newValue
         }
     }
     /// The color of the selection bar. It is most common to set this to the same color as the color used for the insertion point.

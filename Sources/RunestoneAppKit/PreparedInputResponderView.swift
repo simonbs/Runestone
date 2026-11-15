@@ -13,6 +13,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
     }
 
+    private let blockCaret = AppKitBlockCaretView(frame: .zero)
     private let insertionIndicator = InsertionIndicator(frame: .zero)
     private weak var inputAdapter: PreparedInputEventAdapter?
     private weak var inputConnection: PreparedInputContextConnection?
@@ -47,8 +48,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     init(snapshot: NSAttributedString) {
         super.init(snapshot: snapshot, fallbackHeight: 16)
         insertionIndicator.displayMode = .hidden
+        blockCaret.isHidden = true
         insertionIndicator.setAccessibilityElement(false)
         addSubview(insertionIndicator)
+        addSubview(blockCaret)
     }
 
     required init?(coder: NSCoder) { nil }
@@ -70,6 +73,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         guard !disarmed else { return }
         disarmed = true
         insertionIndicator.displayMode = .hidden
+        blockCaret.isHidden = true
         endPointerSelection()
         verticalPreference = nil
         PreparedInputCommandInterpreter.resetSelectionExtension(in: self)
@@ -120,6 +124,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         focusRequested = false
         focusGeneration = UUID()
         insertionIndicator.displayMode = .hidden
+        blockCaret.isHidden = true
         inputConnection?.suspendForFocusLoss()
     }
 
@@ -1269,7 +1274,21 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         var caret: NSRect?
-        defer { updateInsertionIndicator(caret) }
+        var blockGlyph: String?
+        defer {
+            if displayConfiguration.usesBlockCaret {
+                insertionIndicator.displayMode = .hidden
+                if let caret, ownsKeyFocus, !disarmed, !isReadOnly {
+                    blockCaret.update(frame: caret, glyph: blockGlyph,
+                                      font: displayConfiguration.textFont ?? .monospacedSystemFont(ofSize: 13, weight: .regular))
+                } else {
+                    blockCaret.isHidden = true
+                }
+            } else {
+                blockCaret.isHidden = true
+                updateInsertionIndicator(caret)
+            }
+        }
         guard ownsKeyFocus, !disarmed, !isReadOnly, let connection = inputConnection else { return }
         connection.performResponderActivity { adapter, isCurrent in
             guard let selection = adapter.selectionStateForHost(),
@@ -1286,7 +1305,27 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 NSBezierPath(rect: NSRect(x: rect.minX, y: rect.maxY - 1, width: rect.width, height: 1)).fill()
             }
             caret = geometry.caretRect
+            if displayConfiguration.usesBlockCaret, let bar = caret {
+                (caret, blockGlyph) = blockCaretGeometry(at: selection.range.location, bar: bar)
+            }
         }
+    }
+
+    private func blockCaretGeometry(at location: Int, bar: NSRect) -> (NSRect, String?) {
+        let text = manager.stringView.string
+        var rect = bar
+        rect.size.width = max(1, displayConfiguration.characterWidth)
+        guard location < text.length else { return (rect, nil) }
+        let range = text.rangeOfComposedCharacterSequence(at: location)
+        let character = text.substring(with: range)
+        guard character.rangeOfCharacter(from: .newlines) == nil else { return (rect, nil) }
+        let next = InputCaretAffinityGeometry.documentRect(for: .init(location: NSMaxRange(range), affinity: nil), in: self)
+        if let next, abs(next.minY - rect.minY) < 0.5, abs(next.minX - rect.minX) > 0.5 {
+            rect.size.width = abs(next.minX - rect.minX)
+            rect.origin.x = min(next.minX, rect.minX)
+        }
+        let glyph = character.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : character
+        return (rect, glyph)
     }
 
     private func updateInsertionIndicator(_ caret: NSRect?) {

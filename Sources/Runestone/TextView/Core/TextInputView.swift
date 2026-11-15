@@ -378,10 +378,23 @@ final class TextInputView: UIView, UITextInput {
         selectionBeforeWritingTools = selectedRange
     }
 
-    @objc var insertionPointColor: UIColor = .label {
+    @objc var insertionPointColor: UIColor {
+        usesBlockCaret ? .clear : configuredInsertionPointColor
+    }
+
+    var usesBlockCaret = false {
         didSet {
-            if insertionPointColor != oldValue {
+            guard oldValue != usesBlockCaret else { return }
+            updateCaretColor()
+            setNeedsLayout()
+        }
+    }
+
+    var configuredInsertionPointColor: UIColor = .label {
+        didSet {
+            if configuredInsertionPointColor != oldValue {
                 updateCaretColor()
+                setNeedsLayout()
             }
         }
     }
@@ -942,6 +955,7 @@ final class TextInputView: UIView, UITextInput {
             layoutManager.markedRange = newValue
         }
     }
+    private let blockCaretView = BlockCaretView()
     private var floatingCaretView: FloatingCaretView?
     private var insertionPointColorBeforeFloatingBegan: UIColor = .label
     private var maximumLeadingCharacterPairComponentLength = 0
@@ -1049,6 +1063,7 @@ final class TextInputView: UIView, UITextInput {
         }
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if didBecomeFirstResponder {
+            setNeedsLayout()
             invalidateSpellChecking()
             delegate?.textInputViewDidBeginEditing(self)
         } else {
@@ -1065,6 +1080,7 @@ final class TextInputView: UIView, UITextInput {
     override func resignFirstResponder() -> Bool {
         let didResignFirstResponder = super.resignFirstResponder()
         if didResignFirstResponder {
+            blockCaretView.isHidden = true
             dismissSpellingMenu()
             delegate?.textInputViewDidEndEditing(self)
         }
@@ -1084,6 +1100,7 @@ final class TextInputView: UIView, UITextInput {
         checkVisibleSpellingIfNeeded()
         updateLegacySpellingMenuIfNeeded()
         writingToolsController?.layoutDidChange()
+        updateBlockCaret()
         if findResultPresentationView.isActive {
             bringSubviewToFront(findResultPresentationView)
             findResultPresentationView.updateLayoutIfNeeded(selectionRects: selectionRects(for:))
@@ -1296,6 +1313,7 @@ final class TextInputView: UIView, UITextInput {
 
     override func didMoveToWindow() {
         if window == nil {
+            blockCaretView.isHidden = true
             stopWritingTools()
             didDismissWritingTools()
         }
@@ -1451,8 +1469,8 @@ private extension TextInputView {
 extension TextInputView {
     func beginFloatingCursor(at point: CGPoint) {
         if floatingCaretView == nil, let position = closestPosition(to: point) {
-            insertionPointColorBeforeFloatingBegan = insertionPointColor
-            insertionPointColor = insertionPointColorBeforeFloatingBegan.withAlphaComponent(0.5)
+            insertionPointColorBeforeFloatingBegan = configuredInsertionPointColor
+            configuredInsertionPointColor = insertionPointColorBeforeFloatingBegan.withAlphaComponent(0.5)
             updateCaretColor()
             let caretRect = self.caretRect(for: position)
             let caretOrigin = CGPoint(x: point.x - caretRect.width / 2, y: point.y - caretRect.height / 2)
@@ -1461,6 +1479,7 @@ extension TextInputView {
             floatingCaretView.frame = CGRect(origin: caretOrigin, size: caretRect.size)
             addSubview(floatingCaretView)
             self.floatingCaretView = floatingCaretView
+            blockCaretView.isHidden = true
             delegate?.textInputViewDidBeginFloatingCursor(self)
         }
     }
@@ -1474,11 +1493,45 @@ extension TextInputView {
     }
 
     func endFloatingCursor() {
-        insertionPointColor = insertionPointColorBeforeFloatingBegan
+        configuredInsertionPointColor = insertionPointColorBeforeFloatingBegan
         updateCaretColor()
         floatingCaretView?.removeFromSuperview()
         floatingCaretView = nil
+        setNeedsLayout()
         delegate?.textInputViewDidEndFloatingCursor(self)
+    }
+
+    private func updateBlockCaret() {
+        guard usesBlockCaret, isFirstResponder, isEditing, window != nil, floatingCaretView == nil,
+              let selection = selectedRange, selection.length == 0 else {
+            blockCaretView.isHidden = true
+            return
+        }
+
+        let location = selection.location
+        let string = stringView.string
+        var rect = caretRect(at: location)
+        var glyph: String?
+        var width = ("M" as NSString).size(withAttributes: [.font: theme.font, .kern: kern]).width
+        if location < string.length {
+            let range = string.rangeOfComposedCharacterSequence(at: location)
+            let character = string.substring(with: range)
+            if character.rangeOfCharacter(from: .newlines) == nil {
+                let next = caretRectService.caretRect(at: NSMaxRange(range), allowMovingCaretToNextLineFragment: false)
+                if abs(next.minY - rect.minY) < 0.5, abs(next.minX - rect.minX) > 0.5 {
+                    width = abs(next.minX - rect.minX)
+                    rect.origin.x = min(rect.minX, next.minX)
+                }
+                if !character.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    glyph = character
+                }
+            }
+        }
+        rect.size.width = max(Caret.width, width)
+        if blockCaretView.superview == nil { addSubview(blockCaretView) }
+        bringSubviewToFront(blockCaretView)
+        blockCaretView.update(frame: rect, glyph: glyph, font: theme.font,
+                              color: configuredInsertionPointColor.resolvedColor(with: traitCollection))
     }
 
     private func updateCaretColor() {

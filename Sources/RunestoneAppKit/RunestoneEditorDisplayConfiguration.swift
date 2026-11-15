@@ -36,6 +36,8 @@ public struct RunestoneEditorDisplayConfiguration {
     public var characterWidth: CGFloat
     /// The editor font used to lay out empty lines.
     public var textFont: NSFont?
+    /// Draws a filled character cell at the insertion point.
+    public var usesBlockCaret: Bool = false
     public var lineHeightMultiplier: CGFloat
     public var kern: CGFloat
     public var verticalOverscrollFactor: CGFloat
