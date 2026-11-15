@@ -30,10 +30,9 @@ final class BlockCaretView: UILabel {
         isHidden = false
         if needsBlink {
             let animation = CAKeyframeAnimation(keyPath: "opacity")
-            animation.values = [1, 0]
-            animation.keyTimes = [0, 0.5]
-            animation.calculationMode = .discrete
-            animation.duration = 1.1
+            animation.values = [1, 1, 0, 0, 1]
+            animation.keyTimes = [0, 0.5, 0.65, 0.85, 1]
+            animation.duration = 1
             animation.repeatCount = .infinity
             layer.add(animation, forKey: "blink")
         }
@@ -48,6 +47,10 @@ final class BlockCaretView: UILabel {
             channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
         }
         let luminance = 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+        // White reads more clearly on the standard blue caret.
+        if luminance <= 0.24, blue > green, green >= red, blue - red > 0.25 {
+            return .white
+        }
         return luminance > 0.179 ? .black : .white
     }
 }
