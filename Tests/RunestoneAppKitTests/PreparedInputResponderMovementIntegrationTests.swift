@@ -288,6 +288,8 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
 
         for (key, scalar, modifiers) in [(124, 0xF703, NSEvent.ModifierFlags.option),
                                           (124, 0xF703, [.option, .shift]),
+                                          (124, 0xF703, [.command, .shift]),
+                                          (123, 0xF702, [.command]),
                                           (124, 0xF703, [.command]),
                                           (123, 0xF702, [.command])] {
             let event = try keyboardEvent(key: key, scalar: scalar, modifiers: modifiers)
@@ -295,7 +297,7 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
             bindings.interpretKeyEvents([event])
             native.interpretKeyEvents([event])
             XCTAssertEqual(fixture.selection, native.selectedRange())
-            XCTAssertNotNil(InputScreenCaretGeometry.rect(at: fixture.selection.upperBound, in: fixture.view))
+            XCTAssertNotNil(InputScreenCaretGeometry.rect(at: fixture.selectionState?.activeLocation ?? fixture.selection.location, in: fixture.view))
         }
     }
 

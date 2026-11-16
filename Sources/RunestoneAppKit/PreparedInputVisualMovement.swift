@@ -255,9 +255,17 @@ enum PreparedInputVisualMovement {
     /// If either edge is clipped, return nil rather than guessing the unseen
     /// destination. Caret affinity follows the existing primary-caret geometry.
     static func lineEdge(from location: Int, edge: Edge, in view: ReadOnlyDocumentView) -> Int? {
-        guard let context = context(in: view),
-              let caret = InputScreenCaretGeometry.rect(at: location, in: view),
-              let row = sourceRow(caret: caret, context: context, view: view) else { return nil }
+        guard let context = context(in: view) else { return nil }
+        let caret: NSRect
+        if let visible = InputScreenCaretGeometry.rect(at: location, in: view) {
+            caret = visible
+        } else if let clipped = view.horizontallyClippedMovementRect(
+            for: .init(location: location, affinity: nil), viewport: context.layout.viewport) {
+            caret = context.window.convertToScreen(view.convert(clipped, to: nil))
+        } else {
+            return nil
+        }
+        guard let row = sourceRow(caret: caret, context: context, view: view) else { return nil }
         guard let placement = row.placement else {
             return stable(context, view: view) ? row.line.line.location : nil
         }
