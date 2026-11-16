@@ -269,6 +269,69 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         fixture.disconnect()
     }
 
+    func testUnwrappedWordAndLineKeysMatchNativeTextView() throws {
+        let text = String(repeating: "word ", count: 1_001) + "last"
+        let fixture = try MovementIntegrationFixture(text)
+        defer { fixture.disconnect() }
+        fixture.scroll.hasHorizontalScroller = true
+        fixture.view.displayConfiguration.isLineWrappingEnabled = false
+        fixture.view.updateViewport()
+        let native = NSTextView(frame: NSRect(x: 0, y: 0, width: 240, height: 130))
+        native.isHorizontallyResizable = true
+        native.textContainer?.widthTracksTextView = false
+        native.textContainer?.containerSize.width = .greatestFiniteMagnitude
+        native.string = text
+        let edge = try XCTUnwrap((1..<100).first { InputScreenCaretGeometry.rect(at: $0, in: fixture.view) == nil })
+        let initial = NSRange(location: edge - 1, length: 0)
+        try fixture.setSelection(initial)
+        native.setSelectedRange(initial)
+
+        for (key, scalar, modifiers) in [(124, 0xF703, NSEvent.ModifierFlags.option),
+                                          (124, 0xF703, [.option, .shift]),
+                                          (124, 0xF703, [.command]),
+                                          (123, 0xF702, [.command])] {
+            let event = try keyboardEvent(key: key, scalar: scalar, modifiers: modifiers)
+            let bindings = MovementKeyBindings { XCTAssertTrue(fixture.send($0)) }
+            bindings.interpretKeyEvents([event])
+            native.interpretKeyEvents([event])
+            XCTAssertEqual(fixture.selection, native.selectedRange())
+            XCTAssertNotNil(InputScreenCaretGeometry.rect(at: fixture.selection.upperBound, in: fixture.view))
+        }
+    }
+
+    func testPageHomeEndAndCenterKeyEventsScrollWithoutChangingSelection() throws {
+        let fixture = try MovementIntegrationFixture((0..<60).map { "line \($0)" }.joined(separator: "\n"))
+        defer { fixture.disconnect() }
+        let caret = NSRange(location: 35, length: 0)
+        try fixture.setSelection(caret)
+        let bindings = MovementKeyBindings { XCTAssertTrue(fixture.send($0)) }
+        func press(_ key: Int, _ scalar: Int, _ modifiers: NSEvent.ModifierFlags = []) throws {
+            bindings.interpretKeyEvents([try keyboardEvent(key: key, scalar: scalar, modifiers: modifiers)])
+            XCTAssertEqual(fixture.selection, caret)
+        }
+        let clip = fixture.scroll.contentView
+        try press(121, 0xF72D)
+        let firstPage = clip.bounds.minY
+        XCTAssertGreaterThan(firstPage, 0)
+        try press(116, 0xF72C)
+        XCTAssertEqual(clip.bounds.minY, 0)
+        try press(119, 0xF72B)
+        XCTAssertGreaterThan(clip.bounds.minY, firstPage)
+        try press(115, 0xF729)
+        XCTAssertEqual(clip.bounds.minY, 0)
+        try press(37, 0x006C, .control)
+        let screenCaret = try XCTUnwrap(InputScreenCaretGeometry.rect(at: caret.location, in: fixture.view))
+        let center = fixture.view.convert(fixture.window.convertFromScreen(screenCaret), from: nil).midY
+        XCTAssertEqual(center, clip.bounds.midY, accuracy: 1)
+    }
+
+    private func keyboardEvent(key: Int, scalar: Int, modifiers: NSEvent.ModifierFlags) throws -> NSEvent {
+        let characters = String(try XCTUnwrap(UnicodeScalar(scalar)))
+        return try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: modifiers,
+                                              timestamp: 0, windowNumber: 0, context: nil, characters: characters,
+                                              charactersIgnoringModifiers: characters, isARepeat: false, keyCode: UInt16(key)))
+    }
+
     func testHorizontalArrowsRevealUnwrappedTextAcrossBothClipEdges() throws {
         let fixture = try MovementIntegrationFixture(String(repeating: "a", count: 5_000))
         defer { fixture.disconnect() }
@@ -760,6 +823,21 @@ private struct MovementNoPasteboard: PreparedInputClipboardCommand.Pasteboard {
     var hasPlainText: Bool { false }
     func readPlainText() -> String? { nil }
     func writePlainText(_ value: String) -> Bool { false }
+}
+
+private final class MovementKeyBindings: NSView {
+    private let onCommand: (String) -> Void
+
+    init(onCommand: @escaping (String) -> Void) {
+        self.onCommand = onCommand
+        super.init(frame: .zero)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    override func doCommand(by selector: Selector) {
+        onCommand(NSStringFromSelector(selector))
+    }
 }
 
 private final class MovementIntegrationFixture {

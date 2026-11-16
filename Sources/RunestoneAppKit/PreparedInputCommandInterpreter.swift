@@ -253,7 +253,7 @@ enum PreparedInputCommandInterpreter {
     /// Foundation word ranges handle scripts and combining marks. An emoji or
     /// other symbol in the intervening gap remains an independently reachable
     /// grapheme instead of being silently skipped with punctuation/whitespace.
-    private static func wordBoundaryBackward(from offset: Int, in text: NSString) -> Int {
+    static func wordBoundaryBackward(from offset: Int, in text: NSString) -> Int {
         guard offset > 0 else { return 0 }
         var word: NSRange?
         text.enumerateSubstrings(in: NSRange(location: 0, length: offset),
@@ -271,7 +271,7 @@ enum PreparedInputCommandInterpreter {
         return word?.location ?? 0
     }
 
-    private static func wordBoundaryForward(from offset: Int, in text: NSString) -> Int {
+    static func wordBoundaryForward(from offset: Int, in text: NSString) -> Int {
         guard offset < text.length else { return text.length }
         var word: NSRange?
         text.enumerateSubstrings(in: NSRange(location: offset, length: text.length - offset),

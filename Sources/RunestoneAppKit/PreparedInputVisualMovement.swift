@@ -235,6 +235,22 @@ enum PreparedInputVisualMovement {
         return visibleStop(VisualCaretStop(target: resolved, x: x), row: next, context: context, view: view)
     }
 
+    static func unwrappedWordDestination(from location: Int, direction: HorizontalDirection,
+                                         in view: ReadOnlyDocumentView) -> Int? {
+        guard !view.displayConfiguration.isLineWrappingEnabled, let context = context(in: view),
+              let caret = InputScreenCaretGeometry.rect(at: location, in: view),
+              let row = sourceRow(caret: caret, context: context, view: view),
+              containsRightToLeftRun(row) == false else { return nil }
+        let text = view.manager.stringView.string
+        let target = direction == .left
+            ? PreparedInputCommandInterpreter.wordBoundaryBackward(from: location, in: text)
+            : PreparedInputCommandInterpreter.wordBoundaryForward(from: location, in: text)
+        let line = row.line.line
+        guard target >= line.location, target <= line.location + line.data.length,
+              validBoundary(target, in: text), stable(context, view: view) else { return nil }
+        return target
+    }
+
     /// Return the visual left or right edge of the current visible fragment.
     /// If either edge is clipped, return nil rather than guessing the unseen
     /// destination. Caret affinity follows the existing primary-caret geometry.
@@ -244,6 +260,16 @@ enum PreparedInputVisualMovement {
               let row = sourceRow(caret: caret, context: context, view: view) else { return nil }
         guard let placement = row.placement else {
             return stable(context, view: view) ? row.line.line.location : nil
+        }
+        if !view.displayConfiguration.isLineWrappingEnabled, stable(context, view: view) {
+            if containsRightToLeftRun(row) == true {
+                let stops = visualCaretStops(for: row, in: view)
+                return (edge == .beginning ? stops?.first : stops?.last)?.target.location
+            }
+            guard let edges = horizontalEdges(for: row, in: view),
+                  let x = (edge == .beginning ? edges.map(\.x).min() : edges.map(\.x).max()),
+                  let group = group(at: x, in: edges) else { return nil }
+            return uniqueTarget(in: group)
         }
         guard let (left, right) = caretBounds(of: placement),
               left >= context.layout.viewport.minX, right < context.layout.viewport.maxX else { return nil }

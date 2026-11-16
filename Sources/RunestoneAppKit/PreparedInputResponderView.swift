@@ -468,6 +468,12 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     override func moveToBeginningOfDocumentAndModifySelection(_ sender: Any?) { performStandardCommand("moveToBeginningOfDocumentAndModifySelection:") }
     override func moveToEndOfDocumentAndModifySelection(_ sender: Any?) { performStandardCommand("moveToEndOfDocumentAndModifySelection:") }
 
+    override func scrollPageUp(_ sender: Any?) { performStandardCommand("scrollPageUp:") }
+    override func scrollPageDown(_ sender: Any?) { performStandardCommand("scrollPageDown:") }
+    override func scrollToBeginningOfDocument(_ sender: Any?) { performStandardCommand("scrollToBeginningOfDocument:") }
+    override func scrollToEndOfDocument(_ sender: Any?) { performStandardCommand("scrollToEndOfDocument:") }
+    override func centerSelectionInVisibleArea(_ sender: Any?) { performStandardCommand("centerSelectionInVisibleArea:") }
+
     /// AppKit calls this before enabling an edit menu item. Actual execution
     /// repeats all revision, composition and gate checks.
     func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
@@ -609,6 +615,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         }
         verticalPreference = nil
         switch name {
+        case "scrollPageUp:", "scrollPageDown:", "scrollToBeginningOfDocument:", "scrollToEndOfDocument:",
+             "centerSelectionInVisibleArea:":
+            scrollForKeyboardCommand(name, adapter: adapter, isAvailable: isAvailable)
+            return
         case "copy:", "cut:", "paste:":
             let operation: PreparedInputClipboardCommand.Operation
             switch NSStringFromSelector(selector) {
@@ -635,6 +645,44 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         case let .handled(attempt):
             if let failure = attempt.failure { connection.recordInputFailure(operation: .command, failure: failure) }
             if attempt.outcome != .processed { connection.requestReset() }
+        }
+    }
+
+    private func scrollForKeyboardCommand(_ name: String, adapter: PreparedInputEventAdapter,
+                                          isAvailable: @escaping () -> Bool) {
+        guard isAvailable(), let scroll = enclosingScrollView, scroll.documentView === self else { return }
+        let clip = scroll.contentView
+        var proposed = clip.bounds
+        switch name {
+        case "scrollPageUp:", "scrollPageDown:":
+            let page = max(1, proposed.height - scroll.verticalPageScroll)
+            proposed.origin.y += name == "scrollPageUp:" ? -page : page
+        case "scrollToBeginningOfDocument:":
+            proposed.origin.y = bounds.minY
+        case "scrollToEndOfDocument:":
+            proposed.origin.y = bounds.maxY - proposed.height
+        default:
+            guard let state = adapter.selectionStateForHost(),
+                  let check = movementViewportCheck(selection: state.range, adapter: adapter, isAvailable: isAvailable)
+            else { return }
+            let target = InputCaretTarget(location: state.activeLocation, affinity: state.affinity)
+            if InputCaretAffinityGeometry.documentRect(for: target, in: self) == nil {
+                guard revealOffscreenMovementCaret(target, clock: inputViewportClock, isCurrent: check) == .progressed,
+                      check() else { return }
+            }
+            guard let rect = InputCaretAffinityGeometry.documentRect(for: target, in: self) else { return }
+            proposed = clip.bounds
+            proposed.origin.y = rect.midY - proposed.height / 2
+            if !displayConfiguration.isLineWrappingEnabled,
+               rect.minX < proposed.minX || rect.maxX > proposed.maxX {
+                proposed.origin.x = rect.midX - proposed.width / 2
+            }
+        }
+        let origin = clip.constrainBoundsRect(proposed).origin
+        guard isAvailable(), enclosingScrollView === scroll, scroll.documentView === self else { return }
+        clip.scroll(to: origin)
+        if isAvailable(), enclosingScrollView === scroll, scroll.documentView === self {
+            scroll.reflectScrolledClipView(clip)
         }
     }
 
@@ -720,7 +768,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             else { target = nil }
         } else if isHorizontal {
             let horizontalDirection: PreparedInputVisualMovement.HorizontalDirection = backward ? .left : .right
-            if isWord {
+            if isWord, let location = PreparedInputVisualMovement.unwrappedWordDestination(
+                from: origin, direction: horizontalDirection, in: self) {
+                target = InputCaretTarget(location: location, affinity: nil)
+            } else if isWord {
                 switch PreparedInputVisualWordMovement.destination(from: origin, direction: horizontalDirection, in: self) {
                 case let .moved(location): target = InputCaretTarget(location: location, affinity: nil)
                 case .boundary: target = originTarget
