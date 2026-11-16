@@ -329,7 +329,8 @@ public class ReadOnlyDocumentView: NSView {
               target.affinity.map({ $0.layoutRevision == inputLayoutRevision }) ?? true,
               movementCaretRect(for: target) == nil,
               let line = manager.line(containingCharacterAt: target.location), !manager.isLineHidden(line.index),
-              line.data.totalLength <= PreparedInputViewportWorkBudget.maximumLineUnits else { return nil }
+              line.data.totalLength <= PreparedInputViewportWorkBudget.maximumLineUnits ||
+                horizontallyClippedMovementRect(for: target, viewport: clip.bounds) != nil else { return nil }
         return line
     }
 
@@ -343,6 +344,7 @@ public class ReadOnlyDocumentView: NSView {
               let budget = PreparedInputViewportWorkBudget(clock: clock, timeLimit: 0.016) else { return nil }
         let clip = scroll.contentView
         let initial = clip.bounds
+        let horizontalRect = horizontallyClippedMovementRect(for: target, viewport: initial)
         let geometry = inputGeometryRevision
         let layoutRevision = inputLayoutRevision
 
@@ -354,9 +356,9 @@ public class ReadOnlyDocumentView: NSView {
 
         let result = withBoundedViewportWork(budget) { () -> PreparedInputViewportStep.Outcome in
             guard current(), clip.bounds == initial, inputGeometryRevision == geometry,
-                  budget.consume(line) else { return .refusedBeforeScroll }
+                  horizontalRect != nil || budget.consume(line) else { return .refusedBeforeScroll }
             let previousHeight = line.data.lineHeight
-            let rect = prepareMovementCaretRect(target, line: line)
+            let rect = horizontalRect ?? prepareMovementCaretRect(target, line: line)
             // A newly measured line above the viewport can invalidate its row
             // positions even if the caret cannot be reached within this budget.
             defer {
@@ -371,7 +373,11 @@ public class ReadOnlyDocumentView: NSView {
             if frame.size != size { setFrameSize(size) }
             guard current(), clip.bounds == initial, budget.check() else { return .unavailable }
             var proposed = initial
-            if rect.minX < initial.minX || rect.maxX > initial.maxX { proposed.origin.x = rect.midX - initial.width / 2 }
+            if horizontalRect != nil {
+                proposed.origin.x = rect.minX < initial.minX ? rect.minX : rect.maxX - initial.width
+            } else if rect.minX < initial.minX || rect.maxX > initial.maxX {
+                proposed.origin.x = rect.midX - initial.width / 2
+            }
             if rect.minY < initial.minY || rect.maxY > initial.maxY { proposed.origin.y = rect.midY - initial.height / 2 }
             let constrained = clip.constrainBoundsRect(proposed)
             guard current(), clip.bounds == initial, constrained.size == initial.size,
@@ -390,6 +396,14 @@ public class ReadOnlyDocumentView: NSView {
         if result == .progressed, current(), movementCaretRect(for: target) != nil { return .progressed }
         if clip.bounds != initial || inputGeometryRevision != geometry { return .viewportChanged }
         return result == .unavailable ? .unavailable : .refusedBeforeScroll
+    }
+
+    func horizontallyClippedMovementRect(for target: InputCaretTarget, viewport: NSRect) -> NSRect? {
+        guard !displayConfiguration.isLineWrappingEnabled,
+              let rect = InputCaretAffinityGeometry.documentRect(for: target, in: self),
+              rect.minY < viewport.maxY, rect.maxY > viewport.minY,
+              rect.maxX <= viewport.minX || rect.minX >= viewport.maxX else { return nil }
+        return rect
     }
 
     private func movementCaretRect(for target: InputCaretTarget) -> NSRect? {
@@ -1080,7 +1094,18 @@ public class ReadOnlyDocumentView: NSView {
             }
             let requested = clip.bounds
             guard boundedViewportBudget?.check() ?? true else { visibleLayout = nil; return }
-            guard let result = coordinator.layout(in: requested, budget: boundedViewportBudget) else { visibleLayout = nil; return }
+            let result: ViewportLayoutCoordinator.Result
+            if boundedViewportBudget != nil, !displayConfiguration.isLineWrappingEnabled,
+               let existing = visibleLayout, existing.isComplete,
+               existing.viewport.size == requested.size, existing.viewport.minY == requested.minY {
+                // Horizontal scrolling does not change the prepared rows or glyph positions.
+                result = .init(viewport: requested, contentOffsetAdjustmentY: 0, lines: existing.lines, isComplete: true)
+            } else if let updated = coordinator.layout(in: requested, budget: boundedViewportBudget) {
+                result = updated
+            } else {
+                visibleLayout = nil
+                return
+            }
             let size = documentFrameSize(for: clip)
             if frame.size != size { setFrameSize(size) }
             guard !isRetired, contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }

@@ -673,11 +673,18 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         if isHorizontal && selection.length > 0 {
             // Pick the visually nearer endpoint rather than assuming that an
             // RTL run's logical order is its left-to-right order.
-            guard let a = InputScreenCaretGeometry.rect(at: selection.location, in: self),
-                  let b = InputScreenCaretGeometry.rect(at: selection.upperBound, in: self),
-                  let window = window else { return nil }
-            let first = self.convert(window.convertFromScreen(a), from: nil)
-            let last = self.convert(window.convertFromScreen(b), from: nil)
+            guard let window else { return nil }
+            func endpoint(at location: Int) -> NSRect? {
+                if let rect = InputScreenCaretGeometry.rect(at: location, in: self) {
+                    return convert(window.convertFromScreen(rect), from: nil)
+                }
+                guard !displayConfiguration.isLineWrappingEnabled,
+                      let clip = enclosingScrollView?.contentView, let layout = visibleLayout,
+                      layout.isComplete, layout.viewport == clip.bounds else { return nil }
+                return InputCaretAffinityGeometry.documentRect(for: .init(location: location, affinity: nil), in: self)
+            }
+            guard let first = endpoint(at: selection.location),
+                  let last = endpoint(at: selection.upperBound) else { return nil }
             let firstBefore = abs(first.midY - last.midY) > 0.5 ? first.midY < last.midY : first.midX < last.midX
             guard abs(first.midY - last.midY) > 0.5 || abs(first.midX - last.midX) > 0.01 else { return nil }
             let chosen = (backward == firstBefore) ? selection.location : selection.upperBound
@@ -859,6 +866,17 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             connection.recordInputFailure(operation: .command,
                 failure: .init(reason: .unavailable, effect: viewportMayHaveChanged ? .mayHaveApplied : .notApplied))
             return
+        }
+        if let viewport = visibleLayout?.viewport,
+           horizontallyClippedMovementRect(for: destination.target, viewport: viewport) != nil,
+           let check = movementViewportCheck(selection: state.selection, adapter: adapter, isAvailable: isAvailable) {
+            let step = revealOffscreenMovementCaret(destination.target, clock: inputViewportClock, isCurrent: check)
+            guard step == .progressed, check() else {
+                verticalPreference = nil
+                connection.recordInputFailure(operation: .command,
+                    failure: .init(reason: .unavailable, effect: .mayHaveApplied))
+                return
+            }
         }
         switch PreparedInputCommandInterpreter.moveSelection(target: destination.target, selection: state.selection,
             extending: destination.extending, direction: destination.direction, adapter: adapter, view: self,

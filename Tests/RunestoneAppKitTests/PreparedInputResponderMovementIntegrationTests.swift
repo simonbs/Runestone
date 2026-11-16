@@ -269,6 +269,33 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         fixture.disconnect()
     }
 
+    func testHorizontalArrowsRevealUnwrappedTextAcrossBothClipEdges() throws {
+        let fixture = try MovementIntegrationFixture(String(repeating: "a", count: 5_000))
+        defer { fixture.disconnect() }
+        fixture.scroll.hasHorizontalScroller = true
+        fixture.view.displayConfiguration.isLineWrappingEnabled = false
+        fixture.view.updateViewport()
+        let initial = fixture.scroll.contentView.bounds
+        let edge = try XCTUnwrap((1..<150).first { InputScreenCaretGeometry.rect(at: $0, in: fixture.view) == nil })
+        try fixture.setSelection(NSRange(location: edge - 1, length: 0))
+
+        XCTAssertTrue(fixture.send("moveRightAndModifySelection:"))
+        XCTAssertEqual(fixture.selection, NSRange(location: edge - 1, length: 1))
+        XCTAssertGreaterThan(fixture.scroll.contentView.bounds.minX, initial.minX)
+        XCTAssertNotNil(InputScreenCaretGeometry.rect(at: edge, in: fixture.view))
+
+        for _ in 0..<5 { XCTAssertTrue(fixture.send("moveRightAndModifySelection:")) }
+        XCTAssertEqual(fixture.selection, NSRange(location: edge - 1, length: 6))
+
+        let firstVisible = try XCTUnwrap((0...edge).first { InputScreenCaretGeometry.rect(at: $0, in: fixture.view) != nil })
+        try fixture.setSelection(NSRange(location: firstVisible, length: 0))
+        let shifted = fixture.scroll.contentView.bounds
+        XCTAssertTrue(fixture.send("moveLeft:"))
+        XCTAssertEqual(fixture.selection, NSRange(location: firstVisible - 1, length: 0))
+        XCTAssertLessThan(fixture.scroll.contentView.bounds.minX, shifted.minX)
+        XCTAssertNotNil(InputScreenCaretGeometry.rect(at: firstVisible - 1, in: fixture.view))
+    }
+
     func testHorizontalArrowsTraverseEmptyLinesWithLineNumbers() throws {
         for separator in ["\n", "\r\n"] {
             let text = ["", "", "ddd", "", ""].joined(separator: separator)

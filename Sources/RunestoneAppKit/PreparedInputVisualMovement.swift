@@ -184,9 +184,15 @@ enum PreparedInputVisualMovement {
 
     private static func visibleStop(_ stop: VisualCaretStop, row: Row, context: Context,
                                     view: ReadOnlyDocumentView) -> TargetHorizontalResult {
-        guard isVisible(x: stop.x, row: row, context: context),
-              InputScreenCaretGeometry.rect(for: stop.target, in: view) != nil,
-              stable(context, view: view) else { return .unavailable }
+        guard stable(context, view: view) else { return .unavailable }
+        if isVisible(x: stop.x, row: row, context: context),
+           InputScreenCaretGeometry.rect(for: stop.target, in: view) != nil {
+            return .moved(stop.target)
+        }
+        // An unwrapped row has current glyph positions beyond the clip edges.
+        // Let the command reveal a destination on that row before moving there.
+        guard view.horizontallyClippedMovementRect(for: stop.target, viewport: context.layout.viewport) != nil
+        else { return .unavailable }
         return .moved(stop.target)
     }
 
