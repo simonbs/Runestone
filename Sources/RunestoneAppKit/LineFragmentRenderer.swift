@@ -27,14 +27,22 @@ public enum LineFragmentRenderer {
             drawOverlays(context)
             context.restoreGState()
         }, drawText: { context in
-            context.saveGState()
-            context.textMatrix = .identity
-            context.translateBy(x: 0, y: fragment.scaledSize.height)
-            context.scaleBy(x: 1, y: -1)
-            context.textPosition = CGPoint(x: 0, y: fragment.verticalGeometry.coreTextBaseline)
-            CTLineDraw(fragment.line, context)
-            context.restoreGState()
+            drawGlyphs(fragment, in: context)
         })
+    }
+
+    static func drawGlyphs(_ fragment: LineFragment, in context: CGContext) {
+        let originalTextMatrix = context.textMatrix
+        let originalTextPosition = context.textPosition
+        context.saveGState()
+        context.textMatrix = .identity
+        context.translateBy(x: 0, y: fragment.scaledSize.height)
+        context.scaleBy(x: 1, y: -1)
+        context.textPosition = CGPoint(x: 0, y: fragment.verticalGeometry.coreTextBaseline)
+        CTLineDraw(fragment.line, context)
+        context.restoreGState()
+        context.textMatrix = originalTextMatrix
+        context.textPosition = originalTextPosition
     }
 }
 #endif

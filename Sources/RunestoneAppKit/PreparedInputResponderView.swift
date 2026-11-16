@@ -1274,13 +1274,12 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         var caret: NSRect?
-        var blockGlyph: String?
+        var blockPlacement: LogicalLineLayoutController.Placement?
         defer {
             if displayConfiguration.usesBlockCaret {
                 insertionIndicator.displayMode = .hidden
                 if let caret, ownsKeyFocus, !disarmed, !isReadOnly {
-                    blockCaret.update(frame: caret, glyph: blockGlyph,
-                                      font: displayConfiguration.textFont ?? .monospacedSystemFont(ofSize: 13, weight: .regular),
+                    blockCaret.update(frame: caret, placement: blockPlacement,
                                       color: displayConfiguration.caretColor ?? .textInsertionPointColor)
                 } else {
                     blockCaret.isHidden = true
@@ -1307,12 +1306,12 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             }
             caret = geometry.caretRect
             if displayConfiguration.usesBlockCaret, let bar = caret {
-                (caret, blockGlyph) = blockCaretGeometry(at: selection.range.location, bar: bar)
+                (caret, blockPlacement) = blockCaretGeometry(at: selection.range.location, bar: bar)
             }
         }
     }
 
-    private func blockCaretGeometry(at location: Int, bar: NSRect) -> (NSRect, String?) {
+    private func blockCaretGeometry(at location: Int, bar: NSRect) -> (NSRect, LogicalLineLayoutController.Placement?) {
         let text = manager.stringView.string
         var rect = bar
         rect.size.width = max(1, displayConfiguration.characterWidth)
@@ -1320,13 +1319,19 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         let range = text.rangeOfComposedCharacterSequence(at: location)
         let character = text.substring(with: range)
         guard character.rangeOfCharacter(from: .newlines) == nil else { return (rect, nil) }
-        let next = InputCaretAffinityGeometry.documentRect(for: .init(location: NSMaxRange(range), affinity: nil), in: self)
-        if let next, abs(next.minY - rect.minY) < 0.5, abs(next.minX - rect.minX) > 0.5 {
-            rect.size.width = abs(next.minX - rect.minX)
-            rect.origin.x = min(next.minX, rect.minX)
+        guard let line = manager.line(containingCharacterAt: location),
+              let layout = visibleLayout?.lines.first(where: { $0.line === line }),
+              let placement = layout.placements.first(where: {
+                  NSLocationInRange(location, $0.documentRange) &&
+                      bar.midY >= $0.frame.minY && bar.midY < $0.frame.maxY
+              }) else { return (rect, nil) }
+        if let next = InputCaretGeometry.rect(for: placement, lineStart: line.location,
+                                             documentOffset: range.upperBound, caretWidth: bar.width),
+           abs(next.minX - bar.minX) > 0.5 {
+            rect.size.width = abs(next.minX - bar.minX)
+            rect.origin.x = min(next.minX, bar.minX)
         }
-        let glyph = character.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : character
-        return (rect, glyph)
+        return (rect, placement)
     }
 
     private func updateInsertionIndicator(_ caret: NSRect?) {

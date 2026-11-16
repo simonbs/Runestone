@@ -1,10 +1,10 @@
 #if canImport(AppKit)
 import AppKit
+import RunestoneEngine
 
 final class AppKitBlockCaretView: NSView {
     private var fill = NSColor.textInsertionPointColor
-    private var glyph: String?
-    private var font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+    private var placement: LogicalLineLayoutController.Placement?
 
     override var isFlipped: Bool { true }
 
@@ -25,13 +25,13 @@ final class AppKitBlockCaretView: NSView {
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-    func update(frame: NSRect, glyph: String?, font: NSFont, color: NSColor) {
+    func update(frame: NSRect, placement: LogicalLineLayoutController.Placement?, color: NSColor) {
         let color = color.withAlphaComponent(1)
-        let restartBlink = isHidden || self.frame != frame || self.glyph != glyph
-        if restartBlink || self.font != font || fill != color {
+        let restartBlink = isHidden || self.frame != frame
+        if restartBlink || self.placement?.fragment !== placement?.fragment ||
+            self.placement?.frame != placement?.frame || fill != color {
             self.frame = frame
-            self.glyph = glyph
-            self.font = font
+            self.placement = placement
             fill = color
             needsDisplay = true
         }
@@ -56,17 +56,20 @@ final class AppKitBlockCaretView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         fill.setFill()
         bounds.fill()
-        guard let glyph else { return }
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: Self.contrastColor(for: fill)
-        ]
-        let text = NSAttributedString(string: glyph, attributes: attributes)
-        let size = text.size()
-        NSGraphicsContext.saveGraphicsState()
-        NSBezierPath(rect: bounds).addClip()
-        text.draw(at: NSPoint(x: (bounds.width - size.width) / 2, y: (bounds.height - size.height) / 2))
-        NSGraphicsContext.restoreGraphicsState()
+        guard let placement, let context = NSGraphicsContext.current?.cgContext else { return }
+        context.saveGState()
+        context.clip(to: bounds)
+        // Mask the new ink with the already-shaped glyphs at their original baseline.
+        context.beginTransparencyLayer(auxiliaryInfo: nil)
+        context.saveGState()
+        context.translateBy(x: placement.frame.minX - frame.minX, y: placement.frame.minY - frame.minY)
+        LineFragmentRenderer.drawGlyphs(placement.fragment, in: context)
+        context.restoreGState()
+        context.setBlendMode(.sourceIn)
+        context.setFillColor(Self.contrastColor(for: fill).cgColor)
+        context.fill(bounds)
+        context.endTransparencyLayer()
+        context.restoreGState()
     }
 
     static func contrastColor(for color: NSColor) -> NSColor {
