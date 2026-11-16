@@ -269,6 +269,28 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         fixture.disconnect()
     }
 
+    func testParagraphKeysAndDownRevealCaretOnUnwrappedLines() throws {
+        let long = String(repeating: "a", count: 300)
+        let fixture = try MovementIntegrationFixture(long + "\nshort\n" + long)
+        defer { fixture.disconnect() }
+        fixture.scroll.hasHorizontalScroller = true
+        fixture.view.displayConfiguration.isLineWrappingEnabled = false
+        fixture.view.updateViewport()
+        try fixture.setSelection(NSRange(location: 0, length: 0))
+        let bindings = MovementKeyBindings { XCTAssertTrue(fixture.send($0)) }
+        for (key, scalar, modifiers, expected) in [
+            (14, 0x0065, NSEvent.ModifierFlags.control, 300),
+            (125, 0xF701, [], 306),
+            (125, 0xF701, [], 607),
+            (0, 0x0061, [.control], 307),
+            (14, 0x0065, [.control], 607),
+        ] {
+            bindings.interpretKeyEvents([try keyboardEvent(key: key, scalar: scalar, modifiers: modifiers)])
+            XCTAssertEqual(fixture.selection, NSRange(location: expected, length: 0))
+            XCTAssertNotNil(InputScreenCaretGeometry.rect(at: expected, in: fixture.view))
+        }
+    }
+
     func testUnwrappedWordAndLineKeysMatchNativeTextView() throws {
         let text = String(repeating: "word ", count: 1_001) + "last"
         let fixture = try MovementIntegrationFixture(text)

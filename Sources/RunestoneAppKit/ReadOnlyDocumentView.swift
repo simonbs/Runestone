@@ -414,7 +414,7 @@ public class ReadOnlyDocumentView: NSView {
     private func prepareMovementCaretRect(_ target: InputCaretTarget, line: DocumentLineNode) -> NSRect? {
         if line.data.length == 0 {
             guard target.affinity == nil else { return nil }
-            return NSRect(x: 0, y: line.yPosition, width: 1, height: line.data.lineHeight)
+            return emptyLineCaretRect(y: line.yPosition, rowHeight: line.data.lineHeight, width: 1)
         }
         guard let controller = controller(for: line) else { return nil }
         let lookup = target.affinity?.wrapSide == .upstream ? target.location - 1 : target.location
@@ -1595,7 +1595,7 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     private func documentFrameSize(for clip: NSClipView) -> NSSize {
-        let baseWidth = displayConfiguration.isLineWrappingEnabled ? layoutWidth : max(layoutWidth, measuredUnwrappedContentWidth)
+        let baseWidth = displayConfiguration.isLineWrappingEnabled ? layoutWidth : max(layoutWidth, measuredUnwrappedContentWidth + 2)
         let baseHeight = max(clip.bounds.height, manager.contentHeight)
         let horizontalScrollable = max(0, baseWidth - clip.bounds.width)
         let verticalScrollable = max(0, baseHeight - clip.bounds.height)

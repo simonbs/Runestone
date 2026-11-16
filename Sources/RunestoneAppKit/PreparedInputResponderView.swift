@@ -644,7 +644,14 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             connection.recordInputFailure(operation: .command, failure: failure)
         case let .handled(attempt):
             if let failure = attempt.failure { connection.recordInputFailure(operation: .command, failure: failure) }
-            if attempt.outcome != .processed { connection.requestReset() }
+            if attempt.outcome != .processed {
+                connection.requestReset()
+            } else if name.hasPrefix("move"),
+                      let selection = adapter.selectionStateForHost(),
+                      let check = movementViewportCheck(selection: selection.range, adapter: adapter, isAvailable: isAvailable) {
+                let target = InputCaretTarget(location: selection.activeLocation, affinity: selection.affinity)
+                _ = revealOffscreenMovementCaret(target, clock: inputViewportClock, isCurrent: check)
+            }
         }
     }
 
@@ -918,6 +925,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 failure: .init(reason: .unavailable, effect: viewportMayHaveChanged ? .mayHaveApplied : .notApplied))
             return
         }
+        let previousScrollX = enclosingScrollView?.contentView.bounds.minX ?? 0
         if let viewport = visibleLayout?.viewport,
            horizontallyClippedMovementRect(for: destination.target, viewport: viewport) != nil,
            let check = movementViewportCheck(selection: state.selection, adapter: adapter, isAvailable: isAvailable) {
@@ -936,7 +944,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             if let failure = attempt.failure { connection.recordInputFailure(operation: .command, failure: failure) }
             if attempt.outcome != .processed { connection.requestReset(); verticalPreference = nil }
             else if let x = destination.preferredX, let current = adapter.inputStateForHost() {
-                verticalPreference = VerticalPreference(x: x, selection: current.selection, selectionRevision: inputSelectionRevision,
+                let scrollX = enclosingScrollView?.contentView.bounds.minX ?? previousScrollX
+                verticalPreference = VerticalPreference(x: x - (scrollX - previousScrollX), selection: current.selection, selectionRevision: inputSelectionRevision,
                                                         contentRevision: contentRevision, geometryRevision: inputGeometryRevision)
             } else { verticalPreference = nil }
         case let .blocked(failure):

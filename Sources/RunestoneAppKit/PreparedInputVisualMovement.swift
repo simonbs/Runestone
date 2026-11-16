@@ -80,7 +80,8 @@ enum PreparedInputVisualMovement {
         let x = preferredScreenX ?? (target.affinity?.bidirectionalSide == nil ? caret.midX : caret.minX)
         guard x.isFinite,
               let resolved = hitTarget(row: rows[next], screenX: x, context: context, view: view),
-              InputScreenCaretGeometry.rect(for: resolved, in: view) != nil,
+              (InputScreenCaretGeometry.rect(for: resolved, in: view) != nil ||
+                view.horizontallyClippedMovementRect(for: resolved, viewport: context.layout.viewport) != nil),
               stable(context, view: view) else { return nil }
         return (resolved, x)
     }
@@ -704,12 +705,19 @@ enum PreparedInputVisualMovement {
         let sample = context.window.convertPoint(toScreen: view.convert(
             NSPoint(x: context.layout.viewport.midX, y: (top + bottom) / 2), to: nil))
         let documentPoint = view.convert(context.window.convertPoint(fromScreen: NSPoint(x: screenX, y: sample.y)), from: nil)
-        guard context.layout.viewport.contains(documentPoint) else { return nil }
+        guard documentPoint.x.isFinite else { return nil }
         let documentX: CGFloat
         if let placement = row.placement, let (left, right) = caretBounds(of: placement) {
             documentX = min(right, max(left, documentPoint.x))
         } else { documentX = row.frame.minX }
-        guard documentX >= context.layout.viewport.minX, documentX < context.layout.viewport.maxX else { return nil }
+        if documentX < context.layout.viewport.minX || documentX >= context.layout.viewport.maxX {
+            guard !view.displayConfiguration.isLineWrappingEnabled else { return nil }
+            guard let placement = row.placement else {
+                return InputCaretTarget(location: row.line.line.location, affinity: nil)
+            }
+            return InputCaretAffinityGeometry.target(forDocumentPoint: NSPoint(x: documentX, y: (top + bottom) / 2),
+                                                     lineLayout: row.line, placement: placement, in: view)
+        }
         let target = context.window.convertPoint(toScreen: view.convert(
             NSPoint(x: documentX, y: (top + bottom) / 2), to: nil))
         return InputScreenRangeGeometry.caretTargetForPointer(for: target, in: view)
