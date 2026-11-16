@@ -322,6 +322,29 @@ public class ReadOnlyDocumentView: NSView {
         updateViewport()
     }
 
+    func blockCaretGeometry(at location: Int, bar: NSRect) -> (NSRect, LogicalLineLayoutController.Placement?) {
+        let text = manager.stringView.string
+        var rect = bar
+        rect.size.width = max(1, displayConfiguration.characterWidth)
+        guard location < text.length else { return (rect, nil) }
+        let range = text.rangeOfComposedCharacterSequence(at: location)
+        let character = text.substring(with: range)
+        guard character.rangeOfCharacter(from: .newlines) == nil else { return (rect, nil) }
+        guard let line = manager.line(containingCharacterAt: location),
+              let layout = visibleLayout?.lines.first(where: { $0.line === line }),
+              let placement = layout.placements.first(where: {
+                  NSLocationInRange(location, $0.documentRange) &&
+                      bar.midY >= $0.frame.minY && bar.midY < $0.frame.maxY
+              }) else { return (rect, nil) }
+        if let next = InputCaretGeometry.rect(for: placement, lineStart: line.location,
+                                             documentOffset: range.upperBound, caretWidth: bar.width),
+           abs(next.minX - bar.minX) > 0.5 {
+            rect.size.width = abs(next.minX - bar.minX)
+            rect.origin.x = min(next.minX, bar.minX)
+        }
+        return (rect, placement)
+    }
+
     func offscreenMovementLine(for target: InputCaretTarget) -> DocumentLineNode? {
         guard !isRetired, !updatingViewport, window != nil,
               let clip = enclosingScrollView?.contentView, let layout = visibleLayout,
@@ -338,13 +361,16 @@ public class ReadOnlyDocumentView: NSView {
     /// same input budget. The caller may recompute its command once after this
     /// returns current, visible geometry.
     func revealOffscreenMovementCaret(_ target: InputCaretTarget, clock: @escaping () -> TimeInterval,
+                                      revealFullCaret: Bool = false,
                                       isCurrent: () -> Bool) -> PreparedInputViewportStep.Outcome? {
-        guard let line = offscreenMovementLine(for: target),
-              let scroll = enclosingScrollView, let window,
+        guard let scroll = enclosingScrollView, let window,
               let budget = PreparedInputViewportWorkBudget(clock: clock, timeLimit: 0.016) else { return nil }
         let clip = scroll.contentView
         let initial = clip.bounds
-        let horizontalRect = horizontallyClippedMovementRect(for: target, viewport: initial)
+        let horizontalRect = horizontallyClippedMovementRect(for: target, viewport: initial,
+                                                              revealFullCaret: revealFullCaret)
+        guard let line = horizontalRect == nil ? offscreenMovementLine(for: target)
+                  : manager.line(containingCharacterAt: target.location) else { return nil }
         let geometry = inputGeometryRevision
         let layoutRevision = inputLayoutRevision
 
@@ -366,7 +392,7 @@ public class ReadOnlyDocumentView: NSView {
                     visibleLayout = nil
                 }
             }
-            guard let rect, !rect.intersects(initial), budget.check(), current(), clip.bounds == initial
+            guard let rect, horizontalRect != nil || !rect.intersects(initial), budget.check(), current(), clip.bounds == initial
             else { return .refusedBeforeScroll }
 
             let size = documentFrameSize(for: clip)
@@ -374,7 +400,9 @@ public class ReadOnlyDocumentView: NSView {
             guard current(), clip.bounds == initial, budget.check() else { return .unavailable }
             var proposed = initial
             if horizontalRect != nil {
-                proposed.origin.x = rect.minX < initial.minX ? rect.minX : rect.maxX - initial.width
+                let leftEdge = initial.minX + horizontalTextInset
+                proposed.origin.x = rect.minX < leftEdge ? floor(rect.minX - horizontalTextInset)
+                    : ceil(rect.maxX - initial.width)
             } else if rect.minX < initial.minX || rect.maxX > initial.maxX {
                 proposed.origin.x = rect.midX - initial.width / 2
             }
@@ -398,12 +426,17 @@ public class ReadOnlyDocumentView: NSView {
         return result == .unavailable ? .unavailable : .refusedBeforeScroll
     }
 
-    func horizontallyClippedMovementRect(for target: InputCaretTarget, viewport: NSRect) -> NSRect? {
-        guard !displayConfiguration.isLineWrappingEnabled,
-              let rect = InputCaretAffinityGeometry.documentRect(for: target, in: self),
-              rect.minY < viewport.maxY, rect.maxY > viewport.minY,
-              rect.maxX <= viewport.minX || rect.minX >= viewport.maxX else { return nil }
-        return rect
+    func horizontallyClippedMovementRect(for target: InputCaretTarget, viewport: NSRect,
+                                         revealFullCaret: Bool = false) -> NSRect? {
+        guard !displayConfiguration.isLineWrappingEnabled, !isRetired, !updatingViewport,
+              let layout = visibleLayout, layout.isComplete, layout.viewport == viewport,
+              let bar = InputCaretAffinityGeometry.documentRect(for: target, in: self),
+              bar.minY < viewport.maxY, bar.maxY > viewport.minY else { return nil }
+        if revealFullCaret {
+            let rect = displayConfiguration.usesBlockCaret ? blockCaretGeometry(at: target.location, bar: bar).0 : bar
+            return rect.minX < viewport.minX + horizontalTextInset || rect.maxX > viewport.maxX ? rect : nil
+        }
+        return bar.maxX <= viewport.minX || bar.minX >= viewport.maxX ? bar : nil
     }
 
     private func movementCaretRect(for target: InputCaretTarget) -> NSRect? {
@@ -450,6 +483,7 @@ public class ReadOnlyDocumentView: NSView {
     func updateDisplaySelection(_ selection: InputSelectionState) {
         guard !isRetired, displaySelection != selection else { return }
         displaySelection = selection
+        gutterView?.needsDisplay = true
         needsDisplay = true
     }
 
@@ -1032,6 +1066,7 @@ public class ReadOnlyDocumentView: NSView {
             updatingBounds = nil
             inputGeometryRevision = UUID()
             if isRetired { visibleLayout = nil; pendingViewportUpdate = false }
+            updateGutter()
             if boundedViewportBudget != nil {
                 if pendingViewportUpdate { visibleLayout = nil }
                 if !isRetired && previousGeometry != inputLayoutSignature() { inputInvalidation.invalidate() }
@@ -1186,10 +1221,54 @@ public class ReadOnlyDocumentView: NSView {
         return true
     }
 
+    private final class GutterView: NSView {
+        weak var editor: ReadOnlyDocumentView?
+        override var isFlipped: Bool { true }
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        override func draw(_ dirtyRect: NSRect) {
+            guard let editor, let layout = editor.visibleLayout,
+                  let context = NSGraphicsContext.current?.cgContext else { return }
+            context.saveGState()
+            context.clip(to: bounds)
+            context.translateBy(x: 0, y: -frame.minY)
+            editor.drawGutter(layout, in: context)
+            context.restoreGState()
+        }
+    }
+
+    private var gutterView: GutterView?
+
+    private func updateGutter() {
+        guard let viewport = enclosingScrollView?.contentView.bounds,
+              !isRetired, horizontalTextInset > 0 else {
+            gutterView?.isHidden = true
+            return
+        }
+        let gutter: GutterView
+        if let gutterView {
+            gutter = gutterView
+        } else {
+            gutter = GutterView()
+            gutter.editor = self
+            gutter.setAccessibilityElement(false)
+            addSubview(gutter, positioned: .above, relativeTo: nil)
+            gutterView = gutter
+        }
+        gutter.frame = CGRect(x: viewport.minX, y: viewport.minY, width: horizontalTextInset, height: viewport.height)
+        gutter.isHidden = false
+        gutter.needsDisplay = true
+    }
+
     public override func draw(_ dirtyRect: NSRect) {
         guard !isRetired else { return }
         super.draw(dirtyRect)
         guard let result = visibleLayout, let context = NSGraphicsContext.current?.cgContext else { return }
+        context.saveGState()
+        defer { context.restoreGState() }
+        let gutter = horizontalTextInset
+        context.clip(to: CGRect(x: result.viewport.minX + gutter, y: result.viewport.minY,
+                                width: max(0, result.viewport.width - gutter), height: result.viewport.height))
         drawBackgroundPresentation(result, in: context)
         for line in result.lines {
             line.controller.draw(line.placements, in: context)
@@ -1204,15 +1283,32 @@ public class ReadOnlyDocumentView: NSView {
 
     private func drawBackgroundPresentation(_ result: ViewportLayoutCoordinator.Result, in context: CGContext) {
         let gutter = horizontalTextInset
-        if gutter > 0 {
-            context.setFillColor(displayConfiguration.gutterBackgroundColor.cgColor)
-            context.fill(CGRect(x: 0, y: result.viewport.minY, width: gutter, height: result.viewport.height))
-        }
         for rect in selectedLineHighlightRects(in: result) {
             context.setFillColor(displayConfiguration.selectedLineBackgroundColor.cgColor)
             context.fill(rect)
         }
+        if let column = displayConfiguration.pageGuideColumn, column > 0 {
+            let x = gutter + CGFloat(column) * safeCharacterWidth
+            if x < bounds.width {
+                context.setFillColor(displayConfiguration.pageGuideColor.cgColor)
+                context.fill(CGRect(x: x, y: result.viewport.minY, width: 1, height: result.viewport.height))
+            }
+        }
+    }
+
+    private func drawGutter(_ result: ViewportLayoutCoordinator.Result, in context: CGContext) {
+        let gutter = horizontalTextInset
+        if gutter > 0 {
+            context.setFillColor(displayConfiguration.gutterBackgroundColor.cgColor)
+            context.fill(CGRect(x: 0, y: result.viewport.minY, width: gutter, height: result.viewport.height))
+        }
         if displayConfiguration.showsLineNumbers {
+            if let color = displayConfiguration.selectedGutterBackgroundColor {
+                context.setFillColor(color.cgColor)
+                for rect in selectedLineHighlightRects(in: result) {
+                    context.fill(CGRect(x: 0, y: rect.minY, width: gutter, height: rect.height))
+                }
+            }
             for layout in result.lines {
                 let selected = isSelected(layout.line) && displayConfiguration.showsSelectedLines
                 let attributes: [NSAttributedString.Key: Any] = [
@@ -1221,7 +1317,7 @@ public class ReadOnlyDocumentView: NSView {
                 ]
                 let value = String(layout.line.index + 1) as NSString
                 let size = value.size(withAttributes: attributes)
-                value.draw(at: CGPoint(x: max(foldingGutterWidth + 4, gutter - size.width - 7),
+                value.draw(at: CGPoint(x: max(4, gutter - foldingGutterWidth - size.width - 3),
                                        y: layout.line.yPosition + max(0, (layout.line.data.lineHeight - size.height) / 2)),
                            withAttributes: attributes)
             }
@@ -1232,12 +1328,10 @@ public class ReadOnlyDocumentView: NSView {
                                   height: layout.line.data.lineHeight, in: context)
             }
         }
-        if let column = displayConfiguration.pageGuideColumn, column > 0 {
-            let x = gutter + CGFloat(column) * safeCharacterWidth
-            if x < bounds.width {
-                context.setFillColor(displayConfiguration.pageGuideColor.cgColor)
-                context.fill(CGRect(x: x, y: result.viewport.minY, width: 1, height: result.viewport.height))
-            }
+        if let color = displayConfiguration.gutterHairlineColor {
+            let width = 1 / (window?.backingScaleFactor ?? 1)
+            context.setFillColor(color.cgColor)
+            context.fill(CGRect(x: gutter - width, y: result.viewport.minY, width: width, height: result.viewport.height))
         }
     }
 
@@ -1511,11 +1605,11 @@ public class ReadOnlyDocumentView: NSView {
         guard displayConfiguration.showsLineNumbers else { return folding }
         let digits = max(displayConfiguration.minimumGutterCharacterCount, String(max(1, manager.lineCount)).count)
         let sample = String(repeating: "8", count: max(1, digits)) as NSString
-        return folding + ceil(sample.size(withAttributes: [.font: displayConfiguration.lineNumberFont]).width) + 14
+        return folding + ceil(sample.size(withAttributes: [.font: displayConfiguration.lineNumberFont]).width) + 7
     }
 
     private var foldingGutterWidth: CGFloat {
-        displayConfiguration.isCodeFoldingEnabled ? 18 : 0
+        displayConfiguration.isCodeFoldingEnabled ? 24 : 0
     }
 
     private func requestSyntaxFoldsIfNeeded() {
@@ -1561,13 +1655,14 @@ public class ReadOnlyDocumentView: NSView {
     func handleSyntaxFoldingClick(_ event: NSEvent) -> Bool {
         guard displayConfiguration.isCodeFoldingEnabled, let window, event.window === window else { return false }
         let point = convert(event.locationInWindow, from: nil)
-        guard point.x >= 0, point.x < foldingGutterWidth,
+        let x = point.x - (enclosingScrollView?.contentView.bounds.minX ?? 0)
+        guard x >= horizontalTextInset - foldingGutterWidth, x < horizontalTextInset,
               let line = manager.line(containingYOffset: point.y), availableSyntaxFolds[line.index] != nil else { return false }
         return toggleSyntaxFold(atRow: line.index)
     }
 
     private func drawFoldIndicator(row: Int, y: CGFloat, height: CGFloat, in context: CGContext) {
-        let center = CGPoint(x: foldingGutterWidth / 2, y: y + height / 2)
+        let center = CGPoint(x: horizontalTextInset - foldingGutterWidth / 2, y: y + height / 2)
         let collapsed = collapsedSyntaxFoldHeaders.contains(row)
         let path = CGMutablePath()
         if collapsed {
@@ -1595,7 +1690,7 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     private func documentFrameSize(for clip: NSClipView) -> NSSize {
-        let baseWidth = displayConfiguration.isLineWrappingEnabled ? layoutWidth : max(layoutWidth, measuredUnwrappedContentWidth + 2)
+        let baseWidth = displayConfiguration.isLineWrappingEnabled ? layoutWidth : max(layoutWidth, measuredUnwrappedContentWidth + max(2, displayConfiguration.usesBlockCaret ? safeCharacterWidth : 0))
         let baseHeight = max(clip.bounds.height, manager.contentHeight)
         let horizontalScrollable = max(0, baseWidth - clip.bounds.width)
         let verticalScrollable = max(0, baseHeight - clip.bounds.height)

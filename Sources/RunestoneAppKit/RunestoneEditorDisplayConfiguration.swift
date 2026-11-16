@@ -27,6 +27,8 @@ public struct RunestoneEditorDisplayConfiguration {
     public var lineNumberFont: NSFont
     public var lineNumberColor: NSColor
     public var selectedLineNumberColor: NSColor
+    public var gutterHairlineColor: NSColor? = nil
+    public var selectedGutterBackgroundColor: NSColor? = nil
     public var gutterBackgroundColor: NSColor
     public var selectedLineBackgroundColor: NSColor
     public var invisibleCharacterColor: NSColor

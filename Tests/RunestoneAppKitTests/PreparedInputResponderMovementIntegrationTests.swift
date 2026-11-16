@@ -269,6 +269,33 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         fixture.disconnect()
     }
 
+    func testKeyboardRevealFitsTheBlockAndKeepsTheGutterPinned() throws {
+        let text = String(repeating: "a", count: 300)
+        let fixture = try MovementIntegrationFixture(text)
+        defer { fixture.disconnect() }
+        fixture.scroll.hasHorizontalScroller = true
+        fixture.view.displayConfiguration.isLineWrappingEnabled = false
+        fixture.view.displayConfiguration.usesBlockCaret = true
+        fixture.view.displayConfiguration.showsLineNumbers = true
+        fixture.view.updateViewport()
+        let clip = fixture.scroll.contentView
+        let gutter = try XCTUnwrap(fixture.view.subviews.last)
+        XCTAssertEqual(gutter.frame.width, fixture.view.horizontalTextInset)
+        XCTAssertEqual(gutter.frame.minX, clip.bounds.minX)
+
+        let end = try keyboardEvent(key: 14, scalar: 0x0065, modifiers: .control)
+        MovementKeyBindings { XCTAssertTrue(fixture.send($0)) }.interpretKeyEvents([end])
+        XCTAssertEqual(fixture.selection.location, text.utf16.count)
+        XCTAssertGreaterThan(clip.bounds.minX, 0)
+        let target = InputCaretTarget(location: fixture.selection.location, affinity: nil)
+        let bar = try XCTUnwrap(InputCaretAffinityGeometry.documentRect(for: target, in: fixture.view))
+        let block = fixture.view.blockCaretGeometry(at: target.location, bar: bar).0
+        XCTAssertGreaterThan(block.width, bar.width)
+        XCTAssertTrue(clip.bounds.contains(block))
+        XCTAssertEqual(gutter.frame.minX, clip.bounds.minX)
+        XCTAssertEqual(gutter.frame.width, fixture.view.horizontalTextInset)
+    }
+
     func testParagraphKeysAndDownRevealCaretOnUnwrappedLines() throws {
         let long = String(repeating: "a", count: 300)
         let fixture = try MovementIntegrationFixture(long + "\nshort\n" + long)

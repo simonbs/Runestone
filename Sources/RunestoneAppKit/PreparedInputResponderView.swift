@@ -650,7 +650,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                       let selection = adapter.selectionStateForHost(),
                       let check = movementViewportCheck(selection: selection.range, adapter: adapter, isAvailable: isAvailable) {
                 let target = InputCaretTarget(location: selection.activeLocation, affinity: selection.affinity)
-                _ = revealOffscreenMovementCaret(target, clock: inputViewportClock, isCurrent: check)
+                _ = revealOffscreenMovementCaret(target, clock: inputViewportClock, revealFullCaret: selection.range.length == 0,
+                                               isCurrent: check)
             }
         }
     }
@@ -927,9 +928,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         }
         let previousScrollX = enclosingScrollView?.contentView.bounds.minX ?? 0
         if let viewport = visibleLayout?.viewport,
-           horizontallyClippedMovementRect(for: destination.target, viewport: viewport) != nil,
+           horizontallyClippedMovementRect(for: destination.target, viewport: viewport, revealFullCaret: !destination.extending) != nil,
            let check = movementViewportCheck(selection: state.selection, adapter: adapter, isAvailable: isAvailable) {
-            let step = revealOffscreenMovementCaret(destination.target, clock: inputViewportClock, isCurrent: check)
+            let step = revealOffscreenMovementCaret(destination.target, clock: inputViewportClock,
+                                                   revealFullCaret: !destination.extending, isCurrent: check)
             guard step == .progressed, check() else {
                 verticalPreference = nil
                 connection.recordInputFailure(operation: .command,
@@ -1387,29 +1389,6 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 (caret, blockPlacement) = blockCaretGeometry(at: selection.range.location, bar: bar)
             }
         }
-    }
-
-    private func blockCaretGeometry(at location: Int, bar: NSRect) -> (NSRect, LogicalLineLayoutController.Placement?) {
-        let text = manager.stringView.string
-        var rect = bar
-        rect.size.width = max(1, displayConfiguration.characterWidth)
-        guard location < text.length else { return (rect, nil) }
-        let range = text.rangeOfComposedCharacterSequence(at: location)
-        let character = text.substring(with: range)
-        guard character.rangeOfCharacter(from: .newlines) == nil else { return (rect, nil) }
-        guard let line = manager.line(containingCharacterAt: location),
-              let layout = visibleLayout?.lines.first(where: { $0.line === line }),
-              let placement = layout.placements.first(where: {
-                  NSLocationInRange(location, $0.documentRange) &&
-                      bar.midY >= $0.frame.minY && bar.midY < $0.frame.maxY
-              }) else { return (rect, nil) }
-        if let next = InputCaretGeometry.rect(for: placement, lineStart: line.location,
-                                             documentOffset: range.upperBound, caretWidth: bar.width),
-           abs(next.minX - bar.minX) > 0.5 {
-            rect.size.width = abs(next.minX - bar.minX)
-            rect.origin.x = min(next.minX, bar.minX)
-        }
-        return (rect, placement)
     }
 
     private func updateInsertionIndicator(_ caret: NSRect?) {
