@@ -111,7 +111,18 @@ public class ReadOnlyDocumentView: NSView {
                     return ascent + descent + leading
                 }
             }
-            resetLayout(width: 0)
+            if oldValue.isLineWrappingEnabled != displayConfiguration.isLineWrappingEnabled ||
+                oldValue.showsLineNumbers != displayConfiguration.showsLineNumbers ||
+                oldValue.minimumGutterCharacterCount != displayConfiguration.minimumGutterCharacterCount ||
+                oldValue.lineNumberFont != displayConfiguration.lineNumberFont ||
+                oldValue.isCodeFoldingEnabled != displayConfiguration.isCodeFoldingEnabled ||
+                oldValue.maximumContentWidthColumn != displayConfiguration.maximumContentWidthColumn ||
+                oldValue.characterWidth != displayConfiguration.characterWidth ||
+                oldValue.textFont != displayConfiguration.textFont ||
+                oldValue.lineHeightMultiplier != displayConfiguration.lineHeightMultiplier ||
+                oldValue.kern != displayConfiguration.kern {
+                resetLayout(width: 0)
+            }
             if !displayConfiguration.isCodeFoldingEnabled {
                 availableSyntaxFolds.removeAll()
                 collapsedSyntaxFoldHeaders.removeAll()

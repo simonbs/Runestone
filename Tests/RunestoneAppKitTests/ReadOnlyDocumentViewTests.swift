@@ -177,6 +177,19 @@ final class ReadOnlyDocumentViewTests: XCTestCase {
         XCTAssertGreaterThan(expandedX, initialX)
     }
 
+    func testDisplayOnlyTogglesKeepPreparedTextGeometry() throws {
+        let text = NSAttributedString(string: "A styled heading", attributes: [.font: NSFont.boldSystemFont(ofSize: 28)])
+        let (scroll, view) = makeView(text, width: 200, height: 180)
+        let before = try XCTUnwrap(view.visibleLayout?.lines.first?.placements.first)
+        let origin = scroll.contentView.bounds.origin
+        view.displayConfiguration.showsSpaces = true
+        view.displayConfiguration.pageGuideColumn = 80
+        let after = try XCTUnwrap(view.visibleLayout?.lines.first?.placements.first)
+        XCTAssertTrue(before.fragment === after.fragment)
+        XCTAssertEqual(before.frame, after.frame)
+        XCTAssertEqual(scroll.contentView.bounds.origin, origin)
+    }
+
     func testFragmentLineHighlightOnlyCoversSelectedWrappedFragment() throws {
         let text = NSAttributedString(string: String(repeating: "word ", count: 30), attributes: [.font: font])
         let (_, view) = makeView(text, width: 100, height: 200)
