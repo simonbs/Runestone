@@ -44,6 +44,8 @@ public struct RunestoneEditorDisplayConfiguration {
     public var checksSpellingWhileTyping = false
     /// A nil override follows the macOS spelling correction preference.
     public var correctsSpellingAutomatically: Bool?
+    /// Whether to offer inline predictions when enabled in macOS Keyboard settings.
+    public var allowsInlinePredictions = true
     public var usesBlockCaret: Bool = false
     /// A nil color uses the native system insertion point color.
     public var caretColor: NSColor?
