@@ -32,14 +32,18 @@ public enum LineFragmentRenderer {
     }
 
     static func drawGlyphs(_ fragment: LineFragment, in context: CGContext) {
+        drawGlyphs(fragment.line, at: CGPoint(x: 0, y: fragment.verticalGeometry.topDownBaseline), in: context)
+    }
+
+    static func drawGlyphs(_ line: CTLine, at baseline: CGPoint, in context: CGContext) {
         let originalTextMatrix = context.textMatrix
         let originalTextPosition = context.textPosition
         context.saveGState()
         context.textMatrix = .identity
-        context.translateBy(x: 0, y: fragment.scaledSize.height)
+        context.translateBy(x: baseline.x, y: baseline.y)
         context.scaleBy(x: 1, y: -1)
-        context.textPosition = CGPoint(x: 0, y: fragment.verticalGeometry.coreTextBaseline)
-        CTLineDraw(fragment.line, context)
+        context.textPosition = .zero
+        CTLineDraw(line, context)
         context.restoreGState()
         context.textMatrix = originalTextMatrix
         context.textPosition = originalTextPosition

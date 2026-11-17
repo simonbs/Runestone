@@ -1332,17 +1332,24 @@ public class ReadOnlyDocumentView: NSView {
                 }
             }
             for layout in result.lines {
-                guard let height = firstFragmentHeight(in: layout) else { continue }
+                let fragment = firstFragment(in: layout)
+                guard fragment != nil || layout.line.data.totalLength == 0 else { continue }
                 let selected = isSelected(layout.line) && displayConfiguration.showsSelectedLines
                 let attributes: [NSAttributedString.Key: Any] = [
                     .font: displayConfiguration.lineNumberFont,
                     .foregroundColor: selected ? displayConfiguration.selectedLineNumberColor : displayConfiguration.lineNumberColor
                 ]
-                let value = String(layout.line.index + 1) as NSString
-                let size = value.size(withAttributes: attributes)
-                value.draw(at: CGPoint(x: max(4, gutter - foldingGutterWidth - size.width - 3),
-                                       y: layout.line.yPosition + max(0, (height - size.height) / 2)),
-                           withAttributes: attributes)
+                let value = String(layout.line.index + 1)
+                let size = (value as NSString).size(withAttributes: attributes)
+                let x = max(4, gutter - foldingGutterWidth - size.width - 3)
+                if let fragment {
+                    let numberLine = CTLineCreateWithAttributedString(NSAttributedString(string: value, attributes: attributes))
+                    let baseline = layout.line.yPosition + fragment.verticalGeometry.topDownBaseline
+                    LineFragmentRenderer.drawGlyphs(numberLine, at: CGPoint(x: x, y: baseline), in: context)
+                } else {
+                    (value as NSString).draw(at: CGPoint(x: x, y: layout.line.yPosition
+                        + max(0, (layout.line.data.lineHeight - size.height) / 2)), withAttributes: attributes)
+                }
             }
         }
         if displayConfiguration.isCodeFoldingEnabled {
@@ -1363,8 +1370,12 @@ public class ReadOnlyDocumentView: NSView {
         if layout.line.data.totalLength == 0 {
             return layout.line.data.lineHeight
         }
+        return firstFragment(in: layout)?.scaledSize.height
+    }
+
+    private func firstFragment(in layout: ViewportLayoutCoordinator.LineLayout) -> LineFragment? {
         // Viewport layout may omit the first fragment when the line starts above the viewport.
-        return layout.placements.first { $0.fragment.yPosition == 0 }?.frame.height
+        return layout.placements.first { $0.fragment.yPosition == 0 }?.fragment
     }
 
     private func isSelected(_ line: DocumentLineNode) -> Bool {
