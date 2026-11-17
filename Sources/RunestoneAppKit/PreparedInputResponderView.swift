@@ -36,14 +36,41 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     // The default is AppKit’s shared pasteboard; tests can provide an isolated named one.
     var inputPasteboardProvider: () -> NSPasteboard = { .general }
     var fileDropHandler: (([URL]) -> Bool)?
+    private final class SelectionLocation: NSObject, NSTextLocation {
+        let offset: Int
+
+        init(_ offset: Int) { self.offset = offset }
+
+        func compare(_ location: NSTextLocation) -> ComparisonResult {
+            guard let location = location as? SelectionLocation else { return .orderedSame }
+            if offset < location.offset { return .orderedAscending }
+            if offset > location.offset { return .orderedDescending }
+            return .orderedSame
+        }
+
+        override func isEqual(_ object: Any?) -> Bool {
+            (object as? SelectionLocation)?.offset == offset
+        }
+
+        override var hash: Int { offset.hashValue }
+    }
+
     private struct VerticalPreference {
-        let x: CGFloat
+        let textSelection: NSTextSelection
         let selection: NSRange
         let selectionRevision: UUID
         let contentRevision: UUID
-        let geometryRevision: UUID
+        let layoutRevision: UUID
     }
     private var verticalPreference: VerticalPreference?
+
+    private func verticalAnchorScreenX(for selection: NSRange) -> CGFloat? {
+        guard let anchor = verticalPreference, let window,
+              anchor.selection == selection, anchor.selectionRevision == inputSelectionRevision,
+              anchor.contentRevision == contentRevision, anchor.layoutRevision == inputLayoutRevision else { return nil }
+        let point = CGPoint(x: horizontalTextInset + anchor.textSelection.anchorPositionOffset, y: 0)
+        return window.convertPoint(toScreen: convert(point, to: nil)).x
+    }
 
     init(snapshot: NSAttributedString) {
         super.init(snapshot: snapshot, fallbackHeight: 16)
@@ -710,7 +737,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         let target: InputCaretTarget
         let direction: PreparedInputCommandInterpreter.Direction
         let extending: Bool
-        let preferredX: CGFloat?
+        let verticalAnchorOffset: CGFloat?
     }
 
     /// Compute without mutation so menu validation can use the same geometry
@@ -754,7 +781,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                   state.activeLocation == origin else { return InputCaretTarget(location: origin, affinity: nil) }
             return InputCaretTarget(location: origin, affinity: state.affinity)
         }()
-        var preferredX: CGFloat?
+        var verticalAnchorOffset: CGFloat?
         let target: InputCaretTarget?
         if let collapseTarget = collapseTarget {
             let affinity = presentedSelectionState.flatMap { state in
@@ -762,15 +789,13 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             }
             target = InputCaretTarget(location: collapseTarget, affinity: affinity)
         } else if isVertical {
-            let preference = verticalPreference
-            let x = preference.flatMap { previous in
-                previous.selection == selection && previous.selectionRevision == inputSelectionRevision &&
-                previous.contentRevision == contentRevision && previous.geometryRevision == inputGeometryRevision ? previous.x : nil
-            }
             let value = PreparedInputVisualMovement.vertical(from: originTarget, direction: backward ? .up : .down,
-                                                              preferredScreenX: x, in: self)
-            if let value { target = value.target; preferredX = value.preferredScreenX }
-            else if (backward && origin == 0) || (!backward && origin == text.length) {
+                                                              preferredScreenX: verticalAnchorScreenX(for: selection), in: self)
+            if let value, let window {
+                target = value.target
+                let point = window.convertPoint(fromScreen: CGPoint(x: value.preferredScreenX, y: 0))
+                verticalAnchorOffset = convert(point, from: nil).x - horizontalTextInset
+            } else if (backward && origin == 0) || (!backward && origin == text.length) {
                 target = InputCaretTarget(location: origin, affinity: originTarget.affinity)
             }
             else { target = nil }
@@ -803,7 +828,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             }
         }
         guard let target = target else { return nil }
-        return VisualDestination(target: target, direction: direction, extending: extending, preferredX: preferredX)
+        return VisualDestination(target: target, direction: direction, extending: extending, verticalAnchorOffset: verticalAnchorOffset)
     }
 
     private func offscreenMovementOrigin(_ name: String, selection: NSRange) -> InputCaretTarget? {
@@ -870,19 +895,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         let room = up ? bounds.maxY - documentCaret.maxY : documentCaret.minY - bounds.minY
         let amount = min(PreparedInputViewportStep.maximumDelta, bounds.height * 0.25, max(0, room - 1))
         guard amount.isFinite, amount >= 1 else { return .boundary }
-        let content = contentRevision
-        let selectionRevision = inputSelectionRevision
-        let geometry = inputGeometryRevision
-        let priorX = verticalPreference.flatMap { value in
-            value.selection == selection && value.selectionRevision == selectionRevision &&
-            value.contentRevision == content && value.geometryRevision == geometry ? value.x : nil
-        } ?? (affinity?.bidirectionalSide == nil ? caret.midX : caret.minX)
-        let result = PreparedInputViewportStep.perform(in: self, dx: 0, dy: up ? -amount : amount, clock: inputViewportClock, isCurrent: check)
-        if result == .progressed && check() {
-            verticalPreference = VerticalPreference(x: priorX, selection: selection, selectionRevision: selectionRevision,
-                                                    contentRevision: content, geometryRevision: inputGeometryRevision)
-        }
-        return result
+        return PreparedInputViewportStep.perform(in: self, dx: 0, dy: up ? -amount : amount,
+                                                 clock: inputViewportClock, isCurrent: check)
     }
 
     /// Apply a current Core Text destination through the document reservation.
@@ -926,7 +940,6 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 failure: .init(reason: .unavailable, effect: viewportMayHaveChanged ? .mayHaveApplied : .notApplied))
             return
         }
-        let previousScrollX = enclosingScrollView?.contentView.bounds.minX ?? 0
         if let viewport = visibleLayout?.viewport,
            horizontallyClippedMovementRect(for: destination.target, viewport: viewport, revealFullCaret: !destination.extending) != nil,
            let check = movementViewportCheck(selection: state.selection, adapter: adapter, isAvailable: isAvailable) {
@@ -945,10 +958,18 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         case let .handled(attempt):
             if let failure = attempt.failure { connection.recordInputFailure(operation: .command, failure: failure) }
             if attempt.outcome != .processed { connection.requestReset(); verticalPreference = nil }
-            else if let x = destination.preferredX, let current = adapter.inputStateForHost() {
-                let scrollX = enclosingScrollView?.contentView.bounds.minX ?? previousScrollX
-                verticalPreference = VerticalPreference(x: x - (scrollX - previousScrollX), selection: current.selection, selectionRevision: inputSelectionRevision,
-                                                        contentRevision: contentRevision, geometryRevision: inputGeometryRevision)
+            else if let offset = destination.verticalAnchorOffset, let current = adapter.inputStateForHost() {
+                let start = SelectionLocation(current.selection.location)
+                let end = SelectionLocation(current.selection.upperBound)
+                guard let range = NSTextRange(location: start, end: end) else {
+                    verticalPreference = nil
+                    return
+                }
+                let selection = NSTextSelection(range: range, affinity: .downstream, granularity: .character)
+                selection.anchorPositionOffset = offset
+                verticalPreference = VerticalPreference(textSelection: selection, selection: current.selection,
+                                                        selectionRevision: inputSelectionRevision,
+                                                        contentRevision: contentRevision, layoutRevision: inputLayoutRevision)
             } else { verticalPreference = nil }
         case let .blocked(failure):
             verticalPreference = nil

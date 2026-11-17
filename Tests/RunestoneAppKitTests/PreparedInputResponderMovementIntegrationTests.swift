@@ -145,6 +145,9 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         for location in [8, 9, 15] {
             XCTAssertTrue(fixture.send("moveDown:"))
             XCTAssertEqual(fixture.selection, NSRange(location: location, length: 0))
+            // The host can refresh screen geometry while following the caret.
+            fixture.view.noteInputCoordinatesChanged()
+            fixture.view.updateViewport()
         }
         XCTAssertFalse(fixture.window.isKeyWindow)
         XCTAssertEqual(fixture.host.parentStarts - starts, 3)
@@ -154,6 +157,19 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         XCTAssertEqual(fixture.host.completions.suffix(3).map(\.outcome), [.completed, .completed, .completed])
         XCTAssertEqual(fixture.host.text, "abcdef\nx\n\nabcdef")
         fixture.disconnect()
+    }
+
+    func testMovingHorizontallyOnShortLineResetsVerticalColumn() throws {
+        let fixture = try MovementIntegrationFixture("abcdef\nxy\nabcdef")
+        defer { fixture.disconnect() }
+        try fixture.setSelection(NSRange(location: 5, length: 0))
+
+        XCTAssertTrue(fixture.send("moveDown:"))
+        XCTAssertEqual(fixture.selection.location, 9)
+        XCTAssertTrue(fixture.send("moveLeft:"))
+        XCTAssertEqual(fixture.selection.location, 8)
+        XCTAssertTrue(fixture.send("moveDown:"))
+        XCTAssertEqual(fixture.selection.location, 11)
     }
 
     func testVerticalMovementRequestsFreshViewportAtTheVisibleEdge() throws {
