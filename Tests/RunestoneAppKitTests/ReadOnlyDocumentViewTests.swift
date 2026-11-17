@@ -235,8 +235,19 @@ final class ReadOnlyDocumentViewTests: XCTestCase {
         view.updateViewport()
         let layout = try XCTUnwrap(view.visibleLayout)
 
-        XCTAssertGreaterThan(try XCTUnwrap(layout.lines.first?.placements.count), 1)
-        XCTAssertEqual(view.selectedLineHighlightRects(in: layout).count, 1)
+        let placements = try XCTUnwrap(layout.lines.first?.placements)
+        XCTAssertGreaterThan(placements.count, 1)
+        XCTAssertEqual(view.selectedLineHighlightRects(in: layout).map(\.minY), [placements[0].frame.minY])
+
+        let boundary = placements[1].fragment.range.location
+        let caret = NSRange(location: boundary, length: 0)
+        view.updateDisplaySelection(caret)
+        XCTAssertEqual(view.selectedLineHighlightRects(in: layout).map(\.minY), [placements[1].frame.minY])
+
+        let affinity = InputCaretAffinity(wrapSide: .upstream, bidirectionalSide: nil,
+                                          layoutRevision: view.inputLayoutRevision)
+        view.updateDisplaySelection(InputSelectionState(range: caret, activeEndpoint: .caret, affinity: affinity))
+        XCTAssertEqual(view.selectedLineHighlightRects(in: layout).map(\.minY), [placements[0].frame.minY])
     }
 
     func testFragmentLineHighlightCoversEmptyFinalLine() throws {

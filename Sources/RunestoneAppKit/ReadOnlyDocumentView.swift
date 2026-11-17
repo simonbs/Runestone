@@ -1332,6 +1332,7 @@ public class ReadOnlyDocumentView: NSView {
                 }
             }
             for layout in result.lines {
+                guard let height = firstFragmentHeight(in: layout) else { continue }
                 let selected = isSelected(layout.line) && displayConfiguration.showsSelectedLines
                 let attributes: [NSAttributedString.Key: Any] = [
                     .font: displayConfiguration.lineNumberFont,
@@ -1340,14 +1341,15 @@ public class ReadOnlyDocumentView: NSView {
                 let value = String(layout.line.index + 1) as NSString
                 let size = value.size(withAttributes: attributes)
                 value.draw(at: CGPoint(x: max(4, gutter - foldingGutterWidth - size.width - 3),
-                                       y: layout.line.yPosition + max(0, (layout.line.data.lineHeight - size.height) / 2)),
+                                       y: layout.line.yPosition + max(0, (height - size.height) / 2)),
                            withAttributes: attributes)
             }
         }
         if displayConfiguration.isCodeFoldingEnabled {
             for layout in result.lines where availableSyntaxFolds[layout.line.index] != nil {
+                guard let height = firstFragmentHeight(in: layout) else { continue }
                 drawFoldIndicator(row: layout.line.index, y: layout.line.yPosition,
-                                  height: layout.line.data.lineHeight, in: context)
+                                  height: height, in: context)
             }
         }
         if let color = displayConfiguration.gutterHairlineColor {
@@ -1355,6 +1357,14 @@ public class ReadOnlyDocumentView: NSView {
             context.setFillColor(color.cgColor)
             context.fill(CGRect(x: gutter - width, y: result.viewport.minY, width: width, height: result.viewport.height))
         }
+    }
+
+    private func firstFragmentHeight(in layout: ViewportLayoutCoordinator.LineLayout) -> CGFloat? {
+        if layout.line.data.totalLength == 0 {
+            return layout.line.data.lineHeight
+        }
+        // Viewport layout may omit the first fragment when the line starts above the viewport.
+        return layout.placements.first { $0.fragment.yPosition == 0 }?.frame.height
     }
 
     private func isSelected(_ line: DocumentLineNode) -> Bool {
@@ -1375,19 +1385,25 @@ public class ReadOnlyDocumentView: NSView {
                 // The empty final line has a row in the line index but no text fragment.
                 return [CGRect(x: gutter, y: layout.line.yPosition, width: width, height: layout.line.data.lineHeight)]
             }
-            return layout.placements.filter(isSelected).map { placement in
+            let selection = displaySelection.range
+            let placements: [LogicalLineLayoutController.Placement]
+            if selection.length == 0 {
+                let local = selection.location - layout.line.location
+                let affinity = displaySelection.affinity
+                let upstream = affinity?.layoutRevision == inputLayoutRevision && affinity?.wrapSide == .upstream
+                let index = upstream || local == layout.line.data.length ? max(0, local - 1) : local
+                placements = layout.placements.filter {
+                    NSLocationInRange(index, $0.fragment.range) || ($0.fragment.range.length == 0 && index == 0)
+                }
+            } else {
+                placements = layout.placements.filter {
+                    NSIntersectionRange(selection, $0.documentRange).length > 0
+                }
+            }
+            return placements.map { placement in
                 CGRect(x: gutter, y: placement.frame.minY, width: width, height: placement.frame.height)
             }
         }
-    }
-
-    private func isSelected(_ placement: LogicalLineLayoutController.Placement) -> Bool {
-        let range = placement.documentRange
-        guard displaySelection.range.location != NSNotFound else { return false }
-        if displaySelection.range.length == 0 {
-            return displaySelection.range.location >= range.location && displaySelection.range.location <= NSMaxRange(range)
-        }
-        return NSIntersectionRange(displaySelection.range, range).length > 0
     }
 
     private func drawInvisibleCharacters(in layout: ViewportLayoutCoordinator.LineLayout) {

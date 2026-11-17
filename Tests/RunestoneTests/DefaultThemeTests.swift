@@ -44,6 +44,29 @@ final class DefaultThemeTests: XCTestCase {
         }
     }
 
+    func testFragmentHighlightFollowsCaretAtSoftWrap() throws {
+        let view = TextView(frame: CGRect(x: 0, y: 0, width: 160, height: 180))
+        let inputView = try XCTUnwrap(descendants(of: view).compactMap { $0 as? TextInputView }.first)
+        let theme = CustomTheme()
+        view.theme = theme
+        view.text = String(repeating: "word ", count: 16)
+        view.lineSelectionDisplayType = .lineFragment
+        inputView.isEditing = true
+        view.layoutSubviews()
+        inputView.layoutSubviews()
+
+        let firstCaret = inputView.caretRect(at: 0)
+        let boundary = try XCTUnwrap((1..<view.text.utf16.count).first {
+            inputView.caretRect(at: $0).minY > firstCaret.minY
+        })
+        view.selectedRange = NSRange(location: boundary, length: 0)
+        view.layoutSubviews()
+        inputView.layoutSubviews()
+
+        let highlight = try XCTUnwrap(inputView.subviews.first { $0.backgroundColor == theme.selectedLineBackgroundColor })
+        XCTAssertEqual(highlight.frame.midY, inputView.caretRect(at: boundary).midY, accuracy: 0.01)
+    }
+
     func testLayoutManagerInitializesInvisibleCharactersAndUpdatesTheirTheme() {
         let stringView = StringView(string: "hello")
         let lineManager = LineManager(stringView: stringView)

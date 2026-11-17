@@ -553,8 +553,9 @@ extension LayoutManager {
                 return CGRect(x: 0, y: textContainerInset.top + startLine.yPosition,
                               width: scrollViewWidth, height: startLine.data.lineHeight)
             }
-            let startCaretRect = caretRectService.caretRect(at: selectedRange.lowerBound, allowMovingCaretToNextLineFragment: false)
-            let endCaretRect = caretRectService.caretRect(at: selectedRange.upperBound, allowMovingCaretToNextLineFragment: false)
+            let startCaretRect = caretRectService.caretRect(at: selectedRange.lowerBound, allowMovingCaretToNextLineFragment: true)
+            let endCaretRect = selectedRange.length == 0 ? startCaretRect
+                : caretRectService.caretRect(at: selectedRange.upperBound, allowMovingCaretToNextLineFragment: false)
             let startLineFragmentHeight = startCaretRect.height * lineHeightMultiplier
             let endLineFragmentHeight = endCaretRect.height * lineHeightMultiplier
             let minY = startCaretRect.minY - (startLineFragmentHeight - startCaretRect.height) / 2
@@ -737,14 +738,8 @@ extension LayoutManager {
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
         let fontLineHeight = theme.lineNumberFont.lineHeight
         let xPosition = safeAreaInsets.left + gutterWidthService.gutterLeadingPadding
-        var yPosition = textContainerInset.top + line.yPosition
-        if lineController.numberOfLineFragments > 1 {
-            // There are more than one line fragments, so we align the line number at the top.
-            yPosition += (fontLineHeight * lineHeightMultiplier - fontLineHeight) / 2
-        } else {
-            // There's a single line fragment, so we center the line number in the height of the line.
-            yPosition += (lineController.lineHeight - fontLineHeight) / 2
-        }
+        let fragmentHeight = firstFragmentHeight(for: lineController)
+        let yPosition = textContainerInset.top + line.yPosition + (fragmentHeight - fontLineHeight) / 2
         lineNumberView.text = "\(line.index + 1)"
         lineNumberView.font = theme.lineNumberFont
         lineNumberView.textColor = theme.lineNumberColor
@@ -767,15 +762,17 @@ extension LayoutManager {
                          isCollapsed: collapsedFoldRows.contains(row), color: theme.lineNumberColor)
         button.toggle = { [weak self] in self?.onToggleFold?(row) }
         let lineController = lineControllerStorage.getOrCreateLineController(for: line)
-        let firstFragmentHeight = lineController.numberOfLineFragments > 0
-            ? lineController.lineFragmentNode(atIndex: 0).data.lineFragment?.scaledSize.height
-            : nil
         button.chevronSize = CGSize(width: gutterWidthService.foldingWidth,
-                                    height: firstFragmentHeight ?? theme.font.totalLineHeight * lineHeightMultiplier)
+                                    height: firstFragmentHeight(for: lineController))
         let totalGutterWidth = safeAreaInsets.left + gutterWidthService.gutterWidth
         button.frame = CGRect(x: 0,
                               y: textContainerInset.top + line.yPosition,
                               width: totalGutterWidth, height: lineController.lineHeight)
+    }
+
+    private func firstFragmentHeight(for controller: LineController) -> CGFloat {
+        guard controller.numberOfLineFragments > 0 else { return controller.lineHeight }
+        return controller.lineFragmentNode(atIndex: 0).data.lineFragment?.scaledSize.height ?? controller.lineHeight
     }
 
     private func layoutLineFragmentView(for lineFragmentController: LineFragmentController,
