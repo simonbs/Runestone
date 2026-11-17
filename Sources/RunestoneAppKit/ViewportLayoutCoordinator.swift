@@ -47,6 +47,12 @@ final class ViewportLayoutCoordinator {
               requestedViewport.width.isFinite, requestedViewport.height.isFinite,
               requestedViewport.maxX.isFinite, requestedViewport.maxY.isFinite,
               requestedViewport.width > 0, requestedViewport.height > 0 else { return nil }
+        // A viewport can start below the text while scrolling through trailing
+        // space or rubber-banding at the bottom of a short document.
+        if requestedViewport.minY >= manager.contentHeight {
+            previousLines = []
+            return Result(viewport: requestedViewport, contentOffsetAdjustmentY: 0, lines: [], isComplete: true)
+        }
         var viewport = requestedViewport
         var controllers: [DocumentLineNodeID: LogicalLineLayoutController] = [:]
         func controller(for line: DocumentLineNode) -> LogicalLineLayoutController? {

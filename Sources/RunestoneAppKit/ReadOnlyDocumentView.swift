@@ -66,7 +66,9 @@ public class ReadOnlyDocumentView: NSView {
     private var layoutWidth: CGFloat = 0
     private var measuredUnwrappedContentWidth: CGFloat = 0
     private var unwrappedWidthMeasurementGeneration = UUID()
-    private var boundsObserver: NSObjectProtocol?
+    private var viewportObservers: [NSObjectProtocol] = []
+    private var isLiveScrolling = false
+    private var isRubberBanding = false
     private var windowObservers: [NSObjectProtocol] = []
     let inputInvalidation: InputInvalidationDelivery
     private(set) var inputGeometryRevision = UUID()
@@ -588,8 +590,7 @@ public class ReadOnlyDocumentView: NSView {
         pendingViewportUpdate = false
         viewportRecoveryToken = UUID()
         inputInvalidation.detach()
-        if let observer = boundsObserver { NotificationCenter.default.removeObserver(observer) }
-        boundsObserver = nil
+        removeViewportObservers()
         windowObservers.forEach { NotificationCenter.default.removeObserver($0) }
         windowObservers.removeAll()
         super.isHidden = true
@@ -918,7 +919,7 @@ public class ReadOnlyDocumentView: NSView {
     public required init?(coder: NSCoder) { nil }
 
     deinit {
-        if let observer = boundsObserver { NotificationCenter.default.removeObserver(observer) }
+        viewportObservers.forEach { NotificationCenter.default.removeObserver($0) }
         windowObservers.forEach { NotificationCenter.default.removeObserver($0) }
     }
 
@@ -956,19 +957,34 @@ public class ReadOnlyDocumentView: NSView {
 
     public override func viewDidMoveToSuperview() {
         super.viewDidMoveToSuperview()
-        if let observer = boundsObserver { NotificationCenter.default.removeObserver(observer) }
-        boundsObserver = nil
+        removeViewportObservers()
         guard !isRetired else { return }
-        if let clip = enclosingScrollView?.contentView {
+        if let scroll = enclosingScrollView {
+            let center = NotificationCenter.default
+            let clip = scroll.contentView
             clip.postsBoundsChangedNotifications = true
-            boundsObserver = NotificationCenter.default.addObserver(forName: NSView.boundsDidChangeNotification,
-                                                                     object: clip, queue: .main) { [weak self] _ in
-                self?.noteInputCoordinatesChanged()
-                self?.updateViewport()
-            }
+            viewportObservers = [
+                center.addObserver(forName: NSView.boundsDidChangeNotification, object: clip, queue: .main) { [weak self] _ in
+                    self?.noteInputCoordinatesChanged()
+                    self?.updateViewport()
+                },
+                center.addObserver(forName: NSScrollView.willStartLiveScrollNotification, object: scroll, queue: .main) { [weak self] _ in
+                    self?.isLiveScrolling = true
+                },
+                center.addObserver(forName: NSScrollView.didEndLiveScrollNotification, object: scroll, queue: .main) { [weak self] _ in
+                    self?.isLiveScrolling = false
+                }
+            ]
         }
         noteInputCoordinatesChanged()
         updateViewport()
+    }
+
+    private func removeViewportObservers() {
+        viewportObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        viewportObservers.removeAll()
+        isLiveScrolling = false
+        isRubberBanding = false
     }
 
     public override func layout() {
@@ -1128,6 +1144,8 @@ public class ReadOnlyDocumentView: NSView {
                 return
             }
             let requested = clip.bounds
+            // Spring-back can continue after the live gesture has ended.
+            isRubberBanding = (isLiveScrolling || isRubberBanding) && !clip.documentRect.contains(requested)
             guard boundedViewportBudget?.check() ?? true else { visibleLayout = nil; return }
             let result: ViewportLayoutCoordinator.Result
             if boundedViewportBudget != nil, !displayConfiguration.isLineWrappingEnabled,
@@ -1144,16 +1162,20 @@ public class ReadOnlyDocumentView: NSView {
             let size = documentFrameSize(for: clip)
             if frame.size != size { setFrameSize(size) }
             guard !isRetired, contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
-            var proposed = clip.bounds
-            proposed.origin.y = result.viewport.minY
-            let constrained = clip.constrainBoundsRect(proposed)
-            if clip.bounds.origin != constrained.origin {
-                // The coordinator has already resolved this anchor correction.
-                // Its synchronous bounds notification needs no second pass.
-                updatingBounds = constrained
-                clip.scroll(to: constrained.origin)
-                enclosingScrollView?.reflectScrolledClipView(clip)
-                guard !isRetired, contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
+            // AppKit drives the clip origin during elastic scrolling. Applying
+            // the usual viewport correction would interrupt the bounce.
+            if !isRubberBanding {
+                var proposed = clip.bounds
+                proposed.origin.y = result.viewport.minY
+                let constrained = clip.constrainBoundsRect(proposed)
+                if clip.bounds.origin != constrained.origin {
+                    // The coordinator has already resolved this anchor correction.
+                    // Its synchronous bounds notification needs no second pass.
+                    updatingBounds = constrained
+                    clip.scroll(to: constrained.origin)
+                    enclosingScrollView?.reflectScrolledClipView(clip)
+                    guard !isRetired, contentRevision == viewportRevision else { visibleLayout = nil; needsLayout = true; return }
+                }
             }
             guard !isRetired, enclosingScrollView?.contentView === clip,
                   clip.bounds.width == requested.width, clip.bounds.height == requested.height else {

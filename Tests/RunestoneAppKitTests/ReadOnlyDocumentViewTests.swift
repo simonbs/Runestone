@@ -36,6 +36,40 @@ final class ReadOnlyDocumentViewTests: XCTestCase {
         })
     }
 
+    func testLayoutPreservesElasticScrollOrigins() throws {
+        let text = NSAttributedString(string: "short document", attributes: [.font: font])
+        let (scroll, view) = makeView(text, width: 160, height: 80)
+        let clip = scroll.contentView
+        let center = NotificationCenter.default
+        center.post(name: NSScrollView.willStartLiveScrollNotification, object: scroll)
+
+        let top = NSPoint(x: 0, y: -30)
+        clip.scroll(to: top)
+        XCTAssertEqual(clip.bounds.origin, top)
+        XCTAssertEqual(view.visibleLayout?.viewport, clip.bounds)
+        XCTAssertEqual(view.visibleLayout?.lines.count, 1)
+
+        let bottom = NSPoint(x: 0, y: 40)
+        clip.scroll(to: bottom)
+        XCTAssertEqual(clip.bounds.origin, bottom)
+        XCTAssertEqual(view.visibleLayout?.viewport, clip.bounds)
+        XCTAssertTrue(try XCTUnwrap(view.visibleLayout).lines.isEmpty)
+
+        center.post(name: NSScrollView.didEndLiveScrollNotification, object: scroll)
+        let settling = NSPoint(x: 0, y: 20)
+        clip.scroll(to: settling)
+        XCTAssertEqual(clip.bounds.origin, settling)
+        XCTAssertEqual(view.visibleLayout?.viewport, clip.bounds)
+
+        clip.scroll(to: .zero)
+        XCTAssertEqual(view.visibleLayout?.viewport, clip.bounds)
+        XCTAssertEqual(view.visibleLayout?.lines.count, 1)
+
+        clip.scroll(to: bottom)
+        XCTAssertEqual(clip.bounds.origin, .zero)
+        XCTAssertEqual(view.visibleLayout?.viewport, clip.bounds)
+    }
+
     func testIncrementalEditInvalidatesStaleLayoutsAndKeepsUnchangedLines() throws {
         let (scroll, view) = makeView(NSAttributedString(string: "first\nsecond\nlast", attributes: [.font: font]),
                                       width: 180, height: 100)
