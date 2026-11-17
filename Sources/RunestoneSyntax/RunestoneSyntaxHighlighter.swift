@@ -477,9 +477,14 @@ private final class Query: @unchecked Sendable {
                 let name = captureName(capture.index)
                 return name == "injection.language" || name == "language"
             }.flatMap { captureText($0.index, captures: captures, text: state.text) }
-            guard let language = (capturedLanguage ?? properties["injection.language"])?
-                    .trimmingCharacters(in: .whitespacesAndNewlines), !language.isEmpty else { continue }
-            for capture in captures where captureName(capture.index) == "injection.content" {
+            let explicitLanguage = capturedLanguage ?? properties["injection.language"]
+            for capture in captures {
+                let name = captureName(capture.index)
+                // HTML and other bundled queries can name the language directly on the content capture.
+                guard !name.hasPrefix("_"), name != "injection.language", name != "language" else { continue }
+                let languageName = explicitLanguage ?? (name == "injection.content" ? "" : name)
+                let language = languageName.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !language.isEmpty else { continue }
                 let start = Int(ts_node_start_byte(capture.node)) / 2
                 let end = Int(ts_node_end_byte(capture.node)) / 2
                 guard start >= 0, end > start, end <= state.text.length else { continue }
