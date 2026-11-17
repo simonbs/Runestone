@@ -998,7 +998,11 @@ extension LayoutManager {
             linesContainerView.layer.mask = nil
             return
         }
+        #if os(visionOS)
+        let scale = max(textInputView?.traitCollection.displayScale ?? 1, 1)
+        #else
         let scale = textInputView?.window?.screen.scale ?? UIScreen.main.scale
+        #endif
         var path = CGPath(rect: linesContainerView.bounds, transform: nil)
         for range in writingToolsHiddenRanges {
             for rect in writingToolsTextRects(in: range) {

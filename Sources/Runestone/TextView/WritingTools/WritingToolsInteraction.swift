@@ -263,6 +263,7 @@ final class WritingToolsInteraction: NSObject, WritingToolsControlling, UIWritin
         completion()
     }
 
+    #if !os(visionOS)
     // iOS 18.2 and 18.3 ask the delegate to map proofreading taps back into its context.
     func writingToolsCoordinator(_ writingToolsCoordinator: UIWritingToolsCoordinator,
                                  requestsRangeInContextWithIdentifierFor point: CGPoint,
@@ -274,6 +275,7 @@ final class WritingToolsInteraction: NSObject, WritingToolsControlling, UIWritin
         }
         completion(range.range, identifier)
     }
+    #endif
 
 }
 
