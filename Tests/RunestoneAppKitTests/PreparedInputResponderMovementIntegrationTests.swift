@@ -137,6 +137,50 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         fixture.disconnect()
     }
 
+    func testInputClientReportsVisibleCaretAndSelectionGeometry() throws {
+        let fixture = try MovementIntegrationFixture("abcdef\nxy\nabcdef")
+        defer { fixture.disconnect() }
+        try fixture.setSelection(NSRange(location: 5, length: 0))
+        let client = fixture.client
+        let viewport = try XCTUnwrap(client.documentVisibleRect)
+        let caret = try XCTUnwrap(client.unionRectInVisibleSelectedRange)
+        XCTAssertGreaterThan(viewport.width, 0)
+        XCTAssertEqual(caret.width, 0)
+        XCTAssertGreaterThan(caret.height, 0)
+        XCTAssertTrue(viewport.contains(NSPoint(x: caret.midX, y: caret.midY)))
+
+        try fixture.setSelection(NSRange(location: 5, length: 5))
+        let union = try XCTUnwrap(client.unionRectInVisibleSelectedRange)
+        XCTAssertGreaterThan(union.width, 0)
+        XCTAssertGreaterThan(union.height, caret.height)
+        fixture.connection.suspendForFocusLoss()
+        XCTAssertEqual(client.documentVisibleRect, .zero)
+        XCTAssertEqual(client.unionRectInVisibleSelectedRange, .zero)
+    }
+
+    func testMultipleClicksUseNativeWordAndParagraphSelection() throws {
+        let source = "first naïve word\nsecond"
+        let fixture = try MovementIntegrationFixture(source)
+        defer { fixture.disconnect() }
+        let native = NSTextView(frame: NSRect(x: 0, y: 0, width: 240, height: 130))
+        native.string = source
+        let point = try fixture.screenPoint(at: 8)
+        for (count, granularity): (Int, NSSelectionGranularity) in [(2, .selectByWord), (3, .selectByParagraph)] {
+            let expected = native.selectionRange(forProposedRange: NSRange(location: 8, length: 0), granularity: granularity)
+            XCTAssertTrue(fixture.connection.performCoordinatedInput {
+                fixture.view.beginPointerSelection(at: point, extending: false, clickCount: count,
+                                                   connection: fixture.connection, hasFocus: { true })
+            })
+            XCTAssertEqual(fixture.selection, expected)
+            if count == 2 {
+                XCTAssertTrue(try fixture.continuePointer(at: 2))
+                XCTAssertEqual(fixture.selection, (source as NSString).range(of: "first naïve"))
+                XCTAssertTrue(try fixture.continuePointer(at: 14))
+                XCTAssertEqual(fixture.selection, (source as NSString).range(of: "naïve word"))
+            }
+        }
+    }
+
     func testSuccessiveVerticalMovesRetainPreferredVisualColumn() throws {
         let fixture = try MovementIntegrationFixture("abcdef\nx\n\nabcdef")
         try fixture.setSelection(NSRange(location: 5, length: 0))
@@ -915,14 +959,20 @@ private final class MovementIntegrationFixture {
     let connection: PreparedInputContextConnection
     let window: NSWindow
     let scroll: NSScrollView
+    let client: NSTextInputClient
 
     init(_ text: String) throws {
         _ = NSApplication.shared
         let host = MovementIntegrationHost(text)
         let queue = MovementIntegrationQueue()
+        var inputClient: NSTextInputClient?
         let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
             host: host, lifetime: host.lifetime, bridge: host.bridge,
-            makeDriver: { MovementIntegrationDriver($0) }, schedule: queue.enqueue))
+            makeDriver: { client in
+                inputClient = client
+                return MovementIntegrationDriver(client)
+            }, schedule: queue.enqueue))
+        self.client = try XCTUnwrap(inputClient)
         let view = try XCTUnwrap(attachment.view as? PreparedInputResponderView)
         view.inputViewportClock = { 0 }
         let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 240, height: 130),

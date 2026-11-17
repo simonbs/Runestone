@@ -1082,14 +1082,27 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             return
         }
         beginPointerSelection(at: window.convertPoint(toScreen: event.locationInWindow),
-                              extending: event.modifierFlags.contains(.shift), connection: connection,
-                              hasFocus: { self.ownsKeyFocus })
+                              extending: event.modifierFlags.contains(.shift), clickCount: event.clickCount,
+                              connection: connection, hasFocus: { self.ownsKeyFocus })
+    }
+
+    private func multipleClickRange(at offset: Int, clickCount: Int, in text: NSString) -> NSRange? {
+        guard let line = manager.line(containingCharacterAt: offset), line.data.totalLength > 0 else { return nil }
+        if clickCount >= 3 {
+            return text.paragraphRange(for: NSRange(location: offset, length: 0))
+        }
+        guard line.data.length > 0 else { return nil }
+        let source = text.substring(with: NSRange(location: line.location, length: line.data.length))
+        let local = min(offset - line.location, line.data.length - 1)
+        let word = NSAttributedString(string: source).doubleClick(at: local)
+        guard word.location != NSNotFound else { return nil }
+        return NSRange(location: line.location + word.location, length: word.length)
     }
 
     /// Caller holds the outer dispatch scope; the focus predicate is checked
     /// around geometry callouts and is injectable for headless tests.
-    func beginPointerSelection(at screenPoint: NSPoint, extending: Bool, connection: PreparedInputContextConnection,
-                               hasFocus: @escaping () -> Bool) {
+    func beginPointerSelection(at screenPoint: NSPoint, extending: Bool, clickCount: Int = 1,
+                               connection: PreparedInputContextConnection, hasFocus: @escaping () -> Bool) {
         endPointerSelection()
         pointerAutoscrollStarted = false
         verticalPreference = nil
@@ -1121,17 +1134,27 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 report(.invalidSelection); reported = true; return
             }
             let anchor: Int
-            if extending {
-                anchor = PreparedInputCommandInterpreter.selectionAnchor(for: currentSelection, in: self) ??
-                    (offset < currentSelection.location ? currentSelection.upperBound : currentSelection.location)
+            let state: InputSelectionState
+            let dragClickCount: Int
+            if !extending, clickCount > 1,
+               let unit = self.multipleClickRange(at: offset, clickCount: clickCount, in: text) {
+                anchor = unit.location
+                state = .rangeOnly(unit)
+                dragClickCount = clickCount
             } else {
-                anchor = offset
+                dragClickCount = 1
+                if extending {
+                    anchor = PreparedInputCommandInterpreter.selectionAnchor(for: currentSelection, in: self) ??
+                        (offset < currentSelection.location ? currentSelection.upperBound : currentSelection.location)
+                } else {
+                    anchor = offset
+                }
+                let selection = NSRange(location: min(anchor, offset), length: abs(offset - anchor))
+                let endpoint: InputSelectionState.Endpoint = selection.length == 0 ? .caret :
+                    (offset == selection.location ? .lowerBound : .upperBound)
+                state = InputSelectionState(range: selection, activeEndpoint: endpoint, affinity: target.affinity)
             }
             PreparedInputCommandInterpreter.resetSelectionExtension(in: self)
-            let selection = NSRange(location: min(anchor, offset), length: max(anchor, offset) - min(anchor, offset))
-            let endpoint: InputSelectionState.Endpoint = selection.length == 0 ? .caret :
-                (offset == selection.location ? .lowerBound : .upperBound)
-            let state = InputSelectionState(range: selection, activeEndpoint: endpoint, affinity: target.affinity)
             let attempt = adapter.setSelectionReporting(state, isAvailable: { isCurrent() && canUse() })
             if let failure = attempt.failure {
                 connection.recordInputFailure(operation: .setSelection, failure: failure)
@@ -1140,8 +1163,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             if attempt.outcome != .processed { connection.requestReset() }
             else {
                 applied = true
-                dragSelection = PreparedInputDragSelection(anchor: anchor, selection: selection,
-                    contentRevision: contentRevision, selectionRevision: inputSelectionRevision)
+                dragSelection = PreparedInputDragSelection(anchor: anchor, selection: state.range,
+                    contentRevision: contentRevision, selectionRevision: inputSelectionRevision, clickCount: dragClickCount)
             }
             needsDisplay = true
         }
@@ -1209,7 +1232,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                   let offset = Optional(target.location),
                   PreparedInputCommandInterpreter.isValidBoundary(offset, in: self.manager.stringView.string),
                   isCurrent(), canUse(),
-                  let selection = drag.selection(to: offset, current: adapter.selectedRangeForInput(),
+                  let selection = drag.selection(to: offset,
+                                                 unit: drag.clickCount > 1 ? self.multipleClickRange(
+                                                    at: offset, clickCount: drag.clickCount, in: self.manager.stringView.string) : nil,
+                                                 current: adapter.selectedRangeForInput(),
                                                  contentRevision: self.contentRevision,
                                                  selectionRevision: self.inputSelectionRevision) else {
                 connection.recordInputFailure(operation: .setSelection,
@@ -1219,8 +1245,9 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 return
             }
             let endpoint: InputSelectionState.Endpoint = selection.length == 0 ? .caret :
-                (offset == selection.location ? .lowerBound : .upperBound)
-            let state = InputSelectionState(range: selection, activeEndpoint: endpoint, affinity: target.affinity)
+                (offset < drag.anchor ? .lowerBound : .upperBound)
+            let state = InputSelectionState(range: selection, activeEndpoint: endpoint,
+                                            affinity: drag.clickCount == 1 ? target.affinity : nil)
             let attempt = adapter.setSelectionReporting(state, isAvailable: { isCurrent() && canUse() })
             if let failure = attempt.failure {
                 connection.recordInputFailure(operation: .setSelection, failure: failure)
