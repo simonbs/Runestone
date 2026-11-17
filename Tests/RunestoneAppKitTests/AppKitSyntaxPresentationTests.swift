@@ -20,7 +20,9 @@ final class AppKitSyntaxPresentationTests: XCTestCase {
         let fixture = makeFixture(content)
         fixture.view.applySyntaxConfiguration(RunestoneAppKitSyntaxConfiguration(
             highlighter: highlighter,
-            styles: ["number": RunestoneAppKitSyntaxStyle(foregroundColor: .systemRed)]))
+            styles: ["number": RunestoneAppKitSyntaxStyle(foregroundColor: .systemRed)]),
+            prefersStyledFirstPaint: true)
+        XCTAssertTrue(fixture.view.isWaitingForInitialSyntaxPaint)
 
         let numberRange = (text as NSString).range(of: "42")
         let styled = expectation(for: NSPredicate { _, _ in
@@ -29,6 +31,7 @@ final class AppKitSyntaxPresentationTests: XCTestCase {
         }, evaluatedWith: nil)
         XCTAssertEqual(XCTWaiter().wait(for: [styled], timeout: 3), .completed)
 
+        XCTAssertFalse(fixture.view.isWaitingForInitialSyntaxPaint)
         XCTAssertEqual(fixture.view.content.attribute(.foregroundColor, at: numberRange.location,
                                                       effectiveRange: nil) as? NSColor, baseColor)
         XCTAssertEqual(fixture.view.content.string, text)
@@ -64,6 +67,18 @@ final class AppKitSyntaxPresentationTests: XCTestCase {
         }
     }
 
+    func testFirstPaintFallsBackWhenSyntaxIsSlow() {
+        let fixture = makeFixture(NSAttributedString(string: "let value = 42"))
+        fixture.view.applySyntaxConfiguration(RunestoneAppKitSyntaxConfiguration(
+            highlighter: RecordingSyntaxHighlighter(completesUpdates: false), styles: [:]),
+            prefersStyledFirstPaint: true)
+        XCTAssertTrue(fixture.view.isWaitingForInitialSyntaxPaint)
+        let painting = expectation(for: NSPredicate { _, _ in
+            !fixture.view.isWaitingForInitialSyntaxPaint
+        }, evaluatedWith: nil)
+        XCTAssertEqual(XCTWaiter().wait(for: [painting], timeout: 3), .completed)
+    }
+
     func testLargeDocumentQueriesOnlyVisibleLogicalLines() {
         let line = "let value = 1234567890\n"
         let text = String(repeating: line, count: 20_000)
@@ -73,7 +88,8 @@ final class AppKitSyntaxPresentationTests: XCTestCase {
         let highlighter = RecordingSyntaxHighlighter()
         let fixture = makeFixture(content, height: 64)
         fixture.view.applySyntaxConfiguration(RunestoneAppKitSyntaxConfiguration(
-            highlighter: highlighter, styles: [:]))
+            highlighter: highlighter, styles: [:]), prefersStyledFirstPaint: true)
+        XCTAssertFalse(fixture.view.isWaitingForInitialSyntaxPaint)
 
         let queried = expectation(for: NSPredicate { _, _ in highlighter.lastCaptureRange != nil }, evaluatedWith: nil)
         XCTAssertEqual(XCTWaiter().wait(for: [queried], timeout: 3), .completed)
@@ -124,6 +140,12 @@ private final class RecordingSyntaxHighlighter: RunestoneSyntaxHighlighting, @un
     private let lock = NSLock()
     private var range: NSRange?
 
+    private let completesUpdates: Bool
+
+    init(completesUpdates: Bool = true) {
+        self.completesUpdates = completesUpdates
+    }
+
     var lastCaptureRange: NSRange? {
         lock.lock()
         defer { lock.unlock() }
@@ -132,7 +154,7 @@ private final class RecordingSyntaxHighlighter: RunestoneSyntaxHighlighting, @un
 
     func update(_ text: String,
                 completion: (@Sendable (Result<Void, RunestoneSyntaxError>) -> Void)?) {
-        completion?(.success(()))
+        if completesUpdates { completion?(.success(())) }
     }
 
     func captures(in range: NSRange,

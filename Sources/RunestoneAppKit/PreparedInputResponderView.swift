@@ -1471,7 +1471,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 updateInsertionIndicator(caret)
             }
         }
-        guard ownsKeyFocus, !disarmed, !isReadOnly, let connection = inputConnection else { return }
+        guard !isWaitingForInitialSyntaxPaint, ownsKeyFocus, !disarmed, !isReadOnly, let connection = inputConnection else { return }
         connection.performResponderActivity { adapter, isCurrent in
             guard let selection = adapter.selectionStateForHost(),
                   selection.range.location != NSNotFound, isCurrent(), ownsKeyFocus else { return }

@@ -46,6 +46,16 @@ public class ReadOnlyDocumentView: NSView {
     var inputMutationInFlight: Bool { inputMutationDepth != 0 }
     private var snapshot: NSMutableAttributedString
     private var syntaxConfiguration: RunestoneAppKitSyntaxConfiguration?
+    private var initialSyntaxPaintToken: UUID?
+    var isWaitingForInitialSyntaxPaint: Bool { initialSyntaxPaintToken != nil }
+
+    private func finishInitialSyntaxPaint() {
+        guard initialSyntaxPaintToken != nil else { return }
+        initialSyntaxPaintToken = nil
+        gutterView?.needsDisplay = true
+        needsDisplay = true
+    }
+
     private var syntaxCaptures: [RunestoneSyntaxCapture] = []
     private var syntaxParsedRevision: UUID?
     private var syntaxCaptureRevision: UUID?
@@ -644,7 +654,8 @@ public class ReadOnlyDocumentView: NSView {
     /// installed. Parsing is incremental across edits, stale work is cancelled,
     /// and semantic queries are limited to currently visible logical lines.
     /// Canonical attributes, selection, input, and undo state are unchanged.
-    public func applySyntaxConfiguration(_ configuration: RunestoneAppKitSyntaxConfiguration?) {
+    public func applySyntaxConfiguration(_ configuration: RunestoneAppKitSyntaxConfiguration?,
+                                         prefersStyledFirstPaint: Bool = false) {
         precondition(Thread.isMainThread)
         guard !isRetired else { return }
         syntaxConfiguration?.highlighter.cancel()
@@ -653,6 +664,16 @@ public class ReadOnlyDocumentView: NSView {
         availableSyntaxFolds.removeAll()
         collapsedSyntaxFoldHeaders.removeAll()
         invalidatePresentationControllers()
+        // Give a small document a short chance to render with its final
+        // typography. Parsing stays asynchronous and larger files paint immediately.
+        if prefersStyledFirstPaint, configuration != nil, (1...131_072).contains(snapshot.length) {
+            let token = UUID()
+            initialSyntaxPaintToken = token
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
+                guard self?.initialSyntaxPaintToken == token else { return }
+                self?.finishInitialSyntaxPaint()
+            }
+        }
         scheduleSyntaxUpdate()
         updateViewport()
     }
@@ -811,6 +832,7 @@ public class ReadOnlyDocumentView: NSView {
             didCommit(contentRevision)
             return contentRevision
         }
+        finishInitialSyntaxPaint()
         let previousHorizontalTextInset = horizontalTextInset
         let replacement = NSAttributedString(attributedString: content)
         guard let edit = LineEditTransaction.replace(in: manager, range: range, with: replacement.string) else { return nil }
@@ -1274,7 +1296,7 @@ public class ReadOnlyDocumentView: NSView {
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
         override func draw(_ dirtyRect: NSRect) {
-            guard let editor, let layout = editor.visibleLayout,
+            guard let editor, !editor.isWaitingForInitialSyntaxPaint, let layout = editor.visibleLayout,
                   let context = NSGraphicsContext.current?.cgContext else { return }
             context.saveGState()
             context.clip(to: bounds)
@@ -1308,7 +1330,7 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     public override func draw(_ dirtyRect: NSRect) {
-        guard !isRetired else { return }
+        guard !isRetired, !isWaitingForInitialSyntaxPaint else { return }
         super.draw(dirtyRect)
         guard let result = visibleLayout, let context = NSGraphicsContext.current?.cgContext else { return }
         context.saveGState()
@@ -1618,10 +1640,13 @@ public class ReadOnlyDocumentView: NSView {
                 guard let self, let highlighter,
                       self.syntaxConfiguration?.highlighter === highlighter,
                       self.contentRevision == revision else { return }
-                guard case .success = result else { return }
+                guard case .success = result else {
+                    self.finishInitialSyntaxPaint()
+                    return
+                }
                 self.syntaxParsedRevision = revision
-                self.requestSyntaxFoldsIfNeeded()
                 self.requestVisibleSyntaxIfNeeded()
+                self.requestSyntaxFoldsIfNeeded()
             }
         }
     }
@@ -1643,7 +1668,9 @@ public class ReadOnlyDocumentView: NSView {
                 guard let self, let highlighter,
                       self.syntaxConfiguration?.highlighter === highlighter,
                       self.contentRevision == revision, self.syntaxParsedRevision == revision,
-                      self.syntaxRequestToken == token, case .success(let captures) = result else { return }
+                      self.syntaxRequestToken == token else { return }
+                defer { self.finishInitialSyntaxPaint() }
+                guard case .success(let captures) = result else { return }
                 let previous = self.syntaxCaptures
                 self.syntaxCaptures = captures
                 self.syntaxCaptureRange = range
@@ -1698,6 +1725,7 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     private func clearSyntaxPresentation() {
+        finishInitialSyntaxPaint()
         syntaxCaptures.removeAll()
         syntaxParsedRevision = nil
         syntaxCaptureRevision = nil
