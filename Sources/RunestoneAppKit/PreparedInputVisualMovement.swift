@@ -111,7 +111,21 @@ enum PreparedInputVisualMovement {
         let rows = visibleRows(in: context)
         guard let index = rows.firstIndex(where: { sameRow($0, source) }) else { return false }
         let next = direction == .up ? index - 1 : index + 1
-        return !rows.indices.contains(next) && stable(context, view: view)
+        guard stable(context, view: view) else { return false }
+        guard rows.indices.contains(next) else { return true }
+
+        // A sliver of line spacing can be visible before the text and caret
+        // enter the viewport. Treat that row as offscreen for keyboard movement.
+        let row = rows[next]
+        let caretFrame: CGRect
+        if let placement = row.placement {
+            let fragment = placement.fragment
+            caretFrame = CGRect(x: row.frame.minX, y: row.frame.minY + fragment.verticalGeometry.textTop,
+                                width: 1, height: fragment.baseSize.height)
+        } else {
+            caretFrame = view.emptyLineCaretRect(y: row.frame.minY, rowHeight: row.frame.height, width: 1)
+        }
+        return caretFrame.minY >= context.layout.viewport.maxY || caretFrame.maxY <= context.layout.viewport.minY
     }
 
     /// Move to the next visual caret edge only when Core Text gives one

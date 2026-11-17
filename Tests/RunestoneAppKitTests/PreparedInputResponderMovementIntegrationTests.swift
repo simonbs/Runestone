@@ -231,6 +231,40 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         fixture.disconnect()
     }
 
+    func testVerticalMovementCrossesRowPaddingAtBothViewportEdges() throws {
+        let fixture = try MovementIntegrationFixture(String(repeating: "abcdef\n", count: 50))
+        defer { fixture.disconnect() }
+        fixture.view.displayConfiguration.lineHeightMultiplier = 2
+        fixture.view.updateViewport()
+        let clip = fixture.scroll.contentView
+        let first = try XCTUnwrap(fixture.view.visibleLayout?.lines.first?.placements.first)
+        let height = first.frame.height
+        let padding = first.fragment.verticalGeometry.textTop
+        XCTAssertGreaterThan(padding, 1)
+
+        // The neighboring row intersects the viewport, but its caret is hidden
+        // beyond the extra space inserted by the line-height multiplier.
+        let bottom = ceil(clip.bounds.height / height) * height + padding / 2
+        clip.scroll(to: NSPoint(x: 0, y: bottom - clip.bounds.height))
+        fixture.view.updateViewport()
+        let lowerRow = Int(floor(bottom / height))
+        try fixture.setSelection(NSRange(location: (lowerRow - 1) * 7 + 3, length: 0))
+        let lowerOrigin = clip.bounds.minY
+        XCTAssertTrue(fixture.send("moveDown:"))
+        XCTAssertEqual(fixture.selection.location, lowerRow * 7 + 3)
+        XCTAssertGreaterThan(clip.bounds.minY, lowerOrigin)
+
+        let upperRow = 5
+        let top = CGFloat(upperRow + 1) * height - padding / 2
+        clip.scroll(to: NSPoint(x: 0, y: top))
+        fixture.view.updateViewport()
+        try fixture.setSelection(NSRange(location: (upperRow + 1) * 7 + 3, length: 0))
+        let upperOrigin = clip.bounds.minY
+        XCTAssertTrue(fixture.send("moveUp:"))
+        XCTAssertEqual(fixture.selection.location, upperRow * 7 + 3)
+        XCTAssertLessThan(clip.bounds.minY, upperOrigin)
+    }
+
     func testVisualMovementRevealsAnAlreadyOffscreenCaretAndMovesOnce() throws {
         let fixture = try MovementIntegrationFixture(String(repeating: "abcdef\n", count: 250))
         defer { fixture.disconnect() }
