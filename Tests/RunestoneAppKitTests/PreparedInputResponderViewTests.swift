@@ -118,6 +118,40 @@ final class PreparedInputResponderViewTests: XCTestCase {
         XCTAssertTrue(attachment.disconnect())
     }
 
+    func testNativeSpellingCorrectionPreservesCaretAndRegistersItsOwnEdit() throws {
+        try XCTSkipUnless(NSSpellChecker.isAutomaticSpellingCorrectionEnabled)
+        let original = "recieved"
+        let checker = NSSpellChecker.shared
+        let word = NSRange(location: 0, length: original.utf16.count)
+        let language = (checker.automaticallyIdentifiesLanguages
+            ? checker.language(forWordRange: word, in: original, orthography: nil) : nil) ?? checker.language()
+        guard let correction = checker.correction(forWordRange: word, in: original, language: language,
+                                                      inSpellDocumentWithTag: 0), correction != original else {
+            throw XCTSkip("The active spelling language does not correct the English test word.")
+        }
+        let host = ResponderTestHost(original)
+        let queue = ResponderTestQueue()
+        let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
+            host: host, lifetime: host.lifetime, bridge: host.bridge,
+            makeDriver: { ResponderTestDriver($0) }, schedule: queue.enqueue))
+        defer {
+            _ = attachment.disconnect()
+            queue.runAll()
+        }
+        let connection = attachment.connection
+        XCTAssertTrue(connection.resumeForFocus())
+        XCTAssertTrue(connection.setSelectionForTextFinder(NSRange(location: word.length, length: 0)))
+        connection.insertTextFromKeyBinding(" ", replacementRange: NSRange(location: NSNotFound, length: 0))
+
+        let checked = expectation(description: "spelling check ran after input")
+        DispatchQueue.main.async { checked.fulfill() }
+        wait(for: [checked], timeout: 5)
+
+        XCTAssertEqual(host.text, correction + " ")
+        XCTAssertEqual(connection.inputState()?.selection, NSRange(location: correction.utf16.count + 1, length: 0))
+        XCTAssertEqual(host.undoCount, 2)
+    }
+
     func testStaleCommandReportsUnavailableInsteadOfForwarding() throws {
         let host = ResponderTestHost("abc")
         let queue = ResponderTestQueue()

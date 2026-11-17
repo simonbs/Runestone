@@ -479,7 +479,77 @@ final class PreparedInputContextConnection {
 
     /// Used only by the responder's system key-binding callbacks.
     func insertTextFromKeyBinding(_ value: Any, replacementRange: NSRange) {
-        mutate(operation: .insertText) { $0.insertTextReporting(value, replacementRange: replacementRange) }
+        insertCommittedText(value, replacementRange: replacementRange)
+    }
+
+    fileprivate func insertCommittedText(_ value: Any, replacementRange: NSRange) {
+        let text = (value as? NSAttributedString)?.string ?? (value as? String) ?? ""
+        let length = text.utf16.count
+        let endsWord = text.unicodeScalars.count == 1 &&
+            text.unicodeScalars.allSatisfy { CharacterSet.whitespacesAndNewlines.contains($0) }
+        mutate(operation: .insertText) { adapter in
+            let attempt = adapter.insertTextReporting(value, replacementRange: replacementRange)
+            guard attempt.outcome == .processed, length > 0,
+                  let caret = adapter.inputStateForHost()?.selection,
+                  caret.length == 0, caret.location >= length else { return attempt }
+            let range = NSRange(location: caret.location - length, length: length)
+            let expectedGeneration = generation
+            let expectedAction = inputActionGeneration
+            let expectedRevision = adapter.installedRevisionForDispatch
+            // AppKit can synchronously ask the client to replace text. Wait until
+            // the driver callback and the document's input reservation unwind.
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.generation == expectedGeneration,
+                      self.inputActionGeneration == expectedAction, self.activated,
+                      self.isConnectedForEditing,
+                      self.adapter.installedRevisionForDispatch == expectedRevision else { return }
+                self.textCheckingAnnotations.removeAll()
+                self.textCheckingController?.didChangeText(in: range)
+                if endsWord && self.correctCompletedWord(before: range.location, caret: caret.location) { return }
+                guard self.generation == expectedGeneration, self.inputActionGeneration == expectedAction,
+                      self.adapter.installedRevisionForDispatch == expectedRevision else { return }
+                self.textCheckingController?.insertedText(in: range)
+            }
+            return attempt
+        }
+    }
+
+    private func correctCompletedWord(before end: Int, caret: Int) -> Bool {
+        guard NSSpellChecker.isAutomaticSpellingCorrectionEnabled, end > 0,
+              let controller = textCheckingController, let revision = adapter.installedRevisionForDispatch,
+              let state = inputState(), !state.hasComposition,
+              state.selection == NSRange(location: caret, length: 0) else { return false }
+        let action = inputActionGeneration
+        let start = max(0, end - 256)
+        let range = NSRange(location: start, length: end - start)
+        guard let context = query(nil, { $0.attributedSubstringForInput(range: range, actualRange: nil) })?.string
+        else { return false }
+
+        var word: NSRange?
+        (context as NSString).enumerateSubstrings(in: NSRange(location: 0, length: range.length),
+                                                  options: [.byWords, .reverse, .substringNotRequired]) {
+            _, wordRange, _, stop in
+            if NSMaxRange(wordRange) == range.length && (start == 0 || wordRange.location > 0) { word = wordRange }
+            stop.pointee = true
+        }
+        guard let word else { return false }
+        let checker = NSSpellChecker.shared
+        let language = (checker.automaticallyIdentifiesLanguages
+            ? checker.language(forWordRange: word, in: context, orthography: nil) : nil) ?? checker.language()
+        guard let correction = checker.correction(forWordRange: word, in: context, language: language,
+                                                   inSpellDocumentWithTag: controller.spellCheckerDocumentTag),
+              correction != (context as NSString).substring(with: word),
+              inputActionGeneration == action, isConnectedForEditing,
+              adapter.installedRevisionForDispatch == revision,
+              inputState()?.selection == state.selection else { return false }
+        let edit = RunestoneHostEdit(
+            replacementRange: NSRange(location: start + word.location, length: word.length),
+            replacementText: correction,
+            selectedRange: NSRange(location: caret + correction.utf16.count - word.length, length: 0))
+        guard applyHostEdit(edit) else { return false }
+        controller.didChangeText(in: NSRange(location: edit.replacementRange.location, length: correction.utf16.count))
+        controller.didChangeSelectedRange()
+        return true
     }
 
     /// Used only by the responder's system key-binding callbacks.
@@ -991,7 +1061,7 @@ private final class PreparedContextClient: NSObject, NSTextCheckingClient {
     var writingToolsBehavior: NSWritingToolsBehavior = .limited
     var allowedWritingToolsResultOptions: NSWritingToolsResultOptions = .plainText
     func insertText(_ string: Any, replacementRange: NSRange) {
-        owner?.mutate(operation: .insertText) { $0.insertTextReporting(string, replacementRange: replacementRange) }
+        owner?.insertCommittedText(string, replacementRange: replacementRange)
     }
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
         owner?.mutate(operation: .setMarkedText) { $0.setMarkedTextReporting(string, selectedRange: selectedRange, replacementRange: replacementRange) }
