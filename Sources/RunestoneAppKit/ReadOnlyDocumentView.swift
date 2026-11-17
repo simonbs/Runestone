@@ -114,6 +114,7 @@ public class ReadOnlyDocumentView: NSView {
                 }
             }
             if oldValue.isLineWrappingEnabled != displayConfiguration.isLineWrappingEnabled ||
+                oldValue.horizontalTextPadding != displayConfiguration.horizontalTextPadding ||
                 oldValue.showsLineNumbers != displayConfiguration.showsLineNumbers ||
                 oldValue.minimumGutterCharacterCount != displayConfiguration.minimumGutterCharacterCount ||
                 oldValue.lineNumberFont != displayConfiguration.lineNumberFont ||
@@ -404,7 +405,7 @@ public class ReadOnlyDocumentView: NSView {
             if horizontalRect != nil {
                 let leftEdge = initial.minX + horizontalTextInset
                 proposed.origin.x = rect.minX < leftEdge ? floor(rect.minX - horizontalTextInset)
-                    : ceil(rect.maxX - initial.width)
+                    : ceil(rect.maxX - initial.width + horizontalTextPadding)
             } else if rect.minX < initial.minX || rect.maxX > initial.maxX {
                 proposed.origin.x = rect.midX - initial.width / 2
             }
@@ -436,7 +437,7 @@ public class ReadOnlyDocumentView: NSView {
               bar.minY < viewport.maxY, bar.maxY > viewport.minY else { return nil }
         if revealFullCaret {
             let rect = displayConfiguration.usesBlockCaret ? blockCaretGeometry(at: target.location, bar: bar).0 : bar
-            return rect.minX < viewport.minX + horizontalTextInset || rect.maxX > viewport.maxX ? rect : nil
+            return rect.minX < viewport.minX + horizontalTextInset || rect.maxX > viewport.maxX - horizontalTextPadding ? rect : nil
         }
         return bar.maxX <= viewport.minX || bar.minX >= viewport.maxX ? bar : nil
     }
@@ -1321,16 +1322,19 @@ public class ReadOnlyDocumentView: NSView {
     private func drawGutter(_ result: ViewportLayoutCoordinator.Result, in context: CGContext) {
         let gutter = horizontalTextInset
         if gutter > 0 {
-            context.setFillColor(displayConfiguration.gutterBackgroundColor.cgColor)
+            let background = gutter > horizontalTextPadding ? displayConfiguration.gutterBackgroundColor
+                : (enclosingScrollView?.backgroundColor ?? .textBackgroundColor)
+            context.setFillColor(background.cgColor)
             context.fill(CGRect(x: 0, y: result.viewport.minY, width: gutter, height: result.viewport.height))
         }
-        if displayConfiguration.showsLineNumbers {
-            if let color = displayConfiguration.selectedGutterBackgroundColor {
-                context.setFillColor(color.cgColor)
-                for rect in selectedLineHighlightRects(in: result) {
-                    context.fill(CGRect(x: 0, y: rect.minY, width: gutter, height: rect.height))
-                }
+        let selectedGutterColor = displayConfiguration.showsLineNumbers ? displayConfiguration.selectedGutterBackgroundColor : nil
+        if let color = selectedGutterColor ?? (horizontalTextPadding > 0 ? displayConfiguration.selectedLineBackgroundColor : nil) {
+            context.setFillColor(color.cgColor)
+            for rect in selectedLineHighlightRects(in: result) {
+                context.fill(CGRect(x: 0, y: rect.minY, width: gutter, height: rect.height))
             }
+        }
+        if displayConfiguration.showsLineNumbers {
             for layout in result.lines {
                 let fragment = firstFragment(in: layout)
                 guard fragment != nil || layout.line.data.totalLength == 0 else { continue }
@@ -1359,7 +1363,7 @@ public class ReadOnlyDocumentView: NSView {
                                   height: height, in: context)
             }
         }
-        if let color = displayConfiguration.gutterHairlineColor {
+        if gutter > horizontalTextPadding, let color = displayConfiguration.gutterHairlineColor {
             let width = 1 / (window?.backingScaleFactor ?? 1)
             context.setFillColor(color.cgColor)
             context.fill(CGRect(x: gutter - width, y: result.viewport.minY, width: width, height: result.viewport.height))
@@ -1649,8 +1653,13 @@ public class ReadOnlyDocumentView: NSView {
         return NSRect(x: horizontalTextInset, y: y + (rowHeight - height) / 2, width: width, height: height)
     }
 
+    private var horizontalTextPadding: CGFloat {
+        let padding = displayConfiguration.horizontalTextPadding
+        return padding.isFinite ? max(0, padding) : 0
+    }
+
     var horizontalTextInset: CGFloat {
-        let folding = foldingGutterWidth
+        let folding = horizontalTextPadding + foldingGutterWidth
         guard displayConfiguration.showsLineNumbers else { return folding }
         let digits = max(displayConfiguration.minimumGutterCharacterCount, String(max(1, manager.lineCount)).count)
         let sample = String(repeating: "8", count: max(1, digits)) as NSString
@@ -1732,14 +1741,14 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     private var effectiveTextWidth: CGFloat {
-        let available = max(1, layoutWidth - horizontalTextInset)
+        let available = max(1, layoutWidth - horizontalTextInset - horizontalTextPadding)
         guard displayConfiguration.isLineWrappingEnabled else { return available }
         guard let column = displayConfiguration.maximumContentWidthColumn, column > 0 else { return available }
         return min(available, CGFloat(column) * safeCharacterWidth)
     }
 
     private func documentFrameSize(for clip: NSClipView) -> NSSize {
-        let baseWidth = displayConfiguration.isLineWrappingEnabled ? layoutWidth : max(layoutWidth, measuredUnwrappedContentWidth + max(2, displayConfiguration.usesBlockCaret ? safeCharacterWidth : 0))
+        let baseWidth = displayConfiguration.isLineWrappingEnabled ? layoutWidth : max(layoutWidth, measuredUnwrappedContentWidth + horizontalTextPadding + max(2, displayConfiguration.usesBlockCaret ? safeCharacterWidth : 0))
         let baseHeight = max(clip.bounds.height, manager.contentHeight)
         let horizontalScrollable = max(0, baseWidth - clip.bounds.width)
         let verticalScrollable = max(0, baseHeight - clip.bounds.height)

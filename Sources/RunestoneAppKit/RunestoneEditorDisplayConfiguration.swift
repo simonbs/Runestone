@@ -10,6 +10,8 @@ public enum RunestoneSelectedLineHighlightGranularity: String, CaseIterable {
 /// These values never mutate document text, input state, undo, or file metadata.
 public struct RunestoneEditorDisplayConfiguration {
     public var isLineWrappingEnabled: Bool
+    /// Space on either side of the text layout inside the editor viewport.
+    public var horizontalTextPadding: CGFloat = 0
     public var showsLineNumbers: Bool
     public var minimumGutterCharacterCount: Int
     public var showsSelectedLines: Bool
