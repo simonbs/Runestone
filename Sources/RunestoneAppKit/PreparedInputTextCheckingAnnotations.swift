@@ -33,6 +33,14 @@ final class PreparedInputTextCheckingAnnotations {
         entries.removeAll { $0.values.isEmpty }
     }
 
+    var spellingRanges: [NSRange] {
+        entries.compactMap { entry in
+            guard let state = entry.values[.spellingState].flatMap(Int.init),
+                  state & Int(NSAttributedString.SpellingState.spelling.rawValue) != 0 else { return nil }
+            return entry.range
+        }
+    }
+
     func removeAll() { entries.removeAll() }
 
     static func clamp(_ range: NSRange, textLength: Int) -> NSRange? {

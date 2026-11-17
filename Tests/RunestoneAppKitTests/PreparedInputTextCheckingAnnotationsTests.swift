@@ -30,6 +30,16 @@ final class PreparedInputTextCheckingAnnotationsTests: XCTestCase {
         XCTAssertEqual(presentation.attribute(key, at: 4, effectiveRange: nil) as? String, "1")
     }
 
+    func testSpellingRangesExcludeOtherNativeAnnotations() {
+        let annotations = PreparedInputTextCheckingAnnotations()
+        let spelling = NSRange(location: 0, length: 3)
+        annotations.add([.spellingState: String(NSAttributedString.SpellingState.spelling.rawValue)],
+                        range: spelling, textLength: 7)
+        annotations.add([.spellingState: String(NSAttributedString.SpellingState.grammar.rawValue)],
+                        range: NSRange(location: 4, length: 3), textLength: 7)
+        XCTAssertEqual(annotations.spellingRanges, [spelling])
+    }
+
     func testNotFoundRangeMeansWholeDocument() {
         XCTAssertEqual(PreparedInputTextCheckingAnnotations.clamp(
             NSRange(location: NSNotFound, length: 0), textLength: 7

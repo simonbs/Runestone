@@ -178,6 +178,16 @@ final class PreparedInputContextConnection {
         return true
     }
 
+    fileprivate var checksSpellingWhileTyping: Bool { view.displayConfiguration.checksSpellingWhileTyping }
+    fileprivate var correctsSpellingAutomatically: Bool? { view.displayConfiguration.correctsSpellingAutomatically }
+
+    var spellingAnnotationRects: [NSRect] {
+        guard checksSpellingWhileTyping, isConnectedForEditing else { return [] }
+        return textCheckingAnnotations.spellingRanges.flatMap {
+            InputSelectionGeometry.geometry(selection: $0, marked: nil, in: view)?.selectionRects ?? []
+        }
+    }
+
     var nativeTextCheckingController: NSTextCheckingController? { textCheckingController }
 
     var spellingCorrectionRects: [NSRect] {
@@ -257,11 +267,13 @@ final class PreparedInputContextConnection {
         let length = (snapshot.text as NSString).length
         if adding { textCheckingAnnotations.add(values, range: range, textLength: length) }
         else { textCheckingAnnotations.set(values, range: range, textLength: length) }
+        if checksSpellingWhileTyping { view.needsDisplay = true }
     }
 
     fileprivate func removeTextCheckingAnnotation(_ key: NSAttributedString.Key, range: NSRange) {
         guard let snapshot = textFinderSnapshot() else { return }
         textCheckingAnnotations.remove(key, range: range, textLength: (snapshot.text as NSString).length)
+        if checksSpellingWhileTyping { view.needsDisplay = true }
     }
 
     fileprivate func replaceTextCheckingRange(_ range: NSRange, with value: NSAttributedString) {
@@ -586,13 +598,16 @@ final class PreparedInputContextConnection {
                 guard self.generation == expectedGeneration, self.inputActionGeneration == expectedAction,
                       self.adapter.installedRevisionForDispatch == expectedRevision else { return }
                 self.textCheckingController?.insertedText(in: range)
+                if self.checksSpellingWhileTyping {
+                    self.textCheckingController?.considerTextChecking(for: range)
+                }
             }
             return attempt
         }
     }
 
     private func correctCompletedWord(before end: Int, caret: Int) -> Bool {
-        guard NSSpellChecker.isAutomaticSpellingCorrectionEnabled, end > 0,
+        guard correctsSpellingAutomatically ?? NSSpellChecker.isAutomaticSpellingCorrectionEnabled, end > 0,
               let controller = textCheckingController, let revision = adapter.installedRevisionForDispatch,
               let state = inputState(), !state.hasComposition,
               state.selection == NSRange(location: caret, length: 0) else { return false }
@@ -1135,8 +1150,14 @@ private var preparedContextClientKey: UInt8 = 0
 /// The associated proxy never owns its context, adapter, view, or coordinator.
 private final class PreparedContextClient: NSObject, NSTextCheckingClient {
     weak var owner: PreparedInputContextConnection?
-    var autocorrectionType: NSTextInputTraitType = .default
-    var spellCheckingType: NSTextInputTraitType = .yes
+    var autocorrectionType: NSTextInputTraitType {
+        get { owner?.correctsSpellingAutomatically.map { $0 ? .yes : .no } ?? .default }
+        set {}
+    }
+    var spellCheckingType: NSTextInputTraitType {
+        get { owner?.checksSpellingWhileTyping == true ? .yes : .no }
+        set {}
+    }
     var grammarCheckingType: NSTextInputTraitType = .yes
     var smartQuotesType: NSTextInputTraitType = .default
     var smartDashesType: NSTextInputTraitType = .default

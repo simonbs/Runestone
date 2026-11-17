@@ -41,6 +41,9 @@ public struct RunestoneEditorDisplayConfiguration {
     /// The editor font used to lay out empty lines.
     public var textFont: NSFont?
     /// Draws a filled character cell at the insertion point.
+    public var checksSpellingWhileTyping = false
+    /// A nil override follows the macOS spelling correction preference.
+    public var correctsSpellingAutomatically: Bool?
     public var usesBlockCaret: Bool = false
     /// A nil color uses the native system insertion point color.
     public var caretColor: NSColor?

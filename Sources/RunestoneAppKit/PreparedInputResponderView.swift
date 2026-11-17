@@ -1475,6 +1475,16 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             }
         }
         guard !isWaitingForInitialSyntaxPaint, ownsKeyFocus, !disarmed, !isReadOnly, let connection = inputConnection else { return }
+        NSColor.systemRed.setStroke()
+        for rect in connection.spellingAnnotationRects where rect.intersects(dirtyRect) {
+            let path = NSBezierPath()
+            path.move(to: NSPoint(x: rect.minX, y: rect.maxY - 1))
+            path.line(to: NSPoint(x: rect.maxX, y: rect.maxY - 1))
+            path.lineWidth = 1
+            path.lineCapStyle = .round
+            path.setLineDash([0, 3], count: 2, phase: 0)
+            path.stroke()
+        }
         NSColor.controlAccentColor.withAlphaComponent(0.45).setFill()
         for rect in connection.spellingCorrectionRects where rect.intersects(dirtyRect) {
             NSBezierPath(roundedRect: NSRect(x: rect.minX, y: rect.maxY - 2, width: rect.width, height: 2),
