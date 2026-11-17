@@ -118,7 +118,7 @@ final class PreparedInputResponderViewTests: XCTestCase {
         XCTAssertTrue(attachment.disconnect())
     }
 
-    func testNativeSpellingCorrectionPreservesCaretAndRegistersItsOwnEdit() throws {
+    func testNativeSpellingCorrectionAndReversionPreserveCaretAndUndo() throws {
         try XCTSkipUnless(NSSpellChecker.isAutomaticSpellingCorrectionEnabled)
         let original = "recieved"
         let checker = NSSpellChecker.shared
@@ -150,6 +150,13 @@ final class PreparedInputResponderViewTests: XCTestCase {
         XCTAssertEqual(host.text, correction + " ")
         XCTAssertEqual(connection.inputState()?.selection, NSRange(location: correction.utf16.count + 1, length: 0))
         XCTAssertEqual(host.undoCount, 2)
+
+        connection.insertTextFromKeyBinding("x", replacementRange: NSRange(location: NSNotFound, length: 0))
+        XCTAssertTrue(connection.revertSpellingCorrection())
+        XCTAssertEqual(host.text, original + " x")
+        XCTAssertEqual(connection.inputState()?.selection, NSRange(location: word.length + 2, length: 0))
+        XCTAssertEqual(host.undoCount, 4)
+        XCTAssertFalse(connection.revertSpellingCorrection())
     }
 
     func testStaleCommandReportsUnavailableInsteadOfForwarding() throws {

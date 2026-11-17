@@ -1038,6 +1038,9 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         if handleSyntaxFoldingClick(event) { return }
         guard focusRequested, !disarmed, !isReadOnly,
               let connection = inputConnection else { return }
+        if event.clickCount == 1, event.modifierFlags.intersection([.shift, .control, .option, .command]).isEmpty,
+           connection.showSpellingReversion(at: convert(event.locationInWindow, from: nil)) { return }
+        connection.dismissSpellingCorrection()
         if event.clickCount == 1, !event.modifierFlags.contains(.shift), let window,
            let snapshot = connection.selectionSnapshot(), snapshot.state.range.length > 0 {
             let point = window.convertPoint(toScreen: event.locationInWindow)
@@ -1472,6 +1475,11 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             }
         }
         guard !isWaitingForInitialSyntaxPaint, ownsKeyFocus, !disarmed, !isReadOnly, let connection = inputConnection else { return }
+        NSColor.controlAccentColor.withAlphaComponent(0.45).setFill()
+        for rect in connection.spellingCorrectionRects where rect.intersects(dirtyRect) {
+            NSBezierPath(roundedRect: NSRect(x: rect.minX, y: rect.maxY - 2, width: rect.width, height: 2),
+                         xRadius: 1, yRadius: 1).fill()
+        }
         connection.performResponderActivity { adapter, isCurrent in
             guard let selection = adapter.selectionStateForHost(),
                   selection.range.location != NSNotFound, isCurrent(), ownsKeyFocus else { return }

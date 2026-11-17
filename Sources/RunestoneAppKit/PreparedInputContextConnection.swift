@@ -89,6 +89,15 @@ final class PreparedInputContextConnection {
     }
     private var textCheckingController: NSTextCheckingController?
     private let textCheckingAnnotations = PreparedInputTextCheckingAnnotations()
+    private struct SpellingCorrection {
+        let range: NSRange
+        let original: String
+        let replacement: String
+        let language: String
+        var revision: UUID
+    }
+    private var spellingCorrection: SpellingCorrection?
+    private var spellingIndicatorID: UUID?
     private var contextToken: PreparedInputEventAdapter.InputContextToken? {
         get { payload!.contextToken }
         set { payload!.contextToken = newValue }
@@ -170,6 +179,62 @@ final class PreparedInputContextConnection {
     }
 
     var nativeTextCheckingController: NSTextCheckingController? { textCheckingController }
+
+    var spellingCorrectionRects: [NSRect] {
+        guard isConnectedForEditing, let correction = spellingCorrection,
+              correction.revision == adapter.installedRevisionForDispatch else { return [] }
+        return InputSelectionGeometry.geometry(selection: correction.range, marked: nil, in: view)?.selectionRects ?? []
+    }
+
+    func dismissSpellingCorrection() {
+        guard spellingCorrection != nil || spellingIndicatorID != nil else { return }
+        spellingCorrection = nil
+        dismissSpellingIndicator()
+        view.needsDisplay = true
+    }
+
+    private func dismissSpellingIndicator() {
+        guard spellingIndicatorID != nil else { return }
+        spellingIndicatorID = nil
+        NSSpellChecker.shared.dismissCorrectionIndicator(for: view)
+    }
+
+    func showSpellingReversion(at point: NSPoint) -> Bool {
+        guard let correction = spellingCorrection,
+              let rect = spellingCorrectionRects.first(where: { $0.contains(point) }) else { return false }
+        if spellingIndicatorID != nil { return true }
+        let id = UUID()
+        spellingIndicatorID = id
+        NSSpellChecker.shared.showCorrectionIndicator(of: .reversion, primaryString: correction.original,
+                                                        alternativeStrings: [], forStringIn: rect, view: view) { [weak self] accepted in
+            DispatchQueue.main.async {
+                guard let self, self.spellingIndicatorID == id else { return }
+                self.spellingIndicatorID = nil
+                guard accepted == correction.original else { return }
+                self.revertSpellingCorrection()
+            }
+        }
+        view.needsDisplay = true
+        return true
+    }
+
+    @discardableResult
+    func revertSpellingCorrection() -> Bool {
+        guard isConnectedForEditing, let correction = spellingCorrection,
+              correction.revision == adapter.installedRevisionForDispatch,
+              let controller = textCheckingController, let state = inputState(),
+              state.selection.length == 0, state.selection.location >= NSMaxRange(correction.range) else { return false }
+        let delta = correction.original.utf16.count - correction.range.length
+        let edit = RunestoneHostEdit(replacementRange: correction.range, replacementText: correction.original,
+                                     selectedRange: NSRange(location: state.selection.location + delta, length: 0))
+        dismissSpellingCorrection()
+        guard applyHostEdit(edit) else { return false }
+        NSSpellChecker.shared.record(.reverted, toCorrection: correction.replacement, forWord: correction.original,
+                                     language: correction.language, inSpellDocumentWithTag: controller.spellCheckerDocumentTag)
+        controller.didChangeText(in: NSRange(location: correction.range.location, length: correction.original.utf16.count))
+        controller.didChangeSelectedRange()
+        return true
+    }
 
     fileprivate func annotatedTextCheckingSubstring(_ proposed: NSRange, actualRange: NSRangePointer?) -> NSAttributedString? {
         guard let snapshot = textFinderSnapshot() else { return nil }
@@ -262,6 +327,7 @@ final class PreparedInputContextConnection {
         precondition(Thread.isMainThread)
         guard !focusSuspended else { return }
         focusSuspended = true
+        dismissSpellingCorrection()
         requestReset()
     }
 
@@ -488,6 +554,8 @@ final class PreparedInputContextConnection {
         let endsWord = text.unicodeScalars.count == 1 &&
             text.unicodeScalars.allSatisfy { CharacterSet.whitespacesAndNewlines.contains($0) }
         mutate(operation: .insertText) { adapter in
+            dismissSpellingIndicator()
+            let priorRevision = adapter.installedRevisionForDispatch
             let attempt = adapter.insertTextReporting(value, replacementRange: replacementRange)
             guard attempt.outcome == .processed, length > 0,
                   let caret = adapter.inputStateForHost()?.selection,
@@ -496,6 +564,15 @@ final class PreparedInputContextConnection {
             let expectedGeneration = generation
             let expectedAction = inputActionGeneration
             let expectedRevision = adapter.installedRevisionForDispatch
+            if var existing = spellingCorrection {
+                if existing.revision == priorRevision, let expectedRevision,
+                   replacementRange.location == NSNotFound, range.location >= NSMaxRange(existing.range) {
+                    existing.revision = expectedRevision
+                    spellingCorrection = existing
+                } else {
+                    dismissSpellingCorrection()
+                }
+            }
             // AppKit can synchronously ask the client to replace text. Wait until
             // the driver callback and the document's input reservation unwind.
             DispatchQueue.main.async { [weak self] in
@@ -533,12 +610,13 @@ final class PreparedInputContextConnection {
             stop.pointee = true
         }
         guard let word else { return false }
+        let original = (context as NSString).substring(with: word)
         let checker = NSSpellChecker.shared
         let language = (checker.automaticallyIdentifiesLanguages
             ? checker.language(forWordRange: word, in: context, orthography: nil) : nil) ?? checker.language()
         guard let correction = checker.correction(forWordRange: word, in: context, language: language,
                                                    inSpellDocumentWithTag: controller.spellCheckerDocumentTag),
-              correction != (context as NSString).substring(with: word),
+              correction != original,
               inputActionGeneration == action, isConnectedForEditing,
               adapter.installedRevisionForDispatch == revision,
               inputState()?.selection == state.selection else { return false }
@@ -547,7 +625,13 @@ final class PreparedInputContextConnection {
             replacementText: correction,
             selectedRange: NSRange(location: caret + correction.utf16.count - word.length, length: 0))
         guard applyHostEdit(edit) else { return false }
-        controller.didChangeText(in: NSRange(location: edit.replacementRange.location, length: correction.utf16.count))
+        dismissSpellingCorrection()
+        let correctedRange = NSRange(location: edit.replacementRange.location, length: correction.utf16.count)
+        if let revision = adapter.installedRevisionForDispatch {
+            spellingCorrection = SpellingCorrection(range: correctedRange, original: original,
+                                                    replacement: correction, language: language, revision: revision)
+        }
+        controller.didChangeText(in: correctedRange)
         controller.didChangeSelectedRange()
         return true
     }
@@ -773,6 +857,7 @@ final class PreparedInputContextConnection {
             recordInputFailure(operation: .command, failure: .init(reason: .unavailable, effect: .notApplied))
             return
         }
+        dismissSpellingCorrection()
         handler.preparedInputContextConnection(self, doCommand: selector)
     }
 
