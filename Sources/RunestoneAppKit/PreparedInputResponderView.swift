@@ -939,7 +939,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         // Keep the source caret inside the viewport so the next row can be
         // resolved from actual geometry rather than from an estimated offset.
         let room = up ? bounds.maxY - documentCaret.maxY : documentCaret.minY - bounds.minY
-        let amount = min(PreparedInputViewportStep.maximumDelta, bounds.height * 0.25, max(0, room - 1))
+        let rowHeight = documentCaret.height * displayConfiguration.lineHeightMultiplier
+        let amount = min(PreparedInputViewportStep.maximumDelta, rowHeight, max(0, room - 1))
         guard amount.isFinite, amount >= 1 else { return .boundary }
         return PreparedInputViewportStep.perform(in: self, dx: 0, dy: up ? -amount : amount,
                                                  clock: inputViewportClock, isCurrent: check)
@@ -958,7 +959,9 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             connection.recordInputFailure(operation: .command, failure: .init(reason: .compositionActive, effect: .notApplied))
             return
         }
+        let isVertical = name.hasPrefix("moveUp") || name.hasPrefix("moveDown")
         var destination = visualDestination(name, selection: state.selection)
+        var verticalProbeOrigin: NSRect?
         var viewportMayHaveChanged = false
         if destination == nil {
             let offscreenStep: PreparedInputViewportStep.Outcome?
@@ -966,11 +969,13 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                let check = movementViewportCheck(selection: state.selection, adapter: adapter, isAvailable: isAvailable) {
                 offscreenStep = revealOffscreenMovementCaret(origin, clock: inputViewportClock, isCurrent: check)
             } else { offscreenStep = nil }
+            let viewportBeforeProbe = visibleLayout?.viewport
             let step = offscreenStep ?? scrollForVerticalMovement(name, selection: state.selection,
                                                                   adapter: adapter, isAvailable: isAvailable)
             switch step {
             case .progressed:
                 viewportMayHaveChanged = true
+                if offscreenStep == nil && isVertical { verticalProbeOrigin = viewportBeforeProbe }
                 destination = visualDestination(name, selection: state.selection)
             case .unavailable, .viewportChanged:
                 viewportMayHaveChanged = true
@@ -987,10 +992,13 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             return
         }
         if let viewport = visibleLayout?.viewport,
-           horizontallyClippedMovementRect(for: destination.target, viewport: viewport, revealFullCaret: !destination.extending) != nil,
+           horizontallyClippedMovementRect(for: destination.target, viewport: viewport, revealFullCaret: !destination.extending) != nil ||
+                (isVertical && verticalMovementReveal(for: destination.target, from: verticalProbeOrigin ?? viewport) != nil),
            let check = movementViewportCheck(selection: state.selection, adapter: adapter, isAvailable: isAvailable) {
             let step = revealOffscreenMovementCaret(destination.target, clock: inputViewportClock,
-                                                   revealFullCaret: !destination.extending, isCurrent: check)
+                                                   revealFullCaret: !destination.extending,
+                                                   verticalReference: isVertical ? verticalProbeOrigin ?? viewport : nil,
+                                                   isCurrent: check)
             guard step == .progressed, check() else {
                 verticalPreference = nil
                 connection.recordInputFailure(operation: .command,

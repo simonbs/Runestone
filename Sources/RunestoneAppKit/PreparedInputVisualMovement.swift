@@ -80,8 +80,7 @@ enum PreparedInputVisualMovement {
         let x = preferredScreenX ?? (target.affinity?.bidirectionalSide == nil ? caret.midX : caret.minX)
         guard x.isFinite,
               let resolved = hitTarget(row: rows[next], screenX: x, context: context, view: view),
-              (InputScreenCaretGeometry.rect(for: resolved, in: view) != nil ||
-                view.horizontallyClippedMovementRect(for: resolved, viewport: context.layout.viewport) != nil),
+              InputCaretAffinityGeometry.documentRect(for: resolved, in: view) != nil,
               stable(context, view: view) else { return nil }
         return (resolved, x)
     }

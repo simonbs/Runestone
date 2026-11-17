@@ -364,7 +364,7 @@ public class ReadOnlyDocumentView: NSView {
     /// same input budget. The caller may recompute its command once after this
     /// returns current, visible geometry.
     func revealOffscreenMovementCaret(_ target: InputCaretTarget, clock: @escaping () -> TimeInterval,
-                                      revealFullCaret: Bool = false,
+                                      revealFullCaret: Bool = false, verticalReference: NSRect? = nil,
                                       isCurrent: () -> Bool) -> PreparedInputViewportStep.Outcome? {
         guard let scroll = enclosingScrollView, let window,
               let budget = PreparedInputViewportWorkBudget(clock: clock, timeLimit: 0.016) else { return nil }
@@ -372,7 +372,10 @@ public class ReadOnlyDocumentView: NSView {
         let initial = clip.bounds
         let horizontalRect = horizontallyClippedMovementRect(for: target, viewport: initial,
                                                               revealFullCaret: revealFullCaret)
-        guard let line = horizontalRect == nil ? offscreenMovementLine(for: target)
+        let verticalReveal = verticalReference.flatMap { verticalMovementReveal(for: target, from: $0) }
+        let verticalRect = verticalReveal?.rect
+        let knownRect = horizontalRect ?? verticalRect
+        guard let line = knownRect == nil ? offscreenMovementLine(for: target)
                   : manager.line(containingCharacterAt: target.location) else { return nil }
         let geometry = inputGeometryRevision
         let layoutRevision = inputLayoutRevision
@@ -385,9 +388,9 @@ public class ReadOnlyDocumentView: NSView {
 
         let result = withBoundedViewportWork(budget) { () -> PreparedInputViewportStep.Outcome in
             guard current(), clip.bounds == initial, inputGeometryRevision == geometry,
-                  horizontalRect != nil || budget.consume(line) else { return .refusedBeforeScroll }
+                  knownRect != nil || budget.consume(line) else { return .refusedBeforeScroll }
             let previousHeight = line.data.lineHeight
-            let rect = horizontalRect ?? prepareMovementCaretRect(target, line: line)
+            let rect = knownRect ?? prepareMovementCaretRect(target, line: line)
             // A newly measured line above the viewport can invalidate its row
             // positions even if the caret cannot be reached within this budget.
             defer {
@@ -395,7 +398,7 @@ public class ReadOnlyDocumentView: NSView {
                     visibleLayout = nil
                 }
             }
-            guard let rect, horizontalRect != nil || !rect.intersects(initial), budget.check(), current(), clip.bounds == initial
+            guard let rect, knownRect != nil || !rect.intersects(initial), budget.check(), current(), clip.bounds == initial
             else { return .refusedBeforeScroll }
 
             let size = documentFrameSize(for: clip)
@@ -406,10 +409,14 @@ public class ReadOnlyDocumentView: NSView {
                 let leftEdge = initial.minX + horizontalTextInset
                 proposed.origin.x = rect.minX < leftEdge ? floor(rect.minX - horizontalTextInset)
                     : ceil(rect.maxX - initial.width + horizontalTextPadding)
-            } else if rect.minX < initial.minX || rect.maxX > initial.maxX {
+            } else if knownRect == nil && (rect.minX < initial.minX || rect.maxX > initial.maxX) {
                 proposed.origin.x = rect.midX - initial.width / 2
             }
-            if rect.minY < initial.minY || rect.maxY > initial.maxY { proposed.origin.y = rect.midY - initial.height / 2 }
+            if let verticalReveal {
+                proposed.origin.y = verticalReveal.origin
+            } else if rect.minY < initial.minY || rect.maxY > initial.maxY {
+                proposed.origin.y = rect.midY - initial.height / 2
+            }
             let constrained = clip.constrainBoundsRect(proposed)
             guard current(), clip.bounds == initial, constrained.size == initial.size,
                   PreparedInputViewportStep.validViewport(constrained), constrained.intersects(rect),
@@ -440,6 +447,22 @@ public class ReadOnlyDocumentView: NSView {
             return rect.minX < viewport.minX + horizontalTextInset || rect.maxX > viewport.maxX - horizontalTextPadding ? rect : nil
         }
         return bar.maxX <= viewport.minX || bar.minX >= viewport.maxX ? bar : nil
+    }
+
+    func verticalMovementReveal(for target: InputCaretTarget, from reference: NSRect) -> (rect: NSRect, origin: CGFloat)? {
+        guard !isRetired, !updatingViewport, let viewport = enclosingScrollView?.contentView.bounds,
+              visibleLayout?.isComplete == true, visibleLayout?.viewport == viewport,
+              let rect = InputCaretAffinityGeometry.documentRect(for: target, in: self),
+              rect.height <= viewport.height else { return nil }
+        let origin: CGFloat
+        if rect.minY < reference.minY {
+            origin = rect.minY
+        } else if rect.maxY > reference.maxY {
+            origin = rect.maxY - reference.height
+        } else {
+            return nil
+        }
+        return abs(origin - viewport.minY) > 0.01 ? (rect, origin) : nil
     }
 
     private func movementCaretRect(for target: InputCaretTarget) -> NSRect? {
