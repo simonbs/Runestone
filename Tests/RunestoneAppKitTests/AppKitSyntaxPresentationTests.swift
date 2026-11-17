@@ -34,6 +34,36 @@ final class AppKitSyntaxPresentationTests: XCTestCase {
         XCTAssertEqual(fixture.view.content.string, text)
     }
 
+    func testTypingKeepsSyntaxColorsAndFontsUntilTheNextParse() throws {
+        let text = "[42,\n 123]\n"
+        let baseFont = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        let syntaxFont = NSFont.monospacedSystemFont(ofSize: 19, weight: .bold)
+        let attributes: [NSAttributedString.Key: Any] = [.font: baseFont, .foregroundColor: NSColor.black]
+        let fixture = makeFixture(NSAttributedString(string: text, attributes: attributes))
+        let highlighter = try RunestoneSyntaxHighlighter(language: RunestoneSyntaxLanguage(
+            language: tree_sitter_json(), highlightsQuery: "(number) @number"))
+        fixture.view.applySyntaxConfiguration(RunestoneAppKitSyntaxConfiguration(
+            highlighter: highlighter, styles: ["number": .init(foregroundColor: .systemRed, font: syntaxFont)]))
+
+        func presentedAttributes(at offset: Int) -> [NSAttributedString.Key: Any] {
+            fixture.view.presentationAttributedSubstring(from: NSRange(location: offset, length: 1))
+                .attributes(at: 0, effectiveRange: nil)
+        }
+        let styled = expectation(for: NSPredicate { _, _ in
+            presentedAttributes(at: 1)[.foregroundColor] as? NSColor == .systemRed
+        }, evaluatedWith: nil)
+        XCTAssertEqual(XCTWaiter().wait(for: [styled], timeout: 3), .completed)
+
+        XCTAssertTrue(fixture.view.replaceContent(in: NSRange(location: 2, length: 0),
+                                                 with: NSAttributedString(string: "9", attributes: attributes)))
+        // No main-loop turn has allowed the asynchronous parse to publish yet.
+        for offset in [1, 2, 3, 7, 8, 9] {
+            let styled = presentedAttributes(at: offset)
+            XCTAssertEqual(styled[.foregroundColor] as? NSColor, .systemRed)
+            XCTAssertEqual(styled[.font] as? NSFont, syntaxFont)
+        }
+    }
+
     func testLargeDocumentQueriesOnlyVisibleLogicalLines() {
         let line = "let value = 1234567890\n"
         let text = String(repeating: line, count: 20_000)

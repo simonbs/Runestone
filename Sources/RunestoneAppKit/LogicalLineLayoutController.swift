@@ -36,7 +36,7 @@ final class LogicalLineLayoutController {
     }
 
     private let manager: LineManager
-    private let line: DocumentLineNode
+    let line: DocumentLineNode
     private let typesetter: LineTypesetter
     private var fallbackHeight: CGFloat = 0
     private var prepared = false

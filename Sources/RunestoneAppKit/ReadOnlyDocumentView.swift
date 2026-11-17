@@ -764,6 +764,7 @@ public class ReadOnlyDocumentView: NSView {
         contentRevision = revision
         availableSyntaxFolds.removeAll()
         collapsedSyntaxFoldHeaders.removeAll()
+        clearSyntaxPresentation()
         resetLayout(width: 0)
         scheduleSyntaxUpdate()
         didCommit(revision)
@@ -816,17 +817,17 @@ public class ReadOnlyDocumentView: NSView {
         snapshot.replaceCharacters(in: range, with: replacement)
         let revision = UUID()
         contentRevision = revision
+        rebaseSyntaxCaptures(afterReplacing: range, withLength: replacement.length)
         let affected = edit.lineChanges.editedLines.union(edit.lineChanges.removedLines)
         let ids = Set(affected.map(\.id))
         if horizontalTextInset != previousHorizontalTextInset {
             resetLayout(width: layoutWidth)
         } else {
+            inputLayoutRevision = UUID()
             for id in ids { controllers.removeValue(forKey: id)?.invalidate() }
             controllerOrder.removeAll { ids.contains($0) }
             visibleLayout = nil
         }
-        clearSyntaxPresentation()
-        invalidatePresentationControllers()
         scheduleSyntaxUpdate()
         didCommit(revision)
         scheduleAccessibilityValueChanged()
@@ -1593,7 +1594,7 @@ public class ReadOnlyDocumentView: NSView {
         if kern != 0 {
             presented.addAttribute(.kern, value: kern, range: NSRange(location: 0, length: presented.length))
         }
-        if syntaxCaptureRevision == contentRevision, let configuration = syntaxConfiguration {
+        if let configuration = syntaxConfiguration {
             for capture in syntaxCaptures {
                 let intersection = NSIntersectionRange(range, capture.range)
                 guard intersection.length > 0, let style = configuration.style(for: capture.name) else { continue }
@@ -1643,14 +1644,57 @@ public class ReadOnlyDocumentView: NSView {
                       self.syntaxConfiguration?.highlighter === highlighter,
                       self.contentRevision == revision, self.syntaxParsedRevision == revision,
                       self.syntaxRequestToken == token, case .success(let captures) = result else { return }
+                let previous = self.syntaxCaptures
                 self.syntaxCaptures = captures
                 self.syntaxCaptureRange = range
                 self.syntaxCaptureRevision = revision
-                self.invalidatePresentationControllers()
-                self.needsDisplay = true
-                self.updateViewport()
+                guard previous != captures else { return }
+                self.invalidateControllersWithChangedSyntax(previous: previous, current: captures)
             }
         }
+    }
+
+    /// Keep the last styled snapshot usable until the new parse finishes.
+    /// Captures wholly removed by the edit are discarded; surviving spans
+    /// follow their text in UTF-16 coordinates.
+    private func rebaseSyntaxCaptures(afterReplacing range: NSRange, withLength length: Int) {
+        let shift = length - range.length
+        syntaxCaptures = syntaxCaptures.compactMap { capture in
+            let span = capture.range
+            if span.upperBound <= range.location { return capture }
+            if span.location >= range.upperBound {
+                return RunestoneSyntaxCapture(range: NSRange(location: span.location + shift, length: span.length),
+                                              name: capture.name)
+            }
+            guard span.location < range.location || span.upperBound > range.upperBound else { return nil }
+            let start = span.location < range.location ? span.location : range.location + length
+            let end = span.upperBound > range.upperBound ? span.upperBound + shift : range.location
+            guard end > start else { return nil }
+            return RunestoneSyntaxCapture(range: NSRange(location: start, length: end - start), name: capture.name)
+        }
+        syntaxCaptureRange = nil
+        syntaxCaptureRevision = nil
+    }
+
+    private func invalidateControllersWithChangedSyntax(previous: [RunestoneSyntaxCapture], current: [RunestoneSyntaxCapture]) {
+        let changed = controllers.compactMap { id, controller -> DocumentLineNodeID? in
+            let line = controller.line
+            let range = NSRange(location: line.location, length: line.data.totalLength)
+            func intersects(_ capture: RunestoneSyntaxCapture) -> Bool {
+                NSIntersectionRange(range, capture.range).length > 0
+            }
+            return previous.filter(intersects) == current.filter(intersects) ? nil : id
+        }
+        guard !changed.isEmpty else { return }
+        let ids = Set(changed)
+        for id in ids { controllers.removeValue(forKey: id)?.invalidate() }
+        controllerOrder.removeAll { ids.contains($0) }
+        inputLayoutRevision = UUID()
+        visibleLayout = nil
+        unwrappedWidthMeasurementGeneration = UUID()
+        scheduleUnwrappedWidthMeasurementIfNeeded()
+        needsDisplay = true
+        updateViewport()
     }
 
     private func clearSyntaxPresentation() {
@@ -1721,9 +1765,15 @@ public class ReadOnlyDocumentView: NSView {
                     if let existing = mapped[first.index], existing.upperBound >= hidden.upperBound { continue }
                     mapped[first.index] = hidden
                 }
+                let previous = self.collapsedSyntaxFoldHeaders.compactMap { self.availableSyntaxFolds[$0] }.sorted { $0.lowerBound < $1.lowerBound }
                 self.availableSyntaxFolds = mapped
                 self.collapsedSyntaxFoldHeaders.formIntersection(mapped.keys)
-                self.applyCollapsedSyntaxFolds()
+                let current = self.collapsedSyntaxFoldHeaders.compactMap { mapped[$0] }.sorted { $0.lowerBound < $1.lowerBound }
+                if previous != current {
+                    self.applyCollapsedSyntaxFolds()
+                } else {
+                    self.gutterView?.needsDisplay = true
+                }
             }
         }
     }
