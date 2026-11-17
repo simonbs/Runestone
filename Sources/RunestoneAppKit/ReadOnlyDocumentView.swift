@@ -56,7 +56,7 @@ public class ReadOnlyDocumentView: NSView {
     private var collapsedSyntaxFoldHeaders: Set<Int> = []
     private(set) var contentRevision = UUID()
     private let fallbackHeight: CGFloat
-    private var emptyLineFontHeight: CGFloat?
+    private var emptyLineFontMetrics: (height: CGFloat, descent: CGFloat)?
     private let cacheLimit = 128
     private(set) var manager: LineManager
     private var controllers: [DocumentLineNodeID: LogicalLineLayoutController] = [:]
@@ -104,13 +104,13 @@ public class ReadOnlyDocumentView: NSView {
         didSet {
             guard !isRetired else { return }
             if oldValue.textFont != displayConfiguration.textFont {
-                emptyLineFontHeight = displayConfiguration.textFont.map { font in
+                emptyLineFontMetrics = displayConfiguration.textFont.map { font in
                     let sample = CTLineCreateWithAttributedString(NSAttributedString(string: "M", attributes: [.font: font]))
                     var ascent: CGFloat = 0
                     var descent: CGFloat = 0
                     var leading: CGFloat = 0
                     CTLineGetTypographicBounds(sample, &ascent, &descent, &leading)
-                    return ascent + descent + leading
+                    return (ascent + descent + leading, descent)
                 }
             }
             if oldValue.isLineWrappingEnabled != displayConfiguration.isLineWrappingEnabled ||
@@ -1336,8 +1336,7 @@ public class ReadOnlyDocumentView: NSView {
         }
         if displayConfiguration.showsLineNumbers {
             for layout in result.lines {
-                let fragment = firstFragment(in: layout)
-                guard fragment != nil || layout.line.data.totalLength == 0 else { continue }
+                guard let baseline = lineNumberBaseline(in: layout) else { continue }
                 let selected = isSelected(layout.line) && displayConfiguration.showsSelectedLines
                 let attributes: [NSAttributedString.Key: Any] = [
                     .font: displayConfiguration.lineNumberFont,
@@ -1346,14 +1345,8 @@ public class ReadOnlyDocumentView: NSView {
                 let value = String(layout.line.index + 1)
                 let size = (value as NSString).size(withAttributes: attributes)
                 let x = max(4, gutter - foldingGutterWidth - size.width - 3)
-                if let fragment {
-                    let numberLine = CTLineCreateWithAttributedString(NSAttributedString(string: value, attributes: attributes))
-                    let baseline = layout.line.yPosition + fragment.verticalGeometry.topDownBaseline
-                    LineFragmentRenderer.drawGlyphs(numberLine, at: CGPoint(x: x, y: baseline), in: context)
-                } else {
-                    (value as NSString).draw(at: CGPoint(x: x, y: layout.line.yPosition
-                        + max(0, (layout.line.data.lineHeight - size.height) / 2)), withAttributes: attributes)
-                }
+                let numberLine = CTLineCreateWithAttributedString(NSAttributedString(string: value, attributes: attributes))
+                LineFragmentRenderer.drawGlyphs(numberLine, at: CGPoint(x: x, y: baseline), in: context)
             }
         }
         if displayConfiguration.isCodeFoldingEnabled {
@@ -1368,6 +1361,19 @@ public class ReadOnlyDocumentView: NSView {
             context.setFillColor(color.cgColor)
             context.fill(CGRect(x: gutter - width, y: result.viewport.minY, width: width, height: result.viewport.height))
         }
+    }
+
+    func lineNumberBaseline(in layout: ViewportLayoutCoordinator.LineLayout) -> CGFloat? {
+        if let fragment = firstFragment(in: layout) {
+            return layout.line.yPosition + fragment.verticalGeometry.topDownBaseline
+        }
+        guard layout.line.data.totalLength == 0 else { return nil }
+        let geometry = LineFragmentVerticalGeometry(
+            baseHeight: emptyLineTextHeight,
+            scaledHeight: layout.line.data.lineHeight,
+            descent: emptyLineFontMetrics?.descent ?? -displayConfiguration.lineNumberFont.descender
+        )
+        return layout.line.yPosition + geometry.topDownBaseline
     }
 
     private func firstFragmentHeight(in layout: ViewportLayoutCoordinator.LineLayout) -> CGFloat? {
@@ -1644,7 +1650,7 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     private var emptyLineTextHeight: CGFloat {
-        guard let height = emptyLineFontHeight, height.isFinite, height > 0 else { return fallbackHeight }
+        guard let height = emptyLineFontMetrics?.height, height.isFinite, height > 0 else { return fallbackHeight }
         return height
     }
 

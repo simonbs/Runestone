@@ -272,6 +272,25 @@ final class ReadOnlyDocumentViewTests: XCTestCase {
         }
     }
 
+    func testFinalLineNumberKeepsItsBaselineWhenTypingStarts() throws {
+        for prefix in ["", "hello\n\n"] {
+            let text = NSAttributedString(string: prefix, attributes: [.font: font])
+            let (_, view) = makeView(text, width: 200, height: 200)
+            view.displayConfiguration = RunestoneEditorDisplayConfiguration(
+                showsLineNumbers: true, lineHeightMultiplier: 1.4, textFont: font
+            )
+            let emptyLine = try XCTUnwrap(view.visibleLayout?.lines.last)
+            let before = try XCTUnwrap(view.lineNumberBaseline(in: emptyLine))
+
+            XCTAssertTrue(view.replaceContent(in: NSRange(location: text.length, length: 0),
+                                              with: NSAttributedString(string: "4", attributes: [.font: font])))
+            let typedLine = try XCTUnwrap(view.visibleLayout?.lines.last)
+            XCTAssertFalse(typedLine.placements.isEmpty)
+            let after = try XCTUnwrap(view.lineNumberBaseline(in: typedLine))
+            XCTAssertEqual(before, after, accuracy: 0.01)
+        }
+    }
+
     func testTypographyAndOverscrollArePresentationOnly() throws {
         let text = NSAttributedString(
             string: (0..<40).map { "\($0) " + String(repeating: "wide text ", count: 12) }.joined(separator: "\n"),
