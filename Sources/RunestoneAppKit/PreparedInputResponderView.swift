@@ -278,10 +278,55 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         return accepted
     }
 
+    private weak var observedInputScrollView: NSScrollView?
+    private weak var liveScrollInputContext: NSTextInputContext?
+    private var liveScrollDepth = 0
+
+    private func observeInputScrolling() {
+        let center = NotificationCenter.default
+        if let scroll = observedInputScrollView {
+            for name in [NSScrollView.willStartLiveScrollNotification, NSScrollView.didEndLiveScrollNotification,
+                         NSScrollView.willStartLiveMagnifyNotification, NSScrollView.didEndLiveMagnifyNotification] {
+                center.removeObserver(self, name: name, object: scroll)
+            }
+        }
+        finishInputScrolling()
+        observedInputScrollView = window == nil ? nil : enclosingScrollView
+        guard let scroll = observedInputScrollView else { return }
+        for name in [NSScrollView.willStartLiveScrollNotification, NSScrollView.willStartLiveMagnifyNotification] {
+            center.addObserver(self, selector: #selector(inputScrollDidStart(_:)), name: name, object: scroll)
+        }
+        for name in [NSScrollView.didEndLiveScrollNotification, NSScrollView.didEndLiveMagnifyNotification] {
+            center.addObserver(self, selector: #selector(inputScrollDidEnd(_:)), name: name, object: scroll)
+        }
+    }
+
+    @objc private func inputScrollDidStart(_ notification: Notification) {
+        guard let context = inputContext else { return }
+        liveScrollDepth += 1
+        guard liveScrollDepth == 1 else { return }
+        liveScrollInputContext = context
+        context.textInputClientWillStartScrollingOrZooming()
+    }
+
+    @objc private func inputScrollDidEnd(_ notification: Notification) {
+        guard liveScrollDepth > 0 else { return }
+        liveScrollDepth -= 1
+        if liveScrollDepth == 0 { finishInputScrolling() }
+    }
+
+    private func finishInputScrolling() {
+        let context = liveScrollInputContext
+        liveScrollInputContext = nil
+        liveScrollDepth = 0
+        context?.textInputClientDidEndScrollingOrZooming()
+    }
+
     override func viewDidMoveToWindow() {
         keyObservers.forEach { NotificationCenter.default.removeObserver($0) }
         keyObservers.removeAll()
         super.viewDidMoveToWindow()
+        observeInputScrolling()
         guard let window = window, !isRetired else { suppressFocus(); return }
         keyObservers.append(NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification,
                                                                      object: window, queue: .main) { [weak self] _ in
@@ -295,6 +340,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     private func suppressFocus() {
+        finishInputScrolling()
         endPointerSelection()
         verticalPreference = nil
         PreparedInputCommandInterpreter.resetSelectionExtension(in: self)

@@ -219,6 +219,31 @@ final class PreparedInputContextConnection {
         return view
     }
 
+    fileprivate var documentVisibleRect: NSRect {
+        query(.zero) { _ in
+            guard let window = view.window else { return .zero }
+            return window.convertToScreen(view.convert(view.visibleRect, to: nil))
+        }
+    }
+
+    fileprivate var unionRectInVisibleSelectedRange: NSRect {
+        query(.zero) { adapter in
+            guard let window = view.window,
+                  let selection = adapter.selectionStateForHost(),
+                  let geometry = InputSelectionGeometry.geometry(selection: selection, marked: nil, in: view) else { return .zero }
+            if var caret = geometry.caretRect {
+                caret.size.width = 0
+                return window.convertToScreen(view.convert(caret, to: nil))
+            }
+            let visible = view.visibleRect
+            let union = geometry.selectionRects.reduce(CGRect.null) { result, rect in
+                result.union(rect.intersection(visible))
+            }
+            guard !union.isEmpty else { return .zero }
+            return window.convertToScreen(view.convert(union, to: nil))
+        }
+    }
+
     /// Only a responder that currently owns focus may expose this context.
     /// A previously retained context has an inert client after reset or blur.
     var currentInputContext: NSTextInputContext? {
@@ -981,6 +1006,8 @@ private final class PreparedContextClient: NSObject, NSTextCheckingClient {
         owner?.query(NSRange(location: NSNotFound, length: 0)) { $0.markedRangeForInput() }
             ?? NSRange(location: NSNotFound, length: 0)
     }
+    var documentVisibleRect: NSRect { owner?.documentVisibleRect ?? .zero }
+    var unionRectInVisibleSelectedRange: NSRect { owner?.unionRectInVisibleSelectedRange ?? .zero }
     func hasMarkedText() -> Bool { markedRange().location != NSNotFound }
     func validAttributesForMarkedText() -> [NSAttributedString.Key] { [] }
     func attributedSubstring(forProposedRange range: NSRange, actualRange: NSRangePointer?) -> NSAttributedString? {
