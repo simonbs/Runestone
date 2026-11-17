@@ -81,6 +81,20 @@ open class TextView: UIScrollView {
             textInputView.autocorrectionType = newValue
         }
     }
+    /// Whether to show inline word completions from the system spelling dictionary.
+    /// The default is false. A visible prediction can be accepted with Space or Tab.
+    public var isInlinePredictionEnabled: Bool {
+        get { textInputView.isInlinePredictionEnabled }
+        set { textInputView.isInlinePredictionEnabled = newValue }
+    }
+
+    /// Accepts the visible inline prediction without adding a space.
+    /// Returns whether the prediction handled the command.
+    @discardableResult
+    public func acceptInlinePrediction() -> Bool {
+        textInputView.acceptInlinePrediction(addingSpace: false)
+    }
+
     /// The autocapitalization style for the text view.
     public var autocapitalizationType: UITextAutocapitalizationType {
         get {
@@ -963,7 +977,7 @@ open class TextView: UIScrollView {
     /// - Parameter text: A string to insert.
     open func insertText(_ text: String) {
         textInputView.inputDelegate?.selectionWillChange(textInputView)
-        textInputView.insertText(text)
+        textInputView.insertText(text, fromKeyboard: false)
         textInputView.inputDelegate?.selectionDidChange(textInputView)
     }
 
@@ -1394,7 +1408,7 @@ private extension TextView {
             return false
         }
         if selectedRange.length == 0 {
-            textInputView.insertText(characterPair.leading + characterPair.trailing)
+            textInputView.insertText(characterPair.leading + characterPair.trailing, fromKeyboard: false)
             textInputView.selectedRange = NSRange(location: range.location + characterPair.leading.count, length: 0)
             return true
         } else if let text = textInputView.text(in: selectedRange) {

@@ -227,6 +227,16 @@ final class TextInputView: UIView, UITextInput {
         didSet { invalidateSpellChecking(preservingParagraphLanguages: false) }
     }
     var autocapitalizationType: UITextAutocapitalizationType = .sentences
+    var isInlinePredictionEnabled = false {
+        didSet {
+            if !isInlinePredictionEnabled { dismissInlinePrediction() }
+        }
+    }
+    @available(iOS 17.0, tvOS 17.0, *)
+    var inlinePredictionType: UITextInlinePredictionType {
+        // Avoid overlapping previews while this view supplies dictionary completions.
+        isInlinePredictionEnabled ? .no : .default
+    }
     var smartQuotesType: UITextSmartQuotesType = .default
     var smartDashesType: UITextSmartDashesType = .default
     var smartInsertDeleteType: UITextSmartInsertDeleteType = .default
@@ -303,6 +313,7 @@ final class TextInputView: UIView, UITextInput {
             return
         }
         isWritingToolsPresented = true
+        dismissInlinePrediction()
         delegate?.textInputViewWritingToolsWillPresent(self)
     }
 
@@ -315,7 +326,9 @@ final class TextInputView: UIView, UITextInput {
     }
 
     private(set) var isApplyingSystemTextReplacement = false
-    private(set) var textMutationVersion: UInt = 0
+    private(set) var textMutationVersion: UInt = 0 {
+        didSet { dismissInlinePrediction() }
+    }
     private(set) var writingToolsContextVersion: UInt = 0
     private var textBeforeWritingTools: NSString?
     private var selectionBeforeWritingTools: NSRange?
@@ -340,6 +353,7 @@ final class TextInputView: UIView, UITextInput {
             return
         }
         invalidateSpellChecking(preservingParagraphLanguages: false)
+        dismissInlinePrediction()
         if active {
             timedUndoManager.endUndoGrouping()
             textBeforeWritingTools = string.copy() as? NSString
@@ -755,6 +769,7 @@ final class TextInputView: UIView, UITextInput {
 
     private func updateFindResultPresentation() {
         let isActive = isFindResultPresentationEnabled && isFindResultPresentationRequested
+        if isActive { dismissInlinePrediction() }
         findResultPresentationView.isActive = isActive
         highlightService.isFindResultPresentationActive = isActive
         layoutManager.isFindResultPresentationActive = isActive
@@ -855,6 +870,7 @@ final class TextInputView: UIView, UITextInput {
         didSet {
             if _selectedRange != oldValue {
                 selectionGeneration = UUID()
+                dismissInlinePrediction()
                 if !isApplyingFoldingEdit, let range = _selectedRange { revealFoldedRange(range) }
                 layoutManager.selectedRange = _selectedRange
                 layoutManager.setNeedsLayoutLineSelection()
@@ -950,12 +966,23 @@ final class TextInputView: UIView, UITextInput {
         set {
             if layoutManager.markedRange != newValue {
                 compositionGeneration = UUID()
+                dismissInlinePrediction()
                 invalidateSpellChecking()
             }
             layoutManager.markedRange = newValue
         }
     }
     private let blockCaretView = BlockCaretView()
+    private lazy var inlinePredictionLabel: UILabel = {
+        let label = UILabel()
+        label.textColor = .placeholderText
+        label.isUserInteractionEnabled = false
+        label.isAccessibilityElement = false
+        return label
+    }()
+    private lazy var completionChecker = UITextChecker()
+    private var inlinePrediction: (caret: Int, suffix: String)?
+    private var inlinePredictionRequest: UUID?
     private var floatingCaretView: FloatingCaretView?
     private var insertionPointColorBeforeFloatingBegan: UIColor = .label
     private var maximumLeadingCharacterPairComponentLength = 0
@@ -1081,6 +1108,7 @@ final class TextInputView: UIView, UITextInput {
         let didResignFirstResponder = super.resignFirstResponder()
         if didResignFirstResponder {
             blockCaretView.isHidden = true
+            dismissInlinePrediction()
             dismissSpellingMenu()
             delegate?.textInputViewDidEndEditing(self)
         }
@@ -1101,6 +1129,9 @@ final class TextInputView: UIView, UITextInput {
         updateLegacySpellingMenuIfNeeded()
         writingToolsController?.layoutDidChange()
         updateBlockCaret()
+        if let prediction = inlinePrediction {
+            inlinePredictionLabel.isHidden = !layoutInlinePrediction(prediction)
+        }
         if findResultPresentationView.isActive {
             bringSubviewToFront(findResultPresentationView)
             findResultPresentationView.updateLayoutIfNeeded(selectionRects: selectionRects(for:))
@@ -1343,6 +1374,9 @@ final class TextInputView: UIView, UITextInput {
 
     override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         super.pressesEnded(presses, with: event)
+        if presses.count == 1, presses.first?.key?.keyCode == .keyboardEscape {
+            dismissInlinePrediction()
+        }
         if let keyCode = presses.first?.key?.keyCode, presses.count == 1 {
             if markedRange != nil {
                 handleKeyPressDuringMultistageTextInput(keyCode: keyCode)
@@ -1468,6 +1502,7 @@ private extension TextInputView {
 // MARK: - Floating Caret
 extension TextInputView {
     func beginFloatingCursor(at point: CGPoint) {
+        dismissInlinePrediction()
         if floatingCaretView == nil, let position = closestPosition(to: point) {
             insertionPointColorBeforeFloatingBegan = configuredInsertionPointColor
             configuredInsertionPointColor = insertionPointColorBeforeFloatingBegan.withAlphaComponent(0.5)
@@ -1564,9 +1599,122 @@ extension TextInputView {
     }
 }
 
+// MARK: - Inline predictions
+extension TextInputView {
+    private var canOfferInlinePrediction: Bool {
+        isInlinePredictionEnabled && isEditableForSystemTextReplacement && isEditing && isFirstResponder &&
+            !isWritingToolsActive && !isWritingToolsPresented && markedRange == nil &&
+            !isFindResultPresentationRequested && floatingCaretView == nil
+    }
+
+    private func dismissInlinePrediction() {
+        inlinePredictionRequest = nil
+        guard inlinePrediction != nil else { return }
+        inlinePrediction = nil
+        inlinePredictionLabel.removeFromSuperview()
+    }
+
+    private func requestInlinePrediction(at caret: Int) {
+        guard canOfferInlinePrediction else { return }
+        let request = UUID()
+        inlinePredictionRequest = request
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self, self.inlinePredictionRequest == request, self.canOfferInlinePrediction,
+                  self.selectedRange == NSRange(location: caret, length: 0),
+                  let line = self.lineManager.line(containingCharacterAt: caret),
+                  caret == line.location + line.data.length else { return }
+            var start = max(line.location, caret - 64)
+            if start > line.location {
+                start = self.string.rangeOfComposedCharacterSequence(at: start).location
+            }
+            let context = self.string.substring(with: NSRange(location: start, length: caret - start)) as NSString
+            // Prefer the exact keyboard language and respect any explicit dictionary choice.
+            let keyboardLanguage = self.textInputMode?.primaryLanguage ?? Locale.preferredLanguages.first
+            guard let language = SpellingLanguageResolver.resolve(
+                explicitLanguage: self.spellCheckingLanguage ?? keyboardLanguage, keyboardLanguages: [],
+                preferredLanguages: [], availableLanguages: UITextChecker.availableLanguages
+            ).first else { return }
+            context.enumerateSubstrings(in: NSRange(location: 0, length: context.length), options: [.byWords, .reverse]) {
+                word, range, _, stop in
+                stop.pointee = true
+                guard range.upperBound == context.length, start == line.location || range.location > 0,
+                      let word, word.count >= 2,
+                      let completions = self.completionChecker.completions(forPartialWordRange: range,
+                                                                         in: context as String, language: language) else { return }
+                for completion in completions where completion.hasPrefix(word) && completion.count > word.count {
+                    let suffix = String(completion.dropFirst(word.count))
+                    guard suffix.rangeOfCharacter(from: .newlines) == nil else { continue }
+                    let prediction = (caret: caret, suffix: suffix)
+                    guard self.layoutInlinePrediction(prediction) else { return }
+                    self.inlinePrediction = prediction
+                    self.inlinePredictionLabel.isHidden = false
+                    self.addSubview(self.inlinePredictionLabel)
+                    break
+                }
+            }
+        }
+    }
+
+    private func layoutInlinePrediction(_ prediction: (caret: Int, suffix: String)) -> Bool {
+        guard canOfferInlinePrediction, let scrollView = superview as? UIScrollView else { return false }
+        let caret = caretRect(at: prediction.caret)
+        guard !caret.isEmpty, !caret.isInfinite else { return false }
+        let text = NSAttributedString(string: prediction.suffix, attributes: [
+            .font: theme.font, .foregroundColor: UIColor.placeholderText, .kern: kern
+        ])
+        let size = text.size()
+        let rect = CGRect(x: caret.minX, y: max(caret.minY, caret.midY - size.height / 2),
+                          width: ceil(size.width), height: ceil(size.height))
+        let viewport = convert(scrollView.bounds.inset(by: scrollView.adjustedContentInset), from: scrollView)
+        guard viewport.contains(rect) else { return false }
+        inlinePredictionLabel.attributedText = text
+        inlinePredictionLabel.frame = rect
+        return true
+    }
+
+    func acceptInlinePrediction(addingSpace: Bool) -> Bool {
+        guard let prediction = inlinePrediction, !inlinePredictionLabel.isHidden,
+              let range = selectedRange, range == NSRange(location: prediction.caret, length: 0),
+              layoutInlinePrediction(prediction) else { return false }
+        dismissInlinePrediction()
+        let text = prediction.suffix + (addingSpace ? " " : "")
+        let selectionRevision = selectionGeneration
+        let compositionRevision = compositionGeneration
+        let version = textMutationVersion
+        let isCurrent = {
+            self.textMutationVersion == version && self.selectionGeneration == selectionRevision &&
+                self.compositionGeneration == compositionRevision && self.canOfferInlinePrediction
+        }
+        let inputDelegate = inputDelegate
+        inputDelegate?.textWillChange(self)
+        inputDelegate?.selectionWillChange(self)
+        defer {
+            inputDelegate?.selectionDidChange(self)
+            inputDelegate?.textDidChange(self)
+        }
+        guard isCurrent(), shouldChangeText(in: range, replacementText: text), isCurrent() else { return true }
+        timedUndoManager.endUndoGrouping()
+        if replaceText(in: range, with: text, selectedRangeAfterUndo: range, isStillValid: isCurrent) {
+            timedUndoManager.endUndoGrouping()
+            layoutIfNeeded()
+            delegate?.textInputViewDidChangeSelection(self)
+        }
+        return true
+    }
+}
+
 // MARK: - Editing
 extension TextInputView {
     func insertText(_ text: String) {
+        insertText(text, fromKeyboard: true)
+    }
+
+    func insertText(_ text: String, fromKeyboard: Bool) {
+        if fromKeyboard, (text == " " || text == "\t"), acceptInlinePrediction(addingSpace: text == " ") { return }
+        let extendsWord = fromKeyboard && isInlinePredictionEnabled &&
+            markedRange == nil && selectedRange?.length == 0 && text.count == 1 &&
+            text.unicodeScalars.allSatisfy { CharacterSet.letters.union(.nonBaseCharacters).contains($0) }
+        dismissInlinePrediction()
         // A typed tab follows the indentation strategy. Replacement and pasted text retain literal tabs.
         let preparedText = text == "\t" ? indentStrategy.string(indentLevel: 1) : text
         isRestoringPreviouslyDeletedText = hasDeletedTextWithPendingLayoutSubviews
@@ -1585,9 +1733,13 @@ extension TextInputView {
         // document, then pressing any arrow key (up, right, down or left) followed by the return key.
         // The backtick will remain marked unless we manually clear the marked range.
         markedRange = nil
-        replaceText(in: selectedRange, with: preparedText)
+        let version = textMutationVersion
+        let changed = replaceText(in: selectedRange, with: preparedText)
         layoutIfNeeded()
         delegate?.textInputViewDidChangeSelection(self)
+        if extendsWord, changed, textMutationVersion == version &+ 1 {
+            requestInlinePrediction(at: selectedRange.location + preparedText.utf16.count)
+        }
     }
 
     /// Used only when the input source identifies a logical newline command.
