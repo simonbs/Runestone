@@ -607,7 +607,9 @@ final class PreparedInputContextConnection {
     }
 
     private func correctCompletedWord(before end: Int, caret: Int) -> Bool {
-        guard correctsSpellingAutomatically ?? NSSpellChecker.isAutomaticSpellingCorrectionEnabled, end > 0,
+        let correctSpelling = correctsSpellingAutomatically ?? NSSpellChecker.isAutomaticSpellingCorrectionEnabled
+        let capitalize = NSSpellChecker.isAutomaticCapitalizationEnabled
+        guard correctSpelling || capitalize, end > 0,
               let controller = textCheckingController, let revision = adapter.installedRevisionForDispatch,
               let state = inputState(), !state.hasComposition,
               state.selection == NSRange(location: caret, length: 0) else { return false }
@@ -629,9 +631,24 @@ final class PreparedInputContextConnection {
         let checker = NSSpellChecker.shared
         let language = (checker.automaticallyIdentifiesLanguages
             ? checker.language(forWordRange: word, in: context, orthography: nil) : nil) ?? checker.language()
-        guard let correction = checker.correction(forWordRange: word, in: context, language: language,
-                                                   inSpellDocumentWithTag: controller.spellCheckerDocumentTag),
-              correction != original,
+        let tag = controller.spellCheckerDocumentTag
+        let nativeCapitalization: String?
+        if capitalize {
+            // AppKit returns capitalization as a correction when spelling is requested too.
+            let types: NSTextCheckingResult.CheckingType = [.spelling, .correction]
+            nativeCapitalization = checker.check(
+                context, range: word, types: types.rawValue, options: [.automaticCapitalizationEnabledKey: true],
+                inSpellDocumentWithTag: tag, orthography: nil, wordCount: nil
+            ).first { $0.resultType == .correction && $0.range == word
+                && $0.replacementString?.caseInsensitiveCompare(original) == .orderedSame
+            }?.replacementString
+        } else {
+            nativeCapitalization = nil
+        }
+        let spelling = nativeCapitalization == nil && correctSpelling
+            ? checker.correction(forWordRange: word, in: context, language: language, inSpellDocumentWithTag: tag)
+            : nil
+        guard let correction = nativeCapitalization ?? spelling, correction != original,
               inputActionGeneration == action, isConnectedForEditing,
               adapter.installedRevisionForDispatch == revision,
               inputState()?.selection == state.selection else { return false }

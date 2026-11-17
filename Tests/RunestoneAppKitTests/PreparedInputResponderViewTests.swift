@@ -159,6 +159,44 @@ final class PreparedInputResponderViewTests: XCTestCase {
         XCTAssertFalse(connection.revertSpellingCorrection())
     }
 
+    func testNativeCapitalizationAppliesWithSpellingCorrectionDisabled() throws {
+        try XCTSkipUnless(NSSpellChecker.isAutomaticCapitalizationEnabled)
+        let original = "then i"
+        let word = NSRange(location: 5, length: 1)
+        let types: NSTextCheckingResult.CheckingType = [.spelling, .correction]
+        let nativeResults = NSSpellChecker.shared.check(
+            original, range: word, types: types.rawValue, options: [.automaticCapitalizationEnabledKey: true],
+            inSpellDocumentWithTag: 0, orthography: nil, wordCount: nil
+        )
+        try XCTSkipUnless(nativeResults.contains {
+            $0.resultType == .correction && $0.range == word && $0.replacementString == "I"
+        }, "The active spelling language must supply this English capitalization.")
+
+        let host = ResponderTestHost(original)
+        let queue = ResponderTestQueue()
+        let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
+            host: host, lifetime: host.lifetime, bridge: host.bridge,
+            makeDriver: { ResponderTestDriver($0) }, schedule: queue.enqueue))
+        defer {
+            _ = attachment.disconnect()
+            queue.runAll()
+        }
+        attachment.view.displayConfiguration.correctsSpellingAutomatically = false
+        let connection = attachment.connection
+        XCTAssertTrue(connection.resumeForFocus())
+        XCTAssertTrue(connection.setSelectionForTextFinder(NSRange(location: original.utf16.count, length: 0)))
+        connection.insertTextFromKeyBinding(" ", replacementRange: NSRange(location: NSNotFound, length: 0))
+
+        let checked = expectation(description: "native capitalization ran after input")
+        DispatchQueue.main.async { checked.fulfill() }
+        wait(for: [checked], timeout: 5)
+
+        XCTAssertEqual(host.text, "then I ")
+        XCTAssertEqual(host.undoCount, 2)
+        XCTAssertTrue(connection.revertSpellingCorrection())
+        XCTAssertEqual(host.text, original + " ")
+    }
+
     func testStaleCommandReportsUnavailableInsteadOfForwarding() throws {
         let host = ResponderTestHost("abc")
         let queue = ResponderTestQueue()
