@@ -197,6 +197,40 @@ final class PreparedInputResponderViewTests: XCTestCase {
         XCTAssertEqual(host.text, original + " ")
     }
 
+    func testNativeCapitalizationUsesPunctuationAndSentenceContext() throws {
+        try XCTSkipUnless(NSSpellChecker.isAutomaticCapitalizationEnabled)
+        let types: NSTextCheckingResult.CheckingType = [.spelling, .correction]
+        let probe = NSSpellChecker.shared.check(
+            "then i,", range: NSRange(location: 5, length: 1), types: types.rawValue,
+            options: [.automaticCapitalizationEnabledKey: true], inSpellDocumentWithTag: 0,
+            orthography: nil, wordCount: nil
+        )
+        try XCTSkipUnless(probe.contains { $0.resultType == .correction && $0.replacementString == "I" })
+        for (original, delimiter, expected) in [
+            ("then i", ",", "then I,"),
+            ("hello. there", " ", "hello. There "),
+        ] {
+            let host = ResponderTestHost(original)
+            let queue = ResponderTestQueue()
+            let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
+                host: host, lifetime: host.lifetime, bridge: host.bridge,
+                makeDriver: { ResponderTestDriver($0) }, schedule: queue.enqueue))
+            defer {
+                _ = attachment.disconnect()
+                queue.runAll()
+            }
+            attachment.view.displayConfiguration.correctsSpellingAutomatically = false
+            let connection = attachment.connection
+            XCTAssertTrue(connection.resumeForFocus())
+            XCTAssertTrue(connection.setSelectionForTextFinder(NSRange(location: original.utf16.count, length: 0)))
+            connection.insertTextFromKeyBinding(delimiter, replacementRange: NSRange(location: NSNotFound, length: 0))
+            let applied = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in host.text == expected }, object: nil)
+            wait(for: [applied], timeout: 5)
+            XCTAssertEqual(host.text, expected)
+            XCTAssertEqual(host.undoCount, 2)
+        }
+    }
+
     func testStaleCommandReportsUnavailableInsteadOfForwarding() throws {
         let host = ResponderTestHost("abc")
         let queue = ResponderTestQueue()

@@ -563,8 +563,10 @@ final class PreparedInputContextConnection {
     fileprivate func insertCommittedText(_ value: Any, replacementRange: NSRange) {
         let text = (value as? NSAttributedString)?.string ?? (value as? String) ?? ""
         let length = text.utf16.count
-        let endsWord = text.unicodeScalars.count == 1 &&
+        let isWhitespace = text.unicodeScalars.count == 1 &&
             text.unicodeScalars.allSatisfy { CharacterSet.whitespacesAndNewlines.contains($0) }
+        let isPunctuation = text.unicodeScalars.count == 1 &&
+            text.unicodeScalars.allSatisfy { CharacterSet.punctuationCharacters.contains($0) }
         mutate(operation: .insertText) { adapter in
             dismissSpellingIndicator()
             let priorRevision = adapter.installedRevisionForDispatch
@@ -594,7 +596,9 @@ final class PreparedInputContextConnection {
                       self.adapter.installedRevisionForDispatch == expectedRevision else { return }
                 self.textCheckingAnnotations.removeAll()
                 self.textCheckingController?.didChangeText(in: range)
-                if endsWord && self.correctCompletedWord(before: range.location, caret: caret.location) { return }
+                if (isWhitespace || isPunctuation) && self.correctCompletedWord(
+                    before: range.location, caret: caret.location, delimiter: text, allowsSpelling: isWhitespace
+                ) { return }
                 guard self.generation == expectedGeneration, self.inputActionGeneration == expectedAction,
                       self.adapter.installedRevisionForDispatch == expectedRevision else { return }
                 self.textCheckingController?.insertedText(in: range)
@@ -606,8 +610,9 @@ final class PreparedInputContextConnection {
         }
     }
 
-    private func correctCompletedWord(before end: Int, caret: Int) -> Bool {
-        let correctSpelling = correctsSpellingAutomatically ?? NSSpellChecker.isAutomaticSpellingCorrectionEnabled
+    private func correctCompletedWord(before end: Int, caret: Int, delimiter: String, allowsSpelling: Bool) -> Bool {
+        let correctSpelling = allowsSpelling &&
+            (correctsSpellingAutomatically ?? NSSpellChecker.isAutomaticSpellingCorrectionEnabled)
         let capitalize = NSSpellChecker.isAutomaticCapitalizationEnabled
         guard correctSpelling || capitalize, end > 0,
               let controller = textCheckingController, let revision = adapter.installedRevisionForDispatch,
@@ -632,30 +637,64 @@ final class PreparedInputContextConnection {
         let language = (checker.automaticallyIdentifiesLanguages
             ? checker.language(forWordRange: word, in: context, orthography: nil) : nil) ?? checker.language()
         let tag = controller.spellCheckerDocumentTag
-        let nativeCapitalization: String?
-        if capitalize {
-            // AppKit returns capitalization as a correction when spelling is requested too.
-            let types: NSTextCheckingResult.CheckingType = [.spelling, .correction]
-            nativeCapitalization = checker.check(
-                context, range: word, types: types.rawValue, options: [.automaticCapitalizationEnabledKey: true],
-                inSpellDocumentWithTag: tag, orthography: nil, wordCount: nil
-            ).first { $0.resultType == .correction && $0.range == word
-                && $0.replacementString?.caseInsensitiveCompare(original) == .orderedSame
-            }?.replacementString
-        } else {
-            nativeCapitalization = nil
+        let types: NSTextCheckingResult.CheckingType = [.spelling, .correction]
+        let options: [NSSpellChecker.OptionKey: Any] = [.automaticCapitalizationEnabledKey: capitalize]
+        let replacementRange = NSRange(location: start + word.location, length: word.length)
+
+        func finish(_ nativeCapitalization: String?) -> Bool {
+            guard inputActionGeneration == action, isConnectedForEditing,
+                  adapter.installedRevisionForDispatch == revision,
+                  inputState()?.selection == state.selection else { return false }
+            let spelling = nativeCapitalization == nil && correctSpelling
+                ? checker.correction(forWordRange: word, in: context, language: language, inSpellDocumentWithTag: tag)
+                : nil
+            guard let correction = nativeCapitalization ?? spelling, correction != original,
+                  inputActionGeneration == action, isConnectedForEditing,
+                  adapter.installedRevisionForDispatch == revision,
+                  inputState()?.selection == state.selection else { return false }
+            return applyCompletedWordCorrection(correction, original: original, range: replacementRange,
+                                                caret: caret, language: language, controller: controller)
         }
-        let spelling = nativeCapitalization == nil && correctSpelling
-            ? checker.correction(forWordRange: word, in: context, language: language, inSpellDocumentWithTag: tag)
-            : nil
-        guard let correction = nativeCapitalization ?? spelling, correction != original,
-              inputActionGeneration == action, isConnectedForEditing,
-              adapter.installedRevisionForDispatch == revision,
-              inputState()?.selection == state.selection else { return false }
+
+        guard capitalize else { return finish(nil) }
+        // The delimiter is part of Apple's decision, for example when it interprets a period as an abbreviation.
+        if let correction = checker.check(
+            context + delimiter, range: word, types: types.rawValue, options: options,
+            inSpellDocumentWithTag: tag, orthography: nil, wordCount: nil
+        ).first(where: {
+            $0.resultType == .correction && $0.range == word &&
+                $0.replacementString?.caseInsensitiveCompare(original) == .orderedSame
+        })?.replacementString {
+            return finish(correction)
+        }
+
+        // AppKit supplies sentence-start casing through its top candidate. Accept only a
+        // case-only change to the completed word, excluding the candidate's trailing space.
+        let selectedRange = NSRange(location: range.length, length: 0)
+        checker.requestCandidates(forSelectedRange: selectedRange, in: context, types: types.rawValue,
+                                  options: options, inSpellDocumentWithTag: tag) { _, results in
+            let first = results.first
+            let candidate = first?.range == word
+                ? first?.replacementString?.trimmingCharacters(in: .whitespacesAndNewlines) : nil
+            let capitalization = candidate.flatMap {
+                $0 != original && $0.caseInsensitiveCompare(original) == .orderedSame ? $0 : nil
+            }
+            DispatchQueue.main.async {
+                if !finish(capitalization), self.inputActionGeneration == action,
+                   self.isConnectedForEditing, self.adapter.installedRevisionForDispatch == revision {
+                    controller.insertedText(in: NSRange(location: end, length: delimiter.utf16.count))
+                }
+            }
+        }
+        if checksSpellingWhileTyping { controller.considerTextChecking(for: replacementRange) }
+        return true
+    }
+
+    private func applyCompletedWordCorrection(_ correction: String, original: String, range: NSRange, caret: Int,
+                                              language: String, controller: NSTextCheckingController) -> Bool {
         let edit = RunestoneHostEdit(
-            replacementRange: NSRange(location: start + word.location, length: word.length),
-            replacementText: correction,
-            selectedRange: NSRange(location: caret + correction.utf16.count - word.length, length: 0))
+            replacementRange: range, replacementText: correction,
+            selectedRange: NSRange(location: caret + correction.utf16.count - range.length, length: 0))
         guard applyHostEdit(edit) else { return false }
         dismissSpellingCorrection()
         let correctedRange = NSRange(location: edit.replacementRange.location, length: correction.utf16.count)
