@@ -81,18 +81,11 @@ open class TextView: UIScrollView {
             textInputView.autocorrectionType = newValue
         }
     }
-    /// Whether to show inline word completions from the system spelling dictionary.
-    /// The default is false. A visible prediction can be accepted with Space or Tab.
+    /// Whether to allow UIKit's native inline predictions, subject to the system keyboard settings.
+    /// The default is false. UIKit manages prediction generation and acceptance.
     public var isInlinePredictionEnabled: Bool {
         get { textInputView.isInlinePredictionEnabled }
         set { textInputView.isInlinePredictionEnabled = newValue }
-    }
-
-    /// Accepts the visible inline prediction without adding a space.
-    /// Returns whether the prediction handled the command.
-    @discardableResult
-    public func acceptInlinePrediction() -> Bool {
-        textInputView.acceptInlinePrediction(addingSpace: false)
     }
 
     /// The autocapitalization style for the text view.

@@ -238,6 +238,11 @@ final class LayoutManager {
             return 10_000
         }
     }
+    var usesAttributedMarkedText = false {
+        didSet {
+            if usesAttributedMarkedText != oldValue { updateMarkedTextOnVisibleLines() }
+        }
+    }
     var markedRange: NSRange? {
         didSet {
             if markedRange != oldValue {
@@ -691,7 +696,7 @@ extension LayoutManager {
                 maxY = lineFragmentFrame.maxY
             }
             // The line fragments have now been created and we can set the marked and highlighted ranges on them.
-            if let markedRange = markedRange {
+            if let markedRange = markedRange, !usesAttributedMarkedText {
                 let lineRange = NSRange(location: lineController.line.location, length: lineController.line.data.totalLength)
                 let localMarkedRange = markedRange.local(to: lineRange)
                 lineController.setMarkedTextOnLineFragments(localMarkedRange)
@@ -856,7 +861,7 @@ private extension LayoutManager {
     private func updateMarkedTextOnVisibleLines() {
         for lineID in visibleLineIDs {
             if let lineController = lineControllerStorage[lineID] {
-                if let markedRange = markedRange {
+                if let markedRange = markedRange, !usesAttributedMarkedText {
                     let lineRange = NSRange(location: lineController.line.location, length: lineController.line.data.totalLength)
                     let localMarkedRange = markedRange.local(to: lineRange)
                     lineController.setMarkedTextOnLineFragments(localMarkedRange)
