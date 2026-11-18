@@ -1448,7 +1448,7 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     func selectedLineHighlightRects(in result: ViewportLayoutCoordinator.Result) -> [CGRect] {
-        guard displayConfiguration.showsSelectedLines else { return [] }
+        guard displayConfiguration.showsSelectedLines, displaySelection.range.length == 0 else { return [] }
         let gutter = horizontalTextInset
         return result.lines.filter { isSelected($0.line) }.flatMap { layout -> [CGRect] in
             let width = max(0, bounds.width - gutter)

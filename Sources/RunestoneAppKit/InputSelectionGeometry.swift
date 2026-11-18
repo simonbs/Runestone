@@ -15,13 +15,13 @@ enum InputSelectionGeometry {
     }
 
     static func geometry(selection: NSRange, marked: NSRange?, in view: ReadOnlyDocumentView,
-                         caretWidth: CGFloat = 1, newlineWidth: CGFloat = 4) -> Result? {
+                         caretWidth: CGFloat = 1, newlineWidth: CGFloat = 4, fillsLineBackground: Bool = false) -> Result? {
         geometry(selection: .rangeOnly(selection), marked: marked, in: view,
-                 caretWidth: caretWidth, newlineWidth: newlineWidth)
+                 caretWidth: caretWidth, newlineWidth: newlineWidth, fillsLineBackground: fillsLineBackground)
     }
 
     static func geometry(selection: InputSelectionState, marked: NSRange?, in view: ReadOnlyDocumentView,
-                         caretWidth: CGFloat = 1, newlineWidth: CGFloat = 4) -> Result? {
+                         caretWidth: CGFloat = 1, newlineWidth: CGFloat = 4, fillsLineBackground: Bool = false) -> Result? {
         let revision = view.inputGeometryRevision
         let contentRevision = view.contentRevision
         let text = view.manager.stringView.string
@@ -33,7 +33,7 @@ enum InputSelectionGeometry {
               let layout = view.visibleLayout, layout.isComplete, layout.viewport == clip.bounds,
               finitePositive(layout.viewport) else { return nil }
 
-        let selectionRects = selection.range.length == 0 ? [] : rects(for: selection.range, layout: layout, textInset: view.horizontalTextInset, newlineWidth: newlineWidth)
+        let selectionRects = selection.range.length == 0 ? [] : rects(for: selection.range, layout: layout, textInset: view.horizontalTextInset, newlineWidth: newlineWidth, fillsLineBackground: fillsLineBackground)
         let markedRects = marked.map { rects(for: $0, layout: layout, textInset: view.horizontalTextInset, newlineWidth: newlineWidth) } ?? []
         let caret = selection.range.length == 0
             ? caretRect(for: InputCaretTarget(location: selection.range.location, affinity: selection.affinity),
@@ -51,7 +51,7 @@ enum InputSelectionGeometry {
     }
 
     private static func rects(for range: NSRange, layout: ViewportLayoutCoordinator.Result,
-                              textInset: CGFloat, newlineWidth: CGFloat) -> [CGRect] {
+                              textInset: CGFloat, newlineWidth: CGFloat, fillsLineBackground: Bool = false) -> [CGRect] {
         guard range.length > 0 else { return [] }
         var result: [CGRect] = []
         for lineLayout in layout.lines {
@@ -71,11 +71,21 @@ enum InputSelectionGeometry {
                     let geometry = CoreTextLineGeometry(line: placement.fragment.line, visibleRange: visible)
                     for segment in geometry.horizontalSegments(for: local) {
                         let rect = CGRect(x: placement.frame.minX + segment.lowerBound,
-                                          y: placement.frame.minY + placement.fragment.verticalGeometry.textTop,
+                                          y: placement.frame.minY + (fillsLineBackground ? 0 : placement.fragment.verticalGeometry.textTop),
                                           width: segment.upperBound - segment.lowerBound,
-                                          height: placement.fragment.baseSize.height)
+                                          height: fillsLineBackground ? placement.frame.height : placement.fragment.baseSize.height)
                         if let clipped = clipped(rect, to: layout.viewport) { result.append(clipped) }
                     }
+                }
+                // A selected delimiter or wrap boundary continues to the viewport edge.
+                // Keep directional glyph segments separate for partial bidi selections.
+                let fragmentEnd = line.location + placement.fragment.range.upperBound
+                if fillsLineBackground, fragmentEnd < lineEnd, range.location < fragmentEnd, range.upperBound > fragmentEnd,
+                   let edge = InputCaretGeometry.rect(for: placement, lineStart: line.location,
+                                                     documentOffset: fragmentEnd, caretWidth: newlineWidth) {
+                    let rect = CGRect(x: edge.minX, y: placement.frame.minY,
+                                      width: max(0, layout.viewport.maxX - edge.minX), height: placement.frame.height)
+                    if let clipped = clipped(rect, to: layout.viewport) { result.append(clipped) }
                 }
                 // Wrapped whitespace has no glyph. Show a small edge marker
                 // only when the logical selection intersects that hidden tail.
@@ -92,7 +102,15 @@ enum InputSelectionGeometry {
             if line.data.totalLength > line.data.length, range.location < line.location + line.data.totalLength,
                range.upperBound > lineEnd,
                let rect = lineEndRect(lineLayout, textInset: textInset, width: newlineWidth), let clipped = clipped(rect, to: layout.viewport) {
-                result.append(clipped)
+                if fillsLineBackground {
+                    let placement = lineLayout.placements.last
+                    let row = CGRect(x: rect.minX, y: placement?.frame.minY ?? line.yPosition,
+                                     width: max(0, layout.viewport.maxX - rect.minX),
+                                     height: placement?.frame.height ?? line.data.lineHeight)
+                    if let row = self.clipped(row, to: layout.viewport) { result.append(row) }
+                } else {
+                    result.append(clipped)
+                }
             }
         }
         return result
@@ -125,7 +143,7 @@ enum InputSelectionGeometry {
         let line = lineLayout.line
         if line.data.length == 0 { return CGRect(x: textInset, y: line.yPosition, width: width, height: line.data.lineHeight) }
         guard let placement = lineLayout.placements.last(where: {
-            $0.fragment.range.upperBound == line.data.length
+            $0.fragment.range.location <= line.data.length && $0.fragment.range.upperBound >= line.data.length
         }) else { return nil }
         return InputCaretGeometry.rect(for: placement, lineStart: line.location,
                                        documentOffset: line.location + line.data.length, caretWidth: width)

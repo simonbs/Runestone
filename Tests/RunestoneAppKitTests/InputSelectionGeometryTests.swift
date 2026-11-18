@@ -164,6 +164,42 @@ final class InputSelectionGeometryTests: XCTestCase {
         XCTAssertNil(InputSelectionGeometry.geometry(selection: NSRange(location: 0, length: 0), marked: nil, in: view))
     }
 
+    func testSelectionBackgroundFillsRowsAndSelectedLineBreaks() throws {
+        let (scroll, view) = makeView("abc\n\nxyz", width: 240, height: 120)
+        view.displayConfiguration.lineHeightMultiplier = 1.5
+        view.updateViewport()
+        let range = NSRange(location: 1, length: 5)
+        let result = try XCTUnwrap(InputSelectionGeometry.geometry(
+            selection: range, marked: range, in: view, fillsLineBackground: true))
+        let lines = try XCTUnwrap(view.visibleLayout?.lines)
+        for line in lines.prefix(2) {
+            let row = CGRect(x: scroll.contentView.bounds.maxX - 1, y: line.line.yPosition,
+                             width: 1,
+                             height: line.line.data.lineHeight)
+            XCTAssertTrue(result.selectionRects.contains { $0.contains(row) }, "Expected \(row) within \(result.selectionRects)")
+        }
+        let last = try XCTUnwrap(lines.last?.placements.first)
+        let lastRects = result.selectionRects.filter { $0.minY == last.frame.minY }
+        XCTAssertFalse(lastRects.isEmpty)
+        XCTAssertTrue(lastRects.allSatisfy { $0.maxX < scroll.contentView.bounds.maxX })
+        XCTAssertTrue(lastRects.allSatisfy { $0.height == last.frame.height })
+        XCTAssertTrue(result.markedRects.allSatisfy { $0.maxX < scroll.contentView.bounds.maxX })
+    }
+
+    func testSelectionBackgroundContinuesAcrossWrappedRows() throws {
+        let text = String(repeating: "word ", count: 30)
+        let (scroll, view) = makeView(text, width: 100, height: 150)
+        let geometry = try XCTUnwrap(InputSelectionGeometry.geometry(
+            selection: NSRange(location: 0, length: (text as NSString).length), marked: nil,
+            in: view, fillsLineBackground: true))
+        let placements = try XCTUnwrap(view.visibleLayout?.lines.first?.placements)
+        XCTAssertGreaterThan(placements.count, 1)
+        for placement in placements where placement.frame.maxY < scroll.contentView.bounds.maxY {
+            let point = CGPoint(x: scroll.contentView.bounds.maxX - 0.5, y: placement.frame.midY)
+            XCTAssertTrue(geometry.selectionRects.contains { $0.contains(point) })
+        }
+    }
+
     private func makeView(_ text: String, width: CGFloat, height: CGFloat) -> (NSScrollView, ReadOnlyDocumentView) {
         let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: width, height: height))
         let content = NSAttributedString(string: text, attributes: [.font: NSFont.monospacedSystemFont(ofSize: 16, weight: .regular)])

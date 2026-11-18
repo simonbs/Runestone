@@ -1476,12 +1476,16 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             guard let selection = adapter.selectionStateForHost(),
                   selection.range.location != NSNotFound, isCurrent(), ownsKeyFocus,
                   !adapter.needsInputReset,
-                  let geometry = InputSelectionGeometry.geometry(selection: selection, marked: nil, in: self),
+                  let geometry = InputSelectionGeometry.geometry(selection: selection, marked: nil, in: self, fillsLineBackground: true),
                   isCurrent(), ownsKeyFocus else { return }
             (displayConfiguration.selectionColor ?? NSColor.selectedTextBackgroundColor).setFill()
+            // Fill once so overlapping bidi segments and line tails keep a
+            // translucent selection color uniform.
+            let path = NSBezierPath()
             for rect in geometry.selectionRects where rect.intersects(dirtyRect) {
-                NSBezierPath(rect: rect).fill()
+                path.appendRect(rect)
             }
+            path.fill()
         }
     }
 

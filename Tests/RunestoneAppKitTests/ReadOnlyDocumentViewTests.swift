@@ -250,6 +250,22 @@ final class ReadOnlyDocumentViewTests: XCTestCase {
         XCTAssertEqual(view.selectedLineHighlightRects(in: layout).map(\.minY), [placements[0].frame.minY])
     }
 
+    func testLineHighlightHidesForAnyNonemptySelectionAndReturnsForCaret() throws {
+        let (_, view) = makeView(NSAttributedString(string: "abc\ndef", attributes: [.font: font]), width: 200, height: 100)
+        for granularity in [RunestoneSelectedLineHighlightGranularity.line, .lineFragment] {
+            view.displayConfiguration = RunestoneEditorDisplayConfiguration(
+                showsSelectedLines: true, selectedLineHighlightGranularity: granularity)
+            view.updateViewport()
+            let layout = try XCTUnwrap(view.visibleLayout)
+            for range in [NSRange(location: 1, length: 1), NSRange(location: 0, length: 5)] {
+                view.updateDisplaySelection(range)
+                XCTAssertTrue(view.selectedLineHighlightRects(in: layout).isEmpty)
+            }
+            view.updateDisplaySelection(NSRange(location: 1, length: 0))
+            XCTAssertFalse(view.selectedLineHighlightRects(in: layout).isEmpty)
+        }
+    }
+
     func testFragmentLineHighlightCoversEmptyFinalLine() throws {
         for string in ["", "hello\n\n"] {
             let text = NSAttributedString(string: string, attributes: [.font: font])
