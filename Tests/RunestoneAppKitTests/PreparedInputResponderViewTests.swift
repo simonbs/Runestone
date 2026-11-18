@@ -118,6 +118,80 @@ final class PreparedInputResponderViewTests: XCTestCase {
         XCTAssertTrue(attachment.disconnect())
     }
 
+    func testNativeWordAndPhrasePredictionsUseThemeFontAndGhostOnlyTheSuffix() throws {
+        for replacement in ["doing", "doing today? I hope you are well."] {
+            for color in [NSColor.black, NSColor.white, NSColor.systemOrange] {
+                let host = ResponderTestHost("Hello, how are you d")
+                let font = NSFont.monospacedSystemFont(ofSize: 19, weight: .medium)
+                host.attributes = [.font: font, .foregroundColor: color]
+                let queue = ResponderTestQueue()
+                let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
+                    host: host, lifetime: host.lifetime, bridge: host.bridge,
+                    makeDriver: { ResponderTestDriver($0) }, schedule: queue.enqueue))
+                defer { _ = attachment.disconnect(); queue.runAll() }
+                let view = try XCTUnwrap(attachment.view as? PreparedInputResponderView)
+                let connection = attachment.connection
+                XCTAssertTrue(connection.resumeForFocus())
+                XCTAssertTrue(connection.setSelectionForTextFinder(NSRange(location: host.text.utf16.count, length: 0)))
+                let start = host.text.utf16.count - 1
+                connection.inlinePredictionPresenter = { _, client in
+                    client.setMarkedText(NSAttributedString(string: replacement, attributes: [.underlineStyle: 1]),
+                        selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: start, length: 1))
+                    XCTAssertTrue(connection.isPresentingInlinePrediction)
+                    XCTAssertEqual(host.text, "Hello, how are you d")
+                    XCTAssertEqual(host.undoCount, 0)
+                    let presented = view.presentationAttributedSubstring(from: NSRange(location: start, length: replacement.utf16.count))
+                    XCTAssertEqual(presented.attribute(.font, at: 0, effectiveRange: nil) as? NSFont, font)
+                    XCTAssertEqual(presented.attribute(.font, at: 1, effectiveRange: nil) as? NSFont, font)
+                    XCTAssertEqual(presented.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor, color)
+                    XCTAssertEqual(presented.attribute(.foregroundColor, at: 1, effectiveRange: nil) as? NSColor, color.withAlphaComponent(0.5))
+                    XCTAssertEqual(presented.attribute(.underlineStyle, at: 1, effectiveRange: nil) as? Int, 0)
+                    // Acceptance goes through the same native input-client callback
+                    // as ordinary text, with one publication and no ghost attributes.
+                    client.insertText(replacement, replacementRange: NSRange(location: NSNotFound, length: 0))
+                    XCTAssertNil(connection.inlinePredictionRange)
+                }
+                connection.presentInlinePrediction([])
+                XCTAssertEqual(host.text, "Hello, how are you " + replacement)
+                XCTAssertEqual(host.undoCount, 1)
+                XCTAssertFalse(connection.isPresentingInlinePrediction)
+                let committed = view.presentationAttributedSubstring(from: NSRange(location: start, length: replacement.utf16.count))
+                XCTAssertEqual(committed.attribute(.foregroundColor, at: 1, effectiveRange: nil) as? NSColor, color)
+                XCTAssertNil(committed.attribute(.underlineStyle, at: 1, effectiveRange: nil))
+            }
+        }
+    }
+
+    func testDeadKeyAndIMECompositionKeepNormalThemeAndDecoration() throws {
+        for text in ["¨", "ü", "日本語"] {
+            let host = ResponderTestHost("a")
+            let font = NSFont.monospacedSystemFont(ofSize: 17, weight: .regular)
+            host.attributes = [.font: font, .foregroundColor: NSColor.systemPurple]
+            let queue = ResponderTestQueue()
+            let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
+                host: host, lifetime: host.lifetime, bridge: host.bridge,
+                makeDriver: { ResponderTestDriver($0) }, schedule: queue.enqueue))
+            defer { _ = attachment.disconnect(); queue.runAll() }
+            let connection = attachment.connection
+            XCTAssertTrue(connection.resumeForFocus())
+            let client = try XCTUnwrap(connection.nativeTextCheckingController?.client)
+            // A zero relative selection is also valid for real composition;
+            // it must not be mistaken for an entirely predicted suffix.
+            client.setMarkedText(NSAttributedString(string: text, attributes: [.underlineStyle: 1]),
+                selectedRange: NSRange(location: 0, length: 0), replacementRange: NSRange(location: 0, length: 1))
+            XCTAssertFalse(connection.isPresentingInlinePrediction)
+            XCTAssertNil(connection.inlinePredictionRange)
+            let presented = attachment.view.presentationAttributedSubstring(from: NSRange(location: 0, length: text.utf16.count))
+            XCTAssertEqual(presented.attribute(.font, at: 0, effectiveRange: nil) as? NSFont, font)
+            XCTAssertEqual(presented.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor, .systemPurple)
+            XCTAssertEqual(presented.attribute(.underlineStyle, at: 0, effectiveRange: nil) as? Int, 1)
+            XCTAssertEqual(host.text, "a")
+            client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
+            XCTAssertEqual(host.text, text)
+            XCTAssertEqual(host.undoCount, 1)
+        }
+    }
+
     func testInlinePredictionTraitTracksConfigurationWithoutForcingSystemPreference() throws {
         let host = ResponderTestHost("Please let me kn")
         let queue = ResponderTestQueue()
@@ -311,6 +385,7 @@ private final class ResponderTestHost: RunestoneInputDocumentHost {
     let bridge = RunestoneInputDocumentBridge()
     var busy = false
     var undoCount = 0
+    var attributes: [NSAttributedString.Key: Any] = [:]
     init(_ text: String) { self.text = text }
     func beginInputEvent(expectedRevision: UUID, source: ReadOnlyDocumentView) -> RunestoneInputEventStart {
         guard !busy else { return .busy }
@@ -323,7 +398,7 @@ private final class ResponderTestHost: RunestoneInputDocumentHost {
         busy = true
         return .reserved(ResponderSnapshotLease(self))
     }
-    func typingAttributes(for source: ReadOnlyDocumentView) -> [NSAttributedString.Key: Any] { [:] }
+    func typingAttributes(for source: ReadOnlyDocumentView) -> [NSAttributedString.Key: Any] { attributes }
 }
 
 private final class ResponderEventLease: RunestoneInputEventReservation {

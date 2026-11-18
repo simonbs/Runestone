@@ -100,6 +100,11 @@ final class PreparedInputContextConnection {
     private var spellingCorrection: SpellingCorrection?
     private var spellingIndicatorID: UUID?
     private var inlinePredictionRequest = UUID()
+    private(set) var isPresentingInlinePrediction = false
+    fileprivate(set) var inlinePredictionRange: NSRange?
+    var inlinePredictionPresenter: ([NSTextCheckingResult], NSTextInputClient) -> Void = {
+        NSSpellChecker.shared.showInlinePrediction(forCandidates: $0, client: $1)
+    }
     private var contextToken: PreparedInputEventAdapter.InputContextToken? {
         get { payload!.contextToken }
         set { payload!.contextToken = newValue }
@@ -569,6 +574,49 @@ final class PreparedInputContextConnection {
         inlinePredictionRequest = UUID()
     }
 
+    /// AppKit runs its prediction interaction inside this call, including its
+    /// NSTextInputClient callbacks. Keep that interaction separate from IME
+    /// composition without interpreting AppKit's opaque attributed-string keys.
+    func presentInlinePrediction(_ candidates: [NSTextCheckingResult], client: NSTextInputClient? = nil) {
+        guard !isPresentingInlinePrediction, allowsInlinePredictions,
+              let client = client ?? proxy else { return }
+        isPresentingInlinePrediction = true
+        defer {
+            isPresentingInlinePrediction = false
+            inlinePredictionRange = nil
+            view.needsDisplay = true
+        }
+        inlinePredictionPresenter(candidates, client)
+    }
+
+    fileprivate func setMarkedText(_ value: Any, selectedRange: NSRange, replacementRange: NSRange) {
+        guard isPresentingInlinePrediction,
+              let attributed = (value as? NSAttributedString) ?? (value as? String).map({ NSAttributedString(string: $0) }) else {
+            mutate(operation: .setMarkedText) { $0.setMarkedTextReporting(value, selectedRange: selectedRange, replacementRange: replacementRange) }
+            return
+        }
+        inlinePredictionRange = nil
+        let displayed = NSMutableAttributedString(attributedString: attributed)
+        if selectedRange.location != NSNotFound,
+           selectedRange.location <= displayed.length,
+           selectedRange.length <= displayed.length - selectedRange.location {
+            let suffixStart = NSMaxRange(selectedRange)
+            let suffix = NSRange(location: suffixStart, length: displayed.length - suffixStart)
+            displayed.addAttribute(.underlineStyle, value: 0, range: NSRange(location: 0, length: displayed.length))
+            let start: Int? = query(nil) { adapter in
+                let marked = adapter.markedRangeForInput()
+                return replacementRange.location != NSNotFound ? replacementRange.location
+                    : (marked.location != NSNotFound ? marked.location : adapter.selectedRangeForInput().location)
+            }
+            inlinePredictionRange = start.flatMap {
+                guard $0 >= 0, $0 <= view.manager.stringView.string.length,
+                      suffix.length > 0, suffix.location <= Int.max - $0 else { return nil }
+                return NSRange(location: $0 + suffix.location, length: suffix.length)
+            }
+        }
+        mutate(operation: .setMarkedText) { $0.setMarkedTextReporting(displayed, selectedRange: selectedRange, replacementRange: replacementRange) }
+    }
+
     private func requestInlinePrediction(at caret: Int, tag: Int) {
         guard NSSpellChecker.isAutomaticInlinePredictionEnabled, view.displayConfiguration.allowsInlinePredictions,
               let revision = adapter.installedRevisionForDispatch,
@@ -605,17 +653,17 @@ final class PreparedInputContextConnection {
                 // necessarily predictions. Candidate ranges must refer to the client
                 // document rather than the bounded context passed to the checker.
                 let documentCandidates = candidates.map { $0.adjustingRanges(offset: start) }
-                NSSpellChecker.shared.showInlinePrediction(forCandidates: documentCandidates, client: client)
+                self.presentInlinePrediction(documentCandidates, client: client)
             }
         }
     }
 
     fileprivate func insertCommittedText(_ value: Any, replacementRange: NSRange) {
+        inlinePredictionRange = nil
         let text = (value as? NSAttributedString)?.string ?? (value as? String) ?? ""
         let length = text.utf16.count
-        let extendsWord = view.displayConfiguration.allowsInlinePredictions && text.count == 1 && text.unicodeScalars.allSatisfy {
-            CharacterSet.letters.union(.nonBaseCharacters).contains($0)
-        }
+        let canPredictTyping = view.displayConfiguration.allowsInlinePredictions && text.count == 1 &&
+            !text.unicodeScalars.contains { CharacterSet.newlines.contains($0) }
         let isWhitespace = text.unicodeScalars.count == 1 &&
             text.unicodeScalars.allSatisfy { CharacterSet.whitespacesAndNewlines.contains($0) }
         let isPunctuation = text.unicodeScalars.count == 1 &&
@@ -623,7 +671,7 @@ final class PreparedInputContextConnection {
         mutate(operation: .insertText) { adapter in
             dismissSpellingIndicator()
             let priorRevision = adapter.installedRevisionForDispatch
-            let canRequestPrediction = extendsWord && adapter.hasProvisionalCompositionForInput() == false
+            let canRequestPrediction = canPredictTyping && adapter.hasProvisionalCompositionForInput() == false
             let attempt = adapter.insertTextReporting(value, replacementRange: replacementRange)
             guard attempt.outcome == .processed, length > 0,
                   let caret = adapter.inputStateForHost()?.selection,
@@ -1290,9 +1338,12 @@ private final class PreparedContextClient: NSObject, NSTextCheckingClient {
         owner?.insertCommittedText(string, replacementRange: replacementRange)
     }
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
-        owner?.mutate(operation: .setMarkedText) { $0.setMarkedTextReporting(string, selectedRange: selectedRange, replacementRange: replacementRange) }
+        owner?.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
     }
-    func unmarkText() { owner?.mutate(operation: .unmarkText) { $0.unmarkTextReporting() } }
+    func unmarkText() {
+        owner?.inlinePredictionRange = nil
+        owner?.mutate(operation: .unmarkText) { $0.unmarkTextReporting() }
+    }
     func doCommand(by selector: Selector) { owner?.command(selector) }
     func selectedRange() -> NSRange {
         owner?.query(NSRange(location: NSNotFound, length: 0)) { $0.selectedRangeForInput() }
@@ -1305,7 +1356,9 @@ private final class PreparedContextClient: NSObject, NSTextCheckingClient {
     var documentVisibleRect: NSRect { owner?.documentVisibleRect ?? .zero }
     var unionRectInVisibleSelectedRange: NSRect { owner?.unionRectInVisibleSelectedRange ?? .zero }
     func hasMarkedText() -> Bool { markedRange().location != NSNotFound }
-    func validAttributesForMarkedText() -> [NSAttributedString.Key] { [] }
+    func validAttributesForMarkedText() -> [NSAttributedString.Key] {
+        [.font, .foregroundColor, .backgroundColor, .underlineStyle, .underlineColor, .markedClauseSegment]
+    }
     func attributedSubstring(forProposedRange range: NSRange, actualRange: NSRangePointer?) -> NSAttributedString? {
         actualRange?.pointee = NSRange(location: NSNotFound, length: 0)
         var actual = NSRange(location: NSNotFound, length: 0)

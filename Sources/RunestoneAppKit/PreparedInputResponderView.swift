@@ -1456,6 +1456,20 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         needsDisplay = true
     }
 
+    override func presentationAttributedSubstring(from range: NSRange) -> NSAttributedString {
+        let content = super.presentationAttributedSubstring(from: range)
+        guard let prediction = inputConnection?.inlinePredictionRange else { return content }
+        let intersection = NSIntersectionRange(range, prediction)
+        guard intersection.length > 0 else { return content }
+        let result = NSMutableAttributedString(attributedString: content)
+        let local = NSRange(location: intersection.location - range.location, length: intersection.length)
+        // Use the theme's foreground at reduced opacity, preserving its contrast
+        // on independently chosen editor backgrounds and its syntax font metrics.
+        let foreground = result.attribute(.foregroundColor, at: local.location, effectiveRange: nil) as? NSColor ?? .textColor
+        result.addAttributes([.foregroundColor: foreground.withAlphaComponent(0.5), .underlineStyle: 0], range: local)
+        return result
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         var caret: NSRect?
@@ -1501,8 +1515,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             (displayConfiguration.selectionColor ?? NSColor.selectedTextBackgroundColor.withAlphaComponent(0.35)).setFill()
             for rect in geometry.selectionRects where rect.intersects(dirtyRect) { NSBezierPath(rect: rect).fill() }
             NSColor.textColor.setFill()
-            for rect in geometry.markedRects where rect.intersects(dirtyRect) {
-                NSBezierPath(rect: NSRect(x: rect.minX, y: rect.maxY - 1, width: rect.width, height: 1)).fill()
+            if !connection.isPresentingInlinePrediction {
+                for rect in geometry.markedRects where rect.intersects(dirtyRect) {
+                    NSBezierPath(rect: NSRect(x: rect.minX, y: rect.maxY - 1, width: rect.width, height: 1)).fill()
+                }
             }
             caret = geometry.caretRect
             if displayConfiguration.usesBlockCaret, let bar = caret {

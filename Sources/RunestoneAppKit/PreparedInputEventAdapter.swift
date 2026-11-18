@@ -468,7 +468,15 @@ final class PreparedInputEventAdapter {
 
     func setMarkedTextReporting(_ value: Any, selectedRange: NSRange, replacementRange: NSRange) -> InputAttempt {
         perform { session in
-            guard let text = self.attributedInput(value), !self.nestedMutationRejected else { return false }
+            guard let supplied = self.attributedInput(value), !self.nestedMutationRejected else { return false }
+            // Input methods and inline predictions often supply only decoration.
+            // Inherit the editor's font and theme where the input supplies neither.
+            let attributes = self.typingAttributes()
+            guard !self.nestedMutationRejected else { return false }
+            let text = NSMutableAttributedString(string: supplied.string, attributes: attributes)
+            supplied.enumerateAttributes(in: NSRange(location: 0, length: supplied.length)) { attributes, range, _ in
+                text.addAttributes(attributes, range: range)
+            }
             return session.setMarkedText(text, selectedRange: selectedRange, replacementRange: replacementRange)
         }
     }
