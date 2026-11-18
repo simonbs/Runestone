@@ -1339,11 +1339,15 @@ public class ReadOnlyDocumentView: NSView {
         context.clip(to: CGRect(x: result.viewport.minX + gutter, y: result.viewport.minY,
                                 width: max(0, result.viewport.width - gutter), height: result.viewport.height))
         drawBackgroundPresentation(result, in: context)
+        drawSelectionBackground(dirtyRect)
         for line in result.lines {
             line.controller.draw(line.placements, in: context)
             drawInvisibleCharacters(in: line)
         }
     }
+
+    /// Draw selection above editor backgrounds and below text, preserving color alpha.
+    func drawSelectionBackground(_ dirtyRect: NSRect) {}
 
     public override func mouseDown(with event: NSEvent) {
         if handleSyntaxFoldingClick(event) { return }

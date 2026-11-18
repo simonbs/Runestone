@@ -1470,6 +1470,21 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         return result
     }
 
+    override func drawSelectionBackground(_ dirtyRect: NSRect) {
+        guard ownsKeyFocus, !disarmed, !isReadOnly, let connection = inputConnection else { return }
+        connection.performResponderActivity { adapter, isCurrent in
+            guard let selection = adapter.selectionStateForHost(),
+                  selection.range.location != NSNotFound, isCurrent(), ownsKeyFocus,
+                  !adapter.needsInputReset,
+                  let geometry = InputSelectionGeometry.geometry(selection: selection, marked: nil, in: self),
+                  isCurrent(), ownsKeyFocus else { return }
+            (displayConfiguration.selectionColor ?? NSColor.selectedTextBackgroundColor).setFill()
+            for rect in geometry.selectionRects where rect.intersects(dirtyRect) {
+                NSBezierPath(rect: rect).fill()
+            }
+        }
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         var caret: NSRect?
@@ -1512,8 +1527,6 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                   let geometry = InputSelectionGeometry.geometry(selection: selection,
                       marked: marked.location == NSNotFound ? nil : marked, in: self),
                   isCurrent(), ownsKeyFocus else { return }
-            (displayConfiguration.selectionColor ?? NSColor.selectedTextBackgroundColor.withAlphaComponent(0.35)).setFill()
-            for rect in geometry.selectionRects where rect.intersects(dirtyRect) { NSBezierPath(rect: rect).fill() }
             NSColor.textColor.setFill()
             if !connection.isPresentingInlinePrediction {
                 for rect in geometry.markedRects where rect.intersects(dirtyRect) {
