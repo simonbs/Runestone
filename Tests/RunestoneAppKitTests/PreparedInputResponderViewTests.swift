@@ -118,53 +118,24 @@ final class PreparedInputResponderViewTests: XCTestCase {
         XCTAssertTrue(attachment.disconnect())
     }
 
-    func testInlinePredictionPublishesOnlyAfterAcceptance() throws {
-        try XCTSkipUnless(NSSpellChecker.isAutomaticInlinePredictionEnabled)
-        _ = NSApplication.shared
-        let prefix = "Please let me kn"
-        let acceptanceKeys: [(String, UInt16, String)] = [(" ", 49, " "), ("\t", 48, "")]
-        for (key, keyCode, separator) in acceptanceKeys {
-            let host = ResponderTestHost(String(prefix.dropLast()))
-            let queue = ResponderTestQueue()
-            let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
-                host: host, lifetime: host.lifetime, bridge: host.bridge,
-                makeDriver: { ResponderTestDriver($0) }, schedule: queue.enqueue))
-            let responder = try XCTUnwrap(attachment.view as? PreparedInputResponderView)
-            let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 500, height: 160))
-            scroll.documentView = responder
-            scroll.tile()
-            responder.updateViewport()
-            defer {
-                _ = attachment.disconnect()
-                queue.runAll()
-            }
-            let connection = attachment.connection
-            XCTAssertTrue(connection.resumeForFocus())
-            let caret = prefix.utf16.count
-            XCTAssertTrue(connection.setSelectionForTextFinder(NSRange(location: caret - 1, length: 0)))
-            connection.insertTextFromKeyBinding("n", replacementRange: NSRange(location: NSNotFound, length: 0))
-            responder.updateViewport()
-            let deadline = Date().addingTimeInterval(2)
-            while connection.inlinePredictionSuffix(at: caret) == nil && Date() < deadline {
-                RunLoop.main.run(until: Date().addingTimeInterval(0.01))
-            }
-            guard let suffix = connection.inlinePredictionSuffix(at: caret) else {
-                throw XCTSkip("The system text input language returned no completion for the English test phrase.")
-            }
-            XCTAssertEqual(host.text, prefix)
-            XCTAssertEqual(responder.content.string, prefix)
-            XCTAssertEqual(host.undoCount, 1)
-            XCTAssertNotNil(responder.inlinePredictionDrawing(suffix, at: caret))
-            let event = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
-                timestamp: 0, windowNumber: 0, context: nil, characters: key,
-                charactersIgnoringModifiers: key, isARepeat: false, keyCode: keyCode))
-            XCTAssertTrue(connection.performCoordinatedInput {
-                XCTAssertEqual(connection.dispatchKey(event), .handled)
-            })
-            XCTAssertEqual(host.text, prefix + suffix + separator)
-            XCTAssertEqual(host.undoCount, 2)
-            XCTAssertNil(connection.inlinePredictionSuffix(at: caret))
+    func testInlinePredictionTraitTracksConfigurationWithoutForcingSystemPreference() throws {
+        let host = ResponderTestHost("Please let me kn")
+        let queue = ResponderTestQueue()
+        let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
+            host: host, lifetime: host.lifetime, bridge: host.bridge,
+            makeDriver: { ResponderTestDriver($0) }, schedule: queue.enqueue))
+        defer {
+            _ = attachment.disconnect()
+            queue.runAll()
         }
+        let client = try XCTUnwrap(attachment.connection.nativeTextCheckingController?.client)
+        XCTAssertEqual(client.inlinePredictionType, .default)
+        attachment.view.displayConfiguration.allowsInlinePredictions = false
+        XCTAssertEqual(client.inlinePredictionType, .no)
+        attachment.view.displayConfiguration.allowsInlinePredictions = true
+        XCTAssertEqual(client.inlinePredictionType, .default)
+        XCTAssertEqual(host.text, "Please let me kn")
+        XCTAssertEqual(host.undoCount, 0)
     }
 
     func testNativeSpellingCorrectionAndReversionPreserveCaretAndUndo() throws {

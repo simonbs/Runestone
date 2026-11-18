@@ -99,12 +99,6 @@ final class PreparedInputContextConnection {
     }
     private var spellingCorrection: SpellingCorrection?
     private var spellingIndicatorID: UUID?
-    private struct InlinePrediction {
-        let caret: Int
-        let revision: UUID
-        let suffix: String
-    }
-    private var inlinePrediction: InlinePrediction?
     private var inlinePredictionRequest = UUID()
     private var contextToken: PreparedInputEventAdapter.InputContextToken? {
         get { payload!.contextToken }
@@ -186,6 +180,7 @@ final class PreparedInputContextConnection {
         return true
     }
 
+    fileprivate var allowsInlinePredictions: Bool { view.displayConfiguration.allowsInlinePredictions }
     fileprivate var checksSpellingWhileTyping: Bool { view.displayConfiguration.checksSpellingWhileTyping }
     fileprivate var correctsSpellingAutomatically: Bool? { view.displayConfiguration.correctsSpellingAutomatically }
 
@@ -347,7 +342,7 @@ final class PreparedInputContextConnection {
         precondition(Thread.isMainThread)
         guard !focusSuspended else { return }
         focusSuspended = true
-        dismissInlinePrediction()
+        invalidateInlinePredictionRequest()
         dismissSpellingCorrection()
         requestReset()
     }
@@ -502,7 +497,7 @@ final class PreparedInputContextConnection {
             recordInputFailure(operation: .undispatchedKey, failure: .init(reason: reason, effect: .notApplied))
             return .unavailable
         }
-        if handleInlinePredictionKey(event) { return .handled }
+        invalidateInlinePredictionRequest()
         let previousAction = inputActionGeneration
         let expectedGeneration = generation
         driverDepth += 1
@@ -570,42 +565,8 @@ final class PreparedInputContextConnection {
         insertCommittedText(value, replacementRange: replacementRange)
     }
 
-    private func dismissInlinePrediction() {
+    private func invalidateInlinePredictionRequest() {
         inlinePredictionRequest = UUID()
-        guard inlinePrediction != nil else { return }
-        inlinePrediction = nil
-        view.needsDisplay = true
-    }
-
-    private func currentInlinePrediction(at caret: Int) -> InlinePrediction? {
-        guard NSSpellChecker.isAutomaticInlinePredictionEnabled,
-              view.displayConfiguration.allowsInlinePredictions, let prediction = inlinePrediction,
-              prediction.caret == caret, prediction.revision == adapter.installedRevisionForDispatch else { return nil }
-        return prediction
-    }
-
-    func inlinePredictionSuffix(at caret: Int) -> String? {
-        currentInlinePrediction(at: caret)?.suffix
-    }
-
-    private func handleInlinePredictionKey(_ event: NSEvent) -> Bool {
-        inlinePredictionRequest = UUID()
-        guard inlinePrediction != nil else { return false }
-        defer { dismissInlinePrediction() }
-        guard event.modifierFlags.intersection([.shift, .control, .option, .command]).isEmpty,
-              let input = inputState(), !input.hasComposition, input.selection.length == 0,
-              let prediction = currentInlinePrediction(at: input.selection.location),
-              let responder = view as? PreparedInputResponderView,
-              responder.inlinePredictionDrawing(prediction.suffix, at: prediction.caret) != nil else { return false }
-        let key = event.charactersIgnoringModifiers
-        if key == "\u{1B}" { return true }
-        guard key == " " || key == "\t" else { return false }
-        let text = prediction.suffix + (key == " " ? " " : "")
-        let range = input.selection
-        let caret = NSRange(location: range.location + text.utf16.count, length: 0)
-        let edit = RunestoneHostEdit(replacementRange: range, replacementText: text, selectedRange: caret)
-        mutate(operation: .insertText) { $0.applyHostEditReporting(edit) }
-        return true
     }
 
     private func requestInlinePrediction(at caret: Int, tag: Int) {
@@ -636,18 +597,15 @@ final class PreparedInputContextConnection {
                       self.activated, !self.focusSuspended, self.isConnectedForEditing,
                       self.adapter.installedRevisionForDispatch == revision,
                       let current = self.inputState(), !current.hasComposition, current.selection == input.selection else { return }
-                for candidate in candidates {
-                    guard candidate.range.location <= selection.location,
-                          candidate.range.length == selection.location - candidate.range.location else { continue }
-                    let prefix = (context as NSString).substring(with: candidate.range)
-                    guard prefix.count >= 2, let replacement = candidate.replacementString,
-                          replacement.hasPrefix(prefix) else { continue }
-                    let suffix = replacement.dropFirst(prefix.count).trimmingCharacters(in: .whitespaces)
-                    guard !suffix.isEmpty, suffix.rangeOfCharacter(from: .newlines) == nil else { continue }
-                    self.inlinePrediction = InlinePrediction(caret: caret, revision: revision, suffix: suffix)
-                    self.view.needsDisplay = true
-                    break
-                }
+                guard self.view.displayConfiguration.allowsInlinePredictions,
+                      NSSpellChecker.isAutomaticInlinePredictionEnabled,
+                      let client = self.proxy else { return }
+                // Keep Apple's candidate metadata and let AppKit decide whether there
+                // is an inline prediction. Ordinary dictionary completions are not
+                // necessarily predictions. Candidate ranges must refer to the client
+                // document rather than the bounded context passed to the checker.
+                let documentCandidates = candidates.map { $0.adjustingRanges(offset: start) }
+                NSSpellChecker.shared.showInlinePrediction(forCandidates: documentCandidates, client: client)
             }
         }
     }
@@ -990,7 +948,7 @@ final class PreparedInputContextConnection {
             return
         }
         inputActionGeneration = UUID()
-        dismissInlinePrediction()
+        invalidateInlinePredictionRequest()
         // No later callback in the same driver dispatch may pass a pending
         // history operation; reject it rather than reorder or replay it.
         guard pendingHistory == nil, !historyInFlight else {
@@ -1039,7 +997,7 @@ final class PreparedInputContextConnection {
         if state == .reconstructing { resetDuringReconstruction = true; return }
         guard state == .connected else { return }
         state = .resetRequested
-        dismissInlinePrediction()
+        invalidateInlinePredictionRequest()
         generation = UUID()
         scheduleDrainIfNeeded()
     }
@@ -1322,6 +1280,10 @@ private final class PreparedContextClient: NSObject, NSTextCheckingClient {
     var smartInsertDeleteType: NSTextInputTraitType = .default
     var textReplacementType: NSTextInputTraitType = .default
     var textCompletionType: NSTextInputTraitType = .yes
+    var inlinePredictionType: NSTextInputTraitType {
+        get { owner?.allowsInlinePredictions == false ? .no : .default }
+        set {}
+    }
     var writingToolsBehavior: NSWritingToolsBehavior = .limited
     var allowedWritingToolsResultOptions: NSWritingToolsResultOptions = .plainText
     func insertText(_ string: Any, replacementRange: NSRange) {

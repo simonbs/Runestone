@@ -1456,22 +1456,6 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         needsDisplay = true
     }
 
-    func inlinePredictionDrawing(_ suffix: String, at caret: Int) -> (text: NSAttributedString, rect: NSRect)? {
-        guard let bar = InputSelectionGeometry.geometry(
-            selection: NSRange(location: caret, length: 0), marked: nil, in: self)?.caretRect else { return nil }
-        let font = displayConfiguration.textFont ?? NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
-        let text = NSAttributedString(string: suffix, attributes: [
-            .font: font, .foregroundColor: NSColor.placeholderTextColor, .kern: displayConfiguration.kern
-        ])
-        let size = text.size()
-        let rect = NSRect(x: bar.minX, y: max(bar.minY, bar.midY - size.height / 2),
-                          width: ceil(size.width), height: ceil(size.height))
-        guard let viewport = enclosingScrollView?.contentView.bounds,
-              rect.minX >= viewport.minX + horizontalTextInset, rect.maxX <= viewport.maxX - displayConfiguration.horizontalTextPadding,
-              rect.minY >= viewport.minY, rect.maxY <= viewport.maxY else { return nil }
-        return (text, rect)
-    }
-
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         var caret: NSRect?
@@ -1521,12 +1505,6 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 NSBezierPath(rect: NSRect(x: rect.minX, y: rect.maxY - 1, width: rect.width, height: 1)).fill()
             }
             caret = geometry.caretRect
-            if marked.location == NSNotFound, selection.range.length == 0,
-               let suffix = connection.inlinePredictionSuffix(at: selection.range.location),
-               let prediction = inlinePredictionDrawing(suffix, at: selection.range.location),
-               prediction.rect.intersects(dirtyRect) {
-                prediction.text.draw(at: prediction.rect.origin)
-            }
             if displayConfiguration.usesBlockCaret, let bar = caret {
                 (caret, blockPlacement) = blockCaretGeometry(at: selection.range.location, bar: bar)
             }
