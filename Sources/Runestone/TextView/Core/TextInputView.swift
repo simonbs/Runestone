@@ -800,6 +800,7 @@ final class TextInputView: UIView, UITextInput {
         set {
             if newValue != stringView.string {
                 stopWritingTools()
+                markedTextUndoState = nil
                 markedRange = nil
                 resetCodeFolding()
                 textMutationVersion &+= 1
@@ -981,6 +982,14 @@ final class TextInputView: UIView, UITextInput {
         let baseColor: UIColor
     }
     private var attributedMarkedText: MarkedTextPresentation?
+    // The typing timer may expire while UIKit displays provisional text.
+    // Retain only the replaced span and publish its undo step on commit.
+    private struct MarkedTextUndoState {
+        let location: Int
+        let originalText: String
+        let selection: NSRange?
+    }
+    private var markedTextUndoState: MarkedTextUndoState?
     private var floatingCaretView: FloatingCaretView?
     private var insertionPointColorBeforeFloatingBegan: UIColor = .label
     private var maximumLeadingCharacterPairComponentLength = 0
@@ -1227,6 +1236,7 @@ final class TextInputView: UIView, UITextInput {
 
     func setState(_ state: TextViewState, addUndoAction: Bool = false) {
         stopWritingTools()
+        markedTextUndoState = nil
         markedRange = nil
         resetCodeFolding()
         textMutationVersion &+= 1
@@ -1614,8 +1624,13 @@ extension TextInputView {
         // before calling -insertText(_:), so we do it manually. This issue can be tested by entering a backtick (`) in an empty
         // document, then pressing any arrow key (up, right, down or left) followed by the return key.
         // The backtick will remain marked unless we manually clear the marked range.
+        let compositionUndo = markedTextUndoState
+        markedTextUndoState = nil
         markedRange = nil
-        replaceText(in: selectedRange, with: preparedText)
+        if compositionUndo != nil { timedUndoManager.endUndoGrouping() }
+        replaceText(in: selectedRange, with: preparedText, selectedRangeAfterUndo: compositionUndo?.selection,
+                    replacingTextForUndo: compositionUndo?.originalText)
+        if compositionUndo != nil { timedUndoManager.endUndoGrouping() }
         layoutIfNeeded()
         delegate?.textInputViewDidChangeSelection(self)
     }
@@ -1655,7 +1670,9 @@ extension TextInputView {
         let deleteRange = rangeForDeletingText(in: selectedRange)
         // If we're deleting everything in the marked range then we clear the marked range. UITextInput doesn't do that for us.
         // Can be tested by entering a backtick (`) in an empty document and deleting it.
+        let compositionUndo = deleteRange == markedRange ? markedTextUndoState : nil
         if deleteRange == markedRange {
+            markedTextUndoState = nil
             markedRange = nil
         }
         guard shouldChangeText(in: deleteRange, replacementText: "") else {
@@ -1685,7 +1702,8 @@ extension TextInputView {
             timedUndoManager.endUndoGrouping()
             timedUndoManager.beginUndoGrouping()
         }
-        replaceText(in: deleteRange, with: "", selectedRangeAfterUndo: selectedRangeAfterUndo)
+        replaceText(in: deleteRange, with: "", selectedRangeAfterUndo: compositionUndo?.selection ?? selectedRangeAfterUndo,
+                    replacingTextForUndo: compositionUndo?.originalText)
         // Sending selection changed without calling the input delegate directly. This ensures that both inputting Korean letters and deleting entire words with Option+Backspace works properly.
         sendSelectionChangedToTextSelectionView()
         if isDeletingMultipleCharacters {
@@ -1863,6 +1881,7 @@ extension TextInputView {
     private func replaceText(in range: NSRange,
                              with newString: String,
                              selectedRangeAfterUndo: NSRange? = nil,
+                             replacingTextForUndo: String? = nil,
                              undoActionName: String = L10n.Undo.ActionName.typing,
                              isWritingToolsReplacement: Bool = false,
                              isStillValid: () -> Bool = { true },
@@ -1882,8 +1901,12 @@ extension TextInputView {
         let nsNewString = newString as NSString
         let currentText = text(in: range) ?? ""
         let newRange = NSRange(location: range.location, length: nsNewString.length)
-        if !isWritingToolsActive || !isWritingToolsReplacement {
-            addUndoOperation(replacing: newRange, withText: currentText, selectedRangeAfterUndo: selectedRangeAfterUndo, actionName: undoActionName)
+        if !isUpdatingMarkedText, markedTextUndoState == nil,
+           !isWritingToolsActive || !isWritingToolsReplacement {
+            let undoText = replacingTextForUndo ?? currentText
+            if replacingTextForUndo == nil || undoText != newString {
+                addUndoOperation(replacing: newRange, withText: undoText, selectedRangeAfterUndo: selectedRangeAfterUndo, actionName: undoActionName)
+            }
         }
         isApplyingFoldingEdit = true
         defer { isApplyingFoldingEdit = false }
@@ -2082,6 +2105,10 @@ extension TextInputView {
         guard shouldChangeText(in: range, replacementText: markedText) else {
             return
         }
+        if markedTextUndoState == nil, !markedText.isEmpty {
+            timedUndoManager.endUndoGrouping()
+            markedTextUndoState = MarkedTextUndoState(location: range.location, originalText: text(in: range) ?? "", selection: self.selectedRange)
+        }
         markedRange = markedText.isEmpty ? nil : NSRange(location: range.location, length: markedText.utf16.count)
         if let attributes, !markedText.isEmpty {
             setAttributedMarkedTextPresentation(MarkedTextPresentation(
@@ -2098,6 +2125,21 @@ extension TextInputView {
         _selectedRange = safeSelectionRange(from: preferredSelectedRange)
         inputDelegate?.selectionDidChange(self)
         delegate?.textInputViewDidUpdateMarkedRange(self)
+        if markedText.isEmpty { finishMarkedTextUndo(in: NSRange(location: range.location, length: 0)) }
+    }
+
+    private func finishMarkedTextUndo(in range: NSRange) {
+        guard let state = markedTextUndoState else {
+            return
+        }
+        markedTextUndoState = nil
+        guard range.location == state.location,
+              let current = text(in: range), current != state.originalText else {
+            return
+        }
+        timedUndoManager.endUndoGrouping()
+        addUndoOperation(replacing: range, withText: state.originalText, selectedRangeAfterUndo: state.selection)
+        timedUndoManager.endUndoGrouping()
     }
 
     private func setAttributedMarkedTextPresentation(_ presentation: MarkedTextPresentation?) {
@@ -2150,6 +2192,7 @@ extension TextInputView {
 
     func unmarkText() {
         let hadMarkedText = markedRange != nil
+        if let markedRange { finishMarkedTextUndo(in: markedRange) }
         inputDelegate?.selectionWillChange(self)
         markedRange = nil
         inputDelegate?.selectionDidChange(self)

@@ -46,6 +46,10 @@ final class NativeInlinePredictionTests: XCTestCase {
                     let committed = pair.input.attributedText(in: IndexedRange(location: 0, length: pair.editor.text.utf16.count))
                     XCTAssertEqual(committed.attribute(.foregroundColor, at: 7, effectiveRange: nil) as? UIColor, color)
                     XCTAssertNil(committed.attribute(.backgroundColor, at: 7, effectiveRange: nil))
+                    pair.editor.undoManager?.undo()
+                    XCTAssertEqual(pair.editor.text, "Hello ")
+                    pair.editor.undoManager?.redo()
+                    XCTAssertEqual(pair.editor.text, pair.native.text)
                 }
             }
         }
@@ -88,7 +92,9 @@ final class NativeInlinePredictionTests: XCTestCase {
     func testPlainCompositionFollowingAttributedPredictionRestoresTheme() throws {
         let pair = try Pair()
         pair.reset("a ")
-        let suggestion = NSAttributedString(string: "wonderful day", attributes: [.foregroundColor: UIColor.systemGray, .backgroundColor: UIColor.clear])
+        let suggestion = NSAttributedString(string: "wonderful day", attributes: [
+            .foregroundColor: UIColor.systemGray, .backgroundColor: UIColor.clear
+        ])
         pair.input.setAttributedMarkedText(suggestion, selectedRange: NSRange(location: 0, length: 0))
         pair.native.setAttributedMarkedText(suggestion, selectedRange: NSRange(location: 0, length: 0))
         pair.input.setMarkedText("¨", selectedRange: NSRange(location: 1, length: 0))
@@ -123,7 +129,10 @@ final class NativeInlinePredictionTests: XCTestCase {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 300, height: 400))
         window.rootViewController = controller
         window.makeKeyAndVisible()
-        defer { window.isHidden = true }
+        defer {
+            pair.native.resignFirstResponder()
+            window.isHidden = true
+        }
         pair.reset("Hello ")
         let supplied = NSAttributedString(string: "doing today? I hope you are well.", attributes: [
             .foregroundColor: UIColor.systemGray, .backgroundColor: UIColor.clear
@@ -175,50 +184,141 @@ final class NativeInlinePredictionTests: XCTestCase {
         XCTAssertEqual(styled.attribute(.foregroundColor, at: 7, effectiveRange: nil) as? UIColor, pair.color)
     }
 
-    private final class Pair {
-        let editor: TextView
-        let input: TextInputView
-        let native: UITextView
-        let font: UIFont
-        let color: UIColor
-
-        init(font: UIFont = .monospacedSystemFont(ofSize: 17, weight: .regular), color: UIColor = .black) throws {
-            self.font = font
-            self.color = color
-            editor = TextView(frame: CGRect(x: 0, y: 0, width: 300, height: 400))
-            editor.theme = PredictionTheme(font: font, textColor: color)
-            editor.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
-            input = try XCTUnwrap(editor.subviews.compactMap { $0 as? TextInputView }.first)
-            native = UITextView(frame: editor.frame)
-            native.font = font
-            native.textColor = color
-            native.textContainerInset = editor.textContainerInset
-            native.textContainer.lineFragmentPadding = 0
-            native.inlinePredictionType = .no
-            native.autocorrectionType = .no
-            reset("")
+    func testDismissedPredictionDoesNotReturnThroughUndoAfterAPause() throws {
+        let pair = try Pair()
+        let window = makeWindow(for: pair)
+        defer {
+            pair.native.resignFirstResponder()
+            window.isHidden = true
         }
+        pair.native.becomeFirstResponder()
+        pair.reset("")
+        let nativeUndo = try XCTUnwrap(pair.native.undoManager)
+        let editorUndo = try XCTUnwrap(pair.editor.undoManager)
+        nativeUndo.removeAllActions()
+        editorUndo.removeAllActions()
+        pair.native.setMarkedText("d", selectedRange: NSRange(location: 1, length: 0))
+        pair.input.setMarkedText("d", selectedRange: NSRange(location: 1, length: 0))
+        let supplied = NSAttributedString(string: "doing", attributes: [.foregroundColor: UIColor.systemGray, .backgroundColor: UIColor.clear])
+        pair.native.setAttributedMarkedText(supplied, selectedRange: NSRange(location: 1, length: 0))
+        pair.input.setAttributedMarkedText(supplied, selectedRange: NSRange(location: 1, length: 0))
+        let pause = expectation(description: "typing undo timer elapsed")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { pause.fulfill() }
+        wait(for: [pause], timeout: 3)
+        pair.native.setMarkedText("d", selectedRange: NSRange(location: 1, length: 0))
+        pair.input.setMarkedText("d", selectedRange: NSRange(location: 1, length: 0))
+        pair.native.unmarkText()
+        pair.input.unmarkText()
+        pair.assertState()
+        XCTAssertTrue(nativeUndo.canUndo)
+        XCTAssertTrue(editorUndo.canUndo)
+        nativeUndo.undo()
+        editorUndo.undo()
+        XCTAssertEqual(pair.editor.text, pair.native.text)
+        XCTAssertFalse(pair.editor.text.contains("doing"), "Undo must not resurrect an unaccepted prediction")
+    }
 
-        func reset(_ text: String) {
-            input.unmarkText()
-            native.unmarkText()
-            editor.text = text
-            native.text = text
-            native.font = font
-            native.textColor = color
-            editor.selectedRange = NSRange(location: text.utf16.count, length: 0)
-            native.selectedRange = editor.selectedRange
+    func testAcceptedMarkedTextHasOneUndoAndRedoStepLikeUIKit() throws {
+        for finalText in ["ü", "日本語", "doing today? I hope you are well."] {
+            let pair = try Pair()
+            let window = makeWindow(for: pair)
+            defer {
+            pair.native.resignFirstResponder()
+            window.isHidden = true
         }
+            pair.native.becomeFirstResponder()
+            pair.reset("")
+            let nativeUndo = try XCTUnwrap(pair.native.undoManager)
+            let editorUndo = try XCTUnwrap(pair.editor.undoManager)
+            nativeUndo.removeAllActions()
+            editorUndo.removeAllActions()
+            pair.native.setMarkedText("d", selectedRange: NSRange(location: 1, length: 0))
+            pair.input.setMarkedText("d", selectedRange: NSRange(location: 1, length: 0))
+            pair.native.setMarkedText(finalText, selectedRange: NSRange(location: finalText.utf16.count, length: 0))
+            pair.input.setMarkedText(finalText, selectedRange: NSRange(location: finalText.utf16.count, length: 0))
+            pair.native.unmarkText()
+            pair.input.unmarkText()
+            pair.assertState()
+            nativeUndo.undo()
+            editorUndo.undo()
+            XCTAssertEqual(pair.editor.text, pair.native.text)
+            XCTAssertEqual(pair.editor.text, "")
+            nativeUndo.redo()
+            editorUndo.redo()
+            XCTAssertEqual(pair.editor.text, pair.native.text)
+            XCTAssertEqual(pair.editor.text, finalText)
+            XCTAssertNil(pair.editor.markedTextRange)
+        }
+    }
 
-        func assertState(file: StaticString = #filePath, line: UInt = #line) {
-            XCTAssertEqual(editor.text, native.text, file: file, line: line)
-            XCTAssertEqual(editor.selectedRange, native.selectedRange, file: file, line: line)
-            let nativeMarked = native.markedTextRange.map {
-                NSRange(location: native.offset(from: native.beginningOfDocument, to: $0.start),
-                        length: native.offset(from: $0.start, to: $0.end))
-            }
-            XCTAssertEqual((editor.markedTextRange as? IndexedRange)?.range, nativeMarked, file: file, line: line)
+    func testDeletingUncommittedAccentDoesNotCreateGhostUndo() throws {
+        let pair = try Pair()
+        pair.reset("prefix ")
+        pair.native.setMarkedText("¨", selectedRange: NSRange(location: 1, length: 0))
+        pair.input.setMarkedText("¨", selectedRange: NSRange(location: 1, length: 0))
+        pair.native.deleteBackward()
+        pair.input.deleteBackward()
+        pair.assertState()
+        XCTAssertEqual(pair.editor.text, "prefix ")
+        XCTAssertFalse(pair.editor.undoManager?.canUndo ?? true)
+    }
+
+}
+
+@MainActor
+private func makeWindow(for pair: Pair) -> UIWindow {
+    let controller = UIViewController()
+    controller.view.addSubview(pair.native)
+    controller.view.addSubview(pair.editor)
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 800))
+    window.rootViewController = controller
+    window.makeKeyAndVisible()
+    return window
+}
+
+private final class Pair {
+    let editor: TextView
+    let input: TextInputView
+    let native: UITextView
+    let font: UIFont
+    let color: UIColor
+
+    init(font: UIFont = .monospacedSystemFont(ofSize: 17, weight: .regular), color: UIColor = .black) throws {
+        self.font = font
+        self.color = color
+        editor = TextView(frame: CGRect(x: 0, y: 0, width: 300, height: 400))
+        editor.theme = PredictionTheme(font: font, textColor: color)
+        editor.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        input = try XCTUnwrap(editor.subviews.compactMap { $0 as? TextInputView }.first)
+        native = UITextView(frame: editor.frame)
+        native.font = font
+        native.textColor = color
+        native.textContainerInset = editor.textContainerInset
+        native.textContainer.lineFragmentPadding = 0
+        native.inlinePredictionType = .no
+        native.autocorrectionType = .no
+        reset("")
+    }
+
+    func reset(_ text: String) {
+        input.unmarkText()
+        native.unmarkText()
+        editor.text = text
+        native.text = text
+        native.font = font
+        native.textColor = color
+        editor.selectedRange = NSRange(location: text.utf16.count, length: 0)
+        native.selectedRange = editor.selectedRange
+    }
+
+    func assertState(file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertEqual(editor.text, native.text, file: file, line: line)
+        XCTAssertEqual(editor.selectedRange, native.selectedRange, file: file, line: line)
+        let nativeMarked = native.markedTextRange.map { range in
+            NSRange(location: native.offset(from: native.beginningOfDocument, to: range.start),
+                    length: native.offset(from: range.start, to: range.end))
         }
+        XCTAssertEqual((editor.markedTextRange as? IndexedRange)?.range, nativeMarked, file: file, line: line)
     }
 }
 
