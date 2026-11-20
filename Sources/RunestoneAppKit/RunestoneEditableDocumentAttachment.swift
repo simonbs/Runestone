@@ -369,14 +369,18 @@ public final class RunestoneEditableDocumentAttachment {
         return view.selectAndRevealDocumentRange(range)
     }
 
-    /// Returns conservative view-local geometry only for a fully visible
-    /// match. NSTextFinder tolerates an empty result while layout catches up.
+    /// Viewport-limited search ranges, independent of keyboard/IME focus.
+    public var textFinderVisibleCharacterRanges: [NSRange] {
+        guard textFinderSnapshot != nil else { return [] }
+        return view.textFinderVisibleCharacterRanges
+    }
+
+    /// View-local rectangles for visible portions of a match. Wrapped and
+    /// bidirectional matches retain separate visual segments.
     public func textFinderRects(for range: NSRange) -> [NSRect] {
         precondition(Thread.isMainThread)
-        guard isEditable, let window = view.window else { return [] }
-        let screen = view.accessibilityFrame(for: range)
-        guard !screen.isEmpty else { return [] }
-        return [view.convert(window.convertFromScreen(screen), from: nil)]
+        guard textFinderSnapshot != nil else { return [] }
+        return view.textFinderRects(for: range)
     }
 
     /// Applies presentation-only options without changing canonical document state.
