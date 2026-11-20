@@ -194,7 +194,7 @@ public final class RunestoneSyntaxHighlighter: RunestoneSyntaxHighlighting, @unc
                 return
             }
             let wholeDocument = NSRange(location: 0, length: state.text.length)
-            var captures = self.foldsQuery?.captures(in: wholeDocument, state: state) {
+            var captures = self.foldsQuery?.foldCaptures(state: state) {
                 operation.isCancelled || !self.isCurrent(requestedGeneration)
             } ?? []
             captures += self.injectedCaptures(
@@ -232,7 +232,10 @@ private extension RunestoneSyntaxHighlighter {
             guard intersection.length > 0 else { continue }
             if let childQuery = child[keyPath: query] {
                 let local = NSRange(location: intersection.location - absoluteOffset, length: intersection.length)
-                captures += childQuery.captures(in: local, state: child.state, isCancelled: cancelled).map {
+                let localCaptures = query == \ChildState.foldsQuery
+                    ? childQuery.foldCaptures(state: child.state, isCancelled: cancelled)
+                    : childQuery.captures(in: local, state: child.state, isCancelled: cancelled)
+                captures += localCaptures.map {
                     RunestoneSyntaxCapture(
                         range: NSRange(location: $0.range.location + absoluteOffset, length: $0.range.length),
                         name: $0.name)
@@ -522,6 +525,109 @@ private final class Query: @unchecked Sendable {
         return isCancelled() ? [] : result
     }
 
+    /// Folding captures have range directives and heading section semantics that
+    /// must not be interpreted as highlighting predicates or single-line ranges.
+    func foldCaptures(state: RunestoneSyntaxHighlighter.State,
+                      isCancelled: () -> Bool) -> [RunestoneSyntaxCapture] {
+        guard let cursor = ts_query_cursor_new() else { return [] }
+        defer { ts_query_cursor_delete(cursor) }
+        let root = ts_tree_root_node(state.tree.pointer)
+        ts_query_cursor_exec(cursor, pointer, root)
+        let lines = FoldingText(string: state.text, isCancelled: isCancelled)
+        var match = TSQueryMatch(id: 0, pattern_index: 0, capture_count: 0, captures: nil)
+        var result: [RunestoneSyntaxCapture] = []
+        var headings: [(node: TSNode, level: Int, container: TSNode)] = []
+        while !isCancelled(), ts_query_cursor_next_match(cursor, &match) {
+            let captures = UnsafeBufferPointer(start: match.captures, count: Int(match.capture_count))
+            guard predicatesPass(pattern: UInt32(match.pattern_index), captures: captures,
+                                 text: state.text, folding: true) else { continue }
+            let groups = Dictionary(grouping: captures.filter { captureName($0.index) == "fold" }, by: \.index)
+            for (id, group) in groups {
+                guard let start = group.map({ Int(ts_node_start_byte($0.node)) / 2 }).min(),
+                      let end = group.map({ Int(ts_node_end_byte($0.node)) / 2 }).max() else { continue }
+                if let range = foldExtent(start..<end, capture: id, pattern: UInt32(match.pattern_index), lines: lines) {
+                    result.append(.init(range: NSRange(location: range.lowerBound, length: range.count), name: "fold"))
+                }
+            }
+            for capture in captures where captureName(capture.index) == "fold.heading" {
+                let node = capture.node
+                var level: Int?
+                for index in 0..<ts_node_child_count(node) {
+                    let child = ts_node_child(node, index)
+                    let type = String(cString: ts_node_type(child))
+                    for value in 1...6 where type == "atx_h\(value)_marker" || type == "setext_h\(value)_underline" {
+                        level = value
+                    }
+                }
+                guard let level else { continue }
+                var container = ts_node_parent(node)
+                while !ts_node_is_null(container),
+                      !["document", "block_quote", "list_item"].contains(String(cString: ts_node_type(container))) {
+                    container = ts_node_parent(container)
+                }
+                headings.append((node, level, ts_node_is_null(container) ? root : container))
+            }
+        }
+        // A heading ends before the next heading of equal or higher rank in
+        // its container. Nested quotes/lists never terminate an outer section.
+        var stack: [(node: TSNode, level: Int, container: TSNode)] = []
+        func append(_ heading: (node: TSNode, level: Int, container: TSNode), end: Int) {
+            let start = Int(ts_node_start_byte(heading.node)) / 2
+            let containerEnd = Int(ts_node_end_byte(heading.container)) / 2
+            let finish = min(end, containerEnd)
+            guard finish > start else { return }
+            result.append(.init(range: NSRange(location: start, length: finish - start), name: "fold"))
+        }
+        for heading in headings.sorted(by: { ts_node_start_byte($0.node) < ts_node_start_byte($1.node) }) {
+            while let previous = stack.last, ts_node_eq(previous.container, heading.container), previous.level >= heading.level {
+                append(stack.removeLast(), end: Int(ts_node_start_byte(heading.node)) / 2)
+            }
+            // Close headings from a nested container once it has ended.
+            while let previous = stack.last, ts_node_end_byte(previous.container) <= ts_node_start_byte(heading.node) {
+                append(stack.removeLast(), end: Int(ts_node_end_byte(previous.container)) / 2)
+            }
+            // A nested container may have been above a sibling section on the stack.
+            while let previous = stack.last, ts_node_eq(previous.container, heading.container), previous.level >= heading.level {
+                append(stack.removeLast(), end: Int(ts_node_start_byte(heading.node)) / 2)
+            }
+            stack.append(heading)
+        }
+        for heading in stack { append(heading, end: Int(ts_node_end_byte(heading.container)) / 2) }
+        return isCancelled() ? [] : result.sorted { $0.range.location < $1.range.location }
+    }
+
+    private func foldExtent(_ range: Range<Int>, capture: UInt32, pattern: UInt32,
+                            lines: FoldingText) -> Range<Int>? {
+        var count: UInt32 = 0
+        guard let raw = ts_query_predicates_for_pattern(pointer, pattern, &count) else { return range }
+        var extent: Range<Int>? = range
+        var index = 0
+        while index < Int(count) {
+            let name = queryString(raw[index].value_id)
+            index += 1
+            var steps: [TSQueryPredicateStep] = []
+            while index < Int(count), raw[index].type != TSQueryPredicateStepTypeDone {
+                steps.append(raw[index]); index += 1
+            }
+            index += 1
+            guard ["trim!", "offset!"].contains(name), let first = steps.first,
+                  first.type == TSQueryPredicateStepTypeCapture, first.value_id == capture,
+                  let current = extent else { continue }
+            let values = steps.dropFirst().compactMap { step -> Int? in
+                guard step.type == TSQueryPredicateStepTypeString else { return nil }
+                return Int(queryString(step.value_id))
+            }
+            if name == "offset!" {
+                extent = steps.count == 5 && values.count == 4 ? lines.offset(current, values: values) : nil
+            } else {
+                let flags = steps.count == 1 ? [0, 0, 1, 0] : values
+                extent = (steps.count == 1 || steps.count == 5) && flags.count == 4 && flags.allSatisfy { $0 == 0 || $0 == 1 }
+                    ? lines.trim(current, flags: flags) : nil
+            }
+        }
+        return extent
+    }
+
     private func captureName(_ id: UInt32) -> String {
         var length: UInt32 = 0
         guard let name = ts_query_capture_name_for_id(pointer, id, &length) else { return "" }
@@ -552,7 +658,7 @@ private final class Query: @unchecked Sendable {
         return result
     }
 
-    private func predicatesPass(pattern: UInt32, captures: UnsafeBufferPointer<TSQueryCapture>, text: NSString) -> Bool {
+    private func predicatesPass(pattern: UInt32, captures: UnsafeBufferPointer<TSQueryCapture>, text: NSString, folding: Bool = false) -> Bool {
         var count: UInt32 = 0
         guard let raw = ts_query_predicates_for_pattern(pointer, pattern, &count), count > 0 else { return true }
         var index = 0
@@ -567,6 +673,7 @@ private final class Query: @unchecked Sendable {
                 index += 1
             }
             index += 1
+            if folding, ["trim!", "offset!"].contains(name) { continue }
             guard evaluate(name: name, steps: steps, captures: captures, text: text) else { return false }
         }
         return true
@@ -611,5 +718,114 @@ private extension NSLock {
     func withLock<T>(_ body: () -> T) -> T {
         lock(); defer { unlock() }
         return body()
+    }
+}
+
+// Immutable UTF-16 line coordinates for folding range directives.
+private final class FoldingText {
+    let string: NSString
+    private var starts = [0]
+
+    init(string: NSString, isCancelled: () -> Bool) {
+        self.string = string
+        for index in 0..<string.length {
+            if index % 4_096 == 0, isCancelled() {
+                return
+            }
+            if string.character(at: index) == 10 { starts.append(index + 1) }
+        }
+    }
+
+    func row(at offset: Int) -> Int {
+        var lower = 0
+        var upper = starts.count
+        while lower + 1 < upper {
+            let middle = (lower + upper) / 2
+            if starts[middle] <= offset { lower = middle } else { upper = middle }
+        }
+        return lower
+    }
+
+    private func end(of row: Int) -> Int { row + 1 < starts.count ? starts[row + 1] : string.length }
+
+    private func contentEnd(of row: Int) -> Int {
+        row + 1 < starts.count ? starts[row + 1] - 1 : string.length
+    }
+
+    func offset(_ range: Range<Int>, values: [Int]) -> Range<Int>? {
+        let startRow = row(at: range.lowerBound)
+        let endRow = row(at: range.upperBound)
+        let newStartRow = startRow + values[0]
+        let newEndRow = endRow + values[2]
+        guard starts.indices.contains(newStartRow), starts.indices.contains(newEndRow) else {
+            return nil
+        }
+        // Columns use the editor's UTF-16 coordinates; row offsets preserve the
+        // existing column just as Tree-sitter query offset directives do.
+        let startColumn = range.lowerBound - starts[startRow] + values[1]
+        let endColumn = range.upperBound - starts[endRow] + values[3]
+        guard startColumn >= 0, endColumn >= 0 else {
+            return nil
+        }
+        let start = starts[newStartRow] + startColumn
+        let finish = starts[newEndRow] + endColumn
+        guard start <= end(of: newStartRow), finish <= end(of: newEndRow), start < finish else {
+            return nil
+        }
+        return start..<finish
+    }
+
+    func trim(_ range: Range<Int>, flags: [Int]) -> Range<Int>? {
+        guard range.lowerBound >= 0, range.upperBound <= string.length else {
+            return nil
+        }
+        var start = range.lowerBound
+        var finish = range.upperBound
+        if flags[2] == 1 {
+            finish = trimmingEndLines(range)
+        }
+        if flags[3] == 1 {
+            let lineStart = starts[row(at: finish)]
+            while finish > max(start, lineStart) && isHorizontalWhitespace(at: finish - 1) { finish -= 1 }
+        }
+        if flags[0] == 1 {
+            while start < finish {
+                let startRow = row(at: start)
+                let lineEnd = min(contentEnd(of: startRow), finish)
+                guard isBlank(start..<max(start, lineEnd)) else { break }
+                start = min(end(of: startRow), finish)
+            }
+        }
+        if flags[1] == 1 {
+            let lineEnd = contentEnd(of: row(at: start))
+            while start < min(finish, lineEnd) && isHorizontalWhitespace(at: start) { start += 1 }
+        }
+        return start < finish ? start..<finish : nil
+    }
+
+    private func trimmingEndLines(_ range: Range<Int>) -> Int {
+        let start = range.lowerBound
+        var finish = range.upperBound
+        var endRow = row(at: finish)
+        while start < finish {
+            let previous = max(starts[endRow], start)
+            let lineEnd = min(contentEnd(of: endRow), finish)
+            guard isBlank(previous..<max(previous, lineEnd)) else { break }
+            endRow -= 1
+            finish = endRow >= row(at: start) ? max(start, contentEnd(of: endRow)) : start
+        }
+        return finish
+    }
+
+    private func isBlank(_ range: Range<Int>) -> Bool {
+        string.substring(with: NSRange(location: range.lowerBound, length: range.count))
+            .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func isHorizontalWhitespace(at index: Int) -> Bool {
+        guard let scalar = UnicodeScalar(string.character(at: index)) else {
+            return false
+        }
+        return CharacterSet.whitespacesAndNewlines.contains(scalar)
     }
 }
