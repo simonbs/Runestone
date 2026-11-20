@@ -777,7 +777,7 @@ public class ReadOnlyDocumentView: NSView {
             let transition = SyntaxFoldingTransitionView(
                 viewport: viewport, before: before, after: after, bodyTop: bodyTop,
                 oldTailTop: oldTailTop, newTailTop: newTailTop, collapsing: collapsing,
-                chevronCenter: CGPoint(x: horizontalTextInset - foldingGutterWidth / 2, y: header.yPosition + height / 2),
+                chevronCenter: CGPoint(x: gutterWidth - foldingGutterWidth / 2, y: header.yPosition + height / 2),
                 chevronColor: displayConfiguration.lineNumberColor, gutterColor: gutterColor,
                 backgroundColor: enclosingScrollView?.backgroundColor ?? .textBackgroundColor,
                 layoutRevision: inputLayoutRevision)
@@ -1371,7 +1371,7 @@ public class ReadOnlyDocumentView: NSView {
 
     private func updateGutter() {
         guard let viewport = enclosingScrollView?.contentView.bounds,
-              !isRetired, horizontalTextInset > 0 else {
+              !isRetired, gutterWidth > 0 else {
             gutterView?.isHidden = true
             return
         }
@@ -1385,7 +1385,7 @@ public class ReadOnlyDocumentView: NSView {
             addSubview(gutter, positioned: .above, relativeTo: nil)
             gutterView = gutter
         }
-        gutter.frame = CGRect(x: viewport.minX, y: viewport.minY, width: horizontalTextInset, height: viewport.height)
+        gutter.frame = CGRect(x: viewport.minX, y: viewport.minY, width: gutterWidth, height: viewport.height)
         gutter.isHidden = false
         gutter.needsDisplay = true
     }
@@ -1396,7 +1396,7 @@ public class ReadOnlyDocumentView: NSView {
         guard let result = visibleLayout, let context = NSGraphicsContext.current?.cgContext else { return }
         context.saveGState()
         defer { context.restoreGState() }
-        let gutter = horizontalTextInset
+        let gutter = gutterWidth
         context.clip(to: CGRect(x: result.viewport.minX + gutter, y: result.viewport.minY,
                                 width: max(0, result.viewport.width - gutter), height: result.viewport.height))
         drawBackgroundPresentation(result, in: context)
@@ -1416,13 +1416,12 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     private func drawBackgroundPresentation(_ result: ViewportLayoutCoordinator.Result, in context: CGContext) {
-        let gutter = horizontalTextInset
         for rect in selectedLineHighlightRects(in: result) {
             context.setFillColor(displayConfiguration.selectedLineBackgroundColor.cgColor)
             context.fill(rect)
         }
         if let column = displayConfiguration.pageGuideColumn, column > 0 {
-            let x = gutter + CGFloat(column) * safeCharacterWidth
+            let x = horizontalTextInset + CGFloat(column) * safeCharacterWidth
             if x < bounds.width {
                 context.setFillColor(displayConfiguration.pageGuideColor.cgColor)
                 context.fill(CGRect(x: x, y: result.viewport.minY, width: 1, height: result.viewport.height))
@@ -1431,7 +1430,7 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     private func drawGutter(_ result: ViewportLayoutCoordinator.Result, in context: CGContext) {
-        let gutter = horizontalTextInset
+        let gutter = gutterWidth
         if gutter > 0 {
             let background = gutter > horizontalTextPadding ? displayConfiguration.gutterBackgroundColor
                 : (enclosingScrollView?.backgroundColor ?? .textBackgroundColor)
@@ -1510,7 +1509,7 @@ public class ReadOnlyDocumentView: NSView {
 
     func selectedLineHighlightRects(in result: ViewportLayoutCoordinator.Result) -> [CGRect] {
         guard displayConfiguration.showsSelectedLines, displaySelection.range.length == 0 else { return [] }
-        let gutter = horizontalTextInset
+        let gutter = gutterWidth
         return result.lines.filter { isSelected($0.line) }.flatMap { layout -> [CGRect] in
             let width = max(0, bounds.width - gutter)
             if displayConfiguration.selectedLineHighlightGranularity == .line || layout.line.data.totalLength == 0 {
@@ -1825,6 +1824,12 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     var horizontalTextInset: CGFloat {
+        let hasGutter = displayConfiguration.showsLineNumbers || displayConfiguration.isCodeFoldingEnabled
+        return gutterWidth + (hasGutter ? horizontalTextPadding : 0)
+    }
+
+    /// The pinned gutter ends before the leading text padding.
+    var gutterWidth: CGFloat {
         let folding = horizontalTextPadding + foldingGutterWidth
         guard displayConfiguration.showsLineNumbers else { return folding }
         let digits = max(displayConfiguration.minimumGutterCharacterCount, String(max(1, manager.lineCount)).count)
@@ -1886,13 +1891,13 @@ public class ReadOnlyDocumentView: NSView {
         guard displayConfiguration.isCodeFoldingEnabled, let window, event.window === window else { return false }
         let point = convert(event.locationInWindow, from: nil)
         let x = point.x - (enclosingScrollView?.contentView.bounds.minX ?? 0)
-        guard x >= horizontalTextInset - foldingGutterWidth, x < horizontalTextInset,
+        guard x >= gutterWidth - foldingGutterWidth, x < gutterWidth,
               let line = manager.line(containingYOffset: point.y), availableSyntaxFolds[line.index] != nil else { return false }
         return toggleSyntaxFold(atRow: line.index)
     }
 
     private func drawFoldIndicator(row: Int, y: CGFloat, height: CGFloat, in context: CGContext) {
-        let center = CGPoint(x: horizontalTextInset - foldingGutterWidth / 2, y: y + height / 2)
+        let center = CGPoint(x: gutterWidth - foldingGutterWidth / 2, y: y + height / 2)
         SyntaxFoldIndicator.draw(at: center, collapsed: collapsedSyntaxFoldHeaders.contains(row),
                                  color: displayConfiguration.lineNumberColor, in: context)
     }
