@@ -4,7 +4,7 @@ import AppKit
 /// The same SF Symbol and rotation convention as the UIKit gutter.
 enum SyntaxFoldIndicator {
     static let symbol = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)?
-        .withSymbolConfiguration(.init(pointSize: 10, weight: .semibold))
+        .withSymbolConfiguration(.init(pointSize: 8.5, weight: .semibold))
 
     static func draw(at center: CGPoint, collapsed: Bool, color: NSColor, in context: CGContext,
                      rotation: CGFloat? = nil) {
