@@ -1,6 +1,43 @@
 #if canImport(AppKit)
 import AppKit
 
+/// Derive borderless result fills from the actual editor theme, including when
+/// its brightness differs from the system appearance. Syntax colors cannot
+/// guarantee contrast on a result plate, so choose black or white per fill.
+struct TextFinderPresentationColors {
+    let matchBackground: NSColor
+    let matchForeground: NSColor
+    let selectedBackground: NSColor
+    let selectedForeground: NSColor
+
+    init(editorBackground: NSColor) {
+        let base = Self.opaqueRGB(editorBackground)
+        let ink = Self.foreground(against: base)
+        matchBackground = base.blended(withFraction: 0.2, of: ink) ?? base
+        matchForeground = Self.foreground(against: matchBackground)
+        selectedBackground = Self.opaqueRGB(.findHighlightColor)
+        selectedForeground = Self.foreground(against: selectedBackground)
+    }
+
+    private static func opaqueRGB(_ color: NSColor) -> NSColor {
+        let fallback = NSColor.textBackgroundColor.usingColorSpace(.sRGB) ?? .white
+        let rgb = color.usingColorSpace(.sRGB) ?? fallback
+        let alpha = min(1, max(0, rgb.alphaComponent))
+        return NSColor(srgbRed: min(1, max(0, rgb.redComponent * alpha + fallback.redComponent * (1 - alpha))),
+                       green: min(1, max(0, rgb.greenComponent * alpha + fallback.greenComponent * (1 - alpha))),
+                       blue: min(1, max(0, rgb.blueComponent * alpha + fallback.blueComponent * (1 - alpha))), alpha: 1)
+    }
+
+    private static func foreground(against color: NSColor) -> NSColor {
+        let rgb = color.usingColorSpace(.sRGB) ?? .white
+        func linear(_ value: CGFloat) -> CGFloat {
+            value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
+        }
+        let luminance = 0.2126 * linear(rgb.redComponent) + 0.7152 * linear(rgb.greenComponent) + 0.0722 * linear(rgb.blueComponent)
+        return (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05) ? .black : .white
+    }
+}
+
 /// Find is a presentation overlay: canonical text, syntax, and selection colors
 /// remain untouched. The overlay includes the pinned gutter and ignores input.
 final class TextFinderPresentationView: NSView {
@@ -17,21 +54,26 @@ final class TextFinderPresentationView: NSView {
         context.fill(bounds)
         let origin = convert(NSPoint.zero, from: editor)
         context.translateBy(x: origin.x, y: origin.y)
+        let colors = TextFinderPresentationColors(editorBackground: editor.enclosingScrollView?.backgroundColor ?? .textBackgroundColor)
         let visibleRanges = editor.textFinderVisibleCharacterRanges
         let visibleMatches = ranges.filter { range in
             visibleRanges.contains { NSIntersectionRange($0, range).length > 0 }
         }
+        var selectedMatches: [NSRange] = []
+        var otherMatches: [NSRange] = []
         for range in visibleMatches {
             let rects = editor.textFinderRects(for: range)
             guard !rects.isEmpty else { continue }
             let selected = editor.presentedSelectionRange == range
-            context.setFillColor((selected ? NSColor.findHighlightColor : .white).cgColor)
+            if selected { selectedMatches.append(range) } else { otherMatches.append(range) }
+            context.setFillColor((selected ? colors.selectedBackground : colors.matchBackground).cgColor)
             for rect in rects {
                 context.addPath(CGPath(roundedRect: rect.insetBy(dx: -1, dy: 0), cornerWidth: 3, cornerHeight: 3, transform: nil))
                 context.fillPath()
             }
         }
-        editor.drawTextFinderCharacters(in: visibleMatches, foregroundColor: .black)
+        editor.drawTextFinderCharacters(in: otherMatches, foregroundColor: colors.matchForeground)
+        editor.drawTextFinderCharacters(in: selectedMatches, foregroundColor: colors.selectedForeground)
     }
 }
 

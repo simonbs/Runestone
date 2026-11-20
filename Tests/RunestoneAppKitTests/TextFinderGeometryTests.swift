@@ -47,6 +47,7 @@ final class TextFinderGeometryTests: XCTestCase {
         let text = "mark other text"
         let (_, scroll, view) = makeView(text, width: 220, height: 80)
         let range = NSRange(location: 0, length: 4)
+        scroll.backgroundColor = .white
         view.setTextFinderMatches([range])
         let overlay = try XCTUnwrap(view.textFinderPresentationView)
         XCTAssertNil(overlay.hitTest(.zero))
@@ -73,16 +74,16 @@ final class TextFinderGeometryTests: XCTestCase {
         XCTAssertLessThan(dimmed.redComponent, original.redComponent - 0.05)
         let gutter = try XCTUnwrap(image.colorAt(x: 1, y: 75)?.usingColorSpace(.deviceRGB))
         XCTAssertEqual(gutter.redComponent, dimmed.redComponent, accuracy: 0.01)
-        var whitePixels = 0
+        var fillPixels = 0
         var blackPixels = 0
         for y in Int(rect.minY)..<Int(rect.maxY) {
             for x in Int(rect.minX)..<Int(rect.maxX) {
                 let color = try XCTUnwrap(image.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
-                if color.redComponent > 0.9 && color.greenComponent > 0.9 { whitePixels += 1 }
+                if color.redComponent > dimmed.redComponent + 0.1 && color.greenComponent > dimmed.greenComponent + 0.1 { fillPixels += 1 }
                 if color.redComponent < 0.1 && color.greenComponent < 0.1 { blackPixels += 1 }
             }
         }
-        XCTAssertGreaterThan(whitePixels, 0)
+        XCTAssertGreaterThan(fillPixels, 0)
         XCTAssertGreaterThan(blackPixels, 0, "Match glyphs must remain readable over their bright plate")
         overlay.needsDisplay = false
         XCTAssertTrue(view.selectAndRevealDocumentRange(range))

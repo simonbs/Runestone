@@ -378,7 +378,8 @@ public final class RunestoneEditableDocumentAttachment {
     /// Draws only matched glyphs for AppKit's native selected-result indicator.
     public func drawTextFinderCharacters(in range: NSRange) {
         guard textFinderSnapshot != nil else { return }
-        view.drawTextFinderCharacters(in: range, foregroundColor: .black)
+        let colors = TextFinderPresentationColors(editorBackground: view.enclosingScrollView?.backgroundColor ?? .textBackgroundColor)
+        view.drawTextFinderCharacters(in: range, foregroundColor: colors.selectedForeground)
     }
 
     /// Viewport-limited search ranges, independent of keyboard/IME focus.
