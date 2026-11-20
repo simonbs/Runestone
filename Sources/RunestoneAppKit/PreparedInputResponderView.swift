@@ -739,12 +739,12 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         var proposed = clip.bounds
         switch name {
         case "scrollPageUp:", "scrollPageDown:":
-            let page = max(1, proposed.height - scroll.verticalPageScroll)
+            let page = max(1, unobscuredContentViewport(proposed).height - scroll.verticalPageScroll)
             proposed.origin.y += name == "scrollPageUp:" ? -page : page
         case "scrollToBeginningOfDocument:":
-            proposed.origin.y = bounds.minY
+            proposed.origin.y = bounds.minY - scroll.contentInsets.top
         case "scrollToEndOfDocument:":
-            proposed.origin.y = bounds.maxY - proposed.height
+            proposed.origin.y = bounds.maxY - proposed.height + scroll.contentInsets.bottom
         default:
             guard let state = adapter.selectionStateForHost(),
                   let check = movementViewportCheck(selection: state.range, adapter: adapter, isAvailable: isAvailable)

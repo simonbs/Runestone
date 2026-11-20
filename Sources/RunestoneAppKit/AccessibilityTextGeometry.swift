@@ -19,7 +19,7 @@ enum AccessibilityTextGeometry {
               let layout = view.visibleLayout, layout.isComplete,
               layout.viewport == clip.bounds, validViewport(layout.viewport) else { return nil }
         let visibleRect = view.visibleRect
-        let effectiveViewport = layout.viewport.intersection(visibleRect)
+        let effectiveViewport = view.unobscuredContentViewport(layout.viewport).intersection(visibleRect)
         guard validViewport(visibleRect), validViewport(effectiveViewport) else { return nil }
         let text = view.manager.stringView.string
         var first: Int?
@@ -98,7 +98,7 @@ enum AccessibilityTextGeometry {
               let window = view.window, window.isVisible, let clip = view.enclosingScrollView?.contentView,
               let layout = view.visibleLayout, layout.isComplete, layout.viewport == clip.bounds else { return nil }
         let visibleRect = view.visibleRect
-        let effectiveViewport = layout.viewport.intersection(visibleRect)
+        let effectiveViewport = view.unobscuredContentViewport(layout.viewport).intersection(visibleRect)
         let result: InputScreenRangeGeometry.RangeGeometry?
         if range.length == 0, let state = view.presentedSelectionState,
            state.range == range, state.affinity != nil {
@@ -130,7 +130,7 @@ enum AccessibilityTextGeometry {
               let clip = view.enclosingScrollView?.contentView,
               let layout = view.visibleLayout, layout.isComplete, layout.viewport == clip.bounds else { return nil }
         let visibleRect = view.visibleRect
-        let effectiveViewport = layout.viewport.intersection(visibleRect)
+        let effectiveViewport = view.unobscuredContentViewport(layout.viewport).intersection(visibleRect)
         guard validViewport(visibleRect), validViewport(effectiveViewport) else { return nil }
         let documentPoint = view.convert(window.convertPoint(fromScreen: point), from: nil)
         guard effectiveViewport.contains(documentPoint),

@@ -313,6 +313,24 @@ public class ReadOnlyDocumentView: NSView {
                   window === revealWindow, manager.line(atRow: line.index) === line,
                   controllers[line.id] === controller else { return }
             scrollRangeRevealFrameToVisible(placement.frame, clip: clip)
+            // Measuring rows in the destination viewport can move the target
+            // after the initial reveal. Correct using published geometry,
+            // keeping host navigation bounded and stopping if clamped.
+            for _ in 0..<2 {
+                guard !isRetired, rangeRevealGeneration == generation, self.contentRevision == contentRevision,
+                      self.layoutWidth == layoutWidth, enclosingScrollView?.contentView === clip,
+                      let currentLine = visibleLayout?.lines.first(where: { $0.line === line }),
+                      let current = currentLine.placements.first(where: {
+                          $0.fragment.range.location <= location - line.location &&
+                          location - line.location <= $0.fragment.range.upperBound
+                      }) else { break }
+                let visible = unobscuredContentViewport(clip.bounds)
+                guard current.frame.height <= visible.height,
+                      current.frame.minY < visible.minY || current.frame.maxY > visible.maxY else { break }
+                let previous = clip.bounds
+                scrollRangeRevealFrameToVisible(current.frame, clip: clip)
+                if clip.bounds == previous { break }
+            }
         case .pending:
             let size = documentFrameSize(for: clip)
             if frame.size != size { setFrameSize(size) }
@@ -331,8 +349,9 @@ public class ReadOnlyDocumentView: NSView {
     private func scrollRangeRevealFrameToVisible(_ frame: CGRect, clip: NSClipView) {
         guard frame.minY.isFinite, frame.maxY.isFinite else { return }
         var proposed = clip.bounds
-        if frame.minY < proposed.minY { proposed.origin.y = frame.minY }
-        else if frame.maxY > proposed.maxY { proposed.origin.y = frame.maxY - proposed.height }
+        let visible = unobscuredContentViewport(proposed)
+        if frame.minY < visible.minY { proposed.origin.y += frame.minY - visible.minY }
+        else if frame.maxY > visible.maxY { proposed.origin.y += frame.maxY - visible.maxY }
         let constrained = clip.constrainBoundsRect(proposed)
         if constrained.origin != clip.bounds.origin {
             clip.scroll(to: constrained.origin)
@@ -388,7 +407,7 @@ public class ReadOnlyDocumentView: NSView {
         let initial = clip.bounds
         let horizontalRect = horizontallyClippedMovementRect(for: target, viewport: initial,
                                                               revealFullCaret: revealFullCaret)
-        let verticalReveal = verticalReference.flatMap { verticalMovementReveal(for: target, from: $0) }
+        let verticalReveal = verticalMovementReveal(for: target, from: verticalReference ?? initial)
         let verticalRect = verticalReveal?.rect
         let knownRect = horizontalRect ?? verticalRect
         guard let line = knownRect == nil ? offscreenMovementLine(for: target)
@@ -470,11 +489,12 @@ public class ReadOnlyDocumentView: NSView {
               visibleLayout?.isComplete == true, visibleLayout?.viewport == viewport,
               let rect = InputCaretAffinityGeometry.documentRect(for: target, in: self),
               rect.height <= viewport.height else { return nil }
+        let visibleReference = unobscuredContentViewport(reference)
         let origin: CGFloat
-        if rect.minY < reference.minY {
-            origin = rect.minY
-        } else if rect.maxY > reference.maxY {
-            origin = rect.maxY - reference.height
+        if rect.minY < visibleReference.minY {
+            origin = reference.minY + rect.minY - visibleReference.minY
+        } else if rect.maxY > visibleReference.maxY {
+            origin = reference.minY + rect.maxY - visibleReference.maxY
         } else {
             return nil
         }
@@ -1915,9 +1935,10 @@ public class ReadOnlyDocumentView: NSView {
 
     private func documentFrameSize(for clip: NSClipView) -> NSSize {
         let baseWidth = displayConfiguration.isLineWrappingEnabled ? layoutWidth : max(layoutWidth, measuredUnwrappedContentWidth + horizontalTextPadding + max(2, displayConfiguration.usesBlockCaret ? safeCharacterWidth : 0))
-        let baseHeight = max(clip.bounds.height, manager.contentHeight)
+        let viewportHeight = max(1, unobscuredContentViewport(clip.bounds).height)
+        let baseHeight = max(viewportHeight, manager.contentHeight)
         let horizontalScrollable = max(0, baseWidth - clip.bounds.width)
-        let verticalScrollable = max(0, baseHeight - clip.bounds.height)
+        let verticalScrollable = max(0, baseHeight - viewportHeight)
         return NSSize(
             width: baseWidth + horizontalScrollable * safeOverscrollFactor(displayConfiguration.horizontalOverscrollFactor),
             height: baseHeight + verticalScrollable * safeOverscrollFactor(displayConfiguration.verticalOverscrollFactor)
