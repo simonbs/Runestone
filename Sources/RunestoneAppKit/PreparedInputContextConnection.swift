@@ -906,14 +906,14 @@ final class PreparedInputContextConnection {
         scheduleInputFailureNotificationIfNeeded()
     }
 
-    fileprivate func query<T>(_ fallback: T, _ action: (PreparedInputEventAdapter) -> T) -> T {
+    fileprivate func query<T>(_ fallback: T, requiresFocus: Bool = true, _ action: (PreparedInputEventAdapter) -> T) -> T {
         precondition(Thread.isMainThread)
-        guard state == .connected, !focusSuspended, !view.isRetired, !historyInFlight else { return fallback }
+        guard state == .connected, (!requiresFocus || !focusSuspended), !view.isRetired, !historyInFlight else { return fallback }
         callbackDepth += 1
         defer { callbackDepth -= 1; finishActivity() }
         let result = action(adapter)
         if adapter.needsInputReset { requestReset() }
-        return state == .connected && !focusSuspended && !view.isRetired ? result : fallback
+        return state == .connected && (!requiresFocus || !focusSuspended) && !view.isRetired ? result : fallback
     }
 
     /// Focus eligibility is separate from activation: a newly attached view
@@ -942,8 +942,10 @@ final class PreparedInputContextConnection {
 
     func textFinderSnapshot() -> (text: String, selection: NSRange)? {
         precondition(Thread.isMainThread)
-        guard activated else { return nil }
-        return query(nil) { $0.textFinderSnapshotForHost() }
+        // Find UI owns focus while searching. Keep this host query separate
+        // from input-method callbacks, which remain suppressed after blur.
+        guard isConnectedForEditing else { return nil }
+        return query(nil, requiresFocus: false) { $0.textFinderSnapshotForHost() }
     }
 
     /// Host-owned find actions use the same dispatch reservation and failure
@@ -970,10 +972,10 @@ final class PreparedInputContextConnection {
         _ action: @escaping (PreparedInputEventAdapter) -> PreparedInputEventAdapter.InputAttempt
     ) -> Bool {
         precondition(Thread.isMainThread)
-        guard activated else { return false }
+        guard isConnectedForEditing else { return false }
         var applied = false
         let admitted = performCoordinatedInput {
-            self.mutate(operation: operation) { adapter in
+            self.mutate(operation: operation, requiresFocus: false) { adapter in
                 let attempt = action(adapter)
                 applied = attempt.outcome == .processed
                 return attempt
@@ -988,11 +990,11 @@ final class PreparedInputContextConnection {
         return query(nil) { $0.accessibilityTextStateForInput() }
     }
 
-    fileprivate func mutate(operation: InputOperation,
+    fileprivate func mutate(operation: InputOperation, requiresFocus: Bool = true,
                             _ action: (PreparedInputEventAdapter) -> PreparedInputEventAdapter.InputAttempt) {
         precondition(Thread.isMainThread)
         if let coordinator = dispatchCoordinator, !coordinator.isActive {
-            _ = performCoordinatedInput { self.mutate(operation: operation, action) }
+            _ = performCoordinatedInput { self.mutate(operation: operation, requiresFocus: requiresFocus, action) }
             return
         }
         inputActionGeneration = UUID()
@@ -1003,7 +1005,7 @@ final class PreparedInputContextConnection {
             recordInputFailure(operation: operation, failure: .init(reason: .busy, effect: .notApplied))
             return
         }
-        guard state == .connected, !focusSuspended, !view.isRetired else {
+        guard state == .connected, (!requiresFocus || !focusSuspended), !view.isRetired else {
             recordInputFailure(operation: operation, failure: .init(reason: .unavailable, effect: .notApplied))
             return
         }

@@ -121,6 +121,53 @@ final class PreparedInputContextConnectionTests: XCTestCase {
         XCTAssertTrue(connection.isDisconnected)
     }
 
+    func testTextFinderWorksWhileFocusIsSuspendedWithoutReactivatingInput() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "A😀B")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var drivers: [ContextFakeDriver] = []
+        let connection = try XCTUnwrap(PreparedInputContextConnection(
+            adapter: adapter, view: view, makeDriver: { client in
+                let driver = ContextFakeDriver(client: client)
+                drivers.append(driver)
+                return driver
+            }, schedule: queue.enqueue
+        ))
+        XCTAssertTrue(connection.activate())
+        let oldClient = try XCTUnwrap(drivers.first?.client)
+        connection.suspendForFocusLoss()
+        XCTAssertNil(connection.textFinderSnapshot()) // Wait for blur reconstruction.
+        XCTAssertFalse(connection.setSelectionForTextFinder(NSRange(location: 1, length: 2)))
+        queue.runAll()
+
+        XCTAssertEqual(connection.textFinderSnapshot()?.text, "A😀B")
+        XCTAssertNil(connection.currentInputContext)
+        XCTAssertNil(connection.inputState())
+        let emoji = NSRange(location: 1, length: 2)
+        XCTAssertTrue(connection.setSelectionForTextFinder(emoji))
+        XCTAssertEqual(connection.textFinderSnapshot()?.selection, emoji)
+        XCTAssertTrue(connection.replaceForTextFinder(emoji, with: "文"))
+        XCTAssertEqual(owner.text, "A文B")
+        XCTAssertEqual(connection.textFinderSnapshot()?.selection, NSRange(location: 2, length: 0))
+        oldClient.insertText("ignored", replacementRange: unspecified)
+        let currentClient = try XCTUnwrap(drivers.last?.client)
+        currentClient.insertText("ignored", replacementRange: unspecified)
+        XCTAssertEqual(owner.text, "A文B")
+        XCTAssertNil(connection.currentInputContext)
+        XCTAssertNil(connection.inputState())
+
+        owner.text = "new"
+        owner.revision = UUID()
+        XCTAssertNil(connection.textFinderSnapshot())
+        queue.runAll()
+        XCTAssertEqual(connection.textFinderSnapshot()?.text, "new")
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+        XCTAssertNil(connection.textFinderSnapshot())
+        XCTAssertTrue(connection.isDisconnected)
+    }
+
     func testHostEditAppliesReplacementAndSelectionAtomically() throws {
         let queue = ContextQueue()
         let owner = ContextOwner(text: "first\r\n😀second")
