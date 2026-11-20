@@ -310,6 +310,12 @@ private extension RunestoneSyntaxHighlighter {
     }
 
     func parse(_ text: NSString, reusing previous: State?) -> State? {
+        // Query compilation is expensive, especially for Markdown's inline
+        // injection on every paragraph. Share immutable runtimes throughout
+        // this parse, including nested injections, then release the lookup.
+        // A fresh cache on each update allows providers to change definitions.
+        var runtimes: [String: ChildRuntime] = [:]
+        var unavailableLanguages: Set<String> = []
         guard let parser = ts_parser_new() else { return nil }
         defer { ts_parser_delete(parser) }
         guard ts_parser_set_language(parser, language.language) else { return nil }
@@ -333,18 +339,19 @@ private extension RunestoneSyntaxHighlighter {
         }
         guard let parsed else { return nil }
         let base = State(text: text, tree: Tree(parsed), children: [])
-        let children = injectedChildren(in: base, depth: 0)
+        let children = injectedChildren(in: base, depth: 0, runtimes: &runtimes, unavailable: &unavailableLanguages)
         return State(text: text, tree: base.tree, children: children)
     }
 
-    func injectedChildren(in parent: State, depth: Int) -> [ChildState] {
-        guard depth < 4, let injectionsQuery, let languageProvider else { return [] }
+    func injectedChildren(in parent: State, depth: Int, runtimes: inout [String: ChildRuntime],
+                          unavailable: inout Set<String>) -> [ChildState] {
+        guard depth < 4, let injectionsQuery else { return [] }
         return injectionsQuery.injections(in: parent).compactMap { injection in
             let childText = parent.text.substring(with: injection.range) as NSString
             guard injection.range.length > 0,
-                  let childLanguage = languageProvider(injection.language),
-                  let runtime = try? childRuntime(childLanguage),
-                  let childState = parseChild(childText, runtime: runtime, depth: depth + 1) else { return nil }
+                  let runtime = childRuntime(named: injection.language, runtimes: &runtimes, unavailable: &unavailable),
+                  let childState = parseChild(childText, runtime: runtime, depth: depth + 1,
+                                              runtimes: &runtimes, unavailable: &unavailable) else { return nil }
             return ChildState(offset: injection.range.location, state: childState,
                               highlightsQuery: runtime.highlights, foldsQuery: runtime.folds)
         }
@@ -355,6 +362,18 @@ private extension RunestoneSyntaxHighlighter {
         let highlights: Query?
         let injections: Query?
         let folds: Query?
+    }
+
+    func childRuntime(named name: String, runtimes: inout [String: ChildRuntime],
+                      unavailable: inout Set<String>) -> ChildRuntime? {
+        if let runtime = runtimes[name] { return runtime }
+        guard !unavailable.contains(name) else { return nil }
+        guard let language = languageProvider?(name), let runtime = try? childRuntime(language) else {
+            unavailable.insert(name)
+            return nil
+        }
+        runtimes[name] = runtime
+        return runtime
     }
 
     func childRuntime(_ language: RunestoneSyntaxLanguage) throws -> ChildRuntime {
@@ -370,7 +389,8 @@ private extension RunestoneSyntaxHighlighter {
         return ChildRuntime(language: language, highlights: highlights, injections: injections, folds: folds)
     }
 
-    func parseChild(_ text: NSString, runtime: ChildRuntime, depth: Int) -> State? {
+    func parseChild(_ text: NSString, runtime: ChildRuntime, depth: Int,
+                    runtimes: inout [String: ChildRuntime], unavailable: inout Set<String>) -> State? {
         guard let parser = ts_parser_new() else { return nil }
         defer { ts_parser_delete(parser) }
         guard ts_parser_set_language(parser, runtime.language.language),
@@ -381,12 +401,12 @@ private extension RunestoneSyntaxHighlighter {
         }
         guard let parsed else { return nil }
         let base = State(text: text, tree: Tree(parsed), children: [])
-        guard depth < 4, let query = runtime.injections, let languageProvider else { return base }
+        guard depth < 4, let query = runtime.injections else { return base }
         let children = query.injections(in: base).compactMap { injection -> ChildState? in
             let childText = text.substring(with: injection.range) as NSString
-            guard let language = languageProvider(injection.language),
-                  let nestedRuntime = try? childRuntime(language),
-                  let state = parseChild(childText, runtime: nestedRuntime, depth: depth + 1) else { return nil }
+            guard let nestedRuntime = childRuntime(named: injection.language, runtimes: &runtimes, unavailable: &unavailable),
+                  let state = parseChild(childText, runtime: nestedRuntime, depth: depth + 1,
+                                         runtimes: &runtimes, unavailable: &unavailable) else { return nil }
             return ChildState(offset: injection.range.location, state: state,
                               highlightsQuery: nestedRuntime.highlights, foldsQuery: nestedRuntime.folds)
         }

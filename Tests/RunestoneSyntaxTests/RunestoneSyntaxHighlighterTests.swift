@@ -167,6 +167,61 @@ final class RunestoneSyntaxHighlighterTests: XCTestCase {
         wait(for: [captured], timeout: 5)
     }
 
+    func testRepeatedInjectionsShareRuntimeButRefreshProviderOnNextUpdate() throws {
+        let resolutions = ResolutionCount()
+        let highlighter = try RunestoneSyntaxHighlighter(language: RunestoneSyntaxLanguage(
+            language: tree_sitter_html(),
+            injectionsQuery: """
+            ((script_element (raw_text) @injection.content)
+             (#set! injection.language "javascript"))
+            """)) { _ in
+                let count = resolutions.increment()
+                return RunestoneSyntaxLanguage(language: tree_sitter_javascript(),
+                                               highlightsQuery: "(number) @number.pass\(count)")
+            }
+        let text = String(repeating: "<script>let value = 42;</script>\n", count: 100)
+        for pass in 1...2 {
+            let parsed = expectation(description: "parsed pass \(pass)")
+            highlighter.update(text + String(repeating: "\n", count: pass)) { result in
+                if case .failure(let error) = result { XCTFail("Parse failed: \(error)") }
+                parsed.fulfill()
+            }
+            wait(for: [parsed], timeout: 5)
+            XCTAssertEqual(resolutions.value, pass)
+            let captured = expectation(description: "all injections highlighted")
+            highlighter.captures(in: NSRange(location: 0, length: (text as NSString).length)) { result in
+                let captures = (try? result.get()) ?? []
+                XCTAssertEqual(captures.count, 100)
+                XCTAssertTrue(captures.allSatisfy { $0.name == "number.pass\(pass)" })
+                captured.fulfill()
+            }
+            wait(for: [captured], timeout: 5)
+        }
+    }
+
+    func testUnavailableInjectionRuntimeIsResolvedOncePerUpdate() throws {
+        for invalidQuery in [false, true] {
+            let resolutions = ResolutionCount()
+            let highlighter = try RunestoneSyntaxHighlighter(language: RunestoneSyntaxLanguage(
+                language: tree_sitter_html(),
+                injectionsQuery: """
+                ((script_element (raw_text) @injection.content)
+                 (#set! injection.language "missing"))
+                """)) { _ in
+                    _ = resolutions.increment()
+                    return invalidQuery ? RunestoneSyntaxLanguage(language: tree_sitter_javascript(),
+                                                                   highlightsQuery: "(not_a_real_node) @bad") : nil
+                }
+            let parsed = expectation(description: "parsed with unsupported injection")
+            highlighter.update(String(repeating: "<script>let value = 42;</script>", count: 100)) { result in
+                if case .failure(let error) = result { XCTFail("Parse failed: \(error)") }
+                parsed.fulfill()
+            }
+            wait(for: [parsed], timeout: 5)
+            XCTAssertEqual(resolutions.value, 1)
+        }
+    }
+
     private func makeHighlighter() throws -> RunestoneSyntaxHighlighter {
         try RunestoneSyntaxHighlighter(language: RunestoneSyntaxLanguage(
             language: tree_sitter_json(),
@@ -177,4 +232,11 @@ final class RunestoneSyntaxHighlighterTests: XCTestCase {
             """,
             foldsQuery: "(object) @fold"))
     }
+}
+
+private final class ResolutionCount: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var value: Int { lock.lock(); defer { lock.unlock() }; return count }
+    func increment() -> Int { lock.lock(); defer { lock.unlock() }; count += 1; return count }
 }
