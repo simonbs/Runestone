@@ -3,12 +3,19 @@ import AppKit
 
 /// The same SF Symbol and rotation convention as the UIKit gutter.
 enum SyntaxFoldIndicator {
-    static let symbol = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)?
-        .withSymbolConfiguration(.init(pointSize: 8.5, weight: .semibold))
+    private static let symbol = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)
+    private static let configuration = NSImage.SymbolConfiguration(pointSize: 9.5, weight: .bold)
+
+    static func image(color: NSColor) -> NSImage? {
+        // Applying a color-only configuration to an already sized NSImage
+        // replaces its size and weight. Combine the attributes first so the
+        // rendered glyph keeps native source-list disclosure proportions.
+        symbol?.withSymbolConfiguration(configuration.applying(.init(paletteColors: [color])))
+    }
 
     static func draw(at center: CGPoint, collapsed: Bool, color: NSColor, in context: CGContext,
                      rotation: CGFloat? = nil) {
-        guard let image = symbol?.withSymbolConfiguration(.init(paletteColors: [color])) else { return }
+        guard let image = image(color: color) else { return }
         context.saveGState()
         defer { context.restoreGState() }
         context.translateBy(x: center.x, y: center.y)

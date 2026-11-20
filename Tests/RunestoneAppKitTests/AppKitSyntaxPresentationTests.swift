@@ -7,6 +7,18 @@ import XCTest
 
 @MainActor
 final class AppKitSyntaxPresentationTests: XCTestCase {
+    func testFoldIndicatorTintPreservesCompactDisclosureDimensions() throws {
+        for color in [NSColor.lightGray, .darkGray, .labelColor] {
+            let image = try XCTUnwrap(SyntaxFoldIndicator.image(color: color))
+            // A color-only configuration used to reset the symbol to the
+            // default 10-by-14-point image despite the smaller requested size.
+            XCTAssertLessThanOrEqual(image.size.width, 9)
+            XCTAssertLessThanOrEqual(image.size.height, 12)
+            XCTAssertGreaterThan(image.size.width, 4)
+            XCTAssertGreaterThan(image.size.height, 6)
+        }
+    }
+
     func testSemanticStyleIsPresentationOnlyAndUsesDottedFallback() throws {
         let text = "{\"name\": 42}\n"
         let baseColor = NSColor.black
@@ -130,7 +142,7 @@ final class AppKitSyntaxPresentationTests: XCTestCase {
         let fixture = try makeAnimatedFoldFixture()
         defer { fixture.window.orderOut(nil) }
         let view = fixture.view
-        XCTAssertNotNil(SyntaxFoldIndicator.symbol)
+        XCTAssertNotNil(SyntaxFoldIndicator.image(color: .lightGray))
         XCTAssertTrue(view.toggleSyntaxFold(atRow: 0))
         let collapse = try XCTUnwrap(view.foldingTransition)
         XCTAssertEqual(collapse.frame.size, fixture.scroll.contentView.bounds.size)
