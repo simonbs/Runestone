@@ -64,6 +64,12 @@ public class ReadOnlyDocumentView: NSView {
     private var syntaxFoldRequestToken = UUID()
     private var availableSyntaxFolds: [Int: ClosedRange<Int>] = [:]
     private var collapsedSyntaxFoldHeaders: Set<Int> = []
+    private(set) var foldingTransition: SyntaxFoldingTransitionView?
+
+    func cancelFoldingAnimation() {
+        foldingTransition?.cancel()
+        foldingTransition = nil
+    }
     private(set) var contentRevision = UUID()
     private let fallbackHeight: CGFloat
     private var emptyLineFontMetrics: (height: CGFloat, descent: CGFloat)?
@@ -613,6 +619,7 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     private func finishRetirement() {
+        cancelFoldingAnimation()
         guard !retirementFinished else { return }
         retirementFinished = true
         syntaxConfiguration?.highlighter.cancel()
@@ -658,6 +665,7 @@ public class ReadOnlyDocumentView: NSView {
                                          prefersStyledFirstPaint: Bool = false) {
         precondition(Thread.isMainThread)
         guard !isRetired else { return }
+        cancelFoldingAnimation()
         syntaxConfiguration?.highlighter.cancel()
         syntaxConfiguration = configuration
         clearSyntaxPresentation()
@@ -724,9 +732,24 @@ public class ReadOnlyDocumentView: NSView {
     /// A collapse is refused while the current selection intersects its body.
     @discardableResult
     public func toggleSyntaxFold(atRow row: Int) -> Bool {
+        toggleSyntaxFold(atRow: row, animated: true)
+    }
+
+    private func toggleSyntaxFold(atRow row: Int, animated: Bool) -> Bool {
         precondition(Thread.isMainThread)
         guard displayConfiguration.isCodeFoldingEnabled,
               let hiddenRows = availableSyntaxFolds[row] else { return false }
+        cancelFoldingAnimation()
+        let collapsing = !collapsedSyntaxFoldHeaders.contains(row)
+        // Capture only the viewport; fold size must not determine allocation size.
+        let viewport = enclosingScrollView?.contentView.bounds ?? .zero
+        let header = manager.line(atRow: row)
+        let bodyTop = header.yPosition + header.data.lineHeight
+        let following = hiddenRows.upperBound + 1 < manager.lineCount ? manager.line(atRow: hiddenRows.upperBound + 1) : nil
+        let oldTailTop = following?.yPosition ?? manager.contentHeight
+        let shouldAnimate = animated && window?.isVisible == true && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+            && !isLiveScrolling && bodyTop > viewport.minY && bodyTop < viewport.maxY
+        let before = shouldAnimate ? foldingSnapshot(in: viewport) : nil
         if collapsedSyntaxFoldHeaders.contains(row) {
             collapsedSyntaxFoldHeaders.remove(row)
         } else {
@@ -741,12 +764,45 @@ public class ReadOnlyDocumentView: NSView {
             collapsedSyntaxFoldHeaders.insert(row)
         }
         applyCollapsedSyntaxFolds()
+        let newTailTop = following?.yPosition ?? manager.contentHeight
+        if let before, enclosingScrollView?.contentView.bounds == viewport,
+           let after = foldingSnapshot(in: viewport) {
+            let height = visibleLayout?.lines.first(where: { $0.line.index == row }).flatMap(firstFragmentHeight(in:))
+                ?? header.data.lineHeight
+            let selected = isSelected(header) && displayConfiguration.showsSelectedLines
+            let gutterColor = selected
+                ? (displayConfiguration.showsLineNumbers ? displayConfiguration.selectedGutterBackgroundColor : nil)
+                    ?? displayConfiguration.selectedLineBackgroundColor
+                : displayConfiguration.gutterBackgroundColor
+            let transition = SyntaxFoldingTransitionView(
+                viewport: viewport, before: before, after: after, bodyTop: bodyTop,
+                oldTailTop: oldTailTop, newTailTop: newTailTop, collapsing: collapsing,
+                chevronCenter: CGPoint(x: horizontalTextInset - foldingGutterWidth / 2, y: header.yPosition + height / 2),
+                chevronColor: displayConfiguration.lineNumberColor, gutterColor: gutterColor,
+                backgroundColor: enclosingScrollView?.backgroundColor ?? .textBackgroundColor,
+                layoutRevision: inputLayoutRevision)
+            foldingTransition = transition
+            addSubview(transition, positioned: .above, relativeTo: nil)
+            transition.start { [weak self, weak transition] in
+                guard self?.foldingTransition === transition else { return }
+                self?.foldingTransition = nil
+            }
+        }
         return true
+    }
+
+    private func foldingSnapshot(in viewport: CGRect) -> NSImage? {
+        guard !viewport.isEmpty, let bitmap = bitmapImageRepForCachingDisplay(in: viewport) else { return nil }
+        cacheDisplay(in: viewport, to: bitmap)
+        let image = NSImage(size: viewport.size)
+        image.addRepresentation(bitmap)
+        return image
     }
 
     public func unfoldAllSyntax() {
         precondition(Thread.isMainThread)
         guard !collapsedSyntaxFoldHeaders.isEmpty else { return }
+        cancelFoldingAnimation()
         collapsedSyntaxFoldHeaders.removeAll()
         applyCollapsedSyntaxFolds()
     }
@@ -755,7 +811,7 @@ public class ReadOnlyDocumentView: NSView {
         precondition(Thread.isMainThread)
         guard displayConfiguration.isCodeFoldingEnabled else { return }
         for row in availableSyntaxFolds.keys.sorted() where !collapsedSyntaxFoldHeaders.contains(row) {
-            _ = toggleSyntaxFold(atRow: row)
+            _ = toggleSyntaxFold(atRow: row, animated: false)
         }
     }
 
@@ -972,6 +1028,7 @@ public class ReadOnlyDocumentView: NSView {
 
     public override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        cancelFoldingAnimation()
         windowObservers.forEach { NotificationCenter.default.removeObserver($0) }
         windowObservers.removeAll()
         guard !isRetired else { return }
@@ -1101,6 +1158,10 @@ public class ReadOnlyDocumentView: NSView {
             return
         }
         guard let clip = enclosingScrollView?.contentView else { return }
+        if let transition = foldingTransition,
+           transition.frame != clip.bounds || transition.layoutRevision != inputLayoutRevision {
+            cancelFoldingAnimation()
+        }
         if boundedViewportBudget == nil, boundedAbortBounds != nil {
             guard clip !== boundedAbortClip || clip.bounds != boundedAbortBounds ||
                     contentRevision != boundedAbortContentRevision else { return }
@@ -1832,23 +1893,8 @@ public class ReadOnlyDocumentView: NSView {
 
     private func drawFoldIndicator(row: Int, y: CGFloat, height: CGFloat, in context: CGContext) {
         let center = CGPoint(x: horizontalTextInset - foldingGutterWidth / 2, y: y + height / 2)
-        let collapsed = collapsedSyntaxFoldHeaders.contains(row)
-        let path = CGMutablePath()
-        if collapsed {
-            path.move(to: CGPoint(x: center.x - 2, y: center.y - 4))
-            path.addLine(to: CGPoint(x: center.x + 3, y: center.y))
-            path.addLine(to: CGPoint(x: center.x - 2, y: center.y + 4))
-        } else {
-            path.move(to: CGPoint(x: center.x - 4, y: center.y - 2))
-            path.addLine(to: CGPoint(x: center.x, y: center.y + 3))
-            path.addLine(to: CGPoint(x: center.x + 4, y: center.y - 2))
-        }
-        context.setStrokeColor(displayConfiguration.lineNumberColor.cgColor)
-        context.setLineWidth(1.5)
-        context.setLineCap(.round)
-        context.setLineJoin(.round)
-        context.addPath(path)
-        context.strokePath()
+        SyntaxFoldIndicator.draw(at: center, collapsed: collapsedSyntaxFoldHeaders.contains(row),
+                                 color: displayConfiguration.lineNumberColor, in: context)
     }
 
     private var effectiveTextWidth: CGFloat {

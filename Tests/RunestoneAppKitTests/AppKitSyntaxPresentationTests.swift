@@ -125,6 +125,67 @@ final class AppKitSyntaxPresentationTests: XCTestCase {
         XCTAssertEqual(fixture.view.content.string, text)
     }
 
+    func testFoldingAnimationFinishesAndRapidReversalKeepsDocumentIntact() throws {
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { throw XCTSkip("Reduce Motion is enabled") }
+        let fixture = try makeAnimatedFoldFixture()
+        defer { fixture.window.orderOut(nil) }
+        let view = fixture.view
+        XCTAssertNotNil(SyntaxFoldIndicator.symbol)
+        XCTAssertTrue(view.toggleSyntaxFold(atRow: 0))
+        let collapse = try XCTUnwrap(view.foldingTransition)
+        XCTAssertEqual(collapse.frame.size, fixture.scroll.contentView.bounds.size)
+        XCTAssertTrue(view.manager.isLineHidden(1))
+        XCTAssertNil(collapse.hitTest(.zero))
+        XCTAssertTrue(view.toggleSyntaxFold(atRow: 0))
+        XCTAssertNil(collapse.superview)
+        XCTAssertNotNil(view.foldingTransition)
+        XCTAssertFalse(view.manager.isLineHidden(1))
+        let finished = expectation(for: NSPredicate { _, _ in view.foldingTransition == nil }, evaluatedWith: nil)
+        XCTAssertEqual(XCTWaiter().wait(for: [finished], timeout: 2), .completed)
+        XCTAssertEqual(view.content.string, fixture.text)
+    }
+
+    func testFoldingAnimationCancelsWhenScrollingOrEditing() throws {
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { throw XCTSkip("Reduce Motion is enabled") }
+        let fixture = try makeAnimatedFoldFixture()
+        defer { fixture.window.orderOut(nil) }
+        let view = fixture.view
+        XCTAssertTrue(view.toggleSyntaxFold(atRow: 0))
+        XCTAssertNotNil(view.foldingTransition)
+        fixture.scroll.contentView.scroll(to: CGPoint(x: 0, y: 10))
+        view.updateViewport()
+        XCTAssertNil(view.foldingTransition)
+        fixture.scroll.contentView.scroll(to: .zero)
+        view.updateViewport()
+        XCTAssertTrue(view.toggleSyntaxFold(atRow: 0))
+        XCTAssertNotNil(view.foldingTransition)
+        XCTAssertTrue(view.replaceContent(in: NSRange(location: 0, length: 0), with: NSAttributedString(string: " ")))
+        XCTAssertNil(view.foldingTransition)
+        XCTAssertEqual(view.content.string, " " + fixture.text)
+    }
+
+    private func makeAnimatedFoldFixture() throws
+        -> (window: NSWindow, scroll: NSScrollView, view: ReadOnlyDocumentView, text: String) {
+        _ = NSApplication.shared
+        let text = "{\n  \"value\": 1\n}\n" + String(repeating: "{}\n", count: 40)
+        let fixture = makeFixture(NSAttributedString(string: text, attributes: [
+            .font: NSFont.monospacedSystemFont(ofSize: 15, weight: .regular),
+            .foregroundColor: NSColor.labelColor
+        ]), height: 240)
+        let window = NSWindow(contentRect: fixture.scroll.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = fixture.scroll
+        window.orderFront(nil)
+        var configuration = fixture.view.displayConfiguration
+        configuration.isCodeFoldingEnabled = true
+        fixture.view.displayConfiguration = configuration
+        let highlighter = try RunestoneSyntaxHighlighter(language: RunestoneSyntaxLanguage(
+            language: tree_sitter_json(), foldsQuery: "(object) @fold"))
+        fixture.view.applySyntaxConfiguration(.init(highlighter: highlighter, styles: [:]))
+        let parsed = expectation(for: NSPredicate { _, _ in fixture.view.syntaxFoldRows == [0] }, evaluatedWith: nil)
+        XCTAssertEqual(XCTWaiter().wait(for: [parsed], timeout: 3), .completed)
+        return (window, fixture.scroll, fixture.view, text)
+    }
+
     private func makeFixture(_ content: NSAttributedString, height: CGFloat = 120)
         -> (scroll: NSScrollView, view: ReadOnlyDocumentView) {
         let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 320, height: height))
