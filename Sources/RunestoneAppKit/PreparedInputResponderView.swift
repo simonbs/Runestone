@@ -363,9 +363,12 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         }
     }
 
+    var inputConnectionDidBecomeReady: (() -> Void)?
+
     func preparedInputContextConnectionDidBecomeReady(_ connection: PreparedInputContextConnection) {
         guard inputConnection === connection else { return }
         scheduleFocusCheck()
+        inputConnectionDidBecomeReady?()
     }
 
     override func keyDown(with event: NSEvent) {

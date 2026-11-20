@@ -292,6 +292,14 @@ public final class RunestoneEditableDocumentAttachment {
         return view.presentedSelectionRange
     }
 
+    /// Called after a reset has reconstructed the input connection. Host UI
+    /// such as a find bar can invalidate results captured while it was unavailable.
+    /// This does not activate the input context or request keyboard focus.
+    public var inputConnectionDidBecomeReady: (() -> Void)? {
+        get { (view as? PreparedInputResponderView)?.inputConnectionDidBecomeReady }
+        set { (view as? PreparedInputResponderView)?.inputConnectionDidBecomeReady = newValue }
+    }
+
     public var textFinderSnapshot: TextFinderSnapshot? {
         precondition(Thread.isMainThread)
         guard isEditable, let snapshot = attachment?.connection.textFinderSnapshot() else { return nil }
