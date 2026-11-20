@@ -525,6 +525,7 @@ public class ReadOnlyDocumentView: NSView {
     func updateDisplaySelection(_ selection: InputSelectionState) {
         guard !isRetired, displaySelection != selection else { return }
         displaySelection = selection
+        textFinderPresentationView?.needsDisplay = true
         gutterView?.needsDisplay = true
         needsDisplay = true
     }
@@ -622,6 +623,7 @@ public class ReadOnlyDocumentView: NSView {
         cancelFoldingAnimation()
         guard !retirementFinished else { return }
         retirementFinished = true
+        setTextFinderMatches([])
         syntaxConfiguration?.highlighter.cancel()
         syntaxConfiguration = nil
         syntaxCaptures.removeAll()
@@ -1368,8 +1370,10 @@ public class ReadOnlyDocumentView: NSView {
     }
 
     private var gutterView: GutterView?
+    var textFinderPresentationView: TextFinderPresentationView?
 
     private func updateGutter() {
+        defer { updateTextFinderPresentation() }
         guard let viewport = enclosingScrollView?.contentView.bounds,
               !isRetired, gutterWidth > 0 else {
             gutterView?.isHidden = true

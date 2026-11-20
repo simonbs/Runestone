@@ -369,6 +369,18 @@ public final class RunestoneEditableDocumentAttachment {
         return view.selectAndRevealDocumentRange(range)
     }
 
+    /// Presents native incremental-search results without changing document text.
+    public func setTextFinderMatches(_ ranges: [NSRange]) {
+        guard !detaching, !detached else { return }
+        view.setTextFinderMatches(ranges)
+    }
+
+    /// Draws only matched glyphs for AppKit's native selected-result indicator.
+    public func drawTextFinderCharacters(in range: NSRange) {
+        guard textFinderSnapshot != nil else { return }
+        view.drawTextFinderCharacters(in: range, foregroundColor: .black)
+    }
+
     /// Viewport-limited search ranges, independent of keyboard/IME focus.
     public var textFinderVisibleCharacterRanges: [NSRange] {
         guard textFinderSnapshot != nil else { return [] }
