@@ -54,7 +54,7 @@ final class PreparedInputResponderViewTests: XCTestCase {
         XCTAssertEqual(batch.overflowCount, 0)
         XCTAssertEqual(host.text, "abc")
         XCTAssertEqual(host.undoCount, 0)
-        view.routeCommand(NSSelectorFromString("transpose:"), on: connection) { _ in forwarded += 1; return true }
+        view.routeCommand(NSSelectorFromString("unsupportedEditingCommand:"), on: connection) { _ in forwarded += 1; return true }
         batch = connection.takeInputFailures()
         XCTAssertEqual(forwarded, 0)
         XCTAssertEqual(batch.records, [.init(operation: .command,

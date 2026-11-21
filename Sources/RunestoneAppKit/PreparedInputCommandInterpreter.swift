@@ -2,6 +2,29 @@
 import AppKit
 import ObjectiveC
 
+/// The native kill/yank clipboard is private to the application, never the
+/// system pasteboard. Consecutive kills in the same selection session append.
+final class PreparedInputKillBuffer {
+    static let shared = PreparedInputKillBuffer()
+    private(set) var text = ""
+    private weak var view: ReadOnlyDocumentView?
+    private var contentRevision: UUID?
+    private var selectionRevision: UUID?
+
+    func continues(in view: ReadOnlyDocumentView) -> Bool {
+        self.view === view && contentRevision == view.contentRevision && selectionRevision == view.inputSelectionRevision
+    }
+
+    func record(_ value: String, appending: Bool, in view: ReadOnlyDocumentView) {
+        text = appending ? text + value : value
+        self.view = view
+        contentRevision = view.contentRevision
+        selectionRevision = view.inputSelectionRevision
+    }
+
+    func endSequence() { view = nil }
+}
+
 /// Internal command dispatch. Left/right use logical text order; visual-line
 /// movement is handled separately by the responder's Core Text geometry.
 enum PreparedInputCommandInterpreter {
@@ -122,6 +145,7 @@ enum PreparedInputCommandInterpreter {
     private static let supportedCommands: Set<String> = [
         "insertTab:", "insertBacktab:", "insertNewline:", "insertLineBreak:", "deleteBackward:", "deleteForward:",
         "deleteWordBackward:", "deleteWordForward:", "selectAll:",
+        "deleteToEndOfParagraph:", "yank:", "transpose:", "insertNewlineIgnoringFieldEditor:",
         "moveLeft:", "moveRight:", "moveBackward:", "moveForward:",
         "moveLeftAndModifySelection:", "moveRightAndModifySelection:",
         "moveBackwardAndModifySelection:", "moveForwardAndModifySelection:",
@@ -136,7 +160,8 @@ enum PreparedInputCommandInterpreter {
     static func supports(_ name: String) -> Bool { supportedCommands.contains(name) }
 
     static func performReporting(_ selector: Selector, adapter: PreparedInputEventAdapter,
-                                 view: ReadOnlyDocumentView, isAvailable: () -> Bool = { true }) -> Result {
+                                 view: ReadOnlyDocumentView, killBuffer: PreparedInputKillBuffer = .shared,
+                                 isAvailable: () -> Bool = { true }) -> Result {
         precondition(Thread.isMainThread)
         let name = NSStringFromSelector(selector)
         guard supports(name) else { return .unsupported }
@@ -163,12 +188,37 @@ enum PreparedInputCommandInterpreter {
         guard validSelection(selection, in: text) else {
             return .blocked(.init(reason: .invalidSelection, effect: .notApplied))
         }
+        guard isAvailable() else { return failure(.unavailable) }
+        let appendingKill = killBuffer.continues(in: view)
+        if name != "deleteToEndOfParagraph:" { killBuffer.endSequence() }
 
         switch name {
         case "insertTab:": return finish(adapter.insertTabReporting(backward: false, isAvailable: isAvailable))
         case "insertBacktab:": return finish(adapter.insertTabReporting(backward: true, isAvailable: isAvailable))
         case "insertNewline:": return finish(adapter.insertLogicalNewlineReporting(isAvailable: isAvailable))
+        case "insertNewlineIgnoringFieldEditor:":
+            return finish(adapter.insertNewlineIgnoringFieldEditorReporting(isAvailable: isAvailable))
         case "insertLineBreak:": return finish(adapter.insertLogicalLineBreakReporting(isAvailable: isAvailable))
+        case "yank:":
+            guard !killBuffer.text.isEmpty else { return success() }
+            return finish(adapter.insertTextReporting(killBuffer.text, replacementRange: selection, isAvailable: isAvailable))
+        case "deleteToEndOfParagraph:":
+            var range = selection
+            if range.length == 0 {
+                var start = 0, end = 0, contentsEnd = 0
+                text.getParagraphStart(&start, end: &end, contentsEnd: &contentsEnd, for: selection)
+                range.length = (selection.location < contentsEnd ? contentsEnd : end) - selection.location
+            }
+            guard range.length > 0 else { return success() }
+            let killed = text.substring(with: range)
+            let attempt = adapter.insertTextReporting("", replacementRange: range, isAvailable: isAvailable)
+            if attempt.outcome == .processed, attempt.failure == nil {
+                killBuffer.record(killed, appending: appendingKill, in: view)
+            }
+            return finish(attempt)
+        case "transpose:":
+            guard let edit = transposeEdit(text: text, selection: selection) else { return success() }
+            return finish(adapter.applyHostEditReporting(edit, isAvailable: isAvailable))
         case "selectAll:": return finish(adapter.setSelectionReporting(NSRange(location: 0, length: text.length), isAvailable: isAvailable))
         case "deleteBackward:", "deleteForward:", "deleteWordBackward:", "deleteWordForward:":
             if selection.length > 0 { return finish(adapter.insertTextReporting("", replacementRange: selection, isAvailable: isAvailable)) }
@@ -212,6 +262,24 @@ enum PreparedInputCommandInterpreter {
         }
         return moveSelection(target: target, selection: selection, extending: extending, direction: direction,
                              adapter: adapter, view: view, isAvailable: isAvailable)
+    }
+
+    /// Swap complete composed characters; at the end of a line swap the two
+    /// preceding characters. Never split a surrogate pair, combining mark or CRLF.
+    static func transposeEdit(text: NSString, selection: NSRange) -> RunestoneHostEdit? {
+        guard validSelection(selection, in: text), selection.length == 0, text.length > 1,
+              selection.location > 0 else { return nil }
+        var right = selection.location
+        if right == text.length || [10, 13, 0x85, 0x2028, 0x2029].contains(text.character(at: right)) {
+            right = previousBoundary(before: right, in: text)
+        }
+        guard right > 0 else { return nil }
+        let left = previousBoundary(before: right, in: text)
+        let end = nextBoundary(after: right, in: text)
+        let first = text.substring(with: NSRange(location: left, length: right - left))
+        let second = text.substring(with: NSRange(location: right, length: end - right))
+        return RunestoneHostEdit(replacementRange: NSRange(location: left, length: end - left),
+                                 replacementText: second + first, selectedRange: NSRange(location: end, length: 0))
     }
 
     private static func validSelection(_ range: NSRange, in text: NSString) -> Bool {

@@ -4,6 +4,106 @@ import AppKit
 import XCTest
 
 final class PreparedInputMovementTests: XCTestCase {
+    func testKillAndYankUsePrivateBufferAcrossViewsAndKeepCRLFWhole() throws {
+        let buffer = PreparedInputKillBuffer()
+        let f = try MovementFixture("one👩🏽‍💻\r\ntwo")
+        func run(_ name: String, in fixture: MovementFixture) -> PreparedInputCommandInterpreter.Result {
+            PreparedInputCommandInterpreter.performReporting(NSSelectorFromString(name), adapter: fixture.adapter,
+                                                              view: fixture.view, killBuffer: buffer)
+        }
+        XCTAssertEqual(f.adapter.setSelection(NSRange(location: 3, length: 0)), .processed)
+        _ = run("deleteToEndOfParagraph:", in: f)
+        XCTAssertEqual(f.owner.text, "one\r\ntwo")
+        XCTAssertEqual(buffer.text, "👩🏽‍💻")
+        _ = run("deleteToEndOfParagraph:", in: f)
+        XCTAssertEqual(f.owner.text, "onetwo")
+        XCTAssertEqual(buffer.text, "👩🏽‍💻\r\n")
+        let other = try MovementFixture("other")
+        _ = run("yank:", in: other)
+        XCTAssertEqual(other.owner.text, "👩🏽‍💻\r\nother")
+        XCTAssertEqual(other.owner.undoCount, 1)
+        XCTAssertTrue(other.adapter.disconnectAfterQuiescing())
+        XCTAssertTrue(f.adapter.disconnectAfterQuiescing())
+    }
+
+    func testKillSelectionAndFailedKillDoNotLosePreviousBuffer() throws {
+        let buffer = PreparedInputKillBuffer()
+        let f = try MovementFixture("abc def")
+        XCTAssertEqual(f.adapter.setSelection(NSRange(location: 0, length: 3)), .processed)
+        _ = PreparedInputCommandInterpreter.performReporting(NSSelectorFromString("deleteToEndOfParagraph:"),
+            adapter: f.adapter, view: f.view, killBuffer: buffer)
+        XCTAssertEqual(buffer.text, "abc")
+        XCTAssertEqual(f.owner.text, " def")
+        f.owner.busy = true
+        _ = PreparedInputCommandInterpreter.performReporting(NSSelectorFromString("deleteToEndOfParagraph:"),
+            adapter: f.adapter, view: f.view, killBuffer: buffer)
+        XCTAssertEqual(buffer.text, "abc")
+        XCTAssertEqual(f.owner.text, " def")
+        f.owner.busy = false
+        XCTAssertEqual(f.adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertTrue(f.adapter.disconnectAfterQuiescing())
+    }
+
+    func testTransposeMatchesNativeForComposedCharactersAndLineEnds() throws {
+        _ = NSApplication.shared
+        for (text, location) in [("abcd", 2), ("abcd", 4), ("ab\ncd", 2),
+                                 ("a👩🏽‍💻b", 1), ("ae\u{301}b", 1)] {
+            let native = NSTextView()
+            native.string = text
+            native.setSelectedRange(NSRange(location: location, length: 0))
+            native.transpose(nil)
+            let f = try MovementFixture(text)
+            XCTAssertEqual(f.adapter.setSelection(NSRange(location: location, length: 0)), .processed)
+            XCTAssertEqual(f.run("transpose:"), .processed)
+            XCTAssertEqual(f.owner.text, native.string, text)
+            XCTAssertEqual(f.adapter.selectedRangeForInput(), native.selectedRange(), text)
+            XCTAssertTrue(f.adapter.disconnectAfterQuiescing())
+        }
+    }
+
+    func testTransposeKeepsCRLFDelimiterWhole() throws {
+        let f = try MovementFixture("a\r\nb")
+        XCTAssertEqual(f.adapter.setSelection(NSRange(location: 3, length: 0)), .processed)
+        XCTAssertEqual(f.run("transpose:"), .processed)
+        XCTAssertEqual(f.owner.text, "ab\r\n")
+        XCTAssertEqual(f.adapter.selectedRangeForInput(), NSRange(location: 4, length: 0))
+        XCTAssertEqual(f.owner.undoCount, 1)
+        XCTAssertTrue(f.adapter.disconnectAfterQuiescing())
+    }
+
+    func testControlOUsesNativeKeyBindingAndDocumentDelimiterWithoutIndentation() throws {
+        _ = NSApplication.shared
+        let f = try MovementFixture("  ab\r\ncd")
+        XCTAssertEqual(f.adapter.setSelection(NSRange(location: 3, length: 0)), .processed)
+        let bindings = EditingKeyBindings { name in XCTAssertEqual(f.run(name), .processed, name) }
+        let event = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .control,
+            timestamp: 0, windowNumber: 0, context: nil, characters: "\u{f}", charactersIgnoringModifiers: "o",
+            isARepeat: false, keyCode: 31))
+        bindings.interpretKeyEvents([event])
+        XCTAssertEqual(f.owner.text, "  a\r\nb\r\ncd")
+        XCTAssertEqual(f.adapter.selectedRangeForInput(), NSRange(location: 3, length: 0))
+        XCTAssertEqual(f.owner.undoCount, 1)
+        XCTAssertTrue(f.adapter.disconnectAfterQuiescing())
+    }
+
+    func testNewCommandsRejectMarkedCompositionAndSplitGraphemes() throws {
+        let f = try MovementFixture("ae\u{301}b")
+        XCTAssertEqual(f.adapter.setSelection(NSRange(location: 2, length: 0)), .processed)
+        for name in ["transpose:", "deleteToEndOfParagraph:", "yank:", "insertNewlineIgnoringFieldEditor:"] {
+            XCTAssertEqual(f.reporting(name), .blocked(.init(reason: .invalidSelection, effect: .notApplied)))
+        }
+        XCTAssertEqual(f.adapter.setSelection(NSRange(location: 0, length: 0)), .processed)
+        XCTAssertEqual(f.adapter.setMarkedText("", selectedRange: NSRange(location: 0, length: 0),
+                                              replacementRange: NSRange(location: NSNotFound, length: 0)), .processed)
+        for name in ["transpose:", "deleteToEndOfParagraph:", "yank:", "insertNewlineIgnoringFieldEditor:"] {
+            XCTAssertEqual(f.reporting(name), .blocked(.init(reason: .compositionActive, effect: .notApplied)))
+        }
+        XCTAssertEqual(f.owner.undoCount, 0)
+        XCTAssertEqual(f.owner.text, "ae\u{301}b")
+        XCTAssertEqual(f.adapter.reconstructWithoutInputContext(), .processed)
+        XCTAssertTrue(f.adapter.disconnectAfterQuiescing())
+    }
+
     func testExtendedMovementRetainsAnchorWhenReversingAndCrossingIt() throws {
         let f = try MovementFixture("abcdef")
         XCTAssertEqual(f.adapter.setSelection(NSRange(location: 3, length: 0)), .processed)
@@ -149,6 +249,13 @@ final class PreparedInputMovementTests: XCTestCase {
         XCTAssertEqual(stale.adapter.reconstructWithoutInputContext(), .processed)
         XCTAssertTrue(stale.adapter.disconnectAfterQuiescing())
     }
+}
+
+private final class EditingKeyBindings: NSResponder {
+    let command: (String) -> Void
+    init(command: @escaping (String) -> Void) { self.command = command; super.init() }
+    required init?(coder: NSCoder) { nil }
+    override func doCommand(by selector: Selector) { command(NSStringFromSelector(selector)) }
 }
 
 private final class MovementFixture {

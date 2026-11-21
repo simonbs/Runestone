@@ -451,6 +451,12 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     @objc(paste:)
     private func pasteText(_ sender: Any?) { performClipboardMenuAction(.paste) }
 
+    @objc(pasteAsPlainText:)
+    private func pastePlainText(_ sender: Any?) { performClipboardMenuAction(.paste) }
+
+    @objc(pasteAndMatchStyle:)
+    private func pasteMatchingStyle(_ sender: Any?) { performClipboardMenuAction(.paste) }
+
     @objc(checkSpelling:)
     private func checkSpelling(_ sender: Any?) { inputConnection?.nativeTextCheckingController?.checkSpelling(sender) }
 
@@ -502,6 +508,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     override func insertTab(_ sender: Any?) { performStandardCommand("insertTab:") }
     override func insertBacktab(_ sender: Any?) { performStandardCommand("insertBacktab:") }
     override func insertNewline(_ sender: Any?) { performStandardCommand("insertNewline:") }
+    override func insertNewlineIgnoringFieldEditor(_ sender: Any?) { performStandardCommand("insertNewlineIgnoringFieldEditor:") }
+    override func deleteToEndOfParagraph(_ sender: Any?) { performStandardCommand("deleteToEndOfParagraph:") }
+    override func yank(_ sender: Any?) { performStandardCommand("yank:") }
+    override func transpose(_ sender: Any?) { performStandardCommand("transpose:") }
     override func insertLineBreak(_ sender: Any?) { performStandardCommand("insertLineBreak:") }
     override func deleteBackward(_ sender: Any?) { performStandardCommand("deleteBackward:") }
     override func deleteForward(_ sender: Any?) { performStandardCommand("deleteForward:") }
@@ -571,7 +581,8 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         switch name {
         case "copy:": return PreparedInputClipboardCommand.canPerform(.copy, adapter: adapter, view: self, pasteboard: pasteboard)
         case "cut:": return PreparedInputClipboardCommand.canPerform(.cut, adapter: adapter, view: self, pasteboard: pasteboard)
-        case "paste:": return PreparedInputClipboardCommand.canPerform(.paste, adapter: adapter, view: self, pasteboard: pasteboard)
+        case "paste:", "pasteAsPlainText:", "pasteAndMatchStyle:":
+            return PreparedInputClipboardCommand.canPerform(.paste, adapter: adapter, view: self, pasteboard: pasteboard)
         case "undo:": return connection.canPerformHistory(.undo)
         case "redo:": return connection.canPerformHistory(.redo)
         case "selectAll:":
@@ -603,6 +614,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                     direction: up ? .up : .down, in: self)
             }
             guard PreparedInputCommandInterpreter.supports(name) else { return false }
+            if name == "yank:" { return !PreparedInputKillBuffer.shared.text.isEmpty }
+            if name == "transpose:" {
+                return PreparedInputCommandInterpreter.transposeEdit(text: text, selection: state.selection) != nil
+            }
             if name == "deleteBackward:" || name == "deleteWordBackward:" {
                 return state.selection.length > 0 || state.selection.location > 0
             }
@@ -636,6 +651,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         }
         endPointerSelection()
         verticalPreference = nil
+        PreparedInputKillBuffer.shared.endSequence()
         if operation != .copy { PreparedInputCommandInterpreter.resetSelectionExtension(in: self) }
         let category: PreparedInputContextConnection.InputOperation = operation == .copy ? .command : .insertText
         switch PreparedInputClipboardCommand.perform(operation, adapter: adapter, view: self, pasteboard: pasteboard,
@@ -695,7 +711,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
              "centerSelectionInVisibleArea:":
             scrollForKeyboardCommand(name, adapter: adapter, isAvailable: isAvailable)
             return
-        case "copy:", "cut:", "paste:":
+        case "copy:", "cut:", "paste:", "pasteAsPlainText:", "pasteAndMatchStyle:":
             let operation: PreparedInputClipboardCommand.Operation
             switch NSStringFromSelector(selector) {
             case "copy:": operation = .copy

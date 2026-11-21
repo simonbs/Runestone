@@ -412,13 +412,19 @@ final class PreparedInputEventAdapter {
         insertLogicalBreakReporting(explicit: nil, isAvailable: isAvailable)
     }
 
+    /// The native Control-O binding follows this command with moveBackward:.
+    /// Insert only the document delimiter, without auto-indent/list continuation.
+    func insertNewlineIgnoringFieldEditorReporting(isAvailable: () -> Bool = { true }) -> InputAttempt {
+        insertLogicalBreakReporting(explicit: nil, usePlanner: false, isAvailable: isAvailable)
+    }
+
     /// AppKit's line-break command explicitly requests a Unicode line separator,
     /// which is distinct from a document-style newline or paragraph break.
     func insertLogicalLineBreakReporting(isAvailable: () -> Bool = { true }) -> InputAttempt {
         insertLogicalBreakReporting(explicit: "\u{2028}", isAvailable: isAvailable)
     }
 
-    private func insertLogicalBreakReporting(explicit: String?, isAvailable: () -> Bool) -> InputAttempt {
+    private func insertLogicalBreakReporting(explicit: String?, usePlanner: Bool = true, isAvailable: () -> Bool) -> InputAttempt {
         perform { session in
             let selection = session.selectedRange
             guard isAvailable(), !session.hasProvisionalComposition,
@@ -436,7 +442,7 @@ final class PreparedInputEventAdapter {
                     selection: selection,
                     lineEnding: ending
                 )
-                edit = self.logicalNewlinePlanner(context) ?? RunestoneLogicalNewlineEdit(
+                edit = (usePlanner ? self.logicalNewlinePlanner(context) : nil) ?? RunestoneLogicalNewlineEdit(
                     replacementRange: selection, replacementText: ending,
                     selectedRange: NSRange(location: selection.location + (ending as NSString).length, length: 0)
                 )
