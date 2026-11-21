@@ -57,10 +57,19 @@ final class SearchOccurrencePresentationTests: XCTestCase {
         let point = content.convert(overlay.convert(overlay.convert(NSPoint(x: match.midX, y: match.minY + 1), from: view), to: nil), from: nil)
         let scale = CGFloat(bitmap.pixelsWide) / content.bounds.width
         let pixel = try XCTUnwrap(bitmap.colorAt(x: Int(point.x * scale), y: Int((content.bounds.height - point.y) * scale))?.usingColorSpace(.sRGB))
-        // The system find highlight is a saturated yellow; the bitmap's color space shifts its exact components.
-        XCTAssertGreaterThan(pixel.redComponent, 0.8)
-        XCTAssertGreaterThan(pixel.greenComponent, 0.8)
-        XCTAssertLessThan(pixel.blueComponent, 0.6)
+        // The warm yellow of the system's find indicator; the bitmap's color space shifts exact components.
+        XCTAssertGreaterThan(pixel.redComponent, 0.85)
+        XCTAssertGreaterThan(pixel.greenComponent, pixel.blueComponent + 0.3)
+        XCTAssertLessThan(pixel.greenComponent, pixel.redComponent - 0.03, "Warmer than a pure yellow")
+    }
+
+    func testPreviewedTextSitsOnTheLineBaseline() throws {
+        let (_, _, view) = makeView("let apple = 1\n")
+        let match = try XCTUnwrap(view.textFinderRects(for: NSRange(location: 4, length: 5)).first)
+        let baseline = try XCTUnwrap(view.baseline(ofLineContaining: match))
+        XCTAssertGreaterThan(baseline, match.minY)
+        XCTAssertLessThan(baseline, match.maxY)
+        XCTAssertNil(view.baseline(ofLineContaining: match.offsetBy(dx: 0, dy: 10_000)))
     }
 
     private func makeView(_ text: String, width: CGFloat = 320, height: CGFloat = 80) -> (NSWindow, NSScrollView, ReadOnlyDocumentView) {

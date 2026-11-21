@@ -1,5 +1,6 @@
 #if canImport(AppKit)
 import AppKit
+import CoreText
 
 /// A search occurrence a host presents over the document, for example the
 /// results of a search across files.
@@ -35,6 +36,10 @@ final class SearchOccurrencePresentationView: NSView {
 
     private static let plateRadius: CGFloat = 3
     private static let insertionSpacing: CGFloat = 2
+    /// The warm yellow of the system's find indicator. `NSColor.findHighlightColor` alone is
+    /// a pure, brighter yellow than the indicator AppKit draws over the find bar's current match.
+    static let occurrenceBackground = NSColor(srgbRed: 0.99, green: 0.88, blue: 0.22, alpha: 1)
+    static let occurrenceForeground = NSColor.black
 
     override func draw(_ dirtyRect: NSRect) {
         guard let editor, !occurrences.isEmpty, let context = NSGraphicsContext.current?.cgContext else { return }
@@ -45,6 +50,9 @@ final class SearchOccurrencePresentationView: NSView {
         let background = editor.enclosingScrollView?.backgroundColor ?? .textBackgroundColor
         let colors = TextFinderPresentationColors(editorBackground: background)
         let font = editor.displayConfiguration.textFont ?? .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        // The editor may space characters apart; previewed text keeps the same pitch.
+        let pitch = editor.displayConfiguration.characterWidth - ("0" as NSString).size(withAttributes: [.font: font]).width
+        let kerning = pitch.isFinite && abs(pitch) < font.pointSize ? pitch : 0
         let visible = editor.textFinderVisibleCharacterRanges
         // Occurrences on one visual line are placed together, because an inserted
         // replacement moves everything after it on that line.
@@ -54,13 +62,13 @@ final class SearchOccurrencePresentationView: NSView {
             if rects.count == 1 {
                 lines[Int(rects[0].midY.rounded()), default: []].append((occurrence, rects[0]))
             } else {
-                for rect in rects { mark(occurrence, rect: rect, shift: 0, colors: colors, editor: editor, context: context) }
+                for rect in rects { mark(occurrence, rect: rect, shift: 0, font: font, colors: colors, editor: editor, context: context) }
             }
         }
         for line in lines.values {
             let placed = line.sorted { $0.rect.minX < $1.rect.minX }
             guard placed.contains(where: { $0.occurrence.replacement?.isEmpty == false }), let first = placed.first else {
-                for item in placed { mark(item.occurrence, rect: item.rect, shift: 0, colors: colors, editor: editor, context: context) }
+                for item in placed { mark(item.occurrence, rect: item.rect, shift: 0, font: font, colors: colors, editor: editor, context: context) }
                 continue
             }
             let top = placed.map(\.rect.minY).min() ?? first.rect.minY
@@ -74,17 +82,21 @@ final class SearchOccurrencePresentationView: NSView {
             for item in placed {
                 editor.drawDocumentContent(in: NSRect(x: cursor, y: strip.minY, width: item.rect.maxX - cursor, height: strip.height),
                                            shiftedBy: shift, in: context)
-                mark(item.occurrence, rect: item.rect, shift: shift, colors: colors, editor: editor, context: context)
+                mark(item.occurrence, rect: item.rect, shift: shift, font: font, colors: colors, editor: editor, context: context)
                 cursor = item.rect.maxX
                 guard let replacement = item.occurrence.replacement, !replacement.isEmpty else { continue }
                 let text = String(replacement.prefix(200)).components(separatedBy: .newlines).joined(separator: "↵")
-                let inserted = NSAttributedString(string: text, attributes: [.font: font, .foregroundColor: colors.matchForeground])
-                let size = inserted.size()
+                let inserted = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: [
+                    .font: font, .foregroundColor: colors.matchForeground, .kern: kerning
+                ]))
+                let width = ceil(CTLineGetTypographicBounds(inserted, nil, nil, nil))
                 let plate = NSRect(x: item.rect.maxX + shift + Self.insertionSpacing, y: item.rect.minY,
-                                   width: ceil(size.width), height: item.rect.height)
+                                   width: width, height: item.rect.height)
                 NSColor.systemGreen.withAlphaComponent(0.3).setFill()
                 NSBezierPath(roundedRect: plate.insetBy(dx: -1, dy: 0), xRadius: Self.plateRadius, yRadius: Self.plateRadius).fill()
-                inserted.draw(at: NSPoint(x: plate.minX, y: plate.midY - size.height / 2))
+                // On the line's own baseline, like the text around it; a line may be taller than its font.
+                let baseline = editor.baseline(ofLineContaining: item.rect) ?? plate.midY + (font.ascender + font.descender) / 2
+                LineFragmentRenderer.drawGlyphs(inserted, at: CGPoint(x: plate.minX, y: baseline), in: context)
                 shift += plate.width + Self.insertionSpacing * 2
             }
             editor.drawDocumentContent(in: NSRect(x: cursor, y: strip.minY, width: strip.maxX - cursor, height: strip.height),
@@ -93,8 +105,9 @@ final class SearchOccurrencePresentationView: NSView {
     }
 
     /// One occurrence's plate, moved right by the insertions before it on its line.
-    private func mark(_ occurrence: RunestoneSearchOccurrence, rect: NSRect, shift: CGFloat, colors: TextFinderPresentationColors,
-                      editor: ReadOnlyDocumentView, context: CGContext) {
+    private func mark(_ occurrence: RunestoneSearchOccurrence, rect: NSRect, shift: CGFloat, font: NSFont,
+                      colors: TextFinderPresentationColors, editor: ReadOnlyDocumentView, context: CGContext) {
+        let baseline = editor.baseline(ofLineContaining: rect)
         let rect = rect.offsetBy(dx: shift, dy: 0)
         // The find bar's plate: one point wider than the text, with a three-point radius.
         let plate = CGPath(roundedRect: rect.insetBy(dx: -1, dy: 0), cornerWidth: Self.plateRadius, cornerHeight: Self.plateRadius, transform: nil)
@@ -103,19 +116,32 @@ final class SearchOccurrencePresentationView: NSView {
             context.setFillColor(NSColor.systemRed.withAlphaComponent(0.28).cgColor)
             context.fillPath()
             context.setFillColor(colors.matchForeground.withAlphaComponent(0.75).cgColor)
-            context.fill(CGRect(x: rect.minX, y: rect.midY.rounded(), width: rect.width, height: 1))
+            // Through the middle of the lowercase letters, not the middle of a possibly taller line.
+            let strike = baseline.map { $0 - font.xHeight / 2 } ?? rect.midY
+            context.fill(CGRect(x: rect.minX, y: strike.rounded(), width: rect.width, height: 1))
         } else {
-            context.setFillColor(colors.selectedBackground.cgColor)
+            context.setFillColor(Self.occurrenceBackground.cgColor)
             context.fillPath()
             context.saveGState()
             context.translateBy(x: shift, y: 0)
-            editor.drawTextFinderCharacters(in: occurrence.range, foregroundColor: colors.selectedForeground)
+            editor.drawTextFinderCharacters(in: occurrence.range, foregroundColor: Self.occurrenceForeground)
             context.restoreGState()
         }
     }
 }
 
 extension ReadOnlyDocumentView {
+    /// The baseline, in the view's coordinates, of the visual line a rectangle lies on.
+    func baseline(ofLineContaining rect: CGRect) -> CGFloat? {
+        guard let layout = visibleLayout else { return nil }
+        for line in layout.lines {
+            for placement in line.placements where placement.frame.minY <= rect.midY && rect.midY < placement.frame.maxY {
+                return placement.frame.minY + placement.fragment.verticalGeometry.topDownBaseline
+            }
+        }
+        return nil
+    }
+
     func setSearchOccurrences(_ occurrences: [RunestoneSearchOccurrence]) {
         if occurrences.isEmpty {
             searchOccurrencePresentationView?.removeFromSuperview()
