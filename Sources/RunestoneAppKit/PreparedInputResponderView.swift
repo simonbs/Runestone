@@ -720,7 +720,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
             }
             routeClipboard(operation, on: connection,
                 pasteboard: PreparedInputClipboardCommand.SystemPasteboard(board: self.inputPasteboardProvider()),
-                hasFocus: { self.ownsKeyFocus })
+                hasFocus: hasFocus)
             return
         case "undo:": connection.requestHistory(.undo); return
         case "redo:": connection.requestHistory(.redo); return

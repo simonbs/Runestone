@@ -4,6 +4,38 @@ import AppKit
 import XCTest
 
 final class PreparedInputClipboardCommandTests: XCTestCase {
+    func testPasteVariantsUsePlainTextAndTheSameDocumentAdmission() throws {
+        for name in ["pasteAsPlainText:", "pasteAndMatchStyle:"] {
+            let fixture = try ClipboardDispatchFixture("abc")
+            defer { try? fixture.disconnect() }
+            let board = NSPasteboard.withUniqueName()
+            defer { board.releaseGlobally() }
+            board.setString("X\r\nY", forType: .string)
+            board.setData(Data("{\\rtf1\\b formatted}".utf8), forType: .rtf)
+            fixture.view.inputPasteboardProvider = { board }
+            let selector = NSSelectorFromString(name)
+            let pasteboard = PreparedInputClipboardCommand.SystemPasteboard(board: board)
+            try fixture.select(NSRange(location: 1, length: 1))
+            XCTAssertTrue(fixture.view.canPerformEditingAction(selector, connection: fixture.connection,
+                adapter: fixture.attachment.adapter, pasteboard: pasteboard))
+            XCTAssertTrue(fixture.connection.performCoordinatedInput {
+                fixture.view.routeCommand(selector, on: fixture.connection, hasFocus: { true }) { _ in
+                    XCTFail("Paste must stay with its document")
+                    return false
+                }
+            })
+            XCTAssertEqual(fixture.host.text, "aX\r\nYc")
+            XCTAssertEqual(fixture.host.undoCount, 1)
+            XCTAssertTrue(fixture.connection.takeInputFailures().records.isEmpty)
+            XCTAssertTrue(fixture.connection.performCoordinatedInput {
+                _ = fixture.attachment.adapter.setMarkedTextReporting("", selectedRange: NSRange(location: 0, length: 0),
+                    replacementRange: NSRange(location: NSNotFound, length: 0))
+            })
+            XCTAssertFalse(fixture.view.canPerformEditingAction(selector, connection: fixture.connection,
+                adapter: fixture.attachment.adapter, pasteboard: pasteboard))
+        }
+    }
+
     func testCopyAndCutPreserveSelectedEmojiAndCRLFAndUndoRedo() throws {
         let initial = "A👩🏽‍💻\r\nB"
         let fixture = try ClipboardFixture(initial)
