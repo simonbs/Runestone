@@ -546,6 +546,7 @@ public class ReadOnlyDocumentView: NSView {
         guard !isRetired, displaySelection != selection else { return }
         displaySelection = selection
         textFinderPresentationView?.needsDisplay = true
+        searchOccurrencePresentationView?.needsDisplay = true
         gutterView?.needsDisplay = true
         needsDisplay = true
     }
@@ -1391,6 +1392,7 @@ public class ReadOnlyDocumentView: NSView {
 
     private var gutterView: GutterView?
     var textFinderPresentationView: TextFinderPresentationView?
+    var searchOccurrencePresentationView: SearchOccurrencePresentationView?
 
     private func updateGutter() {
         defer { updateTextFinderPresentation() }
@@ -1426,6 +1428,27 @@ public class ReadOnlyDocumentView: NSView {
         drawBackgroundPresentation(result, in: context)
         drawSelectionBackground(dirtyRect)
         for line in result.lines {
+            line.controller.draw(line.placements, in: context)
+            drawInvisibleCharacters(in: line)
+        }
+        // A replacement preview repeats part of this content; keep it current.
+        searchOccurrencePresentationView?.needsDisplay = true
+    }
+
+    /// Draws the document's content inside `rect` again, moved right by `shift`.
+    /// A replacement preview uses this to make room on a visual line for text
+    /// that is not in the document.
+    func drawDocumentContent(in rect: CGRect, shiftedBy shift: CGFloat, in context: CGContext) {
+        guard !isRetired, rect.width > 0, rect.height > 0, let result = visibleLayout else { return }
+        context.saveGState()
+        defer { context.restoreGState() }
+        context.translateBy(x: shift, y: 0)
+        context.clip(to: rect)
+        context.setFillColor((enclosingScrollView?.backgroundColor ?? .textBackgroundColor).cgColor)
+        context.fill(rect)
+        drawBackgroundPresentation(result, in: context)
+        drawSelectionBackground(rect)
+        for line in result.lines where line.placements.contains(where: { $0.frame.intersects(rect) }) {
             line.controller.draw(line.placements, in: context)
             drawInvisibleCharacters(in: line)
         }

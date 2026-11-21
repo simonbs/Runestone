@@ -375,6 +375,19 @@ public final class RunestoneEditableDocumentAttachment {
         view.setTextFinderMatches(ranges)
     }
 
+    /// Presents search occurrences over the document without dimming it, so they
+    /// can stay up while the user edits. An occurrence with a replacement is
+    /// previewed as a diff. Pass an empty array to remove the presentation.
+    public func setSearchOccurrences(_ occurrences: [RunestoneSearchOccurrence]) {
+        guard !detaching, !detached else { return }
+        view.setSearchOccurrences(occurrences)
+    }
+
+    /// The search occurrences currently presented over the document.
+    public var searchOccurrences: [RunestoneSearchOccurrence] {
+        view.searchOccurrencePresentationView?.occurrences ?? []
+    }
+
     /// Draws only matched glyphs for AppKit's native selected-result indicator.
     public func drawTextFinderCharacters(in range: NSRange) {
         guard textFinderSnapshot != nil else { return }

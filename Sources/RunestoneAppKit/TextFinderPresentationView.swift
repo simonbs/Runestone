@@ -99,6 +99,7 @@ extension ReadOnlyDocumentView {
     }
 
     func updateTextFinderPresentation() {
+        updateSearchOccurrencePresentation()
         guard let overlay = textFinderPresentationView else { return }
         guard let clip = enclosingScrollView?.contentView else {
             overlay.removeFromSuperview()
