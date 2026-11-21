@@ -19,8 +19,9 @@ public struct RunestoneSearchOccurrence: Equatable {
 }
 
 /// Presents search occurrences without dimming the document, so they can stay
-/// up while the user edits. An occurrence looks like the find bar's current
-/// match. A replacement preview is a diff: the occurrence struck through on red,
+/// up while the user edits. Occurrences use the find bar's styling: a muted
+/// plate for each one, and the find indicator's yellow for the one that is
+/// selected in the document. A replacement preview is a diff: the occurrence struck through on red,
 /// followed by the replacement on green.
 ///
 /// The document's layout does not contain the previewed text. The rest of the
@@ -120,11 +121,14 @@ final class SearchOccurrencePresentationView: NSView {
             let strike = baseline.map { $0 - font.xHeight / 2 } ?? rect.midY
             context.fill(CGRect(x: rect.minX, y: strike.rounded(), width: rect.width, height: 1))
         } else {
-            context.setFillColor(Self.occurrenceBackground.cgColor)
+            // As in the find bar's presentation, the occurrence selected in the document stands out.
+            let selected = editor.presentedSelectionRange == occurrence.range
+            context.setFillColor((selected ? Self.occurrenceBackground : colors.matchBackground).cgColor)
             context.fillPath()
             context.saveGState()
             context.translateBy(x: shift, y: 0)
-            editor.drawTextFinderCharacters(in: occurrence.range, foregroundColor: Self.occurrenceForeground)
+            editor.drawTextFinderCharacters(in: occurrence.range,
+                                            foregroundColor: selected ? Self.occurrenceForeground : colors.matchForeground)
             context.restoreGState()
         }
     }

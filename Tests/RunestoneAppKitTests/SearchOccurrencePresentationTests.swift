@@ -46,21 +46,31 @@ final class SearchOccurrencePresentationTests: XCTestCase {
         XCTAssertLessThan(tail.minX, match.maxX + 40)
     }
 
-    func testOccurrenceWithoutReplacementUsesTheFindHighlight() throws {
-        let (window, _, view) = makeView("let apple = 1\n")
-        view.setSearchOccurrences([.init(range: NSRange(location: 4, length: 5))])
+    func testSelectedOccurrenceIsYellowAndOthersUseTheFindBarMatchPlate() throws {
+        let (window, _, view) = makeView("let apple = 1\nlet apple = 2\n")
+        let first = NSRange(location: 4, length: 5)
+        let second = NSRange(location: 18, length: 5)
+        view.setSearchOccurrences([.init(range: first), .init(range: second)])
+        view.updateDisplaySelection(first)
         let overlay = try XCTUnwrap(view.searchOccurrencePresentationView)
-        let match = try XCTUnwrap(view.textFinderRects(for: NSRange(location: 4, length: 5)).first)
         let content = try XCTUnwrap(window.contentView)
         let bitmap = try XCTUnwrap(content.bitmapImageRepForCachingDisplay(in: content.bounds))
         content.cacheDisplay(in: content.bounds, to: bitmap)
-        let point = content.convert(overlay.convert(overlay.convert(NSPoint(x: match.midX, y: match.minY + 1), from: view), to: nil), from: nil)
-        let scale = CGFloat(bitmap.pixelsWide) / content.bounds.width
-        let pixel = try XCTUnwrap(bitmap.colorAt(x: Int(point.x * scale), y: Int((content.bounds.height - point.y) * scale))?.usingColorSpace(.sRGB))
+        func plateColor(_ range: NSRange) throws -> NSColor {
+            let match = try XCTUnwrap(view.textFinderRects(for: range).first)
+            let point = content.convert(overlay.convert(overlay.convert(NSPoint(x: match.midX, y: match.minY + 1), from: view), to: nil), from: nil)
+            let scale = CGFloat(bitmap.pixelsWide) / content.bounds.width
+            return try XCTUnwrap(bitmap.colorAt(x: Int(point.x * scale), y: Int((content.bounds.height - point.y) * scale))?.usingColorSpace(.sRGB))
+        }
         // The warm yellow of the system's find indicator; the bitmap's color space shifts exact components.
-        XCTAssertGreaterThan(pixel.redComponent, 0.85)
-        XCTAssertGreaterThan(pixel.greenComponent, pixel.blueComponent + 0.3)
-        XCTAssertLessThan(pixel.greenComponent, pixel.redComponent - 0.03, "Warmer than a pure yellow")
+        let selected = try plateColor(first)
+        XCTAssertGreaterThan(selected.redComponent, 0.85)
+        XCTAssertGreaterThan(selected.greenComponent, selected.blueComponent + 0.3)
+        XCTAssertLessThan(selected.greenComponent, selected.redComponent - 0.03, "Warmer than a pure yellow")
+        // The other occurrence has the find bar's neutral match plate.
+        let other = try plateColor(second)
+        XCTAssertEqual(other.redComponent, other.blueComponent, accuracy: 0.05)
+        XCTAssertLessThan(other.redComponent, 0.95, "Darker than the editor's background")
     }
 
     func testPreviewedTextSitsOnTheLineBaseline() throws {
