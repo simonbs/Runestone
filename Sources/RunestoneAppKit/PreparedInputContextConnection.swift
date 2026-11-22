@@ -13,6 +13,7 @@ final class PreparedInputContextConnection {
         func activate()
         func handle(_ event: NSEvent) -> Bool
         func invalidateCoordinates()
+        func selectionDidChange()
         func discardMarkedText()
         func deactivate()
     }
@@ -863,6 +864,9 @@ final class PreparedInputContextConnection {
         driverDepth += 1
         defer { finishDriverCall() }
         driver.invalidateCoordinates()
+        guard state == .connected, !focusSuspended, !view.isRetired,
+              self.driver === driver else { return }
+        driver.selectionDidChange()
     }
 
     private func finishDriverCall() {
@@ -1347,6 +1351,12 @@ final class PreparedInputContextConnection {
 
 extension PreparedInputContextConnection.Driver {
     var inputContext: NSTextInputContext? { nil }
+
+    func selectionDidChange() {
+        // Required by NSTextInputClient's Writing Tools geometry contract.
+        // Invalidating character coordinates alone doesn't refresh its affordance.
+        inputContext?.textInputClientDidUpdateSelection()
+    }
 }
 
 private var preparedContextClientKey: UInt8 = 0

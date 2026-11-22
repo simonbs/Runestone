@@ -210,6 +210,31 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         fixture.disconnect()
     }
 
+    func testWritingToolsReceivesSelectionAnchorsAndUpdatesAfterSelectionMoves() throws {
+        let fixture = try MovementIntegrationFixture("Hi how are you\nSecond line of text")
+        defer { fixture.disconnect() }
+        try fixture.setSelection(NSRange(location: 0, length: 14))
+        let first = try XCTUnwrap(fixture.client.unionRectInVisibleSelectedRange)
+        let document = try XCTUnwrap(fixture.client.documentVisibleRect)
+        XCTAssertGreaterThan(first.width, 0)
+        XCTAssertLessThan(first.midX, document.midX, "Anchor is over the selected glyphs, not the document center")
+        let notified = expectation(description: "System notified of selection geometry")
+        fixture.driver.onSelectionChange = { notified.fulfill() }
+        fixture.view.noteInputCoordinatesChanged()
+        wait(for: [notified], timeout: 3)
+        fixture.driver.onSelectionChange = nil
+        let previous = fixture.driver.selectionChanges
+        try fixture.setSelection(NSRange(location: 15, length: 6))
+        let moved = expectation(description: "System notified after moving selection")
+        fixture.driver.onSelectionChange = { moved.fulfill() }
+        wait(for: [moved], timeout: 3)
+        fixture.driver.onSelectionChange = nil
+        XCTAssertGreaterThan(fixture.driver.selectionChanges, previous)
+        let second = try XCTUnwrap(fixture.client.unionRectInVisibleSelectedRange)
+        XCTAssertNotEqual(first, second)
+        XCTAssertNotEqual(first.midX, second.midX)
+    }
+
     func testInputClientReportsVisibleCaretAndSelectionGeometry() throws {
         let fixture = try MovementIntegrationFixture("abcdef\nxy\nabcdef")
         defer { fixture.disconnect() }
@@ -1073,19 +1098,24 @@ private final class MovementIntegrationFixture {
     let window: NSWindow
     let scroll: NSScrollView
     let client: NSTextInputClient
+    let driver: MovementIntegrationDriver
 
     init(_ text: String) throws {
         _ = NSApplication.shared
         let host = MovementIntegrationHost(text)
         let queue = MovementIntegrationQueue()
         var inputClient: NSTextInputClient?
+        var inputDriver: MovementIntegrationDriver?
         let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
             host: host, lifetime: host.lifetime, bridge: host.bridge,
             makeDriver: { client in
                 inputClient = client
-                return MovementIntegrationDriver(client)
+                let driver = MovementIntegrationDriver(client)
+                inputDriver = driver
+                return driver
             }, schedule: queue.enqueue))
         self.client = try XCTUnwrap(inputClient)
+        self.driver = try XCTUnwrap(inputDriver)
         let view = try XCTUnwrap(attachment.view as? PreparedInputResponderView)
         view.inputViewportClock = { 0 }
         let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 240, height: 130),
@@ -1252,6 +1282,12 @@ private final class MovementIntegrationSnapshot: RunestoneInputReconstructionRes
 }
 
 private final class MovementIntegrationDriver: PreparedInputContextConnection.Driver {
+    var selectionChanges = 0
+    var onSelectionChange: (() -> Void)?
+    func selectionDidChange() {
+        selectionChanges += 1
+        onSelectionChange?()
+    }
     let object = NSObject()
     init(_ client: NSTextInputClient) {}
     var associationTarget: NSObject { object }
