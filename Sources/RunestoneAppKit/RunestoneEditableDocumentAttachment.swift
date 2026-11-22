@@ -300,6 +300,14 @@ public final class RunestoneEditableDocumentAttachment {
         set { (view as? PreparedInputResponderView)?.inputConnectionDidBecomeReady = newValue }
     }
 
+    /// Shared with native spelling/correction services. The text-checking
+    /// controller owns this identifier and its lifetime; hosts must not close it.
+    public var textCheckingDocumentTag: Int? {
+        precondition(Thread.isMainThread)
+        guard !detaching, !detached else { return nil }
+        return attachment?.connection.nativeTextCheckingController?.spellCheckerDocumentTag
+    }
+
     public var textFinderSnapshot: TextFinderSnapshot? {
         precondition(Thread.isMainThread)
         guard isEditable, let snapshot = attachment?.connection.textFinderSnapshot() else { return nil }

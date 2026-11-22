@@ -100,6 +100,13 @@ final class PreparedInputContextConnection {
     private var spellingCorrection: SpellingCorrection?
     private var spellingIndicatorID: UUID?
     private var inlinePredictionRequest = UUID()
+    var automaticCapitalizationEnabled: () -> Bool = { NSSpellChecker.isAutomaticCapitalizationEnabled }
+    var requestCapitalizationCandidates: (NSRange, String, [NSSpellChecker.OptionKey: Any], Int,
+                                          @escaping ([NSTextCheckingResult]) -> Void) -> Void = { range, text, options, tag, completion in
+        NSSpellChecker.shared.requestCandidates(forSelectedRange: range, in: text,
+            types: NSTextCheckingResult.CheckingType([.spelling, .correction]).rawValue,
+            options: options, inSpellDocumentWithTag: tag) { _, results in completion(results) }
+    }
     private(set) var isPresentingInlinePrediction = false
     fileprivate(set) var inlinePredictionRange: NSRange?
     var inlinePredictionPresenter: ([NSTextCheckingResult], NSTextInputClient) -> Void = {
@@ -189,7 +196,10 @@ final class PreparedInputContextConnection {
     fileprivate func setGrammarCheckingEnabled(_ enabled: Bool) {
         payload?.view.isGrammarCheckingEnabled = enabled
     }
-    fileprivate var grammarCheckingEnabled: Bool { payload?.view.isGrammarCheckingEnabled == true && payload?.view.isWritingToolsActive != true }
+    fileprivate var grammarCheckingEnabled: Bool {
+        guard let view = payload?.view else { return false }
+        return view.isGrammarCheckingEnabled && !view.isWritingToolsActive && !view.usesWritingToolsGrammarChecking
+    }
     fileprivate var checksSpellingWhileTyping: Bool { !view.isWritingToolsActive && view.displayConfiguration.checksSpellingWhileTyping }
     fileprivate var correctsSpellingAutomatically: Bool? { view.isWritingToolsActive ? false : view.displayConfiguration.correctsSpellingAutomatically }
 
@@ -579,7 +589,17 @@ final class PreparedInputContextConnection {
         insertCommittedText(value, replacementRange: replacementRange)
     }
 
+    func writingToolsGrammarPolicyDidChange() {
+        textCheckingAnnotations.removeAll()
+        if let snapshot = textFinderSnapshot() {
+            textCheckingController?.didChangeText(in: NSRange(location: 0, length: snapshot.text.utf16.count))
+        }
+    }
+
     func writingToolsActivityDidChange() {
+        // Invalidates delayed completed-word callbacks as well as predictions,
+        // even if they arrive after the Writing Tools session has already ended.
+        inputActionGeneration = UUID()
         invalidateInlinePredictionRequest()
         dismissSpellingCorrection()
         textCheckingAnnotations.removeAll()
@@ -738,7 +758,7 @@ final class PreparedInputContextConnection {
         guard !view.isWritingToolsActive else { return false }
         let correctSpelling = allowsSpelling &&
             (correctsSpellingAutomatically ?? NSSpellChecker.isAutomaticSpellingCorrectionEnabled)
-        let capitalize = NSSpellChecker.isAutomaticCapitalizationEnabled
+        let capitalize = automaticCapitalizationEnabled()
         guard correctSpelling || capitalize, end > 0,
               let controller = textCheckingController, let revision = adapter.installedRevisionForDispatch,
               let state = inputState(), !state.hasComposition,
@@ -767,7 +787,7 @@ final class PreparedInputContextConnection {
         let replacementRange = NSRange(location: start + word.location, length: word.length)
 
         func finish(_ nativeCapitalization: String?) -> Bool {
-            guard inputActionGeneration == action, isConnectedForEditing,
+            guard !view.isWritingToolsActive, inputActionGeneration == action, isConnectedForEditing,
                   adapter.installedRevisionForDispatch == revision,
                   inputState()?.selection == state.selection else { return false }
             let spelling = nativeCapitalization == nil && correctSpelling
@@ -796,8 +816,7 @@ final class PreparedInputContextConnection {
         // AppKit supplies sentence-start casing through its top candidate. Accept only a
         // case-only change to the completed word, excluding the candidate's trailing space.
         let selectedRange = NSRange(location: range.length, length: 0)
-        checker.requestCandidates(forSelectedRange: selectedRange, in: context, types: types.rawValue,
-                                  options: options, inSpellDocumentWithTag: tag) { _, results in
+        requestCapitalizationCandidates(selectedRange, context, options, tag) { results in
             let first = results.first
             let candidate = first?.range == word
                 ? first?.replacementString?.trimmingCharacters(in: .whitespacesAndNewlines) : nil
@@ -805,7 +824,7 @@ final class PreparedInputContextConnection {
                 $0 != original && $0.caseInsensitiveCompare(original) == .orderedSame ? $0 : nil
             }
             DispatchQueue.main.async {
-                if !finish(capitalization), self.inputActionGeneration == action,
+                if !finish(capitalization), !self.view.isWritingToolsActive, self.inputActionGeneration == action,
                    self.isConnectedForEditing, self.adapter.installedRevisionForDispatch == revision {
                     controller.insertedText(in: NSRange(location: end, length: delimiter.utf16.count))
                 }
@@ -820,7 +839,7 @@ final class PreparedInputContextConnection {
         let edit = RunestoneHostEdit(
             replacementRange: range, replacementText: correction,
             selectedRange: NSRange(location: caret + correction.utf16.count - range.length, length: 0))
-        guard applyHostEdit(edit) else { return false }
+        guard !view.isWritingToolsActive, applyHostEdit(edit) else { return false }
         dismissSpellingCorrection()
         let correctedRange = NSRange(location: edit.replacementRange.location, length: correction.utf16.count)
         if let revision = adapter.installedRevisionForDispatch {

@@ -248,6 +248,67 @@ final class PreparedInputResponderViewTests: XCTestCase {
         XCTAssertEqual(host.undoCount, 0)
     }
 
+    func testWritingToolsInvalidatesDelayedCorrectionsThroughSessionEnd() throws {
+        for session in ["none", "active", "ended"] {
+            let host = ResponderTestHost("We recieved")
+            let queue = ResponderTestQueue()
+            let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
+                host: host, lifetime: host.lifetime, bridge: host.bridge,
+                makeDriver: { ResponderTestDriver($0) }, schedule: queue.enqueue))
+            defer { _ = attachment.disconnect(); queue.runAll() }
+            let connection = attachment.connection
+            connection.automaticCapitalizationEnabled = { true }
+            attachment.view.displayConfiguration.correctsSpellingAutomatically = false
+            var respond: (([NSTextCheckingResult]) -> Void)?
+            let requested = expectation(description: "Deferred candidate requested: \(session)")
+            connection.requestCapitalizationCandidates = { _, _, _, _, completion in
+                respond = completion
+                requested.fulfill()
+            }
+            XCTAssertTrue(connection.resumeForFocus())
+            XCTAssertTrue(connection.setSelectionForTextFinder(NSRange(location: host.text.utf16.count, length: 0)))
+            connection.insertTextFromKeyBinding(" ", replacementRange: NSRange(location: NSNotFound, length: 0))
+            wait(for: [requested], timeout: 3)
+            if session != "none" { attachment.view.isWritingToolsActive = true }
+            if session == "ended" { attachment.view.isWritingToolsActive = false }
+            let undoCount = host.undoCount
+            try XCTUnwrap(respond)([NSTextCheckingResult.correctionCheckingResult(
+                range: NSRange(location: 3, length: 8), replacementString: "Recieved")])
+            let delivered = expectation(description: "Callback delivered")
+            DispatchQueue.main.async { delivered.fulfill() }
+            wait(for: [delivered], timeout: 3)
+            if session == "none" {
+                XCTAssertEqual(host.text, "We Recieved ")
+                XCTAssertEqual(host.undoCount, undoCount + 1)
+            } else {
+                XCTAssertEqual(host.text, "We recieved ", "Reject delayed correction during or after Writing Tools")
+                XCTAssertEqual(host.undoCount, undoCount)
+            }
+        }
+    }
+
+    func testWritingToolsGrammarOwnershipLeavesSpellingAndPreferencesIndependent() throws {
+        let host = ResponderTestHost("Original prose")
+        let queue = ResponderTestQueue()
+        let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
+            host: host, lifetime: host.lifetime, bridge: host.bridge,
+            makeDriver: { ResponderTestDriver($0) }, schedule: queue.enqueue))
+        defer { _ = attachment.disconnect(); queue.runAll() }
+        let client = try XCTUnwrap(attachment.connection.nativeTextCheckingController?.client)
+        attachment.view.displayConfiguration.checksSpellingWhileTyping = true
+        XCTAssertEqual(client.grammarCheckingType, .yes)
+        attachment.view.usesWritingToolsGrammarChecking = true
+        XCTAssertEqual(client.grammarCheckingType, .no, "Only the host checks grammar")
+        XCTAssertTrue(attachment.view.isGrammarCheckingEnabled, "Ownership does not disable the user's grammar preference")
+        XCTAssertEqual(client.spellCheckingType, .yes)
+        attachment.view.displayConfiguration.checksSpellingWhileTyping = false
+        XCTAssertTrue(attachment.view.isGrammarCheckingEnabled)
+        attachment.view.usesWritingToolsGrammarChecking = false
+        XCTAssertEqual(client.grammarCheckingType, .yes, "Native grammar resumes when the host detaches")
+        XCTAssertEqual(client.spellCheckingType, .no)
+        XCTAssertEqual(host.undoCount, 0)
+    }
+
     func testNativeSpellingCorrectionAndReversionPreserveCaretAndUndo() throws {
         try XCTSkipUnless(NSSpellChecker.isAutomaticSpellingCorrectionEnabled)
         let original = "recieved"

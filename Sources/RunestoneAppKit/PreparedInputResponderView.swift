@@ -1495,6 +1495,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         return result
     }
 
+    func writingToolsGrammarPolicyDidChange() {
+        inputConnection?.writingToolsGrammarPolicyDidChange()
+    }
+
     func writingToolsActivityDidChange() {
         inputConnection?.writingToolsActivityDidChange()
         if isWritingToolsActive {

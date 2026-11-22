@@ -87,10 +87,19 @@ public class ReadOnlyDocumentView: NSView {
         }
     }
     var writingToolsTemporaryPresentation: WritingToolsTemporaryPresentation?
+    /// The host supplies grammar results and presentation through Writing Tools.
+    /// Native spelling, corrections, and predictions retain their own roles.
+    public var usesWritingToolsGrammarChecking = false {
+        didSet {
+            guard oldValue != usesWritingToolsGrammarChecking else { return }
+            (self as? PreparedInputResponderView)?.writingToolsGrammarPolicyDidChange()
+        }
+    }
     public var writingToolsGrammarCheckingDidChange: ((Bool) -> Void)?
     public var isGrammarCheckingEnabled = true {
         didSet {
             guard oldValue != isGrammarCheckingEnabled else { return }
+            (self as? PreparedInputResponderView)?.writingToolsGrammarPolicyDidChange()
             writingToolsGrammarCheckingDidChange?(isGrammarCheckingEnabled)
         }
     }
