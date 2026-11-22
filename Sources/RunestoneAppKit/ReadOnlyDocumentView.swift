@@ -71,6 +71,37 @@ public class ReadOnlyDocumentView: NSView {
         foldingTransition = nil
     }
     private(set) var contentRevision = UUID()
+    /// Identity of the installed text snapshot, including reconstruction.
+    public var writingToolsContentRevision: UUID { contentRevision }
+    /// Coalesced, asynchronous notification after content or viewport changes.
+    /// Called outside input reservations so a host can safely query its attachment.
+    public var writingToolsPresentationDidChange: (() -> Void)?
+    private var writingToolsNotificationPending = false
+    public internal(set) var writingToolsHiddenRanges: [NSRange] = []
+    public internal(set) var writingToolsDimmedRanges: [NSRange] = []
+    public var isWritingToolsActive = false {
+        didSet {
+            guard oldValue != isWritingToolsActive else { return }
+            (self as? PreparedInputResponderView)?.writingToolsActivityDidChange()
+            needsDisplay = true
+        }
+    }
+    var writingToolsTemporaryPresentation: WritingToolsTemporaryPresentation?
+    public var isGrammarCheckingEnabled = true
+    public var writingToolsGrammarRanges: [NSRange] = [] {
+        didSet { needsDisplay = true }
+    }
+    public var writingToolsGrammarClick: ((NSRange) -> Bool)?
+
+    private func scheduleWritingToolsNotification() {
+        guard !writingToolsNotificationPending else { return }
+        writingToolsNotificationPending = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.writingToolsNotificationPending = false
+            self.writingToolsPresentationDidChange?()
+        }
+    }
     private let fallbackHeight: CGFloat
     private var emptyLineFontMetrics: (height: CGFloat, descent: CGFloat)?
     private let cacheLimit = 128
@@ -644,6 +675,11 @@ public class ReadOnlyDocumentView: NSView {
         cancelFoldingAnimation()
         guard !retirementFinished else { return }
         retirementFinished = true
+        writingToolsPresentationDidChange = nil
+        writingToolsGrammarClick = nil
+        writingToolsGrammarRanges = []
+        setWritingToolsPresentation(hiddenRanges: [], dimmedRanges: [])
+        showWritingToolsTemporaryText(nil)
         setTextFinderMatches([])
         syntaxConfiguration?.highlighter.cancel()
         syntaxConfiguration = nil
@@ -1079,6 +1115,7 @@ public class ReadOnlyDocumentView: NSView {
     /// The owner also calls this when an ancestor moves inside a stationary window.
     func noteInputCoordinatesChanged() {
         guard !isRetired else { return }
+        scheduleWritingToolsNotification()
         if !updatingViewport {
             let needsRecovery = viewportRetryExhausted
             resetViewportRecovery()
@@ -1437,10 +1474,15 @@ public class ReadOnlyDocumentView: NSView {
                                 width: max(0, result.viewport.width - gutter), height: result.viewport.height))
         drawBackgroundPresentation(result, in: context)
         drawSelectionBackground(dirtyRect)
+        drawWritingToolsGrammar(in: context)
+        context.saveGState()
+        clipWritingToolsHiddenText(in: context)
         for line in result.lines {
             line.controller.draw(line.placements, in: context)
             drawInvisibleCharacters(in: line)
         }
+        context.restoreGState()
+        drawWritingToolsDimmedText(in: context)
         // A replacement preview repeats part of this content; keep it current.
         searchOccurrencePresentationView?.needsDisplay = true
     }
@@ -1468,6 +1510,7 @@ public class ReadOnlyDocumentView: NSView {
     func drawSelectionBackground(_ dirtyRect: NSRect) {}
 
     public override func mouseDown(with event: NSEvent) {
+        if handleWritingToolsGrammarClick(event) { return }
         if handleSyntaxFoldingClick(event) { return }
         super.mouseDown(with: event)
     }

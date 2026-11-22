@@ -1059,6 +1059,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
     }
 
     override func mouseDown(with event: NSEvent) {
+        if handleWritingToolsGrammarClick(event) { return }
         if handleSyntaxFoldingClick(event) { return }
         guard focusRequested, !disarmed, !isReadOnly,
               let connection = inputConnection else { return }
@@ -1494,6 +1495,14 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         return result
     }
 
+    func writingToolsActivityDidChange() {
+        inputConnection?.writingToolsActivityDidChange()
+        if isWritingToolsActive {
+            insertionIndicator.displayMode = .hidden
+            blockCaret.isHidden = true
+        }
+    }
+
     override func drawSelectionBackground(_ dirtyRect: NSRect) {
         guard ownsKeyFocus, !disarmed, !isReadOnly, let connection = inputConnection else { return }
         connection.performResponderActivity { adapter, isCurrent in
@@ -1531,7 +1540,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
                 updateInsertionIndicator(caret)
             }
         }
-        guard !isWaitingForInitialSyntaxPaint, ownsKeyFocus, !disarmed, !isReadOnly, let connection = inputConnection else { return }
+        guard !isWritingToolsActive, !isWaitingForInitialSyntaxPaint, ownsKeyFocus, !disarmed, !isReadOnly, let connection = inputConnection else { return }
         NSColor.systemRed.setStroke()
         for rect in connection.spellingAnnotationRects where rect.intersects(dirtyRect) {
             let path = NSBezierPath()

@@ -185,9 +185,10 @@ final class PreparedInputContextConnection {
         return true
     }
 
-    fileprivate var allowsInlinePredictions: Bool { view.displayConfiguration.allowsInlinePredictions }
-    fileprivate var checksSpellingWhileTyping: Bool { view.displayConfiguration.checksSpellingWhileTyping }
-    fileprivate var correctsSpellingAutomatically: Bool? { view.displayConfiguration.correctsSpellingAutomatically }
+    fileprivate var allowsInlinePredictions: Bool { !view.isWritingToolsActive && view.displayConfiguration.allowsInlinePredictions }
+    fileprivate var grammarCheckingEnabled: Bool { payload?.view.isGrammarCheckingEnabled == true && payload?.view.isWritingToolsActive != true }
+    fileprivate var checksSpellingWhileTyping: Bool { !view.isWritingToolsActive && view.displayConfiguration.checksSpellingWhileTyping }
+    fileprivate var correctsSpellingAutomatically: Bool? { view.isWritingToolsActive ? false : view.displayConfiguration.correctsSpellingAutomatically }
 
     var spellingAnnotationRects: [NSRect] {
         guard checksSpellingWhileTyping, isConnectedForEditing else { return [] }
@@ -285,7 +286,7 @@ final class PreparedInputContextConnection {
     }
 
     fileprivate func replaceTextCheckingRange(_ range: NSRange, with value: NSAttributedString) {
-        guard replaceForTextFinder(range, with: value.string) else { return }
+        guard !view.isWritingToolsActive, replaceForTextFinder(range, with: value.string) else { return }
         textCheckingAnnotations.removeAll()
         textCheckingController?.didChangeText(in: range)
     }
@@ -575,6 +576,15 @@ final class PreparedInputContextConnection {
         insertCommittedText(value, replacementRange: replacementRange)
     }
 
+    func writingToolsActivityDidChange() {
+        invalidateInlinePredictionRequest()
+        dismissSpellingCorrection()
+        textCheckingAnnotations.removeAll()
+        if !view.isWritingToolsActive, let snapshot = textFinderSnapshot() {
+            textCheckingController?.didChangeText(in: NSRange(location: 0, length: snapshot.text.utf16.count))
+        }
+    }
+
     private func invalidateInlinePredictionRequest() {
         inlinePredictionRequest = UUID()
     }
@@ -623,7 +633,7 @@ final class PreparedInputContextConnection {
     }
 
     private func requestInlinePrediction(at caret: Int, tag: Int) {
-        guard NSSpellChecker.isAutomaticInlinePredictionEnabled, view.displayConfiguration.allowsInlinePredictions,
+        guard NSSpellChecker.isAutomaticInlinePredictionEnabled, allowsInlinePredictions,
               let revision = adapter.installedRevisionForDispatch,
               let input = inputState(), !input.hasComposition,
               input.selection == NSRange(location: caret, length: 0),
@@ -650,7 +660,7 @@ final class PreparedInputContextConnection {
                       self.activated, !self.focusSuspended, self.isConnectedForEditing,
                       self.adapter.installedRevisionForDispatch == revision,
                       let current = self.inputState(), !current.hasComposition, current.selection == input.selection else { return }
-                guard self.view.displayConfiguration.allowsInlinePredictions,
+                guard self.allowsInlinePredictions,
                       NSSpellChecker.isAutomaticInlinePredictionEnabled,
                       let client = self.proxy else { return }
                 // Keep Apple's candidate metadata and let AppKit decide whether there
@@ -722,6 +732,7 @@ final class PreparedInputContextConnection {
     }
 
     private func correctCompletedWord(before end: Int, caret: Int, delimiter: String, allowsSpelling: Bool) -> Bool {
+        guard !view.isWritingToolsActive else { return false }
         let correctSpelling = allowsSpelling &&
             (correctsSpellingAutomatically ?? NSSpellChecker.isAutomaticSpellingCorrectionEnabled)
         let capitalize = NSSpellChecker.isAutomaticCapitalizationEnabled
@@ -1329,7 +1340,10 @@ private final class PreparedContextClient: NSObject, NSTextCheckingClient {
         get { owner?.checksSpellingWhileTyping == true ? .yes : .no }
         set {}
     }
-    var grammarCheckingType: NSTextInputTraitType = .yes
+    var grammarCheckingType: NSTextInputTraitType {
+        get { owner?.grammarCheckingEnabled == true ? .yes : .no }
+        set {}
+    }
     var smartQuotesType: NSTextInputTraitType = .default
     var smartDashesType: NSTextInputTraitType = .default
     var smartInsertDeleteType: NSTextInputTraitType = .default
@@ -1339,7 +1353,7 @@ private final class PreparedContextClient: NSObject, NSTextCheckingClient {
         get { owner?.allowsInlinePredictions == false ? .no : .default }
         set {}
     }
-    var writingToolsBehavior: NSWritingToolsBehavior = .limited
+    var writingToolsBehavior: NSWritingToolsBehavior = .complete
     var allowedWritingToolsResultOptions: NSWritingToolsResultOptions = .plainText
     func insertText(_ string: Any, replacementRange: NSRange) {
         owner?.insertCommittedText(string, replacementRange: replacementRange)

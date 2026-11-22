@@ -212,6 +212,34 @@ final class PreparedInputResponderViewTests: XCTestCase {
         XCTAssertEqual(host.undoCount, 0)
     }
 
+    func testWritingToolsAdvertisesCompleteAndSuspendsCompetingNativeTextFeatures() throws {
+        let host = ResponderTestHost("Original prose")
+        let queue = ResponderTestQueue()
+        let attachment = try XCTUnwrap(PreparedInputDocumentAttachment.attachResponder(
+            host: host, lifetime: host.lifetime, bridge: host.bridge,
+            makeDriver: { ResponderTestDriver($0) }, schedule: queue.enqueue))
+        defer { _ = attachment.disconnect(); queue.runAll() }
+        let client = try XCTUnwrap(attachment.connection.nativeTextCheckingController?.client)
+        attachment.view.displayConfiguration.checksSpellingWhileTyping = true
+        attachment.view.displayConfiguration.correctsSpellingAutomatically = true
+        XCTAssertEqual(client.writingToolsBehavior, .complete)
+        XCTAssertEqual(client.allowedWritingToolsResultOptions, .plainText)
+        XCTAssertEqual(client.spellCheckingType, .yes)
+        attachment.view.isWritingToolsActive = true
+        XCTAssertEqual(client.spellCheckingType, .no)
+        XCTAssertEqual(client.autocorrectionType, .no)
+        XCTAssertEqual(client.inlinePredictionType, .no)
+        XCTAssertEqual(client.grammarCheckingType, .no)
+        client.replaceCharacters(in: NSRange(location: 0, length: 8), withAnnotatedString: NSAttributedString(string: "Stale correction"))
+        XCTAssertEqual(host.text, "Original prose")
+        attachment.view.isWritingToolsActive = false
+        XCTAssertEqual(client.spellCheckingType, .yes)
+        XCTAssertEqual(client.autocorrectionType, .yes)
+        XCTAssertEqual(client.inlinePredictionType, .default)
+        XCTAssertEqual(client.grammarCheckingType, .yes)
+        XCTAssertEqual(host.undoCount, 0)
+    }
+
     func testNativeSpellingCorrectionAndReversionPreserveCaretAndUndo() throws {
         try XCTSkipUnless(NSSpellChecker.isAutomaticSpellingCorrectionEnabled)
         let original = "recieved"
