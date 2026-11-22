@@ -210,6 +210,43 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         fixture.disconnect()
     }
 
+    func testSystemPanelAnchorUsesViewLocalSelectionAndSurvivesPanelFocus() throws {
+        let fixture = try MovementIntegrationFixture("Hi how are you\nSecond line")
+        defer { fixture.disconnect() }
+        fixture.window.orderFront(nil)
+        fixture.view.updateViewport()
+        try fixture.setSelection(NSRange(location: 0, length: 14))
+        let provider: NSViewContentSelectionInfo = fixture.view
+        let anchor = try XCTUnwrap(provider.selectionAnchorRect)
+        XCTAssertFalse(anchor.isNull)
+        XCTAssertLessThan(anchor.midX, fixture.view.visibleRect.midX)
+        let screen = fixture.window.convertToScreen(fixture.view.convert(anchor, to: nil))
+        XCTAssertEqual(screen, fixture.client.unionRectInVisibleSelectedRange)
+        fixture.connection.suspendForFocusLoss()
+        XCTAssertEqual(provider.selectionAnchorRect, anchor, "A system panel taking focus must not erase its view-local anchor")
+        XCTAssertEqual(fixture.client.unionRectInVisibleSelectedRange, .zero, "The old input client must stay inert")
+        fixture.view.isHidden = true
+        XCTAssertTrue(try XCTUnwrap(provider.selectionAnchorRect).isNull)
+    }
+
+    func testSystemPanelAnchorTracksCaretWrappingAndOffscreenSelection() throws {
+        let fixture = try MovementIntegrationFixture(String(repeating: "wrapped text ", count: 15) + "\nLast line")
+        defer { fixture.disconnect() }
+        fixture.window.orderFront(nil)
+        fixture.view.updateViewport()
+        try fixture.setSelection(NSRange(location: 2, length: 0))
+        let caret = fixture.view.selectionAnchorRect
+        XCTAssertFalse(caret.isNull)
+        XCTAssertGreaterThan(caret.height, 0)
+        try fixture.setSelection(NSRange(location: 0, length: 70))
+        let wrapped = fixture.view.selectionAnchorRect
+        XCTAssertGreaterThan(wrapped.height, caret.height)
+        XCTAssertTrue(fixture.view.visibleRect.contains(wrapped))
+        fixture.scroll.contentView.postsBoundsChangedNotifications = false
+        fixture.scroll.contentView.scroll(to: NSPoint(x: 0, y: 5000))
+        XCTAssertTrue(fixture.view.selectionAnchorRect.isNull, "Stale viewport geometry must not position native panels")
+    }
+
     func testWritingToolsReceivesSelectionAnchorsAndUpdatesAfterSelectionMoves() throws {
         let fixture = try MovementIntegrationFixture("Hi how are you\nSecond line of text")
         defer { fixture.disconnect() }

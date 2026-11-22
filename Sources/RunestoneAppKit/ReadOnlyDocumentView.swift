@@ -10,7 +10,7 @@ import RunestoneSyntax
 /// appropriate AppKit font and foreground color attributes. Input, selection,
 /// interactive editing are not provided by this view. Accessibility exposes
 /// read-only text and geometry when a current layout is available.
-public class ReadOnlyDocumentView: NSView {
+public class ReadOnlyDocumentView: NSView, NSViewContentSelectionInfo {
     final class InputMutationPermit {
         fileprivate var hasSession = false
         fileprivate init() {}
@@ -604,6 +604,21 @@ public class ReadOnlyDocumentView: NSView {
 
     var presentedSelectionState: InputSelectionState? {
         displaySelection.range.location == NSNotFound ? nil : displaySelection
+    }
+
+    /// AppKit's view-local anchor for Writing Tools panels and keyboard context
+    /// menus. This is presentation geometry, so it remains available while a
+    /// system panel owns focus; retained input-method clients remain gated.
+    public var selectionAnchorRect: NSRect {
+        guard !isRetired, !isHiddenOrHasHiddenAncestor, window?.isVisible == true,
+              let selection = presentedSelectionState,
+              let geometry = InputSelectionGeometry.geometry(selection: selection, marked: nil, in: self) else { return .null }
+        let viewport = unobscuredContentViewport(visibleRect).intersection(bounds)
+        let rects = geometry.caretRect.map { [$0] } ?? geometry.selectionRects
+        return rects.reduce(CGRect.null) { result, rect in
+            let clipped = rect.intersection(viewport)
+            return clipped.isNull || clipped.isEmpty ? result : result.union(clipped)
+        }
     }
 
     /// Selects and reveals one validated canonical UTF-16 range without
