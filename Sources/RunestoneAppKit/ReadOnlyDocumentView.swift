@@ -79,13 +79,20 @@ public class ReadOnlyDocumentView: NSView, NSViewContentSelectionInfo {
     private var writingToolsNotificationPending = false
     public internal(set) var writingToolsHiddenRanges: [NSRange] = []
     public internal(set) var writingToolsDimmedRanges: [NSRange] = []
+    var writingToolsEditProtection = WritingToolsEditProtection()
+    public var writingToolsProtectedRangeProvider: (() -> NSRange?)? {
+        didSet { resetWritingToolsEditProtection() }
+    }
     public var isWritingToolsActive = false {
         didSet {
             guard oldValue != isWritingToolsActive else { return }
+            resetWritingToolsEditProtection()
             (self as? PreparedInputResponderView)?.writingToolsActivityDidChange()
             needsDisplay = true
         }
     }
+    var writingToolsReflowAnimation: RunestoneWritingToolsReflowAnimation?
+    var writingToolsReflowHiddenRange: NSRange?
     var writingToolsTemporaryPresentation: WritingToolsTemporaryPresentation?
     /// The host supplies grammar results and presentation through Writing Tools.
     /// Native spelling, corrections, and predictions retain their own roles.
@@ -706,6 +713,8 @@ public class ReadOnlyDocumentView: NSView, NSViewContentSelectionInfo {
         guard !retirementFinished else { return }
         retirementFinished = true
         writingToolsPresentationDidChange = nil
+        writingToolsProtectedRangeProvider = nil
+        cancelWritingToolsReflowAnimation()
         writingToolsGrammarClick = nil
         writingToolsGrammarCheckingDidChange = nil
         writingToolsGrammarRanges = []
@@ -937,6 +946,8 @@ public class ReadOnlyDocumentView: NSView, NSViewContentSelectionInfo {
         inputInvalidation.suspend()
         defer { inputInvalidation.resume() }
         snapshot = NSMutableAttributedString(attributedString: content)
+        resetWritingToolsEditProtection()
+        cancelWritingToolsReflowAnimation()
         let revision = UUID()
         contentRevision = revision
         availableSyntaxFolds.removeAll()
@@ -993,6 +1004,7 @@ public class ReadOnlyDocumentView: NSView, NSViewContentSelectionInfo {
         let replacement = NSAttributedString(attributedString: content)
         guard let edit = LineEditTransaction.replace(in: manager, range: range, with: replacement.string) else { return nil }
         snapshot.replaceCharacters(in: range, with: replacement)
+        writingToolsEditProtection.didReplace(range, withLength: replacement.length)
         let revision = UUID()
         contentRevision = revision
         rebaseSyntaxCaptures(afterReplacing: range, withLength: replacement.length)

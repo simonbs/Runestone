@@ -1003,6 +1003,12 @@ final class PreparedInputContextConnection {
         }
     }
 
+    func replaceForWritingTools(_ range: NSRange, with string: String) -> Bool {
+        performTextFinderMutation(operation: .insertText) {
+            $0.insertTextReporting(string, replacementRange: range, isWritingToolsReplacement: true)
+        }
+    }
+
     func applyHostEdit(_ edit: RunestoneHostEdit) -> Bool {
         performTextFinderMutation(operation: .insertText) {
             $0.applyHostEditReporting(edit)

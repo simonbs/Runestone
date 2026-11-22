@@ -69,7 +69,7 @@ extension ReadOnlyDocumentView {
     func clipWritingToolsHiddenText(in context: CGContext) {
         // Union overlaps before using an even-odd clip; overlapping animation
         // ranges must never accidentally reveal the text underneath.
-        let ranges = (writingToolsHiddenRanges + writingToolsDimmedRanges)
+        let ranges = (writingToolsHiddenRanges + writingToolsDimmedRanges + (writingToolsReflowHiddenRange.map { [$0] } ?? []))
             .filter { $0.location != NSNotFound && $0.length > 0 }
             .sorted { $0.location < $1.location }
             .reduce(into: [NSRange]()) { result, range in

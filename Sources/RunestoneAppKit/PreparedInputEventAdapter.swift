@@ -330,13 +330,15 @@ final class PreparedInputEventAdapter {
     }
 
     func insertTextReporting(_ value: Any, replacementRange: NSRange,
+                             isWritingToolsReplacement: Bool = false,
                              isAvailable: () -> Bool = { true }) -> InputAttempt {
         perform { session in
             // Admission can call out. A clipboard action must not mutate after
             // losing its connection or focus during that callout.
             guard isAvailable(), let text = self.attributedInput(value),
                   !self.nestedMutationRejected, isAvailable() else { return false }
-            return session.insertText(text, replacementRange: replacementRange)
+            return session.insertText(text, replacementRange: replacementRange,
+                                      isWritingToolsReplacement: isWritingToolsReplacement)
         }
     }
 
@@ -730,6 +732,7 @@ final class PreparedInputEventAdapter {
             return rejected(.resetRequired, .stale, .notApplied)
         }
         reservation = lease
+        session.writingToolsEditWasRejected = false
         let result: Bool
         if !nestedMutationRejected && documentRevision() == revision {
             result = operation(session) && !session.hasDocumentConflict
@@ -749,6 +752,11 @@ final class PreparedInputEventAdapter {
         if accepted {
             state = .ready
             return InputAttempt(outcome: .processed, failure: nil)
+        }
+        if session.writingToolsEditWasRejected, !nestedMutationRejected, isCurrent,
+           !session.isStale, !session.hasDocumentConflict {
+            state = .ready
+            return rejected(.unavailable, .unavailable, .notApplied)
         }
         scheduleReset()
         // The session may already have published. Never invite a caller to

@@ -93,6 +93,8 @@ final class DocumentInputSession {
     /// The context must disconnect and adopt the canonical document when true.
     /// Queries remain valid so AppKit can safely complete disconnection.
     private(set) var hasDocumentConflict = false
+    /// A policy veto before preparation leaves the input session usable.
+    var writingToolsEditWasRejected = false
     /// A stale session reports an unavailable selection and no marked range.
     var selectedRange: NSRange { contentMatches ? storedSelection : NSRange(location: NSNotFound, length: 0) }
     var selectionState: InputSelectionState? {
@@ -287,8 +289,9 @@ final class DocumentInputSession {
 
     /// Preserves the supplied attributed runs in an accepted insertion.
     @discardableResult
-    func insertText(_ content: NSAttributedString, replacementRange: NSRange) -> Bool {
-        guard isCurrent else { return false }
+    func insertText(_ content: NSAttributedString, replacementRange: NSRange,
+                    isWritingToolsReplacement: Bool = false) -> Bool {
+        guard isCurrent, !isWritingToolsReplacement || composition == nil else { return false }
         let range = resolvedReplacementRange(replacementRange)
         let inserted: NSAttributedString
         if let composition = composition {
@@ -300,7 +303,8 @@ final class DocumentInputSession {
         guard isValid(range, in: document), inserted.length <= Int.max - (document.length - range.length) else { return false }
         let caret = NSRange(location: range.location + inserted.length, length: 0)
         return apply(range: range, replacement: inserted, selection: caret, marked: nil,
-                     kind: composition == nil ? .ordinary : .compositionCommit)
+                     kind: composition == nil ? .ordinary : .compositionCommit,
+                     isWritingToolsReplacement: isWritingToolsReplacement)
     }
 
     /// Replaces the requested document range with marked text. The provided
@@ -412,7 +416,8 @@ final class DocumentInputSession {
     }
 
     private func apply(range: NSRange, replacement: NSAttributedString,
-                       selection: NSRange, marked: NSRange?, kind: ChangeKind = .ordinary) -> Bool {
+                       selection: NSRange, marked: NSRange?, kind: ChangeKind = .ordinary,
+                       isWritingToolsReplacement: Bool = false) -> Bool {
         // Set the guard before invoking the view, whose layout can synchronously
         // deliver AppKit notifications, and retain it through the callback.
         guard let authority = mutationAuthority,
@@ -421,6 +426,11 @@ final class DocumentInputSession {
         defer {
             isApplyingChange = false
             view.endInputMutation(transaction)
+        }
+        guard contentMatches else { return false }
+        guard view.allowsWritingToolsEdit(in: range, isSystemReplacement: isWritingToolsReplacement) else {
+            writingToolsEditWasRejected = true
+            return false
         }
         let previousComposition = composition
         guard prepareChange == nil || documentIsCurrent() else { return false }

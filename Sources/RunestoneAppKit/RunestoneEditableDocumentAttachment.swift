@@ -336,6 +336,12 @@ public final class RunestoneEditableDocumentAttachment {
     /// Replaces a UTF-16 range through the document reservation and undo path.
     /// Literal payloads are not normalized, so CR, LF and CRLF remain intact.
     @discardableResult
+    public func replaceTextForWritingTools(in range: NSRange, with string: String) -> Bool {
+        precondition(Thread.isMainThread)
+        guard isEditable else { return false }
+        return attachment?.connection.replaceForWritingTools(range, with: string) == true
+    }
+
     public func replaceText(in range: NSRange, with string: String) -> Bool {
         precondition(Thread.isMainThread)
         guard isEditable else { return false }

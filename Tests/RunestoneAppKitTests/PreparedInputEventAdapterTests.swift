@@ -7,6 +7,30 @@ import XCTest
 final class PreparedInputEventAdapterTests: XCTestCase {
     private let unspecified = NSRange(location: NSNotFound, length: 0)
 
+    func testWritingToolsProtectionRejectsWithoutResettingInputSession() throws {
+        let owner = FakeEventOwner(text: "abc")
+        let scheduler = EventScheduler()
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        var resets = 0
+        let adapter = try XCTUnwrap(PreparedInputEventAdapter(view: view, snapshot: view.content,
+            initialRevision: owner.revision, documentRevision: { owner.revision },
+            typingAttributes: { [:] }, beginEvent: { owner.begin($0) },
+            beginReconstruction: { owner.beginReconstruction() }, requestReset: { resets += 1 }, schedule: scheduler.enqueue))
+        view.writingToolsProtectedRangeProvider = { NSRange(location: 0, length: 3) }
+        view.isWritingToolsActive = true
+        let attempt = adapter.insertTextReporting("blocked", replacementRange: unspecified)
+        XCTAssertEqual(attempt.outcome, .unavailable)
+        XCTAssertEqual(attempt.failure?.effect, .notApplied)
+        scheduler.runAll()
+        XCTAssertEqual(resets, 0)
+        XCTAssertEqual(owner.text, "abc")
+        XCTAssertEqual(adapter.selectedRangeForInput(), NSRange(location: 0, length: 0))
+        view.isWritingToolsActive = false
+        XCTAssertEqual(adapter.insertText("allowed", replacementRange: unspecified), .processed)
+        XCTAssertEqual(owner.text, "allowedabc")
+        XCTAssertTrue(adapter.disconnectAfterQuiescing())
+    }
+
     func testUnavailableRevisionRejectsStaleCompositionAndReconstruction() throws {
         let owner = FakeEventOwner(text: "abc")
         let scheduler = EventScheduler()
