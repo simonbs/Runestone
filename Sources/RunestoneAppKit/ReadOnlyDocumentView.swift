@@ -792,7 +792,7 @@ public class ReadOnlyDocumentView: NSView {
            let after = foldingSnapshot(in: viewport) {
             let height = visibleLayout?.lines.first(where: { $0.line.index == row }).flatMap(firstFragmentHeight(in:))
                 ?? header.data.lineHeight
-            let selected = isSelected(header) && displayConfiguration.showsSelectedLines
+            let selected = isSelected(header) && shouldHighlightSelectedLine
             let gutterColor = selected
                 ? (displayConfiguration.showsLineNumbers ? displayConfiguration.selectedGutterBackgroundColor : nil)
                     ?? displayConfiguration.selectedLineBackgroundColor
@@ -1494,7 +1494,7 @@ public class ReadOnlyDocumentView: NSView {
         if displayConfiguration.showsLineNumbers {
             for layout in result.lines {
                 guard let baseline = lineNumberBaseline(in: layout) else { continue }
-                let selected = isSelected(layout.line) && displayConfiguration.showsSelectedLines
+                let selected = isSelected(layout.line) && shouldHighlightSelectedLine
                 let attributes: [NSAttributedString.Key: Any] = [
                     .font: displayConfiguration.lineNumberFont,
                     .foregroundColor: selected ? displayConfiguration.selectedLineNumberColor : displayConfiguration.lineNumberColor
@@ -1554,8 +1554,12 @@ public class ReadOnlyDocumentView: NSView {
             NSRange(location: line.location, length: line.data.totalLength)).length > 0
     }
 
+    /// Read-only presentations can mark a line without input focus. Editable
+    /// subclasses additionally require ownership of the key-window responder.
+    var shouldHighlightSelectedLine: Bool { displayConfiguration.showsSelectedLines }
+
     func selectedLineHighlightRects(in result: ViewportLayoutCoordinator.Result) -> [CGRect] {
-        guard displayConfiguration.showsSelectedLines, displaySelection.range.length == 0 else { return [] }
+        guard shouldHighlightSelectedLine, displaySelection.range.length == 0 else { return [] }
         let gutter = gutterWidth
         return result.lines.filter { isSelected($0.line) }.flatMap { layout -> [CGRect] in
             let width = max(0, bounds.width - gutter)

@@ -160,6 +160,10 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         return window.isKeyWindow && window.firstResponder === self
     }
 
+    override var shouldHighlightSelectedLine: Bool {
+        super.shouldHighlightSelectedLine && ownsKeyFocus
+    }
+
     override func accessibilityTextState() -> AccessibilityTextState? {
         if disarmed || isReadOnly { return super.accessibilityTextState() }
         return inputConnection?.accessibilityTextState()
@@ -330,6 +334,7 @@ final class PreparedInputResponderView: ReadOnlyDocumentView,
         guard let window = window, !isRetired else { suppressFocus(); return }
         keyObservers.append(NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification,
                                                                      object: window, queue: .main) { [weak self] _ in
+            self?.needsDisplay = true
             self?.scheduleFocusCheck()
         })
         keyObservers.append(NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification,
