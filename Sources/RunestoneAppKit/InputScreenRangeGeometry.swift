@@ -68,6 +68,44 @@ enum InputScreenRangeGeometry {
         return (result, actual)
     }
 
+    /// Baseline delta uses the same fragment and affinity as firstRect. The
+    /// NSTextInputClient contract measures it from the screen rect's lower edge.
+    static func baselineDelta(at location: Int, affinity: InputCaretAffinity? = nil,
+                              in view: ReadOnlyDocumentView) -> CGFloat? {
+        let revision = view.inputGeometryRevision
+        let target = InputCaretTarget(location: location, affinity: affinity)
+        guard valid(NSRange(location: location, length: 0), in: view.manager.stringView.string),
+              let (window, layout) = viewport(in: view),
+              let rect = affinity == nil ? InputScreenCaretGeometry.rect(at: location, in: view)
+                : InputScreenCaretGeometry.rect(for: target, in: view),
+              let line = view.manager.line(containingCharacterAt: location),
+              let lineLayout = layout.lines.first(where: { $0.line === line }) else { return nil }
+        let local = min(location - line.location, line.data.length)
+        let placement: LogicalLineLayoutController.Placement?
+        if affinity?.wrapSide == .upstream {
+            placement = lineLayout.placements.first {
+                $0.fragment.range.upperBound == local && local < line.data.length
+            }
+        } else {
+            placement = lineLayout.placements.first {
+                $0.fragment.range.location <= local && local < $0.fragment.range.upperBound
+            } ?? lineLayout.placements.last {
+                local == line.data.length && $0.fragment.range.upperBound == local
+            }
+        }
+        let baseline: CGFloat
+        if let placement {
+            baseline = placement.frame.minY + placement.fragment.verticalGeometry.topDownBaseline
+        } else {
+            guard line.data.length == 0, let emptyBaseline = view.lineNumberBaseline(in: lineLayout) else { return nil }
+            baseline = emptyBaseline
+        }
+        let screen = window.convertPoint(toScreen: view.convert(NSPoint(x: 0, y: baseline), to: nil))
+        let delta = screen.y - rect.minY
+        guard delta.isFinite, stable(view, window: window, layout: layout, revision: revision) else { return nil }
+        return delta
+    }
+
     static func characterIndex(for screenPoint: NSPoint, in view: ReadOnlyDocumentView) -> Int? {
         characterIndex(for: screenPoint, in: view, requiresRepresentableCaret: false)
     }

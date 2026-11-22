@@ -235,6 +235,33 @@ final class InputScreenRangeGeometryTests: XCTestCase {
         XCTAssertNotEqual(target?.location, view.content.length)
     }
 
+    func testBaselineMatchesRenderedFragmentsAcrossWrapsAndLineSpacing() throws {
+        let (window, scroll, view) = makeView(String(repeating: "wrapped text ", count: 8), width: 95)
+        view.displayConfiguration.lineHeightMultiplier = 1.8
+        view.updateViewport()
+        let line = try XCTUnwrap(view.visibleLayout?.lines.first)
+        let placements = line.placements.filter {
+            let textRect = NSRect(x: $0.frame.minX, y: $0.frame.minY + $0.fragment.verticalGeometry.textTop,
+                                  width: $0.frame.width, height: $0.fragment.baseSize.height)
+            return textRect.intersects(scroll.contentView.bounds)
+        }
+        XCTAssertGreaterThan(placements.count, 1)
+        for placement in placements {
+            let index = line.line.location + placement.fragment.range.location
+            let delta = try XCTUnwrap(InputScreenRangeGeometry.baselineDelta(at: index, in: view))
+            XCTAssertEqual(delta, placement.fragment.descent, accuracy: 0.01)
+        }
+        let boundary = placements[0].fragment.range.upperBound
+        let upstream = InputCaretAffinity(wrapSide: .upstream, bidirectionalSide: nil,
+                                          layoutRevision: view.inputLayoutRevision)
+        let delta = try XCTUnwrap(InputScreenRangeGeometry.baselineDelta(at: boundary, affinity: upstream, in: view))
+        XCTAssertEqual(delta, placements[0].fragment.descent, accuracy: 0.01)
+        window.setFrameOrigin(NSPoint(x: 270, y: 410))
+        XCTAssertEqual(try XCTUnwrap(InputScreenRangeGeometry.baselineDelta(at: boundary, affinity: upstream, in: view)), delta, accuracy: 0.01)
+        XCTAssertNil(InputScreenRangeGeometry.baselineDelta(at: NSNotFound, in: view))
+        XCTAssertNil(InputScreenRangeGeometry.baselineDelta(at: view.content.length + 1, in: view))
+    }
+
     private func makeView(_ text: String, width: CGFloat) -> (NSWindow, NSScrollView, ReadOnlyDocumentView) {
         let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: width, height: 100),
                               styleMask: [.borderless], backing: .buffered, defer: false)

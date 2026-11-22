@@ -593,7 +593,7 @@ final class PreparedInputEventAdapter {
         actualRange?.pointee = NSRange(location: NSNotFound, length: 0)
         let content: NSAttributedString? = queryForInput(nil) {
             guard validInputRange(range) else { return nil }
-            return view.attributedContent(in: range)
+            return view.presentationAttributedSubstring(from: range)
         }
         if content != nil { actualRange?.pointee = range }
         return content
@@ -620,6 +620,16 @@ final class PreparedInputEventAdapter {
         guard let result = result else { return .zero }
         actualRange?.pointee = result.actualRange
         return result.rect
+    }
+
+    func baselineDeltaForInput(at index: Int) -> CGFloat {
+        queryForInput(0) {
+            let range = NSRange(location: index, length: 0)
+            guard validInputRange(range) else { return 0 }
+            let selection = session?.selectionStateForGeometry
+            let affinity = selection?.range == range ? selection?.affinity : nil
+            return InputScreenRangeGeometry.baselineDelta(at: index, affinity: affinity, in: view) ?? 0
+        }
     }
 
     func characterIndexForInput(point: NSPoint) -> Int {

@@ -21,6 +21,51 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         }
     }
 
+    func testNativeInputClientExposesDisplayedAttributesAndBaseline() throws {
+        let fixture = try MovementIntegrationFixture("Display attributes")
+        fixture.view.displayConfiguration.kern = 2
+        fixture.view.displayConfiguration.lineHeightMultiplier = 1.8
+        fixture.view.updateViewport()
+        var actual = NSRange(location: NSNotFound, length: 0)
+        let text = try XCTUnwrap(fixture.client.attributedSubstring(
+            forProposedRange: NSRange(location: 0, length: 7), actualRange: &actual))
+        XCTAssertEqual(actual, NSRange(location: 0, length: 7))
+        XCTAssertNotNil(text.attribute(.font, at: 0, effectiveRange: nil))
+        XCTAssertEqual(text.attribute(.kern, at: 0, effectiveRange: nil) as? CGFloat, 2)
+        XCTAssertNil(fixture.view.content.attribute(.kern, at: 0, effectiveRange: nil),
+                     "Presentation attributes must not leak into canonical content")
+        let fragment = try XCTUnwrap(fixture.view.visibleLayout?.lines.first?.placements.first?.fragment)
+        let delta = try XCTUnwrap(fixture.client.baselineDeltaForCharacter?(at: 0))
+        XCTAssertEqual(delta, fragment.descent, accuracy: 0.01)
+        XCTAssertEqual(fixture.client.baselineDeltaForCharacter?(at: NSNotFound), 0)
+        fixture.disconnect()
+        XCTAssertEqual(fixture.client.baselineDeltaForCharacter?(at: 0), 0)
+    }
+
+    func testSpellingClientReturnsViewCoordinatesAndClearsUnavailableGeometry() throws {
+        let fixture = try MovementIntegrationFixture("Spelling geometry")
+        let checker = try XCTUnwrap(fixture.client as? NSTextCheckingClient)
+        let range = NSRange(location: 0, length: 5)
+        var rect = NSRect.zero
+        var actual = NSRange(location: NSNotFound, length: 0)
+        let returned = try XCTUnwrap(checker.view(for: range, firstRect: &rect, actualRange: &actual))
+        XCTAssertTrue(returned === fixture.view)
+        let screen = try XCTUnwrap(InputScreenRangeGeometry.firstRect(for: range, in: fixture.view))
+        let expected = fixture.view.convert(fixture.window.convertFromScreen(screen.rect), from: nil)
+        XCTAssertEqual(rect.minX, expected.minX, accuracy: 0.01)
+        XCTAssertEqual(rect.minY, expected.minY, accuracy: 0.01)
+        XCTAssertEqual(rect.size, expected.size)
+        XCTAssertEqual(actual, screen.actualRange)
+        fixture.window.setFrameOrigin(NSPoint(x: 380, y: 250))
+        var moved = NSRect.zero
+        XCTAssertTrue(checker.view(for: range, firstRect: &moved, actualRange: nil) === fixture.view)
+        XCTAssertEqual(moved, rect, "Window movement must not move view-local spelling geometry")
+        fixture.disconnect()
+        XCTAssertNil(checker.view(for: range, firstRect: &rect, actualRange: &actual))
+        XCTAssertEqual(rect, .zero)
+        XCTAssertEqual(actual.location, NSNotFound)
+    }
+
     func testPointerAndIMEUseBidiCaretAffinity() throws {
         let text = "abc אבגד xyz"
         let fixture = try MovementIntegrationFixture(text)

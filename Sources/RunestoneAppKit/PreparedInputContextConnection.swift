@@ -299,7 +299,8 @@ final class PreparedInputContextConnection {
         guard let snapshot = textFinderSnapshot(),
               let clamped = PreparedInputTextCheckingAnnotations.clamp(range, textLength: (snapshot.text as NSString).length),
               let geometry = InputScreenRangeGeometry.firstRect(for: clamped, in: view) else { return nil }
-        firstRect?.pointee = geometry.rect
+        guard let window = view.window else { return nil }
+        firstRect?.pointee = view.convert(window.convertFromScreen(geometry.rect), from: nil)
         actualRange?.pointee = geometry.actualRange
         return view
     }
@@ -1379,6 +1380,9 @@ private final class PreparedContextClient: NSObject, NSTextCheckingClient {
         actualRange?.pointee = result.1
         return result.0
     }
+    func baselineDeltaForCharacter(at anIndex: Int) -> CGFloat {
+        owner?.query(0) { $0.baselineDeltaForInput(at: anIndex) } ?? 0
+    }
     func characterIndex(for point: NSPoint) -> Int {
         owner?.query(NSNotFound) { $0.characterIndexForInput(point: point) } ?? NSNotFound
     }
@@ -1399,7 +1403,9 @@ private final class PreparedContextClient: NSObject, NSTextCheckingClient {
     }
     func selectAndShow(_ range: NSRange) { owner?.selectTextCheckingRange(range) }
     func view(for range: NSRange, firstRect: NSRectPointer?, actualRange: NSRangePointer?) -> NSView? {
-        owner?.textCheckingView(for: range, firstRect: firstRect, actualRange: actualRange)
+        firstRect?.pointee = .zero
+        actualRange?.pointee = NSRange(location: NSNotFound, length: 0)
+        return owner?.textCheckingView(for: range, firstRect: firstRect, actualRange: actualRange)
     }
     func candidateListTouchBarItem() -> NSCandidateListTouchBarItem<AnyObject>? { nil }
 }
