@@ -87,7 +87,13 @@ public class ReadOnlyDocumentView: NSView {
         }
     }
     var writingToolsTemporaryPresentation: WritingToolsTemporaryPresentation?
-    public var isGrammarCheckingEnabled = true
+    public var writingToolsGrammarCheckingDidChange: ((Bool) -> Void)?
+    public var isGrammarCheckingEnabled = true {
+        didSet {
+            guard oldValue != isGrammarCheckingEnabled else { return }
+            writingToolsGrammarCheckingDidChange?(isGrammarCheckingEnabled)
+        }
+    }
     public var writingToolsGrammarRanges: [NSRange] = [] {
         didSet { needsDisplay = true }
     }
@@ -677,6 +683,7 @@ public class ReadOnlyDocumentView: NSView {
         retirementFinished = true
         writingToolsPresentationDidChange = nil
         writingToolsGrammarClick = nil
+        writingToolsGrammarCheckingDidChange = nil
         writingToolsGrammarRanges = []
         setWritingToolsPresentation(hiddenRanges: [], dimmedRanges: [])
         showWritingToolsTemporaryText(nil)

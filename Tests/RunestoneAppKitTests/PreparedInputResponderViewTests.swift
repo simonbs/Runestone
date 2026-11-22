@@ -237,6 +237,14 @@ final class PreparedInputResponderViewTests: XCTestCase {
         XCTAssertEqual(client.autocorrectionType, .yes)
         XCTAssertEqual(client.inlinePredictionType, .default)
         XCTAssertEqual(client.grammarCheckingType, .yes)
+        var enabled: Bool?
+        attachment.view.writingToolsGrammarCheckingDidChange = { enabled = $0 }
+        let nativeClient = try XCTUnwrap(client as? NSObject)
+        nativeClient.setValue(NSTextInputTraitType.no.rawValue, forKey: "grammarCheckingType")
+        XCTAssertEqual(enabled, false)
+        XCTAssertFalse(attachment.view.isGrammarCheckingEnabled)
+        nativeClient.setValue(NSTextInputTraitType.yes.rawValue, forKey: "grammarCheckingType")
+        XCTAssertEqual(enabled, true)
         XCTAssertEqual(host.undoCount, 0)
     }
 

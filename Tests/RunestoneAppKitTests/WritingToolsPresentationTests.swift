@@ -45,6 +45,8 @@ final class WritingToolsPresentationTests: XCTestCase {
         XCTAssertEqual(previewView.content.string, "This is wrong.")
         XCTAssertEqual(view.content.string, "This are wrong.")
         XCTAssertEqual(view.contentRevision, revision)
+        XCTAssertTrue(previewView.isAccessibilityHidden())
+        XCTAssertTrue(try XCTUnwrap(view.writingToolsTemporaryPresentation).isAccessibilityHidden())
         XCTAssertNil(view.writingToolsTemporaryPresentation?.hitTest(NSPoint(x: 5, y: 5)))
         view.showWritingToolsTemporaryText(nil)
         XCTAssertTrue(view.writingToolsPreviewView === view)

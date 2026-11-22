@@ -186,6 +186,9 @@ final class PreparedInputContextConnection {
     }
 
     fileprivate var allowsInlinePredictions: Bool { !view.isWritingToolsActive && view.displayConfiguration.allowsInlinePredictions }
+    fileprivate func setGrammarCheckingEnabled(_ enabled: Bool) {
+        payload?.view.isGrammarCheckingEnabled = enabled
+    }
     fileprivate var grammarCheckingEnabled: Bool { payload?.view.isGrammarCheckingEnabled == true && payload?.view.isWritingToolsActive != true }
     fileprivate var checksSpellingWhileTyping: Bool { !view.isWritingToolsActive && view.displayConfiguration.checksSpellingWhileTyping }
     fileprivate var correctsSpellingAutomatically: Bool? { view.isWritingToolsActive ? false : view.displayConfiguration.correctsSpellingAutomatically }
@@ -1342,7 +1345,7 @@ private final class PreparedContextClient: NSObject, NSTextCheckingClient {
     }
     var grammarCheckingType: NSTextInputTraitType {
         get { owner?.grammarCheckingEnabled == true ? .yes : .no }
-        set {}
+        set { owner?.setGrammarCheckingEnabled(newValue != .no) }
     }
     var smartQuotesType: NSTextInputTraitType = .default
     var smartDashesType: NSTextInputTraitType = .default

@@ -168,7 +168,8 @@ final class WritingToolsTemporaryPresentation: NSScrollView {
         textView.displayConfiguration = editor.displayConfiguration
         documentView = textView
         setAccessibilityElement(false)
-        textView.setAccessibilityElement(false)
+        setAccessibilityHidden(true)
+        textView.setAccessibilityHidden(true)
     }
 
     required init?(coder: NSCoder) { nil }
