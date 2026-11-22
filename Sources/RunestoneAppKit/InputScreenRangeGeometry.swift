@@ -85,9 +85,31 @@ enum InputScreenRangeGeometry {
         guard screenPoint.x.isFinite, screenPoint.y.isFinite,
               let (window, layout) = viewport(in: view) else { return nil }
         let point = view.convert(window.convertPoint(fromScreen: screenPoint), from: nil)
-        guard let target = caretTarget(forDocumentPoint: point, in: view, layout: layout),
+        guard layout.viewport.contains(point),
+              let target = caretTarget(forDocumentPoint: point, in: view, layout: layout)
+                ?? endOfDocumentTarget(below: point, in: view, layout: layout),
               stable(view, window: window, layout: layout, revision: revision) else { return nil }
         return target
+    }
+
+    /// Like NSTextView, a click in blank document space below the final row
+    /// places the insertion point at EOF, regardless of its horizontal position.
+    /// Do not synthesize EOF when the final fragment is offscreen or unprepared.
+    private static func endOfDocumentTarget(below point: NSPoint, in view: ReadOnlyDocumentView,
+                                             layout: ViewportLayoutCoordinator.Result) -> InputCaretTarget? {
+        let length = view.manager.stringView.string.length
+        guard let last = layout.lines.last,
+              last.line.location + last.line.data.length == length else { return nil }
+        let bottom: CGFloat
+        if last.line.data.length == 0 {
+            bottom = last.line.yPosition + last.line.data.lineHeight
+        } else {
+            guard let placement = last.placements.last,
+                  placement.fragment.range.upperBound == last.line.data.length else { return nil }
+            bottom = placement.frame.maxY
+        }
+        guard bottom.isFinite, point.y >= bottom else { return nil }
+        return InputCaretTarget(location: length, affinity: nil)
     }
 
     static func caretTargetForPointerDrag(for screenPoint: NSPoint, in view: ReadOnlyDocumentView) -> InputCaretTarget? {

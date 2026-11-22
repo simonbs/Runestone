@@ -5,6 +5,22 @@ import CoreText
 import XCTest
 
 final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
+    func testBlankSpaceClickCollapsesSelectionThroughAdmittedPointerInput() throws {
+        for text in ["😀 first\nlast", "last\n"] {
+            let fixture = try MovementIntegrationFixture(text)
+            defer { fixture.disconnect() }
+            try fixture.setSelection(NSRange(location: 0, length: text.utf16.count))
+            let point = fixture.window.convertPoint(toScreen: fixture.view.convert(
+                NSPoint(x: 15, y: fixture.scroll.contentView.bounds.maxY - 2), to: nil))
+            XCTAssertTrue(fixture.connection.performCoordinatedInput {
+                fixture.view.beginPointerSelection(at: point, extending: false,
+                    connection: fixture.connection, hasFocus: { true })
+            })
+            XCTAssertEqual(fixture.selection, NSRange(location: text.utf16.count, length: 0))
+            XCTAssertEqual(fixture.view.content.string, text)
+        }
+    }
+
     func testPointerAndIMEUseBidiCaretAffinity() throws {
         let text = "abc אבגד xyz"
         let fixture = try MovementIntegrationFixture(text)

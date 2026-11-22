@@ -205,6 +205,36 @@ final class InputScreenRangeGeometryTests: XCTestCase {
         XCTAssertNil(InputScreenRangeGeometry.firstRect(for: NSRange(location: 0, length: Int.max), in: view))
     }
 
+    func testPointerBelowFinalTextMapsToEOFWithoutChangingIMEHitTesting() throws {
+        for text in ["", "😀 last", "first\nlast", "last\n", "\n"] {
+            let (window, scroll, view) = makeView(text, width: 180)
+            let native = NSTextView(frame: NSRect(x: 0, y: 0, width: 180, height: 100))
+            native.font = NSFont.systemFont(ofSize: 16)
+            native.string = text
+            for x in [CGFloat(1), 90, 179] {
+                let point = NSPoint(x: x, y: scroll.contentView.bounds.maxY - 2)
+                let screen = window.convertPoint(toScreen: view.convert(point, to: nil))
+                let target = try XCTUnwrap(InputScreenRangeGeometry.caretTargetForPointer(for: screen, in: view), text)
+                XCTAssertEqual(target.location, text.utf16.count, text)
+                XCTAssertEqual(target.location, native.characterIndexForInsertion(at: point),
+                               "Blank-space insertion must match native NSTextView")
+                XCTAssertNil(InputScreenRangeGeometry.characterIndex(for: screen, in: view),
+                             "An IME character query must still reject points outside text")
+            }
+            let outside = window.convertPoint(toScreen: view.convert(
+                NSPoint(x: scroll.contentView.bounds.maxX + 1, y: 95), to: nil))
+            XCTAssertNil(InputScreenRangeGeometry.caretTargetForPointer(for: outside, in: view))
+        }
+    }
+
+    func testPointerDoesNotInventOffscreenDocumentEnd() {
+        let (window, scroll, view) = makeView(String(repeating: "long wrapped text ", count: 100), width: 180)
+        let screen = window.convertPoint(toScreen: view.convert(
+            NSPoint(x: 10, y: scroll.contentView.bounds.maxY - 2), to: nil))
+        let target = InputScreenRangeGeometry.caretTargetForPointer(for: screen, in: view)
+        XCTAssertNotEqual(target?.location, view.content.length)
+    }
+
     private func makeView(_ text: String, width: CGFloat) -> (NSWindow, NSScrollView, ReadOnlyDocumentView) {
         let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: width, height: 100),
                               styleMask: [.borderless], backing: .buffered, defer: false)
