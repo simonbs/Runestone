@@ -216,6 +216,7 @@ final class InputScreenRangeGeometryTests: XCTestCase {
                 let screen = window.convertPoint(toScreen: view.convert(point, to: nil))
                 let target = try XCTUnwrap(InputScreenRangeGeometry.caretTargetForPointer(for: screen, in: view), text)
                 XCTAssertEqual(target.location, text.utf16.count, text)
+                XCTAssertEqual(view.characterIndexForInsertion(at: point), target.location)
                 XCTAssertEqual(target.location, native.characterIndexForInsertion(at: point),
                                "Blank-space insertion must match native NSTextView")
                 XCTAssertNil(InputScreenRangeGeometry.characterIndex(for: screen, in: view),

@@ -21,6 +21,18 @@ final class PreparedInputResponderMovementIntegrationTests: XCTestCase {
         }
     }
 
+    func testNativeVisibleRectangleExcludesChromeInsets() throws {
+        let fixture = try MovementIntegrationFixture("Visible editor")
+        defer { fixture.disconnect() }
+        fixture.scroll.contentInsets = NSEdgeInsets(top: 10, left: 0, bottom: 12, right: 0)
+        fixture.scroll.tile()
+        fixture.view.updateViewport()
+        let visible = fixture.view.unobscuredContentViewport(fixture.view.visibleRect).intersection(fixture.view.bounds)
+        XCTAssertLessThan(visible.height, fixture.scroll.contentView.bounds.height)
+        let expected = fixture.window.convertToScreen(fixture.view.convert(visible, to: nil))
+        XCTAssertEqual(fixture.client.documentVisibleRect, expected)
+    }
+
     func testNativeInputClientExposesDisplayedAttributesAndBaseline() throws {
         let fixture = try MovementIntegrationFixture("Display attributes")
         fixture.view.displayConfiguration.kern = 2

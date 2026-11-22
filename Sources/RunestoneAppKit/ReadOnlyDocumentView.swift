@@ -671,6 +671,16 @@ public class ReadOnlyDocumentView: NSView {
         self.init(snapshot: content, fallbackHeight: 16)
     }
 
+    /// The closest insertion position for a mouse point in this view's
+    /// coordinates, matching NSTextView's insertion-query convention. Unlike
+    /// NSTextInputClient.characterIndex(for:), this also resolves blank space.
+    /// Returns NSNotFound when current viewport geometry is unavailable.
+    public func characterIndexForInsertion(at point: NSPoint) -> Int {
+        guard !isRetired, let window else { return NSNotFound }
+        let screen = window.convertPoint(toScreen: convert(point, to: nil))
+        return InputScreenRangeGeometry.caretTargetForPointer(for: screen, in: self)?.location ?? NSNotFound
+    }
+
     /// A copy of the current document snapshot, or an empty snapshot after this
     /// view has been permanently retired by an internal input owner.
     public var content: NSAttributedString {

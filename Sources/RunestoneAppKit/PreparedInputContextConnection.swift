@@ -308,7 +308,9 @@ final class PreparedInputContextConnection {
     fileprivate var documentVisibleRect: NSRect {
         query(.zero) { _ in
             guard let window = view.window else { return .zero }
-            return window.convertToScreen(view.convert(view.visibleRect, to: nil))
+            let visible = view.unobscuredContentViewport(view.visibleRect).intersection(view.bounds)
+            guard !visible.isEmpty else { return .zero }
+            return window.convertToScreen(view.convert(visible, to: nil))
         }
     }
 
@@ -317,11 +319,13 @@ final class PreparedInputContextConnection {
             guard let window = view.window,
                   let selection = adapter.selectionStateForHost(),
                   let geometry = InputSelectionGeometry.geometry(selection: selection, marked: nil, in: view) else { return .zero }
-            if var caret = geometry.caretRect {
+            let visible = view.unobscuredContentViewport(view.visibleRect).intersection(view.bounds)
+            if let caretRect = geometry.caretRect {
+                var caret = caretRect.intersection(visible)
+                guard !caret.isNull, !caret.isEmpty else { return .zero }
                 caret.size.width = 0
                 return window.convertToScreen(view.convert(caret, to: nil))
             }
-            let visible = view.visibleRect
             let union = geometry.selectionRects.reduce(CGRect.null) { result, rect in
                 result.union(rect.intersection(visible))
             }
