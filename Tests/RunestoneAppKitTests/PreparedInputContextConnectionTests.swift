@@ -6,6 +6,39 @@ import XCTest
 final class PreparedInputContextConnectionTests: XCTestCase {
     private let unspecified = NSRange(location: NSNotFound, length: 0)
 
+    func testWritingToolsRejectionKeepsNativeClientConnected() throws {
+        let queue = ContextQueue()
+        let owner = ContextOwner(text: "abc")
+        let view = ReadOnlyDocumentView(content: NSAttributedString(string: owner.text))
+        let adapter = try makeAdapter(owner, view, queue)
+        var drivers: [ContextFakeDriver] = []
+        let connection = try XCTUnwrap(PreparedInputContextConnection(adapter: adapter, view: view, makeDriver: { client in
+            let driver = ContextFakeDriver(client: client)
+            drivers.append(driver)
+            return driver
+        }, schedule: queue.enqueue))
+        XCTAssertTrue(connection.activate())
+        let client = try XCTUnwrap(drivers.first?.client)
+        XCTAssertTrue(client is NSResponder)
+        XCTAssertTrue((client as? NSResponder)?.nextResponder === view)
+        XCTAssertTrue((client as AnyObject).responds(to: NSSelectorFromString("window")))
+        XCTAssertTrue((client as AnyObject).responds(to: NSSelectorFromString("convertRect:fromView:")))
+        XCTAssertTrue((client as AnyObject).responds(to: NSSelectorFromString("selectionAnchorRect")))
+        view.writingToolsProtectedRangeProvider = { NSRange(location: 0, length: 2) }
+        view.isWritingToolsActive = true
+        XCTAssertFalse(connection.replaceForTextFinder(NSRange(location: 0, length: 1), with: "blocked"))
+        queue.runAll()
+        XCTAssertEqual(drivers.count, 1)
+        XCTAssertEqual(connection.inputState()?.selection, NSRange(location: 0, length: 0))
+        XCTAssertTrue(connection.replaceForTextFinder(NSRange(location: 3, length: 0), with: "!"))
+        XCTAssertTrue(connection.replaceForWritingTools(NSRange(location: 0, length: 2), with: "system"))
+        XCTAssertEqual(owner.text, "systemc!")
+        XCTAssertTrue(view.isWritingToolsActive)
+        XCTAssertFalse(connection.disconnect())
+        queue.runAll()
+        XCTAssertTrue(connection.isDisconnected)
+    }
+
     func testStaleCompositionDiscardsContextBeforeReconstructingNewestSnapshot() throws {
         let queue = ContextQueue()
         let owner = ContextOwner(text: "abc")

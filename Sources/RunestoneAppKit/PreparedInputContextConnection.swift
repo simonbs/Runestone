@@ -193,6 +193,7 @@ final class PreparedInputContextConnection {
         return true
     }
 
+    fileprivate var inputClientView: NSView { view }
     fileprivate var allowsInlinePredictions: Bool { !view.isWritingToolsActive && view.displayConfiguration.allowsInlinePredictions }
     fileprivate func setGrammarCheckingEnabled(_ enabled: Bool) {
         payload?.view.isGrammarCheckingEnabled = enabled
@@ -1061,7 +1062,10 @@ final class PreparedInputContextConnection {
         defer { callbackDepth -= 1; finishActivity() }
         let attempt = action(adapter)
         if let failure = attempt.failure { recordInputFailure(operation: operation, failure: failure) }
-        if attempt.outcome != .processed { requestReset() }
+        if attempt.outcome != .processed,
+           attempt.failure != .init(reason: .writingToolsProtectedRange, effect: .notApplied) {
+            requestReset()
+        }
     }
 
     fileprivate func command(_ selector: Selector) {
@@ -1368,8 +1372,22 @@ extension PreparedInputContextConnection.Driver {
 private var preparedContextClientKey: UInt8 = 0
 
 /// The associated proxy never owns its context, adapter, view, or coordinator.
-private final class PreparedContextClient: NSObject, NSTextCheckingClient {
+private final class PreparedContextClient: NSResponder, NSTextCheckingClient {
     weak var owner: PreparedInputContextConnection?
+    @objc var window: NSWindow? { owner?.inputClientView.window }
+    override var nextResponder: NSResponder? {
+        get { owner?.inputClientView }
+        set {}
+    }
+    // Native candidate and cursor UI query view geometry in addition to the
+    // NSTextInputClient protocol. Forward those queries to the actual editor.
+    override func responds(to selector: Selector!) -> Bool {
+        super.responds(to: selector) || owner?.inputClientView.responds(to: selector) == true
+    }
+    override func forwardingTarget(for selector: Selector!) -> Any? {
+        if let view = owner?.inputClientView, view.responds(to: selector) { return view }
+        return super.forwardingTarget(for: selector)
+    }
     var autocorrectionType: NSTextInputTraitType {
         get { owner?.correctsSpellingAutomatically.map { $0 ? .yes : .no } ?? .default }
         set {}
@@ -1403,7 +1421,7 @@ private final class PreparedContextClient: NSObject, NSTextCheckingClient {
         owner?.inlinePredictionRange = nil
         owner?.mutate(operation: .unmarkText) { $0.unmarkTextReporting() }
     }
-    func doCommand(by selector: Selector) { owner?.command(selector) }
+    override func doCommand(by selector: Selector) { owner?.command(selector) }
     func selectedRange() -> NSRange {
         owner?.query(NSRange(location: NSNotFound, length: 0)) { $0.selectedRangeForInput() }
             ?? NSRange(location: NSNotFound, length: 0)

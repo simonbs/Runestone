@@ -55,6 +55,7 @@ final class PreparedInputEventAdapter {
         enum Reason: Equatable {
             case busy, stale, reentrant, unavailable, admittedFailure
             case unsupported, compositionActive, compositionDiscarded, invalidSelection
+            case writingToolsProtectedRange
         }
         enum Effect: Equatable { case notApplied, mayHaveApplied }
         let reason: Reason
@@ -756,7 +757,7 @@ final class PreparedInputEventAdapter {
         if session.writingToolsEditWasRejected, !nestedMutationRejected, isCurrent,
            !session.isStale, !session.hasDocumentConflict {
             state = .ready
-            return rejected(.unavailable, .unavailable, .notApplied)
+            return rejected(.unavailable, .writingToolsProtectedRange, .notApplied)
         }
         scheduleReset()
         // The session may already have published. Never invite a caller to
