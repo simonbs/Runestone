@@ -1874,6 +1874,9 @@ public class ReadOnlyDocumentView: NSView, NSViewContentSelectionInfo {
     }
 
     private func requestVisibleSyntaxIfNeeded() {
+        // A destination query can replace controllers and cancel a cold first fold.
+        // The completion viewport update requests its colors after the snapshots finish.
+        guard foldingMinimumFrameHeight == nil else { return }
         guard let highlighter = syntaxConfiguration?.highlighter,
               syntaxParsedRevision == contentRevision,
               let lines = visibleLayout?.lines, let first = lines.first, let last = lines.last else { return }
@@ -1891,6 +1894,9 @@ public class ReadOnlyDocumentView: NSView, NSViewContentSelectionInfo {
                       self.syntaxConfiguration?.highlighter === highlighter,
                       self.contentRevision == revision, self.syntaxParsedRevision == revision,
                       self.syntaxRequestToken == token else { return }
+                // A query already in flight may finish after folding has started.
+                // Leave its range uncached so the completion viewport update retries it.
+                guard self.foldingMinimumFrameHeight == nil else { return }
                 defer { self.finishInitialSyntaxPaint() }
                 guard case .success(let captures) = result else { return }
                 let previous = self.syntaxCaptures

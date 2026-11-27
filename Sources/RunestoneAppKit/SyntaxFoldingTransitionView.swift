@@ -1,5 +1,6 @@
 #if canImport(AppKit)
 import AppKit
+import QuartzCore
 
 /// The same SF Symbol and rotation convention as the UIKit gutter.
 enum SyntaxFoldIndicator {
@@ -15,7 +16,9 @@ enum SyntaxFoldIndicator {
 
     static func draw(at center: CGPoint, collapsed: Bool, color: NSColor, in context: CGContext,
                      rotation: CGFloat? = nil) {
-        guard let image = image(color: color) else { return }
+        guard let image = image(color: color) else {
+            return
+        }
         context.saveGState()
         defer { context.restoreGState() }
         context.translateBy(x: center.x, y: center.y)
@@ -28,7 +31,7 @@ enum SyntaxFoldIndicator {
 
 /// Animate two viewport-sized snapshots while the actual document geometry is
 /// committed once. This keeps large folds bounded and input coordinates current.
-final class SyntaxFoldingTransitionView: NSView, NSAnimationDelegate {
+final class SyntaxFoldingTransitionView: NSView {
     let layoutRevision: UUID
     private let before: NSImage
     private let after: NSImage
@@ -40,7 +43,8 @@ final class SyntaxFoldingTransitionView: NSView, NSAnimationDelegate {
     private let chevronColor: NSColor
     private let gutterColor: NSColor
     private let backgroundColor: NSColor
-    private var animation: ProgressAnimation?
+    private var animation: Timer?
+    private var animationStartedAt: CFTimeInterval = 0
     private var completion: (() -> Void)?
     var progress: CGFloat = 0
     override var isFlipped: Bool { true }
@@ -69,27 +73,33 @@ final class SyntaxFoldingTransitionView: NSView, NSAnimationDelegate {
 
     func start(completion: @escaping () -> Void) {
         self.completion = completion
-        let animation = ProgressAnimation(duration: 0.324, animationCurve: .linear)
-        animation.owner = self
-        animation.animationBlockingMode = .nonblocking
-        animation.frameRate = 60
-        animation.delegate = self
+        animationStartedAt = CACurrentMediaTime()
+        let animation = Timer(timeInterval: 1 / 60, repeats: true) { [weak self] timer in
+            guard let self else {
+                timer.invalidate()
+                return
+            }
+            self.advanceAnimation()
+        }
         self.animation = animation
-        animation.start()
+        RunLoop.main.add(animation, forMode: .common)
     }
 
     func cancel() {
-        animation?.stop()
+        animation?.invalidate()
         animation = nil
         completion = nil
         removeFromSuperview()
     }
 
-    func animationDidEnd(_ animation: NSAnimation) {
+    private func advanceAnimation() {
+        progress = min(1, CGFloat((CACurrentMediaTime() - animationStartedAt) / 0.324))
+        needsDisplay = true
+        guard progress >= 1 else {
+            return
+        }
         let completed = completion
-        completion = nil
-        self.animation = nil
-        removeFromSuperview()
+        cancel()
         completed?()
     }
 
@@ -126,20 +136,12 @@ final class SyntaxFoldingTransitionView: NSView, NSAnimationDelegate {
                       offset: CGFloat = 0, opacity: CGFloat = 1) {
         let start = max(0, top)
         let finish = min(bounds.height, end)
-        guard finish > start, opacity > 0 else { return }
+        guard finish > start, opacity > 0 else {
+            return
+        }
         image.draw(in: CGRect(x: 0, y: start + offset, width: bounds.width, height: finish - start),
                    from: CGRect(x: 0, y: image.size.height - finish, width: image.size.width, height: finish - start),
                    operation: .sourceOver, fraction: opacity, respectFlipped: true, hints: nil)
-    }
-
-    private final class ProgressAnimation: NSAnimation {
-        weak var owner: SyntaxFoldingTransitionView?
-        override var currentProgress: NSAnimation.Progress {
-            didSet {
-                owner?.progress = CGFloat(currentProgress)
-                owner?.needsDisplay = true
-            }
-        }
     }
 }
 #endif
