@@ -157,6 +157,22 @@ final class AppKitSyntaxPresentationTests: XCTestCase {
         XCTAssertEqual(view.content.string, fixture.text)
     }
 
+    func testFirstCollapseKeepsViewportUntilAnimationFinishes() throws {
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { throw XCTSkip("Reduce Motion is enabled") }
+        let fixture = try makeAnimatedFoldFixture(tailCount: 0, bodyCount: 40)
+        defer { fixture.window.orderOut(nil) }
+        fixture.scroll.contentView.scroll(to: CGPoint(x: 0, y: 5))
+        fixture.view.updateViewport()
+        let viewport = fixture.scroll.contentView.bounds
+        XCTAssertTrue(fixture.view.toggleSyntaxFold(atRow: 0))
+        XCTAssertNotNil(fixture.view.foldingTransition)
+        XCTAssertEqual(fixture.scroll.contentView.bounds, viewport)
+        let finished = expectation(for: NSPredicate { _, _ in fixture.view.foldingTransition == nil }, evaluatedWith: nil)
+        XCTAssertEqual(XCTWaiter().wait(for: [finished], timeout: 2), .completed)
+        XCTAssertEqual(fixture.scroll.contentView.bounds.minY, 0)
+        XCTAssertEqual(fixture.view.content.string, fixture.text)
+    }
+
     func testFoldingAnimationCancelsWhenScrollingOrEditing() throws {
         guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { throw XCTSkip("Reduce Motion is enabled") }
         let fixture = try makeAnimatedFoldFixture()
@@ -176,10 +192,11 @@ final class AppKitSyntaxPresentationTests: XCTestCase {
         XCTAssertEqual(view.content.string, " " + fixture.text)
     }
 
-    private func makeAnimatedFoldFixture() throws
+    private func makeAnimatedFoldFixture(tailCount: Int = 40, bodyCount: Int = 1) throws
         -> (window: NSWindow, scroll: NSScrollView, view: ReadOnlyDocumentView, text: String) {
         _ = NSApplication.shared
-        let text = "{\n  \"value\": 1\n}\n" + String(repeating: "{}\n", count: 40)
+        let text = "{\n" + String(repeating: "\n", count: bodyCount) + "  \"value\": 1\n}\n"
+            + String(repeating: "{}\n", count: tailCount)
         let fixture = makeFixture(NSAttributedString(string: text, attributes: [
             .font: NSFont.monospacedSystemFont(ofSize: 15, weight: .regular),
             .foregroundColor: NSColor.labelColor

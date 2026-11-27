@@ -65,10 +65,13 @@ public class ReadOnlyDocumentView: NSView, NSViewContentSelectionInfo {
     private var availableSyntaxFolds: [Int: ClosedRange<Int>] = [:]
     private var collapsedSyntaxFoldHeaders: Set<Int> = []
     private(set) var foldingTransition: SyntaxFoldingTransitionView?
+    private var foldingMinimumFrameHeight: CGFloat?
 
     func cancelFoldingAnimation() {
         foldingTransition?.cancel()
         foldingTransition = nil
+        foldingMinimumFrameHeight = nil
+        needsLayout = true
     }
     private(set) var contentRevision = UUID()
     /// Identity of the installed text snapshot, including reconstruction.
@@ -872,6 +875,9 @@ public class ReadOnlyDocumentView: NSView, NSViewContentSelectionInfo {
                         : NSIntersectionRange(displaySelection.range, hiddenRange).length == 0) else { return false }
             collapsedSyntaxFoldHeaders.insert(row)
         }
+        // Keep AppKit from clamping the scroll origin as the document shrinks.
+        // The snapshots must share one viewport for the entire transition.
+        if before != nil { foldingMinimumFrameHeight = frame.height }
         applyCollapsedSyntaxFolds()
         let newTailTop = following?.yPosition ?? manager.contentHeight
         if let before, enclosingScrollView?.contentView.bounds == viewport,
@@ -895,7 +901,13 @@ public class ReadOnlyDocumentView: NSView, NSViewContentSelectionInfo {
             transition.start { [weak self, weak transition] in
                 guard self?.foldingTransition === transition else { return }
                 self?.foldingTransition = nil
+                self?.foldingMinimumFrameHeight = nil
+                self?.updateViewport()
             }
+        }
+        if foldingTransition == nil, foldingMinimumFrameHeight != nil {
+            foldingMinimumFrameHeight = nil
+            updateViewport()
         }
         return true
     }
@@ -2064,7 +2076,8 @@ public class ReadOnlyDocumentView: NSView, NSViewContentSelectionInfo {
         let verticalScrollable = max(0, baseHeight - viewportHeight)
         return NSSize(
             width: baseWidth + horizontalScrollable * safeOverscrollFactor(displayConfiguration.horizontalOverscrollFactor),
-            height: baseHeight + verticalScrollable * safeOverscrollFactor(displayConfiguration.verticalOverscrollFactor)
+            height: max(foldingMinimumFrameHeight ?? 0,
+                        baseHeight + verticalScrollable * safeOverscrollFactor(displayConfiguration.verticalOverscrollFactor))
         )
     }
 
