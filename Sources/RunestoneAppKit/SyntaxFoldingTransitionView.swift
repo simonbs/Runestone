@@ -10,7 +10,7 @@ enum SyntaxFoldIndicator {
         // Applying a color-only configuration to an already sized NSImage
         // replaces its size and weight. Combine the attributes first so the
         // rendered glyph keeps native source-list disclosure proportions.
-        symbol?.withSymbolConfiguration(configuration.applying(.init(paletteColors: [color])))
+        symbol?.withSymbolConfiguration(configuration.applying(.init(paletteColors: [color.withAlphaComponent(1)])))
     }
 
     static func draw(at center: CGPoint, collapsed: Bool, color: NSColor, in context: CGContext,
@@ -22,7 +22,7 @@ enum SyntaxFoldIndicator {
         context.rotate(by: rotation ?? (collapsed ? 0 : .pi / 2))
         image.draw(in: CGRect(x: -image.size.width / 2, y: -image.size.height / 2,
                               width: image.size.width, height: image.size.height),
-                   from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+                   from: .zero, operation: .sourceOver, fraction: color.alphaComponent, respectFlipped: true, hints: nil)
     }
 }
 
