@@ -137,6 +137,21 @@ final class AppKitSyntaxPresentationTests: XCTestCase {
         XCTAssertEqual(fixture.view.content.string, text)
     }
 
+    func testFoldIndicatorUsesSelectedLineNumberColor() {
+        let fixture = makeFixture(NSAttributedString(string: "header\nbody\n"))
+        var configuration = fixture.view.displayConfiguration
+        configuration.lineNumberColor = .blue
+        configuration.selectedLineNumberColor = .red
+        configuration.showsSelectedLines = true
+        fixture.view.displayConfiguration = configuration
+        fixture.view.updateDisplaySelection(NSRange(location: 0, length: 0))
+        XCTAssertEqual(fixture.view.gutterForegroundColor(for: fixture.view.manager.firstLine), .red)
+        XCTAssertEqual(fixture.view.gutterForegroundColor(for: fixture.view.manager.line(atRow: 1)), .blue)
+        configuration.showsSelectedLines = false
+        fixture.view.displayConfiguration = configuration
+        XCTAssertEqual(fixture.view.gutterForegroundColor(for: fixture.view.manager.firstLine), .blue)
+    }
+
     func testFoldingAnimationFinishesAndRapidReversalKeepsDocumentIntact() throws {
         guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { throw XCTSkip("Reduce Motion is enabled") }
         let fixture = try makeAnimatedFoldFixture()

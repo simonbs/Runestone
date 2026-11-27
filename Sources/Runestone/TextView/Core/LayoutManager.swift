@@ -811,6 +811,11 @@ extension LayoutManager {
                 lineNumberView.textColor = theme.lineNumberColor
             }
         }
+        for button in foldingButtonReuseQueue.visibleViews.values {
+            let y = button.frame.minY + button.chevronSize.height / 2
+            let isInSelection = isSelectionVisible && isEditing && selectionFrame.minY <= y && y <= selectionFrame.maxY
+            button.tintColor = isInSelection ? theme.selectedLinesLineNumberColor : theme.lineNumberColor
+        }
     }
 
     private func setupViewHierarchy() {

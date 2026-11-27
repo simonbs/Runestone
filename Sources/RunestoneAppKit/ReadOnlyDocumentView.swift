@@ -893,7 +893,7 @@ public class ReadOnlyDocumentView: NSView, NSViewContentSelectionInfo {
                 viewport: viewport, before: before, after: after, bodyTop: bodyTop,
                 oldTailTop: oldTailTop, newTailTop: newTailTop, collapsing: collapsing,
                 chevronCenter: CGPoint(x: gutterWidth - foldingGutterWidth / 2, y: header.yPosition + height / 2),
-                chevronColor: displayConfiguration.lineNumberColor, gutterColor: gutterColor,
+                chevronColor: gutterForegroundColor(for: header), gutterColor: gutterColor,
                 backgroundColor: enclosingScrollView?.backgroundColor ?? .textBackgroundColor,
                 layoutRevision: inputLayoutRevision)
             foldingTransition = transition
@@ -1602,10 +1602,9 @@ public class ReadOnlyDocumentView: NSView, NSViewContentSelectionInfo {
         if displayConfiguration.showsLineNumbers {
             for layout in result.lines {
                 guard let baseline = lineNumberBaseline(in: layout) else { continue }
-                let selected = isSelected(layout.line) && shouldHighlightSelectedLine
                 let attributes: [NSAttributedString.Key: Any] = [
                     .font: displayConfiguration.lineNumberFont,
-                    .foregroundColor: selected ? displayConfiguration.selectedLineNumberColor : displayConfiguration.lineNumberColor
+                    .foregroundColor: gutterForegroundColor(for: layout.line)
                 ]
                 let value = String(layout.line.index + 1)
                 let size = (value as NSString).size(withAttributes: attributes)
@@ -2055,10 +2054,15 @@ public class ReadOnlyDocumentView: NSView, NSViewContentSelectionInfo {
         return toggleSyntaxFold(atRow: line.index)
     }
 
+    func gutterForegroundColor(for line: DocumentLineNode) -> NSColor {
+        isSelected(line) && shouldHighlightSelectedLine
+            ? displayConfiguration.selectedLineNumberColor : displayConfiguration.lineNumberColor
+    }
+
     private func drawFoldIndicator(row: Int, y: CGFloat, height: CGFloat, in context: CGContext) {
         let center = CGPoint(x: gutterWidth - foldingGutterWidth / 2, y: y + height / 2)
         SyntaxFoldIndicator.draw(at: center, collapsed: collapsedSyntaxFoldHeaders.contains(row),
-                                 color: displayConfiguration.lineNumberColor, in: context)
+                                 color: gutterForegroundColor(for: manager.line(atRow: row)), in: context)
     }
 
     private var effectiveTextWidth: CGFloat {
